@@ -679,6 +679,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
   .inwrap.job { width: 170px; }
   .pw-form { grid-template-columns: 1fr 1fr; }
 }
+/* Too narrow for one row: the game inputs on top, the buttons under them. */
+@media (max-width: 900px) {
+  .dock { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .dock-actions .play-btn { flex: 1; justify-content: center; }
+  .inwrap.job { width: 150px; }
+}
 /* Short windows: tighter vertical rhythm so more cards fit. */
 @media (max-height: 760px) {
   .top { padding-top: 16px; padding-bottom: 10px; }
