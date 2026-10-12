@@ -36,7 +36,11 @@ public sealed class AppController : IDisposable
     const int TrimLoadPercent = 85;
     const long TrimBelowAvailableMb = 1536;
     static readonly TimeSpan MemoryWarningInterval = TimeSpan.FromMinutes(5);
-    static readonly TimeSpan InstallCacheLifetime = TimeSpan.FromSeconds(30);
+    // Scanning launcher folders and reading the client's file version is the slow part; it is also re-read
+    // whenever the launch option changes or a vault is opened.
+    static readonly TimeSpan InstallCacheLifetime = TimeSpan.FromMinutes(3);
+    static readonly TimeSpan RegistryCacheLifetime = TimeSpan.FromSeconds(30);
+    static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(3);
     static readonly TimeSpan BackgroundSweep = TimeSpan.FromSeconds(15);
     const int MaxRejoins = 5;
     const int MemoryWarningLoad = 92;
@@ -85,8 +89,11 @@ public sealed class AppController : IDisposable
     CancellationTokenSource? _launchCts;
     bool _checking, _lastArmed, _presenceBusy, _rejoining, _trimRefusedShown, _disposed;
     DateTime _nextPresence, _lastTrim, _lastMemoryWarning, _installsReadAt, _sweepBackgroundUntil, _resumedAt, _lastSessionStart;
-    string? _lastMetrics, _pageView;
+    string? _lastMetrics, _lastState, _pageView;
     InstallsInfo? _installs;
+    DateTime? _saveDue;
+    (bool Protocol, bool TrayAutostart)? _registry;
+    DateTime _registryReadAt;
 
     public AppController(Form owner, Action<string> postJson)
     {
@@ -95,6 +102,7 @@ public sealed class AppController : IDisposable
         _procTimer.Tick += (_, _) => OnProcTimer();
         _procTimer.Start();
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
         _updater.Changed += OnUpdaterChanged;
         NoteVersion();
     }
@@ -106,6 +114,9 @@ public sealed class AppController : IDisposable
 
     /// <summary>Recreates the interface drawing on the CPU (true) or the graphics card (false).</summary>
     public Func<bool, Task>? SetSafeRendering { get; init; }
+
+    /// <summary>The window applies a new theme or close-to-tray choice.</summary>
+    public Action? AppearanceChanged { get; init; }
 
     /// <summary>While the window is minimised, poll less often.</summary>
     public bool Background
@@ -128,7 +139,23 @@ public sealed class AppController : IDisposable
     void Emit(string name, object? data) => Post(JsonSerializer.Serialize(new { type = "event", name, data }, Json));
     void Toast(string text, string kind = "info") => Emit("toast", new { text, kind });
     void Progress(string? text) => Emit("progress", new { text });
-    void PushState() => Emit("state", BuildState());
+    public void PushState() => PostState(BuildState(), force: true);
+
+    /// <summary>
+    /// For timers (presence, process checks): the page re-renders on every state, which is the costly part with
+    /// hundreds of accounts, so an identical state isn't sent again. Commands still always push, so a control the
+    /// page changed on its own is put back when the app refused the change.
+    /// </summary>
+    void PushStateIfChanged() => PostState(BuildState(), force: false);
+
+    void PostState(object state, bool force)
+    {
+        string json = JsonSerializer.Serialize(state, Json);
+        if (!force && json == _lastState)
+            return;
+        _lastState = json;
+        Post($"{{\"type\":\"event\",\"name\":\"state\",\"data\":{json}}}");
+    }
 
     public async Task HandleMessageAsync(string json)
     {
@@ -165,6 +192,8 @@ public sealed class AppController : IDisposable
         "whatsNew" => Done(WhatsNew.Between(null, _updater.CurrentVersion)),
         "seenWhatsNew" => Done(SeenWhatsNew()),
         "setLanguage" => Done(SetLanguage(Str(a, "language"))),
+        "setTheme" => Done(SetTheme(Str(a, "theme"))),
+        "setCloseToTray" => Done(SetCloseToTray(Bool(a, "enabled"))),
         "createVault" => CreateVaultAsync(Str(a, "password")),
         "unlock" => UnlockAsync(Str(a, "password")),
         "lock" => Done(Lock()),
@@ -230,7 +259,7 @@ public sealed class AppController : IDisposable
     {
         bool resume = ResumingPage;
         ResumingPage = false;
-        _lastMetrics = null; // a new page has no metrics yet; send them again on the next tick
+        _lastMetrics = _lastState = null; // a new page has nothing yet; send both again
         string? view = resume && _vault is not null ? _pageView : null;
         _pageView = null;
         return new { resume, view, state = BuildState() };
@@ -249,6 +278,9 @@ public sealed class AppController : IDisposable
     object BuildState() => new
     {
         language = L.Language,
+        theme = Prefs.Theme,
+        themeApplied = Themes.Current.Id,
+        closeToTray = Prefs.CloseToTray,
         safeRendering = Prefs.SafeRendering,
         update = _updater.Dto(),
         robloxVersion = RobloxVersionDto(),
@@ -258,14 +290,14 @@ public sealed class AppController : IDisposable
         vaultExists = Vault.Exists,
         locked = _vault is null,
         dataPath = Vault.DataDir,
-        robloxInstalled = RobloxLauncher.IsProtocolRegistered(),
+        robloxInstalled = RegistryInfo().Protocol,
         launching = _launchCts is not null,
         checking = _checking,
         multi = new
         {
             enabled = _vault?.Data.Settings.MultiInstance ?? false,
             armed = MultiInstance.Armed,
-            trayAutostart = MultiInstance.FindTrayAutostart()?.Enabled == true,
+            trayAutostart = RegistryInfo().TrayAutostart,
         },
         installs = Installs(),
         monitors = Screen.AllScreens.Select((s, i) => new { index = i, s.Primary, width = s.Bounds.Width, height = s.Bounds.Height }).ToArray(),
@@ -273,12 +305,22 @@ public sealed class AppController : IDisposable
         accounts = _vault?.Data.Accounts.Select(AccountDto).ToArray() ?? [],
     };
 
-    /// <summary>Which Roblox clients and launchers exist, re-scanned at most every 30 seconds.</summary>
     /// <summary>Which Roblox clients and launchers exist, and the version of the client the chosen option starts.</summary>
     sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client);
 
     /// <param name="UpToDate">null until both versions are known.</param>
     sealed record RobloxVersionInfo(string? Installed, string? Latest, bool? UpToDate, bool Direct);
+
+    /// <summary>Registry facts shown on the page; BuildState runs on every push, so they're re-read at most every 30 s.</summary>
+    (bool Protocol, bool TrayAutostart) RegistryInfo()
+    {
+        if (_registry is { } cached && DateTime.UtcNow - _registryReadAt < RegistryCacheLifetime)
+            return cached;
+        _registryReadAt = DateTime.UtcNow;
+        var info = (RobloxLauncher.IsProtocolRegistered(), MultiInstance.FindTrayAutostart()?.Enabled == true);
+        _registry = info;
+        return info;
+    }
 
     InstallsInfo Installs()
     {
@@ -424,8 +466,21 @@ public sealed class AppController : IDisposable
 
     Account? FindAccount(Guid id) => _vault?.Data.Accounts.FirstOrDefault(a => a.Id == id);
 
+    /// <summary>
+    /// Saves a few seconds later, so a burst of small changes (typing a game link) writes the encrypted vault once.
+    /// Anything still waiting is saved on lock and on exit.
+    /// </summary>
+    void PersistSoon() => _saveDue ??= DateTime.UtcNow + SaveDelay;
+
+    void PersistIfDue(DateTime now)
+    {
+        if (_saveDue is { } due && now >= due)
+            Persist();
+    }
+
     void Persist()
     {
+        _saveDue = null;
         if (_vault is null)
             return;
         try
@@ -441,6 +496,24 @@ public sealed class AppController : IDisposable
     object? SetLanguage(string language)
     {
         L.Set(language);
+        PushState();
+        return null;
+    }
+
+    object? SetTheme(string theme)
+    {
+        Prefs.Theme = Themes.Normalize(theme);
+        Prefs.Save();
+        AppearanceChanged?.Invoke();
+        PushState();
+        return null;
+    }
+
+    object? SetCloseToTray(bool enabled)
+    {
+        Prefs.CloseToTray = enabled;
+        Prefs.Save();
+        AppearanceChanged?.Invoke();
         PushState();
         return null;
     }
@@ -524,6 +597,8 @@ public sealed class AppController : IDisposable
 
     object? Lock()
     {
+        if (_saveDue is not null)
+            Persist();
         SaveOpenSessions();
         _launchCts?.Cancel();
         QuickLoginCancel();
@@ -1079,11 +1154,27 @@ public sealed class AppController : IDisposable
             _gameFetchedAt[placeId] = now;
         try
         {
+            // Roblox has no batch lookup from place to universe, so the unknown ones are asked a few at a time.
             var universeOf = new Dictionary<long, long>();
-            foreach (var (placeId, universeId) in wanted)
+            using (var gate = new SemaphoreSlim(4))
             {
-                universeOf[placeId] = universeId > 0 ? universeId
-                    : _games.GetValueOrDefault(placeId)?.UniverseId ?? await RobloxApi.GetUniverseIdAsync(placeId);
+                var lookups = await Task.WhenAll(wanted.Select(async w =>
+                {
+                    long known = w.UniverseId > 0 ? w.UniverseId : _games.GetValueOrDefault(w.PlaceId)?.UniverseId ?? 0;
+                    if (known > 0)
+                        return (w.PlaceId, known);
+                    await gate.WaitAsync();
+                    try
+                    {
+                        return (w.PlaceId, await RobloxApi.GetUniverseIdAsync(w.PlaceId));
+                    }
+                    finally
+                    {
+                        gate.Release();
+                    }
+                }));
+                foreach (var (placeId, universeId) in lookups)
+                    universeOf[placeId] = universeId;
             }
             string? cookie = _vault?.Data.Accounts.FirstOrDefault(a => a.CookieValid != false && a.Cookie.Length > 0)?.Cookie;
             var games = await RobloxApi.GetGamesAsync(universeOf.Values, cookie);
@@ -1193,22 +1284,27 @@ public sealed class AppController : IDisposable
     readonly Dictionary<long, string> _iconByUniverse = new();
     (List<GameSummary> Games, DateTime At)? _favoriteGames, _popularGames;
 
+    /// <summary>Icons not known yet, in one request per 100 games.</summary>
+    async Task FetchIconsAsync(IEnumerable<GameSummary> games)
+    {
+        var missing = games.Select(g => g.UniverseId).Where(id => id > 0 && !_iconByUniverse.ContainsKey(id)).Distinct().ToList();
+        if (missing.Count == 0)
+            return;
+        try
+        {
+            foreach (var (id, url) in await RobloxApi.GetGameIconsAsync(missing))
+                _iconByUniverse[id] = url;
+        }
+        catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+        {
+            // Rows still work without icons.
+        }
+    }
+
     async Task<List<object>> GameRowsAsync(IEnumerable<GameSummary> games)
     {
         var list = games.GroupBy(g => g.PlaceId).Select(g => g.First()).ToList();
-        var missing = list.Select(g => g.UniverseId).Where(id => id > 0 && !_iconByUniverse.ContainsKey(id)).Distinct().ToList();
-        if (missing.Count > 0)
-        {
-            try
-            {
-                foreach (var (id, url) in await RobloxApi.GetGameIconsAsync(missing))
-                    _iconByUniverse[id] = url;
-            }
-            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
-            {
-                // Rows still work without icons.
-            }
-        }
+        await FetchIconsAsync(list);
         var pinned = _vault?.Data.Settings.PinnedGames.Select(p => p.PlaceId).ToHashSet() ?? [];
         return list.Select(g => (object)new
         {
@@ -1233,42 +1329,52 @@ public sealed class AppController : IDisposable
     async Task<object?> GameListsAsync()
     {
         var vault = RequireVault();
-        if (_favoriteGames is not { } fav || DateTime.UtcNow - fav.At > GameListLifetime)
+        // Favourites (first 5 accounts) and the popular list are fetched together, not one after another.
+        async Task<List<GameSummary>> Favorites()
         {
-            var games = new List<GameSummary>();
-            foreach (var account in vault.Data.Accounts.Where(a => a.UserId > 0).Take(5))
+            var lists = await Task.WhenAll(vault.Data.Accounts.Where(a => a.UserId > 0).Take(5).Select(async account =>
             {
                 try
                 {
-                    games.AddRange(await RobloxApi.GetFavoriteGamesAsync(account.UserId));
+                    return await RobloxApi.GetFavoriteGamesAsync(account.UserId);
                 }
                 catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                 {
+                    return [];
                 }
-            }
-            _favoriteGames = fav = (games.GroupBy(g => g.PlaceId).Select(g => g.First()).Take(30).ToList(), DateTime.UtcNow);
+            }));
+            return lists.SelectMany(l => l).GroupBy(g => g.PlaceId).Select(g => g.First()).Take(30).ToList();
         }
-        if (_popularGames is not { } pop || DateTime.UtcNow - pop.At > GameListLifetime)
+        async Task<List<GameSummary>> Popular()
         {
-            var games = new List<GameSummary>();
             try
             {
                 string? cookie = vault.Data.Accounts.FirstOrDefault(a => a.CookieValid != false && a.Cookie.Length > 0)?.Cookie;
-                games = (await RobloxApi.GetPopularGamesAsync(cookie)).Take(30).ToList();
+                return (await RobloxApi.GetPopularGamesAsync(cookie)).Take(30).ToList();
             }
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
             {
+                return [];
             }
-            _popularGames = pop = (games, DateTime.UtcNow);
         }
+        var now = DateTime.UtcNow;
+        var favTask = _favoriteGames is { } fav && now - fav.At <= GameListLifetime ? Task.FromResult(fav.Games) : Favorites();
+        var popTask = _popularGames is { } pop && now - pop.At <= GameListLifetime ? Task.FromResult(pop.Games) : Popular();
+        await Task.WhenAll(favTask, popTask);
+        _favoriteGames = (favTask.Result, _favoriteGames is { } f && f.Games == favTask.Result ? f.At : now);
+        _popularGames = (popTask.Result, _popularGames is { } p && p.Games == popTask.Result ? p.At : now);
 
         var s = vault.Data.Settings;
+        var recent = s.RecentGames.Select(g => new GameSummary(g.PlaceId, g.UniverseId, g.Name.Length > 0 ? g.Name : $"Place {g.PlaceId}", 0)).ToList();
+        var pinned = s.PinnedGames.Select(g => new GameSummary(g.PlaceId, g.UniverseId, g.Name, 0)).ToList();
+        // Every list's missing icons in one go; the rows below then find them all cached.
+        await FetchIconsAsync([.. recent, .. pinned, .. favTask.Result, .. popTask.Result]);
         return new
         {
-            recent = await GameRowsAsync(s.RecentGames.Select(g => new GameSummary(g.PlaceId, g.UniverseId, g.Name.Length > 0 ? g.Name : $"Place {g.PlaceId}", 0))),
-            pinned = await GameRowsAsync(s.PinnedGames.Select(g => new GameSummary(g.PlaceId, g.UniverseId, g.Name, 0))),
-            favorites = await GameRowsAsync(fav.Games),
-            popular = await GameRowsAsync(pop.Games),
+            recent = await GameRowsAsync(recent),
+            pinned = await GameRowsAsync(pinned),
+            favorites = await GameRowsAsync(favTask.Result),
+            popular = await GameRowsAsync(popTask.Result),
         };
     }
 
@@ -1665,7 +1771,7 @@ public sealed class AppController : IDisposable
             changed = true;
         }
         if (changed)
-            PushState();
+            PushStateIfChanged();
 
         // Poll fast only while something is happening; an idle app should cost next to nothing.
         bool active = pids.Count > 0 || _pending.Count > 0 || _rejoinQueue.Count > 0 || now < _sweepBackgroundUntil;
@@ -1687,6 +1793,7 @@ public sealed class AppController : IDisposable
 
         if (_vault is null)
             return;
+        PersistIfDue(now);
         var memory = SystemMemory.Read();
         EmitMetrics(players, memory);
         GuardResources(players, memory, now);
@@ -1897,7 +2004,7 @@ public sealed class AppController : IDisposable
     {
         // One client at a time: the previous one must have its window (Roblox may be updating), then a short gap.
         var spacing = TimeSpan.FromSeconds(Math.Max(3, _vault?.Data.Settings.LaunchDelaySeconds ?? 0));
-        if (_rejoining || _launchCts is not null || now < _sweepBackgroundUntil || _pending.Count > 0
+        if (_rejoinQueue.Count == 0 || _rejoining || _launchCts is not null || now < _sweepBackgroundUntil || _pending.Count > 0
             || now - _lastSessionStart < spacing || Settling)
             return;
         var due = _rejoinQueue.FirstOrDefault(r => r.Due <= now);
@@ -2056,7 +2163,15 @@ public sealed class AppController : IDisposable
     }
 
     /// <summary>The PC woke up less than a minute ago, or has no network: auto-rejoin holds off.</summary>
-    bool Settling => DateTime.UtcNow - _resumedAt < ResumeGrace || !NetworkInterface.GetIsNetworkAvailable();
+    bool Settling => DateTime.UtcNow - _resumedAt < ResumeGrace || !_networkUp;
+
+    /// <summary>
+    /// Kept up to date by Windows' notification: asking directly lists every network adapter, too slow for a check
+    /// that runs on each process tick.
+    /// </summary>
+    volatile bool _networkUp = NetworkInterface.GetIsNetworkAvailable();
+
+    void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e) => _networkUp = e.IsAvailable;
 
     /// <summary>
     /// After sleep every client has lost its connection and the network takes a moment to come back. Disconnect
@@ -2118,9 +2233,11 @@ public sealed class AppController : IDisposable
             var viewer = accounts.FirstOrDefault(a => a.CookieValid != false && a.Cookie.Length > 0 && a.Realm == Realm.Global);
             var result = await RobloxApi.GetPresenceAsync(viewer?.Cookie, accounts.Select(a => a.UserId).ToList());
 
-            // Privacy settings can hide an account from the others. Accounts with a client open here are always
-            // asked with their own cookie (auto-rejoin relies on it); others only when their game is hidden.
+            // Privacy settings can hide an account from the others. Accounts with a client open here are asked with
+            // their own cookie (auto-rejoin relies on it) unless that client's log is followed, which already says
+            // what it is doing; others only when their game is hidden.
             var askOwn = accounts.Where(a => a != viewer && a.CookieValid != false && a.Cookie.Length > 0
+                                             && !(_running.TryGetValue(a.Id, out var run) && _logs.StateOf(run.Pid) is not null)
                                              && (a.Realm == Realm.Vng || result.TryGetValue(a.UserId, out var p)
                                                  && (_running.ContainsKey(a.Id) ? p.Type != 2 || p.PlaceId is null : p is { Type: 2, PlaceId: null })))
                 .ToList();
@@ -2169,7 +2286,7 @@ public sealed class AppController : IDisposable
             _presenceReliable.Clear();
             _presenceReliable.UnionWith(reliable);
             DetectDisconnectedSessions(reliable);
-            PushState();
+            PushStateIfChanged();
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
@@ -2189,6 +2306,13 @@ public sealed class AppController : IDisposable
         var s = RequireVault().Data.Settings;
         if (OptStr(a, "lastPlaceInput") is { } place) s.LastPlaceInput = place.Trim();
         if (OptStr(a, "lastJobId") is { } job) s.LastJobId = job.Trim();
+        // Sent while typing in the game box: the page already shows it, so just remember it.
+        if (a.ValueKind == JsonValueKind.Object && a.EnumerateObject().Any()
+            && a.EnumerateObject().All(p => p.Name is "lastPlaceInput" or "lastJobId"))
+        {
+            PersistSoon();
+            return null;
+        }
         if (OptBool(a, "renameWindows") is { } rename) s.RenameWindows = rename;
         if (OptStr(a, "launchVia") is { } via && RobloxLauncher.LaunchOptions.Contains(via))
         {
@@ -2236,6 +2360,7 @@ public sealed class AppController : IDisposable
 
     object? DisableTrayAutostart()
     {
+        _registry = null;
         if (MultiInstance.FindTrayAutostart() is { Enabled: true } tray)
         {
             try
@@ -2270,8 +2395,11 @@ public sealed class AppController : IDisposable
             return;
         _disposed = true;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
         _updater.Changed -= OnUpdaterChanged;
         _procTimer.Dispose();
+        if (_saveDue is not null)
+            Persist();
         SaveOpenSessions();
         // A downloaded update is installed once the app has closed; the next start is the new version.
         _updater.ApplyOnExit();

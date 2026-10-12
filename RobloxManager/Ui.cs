@@ -45,14 +45,16 @@ static class Ui
     [DllImport("dwmapi.dll")]
     static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
-    /// <summary>Dark title bar tinted to match the page (caption colour is ignored before Windows 11).</summary>
-    public static void UseDarkTitleBar(Form form, Color caption)
+    /// <summary>Title bar in the theme's colours (caption and text colours are ignored before Windows 11).</summary>
+    public static void UseThemedTitleBar(Form form, Themes.Theme theme)
     {
-        const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20, DWMWA_CAPTION_COLOR = 35;
-        int on = 1;
-        DwmSetWindowAttribute(form.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref on, sizeof(int));
-        int color = ColorTranslator.ToWin32(caption);
-        DwmSetWindowAttribute(form.Handle, DWMWA_CAPTION_COLOR, ref color, sizeof(int));
+        const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20, DWMWA_CAPTION_COLOR = 35, DWMWA_TEXT_COLOR = 36;
+        int dark = theme.Dark ? 1 : 0;
+        DwmSetWindowAttribute(form.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
+        int caption = ColorTranslator.ToWin32(theme.Background);
+        DwmSetWindowAttribute(form.Handle, DWMWA_CAPTION_COLOR, ref caption, sizeof(int));
+        int text = ColorTranslator.ToWin32(theme.Text);
+        DwmSetWindowAttribute(form.Handle, DWMWA_TEXT_COLOR, ref text, sizeof(int));
     }
 
     public static void Error(IWin32Window? owner, string message) =>

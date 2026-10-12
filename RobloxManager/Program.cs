@@ -62,11 +62,12 @@ static class Program
             if (shell.IsHandleCreated && !shell.IsDisposed)
                 shell.BeginInvoke(shell.BringToFront);
         }, null, Timeout.Infinite, executeOnlyOnce: false);
-        // The uninstaller asks the running app to close like the X button would, so nothing it uses stays locked.
+        // The uninstaller asks the running app to quit (even when it would only hide to the tray), so nothing it uses
+        // stays locked.
         var quitWait = ThreadPool.RegisterWaitForSingleObject(quit, (_, _) =>
         {
             if (shell.IsHandleCreated && !shell.IsDisposed)
-                shell.BeginInvoke(shell.Close);
+                shell.BeginInvoke(shell.Quit);
         }, null, Timeout.Infinite, executeOnlyOnce: true);
         try
         {

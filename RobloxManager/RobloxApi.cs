@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -124,6 +125,9 @@ public static class RobloxApi
             root.GetProperty("displayName").GetString() ?? "");
     }
 
+    /// <summary>Last CSRF token per signed-in session (keyed by a hash of the cookie, never the cookie itself).</summary>
+    static readonly ConcurrentDictionary<(string Realm, int Session), string> CsrfTokens = new();
+
     /// <summary>
     /// POST with Roblox's CSRF handshake: a request without a valid token is answered with 403 and a fresh
     /// x-csrf-token header, which is then replayed.
@@ -131,7 +135,9 @@ public static class RobloxApi
     static async Task<HttpResponseMessage> PostWithCsrfAsync(string url, string cookie, string jsonBody,
         Action<HttpRequestMessage>? configure, CancellationToken ct, string realm = Realm.Global)
     {
-        string? token = null;
+        // The token stays valid for a while, so it is reused for the same session instead of paying the 403 each time.
+        var session = (realm, cookie.GetHashCode());
+        string? token = cookie.Length > 0 ? CsrfTokens.GetValueOrDefault(session) : null;
         for (int attempt = 0; ; attempt++)
         {
             HttpResponseMessage res;
@@ -147,6 +153,8 @@ public static class RobloxApi
             if (res.StatusCode == HttpStatusCode.Forbidden && !string.IsNullOrEmpty(fresh) && fresh != token && attempt < 2)
             {
                 token = fresh;
+                if (cookie.Length > 0)
+                    CsrfTokens[session] = fresh;
                 res.Dispose();
                 continue;
             }
@@ -648,15 +656,20 @@ public static class RobloxApi
     public static async Task<Dictionary<long, Presence>> GetPresenceAsync(string? cookie, IReadOnlyCollection<long> userIds, string realm = Realm.Global, CancellationToken ct = default)
     {
         var result = new Dictionary<long, Presence>();
-        foreach (var chunk in userIds.Where(id => id > 0).Distinct().Chunk(100))
+        // 100 ids per request (Roblox's limit); the requests go out together.
+        var pages = await Task.WhenAll(userIds.Where(id => id > 0).Distinct().Chunk(100).Select(async chunk =>
         {
             string json = JsonSerializer.Serialize(new { userIds = chunk });
             using var res = await PostWithCsrfAsync(Realm.Api(realm, "presence") + "/v1/presence/users", cookie ?? "", json, null, ct, realm);
             if (res.StatusCode == HttpStatusCode.TooManyRequests)
                 throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
-            if (!res.IsSuccessStatusCode)
+            return res.IsSuccessStatusCode ? await res.Content.ReadAsStringAsync(ct) : null;
+        }));
+        foreach (string? page in pages)
+        {
+            if (page is null)
                 continue;
-            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
+            using var doc = JsonDocument.Parse(page);
             foreach (var p in doc.RootElement.GetProperty("userPresences").EnumerateArray())
             {
                 long? Num(string name) => p.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : null;

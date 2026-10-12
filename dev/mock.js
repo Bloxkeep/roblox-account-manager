@@ -1,6 +1,6 @@
 'use strict';
 // Fake bridge for designing the UI in a normal browser. ?locked=1 shows the lock screen, ?new=1 the first-run screen,
-// ?empty=1 an empty vault.
+// ?empty=1 an empty vault, ?theme=light (system|light|paper|dim|dark|black) a theme.
 (() => {
   const params = new URLSearchParams(location.search);
   const cdn = 'https://tr.rbxcdn.com/';
@@ -40,6 +40,9 @@
   ];
   let locked = params.has('locked') || params.has('new');
   let language = params.get('lang') || 'en';
+  let theme = params.get('theme') || 'dark';
+  let closeToTray = true;
+  const themeApplied = () => theme !== 'system' ? theme : matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   let settings = {
     lastPlaceInput: 'https://www.roblox.com/games/2753915549/Blox-Fruits', lastJobId: '', renameWindows: true, launchVia: 'auto', launchDelaySeconds: 8,
     memoryWarnings: true, trimBackground: false, antiAfk: false, robloxConfig: { mode: params.has('rc') ? 'marked' : 'off', graphics: 1, fps: 30, volume: 0 },
@@ -48,7 +51,7 @@
   let multi = { enabled: true, armed: !params.has('notready'), trayAutostart: true };
   let emit = () => {};
   const state = () => ({
-    language, vaultExists: !params.has('new'), locked,
+    language, theme, themeApplied: themeApplied(), closeToTray, vaultExists: !params.has('new'), locked,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false },
     update: { supported: true, current: '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? '1.0.1' : null, progress: 0, error: null, auto: true },
@@ -84,6 +87,8 @@
           return state();
         case 'lock': locked = true; push(); return null;
         case 'setLanguage': language = a.language; push(); return null;
+        case 'setTheme': theme = a.theme; push(); return null;
+        case 'setCloseToTray': closeToTray = a.enabled; push(); return null;
         case 'resolveGame': {
           const m = /(\d{5,})/.exec(a.input);
           if (!m) return { ok: false, error: 'Không đọc được Place ID từ link này.' };

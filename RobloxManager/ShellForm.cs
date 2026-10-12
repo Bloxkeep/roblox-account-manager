@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Win32;
 
 namespace RobloxManager;
 
@@ -9,19 +11,22 @@ namespace RobloxManager;
 /// Roblox CDN images (see the CSP in index.html); every network call goes through <see cref="AppController"/>.
 /// The interface is drawn by WebView2 on the graphics card; if the GPU or its driver keeps crashing, or a start
 /// never got the page on screen, it switches to drawing on the CPU and reloads without losing the session.
+/// With "keep running when closed" on, the close button hides the window to the notification area so auto-rejoin and
+/// Multi-Roblox keep working; the tray icon brings it back or quits.
 /// </summary>
 public sealed class ShellForm : Form
 {
     const string Origin = "https://bloxkeep.local/";
     const string SafeRenderingArgs = "--disable-gpu --disable-gpu-compositing";
     const int MaxAutomaticRestarts = 3;
-    static readonly Color Background = Color.FromArgb(10, 12, 17);
 
     readonly AppController _app;
     readonly System.Windows.Forms.Timer _releaseTimer = new() { Interval = 30_000 };
+    readonly NotifyIcon _tray;
     WebView2? _web;
+    string _themeId;
     int _gpuCrashes, _automaticRestarts;
-    bool _restarting, _released;
+    bool _restarting, _released, _quitting;
 
     [DllImport("kernel32.dll")]
     static extern IntPtr GetCurrentProcess();
@@ -34,15 +39,102 @@ public sealed class ShellForm : Form
     public ShellForm()
     {
         // Created first: setting Size below already raises OnResize.
-        _app = new AppController(this, PostToPage) { SetSafeRendering = safe => RestartWebViewAsync(safe, automatic: false) };
+        _app = new AppController(this, PostToPage)
+        {
+            SetSafeRendering = safe => RestartWebViewAsync(safe, automatic: false),
+            AppearanceChanged = ApplyAppearance,
+        };
+        _themeId = Themes.Current.Id;
         Text = Ui.Title;
-        BackColor = Background;
+        BackColor = Themes.Current.Background;
         StartPosition = FormStartPosition.CenterScreen;
         Size = new Size(LogicalToDeviceUnits(1320), LogicalToDeviceUnits(840));
         MinimumSize = new Size(LogicalToDeviceUnits(980), LogicalToDeviceUnits(620));
         Icon = Ui.AppIcon;
         Load += async (_, _) => await InitAsync();
         _releaseTimer.Tick += (_, _) => ReleaseWebView();
+        _tray = CreateTrayIcon();
+        _tray.Visible = Prefs.CloseToTray;
+        SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
+    }
+
+    NotifyIcon CreateTrayIcon()
+    {
+        var menu = new ContextMenuStrip();
+        var open = new ToolStripMenuItem { Font = new Font(menu.Font, FontStyle.Bold) };
+        open.Click += (_, _) => BringToFront();
+        var quit = new ToolStripMenuItem();
+        quit.Click += (_, _) => Quit();
+        menu.Items.AddRange([open, new ToolStripSeparator(), quit]);
+        // The language can change while the app runs.
+        menu.Opening += (_, _) =>
+        {
+            open.Text = L.T("Open Bloxkeep");
+            quit.Text = L.T("Quit Bloxkeep");
+        };
+        var tray = new NotifyIcon { Icon = Ui.AppIcon, Text = Ui.Title, ContextMenuStrip = menu };
+        tray.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left)
+                BringToFront();
+        };
+        return tray;
+    }
+
+    /// <summary>Closes for real, even with "keep running when closed" on.</summary>
+    public void Quit()
+    {
+        _quitting = true;
+        Close();
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        // Windows shutting down and Task Manager still close the app; the uninstaller and the tray menu use Quit.
+        if (!_quitting && Prefs.CloseToTray && e.CloseReason == CloseReason.UserClosing)
+        {
+            e.Cancel = true;
+            HideToTray();
+            return;
+        }
+        base.OnFormClosing(e);
+    }
+
+    void HideToTray()
+    {
+        _tray.Visible = true;
+        Hide();
+        if (Prefs.TrayHintShown)
+            return;
+        Prefs.TrayHintShown = true;
+        Prefs.Save();
+        _tray.ShowBalloonTip(5000, Ui.Title, L.T("Bloxkeep is still running. Right-click this icon to quit."), ToolTipIcon.None);
+    }
+
+    /// <summary>A new theme or close-to-tray choice from Settings, or Windows switching between light and dark.</summary>
+    void ApplyAppearance()
+    {
+        var theme = Themes.Current;
+        _themeId = theme.Id;
+        BackColor = theme.Background;
+        if (IsHandleCreated)
+            Ui.UseThemedTitleBar(this, theme);
+        if (_web is { IsDisposed: false } web)
+            web.DefaultBackgroundColor = theme.Background;
+        _tray.Visible = Prefs.CloseToTray;
+    }
+
+    void OnUserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category != UserPreferenceCategory.General || Prefs.Theme != Themes.FollowWindows || IsDisposed || !IsHandleCreated)
+            return;
+        BeginInvoke(() =>
+        {
+            if (Themes.Current.Id == _themeId)
+                return;
+            ApplyAppearance();
+            _app.PushState();
+        });
     }
 
     void PostToPage(string json)
@@ -61,6 +153,8 @@ public sealed class ShellForm : Form
 
     public new void BringToFront()
     {
+        if (!Visible)
+            Show();
         if (WindowState == FormWindowState.Minimized)
             WindowState = FormWindowState.Normal;
         Activate();
@@ -69,19 +163,35 @@ public sealed class ShellForm : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        Ui.UseDarkTitleBar(this, Background);
+        Ui.UseThemedTitleBar(this, Themes.Current);
     }
 
-    /// <summary>
-    /// When minimised, hide the page (the browser throttles it), trim its memory and poll less; after 30 seconds
-    /// the browser is closed entirely, leaving only the small core running until the window comes back.
-    /// </summary>
+    /// <summary>Minimised, or hidden in the notification area.</summary>
+    bool InBackground => !Visible || WindowState == FormWindowState.Minimized;
+
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        bool minimized = WindowState == FormWindowState.Minimized;
-        _app.Background = minimized;
-        if (minimized)
+        UpdateBackground();
+    }
+
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        UpdateBackground();
+    }
+
+    /// <summary>
+    /// In the background, hide the page (the browser throttles it), trim its memory and poll less; after 30 seconds
+    /// the browser is closed entirely, leaving only the small core running until the window comes back.
+    /// </summary>
+    void UpdateBackground()
+    {
+        if (!IsHandleCreated)
+            return;
+        bool background = InBackground;
+        _app.Background = background;
+        if (background)
             _releaseTimer.Start();
         else
         {
@@ -91,14 +201,14 @@ public sealed class ShellForm : Form
         }
         if (_web?.CoreWebView2 is not { } core)
             return;
-        _web.Visible = !minimized;
-        core.MemoryUsageTargetLevel = minimized ? CoreWebView2MemoryUsageTargetLevel.Low : CoreWebView2MemoryUsageTargetLevel.Normal;
+        _web.Visible = !background;
+        core.MemoryUsageTargetLevel = background ? CoreWebView2MemoryUsageTargetLevel.Low : CoreWebView2MemoryUsageTargetLevel.Normal;
     }
 
     void ReleaseWebView()
     {
         _releaseTimer.Stop();
-        if (_web is not { } web || WindowState != FormWindowState.Minimized || _restarting)
+        if (_web is not { } web || !InBackground || _restarting)
             return;
         _web = null;
         _released = true;
@@ -153,7 +263,7 @@ public sealed class ShellForm : Form
         // Missing runtime: offer Microsoft's installer once, then try again.
         if (runtimeMissing && !await WebView2Setup.TryInstallAsync(this))
         {
-            Close();
+            Quit();
             return;
         }
         try
@@ -164,7 +274,7 @@ public sealed class ShellForm : Form
         catch (WebView2RuntimeNotFoundException)
         {
             Ui.Error(this, L.T("Microsoft Edge WebView2 isn't installed. Install it from Microsoft's website, then reopen Bloxkeep."));
-            Close();
+            Quit();
         }
     }
 
@@ -179,7 +289,7 @@ public sealed class ShellForm : Form
     async Task AttachWebViewAsync(CoreWebView2Environment env)
     {
         TryMarkStarting(true);
-        var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Background };
+        var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Themes.Current.Background };
         Controls.Add(web);
         _web = web;
         await web.EnsureCoreWebView2Async(env);
@@ -323,6 +433,8 @@ public sealed class ShellForm : Form
             e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", "");
             return;
         }
+        if (path == "index.html")
+            stream = WithTheme(stream);
         string type = Path.GetExtension(path) switch
         {
             ".html" => "text/html; charset=utf-8",
@@ -335,8 +447,20 @@ public sealed class ShellForm : Form
         e.Response = env.CreateWebResourceResponse(stream, 200, "OK", $"Content-Type: {type}\r\nCache-Control: no-store");
     }
 
+    /// <summary>The page starts in the right theme, before its first state arrives, so it never flashes dark.</summary>
+    static Stream WithTheme(Stream page)
+    {
+        using var reader = new StreamReader(page);
+        string html = reader.ReadToEnd().Replace("<html ", $"<html data-theme=\"{Themes.Current.Id}\" ");
+        return new MemoryStream(Encoding.UTF8.GetBytes(html));
+    }
+
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
+        _tray.Visible = false;
+        _tray.ContextMenuStrip?.Dispose();
+        _tray.Dispose();
         _releaseTimer.Dispose();
         _app.Dispose();
         base.OnFormClosed(e);

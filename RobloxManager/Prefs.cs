@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace RobloxManager;
 
 /// <summary>
-/// Settings needed before the vault is unlocked (language, safe rendering), kept in prefs.json.
+/// Settings needed before the vault is unlocked (language, theme, safe rendering), kept in prefs.json.
 /// Nothing in here is secret.
 /// </summary>
 public static class Prefs
@@ -11,6 +11,15 @@ public static class Prefs
     static string PrefsPath => Path.Combine(Vault.DataDir, "prefs.json");
 
     public static string Language { get; set; } = "en";
+
+    /// <summary>A theme id from <see cref="Themes"/>.</summary>
+    public static string Theme { get; set; } = Themes.Default;
+
+    /// <summary>The close button hides the window to the notification area; the app quits from the tray icon.</summary>
+    public static bool CloseToTray { get; set; } = true;
+
+    /// <summary>The "still running in the tray" notice was shown once.</summary>
+    public static bool TrayHintShown { get; set; }
 
     /// <summary>Draw the interface on the CPU instead of the graphics card.</summary>
     public static bool SafeRendering { get; set; }
@@ -29,6 +38,12 @@ public static class Prefs
             var root = doc.RootElement;
             if (root.TryGetProperty("language", out var lang) && lang.GetString() == "vi")
                 Language = "vi";
+            if (root.TryGetProperty("theme", out var theme) && theme.ValueKind == JsonValueKind.String)
+                Theme = Themes.Normalize(theme.GetString());
+            if (root.TryGetProperty("closeToTray", out var tray) && tray.ValueKind == JsonValueKind.False)
+                CloseToTray = false;
+            if (root.TryGetProperty("trayHintShown", out var hint) && hint.ValueKind == JsonValueKind.True)
+                TrayHintShown = true;
             if (root.TryGetProperty("safeRendering", out var safe) && safe.ValueKind == JsonValueKind.True)
                 SafeRendering = true;
             if (root.TryGetProperty("checkUpdates", out var updates) && updates.ValueKind == JsonValueKind.False)
@@ -47,7 +62,11 @@ public static class Prefs
         try
         {
             Directory.CreateDirectory(Vault.DataDir);
-            File.WriteAllText(PrefsPath, JsonSerializer.Serialize(new { language = Language, safeRendering = SafeRendering, checkUpdates = CheckUpdates, lastVersion = LastVersion }));
+            File.WriteAllText(PrefsPath, JsonSerializer.Serialize(new
+            {
+                language = Language, theme = Theme, closeToTray = CloseToTray, trayHintShown = TrayHintShown,
+                safeRendering = SafeRendering, checkUpdates = CheckUpdates, lastVersion = LastVersion,
+            }));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

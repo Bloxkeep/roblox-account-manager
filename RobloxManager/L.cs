@@ -22,6 +22,9 @@ public static class L
     static readonly Dictionary<string, string> Vi = new()
     {
         ["Wrong master password."] = "Sai mật khẩu chủ.",
+        ["Open Bloxkeep"] = "Mở Bloxkeep",
+        ["Quit Bloxkeep"] = "Thoát Bloxkeep",
+        ["Bloxkeep is still running. Right-click this icon to quit."] = "Bloxkeep vẫn đang chạy. Bấm chuột phải vào biểu tượng này để thoát hẳn.",
         ["The data file is not in the right format or is damaged."] = "File dữ liệu không đúng định dạng hoặc đã bị hỏng.",
         ["Roblox returned HTTP {0}: {1}"] = "Roblox trả lỗi HTTP {0}: {1}",
         ["This account was signed out — sign in to it again."] = "Tài khoản này đã bị đăng xuất — hãy đăng nhập lại.",

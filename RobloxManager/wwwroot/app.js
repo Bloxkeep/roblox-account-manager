@@ -41,6 +41,7 @@
     globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
     cookie: '<path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/><path d="M8.5 8.5h.01M16 15.5h.01M12 12h.01M11 17h.01M7 14h.01"/>',
     chip: '<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+    palette: '<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.7 1.7-1.7h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z"/>',
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
     code: '<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
     sort: '<path d="M3 6h13M3 12h9M3 18h5M17 10v10M14 17l3 3 3-3"/>',
@@ -442,7 +443,13 @@
     $('#place').value = st.lastPlaceInput || '';
     $('#job').value = st.lastJobId || '';
     $('#q').value = S.query;
-    $('#q').addEventListener('input', e => { S.query = e.target.value; renderGrid(); });
+    // Filter once typing pauses, not on every key.
+    let searchTimer = 0;
+    $('#q').addEventListener('input', e => {
+      S.query = e.target.value;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(renderGrid, 120);
+    });
     $('#place').addEventListener('input', onPlaceInput);
     $('#place').addEventListener('focus', () => { if (!$('#place').value.trim()) openPicker('browse'); });
     $('#place').addEventListener('keydown', onPlaceKey);
@@ -498,7 +505,7 @@
 
   function renderChips() {
     const list = accounts();
-    const groups = [...new Set(list.map(a => a.group).filter(Boolean))].sort((a, b) => a.localeCompare(b, locale()));
+    const groups = [...new Set(list.map(a => a.group).filter(Boolean))].sort(compareText);
     const chips = [
       { f: 'all', text: t('chip.all'), n: list.length },
       { f: 'ingame', text: t('chip.ingame'), n: list.filter(inGame).length, dot: 'var(--ok)' },
@@ -520,10 +527,17 @@
   const statusRank = a => isLocal(a) ? 0 : a.state === 'launching' ? 1 : a.presence?.type === 'ingame' ? 2
     : ['online', 'studio'].includes(a.presence?.type) ? 3 : a.cookieValid === false ? 5 : 4;
 
+  /** One collator per language: localeCompare with a locale builds a new one on every call, slow for big sorts. */
+  let collator = null;
+  function compareText(x, y) {
+    if (collator?.lang !== lang) collator = { lang, c: new Intl.Collator(locale()) };
+    return collator.c.compare(x, y);
+  }
+
   function visible() {
     const q = S.query.trim().toLowerCase();
     const f = S.filter;
-    const byName = (x, y) => (x.group || '￿').localeCompare(y.group || '￿', locale()) || x.label.localeCompare(y.label, locale());
+    const byName = (x, y) => compareText(x.group || '￿', y.group || '￿') || compareText(x.label, y.label);
     const compare = S.sort === 'status' ? (x, y) => statusRank(x) - statusRank(y) || byName(x, y)
       : S.sort === 'recent' ? (x, y) => (y.lastUsed || '').localeCompare(x.lastUsed || '') || byName(x, y)
       : byName;
@@ -575,14 +589,13 @@
   }
 
   function cardHtml(a) {
-    const sel = S.selected.has(a.id);
     const pType = a.session?.connection === 'disconnected' && isLocal(a) ? 'kicked' : isLocal(a) ? 'ingame' : a.presence?.type || '';
     const ring = a.cookieValid === false ? 'invalid' : ['ingame', 'online', 'kicked'].includes(pType) ? pType : '';
     const badge = isLocal(a) ? `<span class="badge run"><i class="pulse"></i>${t('card.local')}</span>`
       : a.state === 'launching' ? `<span class="badge wait"><span class="spin"></span>${t('card.launching')}</span>`
       : a.cookieValid === false ? `<span class="badge bad">${t('card.expired')}</span>` : '';
     const sub = [`@${a.username}`, a.displayName && a.displayName !== a.username && a.displayName !== a.label ? a.displayName : ''].filter(Boolean).join(' · ');
-    return `<article class="card ${sel ? 'sel' : ''} ${isLocal(a) ? 'local' : ''}" data-id="${a.id}" data-act="card" aria-selected="${sel}">
+    return `<article class="card ${isLocal(a) ? 'local' : ''}" data-id="${a.id}" data-act="card" aria-selected="false">
       <div class="card-top"><span class="check">${icon('check')}</span>${badge}</div>
       <div class="avatar ${ring}">${avatarInner(a)}<i class="pdot ${pType}"></i></div>
       <div class="name" title="${esc(a.label)}">${esc(a.label)}</div>
@@ -607,14 +620,13 @@
   const vngTag = a => a.realm === 'vng' ? `<span class="tag vng" title="${t('card.vngTip')}">VNG</span>` : '';
 
   function rowHtml(a) {
-    const sel = S.selected.has(a.id);
     const pType = a.session?.connection === 'disconnected' && isLocal(a) ? 'kicked' : isLocal(a) ? 'ingame' : a.presence?.type || '';
     const ring = a.cookieValid === false ? 'invalid' : ['ingame', 'online', 'kicked'].includes(pType) ? pType : '';
     const st = statusLine(a);
     const action = isLocal(a) ? `<button class="icon-btn stop" data-act="close-one" title="${t('card.close')}" aria-label="${t('card.close')}">${icon('power')}</button>`
       : a.cookieValid === false ? `<button class="icon-btn relogin" data-act="relogin" title="${t('card.relogin')}" aria-label="${t('card.relogin')}">${icon('logIn')}</button>`
       : `<button class="icon-btn play" data-act="play-one" title="${t('card.play')}" aria-label="${t('card.play')}" ${a.state === 'launching' ? 'disabled' : ''}>${icon('play')}</button>`;
-    return `<article class="card row ${sel ? 'sel' : ''} ${isLocal(a) ? 'local' : ''}" data-id="${a.id}" data-act="card" aria-selected="${sel}">
+    return `<article class="card row ${isLocal(a) ? 'local' : ''}" data-id="${a.id}" data-act="card" aria-selected="false">
       <span class="check">${icon('check')}</span>
       <div class="avatar sm ${ring}">${avatarInner(a)}<i class="pdot ${pType}"></i></div>
       <div class="row-name"><b title="${esc(a.label)}">${esc(a.label)}</b><small>@${esc(a.username)}</small></div>
@@ -649,30 +661,80 @@
     }
   }
 
+  /**
+   * One element per account, rebuilt only when that account's own markup changed: a state push, a search or a click
+   * then touches a card or two instead of re-parsing hundreds. Selection is applied as a class (see syncSelection).
+   */
   function renderGrid() {
-    const grid = $('#grid');
-    if (!grid) return;
-    const list = accounts();
-    let html;
-    if (!list.length) {
-      html = `<div class="empty">
+    const host = $('#grid');
+    if (!host) return;
+    const all = accounts();
+    const shown = all.length ? visible() : [];
+    if (!shown.length) {
+      host._cards = null;
+      setHtml(host, all.length
+        ? `<div class="empty"><h2>${t('nores.title')}</h2><p>${t('nores.text')}</p></div>`
+        : `<div class="empty">
         <img class="art" src="${LOGO}" alt="">
         <h2>${t('empty.title')}</h2>
         <p>${t('empty.text')}</p>
         ${addOptions()}
-      </div>`;
-    } else {
-      const shown = visible();
-      // Cards fade in only on the first render, not on every live update.
-      const list = S.layout === 'list';
-      html = shown.length ? `<div class="grid ${list ? 'list' : ''} ${S.introShown ? '' : 'intro'}">${shown.map(list ? rowHtml : cardHtml).join('')}</div>`
-        : `<div class="empty"><h2>${t('nores.title')}</h2><p>${t('nores.text')}</p></div>`;
+      </div>`);
+      if (all.length) S.introShown = true;
+      return;
     }
-    if (setHtml(grid, html)) {
+    const asList = S.layout === 'list';
+    let box = host._cards ? host.firstElementChild : null;
+    if (!box || host._list !== asList) {
+      // Cards fade in only on the first render, not on every live update.
+      host.innerHTML = `<div class="grid ${asList ? 'list' : ''} ${S.introShown ? '' : 'intro'}"></div>`;
+      host._html = null;
+      host._cards = new Map();
+      host._list = asList;
+      box = host.firstElementChild;
+      if (!S.introShown) setTimeout(() => box.classList.remove('intro'), 800);
+    }
+    const cards = host._cards, keep = new Set();
+    let changed = false, prev = null;
+    for (const a of shown) {
+      const html = (asList ? rowHtml : cardHtml)(a);
+      let entry = cards.get(a.id);
+      if (!entry || entry.html !== html) {
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html.trim();
+        const el = tpl.content.firstElementChild;
+        if (entry) entry.el.replaceWith(el);
+        cards.set(a.id, entry = { html, el });
+        changed = true;
+      }
+      setSelected(entry.el, S.selected.has(a.id));
+      keep.add(a.id);
+      const at = prev ? prev.nextElementSibling : box.firstElementChild;
+      if (at !== entry.el) box.insertBefore(entry.el, at);
+      prev = entry.el;
+    }
+    for (const [id, entry] of cards) {
+      if (keep.has(id)) continue;
+      entry.el.remove();
+      cards.delete(id);
+    }
+    if (changed) {
       patchTimes();
       renderMetrics();
     }
-    if (list.length) S.introShown = true;
+    S.introShown = true;
+  }
+
+  function setSelected(el, sel) {
+    if (el.classList.contains('sel') === sel) return;
+    el.classList.toggle('sel', sel);
+    el.setAttribute('aria-selected', sel);
+  }
+
+  /** Selection only flips a class on the cards already on screen. */
+  function syncSelection() {
+    const cards = $('#grid')?._cards;
+    if (cards) for (const [id, { el }] of cards) setSelected(el, S.selected.has(id));
   }
 
   /** Replaces markup only when it changed, so frequent state pushes do not rebuild the DOM. Returns true if replaced. */
@@ -791,13 +853,16 @@
         <div class="set-card">
           <h3>${icon('gauge')}${t('set.perf')}</h3>
           ${row(t('set.rejoin'), t('set.rejoinDesc'), '<span class="state-pill off" id="s-rejoin-count"></span>')}
+          ${row(t('set.tray'), t('set.trayDesc'), sw('s-tray'))}
           ${row(t('set.memWarn'), '', sw('s-memwarn'))}
           ${row(t('set.antiAfk'), t('set.antiAfkDesc'), sw('s-antiafk'))}
           ${row(t('set.trim'), t('set.trimDesc'), sw('s-trim'))}
           ${row(t('set.gpu'), t('set.gpuDesc'), sw('s-gpu'))}
         </div>
         <div class="set-card">
-          <h3>${icon('languages')}${t('set.language')}</h3>
+          <h3>${icon('palette')}${t('set.appearance')}</h3>
+          ${row(t('set.theme'), '<span id="s-theme-name"></span>', '')}
+          <div class="themes" id="s-themes" role="radiogroup" aria-label="${t('set.theme')}"></div>
           ${row(t('set.language'), '', langSwitch())}
         </div>
         <div class="set-card">
@@ -841,6 +906,7 @@
       });
     }
     $('#s-autoupd').addEventListener('change', e => call('setAutoUpdate', { enabled: e.target.checked }));
+    $('#s-tray').addEventListener('change', e => call('setCloseToTray', { enabled: e.target.checked }));
     // Switching reloads the interface, so the reply may never come back; the reloaded page shows the new state.
     $('#s-gpu').addEventListener('change', e => {
       saveView();
@@ -897,6 +963,25 @@
     $('#s-autoupd').disabled = !u.supported;
   }
 
+  const THEMES = {
+    basic: ['system', 'light', 'paper', 'dim', 'dark', 'black', 'contrast'],
+    scenery: ['aurora', 'sunset', 'city', 'space', 'mist', 'snow', 'desert', 'meadow'],
+    color: ['frost', 'ocean', 'forest', 'mocha', 'grape', 'lava', 'neon', 'candy', 'matcha', 'sakura'],
+    style: ['retro', 'terminal', 'gameboy', 'blueprint', 'newspaper'],
+    season: ['halloween', 'lunar', 'spring'],
+  };
+  /** One small swatch per theme, one line per group. Each swatch carries data-theme, so it shows that theme's own colours. */
+  function themesHtml() {
+    const current = S.app.theme || 'dark';
+    const button = id => {
+      const on = id === current, name = t(`theme.${id}`);
+      const inner = id === 'system' ? '<span data-theme="light"></span><span data-theme="dark"></span>' : `<span data-theme="${id}"><em></em></span>`;
+      return `<button class="swatch ${on ? 'on' : ''}" data-act="theme" data-id="${id}" role="radio" aria-checked="${on}" aria-label="${name}" title="${name}">${inner}</button>`;
+    };
+    return Object.entries(THEMES).map(([group, ids]) =>
+      `<div class="tg"><span class="tg-label">${t(`theme.group.${group}`)}</span><div class="tg-list">${ids.map(button).join('')}</div></div>`).join('');
+  }
+
   function syncSettings() {
     const st = S.app.settings, m = S.app.multi;
     if (!st || !$('#s-multi')) return;
@@ -913,6 +998,9 @@
     }
     setText($('#s-rc-hint'), rc.mode === 'off' ? '' : t(rc.mode === 'all' ? 'rc.hint.all' : 'rc.hint.marked', { n: accounts().filter(a => a.useRobloxConfig).length }));
     $('#s-gpu').checked = !S.app.safeRendering;
+    $('#s-tray').checked = S.app.closeToTray !== false;
+    setHtml($('#s-themes'), themesHtml());
+    setText($('#s-theme-name'), t(`theme.${S.app.theme || 'dark'}`));
     syncUpdate();
     const ins = S.app.installs || {};
     const options = [
@@ -1158,7 +1246,7 @@
     renderSelection();
   }
   function renderSelection() {
-    renderGrid();
+    syncSelection();
     renderHeader();
     renderDock();
   }
@@ -1167,7 +1255,7 @@
     renderSelection();
   }
   function onCardClick(id, e) {
-    const ids = visible().map(a => a.id);
+    const ids = e.shiftKey && S.anchor ? visible().map(a => a.id) : [];
     if (e.shiftKey && S.anchor && ids.includes(S.anchor)) {
       const [i, j] = [ids.indexOf(S.anchor), ids.indexOf(id)].sort((a, b) => a - b);
       ids.slice(i, j + 1).forEach(x => S.selected.add(x));
@@ -1870,6 +1958,7 @@
         return cardMenu(id, r.left, r.bottom + 6);
       }
       // The app answers with a state push in the new language.
+      case 'theme': return el.dataset.id !== S.app.theme && call('setTheme', { theme: el.dataset.id });
       case 'lang': return el.dataset.lang !== lang && call('setLanguage', { language: el.dataset.lang });
       case 'view': return setView(el.dataset.view);
       case 'lock': return call('lock');
@@ -2027,6 +2116,7 @@
       S.lockMode = null;
     }
     S.app = st;
+    if (st.themeApplied) document.documentElement.dataset.theme = st.themeApplied;
     if (st.locked) {
       $('#who')?.remove();
       S.selected.clear();

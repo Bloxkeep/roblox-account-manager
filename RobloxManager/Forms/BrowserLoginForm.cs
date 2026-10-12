@@ -13,10 +13,7 @@ public sealed class BrowserLoginForm : Form
 {
     const string ProfilePrefix = "Bloxkeep-login-";
     const string LoginUrl = "https://www.roblox.com/login";
-    static readonly Color Surface = Color.FromArgb(22, 27, 38);
-    static readonly Color Neutral = Color.FromArgb(200, 206, 220);
-    static readonly Color Good = Color.FromArgb(134, 239, 172);
-    static readonly Color Bad = Color.FromArgb(253, 164, 175);
+    readonly Themes.Theme _theme = Themes.Current;
     /// <summary>A blocked connection hangs instead of failing, so don't wait for the browser to give up.</summary>
     static readonly TimeSpan SlowAfter = TimeSpan.FromSeconds(12);
 
@@ -30,15 +27,16 @@ public sealed class BrowserLoginForm : Form
     bool _polling, _closing;
     // What the bar says once the page is up: the instructions, or how the last sign-in went.
     string _readyText = L.T("Sign in to each account in turn. Press Done when finished.");
-    Color _readyColor = Neutral;
+    Color _readyColor;
 
     /// <param name="onSignedIn">Saves the account for a new session cookie and returns a short confirmation.</param>
     public BrowserLoginForm(Func<string, Task<string>> onSignedIn)
     {
         _onSignedIn = onSignedIn;
+        _readyColor = _theme.Text2;
         Text = L.T("Sign in to Roblox");
         Icon = Ui.AppIcon;
-        BackColor = Color.FromArgb(10, 12, 17);
+        BackColor = _theme.Background;
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         Size = new Size(LogicalToDeviceUnits(1000), LogicalToDeviceUnits(800));
@@ -48,7 +46,7 @@ public sealed class BrowserLoginForm : Form
             Dock = DockStyle.Fill,
             AutoSize = false,
             TextAlign = ContentAlignment.MiddleLeft,
-            ForeColor = Neutral,
+            ForeColor = _theme.Text2,
         };
         var done = new Button
         {
@@ -56,8 +54,8 @@ public sealed class BrowserLoginForm : Form
             Dock = DockStyle.Right,
             Width = LogicalToDeviceUnits(96),
             FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(233, 236, 243),
-            ForeColor = Color.FromArgb(11, 13, 18),
+            BackColor = _theme.Text,
+            ForeColor = _theme.Background,
             Cursor = Cursors.Hand,
         };
         done.FlatAppearance.BorderSize = 0;
@@ -68,14 +66,14 @@ public sealed class BrowserLoginForm : Form
             Dock = DockStyle.Right,
             Width = LogicalToDeviceUnits(96),
             FlatStyle = FlatStyle.Flat,
-            BackColor = Surface,
-            ForeColor = Color.FromArgb(233, 236, 243),
+            BackColor = _theme.Surface,
+            ForeColor = _theme.Text,
             Cursor = Cursors.Hand,
             Visible = false,
         };
-        _retry.FlatAppearance.BorderColor = Color.FromArgb(60, 68, 86);
+        _retry.FlatAppearance.BorderColor = _theme.Line;
         _retry.Click += (_, _) => Retry();
-        var bar = new Panel { Dock = DockStyle.Top, Height = LogicalToDeviceUnits(52), Padding = new Padding(12, 8, 10, 8), BackColor = Surface };
+        var bar = new Panel { Dock = DockStyle.Top, Height = LogicalToDeviceUnits(52), Padding = new Padding(12, 8, 10, 8), BackColor = _theme.Surface };
         bar.Controls.Add(_message);
         bar.Controls.Add(_retry);
         bar.Controls.Add(done);
@@ -93,7 +91,7 @@ public sealed class BrowserLoginForm : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        Ui.UseDarkTitleBar(this, BackColor);
+        Ui.UseThemedTitleBar(this, _theme);
     }
 
     /// <summary>A new WebView2 with its own empty profile, so the previous account's session can't carry over.</summary>
@@ -155,7 +153,7 @@ public sealed class BrowserLoginForm : Form
     void OpenLoginPage(CoreWebView2 core)
     {
         _retry.Visible = false;
-        Say(L.T("Opening the Roblox sign-in page…"), Neutral);
+        Say(L.T("Opening the Roblox sign-in page…"), _theme.Text2);
         _slow.Stop();
         _slow.Start();
         core.Navigate(LoginUrl);
@@ -171,7 +169,7 @@ public sealed class BrowserLoginForm : Form
     {
         if (_closing)
             return;
-        Say(L.T("Can't reach roblox.com. Check your internet connection, then press Retry."), Bad);
+        Say(L.T("Can't reach roblox.com. Check your internet connection, then press Retry."), _theme.Bad);
         _retry.Visible = true;
     }
 
@@ -220,7 +218,7 @@ public sealed class BrowserLoginForm : Form
         }
         if (_closing || IsDisposed)
             return;
-        _readyColor = ok ? Good : Bad;
+        _readyColor = ok ? _theme.Good : _theme.Bad;
         _readyText = ok ? message + "  " + L.T("Sign in to the next account, or press Done.") : message;
         Say(_readyText, _readyColor);
         ReleaseBrowser();

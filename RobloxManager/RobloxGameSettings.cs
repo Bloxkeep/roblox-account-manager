@@ -112,12 +112,12 @@ public static class RobloxGameSettings
     /// </summary>
     public static void Restore(bool final)
     {
+        string? file = SettingsFile();
+        // Nothing changed since the last look: skip reading anything (this runs every couple of seconds).
+        if (!final && file is not null && new FileInfo(file) is { Exists: true } info && _lastSeen == (file, info.LastWriteTimeUtc, info.Length))
+            return;
         var baseline = LoadBaseline();
         if (baseline is null)
-            return;
-        string? file = SettingsFile();
-        // Nothing changed since the last look: skip reading the file (this runs every couple of seconds).
-        if (!final && file is not null && new FileInfo(file) is { Exists: true } info && _lastSeen == (file, info.LastWriteTimeUtc, info.Length))
             return;
         if (file is not null && Read(file) is { Length: > 0 } text)
         {
