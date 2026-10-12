@@ -3,14 +3,15 @@ rem Builds Bloxkeep into dist\releases (needs the .NET 10 SDK; the app is self-c
 rem   Bloxkeep-Setup.exe            one-click installer for users (installs per user, installs WebView2 if missing)
 rem   Bloxkeep-Portable.zip         no install; keeps its data in a "data" folder next to it; updates itself too
 rem   *.nupkg + releases.win.json   what installed copies download when they update
-rem Usage: build.bat [version] [github repo url]   e.g. build.bat 1.0.1 https://github.com/owner/bloxkeep
-rem Without a repo url the build never looks for updates. Each version needs its notes in RobloxManager\whatsnew.json
+rem Usage: build.bat [version] [github repo url]   e.g. build.bat 1.0.1
+rem The repo url defaults to Bloxkeep's GitHub repo; pass another one to build a fork. Updates only work while the repo is public. Each version needs its notes in RobloxManager\whatsnew.json
 rem (shown in the app after updating, and on the GitHub release). Publish with release.bat.
 setlocal
 cd /d "%~dp0"
 set VERSION=1.0.0
 if not "%~1"=="" set VERSION=%~1
-set REPO=%~2
+set REPO=https://github.com/minhhoang0122/bloxkeep
+if not "%~2"=="" set REPO=%~2
 
 if exist artifacts\app rmdir /s /q artifacts\app
 if not exist dist\releases mkdir dist\releases
