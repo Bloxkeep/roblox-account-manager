@@ -1,0 +1,227 @@
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace RobloxManager;
+
+/// <summary>
+/// Roblox keeps its in-game settings (graphics, frame rate limit, volume…) in one file for the whole PC, shared by every
+/// account: %LOCALAPPDATA%\Roblox\GlobalBasicSettings_*.xml. A client reads it when it starts, so writing the wanted
+/// values just before opening an account gives that account its own setup. Only those values are changed (the rest
+/// of the file stays byte for byte). The person's own values are put back as soon as that client has started, so a
+/// Roblox they open themselves always gets their own setup.
+/// </summary>
+public static class RobloxGameSettings
+{
+    static readonly string RobloxDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox");
+    static string BaselinePath => Path.Combine(Vault.DataDir, "roblox-settings.json");
+
+    /// <summary>The values Bloxkeep manages, as (element type, name) in the file.</summary>
+    static readonly (string Type, string Name)[] Keys =
+    [
+        ("token", "SavedQualityLevel"), ("int", "GraphicsQualityLevel"), ("int", "FramerateCap"), ("float", "MasterVolume"),
+    ];
+
+    static string? SettingsFile()
+    {
+        try
+        {
+            return new DirectoryInfo(RobloxDir).Exists
+                ? new DirectoryInfo(RobloxDir).EnumerateFiles("GlobalBasicSettings_*.xml")
+                    .Where(f => !f.Name.Contains("Studio", StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault()?.FullName
+                : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    static Regex Element(string type, string name) =>
+        new($"(<{type} name=\"{Regex.Escape(name)}\">)([^<]*)(</{type}>)", RegexOptions.CultureInvariant);
+
+    /// <summary>The values the given setup asks for (null fields are left alone).</summary>
+    static Dictionary<string, string> Wanted(RobloxConfig c)
+    {
+        var values = new Dictionary<string, string>();
+        if (c.Graphics is >= 1 and <= 10)
+        {
+            values["SavedQualityLevel"] = c.Graphics.ToString(CultureInfo.InvariantCulture);
+            values["GraphicsQualityLevel"] = EngineQuality(c.Graphics).ToString(CultureInfo.InvariantCulture);
+        }
+        if (c.Fps > 0)
+            values["FramerateCap"] = c.Fps.ToString(CultureInfo.InvariantCulture);
+        if (c.Volume is >= 0 and <= 100)
+            values["MasterVolume"] = (c.Volume / 100.0).ToString("0.##", CultureInfo.InvariantCulture);
+        return values;
+    }
+
+    /// <summary>The graphics slider (1–10) as Roblox's internal quality level (1–21) in the same file.</summary>
+    public static int EngineQuality(int slider) => slider >= 10 ? 21 : slider * 2 - 1;
+
+    /// <summary>
+    /// Before opening an account: the shared setup if the account uses it, otherwise the person's own values (so an
+    /// account without it never inherits what an earlier one got). Returns false when there was nothing to write.
+    /// </summary>
+    public static bool PrepareFor(RobloxConfig config, bool useConfig)
+    {
+        string? file = SettingsFile();
+        if (file is null)
+            return false;
+        var baseline = LoadBaseline();
+        if (!useConfig && baseline is null)
+            return false; // nothing of ours was ever written: leave the file alone
+        string text = Read(file);
+        if (text.Length == 0)
+            return false;
+        if (baseline is null)
+        {
+            baseline = new Baseline { Values = Current(text), Written = new() };
+            SaveBaseline(baseline);
+        }
+        var target = useConfig ? Wanted(config) : baseline.Values;
+        if (target.Count == 0)
+            return false;
+        string updated = text;
+        foreach (var (type, name) in Keys)
+        {
+            if (target.TryGetValue(name, out var value))
+                updated = Element(type, name).Replace(updated, m => m.Groups[1].Value + value + m.Groups[3].Value, 1);
+        }
+        if (updated == text)
+            return true;
+        Write(file, updated);
+        _lastSeen = default;
+        if (useConfig)
+        {
+            foreach (var (name, value) in target)
+                baseline.Written[name] = value;
+            SaveBaseline(baseline);
+        }
+        return true;
+    }
+
+    static (string? File, DateTime Time, long Length) _lastSeen;
+
+    /// <summary>
+    /// Puts the person's own values back once a client has read Bloxkeep's, and again whenever such a client writes
+    /// them into the file (Roblox saves its settings when it joins a game). A value the person changed themselves —
+    /// it no longer equals what Bloxkeep wrote — is kept. <paramref name="final"/>: Roblox is closed, forget the copy.
+    /// </summary>
+    public static void Restore(bool final)
+    {
+        var baseline = LoadBaseline();
+        if (baseline is null)
+            return;
+        string? file = SettingsFile();
+        // Nothing changed since the last look: skip reading the file (this runs every couple of seconds).
+        if (!final && file is not null && new FileInfo(file) is { Exists: true } info && _lastSeen == (file, info.LastWriteTimeUtc, info.Length))
+            return;
+        if (file is not null && Read(file) is { Length: > 0 } text)
+        {
+            var now = Current(text);
+            string updated = text;
+            foreach (var (type, name) in Keys)
+            {
+                if (baseline.Values.TryGetValue(name, out var mine) && baseline.Written.TryGetValue(name, out var ours)
+                    && now.GetValueOrDefault(name) == ours)
+                    updated = Element(type, name).Replace(updated, m => m.Groups[1].Value + mine + m.Groups[3].Value, 1);
+            }
+            if (updated != text)
+                Write(file, updated);
+            if (new FileInfo(file) is { Exists: true } written)
+                _lastSeen = (file, written.LastWriteTimeUtc, written.Length);
+        }
+        if (!final)
+            return;
+        try
+        {
+            File.Delete(BaselinePath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    public static bool HasBaseline => File.Exists(BaselinePath);
+
+    static Dictionary<string, string> Current(string text) =>
+        Keys.Select(k => (k.Name, Match: Element(k.Type, k.Name).Match(text)))
+            .Where(x => x.Match.Success)
+            .ToDictionary(x => x.Name, x => x.Match.Groups[2].Value);
+
+    sealed class Baseline
+    {
+        public Dictionary<string, string> Values { get; set; } = new();
+        public Dictionary<string, string> Written { get; set; } = new();
+    }
+
+    static Baseline? LoadBaseline()
+    {
+        try
+        {
+            return File.Exists(BaselinePath) ? JsonSerializer.Deserialize<Baseline>(File.ReadAllText(BaselinePath)) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    static void SaveBaseline(Baseline baseline)
+    {
+        try
+        {
+            Directory.CreateDirectory(Vault.DataDir);
+            File.WriteAllText(BaselinePath, JsonSerializer.Serialize(baseline));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    static string Read(string file)
+    {
+        try
+        {
+            using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream, new UTF8Encoding(false));
+            return reader.ReadToEnd();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return "";
+        }
+    }
+
+    /// <summary>Written next to the file and swapped in, so Roblox never reads half a file.</summary>
+    static void Write(string file, string text)
+    {
+        string temp = file + ".bloxkeep";
+        try
+        {
+            File.WriteAllText(temp, text, new UTF8Encoding(false));
+            File.Move(temp, file, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Write(ex);
+            try { File.Delete(temp); } catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException) { }
+        }
+    }
+}
+
+/// <summary>The Roblox in-game settings Bloxkeep gives accounts it opens. 0 / -1 = leave as it is.</summary>
+public sealed class RobloxConfig
+{
+    /// <summary>off, all (every account), or marked (accounts with <see cref="Account.UseRobloxConfig"/>).</summary>
+    public string Mode { get; set; } = "off";
+    /// <summary>1–10 like Roblox's graphics slider; 0 = leave as it is.</summary>
+    public int Graphics { get; set; }
+    /// <summary>Frame rate limit (30, 60, 144, 240); 0 = leave as it is.</summary>
+    public int Fps { get; set; }
+    /// <summary>0–100 %; -1 = leave as it is.</summary>
+    public int Volume { get; set; } = -1;
+}

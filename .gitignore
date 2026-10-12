@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+artifacts/
+dist/
+
+# Local vault / user data (never commit)
+*.rmv
+*.rmv.bak
+error.log
+prefs.json
+AccountData.json
+
+# Signing material
+*.pfx
+*.snk
+
+# IDE / OS
+.vs/
+.idea/
+*.user
+Thumbs.db
+desktop.ini
+
+# Node (if any tooling is added)
+node_modules/

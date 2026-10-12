@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationDefaultFont>Segoe UI, 9.5pt</ApplicationDefaultFont>
+    <AssemblyName>Bloxkeep</AssemblyName>
+    <RootNamespace>RobloxManager</RootNamespace>
+    <Product>Bloxkeep</Product>
+    <Company>Bloxkeep</Company>
+    <Description>Encrypted Roblox account manager and launcher</Description>
+    <Version>1.0.0</Version>
+    <!-- WinForms ships translated resource DLLs for every language; the UI has its own strings, so keep English only. -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Lighter runtime: no ICU culture data, no background GC thread, and a GC that prefers giving memory back. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <!-- The WebView2 package also ships its WPF control, which drags in a WindowsBase version mismatch we never load. -->
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
+    <!-- GitHub repository releases are published to (build.bat passes it); empty = never looks for updates. -->
+    <AssemblyMetadata Include="UpdateRepo" Value="$(UpdateRepo)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\*" LogicalName="wwwroot/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
+    <EmbeddedResource Include="whatsnew.json" LogicalName="whatsnew.json" />
+  </ItemGroup>
+
+</Project>
