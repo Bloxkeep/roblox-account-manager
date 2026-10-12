@@ -192,6 +192,7 @@ public sealed class AppController : IDisposable
         "copy" => Done(Copy(Id(a), Str(a, "field"))),
         "resolveGame" => ResolveGameAsync(Str(a, "input")),
         "searchGames" => SearchGamesAsync(Str(a, "query")),
+        "gameIcons" => GameIconsAsync(a),
         "gameLists" => GameListsAsync(),
         "servers" => ServersAsync(Long(a, "placeId"), Bool(a, "fewest"), OptStr(a, "cursor")),
         "pinGame" => Done(TogglePin(Long(a, "placeId"), Long(a, "universeId"), Str(a, "name"))),
@@ -1252,11 +1253,12 @@ public sealed class AppController : IDisposable
     readonly Dictionary<long, string> _iconByUniverse = new();
     (List<GameSummary> Games, DateTime At)? _favoriteGames, _popularGames;
 
-    async Task<List<object>> GameRowsAsync(IEnumerable<GameSummary> games)
+    /// <param name="fetchIcons">False for search results: they show at once, and the page asks for the icons after.</param>
+    async Task<List<object>> GameRowsAsync(IEnumerable<GameSummary> games, bool fetchIcons = true)
     {
         var list = games.GroupBy(g => g.PlaceId).Select(g => g.First()).ToList();
         var missing = list.Select(g => g.UniverseId).Where(id => id > 0 && !_iconByUniverse.ContainsKey(id)).Distinct().ToList();
-        if (missing.Count > 0)
+        if (fetchIcons && missing.Count > 0)
         {
             try
             {
@@ -1285,7 +1287,29 @@ public sealed class AppController : IDisposable
         query = query.Trim();
         if (query.Length < 2)
             return Array.Empty<object>();
-        return await GameRowsAsync((await RobloxApi.SearchGamesAsync(query)).Take(12));
+        return await GameRowsAsync((await RobloxApi.SearchGamesAsync(query)).Take(12), fetchIcons: false);
+    }
+
+    /// <summary>Icons for games already on screen (search results), keyed by universe id.</summary>
+    async Task<object?> GameIconsAsync(JsonElement a)
+    {
+        var ids = a.TryGetProperty("universeIds", out var arr) && arr.ValueKind == JsonValueKind.Array
+            ? arr.EnumerateArray().Select(x => x.TryGetInt64(out long v) ? v : 0).Where(v => v > 0).Distinct().Take(50).ToList()
+            : [];
+        var missing = ids.Where(id => !_iconByUniverse.ContainsKey(id)).ToList();
+        if (missing.Count > 0)
+        {
+            try
+            {
+                foreach (var (id, url) in await RobloxApi.GetGameIconsAsync(missing))
+                    _iconByUniverse[id] = url;
+            }
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+            {
+                // The rows keep their placeholder.
+            }
+        }
+        return ids.Where(_iconByUniverse.ContainsKey).ToDictionary(id => id.ToString(), id => _iconByUniverse[id]);
     }
 
     /// <summary>Recent and pinned games plus, cached for a while, the accounts' Roblox favourites and the popular chart.</summary>

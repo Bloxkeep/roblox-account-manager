@@ -987,10 +987,24 @@
           <div class="gtxt"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : `Place ${g.placeId}`}</small></div>
           <button class="icon-btn pin ${g.pinned ? 'on' : ''}" data-act="pin-game" data-i="${i}" title="${t(g.pinned ? 'picker.unpin' : 'picker.pin')}">${icon(g.pinned ? 'starFill' : 'star')}</button>
         </div>`).join('');
-    setHtml(el, `${head}<div class="picker-list" role="listbox">${body}</div>`);
+    setHtml(el, `${head}<div class="picker-list ${P.refreshing ? 'refreshing' : ''}" role="listbox">${body}</div>`);
     el.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' });
   }
   let searchTimer = 0;
+  // Recent searches, so backspacing or typing a name again shows its results at once.
+  const searchCache = new Map();
+  const SEARCH_TTL = 5 * 60 * 1000;
+
+  /** Search results show as soon as they arrive; their icons are fetched afterwards and filled in. */
+  async function fillIcons(seq) {
+    const ids = [...new Set(P.results.filter(g => !g.iconUrl && g.universeId).map(g => g.universeId))];
+    if (!ids.length) return;
+    const icons = await call('gameIcons', { universeIds: ids }, { silent: true });
+    if (!icons) return;
+    for (const g of P.results) if (!g.iconUrl && icons[g.universeId]) g.iconUrl = icons[g.universeId];
+    if (seq === P.seq && P.open && P.mode === 'search') renderPicker();
+  }
+
   function onPlaceInput() {
     const value = $('#place').value.trim();
     scheduleSaveInputs();
@@ -1009,16 +1023,27 @@
     }
     S.game = null;
     renderDock();
-    Object.assign(P, { open: true, mode: 'search', query: value, loading: true, index: -1 });
+    const cached = searchCache.get(value.toLowerCase());
+    if (cached && Date.now() - cached.at < SEARCH_TTL) {
+      ++P.seq; // a search still on its way is no longer wanted
+      Object.assign(P, { open: true, mode: 'search', query: value, results: cached.rows, loading: false, refreshing: false, index: -1 });
+      renderPicker();
+      return;
+    }
+    // Keep the last results on screen, dimmed, while the new ones load, instead of flashing placeholders.
+    const keep = P.mode === 'search' && P.results?.length > 0;
+    Object.assign(P, { open: true, mode: 'search', query: value, loading: !keep, refreshing: keep, index: -1 });
     renderPicker();
     searchTimer = setTimeout(async () => {
       const seq = ++P.seq;
       const r = await call('searchGames', { query: value }, { silent: true });
       if (seq !== P.seq || !P.open) return;
       P.results = r || [];
-      P.loading = false;
+      P.loading = P.refreshing = false;
+      if (r) searchCache.set(value.toLowerCase(), { at: Date.now(), rows: P.results });
       renderPicker();
-    }, 350);
+      fillIcons(seq);
+    }, 200);
   }
   function onPlaceKey(e) {
     const rows = pickerRows();
@@ -1028,6 +1053,7 @@
       renderPicker();
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      if (P.loading || P.refreshing) return; // results for what was just typed aren't in yet
       if (P.open && rows.length && (P.index >= 0 || P.mode === 'search')) pickGame(rows[Math.max(0, P.index)]);
       else launch([...S.selected], false);
     } else if (e.key === 'Escape' && P.open) {
