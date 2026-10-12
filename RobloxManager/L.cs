@@ -61,6 +61,17 @@ public static class L
         ["That verification code is wrong or expired."] = "Mã xác minh sai hoặc đã hết hạn.",
         ["Roblox didn't return a verification token."] = "Roblox không trả về mã xác thực.",
         ["Start the sign-in again."] = "Hãy đăng nhập lại từ đầu.",
+        ["Roblox didn't say which captcha to show."] = "Roblox không cho biết cần hiện captcha nào.",
+        ["Solve the puzzle"] = "Giải câu đố",
+        ["Loading the puzzle…"] = "Đang tải câu đố…",
+        ["Show the puzzle again"] = "Hiện lại câu đố",
+        ["The puzzle was closed."] = "Câu đố đã bị đóng.",
+        ["Couldn't load the puzzle. Check your internet connection and try again."] =
+            "Không tải được câu đố. Kiểm tra kết nối mạng rồi thử lại.",
+        ["The puzzle couldn't load. Close this window and sign in again."] = "Không tải được câu đố. Đóng cửa sổ này rồi đăng nhập lại.",
+        ["Couldn't open the captcha: {0}"] = "Không mở được captcha: {0}",
+        ["Roblox asked for a check Bloxkeep can't show yet ({0}). Try again later, or sign in with your phone."] =
+            "Roblox yêu cầu một bước kiểm tra Bloxkeep chưa hiện được ({0}). Thử lại sau, hoặc đăng nhập bằng điện thoại.",
         ["{0} is a Roblox VNG account. Opening Roblox VNG isn't supported yet."] =
             "{0} là acc Roblox VNG. Bloxkeep chưa mở được Roblox VNG.",
         ["Roblox wants an extra check for this sign-in. Use Sign in with browser instead."] =

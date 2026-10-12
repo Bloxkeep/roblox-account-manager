@@ -272,13 +272,20 @@ public static class RobloxApi
     }
 
     /// <summary>
-    /// The outcome of a username+password sign-in. Either a session cookie (done), a two-step prompt the user must
-    /// answer, or a reason it can't continue here (captcha, which needs the browser).
+    /// The outcome of a username+password sign-in. Either a session cookie (done), a two-step prompt or a captcha the
+    /// user must answer, or a check this app can't show (<see cref="Blocked"/>).
     /// </summary>
-    public sealed record LoginResult(string? Cookie, TwoStepPrompt? TwoStep, string? Blocked);
+    public sealed record LoginResult(string? Cookie, TwoStepPrompt? TwoStep, CaptchaPrompt? Captcha = null, string? Blocked = null);
 
     /// <summary>What's needed to finish a two-step sign-in: the user picks Email or Authenticator and types the code.</summary>
     public sealed record TwoStepPrompt(string Realm, long UserId, string ChallengeId, string LoginChallengeId, string Username, string Password);
+
+    /// <summary>
+    /// A captcha Roblox put in front of a sign-in. The puzzle itself is Arkose Labs' FunCaptcha (Roblox's captcha
+    /// provider, see apis.roblox.com/captcha/v1/metadata); <see cref="Blob"/> ties it to this sign-in attempt.
+    /// </summary>
+    public sealed record CaptchaPrompt(string Realm, string LoginChallengeId, string UnifiedCaptchaId, string Blob, string ActionType,
+        string Username, string Password);
 
     static string? CookieFrom(HttpResponseMessage res) =>
         res.Headers.TryGetValues("Set-Cookie", out var values)
@@ -289,26 +296,42 @@ public static class RobloxApi
     /// Signs in with the account's own username and password, exactly as the Roblox client does: the values go only to
     /// Roblox's (or VNG's) official auth host over HTTPS and are never stored or logged by the app.
     /// </summary>
-    public static async Task<LoginResult> LoginWithPasswordAsync(string username, string password, string realm, CancellationToken ct = default)
+    public static Task<LoginResult> LoginWithPasswordAsync(string username, string password, string realm, CancellationToken ct = default) =>
+        SendLoginAsync(username, password, realm, null, ct);
+
+    /// <summary>POST /v2/login, optionally carrying a solved challenge, and sorts out what Roblox answered.</summary>
+    static async Task<LoginResult> SendLoginAsync(string username, string password, string realm, Action<HttpRequestMessage>? configure,
+        CancellationToken ct)
     {
         string json = JsonSerializer.Serialize(new { ctype = "Username", cvalue = username, password });
-        using var res = await PostWithCsrfAsync(Realm.Api(realm, "auth") + "/v2/login", "", json, null, ct, realm);
+        using var res = await PostWithCsrfAsync(Realm.Api(realm, "auth") + "/v2/login", "", json, configure, ct, realm);
         if (CookieFrom(res) is { } cookie && res.IsSuccessStatusCode)
-            return new LoginResult(cookie, null, null);
+            return new LoginResult(cookie, null);
 
-        // A challenge: either two-step verification (we can prompt) or a captcha (only the browser can show it).
         if (Header(res, "rblx-challenge-id") is { Length: > 0 } challengeId)
         {
             string type = Header(res, "rblx-challenge-type") ?? "";
+            var meta = DecodeMetadata(Header(res, "rblx-challenge-metadata"));
+            string? Text(string name) => meta is { ValueKind: JsonValueKind.Object } m && m.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String
+                ? v.GetString() : null;
+            // Only the kind of check and the names of its fields: enough to follow a change on Roblox's side.
+            Log.Note($"Sign-in check from Roblox{(realm == Realm.Vng ? " VNG" : "")}: type '{type}', fields "
+                + (meta is { ValueKind: JsonValueKind.Object } o ? string.Join(", ", o.EnumerateObject().Select(p => p.Name)) : "none"));
+
             if (type.Equals("twostepverification", StringComparison.OrdinalIgnoreCase)
-                && DecodeMetadata(Header(res, "rblx-challenge-metadata")) is { } meta
-                && meta.TryGetProperty("challengeId", out var cid) && cid.GetString() is { Length: > 0 } twoStepId
-                && meta.TryGetProperty("userId", out var uid))
+                && Text("challengeId") is { Length: > 0 } twoStepId
+                && meta!.Value.TryGetProperty("userId", out var uid))
             {
                 long userId = uid.ValueKind == JsonValueKind.Number ? uid.GetInt64() : long.TryParse(uid.GetString(), out var n) ? n : 0;
-                return new LoginResult(null, new TwoStepPrompt(realm, userId, twoStepId, challengeId, username, password), null);
+                return new LoginResult(null, new TwoStepPrompt(realm, userId, twoStepId, challengeId, username, password));
             }
-            return new LoginResult(null, null, "captcha");
+            if (type.Equals("captcha", StringComparison.OrdinalIgnoreCase)
+                && Text("unifiedCaptchaId") is { Length: > 0 } captchaId
+                && Text("dataExchangeBlob") is { Length: > 0 } blob)
+            {
+                return new LoginResult(null, null, new CaptchaPrompt(realm, challengeId, captchaId, blob, Text("actionType") ?? "Login", username, password));
+            }
+            return new LoginResult(null, null, Blocked: type);
         }
 
         string body = await res.Content.ReadAsStringAsync(ct);
@@ -332,6 +355,48 @@ public static class RobloxApi
         {
             return null;
         }
+    }
+
+    /// <summary>The FunCaptcha key Roblox (or VNG) uses for sign-ins, from its public captcha settings.</summary>
+    public static async Task<string> GetLoginCaptchaKeyAsync(string realm, CancellationToken ct = default)
+    {
+        using var req = Request(HttpMethod.Get, Realm.Api(realm, "apis") + "/captcha/v1/metadata", null);
+        using var res = await Http.SendAsync(req, ct);
+        string body = await res.Content.ReadAsStringAsync(ct);
+        if (!res.IsSuccessStatusCode)
+            throw new RobloxApiException(L.F("Roblox returned HTTP {0}: {1}", (int)res.StatusCode, Shorten(body)));
+        using var doc = JsonDocument.Parse(body);
+        if (doc.RootElement.TryGetProperty("funCaptchaPublicKeys", out var keys)
+            && keys.TryGetProperty("ACTION_TYPE_WEB_LOGIN", out var key) && key.GetString() is { Length: > 0 } value)
+            return value;
+        throw new RobloxApiException(L.T("Roblox didn't say which captcha to show."));
+    }
+
+    /// <summary>
+    /// Hands Roblox the token from a solved captcha, then retries the sign-in carrying it, as roblox.com does. The
+    /// answer can still be a two-step prompt (or, rarely, another captcha).
+    /// </summary>
+    public static async Task<LoginResult> FinishCaptchaLoginAsync(CaptchaPrompt prompt, string captchaToken, CancellationToken ct = default)
+    {
+        string solved = JsonSerializer.Serialize(new { unifiedCaptchaId = prompt.UnifiedCaptchaId, captchaToken, actionType = prompt.ActionType });
+        string json = JsonSerializer.Serialize(new { challengeId = prompt.LoginChallengeId, challengeType = "captcha", challengeMetadata = solved });
+        using (var res = await PostWithCsrfAsync(Realm.Api(prompt.Realm, "apis") + "/challenge/v1/continue", "", json, null, ct, prompt.Realm))
+        {
+            if (!res.IsSuccessStatusCode)
+            {
+                string body = await res.Content.ReadAsStringAsync(ct);
+                if (res.StatusCode == HttpStatusCode.TooManyRequests)
+                    throw new RobloxApiException(L.T("Too many sign-in attempts. Wait a few minutes and try again."), rateLimited: true);
+                throw new RobloxApiException(L.F("Roblox returned HTTP {0}: {1}", (int)res.StatusCode, Shorten(body)));
+            }
+        }
+        string meta = Convert.ToBase64String(Encoding.UTF8.GetBytes(solved));
+        return await SendLoginAsync(prompt.Username, prompt.Password, prompt.Realm, req =>
+        {
+            req.Headers.TryAddWithoutValidation("rblx-challenge-id", prompt.LoginChallengeId);
+            req.Headers.TryAddWithoutValidation("rblx-challenge-type", "captcha");
+            req.Headers.TryAddWithoutValidation("rblx-challenge-metadata", meta);
+        }, ct);
     }
 
     /// <summary>

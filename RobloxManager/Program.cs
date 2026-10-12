@@ -45,6 +45,7 @@ static class Program
 
         Prefs.Load();
         BrowserLoginForm.CleanupLeftoverProfiles();
+        CaptchaForm.CleanupLeftoverProfiles();
         ShellForm shell;
         try
         {

@@ -175,6 +175,7 @@ public sealed class AppController : IDisposable
         "quickLoginCancel" => Done(QuickLoginCancel()),
         "loginPassword" => LoginPasswordAsync(Str(a, "username"), Str(a, "password"), Realm.Normalize(Str(a, "realm"))),
         "loginTwoStep" => LoginTwoStepAsync(Str(a, "method"), Str(a, "code")),
+        "loginCaptcha" => LoginCaptchaAsync(),
         "addViaCookie" => AddViaCookieAsync(a),
         "importRam" => ImportRamAsync(),
         "updateAccount" => UpdateAccountAsync(a),
@@ -654,24 +655,54 @@ public sealed class AppController : IDisposable
         return null;
     }
 
-    // A two-step prompt waiting for the code; held only between loginPassword and loginTwoStep, never persisted.
+    // A two-step prompt or captcha waiting for the user; held only while the sign-in is in progress, never persisted.
     RobloxApi.TwoStepPrompt? _twoStep;
+    RobloxApi.CaptchaPrompt? _captcha;
 
     async Task<object?> LoginPasswordAsync(string username, string password, string realm)
     {
         RequireVault();
         _twoStep = null;
+        _captcha = null;
         if (username.Trim().Length == 0 || password.Length == 0)
             throw new UserError(L.T("Enter the username and password."));
-        var result = await RobloxApi.LoginWithPasswordAsync(username.Trim(), password, realm);
-        if (result.Blocked == "captcha")
+        return await HandleLoginAsync(await RobloxApi.LoginWithPasswordAsync(username.Trim(), password, realm), realm);
+    }
+
+    async Task<object?> HandleLoginAsync(RobloxApi.LoginResult result, string realm)
+    {
+        if (result.Captcha is { } captcha)
+        {
+            _captcha = captcha;
             return new { status = "captcha" };
+        }
         if (result.TwoStep is { } prompt)
         {
             _twoStep = prompt;
             return new { status = "twostep" };
         }
+        if (result.Blocked is { } kind)
+            throw new UserError(L.F("Roblox asked for a check Bloxkeep can't show yet ({0}). Try again later, or sign in with your phone.", kind));
         return await SaveLoginAsync(result.Cookie!, realm);
+    }
+
+    /// <summary>Shows the captcha for the user to solve; on success the sign-in carries on (it may still ask for 2-step).</summary>
+    async Task<object?> LoginCaptchaAsync()
+    {
+        RequireVault();
+        if (_captcha is not { } prompt)
+            throw new UserError(L.T("Start the sign-in again."));
+        string key = await RobloxApi.GetLoginCaptchaKeyAsync(prompt.Realm);
+        string? token;
+        using (var form = new CaptchaForm(key, prompt.Blob))
+        {
+            form.ShowDialog(_owner);
+            token = form.Token;
+        }
+        if (token is null)
+            return new { status = "captcha" };
+        _captcha = null;
+        return await HandleLoginAsync(await RobloxApi.FinishCaptchaLoginAsync(prompt, token), prompt.Realm);
     }
 
     async Task<object?> LoginTwoStepAsync(string method, string code)

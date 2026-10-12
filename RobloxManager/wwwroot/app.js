@@ -1223,9 +1223,8 @@
     </div>
     <div class="start-more">${t('start.more')} <button class="link" data-act="add-cookie">${t('start.cookie')}</button> · <button class="link" data-act="import-ram" title="${t('start.ramTip')}">${t('start.ram')}</button></div>`;
 
-  function addChooser() {
-    modal({ title: t('add.title'), body: `<p class="modal-text">${t('empty.text')}</p>${addOptions()}` });
-  }
+  /** The sign-in screen lists every way to add an account. */
+  const addChooser = () => passwordLogin();
   /** Picking a way closes the chooser it was picked from. */
   const leaveChooser = el => el.closest('.overlay')?.querySelector('[data-x]')?.click();
 
@@ -1365,15 +1364,16 @@
   }
 
   /**
-   * Username + password sign-in: works on a PC with no phone and no roblox.com (the values go only to Roblox's/VNG's
-   * official auth host, over HTTPS). Handles a 2-step code; a captcha can't be shown here, so it points to the browser.
+   * The sign-in screen: username + password, with the other ways (phone, browser) under it. Works on a PC with no
+   * phone and no roblox.com: the values go only to Roblox's/VNG's official auth host, over HTTPS. Handles a 2-step code
+   * and a captcha (shown in its own window, for the user to solve).
    */
   function passwordLogin(forRealm) {
     const added = [];
     let realm = forRealm ?? (store.get('rm.qlRealm', '') === 'vng' ? 'vng' : '');
-    let step = 'login', method = 'authenticator';
+    let step = 'login', method = 'authenticator', user = '';
     const m = modal({
-      title: t('pw.title'),
+      title: '',
       body: `<div id="pw-body"></div>`,
       onClose: () => {
         if (!added.length) return;
@@ -1382,42 +1382,65 @@
         renderSelection();
       },
     });
+    m.el.querySelector('.modal').classList.add('auth');
     const body = () => m.el.querySelector('#pw-body');
     const err = msg => { const e = m.el.querySelector('#pw-err'); if (e) { e.textContent = msg; e.hidden = !msg; } };
 
-    const realmTabs = () => `<div class="ql-realm" role="tablist">
-        <button type="button" data-realm="" class="${realm === '' ? 'on' : ''}">Roblox</button>
-        <button type="button" data-realm="vng" class="${realm === 'vng' ? 'on' : ''}">Roblox VNG</button>
+    const realmTabs = () => `<div class="seg wide" role="tablist">
+        <button type="button" role="tab" data-realm="" class="${realm === '' ? 'on' : ''}" aria-selected="${realm === ''}">Roblox</button>
+        <button type="button" role="tab" data-realm="vng" class="${realm === 'vng' ? 'on' : ''}" aria-selected="${realm === 'vng'}">Roblox VNG</button>
       </div>`;
+    const back = `<button type="button" class="auth-back" data-back>${t('pw.back')}</button>`;
 
     function render() {
       if (step === 'captcha') {
-        body().innerHTML = `<div class="pw-captcha">${icon('alert')}
-          <p>${t('pw.captcha')}</p>
-          <div class="pw-captcha-acts"><button type="button" class="btn" data-x2="phone">${t('start.phone')}</button>
-          <button type="button" class="btn" data-x2="browser">${t('start.browser')}</button></div></div>`;
-      } else if (step === 'twostep') {
-        body().innerHTML = `<p class="pw-2fa-lead">${t('pw.twoLead')}</p>
-          <div class="seg wide" id="pw-method">
-            <button type="button" data-m="authenticator" class="${method === 'authenticator' ? 'on' : ''}">${t('pw.auth')}</button>
-            <button type="button" data-m="email" class="${method === 'email' ? 'on' : ''}">${t('pw.email')}</button>
+        body().innerHTML = `<div class="auth-step">
+            <span class="auth-badge">${icon('shield')}</span>
+            <h4>${t('pw.captchaTitle')}</h4>
+            <p>${t('pw.captcha')}</p>
           </div>
-          <form id="pw-two" autocomplete="off">
-            <input class="field pw-code" id="pw-otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••" aria-label="${t('pw.code')}">
+          <div class="auth-acts">
             <div class="form-error" id="pw-err" hidden></div>
-            <button class="btn primary w" type="submit" id="pw-verify">${t('pw.verify')}</button>
+            <button type="button" class="btn go w" id="pw-solve">${t('pw.solve')}</button>
+            ${back}
+          </div>`;
+      } else if (step === 'twostep') {
+        body().innerHTML = `<div class="auth-step">
+            <span class="auth-badge">${icon('shieldCheck')}</span>
+            <h4>${t('pw.twoTitle')}</h4>
+            <p>${t('pw.twoLead', { name: `<b>${esc(user)}</b>` })}</p>
+          </div>
+          <div class="seg wide" role="tablist">
+            <button type="button" role="tab" data-m="authenticator" class="${method === 'authenticator' ? 'on' : ''}" aria-selected="${method === 'authenticator'}">${t('pw.auth')}</button>
+            <button type="button" role="tab" data-m="email" class="${method === 'email' ? 'on' : ''}" aria-selected="${method === 'email'}">${t('pw.email')}</button>
+          </div>
+          <form id="pw-two" class="auth-form" autocomplete="off">
+            <input class="field auth-code" id="pw-otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-label="${t('pw.code')}">
+            <div class="form-error" id="pw-err" hidden></div>
+            <button class="btn go w" type="submit" id="pw-verify">${t('pw.verify')}</button>
+            ${back}
           </form>`;
       } else {
-        body().innerHTML = `${realmTabs()}
-          <form id="pw-login" autocomplete="off" class="pw-form2">
-            <input class="field" id="pw-user" maxlength="60" autocomplete="off" placeholder="${t('pw.userPh')}" aria-label="${t('pw.user')}">
-            <div class="pw"><input class="field" type="password" id="pw-pass" maxlength="200" autocomplete="off" placeholder="${t('pw.passPh')}" aria-label="${t('pw.pass')}">
-              <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}">${icon('eye')}</button></div>
+        // The browser sign-in is roblox.com only, so it isn't offered for Roblox VNG.
+        body().innerHTML = `<div class="auth-head"><img src="${LOGO}" alt=""><h3>${t('pw.title')}</h3></div>
+          ${realmTabs()}
+          ${added.length ? `<div class="auth-added">${icon('check')}<span>${t('pw.addedList', { names: esc(added.map(x => x.label).join(', ')) })}</span></div>` : ''}
+          <form id="pw-login" class="auth-form" autocomplete="off">
+            <label class="auth-label">${t('pw.user')}
+              <input class="field" id="pw-user" maxlength="60" autocomplete="off" spellcheck="false" value="${esc(user)}"></label>
+            <label class="auth-label">${t('pw.pass')}
+              <span class="pw"><input class="field" type="password" id="pw-pass" maxlength="200" autocomplete="off">
+              <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}">${icon('eye')}</button></span></label>
             <div class="form-error" id="pw-err" hidden></div>
-            <div class="pw-added" id="pw-added"></div>
-            <button class="btn primary w" type="submit" id="pw-go">${t('pw.go')}</button>
+            <button class="btn go w" type="submit" id="pw-go">${t('pw.go')}</button>
           </form>
-          <p class="pw-note">${t('pw.note')}</p>`;
+          <div class="auth-or"><span>${t('pw.or')}</span></div>
+          <div class="auth-acts">
+            <button type="button" class="btn w" data-x2="phone">${icon('qr')}${t('pw.withPhone')}</button>
+            ${realm === 'vng' ? '' : `<button type="button" class="btn w" data-x2="browser">${icon('globe')}${t('pw.withBrowser')}</button>`}
+          </div>
+          <p class="auth-more"><button type="button" class="link" data-x2="cookie">${t('pw.cookie')}</button><span>·</span><button type="button" class="link" data-x2="ram" title="${t('start.ramTip')}">${t('pw.ram')}</button></p>
+          <p class="auth-note">${icon('lock')}<span>${t('pw.note')}</span></p>`;
       }
       wire();
     }
@@ -1429,22 +1452,40 @@
         store.set('rm.qlRealm', realm);
         render();
       });
-      m.el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { method = b.dataset.m; render(); });
+      // Switching where the code comes from keeps what was typed.
+      m.el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+        method = b.dataset.m;
+        m.el.querySelectorAll('[data-m]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); });
+        m.el.querySelector('#pw-otp')?.focus();
+      });
+      m.el.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { step = 'login'; render(); });
       m.el.querySelectorAll('[data-x2]').forEach(b => b.onclick = () => {
         m.close();
-        if (b.dataset.x2 === 'browser') addBrowser(null); else quickLogin();
+        const way = b.dataset.x2;
+        if (way === 'browser') addBrowser(null);
+        else if (way === 'phone') quickLogin(realm);
+        else if (way === 'cookie') accountModal(null);
+        else importRam();
       });
+      const solve = m.el.querySelector('#pw-solve');
+      if (solve) solve.onclick = async () => {
+        err('');
+        let r;
+        try { r = await busy(solve, () => bridge.call('loginCaptcha', {})); }
+        catch (e) { return err(e.message); }
+        if (r?.status !== 'captcha') handle(r);
+      };
       const eye = m.el.querySelector('#pw-eye');
       if (eye) eye.onclick = () => { const i = m.el.querySelector('#pw-pass'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; eye.innerHTML = icon(show ? 'eyeOff' : 'eye'); };
       const loginForm = m.el.querySelector('#pw-login');
       if (loginForm) loginForm.onsubmit = e => { e.preventDefault(); submitLogin(); };
       const twoForm = m.el.querySelector('#pw-two');
       if (twoForm) twoForm.onsubmit = e => { e.preventDefault(); submitTwoStep(); };
-      setTimeout(() => m.el.querySelector('#pw-user, #pw-otp')?.focus(), 30);
+      setTimeout(() => m.el.querySelector(step === 'login' && user ? '#pw-pass' : '#pw-user, #pw-otp')?.focus(), 30);
     }
 
     async function submitLogin() {
-      const user = m.el.querySelector('#pw-user').value.trim();
+      user = m.el.querySelector('#pw-user').value.trim();
       const pass = m.el.querySelector('#pw-pass').value;
       if (!user || !pass) return err(t('pw.need'));
       err('');
@@ -1473,9 +1514,8 @@
         added.push(a);
         toast(t(a.merged ? 't.merged' : 't.added', { name: a.label }), 'ok');
         step = 'login';
+        user = '';
         render();
-        const note = m.el.querySelector('#pw-added');
-        if (note) note.textContent = t('ql.addedList', { names: added.map(x => x.label).join(', ') });
       }
     }
 

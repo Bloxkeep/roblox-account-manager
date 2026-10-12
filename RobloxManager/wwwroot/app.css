@@ -493,21 +493,47 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
 .modal-text { margin: 4px 0 12px; color: var(--text-2); }
 
 /* Username + password sign-in. */
-.pw-form2 { display: grid; gap: 10px; margin-top: 16px; }
-.pw-form2 .field { width: 100%; }
-.pw-note { margin: 14px 0 2px; font-size: 12px; color: var(--muted); line-height: 1.5; }
-.pw-added { font-size: 12.5px; color: var(--ok); }
-.pw-added:empty { display: none; }
-.seg.wide { display: flex; margin: 14px 0; width: 100%; }
-.seg.wide button { flex: 1; height: 34px; border-radius: 16px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.modal.auth { position: relative; width: min(420px, 100%); }
+.modal.auth .modal-head { position: absolute; top: 10px; right: 10px; z-index: 1; padding: 0; }
+.modal.auth .modal-body { padding: 30px 32px 26px; }
+.auth-head { display: grid; justify-items: center; gap: 12px; margin-bottom: 20px; text-align: center; }
+.auth-head img { width: 48px; height: 48px; }
+.auth-head h3 { margin: 0; font: 600 22px/1.2 var(--font-display); letter-spacing: -.01em; }
+.btn.go { border: 0; background: var(--accent); color: var(--accent-ink); }
+.btn.go:hover:not(:disabled) { background: var(--accent-hover); }
+.btn.go.busy::after { border-color: rgba(4, 32, 13, .25); border-top-color: var(--accent-ink); }
+.auth-or { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; color: var(--muted); font-size: 12.5px; }
+.auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
+.auth-more { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 8px; margin: 16px 0 0; font-size: 12.5px; color: var(--dim); }
+.auth-more .link { padding: 0; border: 0; background: none; color: var(--text-2); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.auth-more .link:hover { color: var(--text); }
+.seg.wide { display: flex; width: 100%; height: 38px; margin: 4px 0 0; padding: 3px; border-radius: 12px; background: #0b0e15; }
+.seg.wide button { flex: 1; height: 100%; border-radius: 9px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
+.seg.wide button:hover:not(.on) { color: var(--text-2); }
 .seg.wide button.on { background: var(--surface-3); color: var(--text); }
-.pw-2fa-lead { margin: 6px 0 0; color: var(--text-2); font-size: 13px; }
-.pw-code { width: 100%; text-align: center; font: 700 26px/1 "Cascadia Mono", Consolas, ui-monospace, monospace; letter-spacing: .4em; }
-#pw-two { display: grid; gap: 12px; }
-.pw-captcha { display: grid; justify-items: center; gap: 14px; padding: 18px 8px 6px; text-align: center; }
-.pw-captcha > .i { width: 34px; height: 34px; color: var(--warn); }
-.pw-captcha p { margin: 0; color: var(--text-2); max-width: 400px; line-height: 1.5; }
-.pw-captcha-acts { display: flex; gap: 10px; }
+.auth-form { display: grid; gap: 14px; margin-top: 18px; }
+.auth-label { display: grid; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.auth .field { height: 44px; font-size: 14.5px; font-weight: 400; }
+.auth .btn.w { height: 44px; font-size: 14px; border-radius: 12px; }
+.auth .btn.w .i { width: 17px; height: 17px; }
+.auth-form .btn.primary { margin-top: 4px; }
+.auth .form-error { margin: 0; }
+.auth-note { display: flex; gap: 9px; margin: 18px -32px 0; padding: 16px 32px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.5; color: var(--muted); }
+.auth-note .i { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.auth-added { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 10px 12px; border-radius: 11px; border: 1px solid rgba(52, 211, 153, .25); background: rgba(52, 211, 153, .08); color: #a7f3d0; font-size: 12.5px; line-height: 1.45; }
+.auth-added .i { width: 15px; height: 15px; flex: none; margin-top: 1px; color: var(--ok); }
+.auth-step { display: grid; justify-items: center; gap: 6px; padding: 4px 0 18px; text-align: center; }
+.auth-badge { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 8px; border-radius: 16px; background: var(--surface-3); color: var(--text); }
+.auth-badge .i { width: 24px; height: 24px; }
+.auth-badge.warn { background: rgba(251, 191, 36, .12); color: var(--warn); }
+.auth-step h4 { margin: 0; font: 650 17px/1.3 var(--font-display); }
+.auth-step p { margin: 0; max-width: 340px; color: var(--text-2); font-size: 13px; line-height: 1.5; }
+.auth-step p b { color: var(--text); font-weight: 600; }
+.auth .field.auth-code { height: 52px; text-align: center; font: 600 24px/1 "Cascadia Mono", Consolas, ui-monospace, monospace; letter-spacing: .5em; text-indent: .5em; }
+.auth .field.auth-code::placeholder { color: var(--surface-3); }
+.auth-acts { display: grid; gap: 10px; }
+.auth-back { justify-self: center; padding: 4px 8px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.auth-back:hover { color: var(--text); }
 
 /* Ways to add an account (empty list and the Add account chooser). */
 .start-opts { display: grid; gap: 10px; width: min(460px, 100%); margin: 0 auto; text-align: left; }
