@@ -375,7 +375,6 @@
         pw1.value = '';
         if (pw2) pw2.value = '';
         applyState(state);
-        if (!create && whoAtUnlock() && accounts().length) openWho();
       }
     });
   }
@@ -389,7 +388,6 @@
       <aside class="side">
         <div class="brand"><img src="${LOGO}" alt=""><div><div class="brand-name">Bloxkeep</div><div class="brand-sub">${t('brand.sub')}</div></div></div>
         <button class="nav" data-act="view" data-view="accounts" title="${t('nav.accounts')}">${icon('users')}<span>${t('nav.accounts')}</span><em id="nav-count">0</em></button>
-        <button class="nav" data-act="who" title="${t('who.title')}">${icon('user')}<span>${t('who.nav')}</span></button>
         <button class="nav" data-act="view" data-view="settings" title="${t('nav.settings')}">${icon('sliders')}<span>${t('nav.settings')}</span></button>
         <div class="side-fill"></div>
         <div id="side-warn"></div>
@@ -480,7 +478,11 @@
     const m = S.app.multi;
     const cls = !m.enabled ? 'off' : m.armed ? 'ok' : 'warn';
     const text = t(!m.enabled ? 'multi.off' : m.armed ? 'multi.ready' : 'multi.notReady');
-    setHtml($('#multi-card'), `<button class="multi ${cls}" data-act="multi-help" title="${t('multi.title')}: ${esc(text)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div>${icon('chevronRight')}</button>`);
+    // The light and text open the details; the switch turns it on or off right here.
+    setHtml($('#multi-card'), `<div class="multi ${cls}">
+        <button class="multi-open" data-act="multi-help" title="${t('multi.title')}: ${esc(text)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div></button>
+        <label class="switch" title="${t(m.enabled ? 'multi.turnOff' : 'multi.turnOn')}"><input type="checkbox" id="side-multi" ${m.enabled ? 'checked' : ''} aria-label="${t('multi.title')}"><span></span></label>
+      </div>`);
     setHtml($('#side-warn'), S.app.robloxInstalled ? '' : `<div class="warn-card">${t('side.noRoblox')}</div>`);
     const u = S.app.update;
     setHtml($('#update-slot'), u?.status === 'ready'
@@ -605,7 +607,7 @@
       <div class="meta">${vngTag(a)}${a.group ? `<span class="tag" title="${esc(a.group)}">${esc(a.group)}</span>` : ''}${a.autoRejoin ? `<span class="rejoin" title="${t('card.rejoinTip')}">${icon('repeat')}</span>` : ''}<span class="ago" title="${t('card.lastTip')}">${icon('history')}${a.lastUsed ? `<span data-ago="${esc(a.lastUsed)}"></span>` : t('card.never')}</span></div>
       ${a.note ? `<div class="note" title="${esc(a.note)}">${esc(a.note)}</div>` : ''}
       <div class="card-actions">
-        ${isLocal(a)
+        ${isLocal(a) || a.state === 'launching'
           ? `<button class="pill-btn stop" data-act="close-one">${icon('power')}${t('card.close')}</button>`
           : a.cookieValid === false
             ? `<button class="pill-btn relogin" data-act="relogin" title="${t('card.reloginTip')}">${icon('logIn')}${t('card.relogin')}</button>`
@@ -623,7 +625,7 @@
     const pType = a.session?.connection === 'disconnected' && isLocal(a) ? 'kicked' : isLocal(a) ? 'ingame' : a.presence?.type || '';
     const ring = a.cookieValid === false ? 'invalid' : ['ingame', 'online', 'kicked'].includes(pType) ? pType : '';
     const st = statusLine(a);
-    const action = isLocal(a) ? `<button class="icon-btn stop" data-act="close-one" title="${t('card.close')}" aria-label="${t('card.close')}">${icon('power')}</button>`
+    const action = isLocal(a) || a.state === 'launching' ? `<button class="icon-btn stop" data-act="close-one" title="${t('card.close')}" aria-label="${t('card.close')}">${icon('power')}</button>`
       : a.cookieValid === false ? `<button class="icon-btn relogin" data-act="relogin" title="${t('card.relogin')}" aria-label="${t('card.relogin')}">${icon('logIn')}</button>`
       : `<button class="icon-btn play" data-act="play-one" title="${t('card.play')}" aria-label="${t('card.play')}" ${a.state === 'launching' ? 'disabled' : ''}>${icon('play')}</button>`;
     return `<article class="card row ${isLocal(a) ? 'local' : ''}" data-id="${a.id}" data-act="card" aria-selected="false">
@@ -750,12 +752,14 @@
     if (!actions) return;
     const n = S.selected.size;
     const sel = [...S.selected].map(byId).filter(Boolean);
+    // With no game in the bar, the main button opens Roblox on its home screen (one window per account).
+    const hasGame = !!$('#place')?.value.trim();
     setHtml(actions, S.app.launching
       ? `<button class="play-btn stop" data-act="cancel-launch">${icon('stop')}<span>${t('dock.stop')}</span></button>`
       : `<button class="btn ghost" data-act="arrange" title="${t('dock.arrangeTip')}" aria-label="${t('dock.arrangeTip')}">${icon('grid')}</button>
          <button class="btn ghost" data-act="open-app" ${n ? '' : 'disabled'} title="${t('dock.openAppTip')}" aria-label="${t('dock.openAppTip')}">${icon('monitor')}</button>
          <button class="btn ghost" data-act="close-sel" ${sel.some(isLocal) ? '' : 'disabled'} title="${t('dock.closeTip')}" aria-label="${t('dock.closeTip')}">${icon('power')}</button>
-         <button class="play-btn" data-act="launch" ${n ? '' : 'disabled'}>${icon('play')}<span>${t(n ? 'dock.play' : 'dock.pick')}</span>${n ? `<em>${n}</em>` : ''}</button>`);
+         <button class="play-btn" data-act="launch" ${n ? '' : 'disabled'}>${icon(hasGame ? 'play' : 'monitor')}<span>${t(!n ? 'dock.pick' : hasGame ? 'dock.play' : 'dock.openHome')}</span>${n ? `<em>${n}</em>` : ''}</button>`);
 
     const g = S.game;
     setHtml($('#game-thumb'), g?.iconUrl ? `<img src="${esc(g.iconUrl)}" alt="">` : icon('gamepad'));
@@ -888,13 +892,7 @@
 
   function wireSettings() {
     const toggle = (id, key) => $(id).addEventListener('change', e => call('setSettings', { [key]: e.target.checked }));
-    $('#s-multi').addEventListener('change', async e => {
-      if (e.target.checked && !await confirmMulti()) {
-        e.target.checked = false;
-        return;
-      }
-      call('setSettings', { multiInstance: e.target.checked });
-    });
+    $('#s-multi').addEventListener('change', e => setMulti(e.target));
     toggle('#s-rename', 'renameWindows');
     toggle('#s-memwarn', 'memoryWarnings');
     toggle('#s-trim', 'trimBackground');
@@ -1077,14 +1075,29 @@
           <div class="gtxt"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : `Place ${g.placeId}`}</small></div>
           <button class="icon-btn pin ${g.pinned ? 'on' : ''}" data-act="pin-game" data-i="${i}" title="${t(g.pinned ? 'picker.unpin' : 'picker.pin')}">${icon(g.pinned ? 'starFill' : 'star')}</button>
         </div>`).join('');
-    setHtml(el, `${head}<div class="picker-list" role="listbox">${body}</div>`);
+    setHtml(el, `${head}<div class="picker-list ${P.refreshing ? 'refreshing' : ''}" role="listbox">${body}</div>`);
     el.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' });
   }
   let searchTimer = 0;
+  // Recent searches, so backspacing or typing a name again shows its results at once.
+  const searchCache = new Map();
+  const SEARCH_TTL = 5 * 60 * 1000;
+
+  /** Search results show as soon as they arrive; their icons are fetched afterwards and filled in. */
+  async function fillIcons(seq) {
+    const ids = [...new Set(P.results.filter(g => !g.iconUrl && g.universeId).map(g => g.universeId))];
+    if (!ids.length) return;
+    const icons = await call('gameIcons', { universeIds: ids }, { silent: true });
+    if (!icons) return;
+    for (const g of P.results) if (!g.iconUrl && icons[g.universeId]) g.iconUrl = icons[g.universeId];
+    if (seq === P.seq && P.open && P.mode === 'search') renderPicker();
+  }
+
   function onPlaceInput() {
     const value = $('#place').value.trim();
     scheduleSaveInputs();
     clearTimeout(searchTimer);
+    renderDock();
     if (!value) {
       S.game = null;
       renderDock();
@@ -1098,16 +1111,27 @@
     }
     S.game = null;
     renderDock();
-    Object.assign(P, { open: true, mode: 'search', query: value, loading: true, index: -1 });
+    const cached = searchCache.get(value.toLowerCase());
+    if (cached && Date.now() - cached.at < SEARCH_TTL) {
+      ++P.seq; // a search still on its way is no longer wanted
+      Object.assign(P, { open: true, mode: 'search', query: value, results: cached.rows, loading: false, refreshing: false, index: -1 });
+      renderPicker();
+      return;
+    }
+    // Keep the last results on screen, dimmed, while the new ones load, instead of flashing placeholders.
+    const keep = P.mode === 'search' && P.results?.length > 0;
+    Object.assign(P, { open: true, mode: 'search', query: value, loading: !keep, refreshing: keep, index: -1 });
     renderPicker();
     searchTimer = setTimeout(async () => {
       const seq = ++P.seq;
       const r = await call('searchGames', { query: value }, { silent: true });
       if (seq !== P.seq || !P.open) return;
       P.results = r || [];
-      P.loading = false;
+      P.loading = P.refreshing = false;
+      if (r) searchCache.set(value.toLowerCase(), { at: Date.now(), rows: P.results });
       renderPicker();
-    }, 350);
+      fillIcons(seq);
+    }, 200);
   }
   function onPlaceKey(e) {
     const rows = pickerRows();
@@ -1117,6 +1141,7 @@
       renderPicker();
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      if (P.loading || P.refreshing) return; // results for what was just typed aren't in yet
       if (P.open && rows.length && (P.index >= 0 || P.mode === 'search')) pickGame(rows[Math.max(0, P.index)]);
       else launch([...S.selected], false);
     } else if (e.key === 'Escape' && P.open) {
@@ -1269,11 +1294,8 @@
   async function launch(ids, appOnly, force = false) {
     if (!ids.length) return toast(t('t.selectFirst'), 'warn');
     const placeInput = $('#place')?.value.trim() || '';
-    if (!appOnly && !placeInput) {
-      toast(t('t.needGame'), 'warn');
-      $('#place')?.focus();
-      return;
-    }
+    // No game picked: open Roblox on its home screen, one window per account.
+    if (!placeInput) appOnly = true;
     const r = await call('launch', { ids, appOnly, force, placeInput, jobId: $('#job')?.value.trim() || '' });
     if (!r) return;
     if (r.needsConfirm) {
@@ -1311,157 +1333,22 @@
     </div>
     <div class="start-more">${t('start.more')} <button class="link" data-act="add-cookie">${t('start.cookie')}</button> · <button class="link" data-act="import-ram" title="${t('start.ramTip')}">${t('start.ram')}</button></div>`;
 
-  function addChooser() {
-    modal({ title: t('add.title'), body: `<p class="modal-text">${t('empty.text')}</p>${addOptions()}` });
-  }
+  /** The sign-in screen lists every way to add an account. */
+  const addChooser = () => passwordLogin();
   /** Picking a way closes the chooser it was picked from. */
   const leaveChooser = el => el.closest('.overlay')?.querySelector('[data-x]')?.click();
 
-  /* ───────────────────────── who's playing ───────────────────────── */
-  const whoAtUnlock = () => store.get('rm.who', '1') === '1';
-  const whoBusy = new Set();
-  let whoDrawn = '';
-
-  /** Steam-style "Who's playing?": pick an account and Roblox opens on its home screen, already signed in. */
-  function openWho() {
-    if ($('#who')) return;
-    closeMenu();
-    const el = document.createElement('div');
-    el.id = 'who';
-    el.className = 'who';
-    el.setAttribute('role', 'dialog');
-    el.setAttribute('aria-modal', 'true');
-    el.setAttribute('aria-label', t('who.title'));
-    el.innerHTML = `<div class="who-bg" id="who-bg" aria-hidden="true"></div>
-      <header class="who-top"><img src="${LOGO}" alt=""><span>Bloxkeep</span>
-        <button class="who-manage" data-who-close>${t('who.manage')}</button></header>
-      <main class="who-main">
-        <h1>${t('who.title')}</h1>
-        <label class="search who-search" hidden>${icon('search')}<input id="who-q" placeholder="${t('acc.search')}" maxlength="100" aria-label="${t('acc.search')}"></label>
-        <div class="who-grid" id="who-grid"></div>
-      </main>
-      <footer class="who-foot"><label class="who-ask"><span>${t('who.ask')}</span><span class="switch"><input type="checkbox" id="who-ask"><span></span></span></label></footer>`;
-    $('#layer').append(el);
-    whoDrawn = '';
-    const ask = el.querySelector('#who-ask');
-    ask.checked = whoAtUnlock();
-    ask.onchange = () => store.set('rm.who', ask.checked ? '1' : '0');
-    el.querySelector('#who-q').addEventListener('input', renderWho);
-    el.addEventListener('click', e => {
-      if (e.target.closest('[data-who-close]')) return closeWho();
-      if (e.target.closest('[data-who-add]')) return addChooser();
-      const tile = e.target.closest('[data-who]');
-      if (tile) pickAccount(tile.dataset.who);
-    });
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !document.querySelector('#layer .overlay:not(.out)')) {
-        e.stopPropagation();
-        closeWho();
-      }
-    });
-    renderWho();
-    whoBackdrop();
-    setTimeout(() => el.querySelector('.who-tile')?.focus(), 30);
-  }
-
-  function closeWho() {
-    const el = $('#who');
-    if (!el) return;
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 150);
-  }
-
-  function renderWho() {
-    const grid = $('#who-grid');
-    if (!grid) return;
-    const all = accounts();
-    const qBox = $('#who-q');
-    const searchable = all.length > 12;
-    qBox.closest('.search').hidden = !searchable;
-    const q = searchable ? qBox.value.trim().toLowerCase() : '';
-    const time = a => Date.parse(a.lastUsed || '') || 0;
-    const list = all
-      .filter(a => !q || [a.label, a.username, a.displayName, a.group].some(v => (v || '').toLowerCase().includes(q)))
-      .sort((x, y) => time(y) - time(x) || x.label.localeCompare(y.label));
-    // State arrives every few seconds; only redraw when something on screen changes.
-    const sig = list.map(a => [a.id, a.label, a.username, a.avatarUrl, a.cookieValid, a.realm, isLocal(a), whoBusy.has(a.id)].join('|')).join(';') + q;
-    if (sig === whoDrawn && grid.childElementCount) return;
-    whoDrawn = sig;
-    const focused = document.activeElement?.closest?.('[data-who]')?.dataset.who;
-    grid.innerHTML = list.map(a => {
-      const off = a.cookieValid === false;
-      return `<button class="who-tile ${off ? 'off' : ''} ${whoBusy.has(a.id) ? 'busy' : ''}" data-who="${a.id}" title="${esc(a.label)}${a.username !== a.label ? ` (@${esc(a.username)})` : ''}">
-          <span class="who-pic">${avatarInner(a)}${isLocal(a) ? `<i class="who-on">${t('who.open')}</i>` : ''}${a.realm === 'vng' ? '<i class="who-vng">VNG</i>' : ''}<span class="who-busy"><span class="spin"></span></span></span>
-          <span class="who-name">${esc(a.label)}</span>${off ? `<span class="who-sub">${t('who.signIn')}</span>` : ''}
-        </button>`;
-    }).join('') + (q ? '' : `<button class="who-tile add" data-who-add title="${t('who.add')}"><span class="who-pic">${icon('plus')}</span><span class="who-name">${t('who.add')}</span></button>`);
-    if (focused) grid.querySelector(`[data-who="${focused}"]`)?.focus();
-  }
-
-  /** A faint wall of game art behind the tiles, from the games these accounts play. */
-  async function whoBackdrop() {
-    const icons = new Set();
-    const add = games => (games || []).forEach(g => { if (g?.iconUrl && icons.size < 24) icons.add(g.iconUrl); });
-    add(S.app.settings?.recentGames);
-    add(S.app.settings?.pinnedGames);
-    if (icons.size < 12) {
-      const lists = await call('gameLists', {}, { silent: true });
-      if (lists) Object.values(lists).forEach(v => Array.isArray(v) && add(v));
-    }
-    if (!$('#who-bg') || icons.size < 6) return; // a handful repeated looks like a pattern, not a wall of games
-    const cols = 8, rows = 4, size = 150, gap = 16;
-    const art = [...icons];
-    while (art.length < cols * rows) art.push(...art.slice(0, cols * rows - art.length));
-    const load = src => new Promise(done => {
-      const img = new Image();
-      img.onload = () => done(img);
-      img.onerror = () => done(null);
-      img.src = src;
-    });
-    const imgs = (await Promise.all(art.map(load))).filter(Boolean);
-    const bg = $('#who-bg');
-    if (!bg || imgs.length < 6) return;
-    // Blurred once into a still picture: a live CSS blur keeps costing CPU for as long as the screen is open.
-    const canvas = document.createElement('canvas');
-    canvas.width = cols * (size + gap);
-    canvas.height = rows * (size + gap);
-    const ctx = canvas.getContext('2d');
-    ctx.filter = 'blur(14px)';
-    imgs.forEach((img, n) => ctx.drawImage(img, (n % cols) * (size + gap), Math.floor(n / cols) * (size + gap), size, size));
-    bg.replaceChildren(canvas);
-  }
-
-  async function pickAccount(id) {
-    const a = accounts().find(x => x.id === id);
-    if (!a || whoBusy.has(id)) return;
-    if (a.cookieValid === false) return quickLogin(a.realm);
-    whoBusy.add(id);
-    renderWho();
-    try {
-      let r = await call('switchTo', { id });
-      if (r?.needsConfirm) {
-        r = await confirmBox(r.message, { title: t('who.switchTitle'), ok: t('who.switch') }) ? await call('switchTo', { id, force: true }) : undefined;
-      }
-      if (!r) return;
-      if (r.errors?.length) return toast(r.errors.join('\n'), 'error');
-      if (!r.focused) toast(t('who.opening', { name: a.label }), 'ok');
-      closeWho();
-    } finally {
-      whoBusy.delete(id);
-      renderWho();
-    }
-  }
-
   /**
-   * Username + password sign-in: works on a PC with no phone and no roblox.com (the values go only to Roblox's/VNG's
-   * official auth host, over HTTPS). Handles a 2-step code; a captcha can't be shown here, so it points to the browser.
+   * The sign-in screen: username + password, with the other ways (phone, browser) under it. Works on a PC with no
+   * phone and no roblox.com: the values go only to Roblox's/VNG's official auth host, over HTTPS. Handles a 2-step code
+   * and a captcha (shown in its own window, for the user to solve).
    */
   function passwordLogin(forRealm) {
     const added = [];
     let realm = forRealm ?? (store.get('rm.qlRealm', '') === 'vng' ? 'vng' : '');
-    let step = 'login', method = 'authenticator';
+    let step = 'login', method = 'authenticator', user = '';
     const m = modal({
-      title: t('pw.title'),
+      title: '',
       body: `<div id="pw-body"></div>`,
       onClose: () => {
         if (!added.length) return;
@@ -1470,42 +1357,65 @@
         renderSelection();
       },
     });
+    m.el.querySelector('.modal').classList.add('auth');
     const body = () => m.el.querySelector('#pw-body');
     const err = msg => { const e = m.el.querySelector('#pw-err'); if (e) { e.textContent = msg; e.hidden = !msg; } };
 
-    const realmTabs = () => `<div class="ql-realm" role="tablist">
-        <button type="button" data-realm="" class="${realm === '' ? 'on' : ''}">Roblox</button>
-        <button type="button" data-realm="vng" class="${realm === 'vng' ? 'on' : ''}">Roblox VNG</button>
+    const realmTabs = () => `<div class="seg wide" role="tablist">
+        <button type="button" role="tab" data-realm="" class="${realm === '' ? 'on' : ''}" aria-selected="${realm === ''}">Roblox</button>
+        <button type="button" role="tab" data-realm="vng" class="${realm === 'vng' ? 'on' : ''}" aria-selected="${realm === 'vng'}">Roblox VNG</button>
       </div>`;
+    const back = `<button type="button" class="auth-back" data-back>${t('pw.back')}</button>`;
 
     function render() {
       if (step === 'captcha') {
-        body().innerHTML = `<div class="pw-captcha">${icon('alert')}
-          <p>${t('pw.captcha')}</p>
-          <div class="pw-captcha-acts"><button type="button" class="btn" data-x2="phone">${t('start.phone')}</button>
-          <button type="button" class="btn" data-x2="browser">${t('start.browser')}</button></div></div>`;
-      } else if (step === 'twostep') {
-        body().innerHTML = `<p class="pw-2fa-lead">${t('pw.twoLead')}</p>
-          <div class="seg wide" id="pw-method">
-            <button type="button" data-m="authenticator" class="${method === 'authenticator' ? 'on' : ''}">${t('pw.auth')}</button>
-            <button type="button" data-m="email" class="${method === 'email' ? 'on' : ''}">${t('pw.email')}</button>
+        body().innerHTML = `<div class="auth-step">
+            <span class="auth-badge">${icon('shield')}</span>
+            <h4>${t('pw.captchaTitle')}</h4>
+            <p>${t('pw.captcha')}</p>
           </div>
-          <form id="pw-two" autocomplete="off">
-            <input class="field pw-code" id="pw-otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••" aria-label="${t('pw.code')}">
+          <div class="auth-acts">
             <div class="form-error" id="pw-err" hidden></div>
-            <button class="btn primary w" type="submit" id="pw-verify">${t('pw.verify')}</button>
+            <button type="button" class="btn go w" id="pw-solve">${t('pw.solve')}</button>
+            ${back}
+          </div>`;
+      } else if (step === 'twostep') {
+        body().innerHTML = `<div class="auth-step">
+            <span class="auth-badge">${icon('shieldCheck')}</span>
+            <h4>${t('pw.twoTitle')}</h4>
+            <p>${t('pw.twoLead', { name: `<b>${esc(user)}</b>` })}</p>
+          </div>
+          <div class="seg wide" role="tablist">
+            <button type="button" role="tab" data-m="authenticator" class="${method === 'authenticator' ? 'on' : ''}" aria-selected="${method === 'authenticator'}">${t('pw.auth')}</button>
+            <button type="button" role="tab" data-m="email" class="${method === 'email' ? 'on' : ''}" aria-selected="${method === 'email'}">${t('pw.email')}</button>
+          </div>
+          <form id="pw-two" class="auth-form" autocomplete="off">
+            <input class="field auth-code" id="pw-otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-label="${t('pw.code')}">
+            <div class="form-error" id="pw-err" hidden></div>
+            <button class="btn go w" type="submit" id="pw-verify">${t('pw.verify')}</button>
+            ${back}
           </form>`;
       } else {
-        body().innerHTML = `${realmTabs()}
-          <form id="pw-login" autocomplete="off" class="pw-form2">
-            <input class="field" id="pw-user" maxlength="60" autocomplete="off" placeholder="${t('pw.userPh')}" aria-label="${t('pw.user')}">
-            <div class="pw"><input class="field" type="password" id="pw-pass" maxlength="200" autocomplete="off" placeholder="${t('pw.passPh')}" aria-label="${t('pw.pass')}">
-              <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}">${icon('eye')}</button></div>
+        // The browser sign-in is roblox.com only, so it isn't offered for Roblox VNG.
+        body().innerHTML = `<div class="auth-head"><img src="${LOGO}" alt=""><h3>${t('pw.title')}</h3></div>
+          ${realmTabs()}
+          ${added.length ? `<div class="auth-added">${icon('check')}<span>${t('pw.addedList', { names: esc(added.map(x => x.label).join(', ')) })}</span></div>` : ''}
+          <form id="pw-login" class="auth-form" autocomplete="off">
+            <label class="auth-label">${t('pw.user')}
+              <input class="field" id="pw-user" maxlength="60" autocomplete="off" spellcheck="false" value="${esc(user)}"></label>
+            <label class="auth-label">${t('pw.pass')}
+              <span class="pw"><input class="field" type="password" id="pw-pass" maxlength="200" autocomplete="off">
+              <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}">${icon('eye')}</button></span></label>
             <div class="form-error" id="pw-err" hidden></div>
-            <div class="pw-added" id="pw-added"></div>
-            <button class="btn primary w" type="submit" id="pw-go">${t('pw.go')}</button>
+            <button class="btn go w" type="submit" id="pw-go">${t('pw.go')}</button>
           </form>
-          <p class="pw-note">${t('pw.note')}</p>`;
+          <div class="auth-or"><span>${t('pw.or')}</span></div>
+          <div class="auth-acts">
+            <button type="button" class="btn w" data-x2="phone">${icon('qr')}${t('pw.withPhone')}</button>
+            ${realm === 'vng' ? '' : `<button type="button" class="btn w" data-x2="browser">${icon('globe')}${t('pw.withBrowser')}</button>`}
+          </div>
+          <p class="auth-more"><button type="button" class="link" data-x2="cookie">${t('pw.cookie')}</button><span>·</span><button type="button" class="link" data-x2="ram" title="${t('start.ramTip')}">${t('pw.ram')}</button></p>
+          <p class="auth-note">${icon('lock')}<span>${t('pw.note')}</span></p>`;
       }
       wire();
     }
@@ -1517,22 +1427,40 @@
         store.set('rm.qlRealm', realm);
         render();
       });
-      m.el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { method = b.dataset.m; render(); });
+      // Switching where the code comes from keeps what was typed.
+      m.el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+        method = b.dataset.m;
+        m.el.querySelectorAll('[data-m]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); });
+        m.el.querySelector('#pw-otp')?.focus();
+      });
+      m.el.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { step = 'login'; render(); });
       m.el.querySelectorAll('[data-x2]').forEach(b => b.onclick = () => {
         m.close();
-        if (b.dataset.x2 === 'browser') addBrowser(null); else quickLogin();
+        const way = b.dataset.x2;
+        if (way === 'browser') addBrowser(null);
+        else if (way === 'phone') quickLogin(realm);
+        else if (way === 'cookie') accountModal(null);
+        else importRam();
       });
+      const solve = m.el.querySelector('#pw-solve');
+      if (solve) solve.onclick = async () => {
+        err('');
+        let r;
+        try { r = await busy(solve, () => bridge.call('loginCaptcha', {})); }
+        catch (e) { return err(e.message); }
+        if (r?.status !== 'captcha') handle(r);
+      };
       const eye = m.el.querySelector('#pw-eye');
       if (eye) eye.onclick = () => { const i = m.el.querySelector('#pw-pass'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; eye.innerHTML = icon(show ? 'eyeOff' : 'eye'); };
       const loginForm = m.el.querySelector('#pw-login');
       if (loginForm) loginForm.onsubmit = e => { e.preventDefault(); submitLogin(); };
       const twoForm = m.el.querySelector('#pw-two');
       if (twoForm) twoForm.onsubmit = e => { e.preventDefault(); submitTwoStep(); };
-      setTimeout(() => m.el.querySelector('#pw-user, #pw-otp')?.focus(), 30);
+      setTimeout(() => m.el.querySelector(step === 'login' && user ? '#pw-pass' : '#pw-user, #pw-otp')?.focus(), 30);
     }
 
     async function submitLogin() {
-      const user = m.el.querySelector('#pw-user').value.trim();
+      user = m.el.querySelector('#pw-user').value.trim();
       const pass = m.el.querySelector('#pw-pass').value;
       if (!user || !pass) return err(t('pw.need'));
       err('');
@@ -1561,9 +1489,8 @@
         added.push(a);
         toast(t(a.merged ? 't.merged' : 't.added', { name: a.label }), 'ok');
         step = 'login';
+        user = '';
         render();
-        const note = m.el.querySelector('#pw-added');
-        if (note) note.textContent = t('ql.addedList', { names: added.map(x => x.label).join(', ') });
       }
     }
 
@@ -1748,6 +1675,16 @@
   }
 
   const confirmMulti = () => confirmBox(t('set.multiConfirm'), { title: t('set.multiConfirmTitle'), ok: t('set.multiOk') });
+  /** Turns Multi-Roblox on (after the risk warning) or off; a switch that was flipped goes back if the warning is declined. */
+  async function setMulti(on) {
+    const box = typeof on === 'object' ? on : null;
+    const enable = box ? box.checked : on;
+    if (enable && !await confirmMulti()) {
+      if (box) box.checked = false;
+      return;
+    }
+    call('setSettings', { multiInstance: enable });
+  }
 
   async function importRam() {
     const r = await call('importRam');
@@ -1836,13 +1773,16 @@
     modal({
       title: t('multi.title'),
       body,
-      actions: [{ text: t('common.done'), kind: 'primary', onClick: ({ close }) => close() }],
+      actions: [
+        ...(m.enabled ? [{ text: t('mh.disable'), onClick: ({ close }) => { close(); setMulti(false); } }] : []),
+        { text: t('common.done'), kind: 'primary', onClick: ({ close }) => close() },
+      ],
       onMount: ({ el, close }) => el.addEventListener('click', async e => {
         const b = e.target.closest('[data-local]');
         if (!b) return;
         if (b.dataset.local === 'enable') {
           close();
-          if (await confirmMulti()) call('setSettings', { multiInstance: true });
+          setMulti(true);
         } else if (b.dataset.local === 'close-all') {
           const n = await busy(b, () => call('closeAll'));
           if (n !== undefined) toast(n ? t('t.closingAll', { n }) : t('t.noRoblox'), 'ok');
@@ -1944,6 +1884,7 @@
   const editAccount = id => { const a = byId(id); if (a) accountModal(a); };
 
   /* ───────────────────────── events ───────────────────────── */
+  document.addEventListener('change', e => { if (e.target.id === 'side-multi') setMulti(e.target); });
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
     if (!el || !S.app) return;
@@ -1966,7 +1907,6 @@
       case 'add-password': leaveChooser(el); return passwordLogin();
       case 'add-phone': leaveChooser(el); return quickLogin();
       case 'import-ram': leaveChooser(el); return importRam();
-      case 'who': return openWho();
       case 'relogin': return quickLogin(accounts().find(x => x.id === id)?.realm);
       case 'add-browser': leaveChooser(el); return addBrowser(el);
       case 'add-cookie': leaveChooser(el); return accountModal(null);
@@ -2118,7 +2058,6 @@
     S.app = st;
     if (st.themeApplied) document.documentElement.dataset.theme = st.themeApplied;
     if (st.locked) {
-      $('#who')?.remove();
       S.selected.clear();
       S.metrics = { accounts: [], robloxCount: 0, totalMb: 0, systemMb: 0 };
       renderLock();
@@ -2128,7 +2067,6 @@
     for (const id of [...S.selected]) if (!ids.has(id)) S.selected.delete(id);
     if (!S.shell) buildShell();
     update();
-    renderWho();
     if (st.whatsNew && !S.whatsNewShown) {
       S.whatsNewShown = true;
       showWhatsNew(st.whatsNew.releases, () => call('seenWhatsNew'));

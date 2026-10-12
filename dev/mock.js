@@ -141,6 +141,31 @@
           push();
           return a.ids.length;
         case 'disableTrayAutostart': multi = { ...multi, trayAutostart: false }; push(); return null;
+        // Sign-in: user "2fa" asks for a 2-step code (any 6 digits passes), "captcha" hits a captcha, "x" is a wrong password.
+        case 'loginPassword':
+          await wait(600);
+          if (a.username === 'x') throw new Error('Incorrect username or password. Please try again.');
+          if (a.username === 'captcha') return { status: 'captcha' };
+          if (a.username === '2fa') return { status: 'twostep' };
+          return { status: 'added', added: { id: id(1), label: a.username, merged: false } };
+        case 'loginTwoStep':
+          await wait(500);
+          if (!/^\d{6}$/.test(a.code)) throw new Error('Invalid code.');
+          return { status: 'added', added: { id: id(2), label: 'Farm 1', merged: false } };
+        // Game search with the latencies measured from Vietnam (Oct 2026): search ~480 ms, icons ~330 ms more.
+        case 'searchGames': {
+          await wait(480);
+          const q = (a.query || '').toLowerCase();
+          return Object.entries(games).filter(([, g]) => g.name.toLowerCase().includes(q) || q.length < 3)
+            .map(([p, g], i) => ({ placeId: +p, universeId: 1000 + i, name: g.name, playing: g.playing, iconUrl: null, pinned: false }));
+        }
+        case 'gameIcons': {
+          await wait(330);
+          return Object.fromEntries(a.universeIds.map((u, i) => [u, Object.values(games)[i % 3].iconUrl]));
+        }
+        case 'loginCaptcha': await wait(800); return { status: 'added', added: { id: id(3), label: 'captcha', merged: false } };
+        case 'quickLoginStart': await wait(500); return { code: 'K7Q2XW', seconds: 120, qr: null };
+        case 'quickLoginPoll': await wait(200); return { status: 'waiting' };
         case 'changePassword': await wait(400); if (a.current !== 'demo') throw new Error('Mật khẩu chủ hiện tại không đúng.'); return true;
         default: return null;
       }

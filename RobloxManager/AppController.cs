@@ -53,6 +53,10 @@ public sealed class AppController : IDisposable
     readonly System.Windows.Forms.Timer _procTimer = new() { Interval = 1500 };
     readonly Dictionary<Guid, (int Pid, PendingLaunch Launch)> _running = new();
     readonly List<PendingLaunch> _pending = new();
+    /// <summary>When a client that may belong to each pending launch was last seen running.</summary>
+    readonly Dictionary<PendingLaunch, DateTime> _pendingSeenAlive = new(ReferenceEqualityComparer.Instance);
+    /// <summary>A launch whose clients have all quit (failed sign-in, closed by the person) stops waiting after this.</summary>
+    static readonly TimeSpan PendingGoneGrace = TimeSpan.FromSeconds(5);
     readonly Dictionary<long, string> _avatarUrls = new();
     readonly Dictionary<long, GameInfo?> _games = new();
     readonly Dictionary<long, DateTime> _gameFetchedAt = new();
@@ -204,6 +208,7 @@ public sealed class AppController : IDisposable
         "quickLoginCancel" => Done(QuickLoginCancel()),
         "loginPassword" => LoginPasswordAsync(Str(a, "username"), Str(a, "password"), Realm.Normalize(Str(a, "realm"))),
         "loginTwoStep" => LoginTwoStepAsync(Str(a, "method"), Str(a, "code")),
+        "loginCaptcha" => LoginCaptchaAsync(),
         "addViaCookie" => AddViaCookieAsync(a),
         "importRam" => ImportRamAsync(),
         "updateAccount" => UpdateAccountAsync(a),
@@ -216,11 +221,11 @@ public sealed class AppController : IDisposable
         "copy" => Done(Copy(Id(a), Str(a, "field"))),
         "resolveGame" => ResolveGameAsync(Str(a, "input")),
         "searchGames" => SearchGamesAsync(Str(a, "query")),
+        "gameIcons" => GameIconsAsync(a),
         "gameLists" => GameListsAsync(),
         "servers" => ServersAsync(Long(a, "placeId"), Bool(a, "fewest"), OptStr(a, "cursor")),
         "pinGame" => Done(TogglePin(Long(a, "placeId"), Long(a, "universeId"), Str(a, "name"))),
         "launch" => LaunchAsync(a),
-        "switchTo" => SwitchToAsync(Id(a), Bool(a, "force")),
         "cancelLaunch" => Done(CancelLaunch()),
         "closeAccounts" => Done(CloseAccounts(Ids(a))),
         "closeAll" => Done(CloseAll()),
@@ -729,24 +734,79 @@ public sealed class AppController : IDisposable
         return null;
     }
 
-    // A two-step prompt waiting for the code; held only between loginPassword and loginTwoStep, never persisted.
+    // A two-step prompt or captcha waiting for the user; held only while the sign-in is in progress, never persisted.
     RobloxApi.TwoStepPrompt? _twoStep;
+    RobloxApi.CaptchaPrompt? _captcha;
+    RobloxApi.HumanCaptchaPrompt? _humanCaptcha;
 
     async Task<object?> LoginPasswordAsync(string username, string password, string realm)
     {
         RequireVault();
         _twoStep = null;
+        _captcha = null;
+        _humanCaptcha = null;
         if (username.Trim().Length == 0 || password.Length == 0)
             throw new UserError(L.T("Enter the username and password."));
-        var result = await RobloxApi.LoginWithPasswordAsync(username.Trim(), password, realm);
-        if (result.Blocked == "captcha")
+        return await HandleLoginAsync(await RobloxApi.LoginWithPasswordAsync(username.Trim(), password, realm), realm);
+    }
+
+    async Task<object?> HandleLoginAsync(RobloxApi.LoginResult result, string realm)
+    {
+        // Proof-of-work needs no input: solve it and carry on (bounded, in case Roblox keeps asking).
+        for (int i = 0; i < 3 && result.ProofOfWork is { } pow; i++)
+            result = await RobloxApi.FinishProofOfWorkLoginAsync(pow);
+        if (result.ProofOfWork is not null)
+            throw new UserError(L.T("Roblox didn't accept the sign-in check. Please try again."));
+        if (result.Captcha is { } captcha)
+        {
+            _captcha = captcha;
             return new { status = "captcha" };
+        }
+        if (result.HumanCaptcha is { } human)
+        {
+            _humanCaptcha = human;
+            return new { status = "captcha" };
+        }
         if (result.TwoStep is { } prompt)
         {
             _twoStep = prompt;
             return new { status = "twostep" };
         }
+        if (result.Blocked is { } kind)
+            throw new UserError(L.F("Roblox asked for a check Bloxkeep can't show yet ({0}). Try again later, or sign in with your phone.", kind));
         return await SaveLoginAsync(result.Cookie!, realm);
+    }
+
+    /// <summary>Shows the captcha for the user to solve; on success the sign-in carries on (it may still ask for 2-step).</summary>
+    async Task<object?> LoginCaptchaAsync()
+    {
+        RequireVault();
+        if (_humanCaptcha is { } human)
+        {
+            string? redemption = ShowCaptcha(CaptchaForm.Human(human.Realm, human.CaptchaChallengeId));
+            if (redemption is null)
+                return new { status = "captcha" };
+            _humanCaptcha = null;
+            return await HandleLoginAsync(await RobloxApi.FinishHumanCaptchaLoginAsync(human, redemption), human.Realm);
+        }
+        if (_captcha is not { } prompt)
+            throw new UserError(L.T("Start the sign-in again."));
+        string key = await RobloxApi.GetLoginCaptchaKeyAsync(prompt.Realm);
+        string? token = ShowCaptcha(CaptchaForm.Arkose(key, prompt.Blob));
+        if (token is null)
+            return new { status = "captcha" };
+        _captcha = null;
+        return await HandleLoginAsync(await RobloxApi.FinishCaptchaLoginAsync(prompt, token), prompt.Realm);
+    }
+
+    /// <returns>What the solved puzzle handed back, or null when the window was closed first.</returns>
+    string? ShowCaptcha(CaptchaForm form)
+    {
+        using (form)
+        {
+            form.ShowDialog(_owner);
+            return form.Token;
+        }
     }
 
     async Task<object?> LoginTwoStepAsync(string method, string code)
@@ -1301,10 +1361,12 @@ public sealed class AppController : IDisposable
         }
     }
 
-    async Task<List<object>> GameRowsAsync(IEnumerable<GameSummary> games)
+    /// <param name="fetchIcons">False for search results: they show at once, and the page asks for the icons after.</param>
+    async Task<List<object>> GameRowsAsync(IEnumerable<GameSummary> games, bool fetchIcons = true)
     {
         var list = games.GroupBy(g => g.PlaceId).Select(g => g.First()).ToList();
-        await FetchIconsAsync(list);
+        if (fetchIcons)
+            await FetchIconsAsync(list);
         var pinned = _vault?.Data.Settings.PinnedGames.Select(p => p.PlaceId).ToHashSet() ?? [];
         return list.Select(g => (object)new
         {
@@ -1322,7 +1384,29 @@ public sealed class AppController : IDisposable
         query = query.Trim();
         if (query.Length < 2)
             return Array.Empty<object>();
-        return await GameRowsAsync((await RobloxApi.SearchGamesAsync(query)).Take(12));
+        return await GameRowsAsync((await RobloxApi.SearchGamesAsync(query)).Take(12), fetchIcons: false);
+    }
+
+    /// <summary>Icons for games already on screen (search results), keyed by universe id.</summary>
+    async Task<object?> GameIconsAsync(JsonElement a)
+    {
+        var ids = a.TryGetProperty("universeIds", out var arr) && arr.ValueKind == JsonValueKind.Array
+            ? arr.EnumerateArray().Select(x => x.TryGetInt64(out long v) ? v : 0).Where(v => v > 0).Distinct().Take(50).ToList()
+            : [];
+        var missing = ids.Where(id => !_iconByUniverse.ContainsKey(id)).ToList();
+        if (missing.Count > 0)
+        {
+            try
+            {
+                foreach (var (id, url) in await RobloxApi.GetGameIconsAsync(missing))
+                    _iconByUniverse[id] = url;
+            }
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+            {
+                // The rows keep their placeholder.
+            }
+        }
+        return ids.Where(_iconByUniverse.ContainsKey).ToDictionary(id => id.ToString(), id => _iconByUniverse[id]);
     }
 
     /// <summary>Recent and pinned games plus, cached for a while, the accounts' Roblox favourites and the popular chart.</summary>
@@ -1570,48 +1654,6 @@ public sealed class AppController : IDisposable
         account.CookieValid = true;
     }
 
-    /// <summary>
-    /// "Who's playing?": one Roblox at a time, like switching users in Steam. Whatever Roblox is open closes, then the
-    /// home screen opens signed in as the chosen account. Asks first when the open one is in a game.
-    /// </summary>
-    async Task<object?> SwitchToAsync(Guid id, bool force)
-    {
-        var vault = RequireVault();
-        var account = RequireAccount(id);
-        var pids = RobloxProcesses.GetPlayerPids();
-        if (_running.TryGetValue(account.Id, out var own) && pids.Length == 1 && pids[0] == own.Pid)
-        {
-            RobloxProcesses.Focus(own.Pid);
-            return new { focused = true };
-        }
-        if (pids.Length > 0 && !force && pids.FirstOrDefault(pid => _logs.StateOf(pid) is { Status: "ingame" or "joining" }) is var playing and > 0)
-        {
-            var who = _running.Where(r => r.Value.Pid == playing).Select(r => vault.Data.Accounts.FirstOrDefault(x => x.Id == r.Key)).FirstOrDefault();
-            return new
-            {
-                needsConfirm = true,
-                message = who is null ? L.T("Roblox is in a game. Switching accounts closes it.") : L.F("{0} is in a game. Switching accounts closes it.", who.Label),
-            };
-        }
-        if (pids.Length > 0)
-        {
-            CloseAll();
-            // Roblox leaves a windowless client behind when its window closes; wait until none has been around for a moment.
-            var quietSince = DateTime.UtcNow;
-            for (var until = DateTime.UtcNow + BackgroundSweep; DateTime.UtcNow < until; )
-            {
-                await Task.Delay(250);
-                if (RobloxProcesses.GetPlayerPids().Length > 0)
-                    quietSince = DateTime.UtcNow;
-                else if (DateTime.UtcNow - quietSince > TimeSpan.FromSeconds(2))
-                    break;
-            }
-            _sweepBackgroundUntil = DateTime.UtcNow;
-        }
-        using var args = JsonDocument.Parse(JsonSerializer.Serialize(new { ids = new[] { id }, appOnly = true, force = true }));
-        return await LaunchAsync(args.RootElement);
-    }
-
     object? CancelLaunch()
     {
         _launchCts?.Cancel();
@@ -1624,6 +1666,12 @@ public sealed class AppController : IDisposable
         foreach (var id in ids)
         {
             _rejoinQueue.RemoveAll(r => r.AccountId == id);
+            // Still opening (no window yet): stop waiting for it.
+            if (_pending.RemoveAll(p => p.AccountId == id) > 0)
+            {
+                closed++;
+                PushState();
+            }
             if (!_running.TryGetValue(id, out var info))
                 continue;
             _userClosed.Add(id);
@@ -1638,6 +1686,11 @@ public sealed class AppController : IDisposable
         foreach (var id in _running.Keys)
             _userClosed.Add(id);
         _rejoinQueue.Clear();
+        if (_pending.Count > 0)
+        {
+            _pending.Clear();
+            PushState();
+        }
         // Roblox starts a windowless background client when its last window closes; sweep those for a moment
         // so "close all" really leaves nothing running and multi-instance can re-arm.
         _sweepBackgroundUntil = DateTime.UtcNow + BackgroundSweep;
@@ -1712,9 +1765,16 @@ public sealed class AppController : IDisposable
             if (pids.Contains(info.Pid))
                 continue;
             _running.Remove(id);
-            // The first process may only bootstrap and hand over to a child; keep looking for a while.
-            if (now - info.Launch.StartedAt < HandOverWindow)
+            // The first process may only bootstrap and hand over to a child: wait for that only when a new,
+            // unclaimed client is actually running. A window the person closed ends the session right away.
+            var claimedNow = _running.Values.Select(r => r.Pid).ToHashSet();
+            bool handOver = now - info.Launch.StartedAt < HandOverWindow
+                && pids.Any(p => !info.Launch.Before.Contains(p) && !claimedNow.Contains(p));
+            if (handOver)
+            {
                 _pending.Add(info.Launch);
+                _pendingSeenAlive[info.Launch] = now;
+            }
             else
                 OnSessionEnded(id, info.Launch);
             changed = true;
@@ -1737,7 +1797,20 @@ public sealed class AppController : IDisposable
                 _pending.Remove(launch);
                 changed = true;
             }
+            // A client appeared for this launch and then every new client quit without a game window: stop waiting.
+            foreach (var launch in _pending.ToList())
+            {
+                if (pids.Any(p => !launch.Before.Contains(p) && !claimed.Contains(p)))
+                    _pendingSeenAlive[launch] = now;
+                else if (_pendingSeenAlive.TryGetValue(launch, out var seen) && now - seen > PendingGoneGrace)
+                {
+                    _pending.Remove(launch);
+                    changed = true;
+                }
+            }
         }
+        foreach (var gone in _pendingSeenAlive.Keys.Where(l => !_pending.Contains(l)).ToList())
+            _pendingSeenAlive.Remove(gone);
 
         _closingForRejoin.RemoveWhere(pid => !pids.Contains(pid));
         // Once a client has started (its window is up), the file goes back to the person's own settings.

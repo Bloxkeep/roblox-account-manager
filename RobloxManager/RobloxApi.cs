@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
@@ -63,10 +64,29 @@ public static class RobloxApi
         AllowAutoRedirect = false,
         AutomaticDecompression = DecompressionMethods.All,
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        // Connect over IPv4 only. An auth ticket is bound to the IP that requested it; the Roblox client redeems it
+        // over IPv4, so if this app fetched it over IPv6 the IPs wouldn't match and the redeem would be rejected.
+        ConnectCallback = Ipv4ConnectAsync,
     })
     {
         Timeout = TimeSpan.FromSeconds(20),
     };
+
+    static async ValueTask<Stream> Ipv4ConnectAsync(SocketsHttpConnectionContext ctx, CancellationToken ct)
+    {
+        var entry = await Dns.GetHostAddressesAsync(ctx.DnsEndPoint.Host, AddressFamily.InterNetwork, ct);
+        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+        try
+        {
+            await socket.ConnectAsync(entry, ctx.DnsEndPoint.Port, ct);
+            return new NetworkStream(socket, ownsSocket: true);
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
+    }
 
     /// <summary>Accepts a bare value, "name=value", or a whole Cookie header pasted from DevTools.</summary>
     public static string NormalizeCookie(string raw)
@@ -280,13 +300,38 @@ public static class RobloxApi
     }
 
     /// <summary>
-    /// The outcome of a username+password sign-in. Either a session cookie (done), a two-step prompt the user must
-    /// answer, or a reason it can't continue here (captcha, which needs the browser).
+    /// The outcome of a username+password sign-in. Either a session cookie (done), a two-step prompt or a captcha the
+    /// user must answer, or a check this app can't show (<see cref="Blocked"/>).
     /// </summary>
-    public sealed record LoginResult(string? Cookie, TwoStepPrompt? TwoStep, string? Blocked);
+    public sealed record LoginResult(string? Cookie, TwoStepPrompt? TwoStep, CaptchaPrompt? Captcha = null, string? Blocked = null,
+        ProofOfWorkPrompt? ProofOfWork = null, HumanCaptchaPrompt? HumanCaptcha = null);
+
+    /// <summary>
+    /// Roblox's "captchav2": HUMAN Security's press-and-hold check. The puzzle is fetched from apis.roblox.com/v2/captcha
+    /// with <see cref="CaptchaChallengeId"/> and solved in <see cref="CaptchaForm"/>, which hands back a redemption token.
+    /// </summary>
+    /// <param name="Metadata">The challenge's own metadata, sent back with the token filled in.</param>
+    public sealed record HumanCaptchaPrompt(string Realm, string LoginChallengeId, string CaptchaChallengeId, string Metadata,
+        string Username, string Password);
+
+    /// <summary>
+    /// A proof-of-work check: Roblox hands out a puzzle that takes the computer a few seconds to solve, which roblox.com
+    /// solves in the background. No input from the user is needed.
+    /// </summary>
+    /// <param name="Metadata">The challenge's own metadata (session, request path…); it goes back to Roblox as-is, with the token filled in.</param>
+    public sealed record ProofOfWorkPrompt(string Realm, string LoginChallengeId, string SessionId, string Metadata, string Username, string Password);
 
     /// <summary>What's needed to finish a two-step sign-in: the user picks Email or Authenticator and types the code.</summary>
     public sealed record TwoStepPrompt(string Realm, long UserId, string ChallengeId, string LoginChallengeId, string Username, string Password);
+
+    /// <summary>
+    /// A captcha Roblox put in front of a sign-in. The puzzle itself is Arkose Labs' FunCaptcha (Roblox's captcha
+    /// provider, see apis.roblox.com/captcha/v1/metadata); <see cref="Blob"/> ties it to this sign-in attempt.
+    /// </summary>
+    /// <param name="ChallengeType">"captcha", or "captchav2" when Roblox asks for one after another check.</param>
+    /// <param name="Metadata">The challenge's own metadata, sent back with the token filled in.</param>
+    public sealed record CaptchaPrompt(string Realm, string LoginChallengeId, string UnifiedCaptchaId, string Blob, string ActionType,
+        string Username, string Password, string ChallengeType = "captcha", string Metadata = "{}");
 
     static string? CookieFrom(HttpResponseMessage res) =>
         res.Headers.TryGetValues("Set-Cookie", out var values)
@@ -297,27 +342,21 @@ public static class RobloxApi
     /// Signs in with the account's own username and password, exactly as the Roblox client does: the values go only to
     /// Roblox's (or VNG's) official auth host over HTTPS and are never stored or logged by the app.
     /// </summary>
-    public static async Task<LoginResult> LoginWithPasswordAsync(string username, string password, string realm, CancellationToken ct = default)
+    public static Task<LoginResult> LoginWithPasswordAsync(string username, string password, string realm, CancellationToken ct = default) =>
+        SendLoginAsync(username, password, realm, null, ct);
+
+    /// <summary>POST /v2/login, optionally carrying a solved challenge, and sorts out what Roblox answered.</summary>
+    static async Task<LoginResult> SendLoginAsync(string username, string password, string realm, Action<HttpRequestMessage>? configure,
+        CancellationToken ct)
     {
         string json = JsonSerializer.Serialize(new { ctype = "Username", cvalue = username, password });
-        using var res = await PostWithCsrfAsync(Realm.Api(realm, "auth") + "/v2/login", "", json, null, ct, realm);
+        using var res = await PostWithCsrfAsync(Realm.Api(realm, "auth") + "/v2/login", "", json, configure, ct, realm);
         if (CookieFrom(res) is { } cookie && res.IsSuccessStatusCode)
-            return new LoginResult(cookie, null, null);
+            return new LoginResult(cookie, null);
 
-        // A challenge: either two-step verification (we can prompt) or a captcha (only the browser can show it).
         if (Header(res, "rblx-challenge-id") is { Length: > 0 } challengeId)
-        {
-            string type = Header(res, "rblx-challenge-type") ?? "";
-            if (type.Equals("twostepverification", StringComparison.OrdinalIgnoreCase)
-                && DecodeMetadata(Header(res, "rblx-challenge-metadata")) is { } meta
-                && meta.TryGetProperty("challengeId", out var cid) && cid.GetString() is { Length: > 0 } twoStepId
-                && meta.TryGetProperty("userId", out var uid))
-            {
-                long userId = uid.ValueKind == JsonValueKind.Number ? uid.GetInt64() : long.TryParse(uid.GetString(), out var n) ? n : 0;
-                return new LoginResult(null, new TwoStepPrompt(realm, userId, twoStepId, challengeId, username, password), null);
-            }
-            return new LoginResult(null, null, "captcha");
-        }
+            return ParseChallenge(realm, challengeId, Header(res, "rblx-challenge-type") ?? "",
+                DecodeMetadata(Header(res, "rblx-challenge-metadata")), username, password);
 
         string body = await res.Content.ReadAsStringAsync(ct);
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
@@ -325,6 +364,38 @@ public static class RobloxApi
         if (res.StatusCode == HttpStatusCode.Forbidden && body.Contains("Incorrect username or password"))
             throw new UserError(L.T("Incorrect username or password."));
         throw new RobloxApiException(L.F("Roblox returned HTTP {0}: {1}", (int)res.StatusCode, Shorten(body)));
+    }
+
+    /// <summary>Turns a challenge Roblox put in front of the sign-in into what the user (or the app) has to answer.</summary>
+    static LoginResult ParseChallenge(string realm, string challengeId, string type, JsonElement? meta, string username, string password)
+    {
+        string? Text(string name) => meta is { ValueKind: JsonValueKind.Object } m && m.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String
+            ? v.GetString() : null;
+        // Only the kind of check and the names of its fields: enough to follow a change on Roblox's side.
+        Log.Note($"Sign-in check from Roblox{(realm == Realm.Vng ? " VNG" : "")}: type '{type}', fields "
+            + (meta is { ValueKind: JsonValueKind.Object } o ? string.Join(", ", o.EnumerateObject().Select(p => p.Name)) : "none")
+            + (Text("mode") is { Length: <= 40 } mode ? $", mode '{mode}'" : "")
+            + (meta is { ValueKind: JsonValueKind.Object } sm && sm.TryGetProperty("sharedParameters", out var shared) ? $", sharedParameters {Shape(shared)}" : ""));
+
+        if (type.Equals("twostepverification", StringComparison.OrdinalIgnoreCase)
+            && Text("challengeId") is { Length: > 0 } twoStepId
+            && meta!.Value.TryGetProperty("userId", out var uid))
+        {
+            long userId = uid.ValueKind == JsonValueKind.Number ? uid.GetInt64() : long.TryParse(uid.GetString(), out var n) ? n : 0;
+            return new LoginResult(null, new TwoStepPrompt(realm, userId, twoStepId, challengeId, username, password));
+        }
+        if ((type.Equals("captcha", StringComparison.OrdinalIgnoreCase) || type.Equals("captchav2", StringComparison.OrdinalIgnoreCase))
+            && Text("unifiedCaptchaId") is { Length: > 0 } captchaId
+            && Text("dataExchangeBlob") is { Length: > 0 } blob)
+        {
+            return new LoginResult(null, null, new CaptchaPrompt(realm, challengeId, captchaId, blob, Text("actionType") ?? "Login",
+                username, password, type, meta!.Value.GetRawText()));
+        }
+        if (type.Equals("captchav2", StringComparison.OrdinalIgnoreCase) && Text("challengeId") is { Length: > 0 } humanId)
+            return new LoginResult(null, null, HumanCaptcha: new HumanCaptchaPrompt(realm, challengeId, humanId, meta!.Value.GetRawText(), username, password));
+        if (type.Equals("proofofwork", StringComparison.OrdinalIgnoreCase) && Text("sessionId") is { Length: > 0 } powSession)
+            return new LoginResult(null, null, ProofOfWork: new ProofOfWorkPrompt(realm, challengeId, powSession, meta!.Value.GetRawText(), username, password));
+        return new LoginResult(null, null, Blocked: type);
     }
 
     static JsonElement? DecodeMetadata(string? base64)
@@ -339,6 +410,216 @@ public static class RobloxApi
         catch (Exception ex) when (ex is FormatException or JsonException)
         {
             return null;
+        }
+    }
+
+    /// <summary>The FunCaptcha key Roblox (or VNG) uses for sign-ins, from its public captcha settings.</summary>
+    public static async Task<string> GetLoginCaptchaKeyAsync(string realm, CancellationToken ct = default)
+    {
+        using var req = Request(HttpMethod.Get, Realm.Api(realm, "apis") + "/captcha/v1/metadata", null);
+        using var res = await Http.SendAsync(req, ct);
+        string body = await res.Content.ReadAsStringAsync(ct);
+        if (!res.IsSuccessStatusCode)
+            throw new RobloxApiException(L.F("Roblox returned HTTP {0}: {1}", (int)res.StatusCode, Shorten(body)));
+        using var doc = JsonDocument.Parse(body);
+        if (doc.RootElement.TryGetProperty("funCaptchaPublicKeys", out var keys)
+            && keys.TryGetProperty("ACTION_TYPE_WEB_LOGIN", out var key) && key.GetString() is { Length: > 0 } value)
+            return value;
+        throw new RobloxApiException(L.T("Roblox didn't say which captcha to show."));
+    }
+
+    /// <summary>
+    /// Hands Roblox the token from a solved captcha, then retries the sign-in carrying it, as roblox.com does. The
+    /// answer can still be a two-step prompt (or, rarely, another captcha).
+    /// </summary>
+    public static Task<LoginResult> FinishCaptchaLoginAsync(CaptchaPrompt prompt, string captchaToken, CancellationToken ct = default) =>
+        ContinueLoginAsync(prompt.Realm, prompt.LoginChallengeId, prompt.ChallengeType,
+            prompt.ChallengeType == "captcha"
+                ? JsonSerializer.Serialize(new { unifiedCaptchaId = prompt.UnifiedCaptchaId, captchaToken, actionType = prompt.ActionType })
+                : WithField(prompt.Metadata, "captchaToken", captchaToken),
+            prompt.Username, prompt.Password, ct);
+
+    /// <summary>Carries on with the sign-in once the press-and-hold check handed back its redemption token.</summary>
+    public static Task<LoginResult> FinishHumanCaptchaLoginAsync(HumanCaptchaPrompt prompt, string redemptionToken, CancellationToken ct = default) =>
+        ContinueLoginAsync(prompt.Realm, prompt.LoginChallengeId, "captchav2", WithField(prompt.Metadata, "redemptionToken", redemptionToken),
+            prompt.Username, prompt.Password, ct);
+
+    /// <summary>
+    /// Solves a proof-of-work check the way roblox.com does in the background: fetch the puzzle, compute the answer,
+    /// trade it for a redemption token, then carry on with the sign-in.
+    /// </summary>
+    public static async Task<LoginResult> FinishProofOfWorkLoginAsync(ProofOfWorkPrompt prompt, CancellationToken ct = default)
+    {
+        string service = Realm.Api(prompt.Realm, "apis") + "/proof-of-work-service/v1/pow-puzzle";
+        string puzzleType, artifacts;
+        using (var req = Request(HttpMethod.Get, $"{service}?sessionID={Uri.EscapeDataString(prompt.SessionId)}", null))
+        using (var res = await Http.SendAsync(req, ct))
+        {
+            string body = await res.Content.ReadAsStringAsync(ct);
+            if (!res.IsSuccessStatusCode)
+                throw new RobloxApiException(L.F("Roblox returned HTTP {0}: {1}", (int)res.StatusCode, Shorten(body)));
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            puzzleType = !root.TryGetProperty("puzzleType", out var p) ? ""
+                : p.ValueKind == JsonValueKind.String ? p.GetString() ?? "" : p.GetRawText();
+            artifacts = root.TryGetProperty("artifacts", out var a) ? (a.ValueKind == JsonValueKind.String ? a.GetString() ?? "" : a.GetRawText()) : "";
+            Log.Note($"Proof-of-work puzzle: type '{puzzleType}', fields {string.Join(", ", root.EnumerateObject().Select(x => x.Name))}"
+                + (DecodeJson(artifacts) is { ValueKind: JsonValueKind.Object } art ? $", artifacts {string.Join(", ", art.EnumerateObject().Select(x => x.Name))}" : ""));
+        }
+
+        string solution = await Task.Run(() => SolvePuzzle(puzzleType, artifacts, ct), ct);
+
+        string redemptionToken;
+        using (var res = await PostWithCsrfAsync(service, "", JsonSerializer.Serialize(new { sessionID = prompt.SessionId, solution }), null, ct, prompt.Realm))
+        {
+            string body = await res.Content.ReadAsStringAsync(ct);
+            if (!res.IsSuccessStatusCode)
+                throw new RobloxApiException(L.F("Roblox returned HTTP {0}: {1}", (int)res.StatusCode, Shorten(body)));
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("answerCorrect", out var ok) && ok.ValueKind == JsonValueKind.False)
+                throw new RobloxApiException(L.T("Roblox didn't accept the sign-in check. Please try again."));
+            redemptionToken = root.TryGetProperty("redemptionToken", out var r) ? r.GetString() ?? "" : "";
+            if (redemptionToken.Length == 0)
+            {
+                Log.Note($"Proof-of-work answer reply fields: {string.Join(", ", root.EnumerateObject().Select(x => x.Name))}");
+                throw new RobloxApiException(L.T("Roblox didn't accept the sign-in check. Please try again."));
+            }
+        }
+
+        return await ContinueLoginAsync(prompt.Realm, prompt.LoginChallengeId, "proofofwork",
+            WithField(prompt.Metadata, "redemptionToken", redemptionToken), prompt.Username, prompt.Password, ct);
+    }
+
+    /// <summary>
+    /// Roblox's time-lock puzzle: square A modulo N, T times in a row. It can't be sped up by running in parallel, which
+    /// is the point: it costs every sign-in a few seconds of one CPU core.
+    /// </summary>
+    static string SolvePuzzle(string puzzleType, string artifacts, CancellationToken ct)
+    {
+        // Roblox names the type as a number: 1 is the time-lock puzzle (seen Oct 2026, with artifacts N, A, T).
+        if (!(puzzleType == "1" || puzzleType.Equals("TimeLockPuzzle", StringComparison.OrdinalIgnoreCase))
+            || DecodeJson(artifacts) is not { ValueKind: JsonValueKind.Object } art
+            || Number(art, "N") is not { } n || Number(art, "A") is not { } x || Number(art, "T") is not { } t)
+            throw new UserError(L.F("Roblox asked for a check Bloxkeep can't show yet ({0}). Try again later, or sign in with your phone.",
+                puzzleType.Length > 0 ? puzzleType : "proofofwork"));
+        for (System.Numerics.BigInteger i = 0; i < t; i++)
+        {
+            if ((i & 0xFFF) == 0)
+                ct.ThrowIfCancellationRequested();
+            x = System.Numerics.BigInteger.ModPow(x, 2, n);
+        }
+        return x.ToString(CultureInfo.InvariantCulture);
+
+        static System.Numerics.BigInteger? Number(JsonElement obj, string name)
+        {
+            var prop = obj.EnumerateObject().FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            string? text = prop.Value.ValueKind switch
+            {
+                JsonValueKind.String => prop.Value.GetString(),
+                JsonValueKind.Number => prop.Value.GetRawText(),
+                _ => null,
+            };
+            return System.Numerics.BigInteger.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var v) ? v : null;
+        }
+    }
+
+    /// <summary>
+    /// The layout of a JSON value for the log: field names and value kinds (text by its length), never the values.
+    /// A string holding JSON (or base64 JSON) is opened up too.
+    /// </summary>
+    static string Shape(JsonElement e, int depth = 0)
+    {
+        if (depth > 3)
+            return "…";
+        switch (e.ValueKind)
+        {
+            case JsonValueKind.Object:
+                return "{" + string.Join(", ", e.EnumerateObject().Select(p => $"{p.Name}: {Shape(p.Value, depth + 1)}")) + "}";
+            case JsonValueKind.Array:
+                return $"[{e.GetArrayLength()} x {(e.GetArrayLength() > 0 ? Shape(e[0], depth + 1) : "-")}]";
+            case JsonValueKind.String:
+                string s = e.GetString() ?? "";
+                if ((DecodeJson(s) ?? (s.Length > 0 && s.Length % 4 == 0 ? DecodeMetadata(s) : null)) is { ValueKind: JsonValueKind.Object or JsonValueKind.Array } inner)
+                    return "json" + Shape(inner, depth + 1);
+                return $"text({s.Length})";
+            default:
+                return e.ValueKind.ToString().ToLowerInvariant();
+        }
+    }
+
+    /// <summary>The JSON object with one string field set (added or replaced); every other field is kept as it was.</summary>
+    static string WithField(string json, string name, string value)
+    {
+        var obj = System.Text.Json.Nodes.JsonNode.Parse(json) as System.Text.Json.Nodes.JsonObject ?? new System.Text.Json.Nodes.JsonObject();
+        obj[name] = value;
+        return obj.ToJsonString();
+    }
+
+    static JsonElement? DecodeJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Tells Roblox a challenge was answered, then retries the sign-in carrying the answer, as roblox.com does.</summary>
+    static async Task<LoginResult> ContinueLoginAsync(string realm, string challengeId, string type, string metadataJson,
+        string username, string password, CancellationToken ct)
+    {
+        string json = JsonSerializer.Serialize(new { challengeId, challengeType = type, challengeMetadata = metadataJson });
+        string retryId = challengeId, retryType = type, retryMeta = metadataJson;
+        using (var res = await PostWithCsrfAsync(Realm.Api(realm, "apis") + "/challenge/v1/continue", "", json, null, ct, realm))
+        {
+            if (res.IsSuccessStatusCode)
+            {
+                // Roblox answers with the challenge the retried request must carry; use it when it's there.
+                string reply = await res.Content.ReadAsStringAsync(ct);
+                if (DecodeJson(reply) is { ValueKind: JsonValueKind.Object } r)
+                {
+                    string? Text(string name) => r.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+                    Log.Note($"Challenge continue ({type}) reply: fields {string.Join(", ", r.EnumerateObject().Select(x => x.Name))}, type '{Text("challengeType")}'");
+                    // Roblox can chain checks (e.g. a captcha after proof-of-work): answer the next one before retrying.
+                    if (Text("challengeType") is { Length: > 0 } next && !next.Equals(type, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string raw = Text("challengeMetadata") ?? "{}";
+                        var nextMeta = DecodeJson(raw) ?? DecodeMetadata(raw);
+                        return ParseChallenge(realm, Text("challengeId") is { Length: > 0 } nextId ? nextId : challengeId, next, nextMeta, username, password);
+                    }
+                    if (Text("challengeId") is { Length: > 0 } id) retryId = id;
+                    if (Text("challengeType") is { Length: > 0 } t) retryType = t;
+                    if (Text("challengeMetadata") is { Length: > 0 } m) retryMeta = m;
+                }
+            }
+            else
+            {
+                string body = await res.Content.ReadAsStringAsync(ct);
+                Log.Note($"Challenge continue ({type}) refused: HTTP {(int)res.StatusCode} {Shorten(body)}");
+                if (res.StatusCode == HttpStatusCode.TooManyRequests)
+                    throw new RobloxApiException(L.T("Too many sign-in attempts. Wait a few minutes and try again."), rateLimited: true);
+                throw new RobloxApiException(L.F("Roblox returned HTTP {0}: {1}", (int)res.StatusCode, Shorten(body)));
+            }
+        }
+        string meta = Convert.ToBase64String(Encoding.UTF8.GetBytes(retryMeta));
+        try
+        {
+            return await SendLoginAsync(username, password, realm, req =>
+            {
+                req.Headers.TryAddWithoutValidation("rblx-challenge-id", retryId);
+                req.Headers.TryAddWithoutValidation("rblx-challenge-type", retryType);
+                req.Headers.TryAddWithoutValidation("rblx-challenge-metadata", meta);
+            }, ct);
+        }
+        catch (RobloxApiException ex)
+        {
+            Log.Note($"Sign-in retry after {type} refused: {ex.Message}");
+            throw;
         }
     }
 
