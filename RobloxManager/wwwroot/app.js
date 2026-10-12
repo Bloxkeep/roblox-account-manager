@@ -374,7 +374,6 @@
         pw1.value = '';
         if (pw2) pw2.value = '';
         applyState(state);
-        if (!create && whoAtUnlock() && accounts().length) openWho();
       }
     });
   }
@@ -388,7 +387,6 @@
       <aside class="side">
         <div class="brand"><img src="${LOGO}" alt=""><div><div class="brand-name">Bloxkeep</div><div class="brand-sub">${t('brand.sub')}</div></div></div>
         <button class="nav" data-act="view" data-view="accounts" title="${t('nav.accounts')}">${icon('users')}<span>${t('nav.accounts')}</span><em id="nav-count">0</em></button>
-        <button class="nav" data-act="who" title="${t('who.title')}">${icon('user')}<span>${t('who.nav')}</span></button>
         <button class="nav" data-act="view" data-view="settings" title="${t('nav.settings')}">${icon('sliders')}<span>${t('nav.settings')}</span></button>
         <div class="side-fill"></div>
         <div id="side-warn"></div>
@@ -473,7 +471,11 @@
     const m = S.app.multi;
     const cls = !m.enabled ? 'off' : m.armed ? 'ok' : 'warn';
     const text = t(!m.enabled ? 'multi.off' : m.armed ? 'multi.ready' : 'multi.notReady');
-    setHtml($('#multi-card'), `<button class="multi ${cls}" data-act="multi-help" title="${t('multi.title')}: ${esc(text)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div>${icon('chevronRight')}</button>`);
+    // The light and text open the details; the switch turns it on or off right here.
+    setHtml($('#multi-card'), `<div class="multi ${cls}">
+        <button class="multi-open" data-act="multi-help" title="${t('multi.title')}: ${esc(text)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div></button>
+        <label class="switch" title="${t(m.enabled ? 'multi.turnOff' : 'multi.turnOn')}"><input type="checkbox" id="side-multi" ${m.enabled ? 'checked' : ''} aria-label="${t('multi.title')}"><span></span></label>
+      </div>`);
     setHtml($('#side-warn'), S.app.robloxInstalled ? '' : `<div class="warn-card">${t('side.noRoblox')}</div>`);
     const u = S.app.update;
     setHtml($('#update-slot'), u?.status === 'ready'
@@ -592,7 +594,7 @@
       <div class="meta">${vngTag(a)}${a.group ? `<span class="tag" title="${esc(a.group)}">${esc(a.group)}</span>` : ''}${a.autoRejoin ? `<span class="rejoin" title="${t('card.rejoinTip')}">${icon('repeat')}</span>` : ''}<span class="ago" title="${t('card.lastTip')}">${icon('history')}${a.lastUsed ? `<span data-ago="${esc(a.lastUsed)}"></span>` : t('card.never')}</span></div>
       ${a.note ? `<div class="note" title="${esc(a.note)}">${esc(a.note)}</div>` : ''}
       <div class="card-actions">
-        ${isLocal(a)
+        ${isLocal(a) || a.state === 'launching'
           ? `<button class="pill-btn stop" data-act="close-one">${icon('power')}${t('card.close')}</button>`
           : a.cookieValid === false
             ? `<button class="pill-btn relogin" data-act="relogin" title="${t('card.reloginTip')}">${icon('logIn')}${t('card.relogin')}</button>`
@@ -611,7 +613,7 @@
     const pType = a.session?.connection === 'disconnected' && isLocal(a) ? 'kicked' : isLocal(a) ? 'ingame' : a.presence?.type || '';
     const ring = a.cookieValid === false ? 'invalid' : ['ingame', 'online', 'kicked'].includes(pType) ? pType : '';
     const st = statusLine(a);
-    const action = isLocal(a) ? `<button class="icon-btn stop" data-act="close-one" title="${t('card.close')}" aria-label="${t('card.close')}">${icon('power')}</button>`
+    const action = isLocal(a) || a.state === 'launching' ? `<button class="icon-btn stop" data-act="close-one" title="${t('card.close')}" aria-label="${t('card.close')}">${icon('power')}</button>`
       : a.cookieValid === false ? `<button class="icon-btn relogin" data-act="relogin" title="${t('card.relogin')}" aria-label="${t('card.relogin')}">${icon('logIn')}</button>`
       : `<button class="icon-btn play" data-act="play-one" title="${t('card.play')}" aria-label="${t('card.play')}" ${a.state === 'launching' ? 'disabled' : ''}>${icon('play')}</button>`;
     return `<article class="card row ${sel ? 'sel' : ''} ${isLocal(a) ? 'local' : ''}" data-id="${a.id}" data-act="card" aria-selected="${sel}">
@@ -688,12 +690,14 @@
     if (!actions) return;
     const n = S.selected.size;
     const sel = [...S.selected].map(byId).filter(Boolean);
+    // With no game in the bar, the main button opens Roblox on its home screen (one window per account).
+    const hasGame = !!$('#place')?.value.trim();
     setHtml(actions, S.app.launching
       ? `<button class="play-btn stop" data-act="cancel-launch">${icon('stop')}<span>${t('dock.stop')}</span></button>`
       : `<button class="btn ghost" data-act="arrange" title="${t('dock.arrangeTip')}" aria-label="${t('dock.arrangeTip')}">${icon('grid')}</button>
          <button class="btn ghost" data-act="open-app" ${n ? '' : 'disabled'} title="${t('dock.openAppTip')}" aria-label="${t('dock.openAppTip')}">${icon('monitor')}</button>
          <button class="btn ghost" data-act="close-sel" ${sel.some(isLocal) ? '' : 'disabled'} title="${t('dock.closeTip')}" aria-label="${t('dock.closeTip')}">${icon('power')}</button>
-         <button class="play-btn" data-act="launch" ${n ? '' : 'disabled'}>${icon('play')}<span>${t(n ? 'dock.play' : 'dock.pick')}</span>${n ? `<em>${n}</em>` : ''}</button>`);
+         <button class="play-btn" data-act="launch" ${n ? '' : 'disabled'}>${icon(hasGame ? 'play' : 'monitor')}<span>${t(!n ? 'dock.pick' : hasGame ? 'dock.play' : 'dock.openHome')}</span>${n ? `<em>${n}</em>` : ''}</button>`);
 
     const g = S.game;
     setHtml($('#game-thumb'), g?.iconUrl ? `<img src="${esc(g.iconUrl)}" alt="">` : icon('gamepad'));
@@ -823,13 +827,7 @@
 
   function wireSettings() {
     const toggle = (id, key) => $(id).addEventListener('change', e => call('setSettings', { [key]: e.target.checked }));
-    $('#s-multi').addEventListener('change', async e => {
-      if (e.target.checked && !await confirmMulti()) {
-        e.target.checked = false;
-        return;
-      }
-      call('setSettings', { multiInstance: e.target.checked });
-    });
+    $('#s-multi').addEventListener('change', e => setMulti(e.target));
     toggle('#s-rename', 'renameWindows');
     toggle('#s-memwarn', 'memoryWarnings');
     toggle('#s-trim', 'trimBackground');
@@ -997,6 +995,7 @@
     const value = $('#place').value.trim();
     scheduleSaveInputs();
     clearTimeout(searchTimer);
+    renderDock();
     if (!value) {
       S.game = null;
       renderDock();
@@ -1181,11 +1180,8 @@
   async function launch(ids, appOnly, force = false) {
     if (!ids.length) return toast(t('t.selectFirst'), 'warn');
     const placeInput = $('#place')?.value.trim() || '';
-    if (!appOnly && !placeInput) {
-      toast(t('t.needGame'), 'warn');
-      $('#place')?.focus();
-      return;
-    }
+    // No game picked: open Roblox on its home screen, one window per account.
+    if (!placeInput) appOnly = true;
     const r = await call('launch', { ids, appOnly, force, placeInput, jobId: $('#job')?.value.trim() || '' });
     if (!r) return;
     if (r.needsConfirm) {
@@ -1227,141 +1223,6 @@
   const addChooser = () => passwordLogin();
   /** Picking a way closes the chooser it was picked from. */
   const leaveChooser = el => el.closest('.overlay')?.querySelector('[data-x]')?.click();
-
-  /* ───────────────────────── who's playing ───────────────────────── */
-  const whoAtUnlock = () => store.get('rm.who', '1') === '1';
-  const whoBusy = new Set();
-  let whoDrawn = '';
-
-  /** Steam-style "Who's playing?": pick an account and Roblox opens on its home screen, already signed in. */
-  function openWho() {
-    if ($('#who')) return;
-    closeMenu();
-    const el = document.createElement('div');
-    el.id = 'who';
-    el.className = 'who';
-    el.setAttribute('role', 'dialog');
-    el.setAttribute('aria-modal', 'true');
-    el.setAttribute('aria-label', t('who.title'));
-    el.innerHTML = `<div class="who-bg" id="who-bg" aria-hidden="true"></div>
-      <header class="who-top"><img src="${LOGO}" alt=""><span>Bloxkeep</span>
-        <button class="who-manage" data-who-close>${t('who.manage')}</button></header>
-      <main class="who-main">
-        <h1>${t('who.title')}</h1>
-        <label class="search who-search" hidden>${icon('search')}<input id="who-q" placeholder="${t('acc.search')}" maxlength="100" aria-label="${t('acc.search')}"></label>
-        <div class="who-grid" id="who-grid"></div>
-      </main>
-      <footer class="who-foot"><label class="who-ask"><span>${t('who.ask')}</span><span class="switch"><input type="checkbox" id="who-ask"><span></span></span></label></footer>`;
-    $('#layer').append(el);
-    whoDrawn = '';
-    const ask = el.querySelector('#who-ask');
-    ask.checked = whoAtUnlock();
-    ask.onchange = () => store.set('rm.who', ask.checked ? '1' : '0');
-    el.querySelector('#who-q').addEventListener('input', renderWho);
-    el.addEventListener('click', e => {
-      if (e.target.closest('[data-who-close]')) return closeWho();
-      if (e.target.closest('[data-who-add]')) return addChooser();
-      const tile = e.target.closest('[data-who]');
-      if (tile) pickAccount(tile.dataset.who);
-    });
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !document.querySelector('#layer .overlay:not(.out)')) {
-        e.stopPropagation();
-        closeWho();
-      }
-    });
-    renderWho();
-    whoBackdrop();
-    setTimeout(() => el.querySelector('.who-tile')?.focus(), 30);
-  }
-
-  function closeWho() {
-    const el = $('#who');
-    if (!el) return;
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 150);
-  }
-
-  function renderWho() {
-    const grid = $('#who-grid');
-    if (!grid) return;
-    const all = accounts();
-    const qBox = $('#who-q');
-    const searchable = all.length > 12;
-    qBox.closest('.search').hidden = !searchable;
-    const q = searchable ? qBox.value.trim().toLowerCase() : '';
-    const time = a => Date.parse(a.lastUsed || '') || 0;
-    const list = all
-      .filter(a => !q || [a.label, a.username, a.displayName, a.group].some(v => (v || '').toLowerCase().includes(q)))
-      .sort((x, y) => time(y) - time(x) || x.label.localeCompare(y.label));
-    // State arrives every few seconds; only redraw when something on screen changes.
-    const sig = list.map(a => [a.id, a.label, a.username, a.avatarUrl, a.cookieValid, a.realm, isLocal(a), whoBusy.has(a.id)].join('|')).join(';') + q;
-    if (sig === whoDrawn && grid.childElementCount) return;
-    whoDrawn = sig;
-    const focused = document.activeElement?.closest?.('[data-who]')?.dataset.who;
-    grid.innerHTML = list.map(a => {
-      const off = a.cookieValid === false;
-      return `<button class="who-tile ${off ? 'off' : ''} ${whoBusy.has(a.id) ? 'busy' : ''}" data-who="${a.id}" title="${esc(a.label)}${a.username !== a.label ? ` (@${esc(a.username)})` : ''}">
-          <span class="who-pic">${avatarInner(a)}${isLocal(a) ? `<i class="who-on">${t('who.open')}</i>` : ''}${a.realm === 'vng' ? '<i class="who-vng">VNG</i>' : ''}<span class="who-busy"><span class="spin"></span></span></span>
-          <span class="who-name">${esc(a.label)}</span>${off ? `<span class="who-sub">${t('who.signIn')}</span>` : ''}
-        </button>`;
-    }).join('') + (q ? '' : `<button class="who-tile add" data-who-add title="${t('who.add')}"><span class="who-pic">${icon('plus')}</span><span class="who-name">${t('who.add')}</span></button>`);
-    if (focused) grid.querySelector(`[data-who="${focused}"]`)?.focus();
-  }
-
-  /** A faint wall of game art behind the tiles, from the games these accounts play. */
-  async function whoBackdrop() {
-    const icons = new Set();
-    const add = games => (games || []).forEach(g => { if (g?.iconUrl && icons.size < 24) icons.add(g.iconUrl); });
-    add(S.app.settings?.recentGames);
-    add(S.app.settings?.pinnedGames);
-    if (icons.size < 12) {
-      const lists = await call('gameLists', {}, { silent: true });
-      if (lists) Object.values(lists).forEach(v => Array.isArray(v) && add(v));
-    }
-    if (!$('#who-bg') || icons.size < 6) return; // a handful repeated looks like a pattern, not a wall of games
-    const cols = 8, rows = 4, size = 150, gap = 16;
-    const art = [...icons];
-    while (art.length < cols * rows) art.push(...art.slice(0, cols * rows - art.length));
-    const load = src => new Promise(done => {
-      const img = new Image();
-      img.onload = () => done(img);
-      img.onerror = () => done(null);
-      img.src = src;
-    });
-    const imgs = (await Promise.all(art.map(load))).filter(Boolean);
-    const bg = $('#who-bg');
-    if (!bg || imgs.length < 6) return;
-    // Blurred once into a still picture: a live CSS blur keeps costing CPU for as long as the screen is open.
-    const canvas = document.createElement('canvas');
-    canvas.width = cols * (size + gap);
-    canvas.height = rows * (size + gap);
-    const ctx = canvas.getContext('2d');
-    ctx.filter = 'blur(14px)';
-    imgs.forEach((img, n) => ctx.drawImage(img, (n % cols) * (size + gap), Math.floor(n / cols) * (size + gap), size, size));
-    bg.replaceChildren(canvas);
-  }
-
-  async function pickAccount(id) {
-    const a = accounts().find(x => x.id === id);
-    if (!a || whoBusy.has(id)) return;
-    if (a.cookieValid === false) return quickLogin(a.realm);
-    whoBusy.add(id);
-    renderWho();
-    try {
-      let r = await call('switchTo', { id });
-      if (r?.needsConfirm) {
-        r = await confirmBox(r.message, { title: t('who.switchTitle'), ok: t('who.switch') }) ? await call('switchTo', { id, force: true }) : undefined;
-      }
-      if (!r) return;
-      if (r.errors?.length) return toast(r.errors.join('\n'), 'error');
-      if (!r.focused) toast(t('who.opening', { name: a.label }), 'ok');
-      closeWho();
-    } finally {
-      whoBusy.delete(id);
-      renderWho();
-    }
-  }
 
   /**
    * The sign-in screen: username + password, with the other ways (phone, browser) under it. Works on a PC with no
@@ -1700,6 +1561,16 @@
   }
 
   const confirmMulti = () => confirmBox(t('set.multiConfirm'), { title: t('set.multiConfirmTitle'), ok: t('set.multiOk') });
+  /** Turns Multi-Roblox on (after the risk warning) or off; a switch that was flipped goes back if the warning is declined. */
+  async function setMulti(on) {
+    const box = typeof on === 'object' ? on : null;
+    const enable = box ? box.checked : on;
+    if (enable && !await confirmMulti()) {
+      if (box) box.checked = false;
+      return;
+    }
+    call('setSettings', { multiInstance: enable });
+  }
 
   async function importRam() {
     const r = await call('importRam');
@@ -1788,13 +1659,16 @@
     modal({
       title: t('multi.title'),
       body,
-      actions: [{ text: t('common.done'), kind: 'primary', onClick: ({ close }) => close() }],
+      actions: [
+        ...(m.enabled ? [{ text: t('mh.disable'), onClick: ({ close }) => { close(); setMulti(false); } }] : []),
+        { text: t('common.done'), kind: 'primary', onClick: ({ close }) => close() },
+      ],
       onMount: ({ el, close }) => el.addEventListener('click', async e => {
         const b = e.target.closest('[data-local]');
         if (!b) return;
         if (b.dataset.local === 'enable') {
           close();
-          if (await confirmMulti()) call('setSettings', { multiInstance: true });
+          setMulti(true);
         } else if (b.dataset.local === 'close-all') {
           const n = await busy(b, () => call('closeAll'));
           if (n !== undefined) toast(n ? t('t.closingAll', { n }) : t('t.noRoblox'), 'ok');
@@ -1896,6 +1770,7 @@
   const editAccount = id => { const a = byId(id); if (a) accountModal(a); };
 
   /* ───────────────────────── events ───────────────────────── */
+  document.addEventListener('change', e => { if (e.target.id === 'side-multi') setMulti(e.target); });
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
     if (!el || !S.app) return;
@@ -1917,7 +1792,6 @@
       case 'add-password': leaveChooser(el); return passwordLogin();
       case 'add-phone': leaveChooser(el); return quickLogin();
       case 'import-ram': leaveChooser(el); return importRam();
-      case 'who': return openWho();
       case 'relogin': return quickLogin(accounts().find(x => x.id === id)?.realm);
       case 'add-browser': leaveChooser(el); return addBrowser(el);
       case 'add-cookie': leaveChooser(el); return accountModal(null);
@@ -2068,7 +1942,6 @@
     }
     S.app = st;
     if (st.locked) {
-      $('#who')?.remove();
       S.selected.clear();
       S.metrics = { accounts: [], robloxCount: 0, totalMb: 0, systemMb: 0 };
       renderLock();
@@ -2078,7 +1951,6 @@
     for (const id of [...S.selected]) if (!ids.has(id)) S.selected.delete(id);
     if (!S.shell) buildShell();
     update();
-    renderWho();
     if (st.whatsNew && !S.whatsNewShown) {
       S.whatsNewShown = true;
       showWhatsNew(st.whatsNew.releases, () => call('seenWhatsNew'));

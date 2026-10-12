@@ -7,7 +7,7 @@ Quản lý nhiều tài khoản Roblox trên Windows. Tài khoản được mã 
 - Thêm acc bằng điện thoại (mã / QR), trình duyệt, tên & mật khẩu, cookie, hoặc chuyển sang từ Roblox Account Manager
 - Xem acc nào online, đang chơi game gì, mỗi cửa sổ Roblox tốn bao nhiêu RAM
 - Tìm game theo tên, chọn server, cho nhiều acc vào cùng một server
-- Đổi acc kiểu Steam ("Ai đang chơi?"), hoặc chạy nhiều Roblox cùng lúc với Multi-Roblox
+- Chạy nhiều Roblox cùng lúc với Multi-Roblox, mỗi acc một cửa sổ, vào game hoặc chỉ mở trang chủ
 - Tự vào lại game khi bị văng, xếp lưới cửa sổ, cảnh báo thiếu RAM
 - Tự cập nhật ở nền
 
@@ -36,9 +36,9 @@ File chưa có chữ ký số, nên lần đầu chạy Windows SmartScreen sẽ
 2. **Thêm tài khoản**, chọn một cách:
    - **Dùng điện thoại**: mở app Roblox trên điện thoại, vào *Settings › Quick Log In*, nhập mã hoặc quét QR app hiện ra rồi xác nhận. Thêm xong acc này thì có mã mới cho acc tiếp theo.
    - **Dùng trình duyệt**: cửa sổ đăng nhập roblox.com chính thức mở ra; đăng nhập xong app lấy phiên đăng nhập rồi xóa sạch phiên trình duyệt tạm.
-   - **Tên & mật khẩu**: mật khẩu chỉ gửi tới máy chủ đăng nhập của Roblox, không được lưu. Hỗ trợ xác minh 2 bước (app xác thực hoặc email). Nếu Roblox đòi captcha, câu đố hiện ngay trong app để bạn tự giải; cách này không cần vào được roblox.com nên dùng được ở Việt Nam.
+   - **Tên & mật khẩu**: mật khẩu chỉ gửi tới máy chủ đăng nhập của Roblox, không được lưu. Hỗ trợ xác minh 2 bước (app xác thực hoặc email). Các bước kiểm tra Roblox chèn vào lúc đăng nhập được xử lý ngay trong app: bài toán proof-of-work app tự giải trong vài giây, còn captcha (xoay hình hoặc nhấn và giữ) hiện trong một cửa sổ nhỏ để bạn tự làm. Cách này không cần vào được roblox.com nên dùng được ở Việt Nam.
    - Cách khác: dán cookie `.ROBLOSECURITY`, hoặc chuyển sang từ Roblox Account Manager (xem bên dưới).
-3. **Vào game**: tìm game theo tên hoặc dán link game / Place ID / link server riêng vào thanh dưới, bấm chọn các acc (Shift để chọn liền nhau), bấm **Play**.
+3. **Vào game**: tìm game theo tên hoặc dán link game / Place ID / link server riêng vào thanh dưới, bấm chọn các acc (Shift để chọn liền nhau), bấm **Play**. Để trống ô game thì nút đổi thành **Open Roblox**: mở Roblox ở trang chủ cho các acc đã chọn.
 
 Phím tắt: `Ctrl+F` tìm, `Ctrl+A` chọn tất cả, `Enter` vào game, `F2` sửa, `Delete` xóa, `Esc` bỏ chọn. Chuột phải vào acc để xem thêm thao tác.
 
@@ -54,9 +54,6 @@ Phím tắt: `Ctrl+F` tìm, `Ctrl+A` chọn tất cả, `Enter` vào game, `F2` 
 - Ô tìm game có các mục: kết quả tìm theo tên, *Recent*, *Pinned*, game yêu thích của các acc trên Roblox, và game phổ biến.
 - Nút *Servers* liệt kê server còn chỗ (sắp theo đông/vắng, kèm ping). Chọn một server, hoặc dùng *Join this server* trên một acc đang chơi để cho các acc khác vào cùng.
 - Ô *Job ID* để vào đúng một server cụ thể.
-
-**Ai đang chơi? (đổi acc)**
-Màn hình chọn acc kiểu Steam, mở từ *Switch account* ở thanh bên (có thể bật hiện mỗi lần mở khóa app). Bấm một acc: app đóng Roblox đang chạy (hỏi trước nếu đang trong game) rồi mở Roblox bằng acc đó.
 
 **Tự vào lại game**
 Bật cho từng acc trong menu ⋯. Khi Roblox của acc đó bị văng, bị kick hoặc mất kết nối, app vào lại đúng game đó sau 10 giây. Quá 5 lần trong 15 phút thì tự tắt để tránh lặp. Bị đăng nhập ở thiết bị khác thì không vào lại. Tự tay đóng cửa sổ Roblox cũng tính là thoát game, nên hãy dùng nút *Close* trong app.
@@ -78,14 +75,15 @@ Roblox kick acc sau 20 phút không thao tác. Khi bật, lúc bạn không dùn
 
 ## Multi-Roblox
 
-**Mặc định tắt.** Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc và có thể coi việc này là đáng ngờ. Bật trong *Settings* nếu bạn chấp nhận rủi ro, nhất là với acc quan trọng.
+**Mặc định tắt.** Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc và có thể coi việc này là đáng ngờ. Bật bằng công tắc cạnh đèn Multi-Roblox ở thanh bên (hoặc trong *Settings*) nếu bạn chấp nhận rủi ro, nhất là với acc quan trọng.
 
 Cách hoạt động: app giữ trước hai khóa "chỉ một cửa sổ" của Roblox (`ROBLOX_singletonMutex`, `ROBLOX_singletonEvent`), nên các cửa sổ mở sau không đóng nhau. App không can thiệp vào tiến trình Roblox.
 
 - Bloxkeep phải mở **trước** Roblox và để mở trong lúc chơi. Nếu đèn Multi-Roblox màu vàng: đóng hết Roblox (kể cả Roblox ở khay hệ thống), app sẽ tự bật lại.
 - Nếu Roblox được đặt tự chạy cùng Windows, app sẽ đề nghị tắt (giống tắt trong *Task Manager › Startup apps*).
 - Nếu Bloxstrap/Fishstrap chặn mở nhiều cửa sổ: chọn *RobloxPlayerBeta directly* trong *Settings › Open Roblox with*.
-- Multi-Roblox áp dụng cho việc **vào game**. Màn hình chính của Roblox (mở mà không vào game) chỉ chạy được một cửa sổ, nên để dùng nhiều acc ở màn hình chính hãy dùng *Ai đang chơi?* để đổi qua lại.
+- Mỗi acc một trang chủ riêng: chọn các acc, để trống ô game, bấm **Open Roblox**. Đang trong game mà bấm *Leave* thì cửa sổ đó cũng về trang chủ của chính acc đó.
+- Nếu bạn cho Roblox đi qua VPN riêng (VPN chỉ áp cho một số app) mà mở game báo lỗi 403 "An error was encountered during authentication": cho Bloxkeep đi cùng đường VPN với Roblox. Vé đăng nhập gắn với địa chỉ IP đã xin nó.
 
 ## Bản Roblox được hỗ trợ
 
@@ -107,6 +105,7 @@ Cách hoạt động: app giữ trước hai khóa "chỉ một cửa sổ" củ
 - Bản portable lưu dữ liệu trong thư mục `data` cạnh `Bloxkeep.exe`.
 - App chỉ kết nối tới:
   - máy chủ của Roblox: đăng nhập, vào game, trạng thái, ảnh;
+  - nhà cung cấp captcha của Roblox (Arkose Labs, HUMAN Security): chỉ trong cửa sổ câu đố, khi Roblox đòi captcha lúc đăng nhập;
   - GitHub: kiểm tra và tải bản cập nhật, không gửi dữ liệu tài khoản (tắt được);
   - Microsoft: chỉ khi phải cài WebView2.
 - Giao diện bị khóa bằng Content Security Policy, không tự gửi request ra ngoài.
@@ -115,11 +114,12 @@ Cách hoạt động: app giữ trước hai khóa "chỉ một cửa sổ" củ
 
 ## Tình trạng
 
-Bloxkeep đang ở bản đầu tiên. Những phần sau **chưa được thử với tài khoản thật**; nếu gặp lỗi, hãy mở issue kèm nội dung lỗi:
+Bloxkeep đang ở bản đầu tiên. Đã thử với 2 acc thật trên Windows 11 (Roblox 0.742, tháng 10/2026): đăng nhập bằng mật khẩu qua proof-of-work và captcha nhấn-giữ, vào game, 2 acc vào cùng một server bằng Multi-Roblox, mở 2 trang chủ riêng.
 
-- Vào game và Multi-Roblox với nhiều acc thật (Roblox đổi cách cấp vé đăng nhập và cách chặn nhiều cửa sổ từ tháng 9/2026; app đã làm theo cách mới).
+Những phần sau **chưa được thử với tài khoản thật**; nếu gặp lỗi, hãy mở issue kèm nội dung lỗi:
+
 - Tự vào lại game và chống AFK trong thời gian dài.
-- Bước đăng nhập cuối của cách *Dùng điện thoại*, đăng nhập thành công bằng mật khẩu, xác minh 2 bước và giải captcha trong app.
+- Bước đăng nhập cuối của cách *Dùng điện thoại*, xác minh 2 bước và captcha xoay hình (Arkose).
 - Chạy trên Windows 10.
 
 ## Phát triển

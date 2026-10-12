@@ -30,6 +30,7 @@ window.I18N = {
     'side.lock': 'Lock app', 'side.lockTip': 'Lock Bloxkeep — the master password is needed to open it again',
     'side.noRoblox': "Roblox doesn't seem to be installed on this PC.",
     'multi.title': 'Multi-Roblox', 'multi.off': 'Off', 'multi.ready': 'On — several windows allowed', 'multi.notReady': 'Not working yet — click to fix',
+    'multi.turnOn': 'Turn on Multi-Roblox', 'multi.turnOff': 'Turn off Multi-Roblox', 'mh.disable': 'Turn off',
 
     'acc.title': 'Accounts', 'acc.summary': '<b>{n}</b> accounts<span class="sep">·</span><b>{p}</b> playing<span class="sep">·</span><b>{o}</b> online',
     'acc.selected': 'Selected <b>{n}</b> — <a data-act="clear-sel">Clear</a>', 'acc.selectAll': '<a data-act="select-all">Select all</a>',
@@ -47,7 +48,7 @@ window.I18N = {
     'dock.finding': 'Looking up the game…', 'dock.share': 'Private server link', 'dock.shareNote': 'Bloxkeep opens this link when you join.',
     'dock.private': 'Private server', 'dock.server': 'Specific server', 'dock.by': 'by {c}', 'dock.playing': '{n} playing',
     'dock.recentRemove': 'Remove from recent', 'dock.openAppTip': 'Open Roblox without joining a game',
-    'dock.closeTip': 'Close Roblox for the selected accounts', 'dock.play': 'Play', 'dock.pick': 'Select accounts', 'dock.stop': 'Stop',
+    'dock.closeTip': 'Close Roblox for the selected accounts', 'dock.play': 'Play', 'dock.pick': 'Select accounts', 'dock.stop': 'Stop', 'dock.openHome': 'Open Roblox',
     'dock.placeTip': 'Place ID, game link or private server link',
     'dock.jobTip': 'Job ID of a specific server, to put several accounts in the same server.',
 
@@ -69,7 +70,6 @@ window.I18N = {
     'card.play': 'Play', 'card.close': 'Close', 'card.editTip': 'Edit (F2)', 'card.moreTip': 'More',
     'empty.title': 'No accounts yet',
     'empty.text': 'Pick how to sign in. You only do this once per account.',
-   
     'start.phone': 'Use your phone', 'start.phoneSub': 'Scan a code with the Roblox app on your phone',
     'start.browser': 'Use a browser', 'start.browserSub': 'Sign in on roblox.com',
     'start.pw': 'Use account & password', 'start.pwSub': 'Sign in with the Roblox username and password',
@@ -101,7 +101,6 @@ window.I18N = {
     'set.data': 'Data', 'set.dataPath': 'Data location', 'set.openFolder': 'Open folder',
 
     't.selectFirst': 'Select at least one account (click a card to select it).',
-    't.needGame': 'Paste a game link or Place ID in the bar below first.',
     't.openAnyway': 'Open anyway',
     't.errsSome': "Some accounts didn't open", 't.errsAll': "Couldn't open",
     't.launched': 'Opened {n} account(s).', 't.launchedStopped': 'Opened {n} account(s) (stopped early).', 't.stopped': 'Stopped.',
@@ -126,9 +125,6 @@ window.I18N = {
     'ql.linked': '{name} entered the code. Confirm on that device.', 'ql.adding': 'Signing in…',
     'ql.addedList': 'Added: {names}. Use the new code for the next account.',
     'ql.cancelled': 'Declined on the device.', 'ql.expired': 'The code expired.', 'ql.newCode': 'New code',
-    'who.title': 'Who’s playing?', 'who.nav': 'Switch account', 'who.manage': 'Manage accounts',
-    'who.ask': 'Ask which account to use each time Bloxkeep opens', 'who.add': 'Add account', 'who.open': 'Open',
-    'who.signIn': 'Sign in again', 'who.opening': 'Opening Roblox as {name}…', 'who.switchTitle': 'Switch account?', 'who.switch': 'Switch',
     'ql.browser': 'Use browser instead', 'ql.step1Vng': 'Open the Roblox VNG app on your phone and sign in to the account',
     'card.vngTip': 'Roblox VNG account (Vietnam)',
     'm.checkAll': 'Check sign-in of all accounts', 'm.selectAll': 'Select all', 'm.closeAll': 'Close all Roblox',
@@ -217,6 +213,7 @@ window.I18N = {
     'side.lock': 'Khóa app', 'side.lockTip': 'Khóa Bloxkeep — mở lại cần nhập mật khẩu chủ',
     'side.noRoblox': 'Chưa thấy Roblox được cài trên máy này.',
     'multi.title': 'Multi-Roblox', 'multi.off': 'Đang tắt', 'multi.ready': 'Đang bật — mở được nhiều cửa sổ', 'multi.notReady': 'Chưa hoạt động — bấm để xem cách sửa',
+    'multi.turnOn': 'Bật Multi-Roblox', 'multi.turnOff': 'Tắt Multi-Roblox', 'mh.disable': 'Tắt',
 
     'acc.title': 'Tài khoản', 'acc.summary': '<b>{n}</b> tài khoản<span class="sep">·</span><b>{p}</b> đang chơi<span class="sep">·</span><b>{o}</b> online',
     'acc.selected': 'Đã chọn <b>{n}</b> — <a data-act="clear-sel">Bỏ chọn</a>', 'acc.selectAll': '<a data-act="select-all">Chọn tất cả</a>',
@@ -234,7 +231,7 @@ window.I18N = {
     'dock.finding': 'Đang tìm game…', 'dock.share': 'Link server riêng', 'dock.shareNote': 'Bloxkeep sẽ mở link này khi vào game.',
     'dock.private': 'Server riêng', 'dock.server': 'Server cụ thể', 'dock.by': 'bởi {c}', 'dock.playing': '{n} đang chơi',
     'dock.recentRemove': 'Xóa khỏi gần đây', 'dock.openAppTip': 'Mở Roblox mà không vào game',
-    'dock.closeTip': 'Đóng Roblox của tài khoản đã chọn', 'dock.play': 'Vào game', 'dock.pick': 'Chọn tài khoản', 'dock.stop': 'Dừng',
+    'dock.closeTip': 'Đóng Roblox của tài khoản đã chọn', 'dock.play': 'Vào game', 'dock.pick': 'Chọn tài khoản', 'dock.stop': 'Dừng', 'dock.openHome': 'Mở Roblox',
     'dock.placeTip': 'Place ID, link game hoặc link server riêng',
     'dock.jobTip': 'Job ID của một server cụ thể, để nhiều tài khoản vào cùng 1 server.',
 
@@ -256,7 +253,6 @@ window.I18N = {
     'card.play': 'Vào game', 'card.close': 'Đóng', 'card.editTip': 'Sửa (F2)', 'card.moreTip': 'Thêm',
     'empty.title': 'Chưa có tài khoản nào',
     'empty.text': 'Chọn cách đăng nhập. Mỗi acc chỉ cần làm một lần.',
-   
     'start.phone': 'Dùng điện thoại', 'start.phoneSub': 'Quét mã bằng app Roblox trên điện thoại',
     'start.browser': 'Dùng trình duyệt', 'start.browserSub': 'Đăng nhập trên trang roblox.com',
     'start.pw': 'Dùng tài khoản & mật khẩu', 'start.pwSub': 'Đăng nhập bằng tên và mật khẩu Roblox',
@@ -288,7 +284,6 @@ window.I18N = {
     'set.data': 'Dữ liệu', 'set.dataPath': 'Nơi lưu dữ liệu', 'set.openFolder': 'Mở thư mục',
 
     't.selectFirst': 'Hãy chọn ít nhất một tài khoản (bấm vào thẻ để chọn).',
-    't.needGame': 'Dán link game hoặc Place ID ở thanh phía dưới trước nhé.',
     't.openAnyway': 'Vẫn mở',
     't.errsSome': 'Một số tài khoản chưa mở được', 't.errsAll': 'Không mở được',
     't.launched': 'Đã mở {n} tài khoản.', 't.launchedStopped': 'Đã mở {n} tài khoản (đã dừng giữa chừng).', 't.stopped': 'Đã dừng.',
@@ -313,9 +308,6 @@ window.I18N = {
     'ql.linked': '{name} đã nhập mã. Hãy xác nhận trên thiết bị đó.', 'ql.adding': 'Đang đăng nhập…',
     'ql.addedList': 'Đã thêm: {names}. Dùng mã mới cho acc tiếp theo.',
     'ql.cancelled': 'Đã bị từ chối trên thiết bị.', 'ql.expired': 'Mã đã hết hạn.', 'ql.newCode': 'Lấy mã mới',
-    'who.title': 'Ai đang chơi?', 'who.nav': 'Đổi acc', 'who.manage': 'Quản lý acc',
-    'who.ask': 'Hỏi chọn acc mỗi khi mở Bloxkeep', 'who.add': 'Thêm acc', 'who.open': 'Đang mở',
-    'who.signIn': 'Đăng nhập lại', 'who.opening': 'Đang mở Roblox bằng {name}…', 'who.switchTitle': 'Đổi acc?', 'who.switch': 'Đổi acc',
     'ql.browser': 'Dùng trình duyệt', 'ql.step1Vng': 'Mở app Roblox VNG trên điện thoại, đăng nhập acc cần thêm',
     'card.vngTip': 'Acc Roblox VNG (Việt Nam)',
     'm.checkAll': 'Kiểm tra đăng nhập của tất cả tài khoản', 'm.selectAll': 'Chọn tất cả', 'm.closeAll': 'Đóng tất cả Roblox',
