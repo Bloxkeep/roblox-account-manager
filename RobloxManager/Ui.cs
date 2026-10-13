@@ -63,6 +63,26 @@ static class Ui
     public static void Info(IWin32Window? owner, string message) =>
         MessageBox.Show(owner, message, Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
+    static string? _clipboardSecret;
+
+    /// <summary>Removes a copied password or cookie now (on lock and exit), if it is still what the clipboard holds.</summary>
+    public static void ClearSecretClipboard()
+    {
+        _clipboardTimer?.Dispose();
+        _clipboardTimer = null;
+        if (_clipboardSecret is not { } secret)
+            return;
+        _clipboardSecret = null;
+        try
+        {
+            if (Clipboard.ContainsText() && Clipboard.GetText() == secret)
+                Clipboard.Clear();
+        }
+        catch (ExternalException)
+        {
+        }
+    }
+
     /// <summary>
     /// Secrets are flagged so Windows keeps them out of clipboard history and cloud clipboard sync,
     /// and are wiped from the clipboard after 30 seconds.
@@ -89,20 +109,12 @@ static class Ui
         }
         if (secret)
         {
+            _clipboardSecret = text;
             _clipboardTimer?.Dispose();
             _clipboardTimer = new System.Windows.Forms.Timer { Interval = 30_000 };
             _clipboardTimer.Tick += (_, _) =>
             {
-                _clipboardTimer?.Dispose();
-                _clipboardTimer = null;
-                try
-                {
-                    if (Clipboard.ContainsText() && Clipboard.GetText() == text)
-                        Clipboard.Clear();
-                }
-                catch (ExternalException)
-                {
-                }
+                ClearSecretClipboard();
             };
             _clipboardTimer.Start();
         }

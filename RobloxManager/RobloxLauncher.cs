@@ -5,8 +5,24 @@ namespace RobloxManager;
 
 public static class RobloxLauncher
 {
-    /// <summary>Values of <see cref="AppSettings.LaunchVia"/>.</summary>
-    public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct"];
+    /// <summary>
+    /// Values of <see cref="AppSettings.LaunchVia"/>, plus "other:&lt;Name&gt;" for another Bloxstrap-style launcher found on
+    /// this PC and "custom" for one the user picked (<see cref="AppSettings.CustomLauncher"/>).
+    /// </summary>
+    public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct", "custom"];
+
+    const string OtherPrefix = "other:";
+
+    public static string Other(string name) => OtherPrefix + name;
+
+    /// <summary>The launcher's name for an "other:&lt;Name&gt;" option, else null.</summary>
+    public static string? OtherName(string launchVia) =>
+        launchVia.StartsWith(OtherPrefix, StringComparison.Ordinal) && launchVia.Length > OtherPrefix.Length
+            ? launchVia[OtherPrefix.Length..]
+            : null;
+
+    public static bool IsValidOption(string launchVia) =>
+        LaunchOptions.Contains(launchVia) || (OtherName(launchVia) is { } name && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0);
 
     public static bool IsProtocolRegistered()
     {
@@ -41,13 +57,25 @@ public static class RobloxLauncher
 
     /// <param name="launchVia">
     /// "auto" = whatever Windows opens roblox-player: links with; "bloxstrap"/"fishstrap" = that launcher, keeping its
-    /// mods; "roblox" = the official client; "direct" = the newest RobloxPlayerBeta.exe, skipping any launcher.
+    /// mods; "roblox" = the official client; "direct" = the newest RobloxPlayerBeta.exe, skipping any launcher;
+    /// "other:&lt;Name&gt;" and "custom" get the link as their first argument, the way Windows hands it to whatever
+    /// handles roblox-player: links.
     /// </param>
-    public static void Launch(string ticket, GameTarget? target, string launchVia)
+    public static void Launch(string ticket, GameTarget? target, string launchVia, string customLauncher = "")
     {
         string uri = BuildLaunchUri(ticket, target);
+        if (OtherName(launchVia) is { } other)
+        {
+            Start(RobloxInstalls.FindBootstrapper(other) ?? throw new FileNotFoundException(L.F("{0} is not installed.", other)), uri);
+            return;
+        }
         switch (launchVia)
         {
+            case "custom":
+                if (!File.Exists(customLauncher))
+                    throw new FileNotFoundException(L.T("The launcher you picked is gone. Choose it again under Settings › Open Roblox with."));
+                Start(customLauncher, uri);
+                break;
             case "bloxstrap":
             case "fishstrap":
                 string name = launchVia == "bloxstrap" ? "Bloxstrap" : "Fishstrap";

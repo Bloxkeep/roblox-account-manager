@@ -34,6 +34,12 @@ public sealed class ShellForm : Form
     [DllImport("kernel32.dll")]
     static extern bool SetProcessWorkingSetSize(IntPtr process, IntPtr minimum, IntPtr maximum);
 
+    [DllImport("user32.dll")]
+    static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+
     static string StartMarker => Path.Combine(Vault.DataDir, "starting.flag");
 
     public ShellForm()
@@ -43,13 +49,22 @@ public sealed class ShellForm : Form
         {
             SetSafeRendering = safe => RestartWebViewAsync(safe, automatic: false),
             AppearanceChanged = ApplyAppearance,
+            BeforeRestart = HideTrayIcon,
+            RestartFailed = ShowTrayIcon,
+            ShowNotification = ShowNotification,
         };
         _themeId = Themes.Current.Id;
         Text = Ui.Title;
         BackColor = Themes.Current.Background;
         StartPosition = FormStartPosition.CenterScreen;
-        Size = new Size(LogicalToDeviceUnits(1320), LogicalToDeviceUnits(840));
-        MinimumSize = new Size(LogicalToDeviceUnits(980), LogicalToDeviceUnits(620));
+        // Fit the screen the window opens on (the one with the mouse, like CenterScreen): on a 1366×768 or 1080p
+        // laptop at 125–150 % the preferred size would put the launch dock under the taskbar.
+        var area = Screen.FromPoint(Cursor.Position).WorkingArea.Size;
+        var preferred = new Size(LogicalToDeviceUnits(1320), LogicalToDeviceUnits(840));
+        MinimumSize = Fit(new Size(LogicalToDeviceUnits(980), LogicalToDeviceUnits(620)), area);
+        Size = Fit(preferred, area);
+        if (preferred.Width > area.Width || preferred.Height > area.Height)
+            WindowState = FormWindowState.Maximized;
         Icon = Ui.AppIcon;
         Load += async (_, _) => await InitAsync();
         _releaseTimer.Tick += (_, _) => ReleaseWebView();
@@ -58,19 +73,18 @@ public sealed class ShellForm : Form
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
     }
 
+    static Size Fit(Size size, Size area) => new(Math.Min(size.Width, area.Width), Math.Min(size.Height, area.Height));
+
     NotifyIcon CreateTrayIcon()
     {
-        var menu = new ContextMenuStrip();
-        var open = new ToolStripMenuItem { Font = new Font(menu.Font, FontStyle.Bold) };
-        open.Click += (_, _) => BringToFront();
-        var quit = new ToolStripMenuItem();
-        quit.Click += (_, _) => Quit();
-        menu.Items.AddRange([open, new ToolStripSeparator(), quit]);
-        // The language can change while the app runs.
-        menu.Opening += (_, _) =>
+        var menu = new TrayMenu();
+        menu.OpenClicked += BringToFront;
+        menu.QuitClicked += Quit;
+        menu.Presets = _app.TrayPresets;
+        menu.PresetClicked += async id =>
         {
-            open.Text = L.T("Open Bloxkeep");
-            quit.Text = L.T("Quit Bloxkeep");
+            if (await _app.RunPresetFromTrayAsync(id) is { } note && _tray.Visible)
+                _tray.ShowBalloonTip(5000, Ui.Title, note, ToolTipIcon.None);
         };
         var tray = new NotifyIcon { Icon = Ui.AppIcon, Text = Ui.Title, ContextMenuStrip = menu };
         tray.MouseClick += (_, e) =>
@@ -78,8 +92,34 @@ public sealed class ShellForm : Form
             if (e.Button == MouseButtons.Left)
                 BringToFront();
         };
+        // A notification shown while the icon is normally hidden (close-to-tray off) takes the icon with it.
+        tray.BalloonTipClicked += (_, _) =>
+        {
+            BringToFront();
+            tray.Visible = Prefs.CloseToTray;
+        };
+        tray.BalloonTipClosed += (_, _) => tray.Visible = Prefs.CloseToTray;
         return tray;
     }
+
+    /// <summary>
+    /// A Windows notification (the tray icon's balloon, which Windows 10/11 show as a toast) while the window is
+    /// hidden, minimised or behind another program; false when it is in front, so the page's own toast is enough.
+    /// </summary>
+    bool ShowNotification(string text, string kind)
+    {
+        if (IsDisposed || _quitting || (!InBackground && InFront))
+            return false;
+        _tray.Visible = true;
+        _tray.ShowBalloonTip(8000, Ui.Title, text, kind switch { "error" => ToolTipIcon.Error, "warn" => ToolTipIcon.Warning, _ => ToolTipIcon.None });
+        return true;
+    }
+
+    /// <summary>The updater ends the process without the window's normal shutdown; don't leave a dead tray icon.</summary>
+    void HideTrayIcon() => _tray.Visible = false;
+
+    /// <summary>The update's restart failed after all: the app keeps running, so the icon comes back.</summary>
+    void ShowTrayIcon() => _tray.Visible = Prefs.CloseToTray;
 
     /// <summary>Closes for real, even with "keep running when closed" on.</summary>
     public void Quit()
@@ -168,6 +208,22 @@ public sealed class ShellForm : Form
 
     /// <summary>Minimised, or hidden in the notification area.</summary>
     bool InBackground => !Visible || WindowState == FormWindowState.Minimized;
+
+    /// <summary>
+    /// This window, or a dialog it owns, is the one the person is working in. Asked of Windows rather than
+    /// Form.ActiveForm, which can be null while the keyboard focus sits in the browser's own child window.
+    /// </summary>
+    bool InFront
+    {
+        get
+        {
+            const uint GA_ROOTOWNER = 3;
+            if (Form.ActiveForm is not null)
+                return true;
+            IntPtr front = GetForegroundWindow();
+            return front != IntPtr.Zero && IsHandleCreated && GetAncestor(front, GA_ROOTOWNER) == Handle;
+        }
+    }
 
     protected override void OnResize(EventArgs e)
     {

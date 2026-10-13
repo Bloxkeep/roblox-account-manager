@@ -736,6 +736,39 @@ public static class RobloxApi
         return result;
     }
 
+    /// <summary>A user's friends, ids only (Roblox leaves the names empty here; see <see cref="GetUsersAsync"/>).</summary>
+    public static async Task<List<long>> GetFriendIdsAsync(long userId, CancellationToken ct = default)
+    {
+        using var doc = await GetJsonAsync($"https://friends.roblox.com/v1/users/{userId}/friends", ct);
+        if (doc?.RootElement.TryGetProperty("data", out var data) != true || data.ValueKind != JsonValueKind.Array)
+            return [];
+        return data.EnumerateArray()
+            .Select(f => f.TryGetProperty("id", out var id) && id.TryGetInt64(out long v) ? v : 0)
+            .Where(id => id > 0)
+            .ToList();
+    }
+
+    /// <summary>Names for many users at once, 100 per request (no cookie involved); banned users are left out.</summary>
+    public static async Task<Dictionary<long, RobloxUser>> GetUsersAsync(IEnumerable<long> userIds, CancellationToken ct = default)
+    {
+        var result = new Dictionary<long, RobloxUser>();
+        foreach (var chunk in userIds.Where(id => id > 0).Distinct().Chunk(100))
+        {
+            using var req = Request(HttpMethod.Post, "https://users.roblox.com/v1/users", null);
+            req.Content = new StringContent(JsonSerializer.Serialize(new { userIds = chunk, excludeBannedUsers = true }), Encoding.UTF8, "application/json");
+            using var res = await Http.SendAsync(req, ct);
+            if (!res.IsSuccessStatusCode)
+                continue;
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
+            foreach (var u in doc.RootElement.GetProperty("data").EnumerateArray())
+            {
+                long id = u.GetProperty("id").GetInt64();
+                result[id] = new RobloxUser(id, u.GetProperty("name").GetString() ?? "", u.GetProperty("displayName").GetString() ?? "");
+            }
+        }
+        return result;
+    }
+
     /// <summary>The universe (experience) a place belongs to, or 0 when Roblox doesn't know the place.</summary>
     public static async Task<long> GetUniverseIdAsync(long placeId, CancellationToken ct = default)
     {
@@ -944,7 +977,10 @@ public static class RobloxApi
             using var res = await PostWithCsrfAsync(Realm.Api(realm, "presence") + "/v1/presence/users", cookie ?? "", json, null, ct, realm);
             if (res.StatusCode == HttpStatusCode.TooManyRequests)
                 throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
-            return res.IsSuccessStatusCode ? await res.Content.ReadAsStringAsync(ct) : null;
+            // A failed page would read as "everyone offline / unknown"; fail the whole check so the last answer stays.
+            if (!res.IsSuccessStatusCode)
+                throw new RobloxApiException(L.F("Roblox returned HTTP {0}: {1}", (int)res.StatusCode, res.ReasonPhrase ?? ""));
+            return await res.Content.ReadAsStringAsync(ct);
         }));
         foreach (string? page in pages)
         {

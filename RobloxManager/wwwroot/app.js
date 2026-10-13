@@ -56,6 +56,8 @@
     grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
     download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
     gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+    cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>',
+    bookmark: '<path d="M19 21 12 16l-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
   };
   const icon = (name, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
   const LOGO = 'logo.svg';
@@ -80,7 +82,8 @@
     const mock = window.__mockBridge;
     const waiting = new Map();
     const listeners = {};
-    let seq = 0;
+    // Not from 0: a page recreated mid-command must not take a reply meant for the previous page's call.
+    let seq = Math.floor(Math.random() * 1e9);
     const emit = (name, data) => (listeners[name] || []).forEach(fn => {
       try { fn(data); } catch (e) { console.error(e); }
     });
@@ -209,10 +212,10 @@
     </div>`;
     let closed = false;
     const onKey = e => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        close();
-      }
+      // Each open modal listens; only the one on top closes.
+      if (e.key !== 'Escape' || [...document.querySelectorAll('#layer .overlay:not(.out)')].pop() !== el) return;
+      e.stopImmediatePropagation();
+      close();
     };
     const close = () => {
       if (closed) return;
@@ -328,6 +331,7 @@
         </div>
         <div class="lock-error" id="lock-error" role="alert"></div>
         <button class="btn primary big w" type="submit" id="lock-btn">${t(create ? 'lock.create' : 'lock.unlock')}</button>
+        ${create ? `<div class="lock-alt"><a data-act="restore-backup">${t('lock.restore')}</a></div>` : ''}
       </form>
     </div>`;
     const pw1 = $('#pw1'), pw2 = $('#pw2'), form = $('#lock-form');
@@ -397,6 +401,7 @@
           <div class="meter" id="sys-meter"><i class="roblox"></i><i class="other"></i></div>
           <div class="sys-foot" id="sys-foot"></div>
           <div class="sys-ver" id="sys-ver"></div>
+          <button class="btn sm w sys-close" id="sys-close" data-act="close-all" hidden>${icon('power')}<span>${t('sys.closeAll')}</span></button>
         </div>
         <div id="multi-card"></div>
         <div class="side-foot">
@@ -483,7 +488,7 @@
         <button class="multi-open" data-act="multi-help" title="${t('multi.title')}: ${esc(text)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div></button>
         <label class="switch" title="${t(m.enabled ? 'multi.turnOff' : 'multi.turnOn')}"><input type="checkbox" id="side-multi" ${m.enabled ? 'checked' : ''} aria-label="${t('multi.title')}"><span></span></label>
       </div>`);
-    setHtml($('#side-warn'), S.app.robloxInstalled ? '' : `<div class="warn-card">${t('side.noRoblox')}</div>`);
+    setHtml($('#side-warn'), S.app.robloxInstalled ? '' : `<div class="warn-card" title="${esc(t('side.noRoblox'))}">${icon('alert')}<span>${t('side.noRoblox')}</span></div>`);
     const u = S.app.update;
     setHtml($('#update-slot'), u?.status === 'ready'
       ? `<button class="btn primary w update-btn" data-act="apply-update" title="${esc(t('upd.restartTip', { v: u.version }))}">${icon('refresh')}<span><b>${t('upd.restart')}</b><small>${t('upd.versionN', { v: esc(u.version) })}</small></span></button>` : '');
@@ -500,7 +505,10 @@
     const list = accounts();
     const n = S.selected.size;
     let html = t('acc.summary', { n: list.length, p: list.filter(inGame).length, o: list.filter(isOnline).length });
-    if (n) html += `<span class="sep">·</span>${t('acc.selected', { n })}`;
+    // Selected accounts the search or filter hides still count (Play, Delete act on them), so say so.
+    const shown = n ? new Set(visible().map(a => a.id)) : null;
+    const hidden = n ? [...S.selected].filter(id => !shown.has(id)).length : 0;
+    if (n) html += `<span class="sep">·</span>${t(hidden ? 'acc.selectedHidden' : 'acc.selected', { n, h: hidden })}`;
     else if (list.length) html += `<span class="sep">·</span>${t('acc.selectAll')}`;
     setHtml($('#acc-sub'), html);
   }
@@ -569,10 +577,10 @@
       if (c === 'disconnected') {
         const why = a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : '';
         return box('kicked', `<span class="gicon">${icon('alert')}</span>`, t('act.kicked'),
-          why ? `${why} · ${game?.name || 'Roblox'}` : t('act.kickedWhere', { game: game?.name || 'Roblox' }));
+          [why, game?.name].filter(Boolean).join(' · ') || t('act.stillOpen'));
       }
       if (c === 'menu') return box('online', `<span class="gicon">${icon('monitor')}</span>`, t('act.menuHere'), t('act.menuWhere'));
-      return box('ingame', gIcon(game?.iconUrl), t(c === 'ingame' ? 'act.playingHere' : 'act.joiningHere'), game?.name || 'Roblox');
+      return box('ingame', gIcon(game?.iconUrl), t(c === 'ingame' ? 'act.playingHere' : 'act.joiningHere'), game?.name || t('act.gameLoading'));
     }
     switch (p?.type) {
       case 'ingame': return box('ingame', gIcon(p.iconUrl), t('act.playingElse'), p.game || t('act.hidden'));
@@ -590,8 +598,12 @@
     }
   }
 
+  /** The colour of the avatar ring and dot: a client here in the Roblox menu is online, not in a game. */
+  const presenceType = a => !isLocal(a) ? a.presence?.type || ''
+    : a.session?.connection === 'disconnected' ? 'kicked' : a.session?.connection === 'menu' ? 'online' : 'ingame';
+
   function cardHtml(a) {
-    const pType = a.session?.connection === 'disconnected' && isLocal(a) ? 'kicked' : isLocal(a) ? 'ingame' : a.presence?.type || '';
+    const pType = presenceType(a);
     const ring = a.cookieValid === false ? 'invalid' : ['ingame', 'online', 'kicked'].includes(pType) ? pType : '';
     const badge = isLocal(a) ? `<span class="badge run"><i class="pulse"></i>${t('card.local')}</span>`
       : a.state === 'launching' ? `<span class="badge wait"><span class="spin"></span>${t('card.launching')}</span>`
@@ -622,7 +634,7 @@
   const vngTag = a => a.realm === 'vng' ? `<span class="tag vng" title="${t('card.vngTip')}">VNG</span>` : '';
 
   function rowHtml(a) {
-    const pType = a.session?.connection === 'disconnected' && isLocal(a) ? 'kicked' : isLocal(a) ? 'ingame' : a.presence?.type || '';
+    const pType = presenceType(a);
     const ring = a.cookieValid === false ? 'invalid' : ['ingame', 'online', 'kicked'].includes(pType) ? pType : '';
     const st = statusLine(a);
     const action = isLocal(a) || a.state === 'launching' ? `<button class="icon-btn stop" data-act="close-one" title="${t('card.close')}" aria-label="${t('card.close')}">${icon('power')}</button>`
@@ -645,13 +657,14 @@
     if (a.state === 'launching') return { cls: 'launching', text: t('act.opening') };
     if (isLocal(a)) {
       const c = a.session?.connection;
-      const game = (p?.type === 'ingame' && p.game) || a.session?.game?.name || 'Roblox';
+      const game = (p?.type === 'ingame' && p.game) || a.session?.game?.name || '';
+      const withGame = text => game ? `${text} · ${game}` : text;
       if (c === 'disconnected') {
         const why = a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : t('row.kicked');
-        return { cls: 'kicked', text: `${why} · ${game}` };
+        return { cls: 'kicked', text: withGame(why) };
       }
       if (c === 'menu') return { cls: 'online', text: t('act.menuHere') };
-      return { cls: 'ingame', text: `${t(c === 'ingame' ? 'row.playing' : 'row.joining')} · ${game}` };
+      return { cls: 'ingame', text: withGame(t(c === 'ingame' ? 'row.playing' : 'row.joining')) };
     }
     switch (p?.type) {
       case 'ingame': return { cls: 'ingame', text: `${t('row.elsewhere')} · ${p.game || t('act.hidden')}` };
@@ -725,6 +738,7 @@
       renderMetrics();
     }
     S.introShown = true;
+    renderHeader(); // the "N hidden" note follows the search and filter
   }
 
   function setSelected(el, sel) {
@@ -759,6 +773,7 @@
       : `<button class="btn ghost" data-act="arrange" title="${t('dock.arrangeTip')}" aria-label="${t('dock.arrangeTip')}">${icon('grid')}</button>
          <button class="btn ghost" data-act="open-app" ${n ? '' : 'disabled'} title="${t('dock.openAppTip')}" aria-label="${t('dock.openAppTip')}">${icon('monitor')}</button>
          <button class="btn ghost" data-act="close-sel" ${sel.some(isLocal) ? '' : 'disabled'} title="${t('dock.closeTip')}" aria-label="${t('dock.closeTip')}">${icon('power')}</button>
+         <button class="btn ghost" data-act="preset-menu" title="${t('ps.tip')}" aria-label="${t('ps.tip')}" aria-haspopup="menu">${icon('bookmark')}</button>
          <button class="play-btn" data-act="launch" ${n ? '' : 'disabled'}>${icon(hasGame ? 'play' : 'monitor')}<span>${t(!n ? 'dock.pick' : hasGame ? 'dock.play' : 'dock.openHome')}</span>${n ? `<em>${n}</em>` : ''}</button>`);
 
     const g = S.game;
@@ -813,6 +828,7 @@
     const count = $('#sys-count');
     if (!count) return;
     setText(count, String(m.robloxCount));
+    $('#sys-close').hidden = !m.robloxCount;
     setText($('#sys-count-label'), t(m.robloxCount === 1 ? 'sys.window1' : 'sys.windows'));
     setText($('#sys-ram'), fmtMb(m.totalMb));
     // The bar is the whole PC's RAM: Roblox's share first, then everything else in use.
@@ -842,7 +858,7 @@
           <h3>${icon('layers')}${t('set.launch')}</h3>
           ${row(t('set.multi'), `${t('set.multiDesc')} <a data-act="multi-help">${t('set.details')}</a>`, sw('s-multi'), ' <span class="state-pill" id="s-multi-pill"></span>')}
           ${row(t('set.rename'), t('set.renameDesc'), sw('s-rename'))}
-          ${row(t('set.client'), t('set.clientDesc'), '<select class="select" id="s-launch" aria-label="Roblox client"></select>')}
+          ${row(t('set.client'), t('set.clientDesc'), `<select class="select" id="s-launch" aria-label="Roblox client"></select><button class="btn sm" data-act="pick-launcher" title="${t('launch.pick')}">${t('launch.pickBtn')}</button>`)}
           <div id="s-store"></div>
           <div id="s-rbxver"></div>
           ${row(t('set.delay'), t('set.delayDesc'), '<input type="range" id="s-delay" min="0" max="60" step="1"><b id="s-delay-v" class="range-v"></b>')}
@@ -858,6 +874,7 @@
           <h3>${icon('gauge')}${t('set.perf')}</h3>
           ${row(t('set.rejoin'), t('set.rejoinDesc'), '<span class="state-pill off" id="s-rejoin-count"></span>')}
           ${row(t('set.tray'), t('set.trayDesc'), sw('s-tray'))}
+          ${row(t('set.notify'), t('set.notifyDesc'), sw('s-notify'))}
           ${row(t('set.memWarn'), '', sw('s-memwarn'))}
           ${row(t('set.antiAfk'), t('set.antiAfkDesc'), sw('s-antiafk'))}
           ${row(t('set.trim'), t('set.trimDesc'), sw('s-trim'))}
@@ -887,6 +904,14 @@
           <h3>${icon('folder')}${t('set.data')}</h3>
           ${row(t('set.dataPath'), '<span class="path" id="s-path"></span>', `<button class="btn sm" data-act="open-data">${icon('folder')}${t('set.openFolder')}</button>`)}
         </div>
+        <div class="set-card">
+          <h3>${icon('cloud')}${t('bk.title')}</h3>
+          ${row(t('bk.on'), t('bk.onDesc'), sw('s-bk-on'))}
+          ${row(t('bk.folder'), '<span class="path" id="s-bk-path"></span><div class="bk-suggest" id="s-bk-suggest"></div>', `<button class="btn sm" data-act="bk-pick">${t('bk.choose')}</button><button class="btn sm" data-act="bk-open" id="s-bk-open">${icon('folder')}${t('set.openFolder')}</button>`)}
+          <div id="s-bk-note"></div>
+          <div id="s-bk-status"></div>
+          ${row(t('bk.restore'), t('bk.restoreDesc'), `<button class="btn sm" data-act="bk-restore">${t('bk.restoreBtn')}</button>`)}
+        </div>
       </div></div>`;
   }
 
@@ -905,6 +930,8 @@
     }
     $('#s-autoupd').addEventListener('change', e => call('setAutoUpdate', { enabled: e.target.checked }));
     $('#s-tray').addEventListener('change', e => call('setCloseToTray', { enabled: e.target.checked }));
+    $('#s-notify').addEventListener('change', e => call('setNotifications', { enabled: e.target.checked }));
+    $('#s-bk-on').addEventListener('change', e => call('setBackup', { enabled: e.target.checked }));
     // Switching reloads the interface, so the reply may never come back; the reloaded page shows the new state.
     $('#s-gpu').addEventListener('change', e => {
       saveView();
@@ -991,27 +1018,46 @@
     const rc = st.robloxConfig || { mode: 'off', graphics: 0, fps: 0, volume: -1 };
     for (const [key, value] of [['mode', rc.mode], ['graphics', rc.graphics], ['fps', rc.fps], ['volume', rc.volume]]) {
       const el = $(`#s-rc-${key}`);
-      if (document.activeElement !== el) el.value = String(value);
+      if (document.activeElement !== el) {
+        el.value = String(value);
+        // A value the list doesn't offer would leave the box blank: show "leave as is" (or "nobody") instead.
+        if (el.selectedIndex < 0) el.selectedIndex = 0;
+      }
       if (key !== 'mode') el.disabled = rc.mode === 'off';
     }
-    setText($('#s-rc-hint'), rc.mode === 'off' ? '' : t(rc.mode === 'all' ? 'rc.hint.all' : 'rc.hint.marked', { n: accounts().filter(a => a.useRobloxConfig).length }));
+    const chosen = accounts().filter(a => a.useRobloxConfig).length;
+    setHtml($('#s-rc-hint'), rc.mode === 'off' ? '' : rc.mode === 'all' ? esc(t('rc.hint.all'))
+      : `${esc(t('rc.hint.chosen', { n: chosen }))} <a data-act="rc-pick">${t('rc.pick')}</a>`);
     $('#s-gpu').checked = !S.app.safeRendering;
     $('#s-tray').checked = S.app.closeToTray !== false;
+    $('#s-notify').checked = S.app.notifications !== false;
+    syncBackup();
     setHtml($('#s-themes'), themesHtml());
     setText($('#s-theme-name'), t(`theme.${S.app.theme || 'dark'}`));
     syncUpdate();
     const ins = S.app.installs || {};
+    // [value, label, usable, label when not usable]
+    const others = ins.others || [];
+    const savedOther = (st.launchVia || '').startsWith('other:') ? st.launchVia.slice(6) : null;
     const options = [
       ['auto', ins.handler ? t('launch.auto', { name: esc(ins.handler) }) : t('launch.autoNone'), true],
       ['bloxstrap', 'Bloxstrap', ins.bloxstrap],
       ['fishstrap', 'Fishstrap', ins.fishstrap],
+      // Other Bloxstrap-style launchers only appear when found on this PC (or still chosen after being removed).
+      ...[...new Set([...others, ...(savedOther ? [savedOther] : [])])].map(n => [`other:${esc(n)}`, esc(n), others.includes(n)]),
       ['roblox', t('launch.roblox'), ins.roblox],
       ['direct', t('launch.direct'), ins.direct],
+      ...(ins.store ? [['store', t('launch.storeName'), false, t('launch.storeOpt')]] : []),
+      ...(st.customLauncher ? [['custom', t('launch.custom', { name: esc(st.customLauncher) }), true]] : []),
     ];
     const select = $('#s-launch');
-    setHtml(select, options.map(([value, label, ok]) =>
-      `<option value="${value}" ${ok ? '' : 'disabled'}>${ok ? label : t('launch.missing', { name: label })}</option>`).join(''));
-    if (document.activeElement !== select) select.value = st.launchVia || 'auto';
+    const rebuilt = setHtml(select, options.map(([value, label, ok, off]) =>
+      `<option value="${value}" ${ok ? '' : 'disabled'}>${ok ? label : off || t('launch.missing', { name: label })}</option>`).join(''));
+    // New options reset the box to the first one, so put the saved choice back even while it has focus.
+    if (rebuilt || document.activeElement !== select) {
+      select.value = st.launchVia || 'auto';
+      if (select.selectedIndex < 0) select.selectedIndex = 0;
+    }
     const rv = S.app.robloxVersion || {};
     const rvText = !rv.installed ? t('rbx.notInstalled')
       : rv.upToDate === false ? t(rv.direct ? 'rbx.outdatedDirect' : 'rbx.outdated', { v: esc(rv.latest) })
@@ -1026,6 +1072,25 @@
     pill.className = `state-pill ${!m.enabled ? 'off' : m.armed ? 'ok' : 'warn'}`;
     pill.textContent = t(!m.enabled ? 'pill.off' : m.armed ? 'pill.ready' : 'pill.notReady');
     $('#s-path').textContent = S.app.dataPath;
+  }
+
+  /** Settings › Backup: folder, suggested synced folders, last backup (kept fresh by patchTimes) and any error. */
+  function syncBackup() {
+    const b = S.app.backup || {};
+    $('#s-bk-on').checked = b.enabled !== false;
+    setText($('#s-bk-path'), b.folder || t('bk.noFolder'));
+    $('#s-bk-open').hidden = !b.folder;
+    setHtml($('#s-bk-suggest'), (b.suggested || []).map(s =>
+      `<button class="btn sm ghost" data-act="bk-use" data-path="${esc(s.path)}" title="${esc(s.path)}">${t('bk.use', { name: esc(s.name) })}</button>`).join(''));
+    setHtml($('#s-bk-note'), b.cloud && b.weakPassword ? `<div class="set-note">${icon('alert')}<span>${t('bk.weak')}</span></div>` : '');
+    const last = b.lastBackup ? `<span data-ago="${esc(b.lastBackup)}" data-tpl="bk.last">${t('bk.last', { t: ago(b.lastBackup) })}</span>` : t('bk.never');
+    setHtml($('#s-bk-status'), `<div class="set-row"><div><div class="t">${last}</div>${b.error ? `<div class="d err">${esc(b.error)}</div>` : ''}</div>
+      <div class="ctl"><button class="btn sm" data-act="bk-now" ${b.folder ? '' : 'disabled'}>${t('bk.now')}</button></div></div>`);
+  }
+
+  /** Settings › Backup › Restore…: confirm, then the app asks for the file, keeps a copy of the current data and locks. */
+  async function restoreBackup() {
+    if (await confirmBox(t('bk.restoreConfirm'), { title: t('bk.restoreConfirmTitle'), ok: t('bk.restoreBtn'), danger: true })) await call('restoreBackup');
   }
 
   /* ───────────────────────── game picker ─────────────────────────
@@ -1169,54 +1234,131 @@
   }
 
   /** The game's public servers (like the Servers tab on its Roblox page): pick one to join it. */
+  /**
+   * The game's public servers (like the Servers tab on its Roblox page): pick one to join it. Roblox sorts by player
+   * count itself; ping and FPS are sorted here over the servers loaded so far. "ping" is the average ping of the
+   * players already in that server (what Roblox reports), not the ping from this PC.
+   */
   function openServers() {
     const g = S.game;
     if (!g?.placeId) return;
-    const st = { fewest: false, items: [], next: null, loading: false, busy: false, seq: 0 };
+    const party = S.selected.size;
+    const st = { sort: 'most', room: party > 1, items: [], view: [], next: null, loading: false, busy: false, seq: 0, friends: null };
+    const SORTS = ['most', 'fewest', 'ping', 'fps'];
+    const local = () => st.sort === 'ping' || st.sort === 'fps';
     let api;
-    const rows = () => st.items.map((s, i) => `<div class="srv-row">
+    const visibleServers = () => {
+      const list = st.room ? st.items.filter(s => s.maxPlayers - s.playing >= party) : st.items.slice();
+      if (st.sort === 'ping') list.sort((a, b) => (a.ping || 1e9) - (b.ping || 1e9));
+      if (st.sort === 'fps') list.sort((a, b) => (b.fps || 0) - (a.fps || 0));
+      return list;
+    };
+    const rows = () => st.view.map((s, i) => `<div class="srv-row">
         <div class="srv-fill" title="${t('srv.players', { n: s.playing, max: s.maxPlayers })}"><i style="transform:scaleX(${s.maxPlayers ? (s.playing / s.maxPlayers).toFixed(3) : 0})"></i></div>
-        <b>${t('srv.players', { n: s.playing, max: s.maxPlayers })}</b><span class="srv-ping">${s.ping ? t('srv.ping', { ms: s.ping }) : ''}</span>
+        <b>${t('srv.players', { n: s.playing, max: s.maxPlayers })}${friendsIn(s.jobId) ? ` <span class="srv-friend-tag" title="${t('srv.friendsHere')}">${icon('users')}${friendsIn(s.jobId)}</span>` : ''}</b>
+        <span class="srv-ping" title="${t('srv.pingTip')}">${s.ping ? t('srv.ping', { ms: s.ping }) : ''}</span>
+        <span class="srv-ping">${s.fps ? t('srv.fpsVal', { fps: Math.round(s.fps) }) : ''}</span>
         <button class="btn sm" data-srv="${i}">${t('srv.pick')}</button></div>`).join('');
+    const friendsIn = jobId => st.friends ? st.friends.filter(f => f.jobId === jobId).length : 0;
+    const renderFriends = () => {
+      const box = api.el.querySelector('#srv-friends');
+      if (!box) return;
+      const list = st.friends;
+      setHtml(box, list === null ? `<div class="srv-friends-note"><span class="spin"></span>${t('srv.friendsLooking')}</div>`
+        : !list.length ? `<div class="srv-friends-note">${t(st.friendsFailed ? 'srv.friendsError' : st.friendsAsked ? 'srv.friendsNone' : 'srv.friendsNoAccount')}</div>`
+        : list.map((f, i) => `<div class="srv-friend">
+            ${f.avatarUrl ? `<img src="${esc(f.avatarUrl)}" alt="">` : '<span class="ph"></span>'}
+            <div class="gtxt"><b>${esc(f.displayName || f.name || `#${f.userId}`)}</b><small>${f.name ? `@${esc(f.name)} · ` : ''}${t('srv.friendOf', { acc: esc(f.via) })}</small></div>
+            <button class="btn sm" data-friend="${i}">${t('srv.joinFriend')}</button></div>`).join(''));
+    };
+    const loadFriends = async () => {
+      const r = await call('friendServers', { placeId: g.placeId, ids: [...S.selected] }, { silent: true });
+      if (!api.el.isConnected) return;
+      st.friends = r?.friends || [];
+      st.friendsAsked = !!r?.asked;
+      st.friendsFailed = !r;
+      renderFriends();
+      render();
+    };
     const render = () => {
+      st.view = visibleServers();
       const list = api.el.querySelector('#srv-list');
-      list.innerHTML = st.items.length ? rows() + (st.next ? `<button class="btn ghost w" data-more ${st.loading ? 'disabled' : ''}>${t('srv.more')}</button>` : '')
+      const more = st.next ? `<button class="btn ghost w" data-more ${st.loading ? 'disabled' : ''}>${t('srv.more')}</button>` : '';
+      list.innerHTML = st.view.length ? rows() + more
         : st.loading ? '<div class="picker-empty"><span class="spin"></span></div>'
-        : st.busy ? `<div class="picker-empty">${t('srv.busy')} <button class="btn sm" data-retry>${t('srv.retry')}</button></div>`
+        : st.busy ? `<div class="picker-empty">${t(st.retried ? 'srv.busyStop' : 'srv.busy')} <button class="btn sm" data-retry>${t('srv.retry')}</button></div>`
+        : st.items.length ? `<div class="picker-empty">${t('srv.noneRoom', { n: party })}</div>${more}`
         : `<div class="picker-empty">${t('srv.none')}</div>`;
-      api.el.querySelectorAll('[data-sort]').forEach(b => b.classList.toggle('on', (b.dataset.sort === 'fewest') === st.fewest));
+      api.el.querySelectorAll('[data-sort]').forEach(b => b.classList.toggle('on', b.dataset.sort === st.sort));
+      const room = api.el.querySelector('[data-room]');
+      if (room) room.classList.toggle('on', st.room);
+      api.el.querySelector('[data-random]').disabled = !st.view.length;
     };
     const load = async more => {
       const seq = ++st.seq;
       st.loading = true;
       if (!more) { st.items = []; st.next = null; }
       render();
-      const r = await call('servers', { placeId: g.placeId, fewest: st.fewest, cursor: more ? st.next : null });
+      // Ping and FPS are sorted here, so start from the fullest servers (the ones people actually play on).
+      const r = await call('servers', { placeId: g.placeId, fewest: st.sort === 'fewest', cursor: more ? st.next : null });
       if (seq !== st.seq || !api.el.isConnected) return;
       st.loading = false;
       st.busy = !!r?.busy && !st.items.length;
-      if (r && !r.busy) { st.items = more ? st.items.concat(r.servers) : r.servers; st.next = r.next; }
+      if (r && !r.busy) {
+        // A server can move between pages while players come and go; keep one row per server.
+        const seen = new Set(more ? st.items.map(s => s.jobId) : []);
+        st.items = (more ? st.items : []).concat(r.servers.filter(s => !seen.has(s.jobId) && seen.add(s.jobId)));
+        st.next = r.next;
+      }
       render();
+      // A second page gives sorting by ping or FPS more to choose from.
+      if (!more && local() && r?.next && !r.busy) load(true);
       // Roblox asked to slow down: try once more by itself a few seconds later.
       if (r?.busy && !st.retried) { st.retried = true; setTimeout(() => api.el.isConnected && seq === st.seq && load(more), 5000); }
     };
+    const choose = s => {
+      useServer(g.placeId, s.jobId);
+      api.close();
+      toast(t('srv.chosen'), 'ok');
+    };
     api = modal({
       title: t('srv.title', { game: esc(g.name || `Place ${g.placeId}`) }),
-      body: `<div class="srv-sort"><button class="chip on" data-sort="most">${t('srv.most')}</button><button class="chip" data-sort="fewest">${t('srv.fewest')}</button></div><div class="srv-list" id="srv-list"></div>`,
+      body: `<div class="srv-head">${t('srv.friendsTitle')}</div><div class="srv-friends" id="srv-friends"></div>
+        <div class="srv-head">${t('srv.publicTitle')}</div>
+        <div class="srv-sort">${SORTS.map(k => `<button class="chip ${k === st.sort ? 'on' : ''}" data-sort="${k}">${t(`srv.sort.${k}`)}</button>`).join('')}</div>
+        <div class="srv-tools">${party > 1 ? `<button class="chip ${st.room ? 'on' : ''}" data-room>${icon('users')}${t('srv.room', { n: party })}</button>` : ''}
+          <button class="btn sm" data-random disabled>${icon('repeat')}${t('srv.random')}</button></div>
+        <div class="srv-list" id="srv-list"></div>`,
       actions: [{ text: t('common.close'), onClick: ({ close }) => close() }],
-      onMount: ({ el, close }) => el.addEventListener('click', e => {
+      onMount: ({ el }) => el.addEventListener('click', e => {
         const sort = e.target.closest('[data-sort]');
-        if (sort) { st.fewest = sort.dataset.sort === 'fewest'; load(false); return; }
+        if (sort) {
+          const was = st.sort;
+          st.sort = sort.dataset.sort;
+          // Most/fewest come from Roblox in that order; ping/FPS just re-sort what is loaded (plus a page if needed).
+          if (st.sort === 'fewest' || was === 'fewest' || !st.items.length) load(false);
+          else if (local() && st.items.length < 150 && st.next) { render(); load(true); }
+          else render();
+          return;
+        }
+        if (e.target.closest('[data-room]')) { st.room = !st.room; render(); return; }
+        if (e.target.closest('[data-random]')) { if (st.view.length) choose(st.view[Math.floor(Math.random() * st.view.length)]); return; }
         if (e.target.closest('[data-more]')) { load(true); return; }
         if (e.target.closest('[data-retry]')) { st.retried = false; load(false); return; }
-        const pick = e.target.closest('[data-srv]');
-        if (pick) {
-          useServer(g.placeId, st.items[+pick.dataset.srv].jobId);
-          close();
+        const friend = e.target.closest('[data-friend]');
+        if (friend) {
+          const f = st.friends[+friend.dataset.friend];
+          useServer(f.placeId || g.placeId, f.jobId);
+          api.close();
           toast(t('srv.chosen'), 'ok');
+          return;
         }
+        const pick = e.target.closest('[data-srv]');
+        if (pick) choose(st.view[+pick.dataset.srv]);
       }),
     });
+    renderFriends();
+    loadFriends();
     load(false);
   }
 
@@ -1275,8 +1417,9 @@
     renderHeader();
     renderDock();
   }
+  /** "Select all" means what is on screen: it replaces a selection that included accounts now hidden. */
   function selectAllVisible() {
-    visible().forEach(a => S.selected.add(a.id));
+    S.selected = new Set(visible().map(a => a.id));
     renderSelection();
   }
   function onCardClick(id, e) {
@@ -1297,12 +1440,17 @@
     // No game picked: open Roblox on its home screen, one window per account.
     if (!placeInput) appOnly = true;
     const r = await call('launch', { ids, appOnly, force, placeInput, jobId: $('#job')?.value.trim() || '' });
+    return launchDone(r, () => launch(ids, appOnly, true));
+  }
+
+  /** What a launch (Play or a preset) did; a warning that needs an answer runs it again with retry(). */
+  async function launchDone(r, retry) {
     if (!r) return;
     if (r.needsConfirm) {
-      if (await confirmBox(r.message, { title: t('t.confirmTitle'), ok: t('t.openAnyway') })) return launch(ids, appOnly, true);
+      if (await confirmBox(r.message, { title: t('t.confirmTitle'), ok: t('t.openAnyway') })) return retry();
       return;
     }
-    if (r.errors?.length) {
+    if (r.errors?.length && !S.app.locked) {
       modal({
         title: t(r.launched ? 't.errsSome' : 't.errsAll'),
         body: `<ul class="errs">${r.errors.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`,
@@ -1311,6 +1459,145 @@
     }
     if (r.launched) toast(t(r.cancelled ? 't.launchedStopped' : 't.launched', { n: r.launched }), 'ok');
     else if (r.cancelled) toast(t('t.stopped'), 'info');
+  }
+
+  /* ───────────────────────── launch presets ─────────────────────────
+     Saved accounts + game + kind of server. The app picks the server when a preset runs (the tray menu can run them too). */
+  const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'job'];
+  const presets = () => S.app.settings?.presets || [];
+  /** The preset's accounts that still exist (deleted ones are skipped when it runs). */
+  const presetAccounts = p => p.accountIds.map(byId).filter(Boolean);
+  const accCount = n => t(n === 1 ? 'ps.acc1' : 'ps.accN', { n });
+  const presetSub = p => [p.gameName || p.placeInput || t('ps.noGame'), accCount(presetAccounts(p).length),
+    p.server !== 'any' && p.placeInput ? t(`ps.srv.${p.server}`) : ''].filter(Boolean).join(' · ');
+
+  /** Opens above the dock button: the presets to run, then save / edit. */
+  function presetMenu(btn) {
+    const list = presets();
+    menuAt(btn, [
+      ...(list.length ? list.map(p => ({
+        icon: 'play', text: esc(p.name), hint: esc(accCount(presetAccounts(p).length)),
+        disabled: !presetAccounts(p).length, run: () => runPreset(p.id),
+      })) : [{ icon: 'bookmark', text: t('ps.none'), disabled: true }]),
+      '-',
+      { icon: 'plus', text: t('ps.save'), run: () => presetModal(null) },
+      { icon: 'edit', text: t('ps.manage'), disabled: !list.length, run: presetsModal },
+    ], 300);
+    // The dock is at the bottom: open above the button, right edges lined up.
+    menuEl.classList.add('preset-menu');
+    const r = btn.getBoundingClientRect(), m = menuEl.getBoundingClientRect();
+    menuEl.style.left = `${Math.max(8, r.right - m.width)}px`;
+    menuEl.style.top = `${Math.max(8, r.top - m.height - 6)}px`;
+  }
+
+  async function runPreset(id, force = false) {
+    const r = await call('runPreset', { id, force });
+    return launchDone(r, () => runPreset(id, true));
+  }
+
+  async function deletePreset(p) {
+    if (!await confirmBox(t('ps.deleteQ', { name: p.name }), { title: t('ps.deleteTitle'), ok: t('ps.delete'), danger: true })) return false;
+    if (await call('deletePreset', { id: p.id }) === undefined) return false;
+    toast(t('ps.deleted'), 'ok');
+    return true;
+  }
+
+  /** New preset (prefilled from the dock: selected accounts, game box, Job ID box) or edit one. */
+  function presetModal(p) {
+    const isNew = !p;
+    const dockJob = $('#job')?.value.trim() || '';
+    const base = p || {
+      name: S.game?.ok && S.game.name ? S.game.name : '',
+      accountIds: [...S.selected],
+      placeInput: $('#place')?.value.trim() || '',
+      server: dockJob ? 'job' : 'any',
+      jobId: dockJob,
+      delaySeconds: null,
+    };
+    // The preset's accounts first, in its launch order; the rest by name.
+    const chosen = base.accountIds.map(byId).filter(Boolean);
+    const rest = accounts().filter(a => !chosen.includes(a)).sort((x, y) => compareText(x.label, y.label));
+    if (!chosen.length && !rest.length) return toast(t('rc.noAccounts'), 'info');
+    const globalDelay = S.app.settings?.launchDelaySeconds ?? 8;
+    modal({
+      title: t(isNew ? 'ps.newTitle' : 'ps.editTitle'),
+      dismissable: false,
+      body: `<div class="form preset-form">
+          <label>${t('ps.name')}<input class="field" id="ps-name" maxlength="60" placeholder="${esc(t('ps.namePh'))}" value="${esc(base.name)}"></label>
+          <label>${t('ps.game')}<input class="field" id="ps-place" maxlength="500" spellcheck="false" placeholder="${esc(t('ps.gamePh'))}" value="${esc(base.placeInput)}"></label>
+          <div class="preset-row">
+            <label>${t('ps.server')}<select class="select" id="ps-server">${PRESET_SERVERS.map(k =>
+              `<option value="${k}" ${k === base.server ? 'selected' : ''}>${t(`ps.srv.${k}`)}</option>`).join('')}</select></label>
+            <label>${t('ps.delay')}<input class="field" id="ps-delay" type="number" min="0" max="120" placeholder="${esc(t('ps.delayPh', { n: globalDelay }))}" value="${base.delaySeconds ?? ''}"></label>
+          </div>
+          <label id="ps-job-row">${t('ps.job')}<input class="field" id="ps-job" maxlength="60" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value="${esc(base.jobId)}"></label>
+          <div class="preset-accs">${t('ps.accounts')} <span class="muted" id="ps-count"></span></div>
+        </div>
+        <div class="rc-list">${[...chosen, ...rest].map(a => `<label class="rc-item">
+          <input type="checkbox" value="${a.id}" ${chosen.includes(a) ? 'checked' : ''}>
+          <div class="avatar sm">${avatarInner(a)}</div><span><b>${esc(a.label)}</b><small>@${esc(a.username)}</small></span></label>`).join('')}</div>`,
+      actions: [
+        ...(isNew ? [] : [{ text: t('ps.delete'), kind: 'danger push', onClick: async ({ close }) => { if (await deletePreset(p)) close(); } }]),
+        { text: t('common.cancel'), onClick: ({ close }) => close() },
+        {
+          text: t('ps.saveBtn'), kind: 'primary', onClick: async ({ el, close, btn }) => {
+            if (btn.disabled) return;
+            const val = sel => el.querySelector(sel).value.trim();
+            const delay = val('#ps-delay');
+            const saved = await busy(btn, () => call('savePreset', {
+              id: p?.id || '',
+              name: val('#ps-name'),
+              placeInput: val('#ps-place'),
+              server: val('#ps-server'),
+              jobId: val('#ps-job'),
+              // Ticked order = launch order.
+              ids: [...el.querySelectorAll('.rc-item input:checked')].map(b => b.value),
+              delaySeconds: delay === '' ? null : Math.min(120, Math.max(0, Math.round(+delay) || 0)),
+            }));
+            if (saved === undefined) return; // the error is shown; keep the form open
+            close();
+            toast(t('ps.saved'), 'ok');
+          },
+        },
+      ],
+      onMount: ({ el }) => {
+        const sync = () => {
+          el.querySelector('#ps-job-row').hidden = el.querySelector('#ps-server').value !== 'job';
+          el.querySelector('#ps-count').textContent = `(${el.querySelectorAll('.rc-item input:checked').length})`;
+        };
+        el.addEventListener('change', sync);
+        sync();
+        setTimeout(() => el.querySelector('#ps-name')?.focus(), 30);
+      },
+    });
+  }
+
+  /** Every preset with run / edit / delete. */
+  function presetsModal() {
+    const rows = () => presets().map((p, i) => `<div class="preset-item">
+        <div class="gtxt"><b>${esc(p.name)}</b><small>${esc(presetSub(p))}</small></div>
+        <button class="icon-btn" data-run="${i}" title="${t('ps.run')}" aria-label="${t('ps.run')}" ${presetAccounts(p).length ? '' : 'disabled'}>${icon('play')}</button>
+        <button class="icon-btn" data-edit="${i}" title="${t('ps.edit')}" aria-label="${t('ps.edit')}">${icon('edit')}</button>
+        <button class="icon-btn" data-del="${i}" title="${t('ps.delete')}" aria-label="${t('ps.delete')}">${icon('trash')}</button></div>`).join('');
+    modal({
+      title: t('ps.listTitle'),
+      body: `<div class="preset-list">${rows()}</div>`,
+      actions: [
+        { text: t('ps.new'), onClick: ({ close }) => { close(); presetModal(null); } },
+        { text: t('common.done'), kind: 'primary', onClick: ({ close }) => close() },
+      ],
+      onMount: ({ el, close }) => el.addEventListener('click', async e => {
+        const b = e.target.closest('[data-run], [data-edit], [data-del]');
+        if (!b) return;
+        const p = presets()[+(b.dataset.run ?? b.dataset.edit ?? b.dataset.del)];
+        if (!p) return;
+        if (b.dataset.run) { close(); return runPreset(p.id); }
+        if (b.dataset.edit) { close(); return presetModal(p); }
+        if (!await deletePreset(p)) return;
+        if (!presets().length) return close();
+        el.querySelector('.preset-list').innerHTML = rows();
+      }),
+    });
   }
 
   /** The sign-in window can add several accounts in a row; select whatever was added. */
@@ -1351,6 +1638,7 @@
       title: '',
       body: `<div id="pw-body"></div>`,
       onClose: () => {
+        call('loginCancel', {}, { silent: true }); // the app drops the half-done sign-in and its password
         if (!added.length) return;
         S.selected = new Set(added.map(a => a.id));
         S.anchor = added[added.length - 1].id;
@@ -1646,15 +1934,16 @@
     toast(t(r.failed ? 't.checkedFail' : 't.checked', { ok: r.ok, bad: r.bad, f: r.failed }), r.bad ? 'warn' : 'ok', show);
   }
 
-  async function closeIds(ids) {
-    const n = await call('closeAccounts', { ids });
-    if (n !== undefined) toast(n ? t('t.closing', { n }) : t('t.noneRunning'), n ? 'ok' : 'info');
+  /** force: end the clients at once (frozen ones) instead of closing their windows first. */
+  async function closeIds(ids, force = false) {
+    const n = await call('closeAccounts', { ids, force });
+    if (n !== undefined) toast(n ? t(force ? 't.killing' : 't.closing', { n }) : t('t.noneRunning'), n ? 'ok' : 'info');
   }
 
-  async function closeAll() {
-    if (!await confirmBox(t('t.closeAllQ'), { ok: t('t.closeAllOk'), danger: true })) return;
-    const n = await call('closeAll');
-    if (n !== undefined) toast(n ? t('t.closingAll', { n }) : t('t.noRoblox'), 'ok');
+  async function closeAll(force = false) {
+    if (!await confirmBox(t(force ? 't.killAllQ' : 't.closeAllQ'), { ok: t(force ? 't.killAllOk' : 't.closeAllOk'), danger: true })) return;
+    const n = await call('closeAll', { force });
+    if (n !== undefined) toast(n ? t(force ? 't.killing' : 't.closingAll', { n }) : t('t.noRoblox'), 'ok');
   }
 
   async function removeIds(ids) {
@@ -1696,10 +1985,42 @@
   /** The server an account is in: from its window's log here, or from Roblox's status when visible. */
   function serverOf(a) {
     if (!a) return null;
-    if (isLocal(a) && a.session?.jobId && a.session.connection === 'ingame' && a.session.game?.placeId)
-      return { placeId: a.session.game.placeId, jobId: a.session.jobId };
-    if (a.presence?.type === 'ingame' && a.presence.jobId && a.presence.placeId) return { placeId: a.presence.placeId, jobId: a.presence.jobId };
+    // The server id goes with the place it belongs to (a game can move players to another of its places).
+    if (isLocal(a) && a.session?.jobId && a.session.connection === 'ingame' && (a.session.jobPlaceId || a.session.game?.placeId))
+      return { placeId: a.session.jobPlaceId || a.session.game.placeId, jobId: a.session.jobId };
+    if (a.presence?.type === 'ingame' && a.presence.jobId && (a.presence.joinPlaceId || a.presence.placeId))
+      return { placeId: a.presence.joinPlaceId || a.presence.placeId, jobId: a.presence.jobId };
     return null;
+  }
+
+  /** "Chosen accounts": tick them in one list instead of going through each account's ⋯ menu. */
+  function pickRobloxConfigAccounts() {
+    const list = accounts().slice().sort((x, y) => compareText(x.label, y.label));
+    if (!list.length) return toast(t('rc.noAccounts'), 'info');
+    modal({
+      title: t('rc.pickTitle'),
+      body: `<p class="modal-text">${t('rc.pickText')}</p><div class="rc-list">${list.map(a => `<label class="rc-item">
+          <input type="checkbox" value="${a.id}" ${a.useRobloxConfig ? 'checked' : ''}>
+          <div class="avatar sm">${avatarInner(a)}</div><span><b>${esc(a.label)}</b><small>@${esc(a.username)}</small></span></label>`).join('')}</div>`,
+      actions: [
+        { text: t('common.cancel'), onClick: ({ close }) => close() },
+        {
+          text: t('common.done'), kind: 'primary', onClick: async ({ el, close, btn }) => {
+            if (btn.disabled) return;
+            const boxes = [...el.querySelectorAll('.rc-item input')];
+            const on = boxes.filter(b => b.checked).map(b => b.value), off = boxes.filter(b => !b.checked).map(b => b.value);
+            let ok = true;
+            await busy(btn, async () => {
+              if (on.length) ok = await call('setUseRobloxConfig', { ids: on, enabled: true }) !== undefined;
+              if (ok && off.length) ok = await call('setUseRobloxConfig', { ids: off, enabled: false }) !== undefined;
+            });
+            if (!ok) return; // the error is shown; keep the list open to try again
+            close();
+            toast(t('rc.picked', { n: on.length }), 'ok');
+          },
+        },
+      ],
+    });
   }
 
   async function toggleRobloxConfig(ids) {
@@ -1739,6 +2060,7 @@
       { icon: 'play', text: many ? t('m.playN', { n: ids.length }) : t('m.play'), hint: 'Enter', run: () => launch(ids, false) },
       { icon: 'monitor', text: t('m.openApp'), run: () => launch(ids, true) },
       { icon: 'power', text: t('m.close'), disabled: !ids.some(i => isLocal(byId(i) || {})), run: () => closeIds(ids) },
+      { icon: 'x', text: t('m.kill'), danger: true, disabled: !ids.some(i => isLocal(byId(i) || {})), run: () => closeIds(ids, true) },
       '-',
       { icon: 'edit', text: t('m.edit'), hint: 'F2', disabled: many, run: () => editAccount(id) },
       { icon: 'refresh', text: t('m.check'), run: () => checkAccounts(ids) },
@@ -1838,6 +2160,7 @@
               args.id = a.id;
               if (dirty.has('password')) args.password = val('password');
             }
+            if (btn.disabled) return; // a second click while the first is still saving
             try {
               const r = await busy(btn, () => bridge.call(isNew ? 'addViaCookie' : 'updateAccount', args));
               close();
@@ -1925,11 +2248,12 @@
           { icon: 'grid', text: t('m.arrange'), run: () => arrange($('[data-act=tools-menu]')) },
           { icon: 'download', text: t('m.importRam'), run: importRam },
           '-',
-          { icon: 'power', text: t('m.closeAll'), danger: true, run: closeAll },
+          { icon: 'power', text: t('m.closeAll'), danger: true, run: () => closeAll() },
+          { icon: 'x', text: t('m.killAll'), danger: true, run: () => closeAll(true) },
         ], 280);
       case 'layout':
         S.layout = el.dataset.l === 'list' ? 'list' : 'cards';
-        store.set('rm.layout', S.layout);
+        call('setSettings', { layout: S.layout }, { silent: true });
         renderChips();
         renderGrid();
         return;
@@ -1938,7 +2262,7 @@
           icon: 'sort', text: t(`sort.${k}`), checked: S.sort === k,
           run: () => {
             S.sort = k;
-            store.set('rm.sort', k);
+            call('setSettings', { sort: k }, { silent: true });
             renderChips();
             renderGrid();
           },
@@ -1956,7 +2280,11 @@
       case 'open-app': return launch([...S.selected], true);
       case 'arrange': return arrange(el);
       case 'close-sel': return closeIds([...S.selected]);
+      case 'close-all': return closeAll();
+      case 'rc-pick': return pickRobloxConfigAccounts();
+      case 'pick-launcher': return call('pickLauncher');
       case 'cancel-launch': return call('cancelLaunch');
+      case 'preset-menu': return presetMenu(el);
       case 'multi-help': return multiHelp();
       case 'select-all': return selectAllVisible();
       case 'clear-sel':
@@ -1972,6 +2300,13 @@
         scheduleSaveInputs();
         return;
       case 'open-data': return call('openDataFolder');
+      case 'bk-pick': return call('pickBackupFolder');
+      case 'bk-use': return call('setBackup', { folder: el.dataset.path });
+      case 'bk-open': return call('openBackupFolder');
+      case 'bk-now': return busy(el, async () => { if (await call('backupNow') !== undefined) toast(t('bk.done'), 'ok'); });
+      case 'bk-restore': return restoreBackup();
+      // First-run screen: the chosen file becomes the vault; the app then shows the unlock screen.
+      case 'restore-backup': return call('restoreBackup');
       case 'check-updates': return busy(el, () => call('checkUpdates'));
       case 'whats-new': return call('whatsNew').then(list => showWhatsNew(list));
       // Bloxkeep closes and reopens as the new version; Roblox windows stay open.
@@ -2058,19 +2393,111 @@
     S.app = st;
     if (st.themeApplied) document.documentElement.dataset.theme = st.themeApplied;
     if (st.locked) {
+      S.bootDone = S.bootTimedOut = false;
+      stopBoot();
       S.selected.clear();
       S.metrics = { accounts: [], robloxCount: 0, totalMb: 0, systemMb: 0 };
       renderLock();
       return;
     }
+    // The list's look is kept with the other settings (the browser's own storage is lost when GPU drawing is switched
+    // or the app is reinstalled). Older versions kept it in the browser: carry that over once.
+    if (st.settings && !S.viewPrefsLoaded) {
+      S.viewPrefsLoaded = true;
+      if (st.settings.layout || st.settings.sort) {
+        if (st.settings.layout) S.layout = st.settings.layout;
+        if (st.settings.sort) S.sort = st.settings.sort;
+      } else if (S.layout !== 'cards' || S.sort !== 'name') {
+        call('setSettings', { layout: S.layout, sort: S.sort }, { silent: true });
+      }
+    }
     const ids = new Set(st.accounts.map(a => a.id));
     for (const id of [...S.selected]) if (!ids.has(id)) S.selected.delete(id);
+    // Right after unlocking, a loading screen (like other apps have at start) with the app's real steps, so the
+    // accounts appear with their status and avatars instead of "unknown". Never longer than BOOT_MAX.
+    if (!S.shell && !S.bootDone) {
+      if (st.boot && !S.bootTimedOut) {
+        showBoot(st.boot);
+        return;
+      }
+      if ($('#boot')) {
+        // Let the bar reach the end before the accounts appear.
+        if (!S.bootFinishing) {
+          S.bootFinishing = true;
+          finishBoot(() => {
+            S.bootFinishing = false;
+            S.bootDone = true;
+            applyState(S.app);
+          });
+        }
+        return;
+      }
+    }
+    S.bootDone = true;
+    stopBoot();
     if (!S.shell) buildShell();
     update();
     if (st.whatsNew && !S.whatsNewShown) {
       S.whatsNewShown = true;
       showWhatsNew(st.whatsNew.releases, () => call('seenWhatsNew'));
     }
+  }
+
+  /* ───────────────────────── loading screen ─────────────────────────
+     A progress bar driven by the app's real steps ({ stage, percent }). While a step runs the bar creeps towards the
+     next step's mark but never past it, and jumps when the step finishes — the way browsers and Discord do it.
+     Reusable for any long start: add a stage here with its label and where it ends. */
+  const BOOT_MAX = 8000;
+  const BOOT_STEPS = {
+    status: { label: 'boot.status', end: 0.8 },
+    avatars: { label: 'boot.avatars', end: 1 },
+  };
+  function showBoot(boot) {
+    if (!$('#boot')) {
+      const app = $('#app');
+      app._html = null;
+      app.innerHTML = `<div class="boot" id="boot" role="progressbar" aria-valuemin="0" aria-valuemax="100"><img src="${LOGO}" alt=""><b>Bloxkeep</b>
+        <div class="boot-bar"><i id="boot-fill"></i></div><span id="boot-text"></span></div>`;
+      S.lockMode = null;
+      S.bootValue = 0.05;
+    }
+    const step = BOOT_STEPS[boot.stage] || { label: 'boot.loading', end: 1 };
+    S.bootValue = Math.max(S.bootValue, boot.percent);
+    S.bootCeil = Math.max(S.bootValue, step.end - 0.04);
+    setText($('#boot-text'), t(step.label));
+    paintBoot();
+    S.bootTrickle ||= setInterval(() => {
+      S.bootValue += (S.bootCeil - S.bootValue) * 0.05;
+      paintBoot();
+    }, 200);
+    // Set once: later pushes while loading must not push the deadline back.
+    S.bootTimer ||= setTimeout(() => {
+      S.bootTimer = 0;
+      S.bootTimedOut = true;
+      applyState(S.app);
+    }, BOOT_MAX);
+  }
+  function paintBoot() {
+    const fill = $('#boot-fill');
+    if (!fill) return;
+    fill.style.transform = `scaleX(${Math.min(1, S.bootValue).toFixed(3)})`;
+    $('#boot').setAttribute('aria-valuenow', Math.round(S.bootValue * 100));
+  }
+  function finishBoot(then) {
+    stopBoot();
+    S.bootValue = 1;
+    paintBoot();
+    S.bootFinish = setTimeout(() => {
+      S.bootFinish = 0;
+      then();
+    }, 260);
+  }
+  function stopBoot() {
+    clearInterval(S.bootTrickle);
+    clearTimeout(S.bootTimer);
+    clearTimeout(S.bootFinish); // locking during the last step must not mark the next unlock as loaded
+    S.bootTrickle = S.bootTimer = S.bootFinish = 0;
+    S.bootFinishing = false;
   }
 
   bridge.on('state', applyState);

@@ -30,6 +30,16 @@ public static class Prefs
     /// <summary>The version that last ran here; a newer one means the app was updated (see <see cref="WhatsNew"/>).</summary>
     public static string? LastVersion { get; set; }
 
+    /// <summary>Important events reach the person as Windows notifications while the window is hidden or in the background.</summary>
+    public static bool Notifications { get; set; } = true;
+
+    /// <summary>Where copies of the vault go (see <see cref="Backup"/>); null until chosen. Kept here so restoring works before unlocking.</summary>
+    public static string? BackupFolder { get; set; }
+
+    public static bool BackupEnabled { get; set; } = true;
+
+    public static DateTime? LastBackup { get; set; }
+
     public static void Load()
     {
         try
@@ -50,6 +60,14 @@ public static class Prefs
                 CheckUpdates = false;
             if (root.TryGetProperty("lastVersion", out var last) && last.ValueKind == JsonValueKind.String)
                 LastVersion = last.GetString();
+            if (root.TryGetProperty("notifications", out var notify) && notify.ValueKind == JsonValueKind.False)
+                Notifications = false;
+            if (root.TryGetProperty("backupFolder", out var folder) && folder.ValueKind == JsonValueKind.String)
+                BackupFolder = folder.GetString() is { Length: > 0 } f ? f : null;
+            if (root.TryGetProperty("backupEnabled", out var backup) && backup.ValueKind == JsonValueKind.False)
+                BackupEnabled = false;
+            if (root.TryGetProperty("lastBackup", out var lastBackup) && lastBackup.ValueKind == JsonValueKind.String && lastBackup.TryGetDateTime(out var at))
+                LastBackup = at.ToUniversalTime();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
@@ -66,6 +84,7 @@ public static class Prefs
             {
                 language = Language, theme = Theme, closeToTray = CloseToTray, trayHintShown = TrayHintShown,
                 safeRendering = SafeRendering, checkUpdates = CheckUpdates, lastVersion = LastVersion,
+                notifications = Notifications, backupFolder = BackupFolder, backupEnabled = BackupEnabled, lastBackup = LastBackup,
             }));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

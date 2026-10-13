@@ -42,21 +42,39 @@
   let language = params.get('lang') || 'en';
   let theme = params.get('theme') || 'dark';
   let closeToTray = true;
+  let notifications = true;
+  // ?backup=1 shows a chosen folder with a recent backup; ?bkerr=1 a failed one; ?weak=1 the weak-password line.
+  let backup = {
+    enabled: true, folder: params.has('backup') ? 'C:\\Users\\Admin\\OneDrive\\Bloxkeep' : null,
+    lastBackup: params.has('backup') ? minsAgo(5) : null, error: params.has('bkerr') ? 'Access to the path is denied.' : null,
+    suggested: [{ path: 'G:\\My Drive\\Bloxkeep', name: 'Google Drive' }, ...(params.has('backup') ? [] : [{ path: 'C:\\Users\\Admin\\OneDrive\\Bloxkeep', name: 'OneDrive' }])],
+    cloud: params.has('backup'), weakPassword: params.has('weak'),
+  };
+  let unlockedAt = 0; // the loading screen's steps take a moment after unlocking
+  const boot = () => {
+    const ms = Date.now() - unlockedAt;
+    return ms < 1400 ? { stage: 'status', percent: 0.3 } : ms < 2200 ? { stage: 'avatars', percent: 0.8 } : null;
+  };
   const themeApplied = () => theme !== 'system' ? theme : matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   let settings = {
     lastPlaceInput: 'https://www.roblox.com/games/2753915549/Blox-Fruits', lastJobId: '', renameWindows: true, launchVia: 'auto', launchDelaySeconds: 8,
     memoryWarnings: true, trimBackground: false, antiAfk: false, robloxConfig: { mode: params.has('rc') ? 'marked' : 'off', graphics: 1, fps: 30, volume: 0 },
     recentGames: [2753915549, 920587237, 4924922222].map(p => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl })),
+    // Launch presets; ?nopresets=1 starts without any. A deleted account (…09) is skipped when it runs.
+    presets: params.has('nopresets') ? [] : [
+      { id: 'p1', name: 'Farm Blox Fruits', accountIds: [id(2), id(3), id(4), id(9)], placeInput: 'https://www.roblox.com/games/2753915549/Blox-Fruits', gameName: games[2753915549].name, server: 'ping', jobId: '', delaySeconds: 12 },
+      { id: 'p2', name: 'Adopt Me trade', accountIds: [id(6)], placeInput: '920587237', gameName: games[920587237].name, server: 'any', jobId: '', delaySeconds: null },
+    ],
   };
   let multi = { enabled: true, armed: !params.has('notready'), trayAutostart: true };
   let emit = () => {};
   const state = () => ({
-    language, theme, themeApplied: themeApplied(), closeToTray, vaultExists: !params.has('new'), locked,
+    language, theme, themeApplied: themeApplied(), closeToTray, notifications, backup, boot: boot(), vaultExists: !params.has('new'), locked,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false },
     update: { supported: true, current: '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? '1.0.1' : null, progress: 0, error: null, auto: true },
-    installs: { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, roblox: false, direct: true, store: params.has('store') },
-    monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: 'C:\\Users\\Admin\\AppData\\Local\\RobloxManager', robloxInstalled: true,
+    installs: { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store') },
+    monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: 'C:\\Users\\Admin\\AppData\\Local\\RobloxManager', robloxInstalled: !params.has('noroblox'),
     launching: false, checking: false, multi, settings: locked ? null : settings, accounts: locked ? [] : accounts,
   });
   const push = () => emit('state', state());
@@ -77,18 +95,31 @@
       switch (cmd) {
         case 'getState': return { resume: false, view: null, state: state() };
         case 'keepView': return null;
-        case 'servers': await wait(400); return { servers: Array.from({ length: 12 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 15 - i, maxPlayers: 15, ping: 60 + i * 9, fps: 60 })), next: a?.cursor ? null : 'more' };
+        case 'servers': await wait(400); return { servers: Array.from({ length: 12 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 15 - i, maxPlayers: 15, ping: 140 - i * 9, fps: 50 + (i * 7) % 11 })), next: a?.cursor ? null : 'more' };
         case 'seenWhatsNew': return null;
         case 'whatsNew': return [{ version: '1.0.0', date: '2026-10-12', en: ['First release.'], vi: ['Bản đầu tiên.'] }];
         case 'unlock': case 'createVault':
           await wait(500);
           if (a.password === 'sai') throw new Error('Sai mật khẩu chủ.');
           locked = false;
+          unlockedAt = Date.now();
+          setTimeout(push, 1450);
+          setTimeout(push, 2250);
           return state();
         case 'lock': locked = true; push(); return null;
         case 'setLanguage': language = a.language; push(); return null;
         case 'setTheme': theme = a.theme; push(); return null;
         case 'setCloseToTray': closeToTray = a.enabled; push(); return null;
+        case 'setNotifications': notifications = a.enabled; push(); return null;
+        case 'setBackup':
+          if ('enabled' in a) backup = { ...backup, enabled: a.enabled };
+          if (a.folder) backup = { ...backup, folder: a.folder, cloud: true, lastBackup: new Date().toISOString(), error: null, suggested: backup.suggested.filter(s => s.path !== a.folder) };
+          push();
+          return null;
+        case 'pickBackupFolder': backup = { ...backup, folder: 'D:\\Backups\\Bloxkeep', cloud: false, lastBackup: new Date().toISOString(), error: null }; push(); return null;
+        case 'backupNow': await wait(300); if (params.has('bkerr')) throw new Error("Couldn't back up: Access to the path is denied."); backup = { ...backup, lastBackup: new Date().toISOString() }; push(); return null;
+        case 'openBackupFolder': return null;
+        case 'restoreBackup': await wait(500); locked = true; push(); emit('toast', { text: 'Backup restored. Unlock it with the master password it was saved with.', kind: 'ok' }); return null;
         case 'resolveGame': {
           const m = /(\d{5,})/.exec(a.input);
           if (!m) return { ok: false, error: 'Không đọc được Place ID từ link này.' };
@@ -97,7 +128,8 @@
         }
         case 'setSettings':
           if ('multiInstance' in a) multi = { ...multi, enabled: a.multiInstance };
-          settings = { ...settings, ...a };
+          // Like the app: only the fields sent change (robloxConfig included).
+          settings = { ...settings, ...a, robloxConfig: { ...settings.robloxConfig, ...(a.robloxConfig || {}) } };
           push();
           return null;
         case 'launch': {
@@ -115,6 +147,39 @@
             push();
           }, 1500);
           return { launched: a.ids.length, errors: [], cancelled: false };
+        }
+        // Like the app: name and accounts required, a Job ID for "job", no server choice without a game.
+        case 'savePreset': {
+          if (!a.name) throw new Error('Give the preset a name.');
+          const ids = a.ids.filter(x => accounts.some(y => y.id === x));
+          if (!ids.length) throw new Error('Select at least one account.');
+          const server = a.placeInput ? a.server : 'any';
+          if (server === 'job' && !a.jobId) throw new Error("Enter the server's Job ID.");
+          const m = /(\d{5,})/.exec(a.placeInput);
+          const preset = { id: a.id || `p${Date.now()}`, name: a.name.slice(0, 60), accountIds: ids, placeInput: a.placeInput,
+            gameName: m && games[m[1]] ? games[m[1]].name : '', server, jobId: server === 'job' ? a.jobId : '', delaySeconds: a.delaySeconds };
+          const list = settings.presets;
+          const i = list.findIndex(p => p.id === preset.id);
+          if (i >= 0) list[i] = preset; else list.push(preset);
+          push();
+          return preset.id;
+        }
+        case 'deletePreset': settings.presets = settings.presets.filter(p => p.id !== a.id); push(); return null;
+        // ?noroom=1: no server has room, so Roblox picks (the app says so in a toast).
+        case 'runPreset': {
+          const p = settings.presets.find(x => x.id === a.id);
+          if (!p) throw new Error('Preset not found.');
+          const ids = p.accountIds.filter(x => accounts.some(y => y.id === x));
+          if (!ids.length) throw new Error('This preset has no accounts left.');
+          if (ids.length > 1 && !multi.armed && !a.force) return { needsConfirm: true, message: 'Multi-Roblox chưa sẵn sàng vì đã có Roblox chạy trước.\n\nVẫn tiếp tục mở?' };
+          const errors = ids.filter(x => accounts.find(y => y.id === x).state !== 'idle').map(x => `${accounts.find(y => y.id === x).label}: already running — skipped.`);
+          if (!['any', 'job'].includes(p.server) && p.placeInput) {
+            emit('progress', { text: 'Đang tìm server…' });
+            await wait(600);
+            if (params.has('noroom')) emit('toast', { text: `No server has room for ${ids.length} accounts right now, so Roblox picks one.`, kind: 'warn' });
+          }
+          const r = await window.__mockBridge.call('launch', { ids: ids.filter(x => accounts.find(y => y.id === x).state === 'idle'), force: true });
+          return { ...r, errors };
         }
         case 'closeAccounts':
           accounts.forEach(x => { if (a.ids.includes(x.id) && x.state === 'running') { x.state = 'idle'; x.session = null; } });
@@ -134,8 +199,16 @@
         case 'addViaCookie': throw new Error('Cookie không hợp lệ hoặc đã hết hạn.');
         case 'addViaBrowser': throw new Error('Bản xem thử không mở được trình duyệt đăng nhập.');
         case 'closeAll': return 2;
+        case 'friendServers': await wait(600); if (params.has('friendsfail')) throw new Error('HTTP 500'); return { asked: 2, friends: params.has('nofriends') ? [] : [
+          { userId: 261, name: 'Shedletsky', displayName: 'Shedletsky', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: 'Acc chính' },
+          { userId: 156, name: 'builderman', displayName: 'builderman', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: 'Farm 1' }] };
+        case 'pickLauncher': settings = { ...settings, customLauncher: 'Froststrap', launchVia: 'custom' }; push(); return null;
         case 'importRam': return { added: 3, updated: 1, skipped: 0, total: 4 };
         case 'arrangeWindows': return 2;
+        case 'setUseRobloxConfig':
+          accounts.forEach(x => { if (a.ids.includes(x.id)) x.useRobloxConfig = a.enabled; });
+          push();
+          return a.ids.length;
         case 'setAutoRejoin':
           accounts.forEach(x => { if (a.ids.includes(x.id)) x.autoRejoin = a.enabled; });
           push();

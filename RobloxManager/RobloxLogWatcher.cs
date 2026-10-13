@@ -26,6 +26,8 @@ public sealed class RobloxLogWatcher
         public string Partial = "";
         public ClientState? State;
         public bool Leaving;
+        /// <summary>When the last teleport line was logged; only a disconnect soon after it belongs to that teleport.</summary>
+        public DateTime? TeleportAt;
         public int? PendingReason;
     }
 
@@ -36,6 +38,11 @@ public sealed class RobloxLogWatcher
     const string ConnectedMark = "[FLog::Network] serverId:";
     const string LeavingMark = "[FLog::SingleSurfaceApp] leaveUGCGameInternal";
     const string DisconnectedMark = "[FLog::Network] Time to disconnect replication data";
+    // A game moving the player to another of its places (seen 2026-10-13): doTeleport, then the same disconnect line
+    // as a kick, then "Teleported." and a new "Joining game" a fraction of a second later.
+    const string TeleportMark = "UgcExperienceController: doTeleport";
+    // A teleport that never got that far (it failed) must not turn a kick minutes later into "joining".
+    static readonly TimeSpan TeleportWindow = TimeSpan.FromSeconds(30);
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
@@ -131,6 +138,7 @@ public sealed class RobloxLogWatcher
         if (line.Contains("! Joining game", StringComparison.Ordinal) && JoiningLine.Match(line) is { Success: true } join)
         {
             tail.Leaving = false;
+            tail.TeleportAt = null;
             tail.PendingReason = null;
             tail.State = new ClientState("joining", long.Parse(join.Groups[2].Value, CultureInfo.InvariantCulture), join.Groups[1].Value, null, TimeOf(line));
         }
@@ -138,13 +146,25 @@ public sealed class RobloxLogWatcher
             tail.State = joining with { Status = "ingame", At = TimeOf(line) };
         else if (line.Contains(LeavingMark, StringComparison.Ordinal))
             tail.Leaving = true;
+        else if (line.Contains(TeleportMark, StringComparison.Ordinal))
+            tail.TeleportAt = TimeOf(line);
         else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine.Match(line) is { Success: true } reason)
             tail.PendingReason = int.Parse(reason.Groups[1].Value, CultureInfo.InvariantCulture);
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.State is { } state)
         {
+            var at = TimeOf(line);
+            // Leaving the old place on the way to the next one: still in the game, about to join.
+            bool teleporting = tail.TeleportAt is { } teleport && at - teleport < TeleportWindow;
+            tail.TeleportAt = null; // once: a later disconnect without a new teleport is a real one
+            if (teleporting)
+            {
+                tail.State = state with { Status = "joining", At = at };
+                tail.PendingReason = null;
+                return;
+            }
             tail.State = tail.Leaving
-                ? state with { Status = "left", Reason = null, At = TimeOf(line) }
-                : state with { Status = "disconnected", Reason = tail.PendingReason, At = TimeOf(line) };
+                ? state with { Status = "left", Reason = null, At = at }
+                : state with { Status = "disconnected", Reason = tail.PendingReason, At = at };
             tail.Leaving = false;
             tail.PendingReason = null;
         }

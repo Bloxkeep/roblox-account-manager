@@ -14,7 +14,7 @@ public sealed class UserError(string message) : Exception(message);
 /// resource guard. The page sends {id, cmd, args}; each command gets a {type:"reply"} and state changes are
 /// pushed as events. Cookies and passwords only reach the page when the user explicitly reveals one.
 /// </summary>
-public sealed class AppController : IDisposable
+public sealed partial class AppController : IDisposable
 {
     sealed record PendingLaunch(Guid AccountId, HashSet<int> Before, DateTime StartedAt, GameTarget? Target);
 
@@ -57,6 +57,16 @@ public sealed class AppController : IDisposable
     readonly Dictionary<PendingLaunch, DateTime> _pendingSeenAlive = new(ReferenceEqualityComparer.Instance);
     /// <summary>A launch whose clients have all quit (failed sign-in, closed by the person) stops waiting after this.</summary>
     static readonly TimeSpan PendingGoneGrace = TimeSpan.FromSeconds(5);
+    /// <summary>Launches the person closed while still opening: their client is closed as soon as it is claimed.</summary>
+    readonly HashSet<PendingLaunch> _closeWhenClaimed = new(ReferenceEqualityComparer.Instance);
+    /// <summary>
+    /// Clients that were in a game and ended (their X button, a crash): the windowless copy Roblox then starts in
+    /// the notification area is their child; it is ended while it appears within this time.
+    /// </summary>
+    readonly Dictionary<int, DateTime> _traySweep = new();
+    static readonly TimeSpan TraySweep = TimeSpan.FromSeconds(15);
+    /// <summary>A log stuck in "joining" (a join or teleport that never finished) stops being trusted after this.</summary>
+    static readonly TimeSpan JoiningTimeout = TimeSpan.FromMinutes(2);
     readonly Dictionary<long, string> _avatarUrls = new();
     readonly Dictionary<long, GameInfo?> _games = new();
     readonly Dictionary<long, DateTime> _gameFetchedAt = new();
@@ -73,6 +83,9 @@ public sealed class AppController : IDisposable
     /// <summary>Last time each client (by process id) got input: from the person playing it or from anti-AFK.</summary>
     readonly Dictionary<int, DateTime> _lastInput = new();
     readonly HashSet<int> _idleKickReported = new();
+    /// <summary>Windows a nudge couldn't reach (focus refused, PC locked): not tried again before this.</summary>
+    readonly Dictionary<int, DateTime> _nudgeRetryAt = new();
+    static readonly TimeSpan NudgeRetry = TimeSpan.FromMinutes(1);
     /// <summary>Roblox windows currently set to a low memory priority (they are in the background).</summary>
     readonly HashSet<int> _lowMemoryPriority = new();
     /// <summary>The Roblox settings file holds values Bloxkeep wrote; the person's own come back when Roblox is closed.</summary>
@@ -90,12 +103,15 @@ public sealed class AppController : IDisposable
     /// <summary>The version that ran before an update, until the page has shown what's new since then.</summary>
     string? _updatedFrom;
     Vault? _vault;
-    CancellationTokenSource? _launchCts;
-    bool _checking, _lastArmed, _presenceBusy, _rejoining, _trimRefusedShown, _disposed;
+    CancellationTokenSource? _launchCts, _rejoinCts;
+    bool _bootStatusDone, _bootAvatarsDone;
+    BootProgress? _boot;
+    bool _checking, _lastArmed, _presenceBusy, _presenceLoaded, _rejoining, _trimRefusedShown, _disposed;
     DateTime _nextPresence, _lastTrim, _lastMemoryWarning, _installsReadAt, _sweepBackgroundUntil, _resumedAt, _lastSessionStart;
     string? _lastMetrics, _lastState, _pageView;
     InstallsInfo? _installs;
     DateTime? _saveDue;
+    bool _saveFailed;
     (bool Protocol, bool TrayAutostart)? _registry;
     DateTime _registryReadAt;
 
@@ -118,6 +134,12 @@ public sealed class AppController : IDisposable
 
     /// <summary>Recreates the interface drawing on the CPU (true) or the graphics card (false).</summary>
     public Func<bool, Task>? SetSafeRendering { get; init; }
+
+    /// <summary>Runs right before the updater restarts the app (which skips the window's normal shutdown).</summary>
+    public Action? BeforeRestart { get; init; }
+
+    /// <summary>Runs when the updater couldn't restart after all: the app keeps running (its tray icon comes back).</summary>
+    public Action? RestartFailed { get; init; }
 
     /// <summary>The window applies a new theme or close-to-tray choice.</summary>
     public Action? AppearanceChanged { get; init; }
@@ -208,6 +230,7 @@ public sealed class AppController : IDisposable
         "quickLoginCancel" => Done(QuickLoginCancel()),
         "loginPassword" => LoginPasswordAsync(Str(a, "username"), Str(a, "password"), Realm.Normalize(Str(a, "realm"))),
         "loginTwoStep" => LoginTwoStepAsync(Str(a, "method"), Str(a, "code")),
+        "loginCancel" => Done(LoginCancel()),
         "loginCaptcha" => LoginCaptchaAsync(),
         "addViaCookie" => AddViaCookieAsync(a),
         "importRam" => ImportRamAsync(),
@@ -224,11 +247,15 @@ public sealed class AppController : IDisposable
         "gameIcons" => GameIconsAsync(a),
         "gameLists" => GameListsAsync(),
         "servers" => ServersAsync(Long(a, "placeId"), Bool(a, "fewest"), OptStr(a, "cursor")),
+        "friendServers" => FriendServersAsync(Long(a, "placeId"), Ids(a)),
         "pinGame" => Done(TogglePin(Long(a, "placeId"), Long(a, "universeId"), Str(a, "name"))),
         "launch" => LaunchAsync(a),
         "cancelLaunch" => Done(CancelLaunch()),
-        "closeAccounts" => Done(CloseAccounts(Ids(a))),
-        "closeAll" => Done(CloseAll()),
+        "savePreset" => SavePresetAsync(a),
+        "deletePreset" => Done(DeletePreset(Id(a))),
+        "runPreset" => RunPresetAsync(Id(a), Bool(a, "force")),
+        "closeAccounts" => Done(CloseAccounts(Ids(a), Bool(a, "force"))),
+        "closeAll" => Done(CloseAll(Bool(a, "force"))),
         "arrangeWindows" => ArrangeWindowsAsync((int)Long(a, "monitor")),
         "setSettings" => Done(SetSettings(a)),
         "setRendering" => SetRenderingAsync(Bool(a, "gpu")),
@@ -236,6 +263,13 @@ public sealed class AppController : IDisposable
         "removeRecent" => Done(RemoveRecent(Long(a, "placeId"))),
         "openProfile" => Done(OpenUrl($"https://www.roblox.com/users/{Long(a, "userId")}/profile")),
         "openDataFolder" => Done(OpenDataFolder()),
+        "setNotifications" => Done(SetNotifications(Bool(a, "enabled"))),
+        "setBackup" => Done(SetBackup(a)),
+        "pickBackupFolder" => Done(PickBackupFolder()),
+        "openBackupFolder" => Done(OpenBackupFolder()),
+        "backupNow" => Done(BackupNow()),
+        "restoreBackup" => Done(RestoreBackup()),
+        "pickLauncher" => Done(PickLauncher()),
         _ => throw new UserError(L.F("Unknown command: {0}", cmd)),
     };
 
@@ -286,6 +320,8 @@ public sealed class AppController : IDisposable
         theme = Prefs.Theme,
         themeApplied = Themes.Current.Id,
         closeToTray = Prefs.CloseToTray,
+        notifications = Prefs.Notifications,
+        backup = BackupDto(),
         safeRendering = Prefs.SafeRendering,
         update = _updater.Dto(),
         robloxVersion = RobloxVersionDto(),
@@ -298,6 +334,7 @@ public sealed class AppController : IDisposable
         robloxInstalled = RegistryInfo().Protocol,
         launching = _launchCts is not null,
         checking = _checking,
+        boot = _vault is null ? null : _boot,
         multi = new
         {
             enabled = _vault?.Data.Settings.MultiInstance ?? false,
@@ -311,7 +348,8 @@ public sealed class AppController : IDisposable
     };
 
     /// <summary>Which Roblox clients and launchers exist, and the version of the client the chosen option starts.</summary>
-    sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client);
+    /// <param name="Others">Other Bloxstrap-style launchers found here (their option is "other:&lt;name&gt;").</param>
+    sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, List<string> Others, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client);
 
     /// <param name="UpToDate">null until both versions are known.</param>
     sealed record RobloxVersionInfo(string? Installed, string? Latest, bool? UpToDate, bool Direct);
@@ -336,10 +374,11 @@ public sealed class AppController : IDisposable
             Handler: RobloxInstalls.ProtocolHandlerPath() is { } h ? Path.GetFileNameWithoutExtension(h) : null,
             Bloxstrap: RobloxInstalls.FindBootstrapper("Bloxstrap") is not null,
             Fishstrap: RobloxInstalls.FindBootstrapper("Fishstrap") is not null,
+            Others: RobloxInstalls.FindOtherBootstrappers(),
             Roblox: RobloxInstalls.FindOfficialClient() is not null,
             Direct: RobloxInstalls.FindAnyClient() is not null,
             Store: RobloxInstalls.StoreEditionInstalled(),
-            Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto")));
+            Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")));
     }
 
     /// <summary>
@@ -388,17 +427,19 @@ public sealed class AppController : IDisposable
         a.AutoRejoin,
         a.UseRobloxConfig,
         avatarUrl = _avatarUrls.GetValueOrDefault(a.UserId),
-        state = _running.ContainsKey(a.Id) ? "running" : _pending.Any(p => p.AccountId == a.Id) ? "launching" : "idle",
+        state = _running.ContainsKey(a.Id) ? "running"
+            : _pending.Any(p => p.AccountId == a.Id && !_closeWhenClaimed.Contains(p)) ? "launching" : "idle",
         presence = PresenceDto(a),
         session = _running.TryGetValue(a.Id, out var run)
             ? new
             {
                 pid = run.Pid,
                 since = run.Launch.StartedAt,
-                game = GameDto(_logs.StateOf(run.Pid)?.PlaceId ?? run.Launch.Target?.PlaceId),
+                game = SessionGameDto(run.Pid, run.Launch),
                 connection = Connection(a, run.Pid, run.Launch),
                 reason = _logs.StateOf(run.Pid) is { Status: "disconnected" } kicked ? kicked.Reason : null,
                 jobId = _logs.StateOf(run.Pid)?.JobId,
+                jobPlaceId = _logs.StateOf(run.Pid)?.PlaceId,
             }
             : null,
     };
@@ -420,14 +461,55 @@ public sealed class AppController : IDisposable
         return launch.Target is null ? "menu" : "disconnected";
     }
 
+    async Task NameLoggedPlacesAsync(List<long> placeIds)
+    {
+        await LoadGamesAsync(placeIds.Select(id => (id, 0L)).ToList());
+        PushStateIfChanged();
+    }
+
+    /// <summary>
+    /// The game a client here is in: the place its log reports, named once that place is looked up; until then the
+    /// game it was opened with (a game often moves players to another of its places right after they join).
+    /// </summary>
+    object? SessionGameDto(int pid, PendingLaunch launch)
+    {
+        long? logged = _logs.StateOf(pid)?.PlaceId, opened = launch.Target?.PlaceId;
+        bool loggedNamed = logged is long l && _games.GetValueOrDefault(l)?.Name is { Length: > 0 };
+        return GameDto(loggedNamed || opened is null ? logged ?? opened : opened);
+    }
+
     object? GameDto(long? placeId) => placeId is long id
         ? new { placeId = id, name = _games.GetValueOrDefault(id)?.Name ?? "", iconUrl = _games.GetValueOrDefault(id)?.IconUrl }
         : null;
+
+    /// <summary>
+    /// Clients that ended on this PC, with the game and server they were in. Roblox keeps reporting the account in
+    /// that game long after the client left: on 2026-10-13 a clean leave logged at 00:02:19 UTC was still "in game"
+    /// in every presence answer at 00:06, and answers flipped between in game and offline. Until Roblox reports
+    /// something else, the same server (or the same game, when Roblox doesn't say which server) is taken as that
+    /// stale report instead of "playing elsewhere".
+    /// </summary>
+    readonly Dictionary<Guid, (string? JobId, long? PlaceId, DateTime At)> _endedHere = new();
+    static readonly TimeSpan StalePresence = TimeSpan.FromMinutes(15);
+
+    bool IsStaleInGame(Account a, Presence p)
+    {
+        if (p.Type != 2 || _running.ContainsKey(a.Id) || !_endedHere.TryGetValue(a.Id, out var ended)
+            || DateTime.UtcNow - ended.At >= StalePresence)
+            return false;
+        if (p.JobId is not null && ended.JobId is not null)
+            return string.Equals(p.JobId, ended.JobId, StringComparison.OrdinalIgnoreCase);
+        // No server id to compare: the same game counts, and so does no game at all (privacy hides it).
+        long? place = p.RootPlaceId ?? p.PlaceId;
+        return place is null || ended.PlaceId is null || place == ended.PlaceId || p.PlaceId == ended.PlaceId;
+    }
 
     object? PresenceDto(Account a)
     {
         if (!_presence.TryGetValue(a.UserId, out var p))
             return null;
+        if (IsStaleInGame(a, p))
+            return new { type = "offline", game = (string?)null, placeId = (long?)null, jobId = (string?)null, joinPlaceId = (long?)null, iconUrl = (string?)null, lastOnline = (DateTime?)_endedHere[a.Id].At };
         long? placeId = p.RootPlaceId ?? p.PlaceId;
         var info = placeId is long id ? _games.GetValueOrDefault(id) : null;
         return new
@@ -436,6 +518,8 @@ public sealed class AppController : IDisposable
             game = info?.Name is { Length: > 0 } name ? name : p.Location,
             placeId,
             jobId = p.JobId,
+            // The place that server belongs to (placeId above is the game's start place, for its name and icon).
+            joinPlaceId = p.PlaceId,
             iconUrl = info?.IconUrl,
             p.LastOnline,
         };
@@ -447,13 +531,17 @@ public sealed class AppController : IDisposable
         s.LastJobId,
         s.RenameWindows,
         s.LaunchVia,
+        customLauncher = s.CustomLauncher.Length > 0 ? Path.GetFileNameWithoutExtension(s.CustomLauncher) : null,
+        s.Layout,
+        s.Sort,
         s.LaunchDelaySeconds,
         s.MemoryWarnings,
         s.TrimBackground,
         s.AntiAfk,
-        s.RobloxConfig,
+        robloxConfig = new { s.RobloxConfig.Mode, s.RobloxConfig.Graphics, s.RobloxConfig.Fps, s.RobloxConfig.Volume },
         recentGames = s.RecentGames.Select(SavedGameDto),
         pinnedGames = s.PinnedGames.Select(SavedGameDto),
+        presets = s.Presets.Select(PresetDto),
     };
 
     object SavedGameDto(RecentGame g) => new
@@ -491,10 +579,16 @@ public sealed class AppController : IDisposable
         try
         {
             _vault.Save();
+            _saveFailed = false;
+            OnVaultSaved();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Toast(L.F("Couldn't save data: {0}", ex.Message), "error");
+            // Try again shortly (and on lock or exit); an antivirus usually lets go within seconds. Say so once.
+            _saveDue = DateTime.UtcNow + SaveDelay;
+            if (!_saveFailed)
+                Toast(L.F("Couldn't save data: {0}", ex.Message), "error");
+            _saveFailed = true;
         }
     }
 
@@ -531,6 +625,7 @@ public sealed class AppController : IDisposable
             throw new UserError(L.T("Bloxkeep is already set up."));
         if (password.Length < 6)
             throw new UserError(L.T("The master password needs at least 6 characters."));
+        _weakPassword = Backup.WeakPassword(password);
         OnUnlocked(await Task.Run(() => Vault.Create(password)));
         return BuildState();
     }
@@ -550,6 +645,7 @@ public sealed class AppController : IDisposable
         {
             throw new UserError(ex.Message);
         }
+        _weakPassword = Backup.WeakPassword(password);
         OnUnlocked(vault);
         return BuildState();
     }
@@ -558,16 +654,28 @@ public sealed class AppController : IDisposable
     {
         _vault = vault;
         var s = vault.Data.Settings;
-        if (!RobloxLauncher.LaunchOptions.Contains(s.LaunchVia))
+        if (!RobloxLauncher.IsValidOption(s.LaunchVia))
             s.LaunchVia = s.DirectLaunch ? "direct" : "auto";
         _installs = null; // re-read for this vault's launch option
         if (s.MultiInstance && !MultiInstance.Armed)
             MultiInstance.Enable();
         _lastArmed = MultiInstance.Armed;
-        _nextPresence = DateTime.UtcNow;
         AdoptOpenSessions(vault);
+        // The loading screen's steps: accounts and open clients are ready now; Roblox status and avatars follow.
+        bool any = vault.Data.Accounts.Any(a => a.UserId > 0);
+        _bootStatusDone = !any;
+        _bootAvatarsDone = !any;
+        _boot = new BootProgress("status", 0.3);
+        AdvanceBoot(push: false);
+        // Right away rather than on the next process check (up to 4 s later while idle). A refresh from before the
+        // lock may still be running (it drops its answer): the next check then runs one for this vault.
+        if (_presenceBusy)
+            _nextPresence = DateTime.UtcNow;
+        else
+            _ = RefreshPresenceAsync();
         _ = LoadAvatarsAsync(vault.Data.Accounts.Select(a => a.UserId));
         _ = LoadRecentGamesAsync();
+        OnVaultUnlocked();
     }
 
     /// <summary>
@@ -605,13 +713,20 @@ public sealed class AppController : IDisposable
         if (_saveDue is not null)
             Persist();
         SaveOpenSessions();
+        BackupIfDirty();
         _launchCts?.Cancel();
+        _rejoinCts?.Cancel();
         QuickLoginCancel();
         _twoStep = null;
+        _captcha = null;
+        _humanCaptcha = null;
+        Ui.ClearSecretClipboard();
         _vault?.Dispose();
         _vault = null;
         _presence.Clear();
         _presenceReliable.Clear();
+        _presenceLoaded = false;
+        _boot = null;
         _rejoinQueue.Clear();
         _offlineStrikes.Clear();
         _lastMetrics = _pageView = null;
@@ -626,7 +741,19 @@ public sealed class AppController : IDisposable
             throw new UserError(L.T("The new password needs at least 6 characters."));
         if (!await Task.Run(() => vault.VerifyPassword(current)))
             throw new UserError(L.T("The current master password is incorrect."));
-        await Task.Run(() => vault.ChangePassword(next));
+        var prepared = await Task.Run(() => Vault.PrepareKey(next));
+        if (_vault != vault)
+            throw new UserError(L.T("Bloxkeep was locked."));
+        // Written here on the UI thread, where the accounts are changed, so nothing changes mid-save.
+        try
+        {
+            vault.ChangePassword(prepared);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new UserError(L.F("Couldn't save data: {0}", ex.Message));
+        }
+        OnPasswordChanged(next);
         return true;
     }
 
@@ -662,12 +789,20 @@ public sealed class AppController : IDisposable
     /// <summary>The code on screen in the Quick Login window; one at a time.</summary>
     QuickLoginCode? _quickLogin;
     bool _quickLoginFinishing;
+    int _quickLoginStarts;
 
     async Task<object?> QuickLoginStartAsync(string realm)
     {
         RequireVault();
         QuickLoginCancel();
+        int start = ++_quickLoginStarts;
         var login = await RobloxApi.CreateQuickLoginAsync(realm);
+        // Another code was asked for meanwhile (tab switched, "new code" pressed twice): that one is on screen.
+        if (start != _quickLoginStarts || _vault is null)
+        {
+            _ = RobloxApi.CancelQuickLoginAsync(login);
+            return null;
+        }
         _quickLogin = login;
         string? qr = await RobloxApi.GetQuickLoginQrAsync(login);
         int seconds = (int)Math.Max(0, (login.ExpiresUtc - DateTime.UtcNow).TotalSeconds);
@@ -735,6 +870,15 @@ public sealed class AppController : IDisposable
     }
 
     // A two-step prompt or captcha waiting for the user; held only while the sign-in is in progress, never persisted.
+    /// <summary>The password sign-in window closed: drop the half-done sign-in, which still holds the password.</summary>
+    object? LoginCancel()
+    {
+        _twoStep = null;
+        _captcha = null;
+        _humanCaptcha = null;
+        return null;
+    }
+
     RobloxApi.TwoStepPrompt? _twoStep;
     RobloxApi.CaptchaPrompt? _captcha;
     RobloxApi.HumanCaptchaPrompt? _humanCaptcha;
@@ -928,7 +1072,8 @@ public sealed class AppController : IDisposable
                 (item.UserId != 0 && a.UserId == item.UserId) || (item.UserId == 0 && a.Cookie == cookie));
             if (existing is not null)
             {
-                if (existing.Cookie != cookie)
+                // A sign-in that works here is newer than RAM's copy; only a dead or unchecked one is replaced.
+                if (existing.Cookie != cookie && existing.CookieValid != true)
                 {
                     existing.Cookie = cookie;
                     existing.CookieValid = null;
@@ -989,6 +1134,7 @@ public sealed class AppController : IDisposable
 
     async Task<object?> UpdateAccountAsync(JsonElement a)
     {
+        var vault = RequireVault();
         var account = RequireAccount(Id(a));
         RobloxUser? user = null;
         string? cookie = OptStr(a, "cookie") is { } raw ? RobloxApi.NormalizeCookie(raw) : null;
@@ -996,7 +1142,8 @@ public sealed class AppController : IDisposable
         {
             user = await RobloxApi.GetAuthenticatedUserAsync(cookie, account.Realm)
                 ?? throw new UserError(L.T("The new cookie is invalid or has expired."));
-            if (_vault is null)
+            // Locked (and maybe reopened) meanwhile: this account object belongs to the old vault.
+            if (_vault != vault)
                 throw new UserError(L.T("Bloxkeep was locked."));
         }
 
@@ -1069,8 +1216,12 @@ public sealed class AppController : IDisposable
             _running.Remove(id);
             _rejoinHistory.Remove(id);
             _offlineStrikes.Remove(id);
+            _userClosed.Remove(id);
         }
         _pending.RemoveAll(p => set.Contains(p.AccountId));
+        foreach (var launch in _handedOver.Keys.Where(l => set.Contains(l.AccountId)).ToList())
+            _handedOver.Remove(launch);
+        _closeWhenClaimed.RemoveWhere(l => set.Contains(l.AccountId));
         _rejoinQueue.RemoveAll(r => set.Contains(r.AccountId));
         Persist();
         PushState();
@@ -1178,10 +1329,10 @@ public sealed class AppController : IDisposable
     async Task LoadAvatarsAsync(IEnumerable<long> userIds)
     {
         var missing = userIds.Where(id => id > 0 && !_avatarUrls.ContainsKey(id)).Distinct().ToList();
-        if (missing.Count == 0)
-            return;
         try
         {
+            if (missing.Count == 0)
+                return;
             foreach (var (id, url) in await RobloxApi.GetHeadshotUrlsAsync(missing))
                 _avatarUrls[id] = url;
             PushState();
@@ -1189,6 +1340,32 @@ public sealed class AppController : IDisposable
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
         }
+        finally
+        {
+            if (!_bootAvatarsDone)
+            {
+                _bootAvatarsDone = true;
+                AdvanceBoot();
+            }
+        }
+    }
+
+    /// <summary>A step of the loading screen and how far along it is (0–1); the page shows it until it is null.</summary>
+    sealed record BootProgress(string Stage, double Percent);
+
+    /// <summary>
+    /// Moves the loading screen to the first step still running: Roblox status (30 % → 80 %), then avatars
+    /// (80 % → 100 %), then done.
+    /// </summary>
+    void AdvanceBoot(bool push = true)
+    {
+        if (_boot is null)
+            return;
+        _boot = !_bootStatusDone ? new BootProgress("status", 0.3)
+            : !_bootAvatarsDone ? new BootProgress("avatars", 0.8)
+            : null;
+        if (push)
+            PushState();
     }
 
     // ───────────────────────────── games ─────────────────────────────
@@ -1239,7 +1416,8 @@ public sealed class AppController : IDisposable
             string? cookie = _vault?.Data.Accounts.FirstOrDefault(a => a.CookieValid != false && a.Cookie.Length > 0)?.Cookie;
             var games = await RobloxApi.GetGamesAsync(universeOf.Values, cookie);
             foreach (var (placeId, universeId) in universeOf)
-                _games[placeId] = games.TryGetValue(universeId, out var info) ? info with { PlaceId = placeId } : null;
+                // A missing answer (a request failed) keeps what was known before instead of forgetting the name.
+                _games[placeId] = games.TryGetValue(universeId, out var info) ? info with { PlaceId = placeId } : _games.GetValueOrDefault(placeId);
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
@@ -1281,6 +1459,90 @@ public sealed class AppController : IDisposable
         {
             return new { servers = Array.Empty<ServerInfo>(), next = (string?)null, busy = true };
         }
+    }
+
+    static readonly TimeSpan FriendServerLifetime = TimeSpan.FromSeconds(45);
+    readonly Dictionary<long, (object Result, DateTime At)> _friendServers = new();
+
+    /// <summary>
+    /// Friends of your accounts who are playing this game, with the server they are in. Each account's friends are
+    /// asked about with that account's own cookie: Roblox only tells a friend the server when that person's privacy
+    /// settings let them join. At most 3 accounts are used (the selected ones first) to keep the requests few.
+    /// </summary>
+    async Task<object?> FriendServersAsync(long placeId, Guid[] preferred)
+    {
+        var vault = RequireVault();
+        if (placeId <= 0)
+            throw new UserError(L.T("Invalid Place ID."));
+        if (_friendServers.TryGetValue(placeId, out var kept) && DateTime.UtcNow - kept.At < FriendServerLifetime)
+            return kept.Result;
+        var mine = vault.Data.Accounts.Select(a => a.UserId).ToHashSet();
+        var viewers = vault.Data.Accounts
+            .Where(a => a.UserId > 0 && a.CookieValid != false && a.Cookie.Length > 0 && a.Realm == Realm.Global)
+            .OrderBy(a => preferred.Contains(a.Id) ? 0 : 1)
+            .Take(3)
+            .ToList();
+        var found = new Dictionary<long, (string JobId, long PlaceId, string Via)>();
+        await Task.WhenAll(viewers.Select(async viewer =>
+        {
+            try
+            {
+                var friends = (await RobloxApi.GetFriendIdsAsync(viewer.UserId)).Where(id => !mine.Contains(id)).ToList();
+                if (friends.Count == 0)
+                    return;
+                foreach (var (id, p) in await RobloxApi.GetPresenceAsync(viewer.Cookie, friends))
+                {
+                    if (p.Type == 2 && p.JobId is { Length: > 0 } job && (p.PlaceId == placeId || p.RootPlaceId == placeId))
+                    {
+                        lock (found)
+                            found.TryAdd(id, (job, p.PlaceId ?? placeId, viewer.Label));
+                    }
+                }
+            }
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+            {
+                // That account's friends are just left out.
+            }
+        }));
+        var ids = found.Keys.ToList();
+        // Names and pictures are extras: without them the friends still show (by id) and can be joined.
+        Dictionary<long, RobloxUser> users = [];
+        Dictionary<long, string> faces = [];
+        try
+        {
+            if (ids.Count > 0)
+            {
+                var named = RobloxApi.GetUsersAsync(ids);
+                var pictured = RobloxApi.GetHeadshotUrlsAsync(ids);
+                users = await named;
+                faces = await pictured;
+            }
+        }
+        catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+        {
+        }
+        object result = new
+        {
+            asked = viewers.Count,
+            friends = found
+                .Select(f => new
+                {
+                    userId = f.Key,
+                    name = users.GetValueOrDefault(f.Key)?.Name ?? "",
+                    displayName = users.GetValueOrDefault(f.Key)?.DisplayName ?? "",
+                    avatarUrl = faces.GetValueOrDefault(f.Key),
+                    jobId = f.Value.JobId,
+                    // The server belongs to this place, which can be another place of the game than the one asked.
+                    placeId = f.Value.PlaceId,
+                    via = f.Value.Via,
+                })
+                .OrderBy(f => f.displayName, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+        };
+        if (_friendServers.Count > 20)
+            _friendServers.Clear();
+        _friendServers[placeId] = (result, DateTime.UtcNow);
+        return result;
     }
 
     async Task<object?> ResolveGameAsync(string input)
@@ -1500,14 +1762,8 @@ public sealed class AppController : IDisposable
     async Task<object?> LaunchAsync(JsonElement a)
     {
         var vault = RequireVault();
-        if (_launchCts is not null)
-            throw new UserError(L.T("Already launching — wait a moment or press Stop."));
         var accounts = Ids(a).Select(id => vault.Data.Accounts.FirstOrDefault(x => x.Id == id)).OfType<Account>().ToList();
-        if (accounts.Count == 0)
-            throw new UserError(L.T("Select at least one account."));
-        // VNG accounts need the Roblox VNG client, whose launch hasn't been tried yet.
-        if (accounts.FirstOrDefault(acc => acc.Realm == Realm.Vng) is { } vng)
-            throw new UserError(L.F("{0} is a Roblox VNG account. Opening Roblox VNG isn't supported yet.", vng.Label));
+        CheckCanLaunch(accounts);
         bool appOnly = Bool(a, "appOnly");
 
         var s = vault.Data.Settings;
@@ -1516,12 +1772,53 @@ public sealed class AppController : IDisposable
         GameTarget? target = null;
         if (!appOnly && !GameTarget.TryParse(s.LastPlaceInput, s.LastJobId, out target, out string error))
             throw new UserError(error);
+        return await LaunchAccountsAsync(vault, accounts, target, Bool(a, "force"), s.LaunchDelaySeconds);
+    }
 
+    void CheckCanLaunch(List<Account> accounts)
+    {
+        if (_launchCts is not null)
+            throw new UserError(L.T("Already launching — wait a moment or press Stop."));
+        if (accounts.Count == 0)
+            throw new UserError(L.T("Select at least one account."));
+        // VNG accounts need the Roblox VNG client, whose launch hasn't been tried yet.
+        if (accounts.FirstOrDefault(acc => acc.Realm == Realm.Vng) is { } vng)
+            throw new UserError(L.F("{0} is a Roblox VNG account. Opening Roblox VNG isn't supported yet.", vng.Label));
+    }
+
+    /// <summary>
+    /// Opens the accounts one after another (the dock's Play and presets); callers run <see cref="CheckCanLaunch"/>
+    /// first. Asks for a confirmation (without <paramref name="force"/>) when Multi-Roblox or free RAM look wrong.
+    /// </summary>
+    /// <param name="pickServer">Chooses the server once the launch has started, so Stop works meanwhile; gets how many accounts will open.</param>
+    async Task<LaunchResult> LaunchAccountsAsync(Vault vault, List<Account> accounts, GameTarget? target, bool force, int delaySeconds,
+        Func<GameTarget, int, CancellationToken, Task<GameTarget>>? pickServer = null)
+    {
+        var s = vault.Data.Settings;
         // Things worth a second look before opening more windows.
         var players = RobloxProcesses.GetPlayers();
         if (s.MultiInstance && !MultiInstance.Armed && players.Count == 0)
             MultiInstance.Enable();
         var warnings = new List<string>();
+        // Accounts already playing here: left alone in the same game, switched over when another game (or server)
+        // is chosen. Roblox kicks a second client of the same account, so the old one is closed first.
+        var switching = new List<Account>();
+        if (target is null)
+        {
+            // "Open Roblox" (home screen): clients in a game go back to the home screen; ones already there stay.
+            switching = accounts.Where(acc => _running.TryGetValue(acc.Id, out var run) && InGameHere(run)).ToList();
+            if (switching.Count > 0)
+                warnings.Add(L.F("{0} will leave the game and go to the Roblox home screen.", string.Join(", ", switching.Select(acc => acc.Label))));
+        }
+        else if (accounts.Any(acc => _running.ContainsKey(acc.Id)))
+        {
+            await LoadGamesAsync(accounts.Where(acc => _running.ContainsKey(acc.Id)).Select(acc => (CurrentPlace(acc.Id), 0L))
+                .Append((target.PlaceId, 0L)).Where(p => p.Item1 > 0).ToList());
+            switching = accounts.Where(acc => _running.TryGetValue(acc.Id, out var run) && NeedsSwitch(run, target)).ToList();
+            if (switching.Count > 0)
+                warnings.Add(L.F("{0} will leave what they're playing now and open this game instead.",
+                    string.Join(", ", switching.Select(acc => acc.Label))));
+        }
         bool robloxOpen = RobloxProcesses.VisibleWindows(players.Select(p => p.Pid)).Values.Any(list => list.Count > 0);
         if ((accounts.Count > 1 || robloxOpen) && !MultiInstance.Armed)
             warnings.Add(s.MultiInstance ? MultiNotReadyText() : L.T("Multi-Roblox is off, so each new Roblox window closes the previous one."));
@@ -1532,8 +1829,8 @@ public sealed class AppController : IDisposable
         if (s.MemoryWarnings && memory.TotalMb > 0 && memory.AvailableMb - neededMb < memory.TotalMb * 8 / 100)
             warnings.Add(L.F("Only {0} of RAM is free, and {1} more Roblox window(s) need about {2}. The PC may slow down or Roblox may crash.",
                 FormatMb(memory.AvailableMb), toOpen, FormatMb(neededMb)));
-        if (warnings.Count > 0 && !Bool(a, "force"))
-            return new { needsConfirm = true, message = string.Join("\n\n", warnings) + "\n\n" + L.T("Open anyway?") };
+        if (warnings.Count > 0 && !force)
+            return new LaunchResult(NeedsConfirm: true, Message: string.Join("\n\n", warnings) + "\n\n" + L.T("Open anyway?"));
 
         var cts = _launchCts = new CancellationTokenSource();
         var ct = cts.Token;
@@ -1543,6 +1840,9 @@ public sealed class AppController : IDisposable
         try
         {
             await WaitForSweepAsync(ct);
+            if (pickServer is not null && target is not null)
+                target = await pickServer(target, accounts.Count(acc => (!_running.ContainsKey(acc.Id) || switching.Contains(acc))
+                                                                         && !_pending.Any(p => p.AccountId == acc.Id)), ct);
             if (target?.ShareCode is { } shareCode)
             {
                 Progress(L.T("Reading the private server link…"));
@@ -1554,9 +1854,22 @@ public sealed class AppController : IDisposable
             {
                 ct.ThrowIfCancellationRequested();
                 var account = accounts[i];
+                await WaitForPendingAsync(ct);
+                if (switching.Contains(account) && _running.TryGetValue(account.Id, out var old))
+                {
+                    Progress(L.F("Closing {0}'s Roblox to switch games…", account.Label));
+                    _userClosed.Add(account.Id); // not a disconnect: no auto-rejoin into the old game
+                    RobloxProcesses.Close(old.Pid, InGameNow(old.Pid));
+                    // The process check ends the session once the client is gone; only then can the account open again.
+                    for (int waited = 0; _running.ContainsKey(account.Id) && waited < 15_000; waited += 300)
+                        await Task.Delay(300, ct);
+                }
                 if (_running.ContainsKey(account.Id) || _pending.Any(p => p.AccountId == account.Id))
                 {
-                    errors.Add(L.F("{0}: already running — skipped.", account.Label));
+                    bool stayed = _running.ContainsKey(account.Id) && !switching.Contains(account);
+                    errors.Add(stayed && target is null ? L.F("{0}: already on the home screen — skipped.", account.Label)
+                        : stayed ? L.F("{0}: already in this game — skipped.", account.Label)
+                        : L.F("{0}: already running — skipped.", account.Label));
                     continue;
                 }
 
@@ -1577,7 +1890,7 @@ public sealed class AppController : IDisposable
                 PushState();
 
                 if (i < accounts.Count - 1)
-                    await WaitBeforeNextLaunchAsync(account, startedAt, s.LaunchDelaySeconds, ct);
+                    await WaitBeforeNextLaunchAsync(account, startedAt, delaySeconds, ct);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -1602,7 +1915,10 @@ public sealed class AppController : IDisposable
             Progress(null);
             PushState();
         }
-        return new { launched, errors, cancelled = ct.IsCancellationRequested };
+        // The page shows the details; while the window is in the background a short notification says so.
+        if (errors.Count > 0 && !ct.IsCancellationRequested)
+            Notify(L.F("{0} account(s) didn't open.", errors.Count), "warn", "launch", toast: false);
+        return new LaunchResult(Launched: launched, Errors: errors, Cancelled: ct.IsCancellationRequested);
     }
 
     /// <summary>
@@ -1631,6 +1947,56 @@ public sealed class AppController : IDisposable
         }
     }
 
+    /// <summary>The place a client here is in (its log), else the one it was opened with; 0 when unknown.</summary>
+    long CurrentPlace(Guid accountId) =>
+        _running.TryGetValue(accountId, out var run) ? _logs.StateOf(run.Pid)?.PlaceId ?? run.Launch.Target?.PlaceId ?? 0 : 0;
+
+    /// <summary>
+    /// A client in a game answers the window's close button with "leave the game?" instead of closing (seen
+    /// 2026-10-13), so closing it from Bloxkeep ends it straight away; one on the home screen is closed normally.
+    /// </summary>
+    bool InGameNow(int pid) => _logs.StateOf(pid)?.Status is "ingame" or "joining";
+
+    /// <summary>In a game (or joining one), as opposed to the home screen; without a log, by what it was opened with.</summary>
+    bool InGameHere((int Pid, PendingLaunch Launch) run) =>
+        _logs.StateOf(run.Pid) is { } log ? log.Status is "ingame" or "joining" : run.Launch.Target is not null;
+
+    /// <summary>Two places of the same game (a game moves players between its places) count as the same.</summary>
+    bool SameGame(long a, long b) =>
+        a == b || (_games.GetValueOrDefault(a)?.UniverseId is long ua && ua > 0 && ua == _games.GetValueOrDefault(b)?.UniverseId);
+
+    /// <summary>
+    /// Whether opening <paramref name="target"/> means leaving what this client is doing: another game, a chosen
+    /// server it isn't in, a private server it wasn't opened into, or it is only in the menu / on an error screen.
+    /// </summary>
+    bool NeedsSwitch((int Pid, PendingLaunch Launch) run, GameTarget target)
+    {
+        var log = _logs.StateOf(run.Pid);
+        long current = log?.PlaceId ?? run.Launch.Target?.PlaceId ?? 0;
+        if (current == 0 || log is { Status: "left" or "disconnected" })
+            return true;
+        if (target.JobId is { } job)
+            return !string.Equals(job, log?.JobId, StringComparison.OrdinalIgnoreCase);
+        if (target.LinkCode is not null || target.ShareCode is not null)
+            return target.LinkCode is null || run.Launch.Target?.LinkCode != target.LinkCode;
+        return !SameGame(current, target.PlaceId);
+    }
+
+    /// <summary>
+    /// Windows are matched to launches newest first, so a client still opening (the previous account, a rejoin, a
+    /// hand-over) must have its window before the next one starts, or the two could get each other's window. A
+    /// rejoin that is still getting its ticket is waited for too, so one account isn't opened twice.
+    /// </summary>
+    async Task WaitForPendingAsync(CancellationToken ct)
+    {
+        if (_pending.Count == 0 && !_rejoining)
+            return;
+        Progress(L.T("Waiting for the previous Roblox window to open…"));
+        // Bounded: a launch stops pending after PendingTimeout at the latest.
+        while (_pending.Count > 0 || _rejoining)
+            await Task.Delay(500, ct);
+    }
+
     /// <summary>Gets a sign-in ticket, starts the client and waits for its window to show up (see TrackProcesses).</summary>
     async Task StartSessionAsync(Account account, GameTarget? target, string launchVia, CancellationToken ct = default)
     {
@@ -1646,7 +2012,7 @@ public sealed class AppController : IDisposable
                 _robloxSettingsWrittenAt = DateTime.UtcNow;
             }
         }
-        RobloxLauncher.Launch(ticket, target, launchVia);
+        RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
         _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target));
@@ -1660,32 +2026,42 @@ public sealed class AppController : IDisposable
         return null;
     }
 
-    object CloseAccounts(Guid[] ids)
+    /// <param name="force">End the process at once (a frozen client) instead of asking its windows to close first.</param>
+    object CloseAccounts(Guid[] ids, bool force)
     {
         int closed = 0;
         foreach (var id in ids)
         {
             _rejoinQueue.RemoveAll(r => r.AccountId == id);
-            // Still opening (no window yet): stop waiting for it.
-            if (_pending.RemoveAll(p => p.AccountId == id) > 0)
+            // Still opening (no window yet): its client is closed as soon as it shows up, instead of staying open
+            // untracked.
+            foreach (var launch in _pending.Where(p => p.AccountId == id))
             {
-                closed++;
-                PushState();
+                if (_closeWhenClaimed.Add(launch))
+                {
+                    closed++;
+                    PushState();
+                }
             }
             if (!_running.TryGetValue(id, out var info))
                 continue;
             _userClosed.Add(id);
-            RobloxProcesses.Close(info.Pid);
+            RobloxProcesses.Close(info.Pid, force || InGameNow(info.Pid));
             closed++;
         }
         return closed;
     }
 
-    object CloseAll()
+    object CloseAll(bool force)
     {
+        // Also what is still opening: the launch in progress and a rejoin getting its ticket.
+        _launchCts?.Cancel();
+        _rejoinCts?.Cancel();
         foreach (var id in _running.Keys)
             _userClosed.Add(id);
         _rejoinQueue.Clear();
+        _handedOver.Clear();
+        _closeWhenClaimed.Clear();
         if (_pending.Count > 0)
         {
             _pending.Clear();
@@ -1694,7 +2070,7 @@ public sealed class AppController : IDisposable
         // Roblox starts a windowless background client when its last window closes; sweep those for a moment
         // so "close all" really leaves nothing running and multi-instance can re-arm.
         _sweepBackgroundUntil = DateTime.UtcNow + BackgroundSweep;
-        return RobloxProcesses.CloseAll();
+        return RobloxProcesses.CloseAll(force, InGameNow);
     }
 
     /// <summary>Launching while the sweep runs would get the new client killed, so wait it out.</summary>
@@ -1765,36 +2141,60 @@ public sealed class AppController : IDisposable
             if (pids.Contains(info.Pid))
                 continue;
             _running.Remove(id);
+            // Read before the log watcher drops the pid below.
+            var log = _logs.StateOf(info.Pid);
+            _endedHere[id] = (log?.JobId ?? info.Launch.Target?.JobId, log?.PlaceId ?? info.Launch.Target?.PlaceId, now);
+            RefreshPresenceSoon(TimeSpan.FromSeconds(8));
             // The first process may only bootstrap and hand over to a child: wait for that only when a new,
             // unclaimed client is actually running. A window the person closed ends the session right away.
+            // A client that got as far as joining a game (its log says so) was the real one, not a bootstrap: a
+            // windowless child of it is the copy Roblox starts in the notification area, not a hand-over.
             var claimedNow = _running.Values.Select(r => r.Pid).ToHashSet();
-            bool handOver = now - info.Launch.StartedAt < HandOverWindow
-                && pids.Any(p => !info.Launch.Before.Contains(p) && !claimedNow.Contains(p));
+            List<int> trayCopies = log is null ? [] : RobloxProcesses.PlayerChildrenOf(info.Pid).Where(p => !HasWindow(p)).ToList();
+            if (log is not null)
+                _traySweep[info.Pid] = now + TraySweep;
+            bool handOver = now - info.Launch.StartedAt < HandOverWindow && !_userClosed.Contains(id)
+                && pids.Any(p => !info.Launch.Before.Contains(p) && !claimedNow.Contains(p) && !trayCopies.Contains(p));
             if (handOver)
             {
                 _pending.Add(info.Launch);
                 _pendingSeenAlive[info.Launch] = now;
+                _handedOver[info.Launch] = info.Pid;
             }
             else
-                OnSessionEnded(id, info.Launch);
+                OnSessionEnded(id, info.Launch, log);
             changed = true;
         }
 
-        changed |= _pending.RemoveAll(p => now - p.StartedAt > PendingTimeout) > 0;
+        foreach (var expired in _pending.Where(p => now - p.StartedAt > PendingTimeout).ToList())
+        {
+            DropPending(expired);
+            changed = true;
+        }
         if (_pending.Count > 0)
         {
             var claimed = _running.Values.Select(r => r.Pid).ToHashSet();
-            foreach (var launch in _pending.OrderBy(p => p.StartedAt).ToList())
+            // Newest launch first: a new client can only belong to a launch made before it appeared (its Before
+            // list lacks it), and a session waiting for a hand-over must not take the next account's window.
+            foreach (var launch in _pending.OrderByDescending(p => p.StartedAt).ToList())
             {
+                // A session waiting for a hand-over takes a child of its ended process before any other client.
+                List<int> children = _handedOver.TryGetValue(launch, out int ended) ? RobloxProcesses.PlayerChildrenOf(ended) : [];
                 int pid = pids.Where(p => !launch.Before.Contains(p) && !claimed.Contains(p))
                     .Where(HasWindow)
-                    .OrderBy(p => p)
+                    .OrderByDescending(children.Contains)
+                    .ThenBy(p => p)
                     .FirstOrDefault();
                 if (pid == 0)
                     continue;
                 claimed.Add(pid);
-                _running[launch.AccountId] = (pid, launch);
                 _pending.Remove(launch);
+                _handedOver.Remove(launch);
+                // The person closed this account while it was still opening.
+                if (_closeWhenClaimed.Remove(launch))
+                    RobloxProcesses.Close(pid);
+                else
+                    _running[launch.AccountId] = (pid, launch);
                 changed = true;
             }
             // A client appeared for this launch and then every new client quit without a game window: stop waiting.
@@ -1804,13 +2204,33 @@ public sealed class AppController : IDisposable
                     _pendingSeenAlive[launch] = now;
                 else if (_pendingSeenAlive.TryGetValue(launch, out var seen) && now - seen > PendingGoneGrace)
                 {
-                    _pending.Remove(launch);
+                    DropPending(launch);
                     changed = true;
                 }
             }
         }
         foreach (var gone in _pendingSeenAlive.Keys.Where(l => !_pending.Contains(l)).ToList())
             _pendingSeenAlive.Remove(gone);
+
+        // The copy Roblox starts in the notification area when a client closes (by its X button, a crash): ended
+        // while it has no window — never one a launch could be waiting for, or one that isn't in this tick's list.
+        foreach (var (parent, until) in _traySweep.ToList())
+        {
+            if (now > until)
+            {
+                _traySweep.Remove(parent);
+                continue;
+            }
+            var tracked = _running.Values.Select(r => r.Pid).ToHashSet();
+            foreach (int child in RobloxProcesses.PlayerChildrenOf(parent))
+            {
+                if (!pids.Contains(child) || HasWindow(child) || tracked.Contains(child) || _pending.Any(l => !l.Before.Contains(child)))
+                    continue;
+                RobloxProcesses.Kill(child);
+                pids.Remove(child);
+            }
+        }
+        players.RemoveAll(p => !pids.Contains(p.Pid));
 
         _closingForRejoin.RemoveWhere(pid => !pids.Contains(pid));
         // Once a client has started (its window is up), the file goes back to the person's own settings.
@@ -1824,6 +2244,12 @@ public sealed class AppController : IDisposable
         }
         // Every Roblox window's log: the ones Bloxkeep opened for their status, all of them for anti-AFK.
         changed |= _logs.Poll(pids.ToList()) && _running.Count > 0;
+        // A client moved to a place not looked up yet: name it now rather than at the next status check.
+        var unnamed = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0)
+            .Where(id => id > 0 && !HasGame(id, false) && !(_gameFetchedAt.TryGetValue(id, out var asked) && now - asked < GameRetry))
+            .Distinct().ToList();
+        if (unnamed.Count > 0)
+            _ = NameLoggedPlacesAsync(unnamed);
         RejoinFromLogs();
         RunAntiAfk(now, windows);
 
@@ -1907,7 +2333,7 @@ public sealed class AppController : IDisposable
             && now - _lastMemoryWarning > MemoryWarningInterval)
         {
             _lastMemoryWarning = now;
-            Toast(L.F("Your PC is using {0}% of its RAM. Close some Roblox windows if things get slow.", memory.LoadPercent), "warn");
+            Notify(L.F("Your PC is using {0}% of its RAM. Close some Roblox windows if things get slow.", memory.LoadPercent), "warn", "ram");
         }
 
         foreach (int gone in _lowMemoryPriority.Where(pid => players.All(p => p.Pid != pid)).ToList())
@@ -1956,12 +2382,16 @@ public sealed class AppController : IDisposable
         }
     }
 
-    void OnSessionEnded(Guid accountId, PendingLaunch launch)
+    /// <param name="lastLog">What the client's log said last, when it was still being followed.</param>
+    void OnSessionEnded(Guid accountId, PendingLaunch launch, RobloxLogWatcher.ClientState? lastLog = null)
     {
         _offlineStrikes.Remove(accountId);
         if (_userClosed.Remove(accountId))
             return;
         if (FindAccount(accountId) is not { AutoRejoin: true } account || launch.Target is null)
+            return;
+        // The person left the game themselves, or the same account joined from another device: not a drop.
+        if (lastLog is { Status: "left" } or { Status: "disconnected", Reason: SameAccountElsewhere })
             return;
 
         var history = _rejoinHistory.TryGetValue(accountId, out var h) ? h : _rejoinHistory[accountId] = new List<DateTime>();
@@ -1972,14 +2402,14 @@ public sealed class AppController : IDisposable
             account.AutoRejoin = false;
             Persist();
             PushState();
-            Toast(L.F("Auto-rejoin for {0} was turned off after {1} tries in 15 minutes.", account.Label, MaxRejoins), "warn");
+            Notify(L.F("Auto-rejoin for {0} was turned off after {1} tries in 15 minutes.", account.Label, MaxRejoins), "warn", "rejoinOff", account.Id);
             return;
         }
         history.Add(DateTime.UtcNow);
         // Rejoin the same game or private server rather than the exact server, which may be gone.
         _rejoinQueue.RemoveAll(r => r.AccountId == accountId);
         _rejoinQueue.Add(new RejoinRequest(accountId, launch.Target with { JobId = null }, DateTime.UtcNow + RejoinDelay));
-        Toast(L.F("{0} left the game — rejoining in {1}s…", account.Label, (int)RejoinDelay.TotalSeconds));
+        Notify(L.F("{0} left the game — rejoining in {1}s…", account.Label, (int)RejoinDelay.TotalSeconds), "info", "drop", account.Id);
     }
 
     /// <summary>
@@ -1997,7 +2427,7 @@ public sealed class AppController : IDisposable
                 || FindAccount(id) is not { AutoRejoin: true } account || info.Launch.Target is null)
                 continue;
             _closingForRejoin.Add(info.Pid);
-            Toast(L.F("{0} seems disconnected — restarting Roblox…", account.Label));
+            Notify(L.F("{0} seems disconnected — restarting Roblox…", account.Label), "info", "drop", account.Id);
             RobloxProcesses.Close(info.Pid);
         }
     }
@@ -2011,6 +2441,8 @@ public sealed class AppController : IDisposable
     {
         foreach (int gone in _lastInput.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
             _lastInput.Remove(gone);
+        foreach (int gone in _nudgeRetryAt.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
+            _nudgeRetryAt.Remove(gone);
         _idleKickReported.RemoveWhere(pid => !windows.ContainsKey(pid));
         if (_vault is not { Data.Settings.AntiAfk: true } || windows.Count == 0)
             return;
@@ -2029,7 +2461,8 @@ public sealed class AppController : IDisposable
             return;
 
         var due = windows
-            .Where(w => w.Value.Count > 0 && _logs.StateOf(w.Key)?.Status is null or "ingame" && now - LastInput(w.Key) >= AntiAfk.Interval)
+            .Where(w => w.Value.Count > 0 && _logs.StateOf(w.Key)?.Status is null or "ingame" && now - LastInput(w.Key) >= AntiAfk.Interval
+                        && !(_nudgeRetryAt.TryGetValue(w.Key, out var retry) && now < retry))
             .Select(w => (Pid: w.Key, Window: w.Value[0]))
             .ToList();
         if (due.Count > 0)
@@ -2053,7 +2486,12 @@ public sealed class AppController : IDisposable
             foreach (var (pid, window) in clients)
             {
                 if (reached.Contains(window))
+                {
                     _lastInput[pid] = DateTime.UtcNow;
+                    _nudgeRetryAt.Remove(pid);
+                }
+                else
+                    _nudgeRetryAt[pid] = DateTime.UtcNow + NudgeRetry; // focus refused or the PC is locked: not every tick
             }
         }
         finally
@@ -2069,7 +2507,7 @@ public sealed class AppController : IDisposable
         {
             if (_logs.StateOf(info.Pid) is { Status: "disconnected", Reason: IdleKick } && _idleKickReported.Add(info.Pid)
                 && FindAccount(id) is { } account)
-                Toast(L.F("{0} was kicked for being AFK. Anti-AFK doesn't work while the PC is locked.", account.Label), "warn");
+                Notify(L.F("{0} was kicked for being AFK. Anti-AFK doesn't work while the PC is locked.", account.Label), "warn", "afk", account.Id);
         }
     }
 
@@ -2095,13 +2533,26 @@ public sealed class AppController : IDisposable
             || _running.ContainsKey(account.Id) || _pending.Any(p => p.AccountId == account.Id))
             return;
         _rejoining = true;
+        var cts = _rejoinCts = new CancellationTokenSource();
         try
         {
-            if (vault.Data.Settings.MultiInstance && !MultiInstance.Armed && RobloxProcesses.GetPlayerPids().Length == 0)
+            var players = RobloxProcesses.GetPlayerPids();
+            if (vault.Data.Settings.MultiInstance && !MultiInstance.Armed && players.Length == 0)
                 MultiInstance.Enable();
-            await StartSessionAsync(account, request.Target, vault.Data.Settings.LaunchVia);
+            // Without Multi-Roblox the new client closes the open one — which would then rejoin and close this one,
+            // and so on.
+            if (!MultiInstance.Armed && RobloxProcesses.VisibleWindows(players).Values.Any(w => w.Count > 0))
+            {
+                Notify(L.F("Didn't rejoin {0}: Multi-Roblox isn't ready, so a new Roblox window would close the one that's open.", account.Label), "warn", "rejoinFail", account.Id);
+                return;
+            }
+            await StartSessionAsync(account, request.Target, vault.Data.Settings.LaunchVia, cts.Token);
             Persist();
             PushState();
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // Close all.
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && request.NetworkRetries < MaxNetworkRetries)
         {
@@ -2117,13 +2568,23 @@ public sealed class AppController : IDisposable
                 Persist();
                 PushState();
             }
-            Toast(L.F("Couldn't rejoin {0}: {1}", account.Label, ex.Message), "error");
+            Notify(L.F("Couldn't rejoin {0}: {1}", account.Label, ex.Message), "error", "rejoinFail", account.Id);
         }
         finally
         {
             _rejoining = false;
+            if (_rejoinCts == cts)
+                _rejoinCts = null;
+            cts.Dispose();
         }
     }
+
+    /// <summary>
+    /// The client's own log is the better source while it says something current; one stuck in "joining" (a join
+    /// or teleport that never finished) is left to Roblox's status again.
+    /// </summary>
+    bool LogFollowed(int pid) =>
+        _logs.StateOf(pid) is { } log && !(log.Status == "joining" && DateTime.UtcNow - log.At > JoiningTimeout);
 
     /// <summary>
     /// A client that is still open while its account has not been in a game for two presence checks is
@@ -2143,7 +2604,7 @@ public sealed class AppController : IDisposable
             var account = FindAccount(id);
             // A status hidden by privacy settings or a failed request proves nothing; wait for a clear answer.
             // When the client's own log is followed, it is the better source (RejoinFromLogs).
-            if ((account is not null && !reliable.Contains(account.UserId)) || _logs.StateOf(info.Pid) is not null)
+            if ((account is not null && !reliable.Contains(account.UserId)) || LogFollowed(info.Pid))
                 continue;
             if (account is not { AutoRejoin: true } || info.Launch.Target is null || DateTime.UtcNow - info.Launch.StartedAt < DisconnectGrace
                 || !_presence.TryGetValue(account.UserId, out var presence) || presence.Type is 2 or 4)
@@ -2155,7 +2616,7 @@ public sealed class AppController : IDisposable
             if (strikes < 2)
                 continue;
             _offlineStrikes.Remove(id);
-            Toast(L.F("{0} seems disconnected — restarting Roblox…", account.Label));
+            Notify(L.F("{0} seems disconnected — restarting Roblox…", account.Label), "info", "drop", account.Id);
             RobloxProcesses.Close(info.Pid);
         }
     }
@@ -2190,8 +2651,22 @@ public sealed class AppController : IDisposable
             return null;
         if (_launchCts is not null)
             throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
+        if (_saveDue is not null)
+            Persist();
         SaveOpenSessions();
-        _updater.RestartToUpdate();
+        BackupIfDirty();
+        // The updater ends the process at once; the window's own cleanup (the tray icon) doesn't run.
+        BeforeRestart?.Invoke();
+        try
+        {
+            _updater.RestartToUpdate();
+        }
+        catch (Exception ex)
+        {
+            Log.Write(ex);
+            RestartFailed?.Invoke();
+            throw new UserError(L.F("Couldn't restart to update: {0}", ex.Message));
+        }
         return null;
     }
 
@@ -2199,6 +2674,21 @@ public sealed class AppController : IDisposable
     /// Remembers which version last ran. When that is older than this one, the app was updated and the page shows
     /// the release notes in between, once; a fresh install has nothing remembered and shows nothing.
     /// </summary>
+    /// <summary>
+    /// Launches whose client quit early and are waiting for the client it may have handed over to, with the pid
+    /// that quit (its children are the first choice).
+    /// </summary>
+    readonly Dictionary<PendingLaunch, int> _handedOver = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Stops waiting for a launch; one that was already running ends its session (auto-rejoin, toast).</summary>
+    void DropPending(PendingLaunch launch)
+    {
+        _pending.Remove(launch);
+        bool closed = _closeWhenClaimed.Remove(launch);
+        if (_handedOver.Remove(launch) && !closed)
+            OnSessionEnded(launch.AccountId, launch);
+    }
+
     void NoteVersion()
     {
         string current = _updater.CurrentVersion;
@@ -2305,12 +2795,23 @@ public sealed class AppController : IDisposable
         {
             var viewer = accounts.FirstOrDefault(a => a.CookieValid != false && a.Cookie.Length > 0 && a.Realm == Realm.Global);
             var result = await RobloxApi.GetPresenceAsync(viewer?.Cookie, accounts.Select(a => a.UserId).ToList());
+            // First answer since unlocking: show it now instead of "status unknown" until every follow-up request
+            // (accounts hidden by privacy, game names) is back; those fill in below.
+            if (!_presenceLoaded && _vault == vault)
+            {
+                foreach (var (userId, presence) in result)
+                    _presence[userId] = presence;
+                _presenceLoaded = true;
+                _bootStatusDone = true;
+                AdvanceBoot();
+                PushStateIfChanged();
+            }
 
             // Privacy settings can hide an account from the others. Accounts with a client open here are asked with
             // their own cookie (auto-rejoin relies on it) unless that client's log is followed, which already says
             // what it is doing; others only when their game is hidden.
             var askOwn = accounts.Where(a => a != viewer && a.CookieValid != false && a.Cookie.Length > 0
-                                             && !(_running.TryGetValue(a.Id, out var run) && _logs.StateOf(run.Pid) is not null)
+                                             && !(_running.TryGetValue(a.Id, out var run) && LogFollowed(run.Pid))
                                              && (a.Realm == Realm.Vng || result.TryGetValue(a.UserId, out var p)
                                                  && (_running.ContainsKey(a.Id) ? p.Type != 2 || p.PlaceId is null : p is { Type: 2, PlaceId: null })))
                 .ToList();
@@ -2349,6 +2850,8 @@ public sealed class AppController : IDisposable
                 .Concat(_running.Values.Select(r => r.Launch).Concat(_pending)
                     .Where(l => l.Target is { PlaceId: > 0 })
                     .Select(l => (l.Target!.PlaceId, 0L)))
+                // Many games move players to another place of the same game after joining; the log has that one.
+                .Concat(_running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0).Where(id => id > 0).Select(id => (id, 0L)))
                 .ToList());
 
             if (_vault != vault)
@@ -2358,6 +2861,7 @@ public sealed class AppController : IDisposable
                 _presence[userId] = presence;
             _presenceReliable.Clear();
             _presenceReliable.UnionWith(reliable);
+            _presenceLoaded = true;
             DetectDisconnectedSessions(reliable);
             PushStateIfChanged();
         }
@@ -2368,6 +2872,13 @@ public sealed class AppController : IDisposable
         finally
         {
             _presenceBusy = false;
+            // A failed first try leaves the accounts as "status unknown" instead of loading forever.
+            if (!_presenceLoaded)
+            {
+                _bootStatusDone = true;
+                AdvanceBoot();
+                PushStateIfChanged();
+            }
         }
         return null;
     }
@@ -2379,15 +2890,21 @@ public sealed class AppController : IDisposable
         var s = RequireVault().Data.Settings;
         if (OptStr(a, "lastPlaceInput") is { } place) s.LastPlaceInput = place.Trim();
         if (OptStr(a, "lastJobId") is { } job) s.LastJobId = job.Trim();
-        // Sent while typing in the game box: the page already shows it, so just remember it.
+        if (OptStr(a, "layout") is "cards" or "list") s.Layout = OptStr(a, "layout")!;
+        if (OptStr(a, "sort") is "name" or "status" or "recent") s.Sort = OptStr(a, "sort")!;
+        // Sent while typing in the game box, or when the list's look changes: the page already shows it, so just
+        // remember it.
         if (a.ValueKind == JsonValueKind.Object && a.EnumerateObject().Any()
-            && a.EnumerateObject().All(p => p.Name is "lastPlaceInput" or "lastJobId"))
+            && a.EnumerateObject().All(p => p.Name is "lastPlaceInput" or "lastJobId" or "layout" or "sort"))
         {
             PersistSoon();
             return null;
         }
         if (OptBool(a, "renameWindows") is { } rename) s.RenameWindows = rename;
-        if (OptStr(a, "launchVia") is { } via && RobloxLauncher.LaunchOptions.Contains(via))
+        // "custom" needs a launcher picked with PickLauncher; the page never supplies a path itself.
+        // "other:<name>" only for a launcher actually found here, so the page can't name an arbitrary program.
+        if (OptStr(a, "launchVia") is { } via && RobloxLauncher.IsValidOption(via) && (via != "custom" || File.Exists(s.CustomLauncher))
+            && (RobloxLauncher.OtherName(via) is not { } other || RobloxInstalls.FindOtherBootstrappers().Contains(other)))
         {
             s.LaunchVia = via;
             _installs = null; // the client (and its version) depends on the option
@@ -2455,6 +2972,34 @@ public sealed class AppController : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// "Choose a launcher…": any program the user picks in Windows' own file dialog. It is then started with the
+    /// roblox-player: link as its first argument, like Windows does for the program that handles those links.
+    /// </summary>
+    object? PickLauncher()
+    {
+        var s = RequireVault().Data.Settings;
+        using var dialog = new OpenFileDialog
+        {
+            Title = L.T("Choose the program that opens Roblox"),
+            Filter = L.T("Programs") + " (*.exe)|*.exe",
+            InitialDirectory = File.Exists(s.CustomLauncher) ? Path.GetDirectoryName(s.CustomLauncher)
+                : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        };
+        if (dialog.ShowDialog(_owner) == DialogResult.OK)
+        {
+            if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(Application.ExecutablePath), StringComparison.OrdinalIgnoreCase))
+                throw new UserError(L.T("Pick the program that opens Roblox, not Bloxkeep itself."));
+            s.CustomLauncher = dialog.FileName;
+            s.LaunchVia = "custom";
+            _installs = null;
+            Persist();
+        }
+        // Also when cancelled: the page put its list back on the previous choice and waits for this.
+        PushState();
+        return null;
+    }
+
     static object? OpenDataFolder()
     {
         Directory.CreateDirectory(Vault.DataDir);
@@ -2474,9 +3019,13 @@ public sealed class AppController : IDisposable
         if (_saveDue is not null)
             Persist();
         SaveOpenSessions();
+        BackupIfDirty();
+        _backupTimer?.Dispose();
         // A downloaded update is installed once the app has closed; the next start is the new version.
         _updater.ApplyOnExit();
+        Ui.ClearSecretClipboard();
         _launchCts?.Cancel();
+        _rejoinCts?.Cancel();
         _vault?.Dispose();
         _vault = null;
     }

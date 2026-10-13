@@ -6,11 +6,13 @@ namespace RobloxManager;
 public sealed record GameTarget(long PlaceId, string? JobId = null, string? LinkCode = null, string? ShareCode = null)
 {
     static readonly Regex GamePath = new(@"/games/(\d+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    static readonly Regex QueryPair = new(@"[?&]([^=&#\s]+)=([^&#\s]*)", RegexOptions.CultureInvariant);
+    // A pair also right after "roblox://" or at the start ("placeId=…&gameInstanceId=…"), not only after ? or &.
+    static readonly Regex QueryPair = new(@"(?:[?&]|//|^)([^=&#\s/?]+)=([^&#\s]*)", RegexOptions.CultureInvariant);
 
     /// <summary>
     /// Accepts a place id, a roblox.com/games/… link (with privateServerLinkCode or gameInstanceId),
-    /// a roblox.com/share?code=…&amp;type=Server link, or a roblox:// deep link with placeId.
+    /// a roblox.com/share?code=…&amp;type=Server link, or a roblox:// deep link with placeId (after ? or
+    /// directly after the scheme).
     /// </summary>
     public static bool TryParse(string placeInput, string jobInput, out GameTarget? target, out string error)
     {

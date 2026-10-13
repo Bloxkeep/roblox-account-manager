@@ -43,6 +43,35 @@ public static class RobloxInstalls
             : null;
     }
 
+    /// <summary>Launchers with their own option in Settings; others of the same family are found by <see cref="FindOtherBootstrappers"/>.</summary>
+    static readonly string[] KnownBootstrappers = ["Bloxstrap", "Fishstrap"];
+
+    /// <summary>
+    /// Other Bloxstrap-style launchers (its forks keep its installer): an uninstall entry named after the launcher,
+    /// whose folder holds "&lt;name&gt;.exe" and a Versions folder of Roblox clients. Only what is really there is listed.
+    /// </summary>
+    public static List<string> FindOtherBootstrappers()
+    {
+        var found = new List<string>();
+        try
+        {
+            using var uninstall = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall");
+            foreach (string name in uninstall?.GetSubKeyNames() ?? [])
+            {
+                if (KnownBootstrappers.Contains(name, StringComparer.OrdinalIgnoreCase) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                    continue;
+                using var key = uninstall!.OpenSubKey(name);
+                if (key?.GetValue("InstallLocation") is string dir && File.Exists(Path.Combine(dir, name + ".exe"))
+                    && Directory.Exists(Path.Combine(dir, "Versions")))
+                    found.Add(name);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+        }
+        return found.Order(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
     static IEnumerable<string> ClientsIn(string? root)
     {
         if (root is null)
@@ -76,7 +105,7 @@ public static class RobloxInstalls
     public static string? FindAnyClient()
     {
         var clients = ClientsIn(Path.Combine(Local, "Roblox")).ToList();
-        foreach (var name in new[] { "Bloxstrap", "Fishstrap" })
+        foreach (var name in KnownBootstrappers.Concat(FindOtherBootstrappers()))
         {
             if (FindBootstrapper(name) is { } exe)
                 clients.AddRange(ClientsIn(Path.GetDirectoryName(exe)));
@@ -96,13 +125,16 @@ public static class RobloxInstalls
     public sealed record ClientVersion(string Version, string Folder);
 
     /// <summary>The client a launch option would start: bootstrappers keep their own copy of Roblox.</summary>
-    public static string? ClientFor(string launchVia)
+    public static string? ClientFor(string launchVia, string customLauncher = "")
     {
         string? Bootstrapped(string name) => FindBootstrapper(name) is { } exe ? Newest(ClientsIn(Path.GetDirectoryName(exe))) : null;
         return launchVia switch
         {
             "bloxstrap" => Bootstrapped("Bloxstrap"),
             "fishstrap" => Bootstrapped("Fishstrap"),
+            _ when RobloxLauncher.OtherName(launchVia) is { } other => Bootstrapped(other),
+            // A launcher picked by hand: its own copy of Roblox if it keeps one next to it, else the newest anywhere.
+            "custom" => (File.Exists(customLauncher) ? Newest(ClientsIn(Path.GetDirectoryName(customLauncher))) : null) ?? FindAnyClient(),
             "roblox" => FindOfficialClient(),
             "direct" => FindAnyClient(),
             // Whatever opens roblox-player: links: the client itself, or a bootstrapper with its own copies.

@@ -22,6 +22,11 @@ public static class L
     static readonly Dictionary<string, string> Vi = new()
     {
         ["Wrong master password."] = "Sai mật khẩu chủ.",
+        ["The launcher you picked is gone. Choose it again under Settings › Open Roblox with."] =
+            "Không còn thấy trình mở bạn đã chọn. Hãy chọn lại trong Cài đặt › Mở Roblox bằng.",
+        ["Choose the program that opens Roblox"] = "Chọn chương trình dùng để mở Roblox",
+        ["Programs"] = "Chương trình",
+        ["Pick the program that opens Roblox, not Bloxkeep itself."] = "Hãy chọn chương trình mở Roblox, không phải chính Bloxkeep.",
         ["Open Bloxkeep"] = "Mở Bloxkeep",
         ["Quit Bloxkeep"] = "Thoát Bloxkeep",
         ["Bloxkeep is still running. Right-click this icon to quit."] = "Bloxkeep vẫn đang chạy. Bấm chuột phải vào biểu tượng này để thoát hẳn.",
@@ -116,6 +121,10 @@ public static class L
         ["{0} seems disconnected — restarting Roblox…"] = "{0} có vẻ đã mất kết nối — đang mở lại Roblox…",
         ["Auto-rejoin for {0} was turned off after {1} tries in 15 minutes."] = "Đã tắt tự vào lại game cho {0} sau {1} lần thử trong 15 phút.",
         ["Couldn't rejoin {0}: {1}"] = "Không vào lại được {0}: {1}",
+        ["Didn't rejoin {0}: Multi-Roblox isn't ready, so a new Roblox window would close the one that's open."] =
+            "Chưa vào lại {0}: Multi-Roblox chưa sẵn sàng, mở Roblox mới sẽ đóng mất cửa sổ đang mở.",
+        ["Waiting for the previous Roblox window to open…"] = "Chờ cửa sổ Roblox trước mở xong…",
+        ["Couldn't restart to update: {0}"] = "Không khởi động lại để cập nhật được: {0}",
         ["Your PC is using {0}% of its RAM. Close some Roblox windows if things get slow."] =
             "Máy đang dùng {0}% RAM. Hãy đóng bớt cửa sổ Roblox nếu thấy lag.",
         ["Roblox refused memory trimming, so it was skipped."] = "Roblox không cho phép giảm RAM nên bước này được bỏ qua.",
@@ -123,7 +132,21 @@ public static class L
         ["Select at least one account."] = "Hãy chọn ít nhất một tài khoản.",
         ["Reading the private server link…"] = "Đang đọc link server riêng…",
         ["{0}: already running — skipped."] = "{0}: đang chạy rồi — bỏ qua.",
+        ["{0}: already in this game — skipped."] = "{0}: đang ở game này rồi — bỏ qua.",
+        ["{0}: already on the home screen — skipped."] = "{0}: đang ở trang chủ rồi — bỏ qua.",
+        ["{0} will leave the game and go to the Roblox home screen."] = "{0} sẽ thoát game và về trang chủ Roblox.",
+        ["{0} will leave what they're playing now and open this game instead."] = "{0} sẽ thoát game đang chơi và vào game này.",
+        ["Closing {0}'s Roblox to switch games…"] = "Đang đóng Roblox của {0} để chuyển game…",
         ["Launching {0} ({1}/{2})…"] = "Đang mở {0} ({1}/{2})…",
+        ["Give the preset a name."] = "Đặt tên cho bộ khởi chạy đã.",
+        ["Enter the server's Job ID."] = "Hãy nhập Job ID của server.",
+        ["You can save up to {0} presets."] = "Chỉ lưu được tối đa {0} bộ khởi chạy.",
+        ["Preset not found."] = "Không tìm thấy bộ khởi chạy.",
+        ["This preset has no accounts left."] = "Bộ khởi chạy này không còn acc nào.",
+        ["Finding a server…"] = "Đang tìm server…",
+        ["No server has room for {0} accounts right now, so Roblox picks one."] =
+            "Không có server nào đủ chỗ cho {0} acc, để Roblox tự chọn server.",
+        ["{0}: opened {1} account(s)."] = "{0}: đã mở {1} acc.",
         ["Waiting {0}s before the next account…"] = "Chờ {0} giây trước tài khoản tiếp theo…",
         ["Waiting for Roblox to open {0}… (Roblox is updating to {1})"] = "Chờ Roblox mở {0}… (Roblox đang cập nhật lên {1})",
         ["Waiting for Roblox to open {0}… (Roblox may be updating)"] = "Chờ Roblox mở {0}… (Roblox có thể đang cập nhật)",
@@ -152,5 +175,17 @@ public static class L
         ["The downloaded WebView2 installer is not signed by Microsoft, so it was not run."] =
             "Bộ cài WebView2 vừa tải không có chữ ký của Microsoft nên đã không chạy.",
         ["Couldn't install WebView2: {0}"] = "Không cài được WebView2: {0}",
+        ["{0} account(s) didn't open."] = "{0} tài khoản không mở được.",
+        ["This file is not a Bloxkeep backup."] = "File này không phải bản sao lưu của Bloxkeep.",
+        ["Choose a backup folder first."] = "Hãy chọn thư mục sao lưu trước.",
+        ["Couldn't back up: {0}"] = "Không sao lưu được: {0}",
+        ["Choose a folder on this PC or a synced drive."] = "Hãy chọn thư mục trên máy này hoặc ổ đồng bộ.",
+        ["Pick a folder outside Bloxkeep's own data folder."] = "Hãy chọn thư mục nằm ngoài thư mục dữ liệu của Bloxkeep.",
+        ["Choose a folder for backups"] = "Chọn thư mục để sao lưu",
+        ["Unlock Bloxkeep first, then restore from Settings › Backup."] = "Hãy mở khóa Bloxkeep trước, rồi khôi phục trong Cài đặt › Sao lưu.",
+        ["Choose a Bloxkeep backup"] = "Chọn bản sao lưu của Bloxkeep",
+        ["Bloxkeep backups"] = "Bản sao lưu Bloxkeep",
+        ["Couldn't restore: {0}"] = "Không khôi phục được: {0}",
+        ["Backup restored. Unlock it with the master password it was saved with."] = "Đã khôi phục bản sao lưu. Mở khóa bằng mật khẩu chủ lúc sao lưu.",
     };
 }

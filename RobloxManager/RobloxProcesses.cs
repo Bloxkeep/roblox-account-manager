@@ -15,6 +15,7 @@ public static class RobloxProcesses
     const uint WM_SETTEXT = 0x000C, WM_CLOSE = 0x0010, SMTO_ABORTIFHUNG = 0x0002, GW_OWNER = 4;
     const uint SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_ASYNCWINDOWPOS = 0x4000;
     const int SW_RESTORE = 9;
+    const uint SYNCHRONIZE = 0x00100000, PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
     [DllImport("user32.dll")]
     static extern IntPtr GetForegroundWindow();
@@ -155,19 +156,88 @@ public static class RobloxProcesses
         }
     }
 
-    /// <summary>Asks the client to close like the window's X button would, and terminates it after 4 s if it is still there.</summary>
-    public static void Close(int pid)
+    /// <summary>
+    /// Ends a client for good. Normally its windows are asked to close like their X button would, and the process is
+    /// terminated if it is still there 2 s later; <paramref name="force"/> terminates it at once (a frozen client).
+    /// When a client closes, Roblox starts a copy of itself in the notification area ("--launch-to-tray", seen in
+    /// client 0.742's logs) as a child of the closing client; that copy is ended too, so nothing is left running.
+    /// </summary>
+    public static void Close(int pid, bool force = false)
     {
-        var windows = TopLevelWindows(pid);
+        var windows = force ? [] : TopLevelWindows(pid);
+        // A real handle, held open until the sweep below ends, so Windows can't give this pid to a new process
+        // meanwhile (its children would then be someone else's). Zero when Roblox's anti-tamper refuses it.
+        IntPtr keep = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
         foreach (var hWnd in windows)
             PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
         _ = Task.Run(async () =>
         {
-            if (windows.Count > 0)
-                await Task.Delay(4000);
-            if (GetPlayerPids().Contains(pid))
-                Kill(pid);
+            try
+            {
+                for (int waited = 0; windows.Count > 0 && waited < 2000 && GetPlayerPids().Contains(pid); waited += 250)
+                    await Task.Delay(250);
+                if (GetPlayerPids().Contains(pid))
+                    Kill(pid);
+                for (int i = 0; i < 20; i++)
+                {
+                    foreach (int child in PlayerChildrenOf(pid))
+                        Kill(child);
+                    await Task.Delay(500);
+                }
+            }
+            finally
+            {
+                if (keep != IntPtr.Zero)
+                    CloseHandle(keep);
+            }
         });
+    }
+
+    const uint TH32CS_SNAPPROCESS = 0x2;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct PROCESSENTRY32W
+    {
+        public uint dwSize, cntUsage, th32ProcessID;
+        public IntPtr th32DefaultHeapID;
+        public uint th32ModuleID, cntThreads, th32ParentProcessID;
+        public int pcPriClassBase;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string szExeFile;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    static extern bool Process32FirstW(IntPtr snapshot, ref PROCESSENTRY32W entry);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    static extern bool Process32NextW(IntPtr snapshot, ref PROCESSENTRY32W entry);
+
+    /// <summary>Roblox clients started by the given process (it may have exited already; the record stays).</summary>
+    public static List<int> PlayerChildrenOf(int parent)
+    {
+        var children = new List<int>();
+        IntPtr snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snapshot == new IntPtr(-1))
+            return children;
+        try
+        {
+            var entry = new PROCESSENTRY32W { dwSize = (uint)Marshal.SizeOf<PROCESSENTRY32W>() };
+            for (bool ok = Process32FirstW(snapshot, ref entry); ok; ok = Process32NextW(snapshot, ref entry))
+            {
+                if (entry.th32ParentProcessID == parent && entry.th32ProcessID != parent
+                    && entry.szExeFile.Equals(PlayerProcessName + ".exe", StringComparison.OrdinalIgnoreCase))
+                    children.Add((int)entry.th32ProcessID);
+            }
+        }
+        finally
+        {
+            CloseHandle(snapshot);
+        }
+        return children;
     }
 
     /// <summary>Brings a client's window to the front, restoring it if minimised.</summary>
@@ -261,7 +331,7 @@ public static class RobloxProcesses
 
     public static bool TrimMemory(int pid)
     {
-        const uint PROCESS_SET_QUOTA = 0x0100, PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+        const uint PROCESS_SET_QUOTA = 0x0100;
         IntPtr handle = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
         if (handle == IntPtr.Zero)
             return false;
@@ -275,11 +345,13 @@ public static class RobloxProcesses
         }
     }
 
-    public static int CloseAll()
+    /// <param name="force">End every client at once instead of closing their windows first.</param>
+    /// <param name="forceWhen">Pids to end at once even without <paramref name="force"/> (clients in a game).</param>
+    public static int CloseAll(bool force = false, Func<int, bool>? forceWhen = null)
     {
         var pids = GetPlayerPids();
         foreach (var pid in pids)
-            Close(pid);
+            Close(pid, force || forceWhen?.Invoke(pid) == true);
         return pids.Length;
     }
 

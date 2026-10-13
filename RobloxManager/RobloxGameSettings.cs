@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace RobloxManager;
@@ -224,4 +225,7 @@ public sealed class RobloxConfig
     public int Fps { get; set; }
     /// <summary>0–100 %; -1 = leave as it is.</summary>
     public int Volume { get; set; } = -1;
+    /// <summary>Fields a newer Bloxkeep added, saved back as they were (see Models.cs).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
