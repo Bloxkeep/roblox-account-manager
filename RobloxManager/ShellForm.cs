@@ -99,6 +99,13 @@ public sealed class ShellForm : Form
         Size = Fit(preferred, area);
         if (preferred.Width > area.Width || preferred.Height > area.Height)
             WindowState = FormWindowState.Maximized;
+        // The place, size and maximised state it was left in come back instead (put in OnLoad); the fit above is
+        // for a first start, or when that place is on no screen any more.
+        if (SavedPlace(out _))
+        {
+            StartPosition = FormStartPosition.Manual;
+            WindowState = FormWindowState.Normal;
+        }
         Icon = Ui.AppIcon;
         Load += async (_, _) => await InitAsync();
         _releaseTimer.Tick += (_, _) => ReleaseWebView();
@@ -206,6 +213,7 @@ public sealed class ShellForm : Form
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        SavePlace();
         // Windows shutting down and Task Manager still close the app; the uninstaller and the tray menu use Quit.
         if (!_quitting && Prefs.CloseToTray && e.CloseReason == CloseReason.UserClosing)
         {
@@ -475,6 +483,67 @@ public sealed class ShellForm : Form
     {
         base.OnResize(e);
         UpdateBackground();
+        // Maximised or restored with the title bar's button (no ResizeEnd for that): remembered for the next start.
+        if (WindowState != _lastState)
+        {
+            _lastState = WindowState;
+            if (WindowState != FormWindowState.Minimized)
+                SavePlace();
+        }
+    }
+
+    protected override void OnResizeEnd(EventArgs e)
+    {
+        base.OnResizeEnd(e);
+        SavePlace();
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        // Only now, with the window real: moved to a screen with another scale, it then gets a proper dpi change.
+        if (!SavedPlace(out var saved))
+            return;
+        var area = Screen.FromRectangle(saved).WorkingArea;
+        Location = saved.Location;
+        Size = new Size(Math.Clamp(saved.Width, MinimumSize.Width, Math.Max(MinimumSize.Width, area.Width)),
+            Math.Clamp(saved.Height, MinimumSize.Height, Math.Max(MinimumSize.Height, area.Height)));
+        if (Prefs.MainMaximized)
+            WindowState = FormWindowState.Maximized;
+        _lastState = WindowState;
+    }
+
+    FormWindowState _lastState = FormWindowState.Normal;
+
+    /// <summary>The saved place, unless no screen shows the middle of its title bar any more (a monitor unplugged).</summary>
+    static bool SavedPlace(out Rectangle r)
+    {
+        r = default;
+        var parts = Prefs.MainWindow?.Split(',');
+        if (parts is not { Length: 4 } || !int.TryParse(parts[0], out int x) || !int.TryParse(parts[1], out int y)
+            || !int.TryParse(parts[2], out int w) || !int.TryParse(parts[3], out int h) || w <= 0 || h <= 0)
+            return false;
+        r = new Rectangle(x, y, w, h);
+        var grip = new Rectangle(x + w / 4, y + 2, w / 2, 24);
+        return Screen.AllScreens.Any(s => s.WorkingArea.IntersectsWith(grip));
+    }
+
+    /// <summary>Remembers the size it has when not maximised (also while maximised or minimised) and whether it is maximised.</summary>
+    void SavePlace()
+    {
+        if (!IsHandleCreated || !Visible)
+            return;
+        var normal = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+        if (normal.Width <= 0 || normal.Height <= 0)
+            return;
+        string place = $"{normal.X},{normal.Y},{normal.Width},{normal.Height}";
+        // Minimised says nothing about maximised: the last known state is kept.
+        bool maximized = WindowState == FormWindowState.Minimized ? Prefs.MainMaximized : WindowState == FormWindowState.Maximized;
+        if (place == Prefs.MainWindow && maximized == Prefs.MainMaximized)
+            return;
+        Prefs.MainWindow = place;
+        Prefs.MainMaximized = maximized;
+        Prefs.Save();
     }
 
     protected override void OnVisibleChanged(EventArgs e)

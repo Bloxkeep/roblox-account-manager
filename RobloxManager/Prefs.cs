@@ -66,6 +66,12 @@ public static class Prefs
     /// <summary>The mini window's last place and size, "x,y,w,h" in screen pixels; null until it was moved.</summary>
     public static string? MiniWindow { get; set; }
 
+    /// <summary>The main window's place and size when not maximised, "x,y,w,h" in screen pixels; null until it was first moved, resized or closed.</summary>
+    public static string? MainWindow { get; set; }
+
+    /// <summary>The main window was maximised when last left.</summary>
+    public static bool MainMaximized { get; set; }
+
     /// <param name="At">When the build was installed (its folder's time), or first seen for the first entry.</param>
     /// <param name="Source">Whose copy ("Roblox", "Bloxstrap", …).</param>
     /// <param name="First">The first build Bloxkeep saw here, not an update it saw happen.</param>
@@ -85,7 +91,7 @@ public static class Prefs
     [
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
-        "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified",
+        "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -150,6 +156,10 @@ public static class Prefs
                 MiniOpen = true;
             if (root.TryGetProperty("miniWindow", out var miniWindow) && miniWindow.ValueKind == JsonValueKind.String)
                 MiniWindow = miniWindow.GetString();
+            if (root.TryGetProperty("mainWindow", out var mainWindow) && mainWindow.ValueKind == JsonValueKind.String)
+                MainWindow = mainWindow.GetString();
+            if (root.TryGetProperty("mainMaximized", out var mainMax) && mainMax.ValueKind == JsonValueKind.True)
+                MainMaximized = true;
             if (root.TryGetProperty("robloxHistory", out var history) && history.ValueKind == JsonValueKind.Array)
             {
                 foreach (var h in history.EnumerateArray())
@@ -188,6 +198,7 @@ public static class Prefs
                 ["backupFolder"] = BackupFolder, ["backupEnabled"] = BackupEnabled, ["lastBackup"] = LastBackup,
                 ["backupPending"] = BackupPending,
                 ["dailySignInCheck"] = DailySignInCheck, ["lastSignInCheck"] = LastSignInCheck, ["miniOpen"] = MiniOpen, ["miniWindow"] = MiniWindow,
+                ["mainWindow"] = MainWindow, ["mainMaximized"] = MainMaximized,
                 ["robloxHistory"] = RobloxHistory.Select(h => new { at = h.At, version = h.Version, folder = h.Folder, source = h.Source, first = h.First }).ToArray(),
                 ["robloxClosedAt"] = RobloxClosedAt, ["robloxClosedCount"] = RobloxClosedCount, ["robloxClosedNotified"] = RobloxClosedNotified,
             };
