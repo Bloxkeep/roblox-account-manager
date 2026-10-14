@@ -20,6 +20,8 @@
     games[920587237].name = '[🎃 UPDATE 5] Some Very Long Game Name Simulator 2 — Ultimate Edition';
     games[4924922222].name = 'Brookhaven 🏡RP: Roleplay Hangout, Chill & Make Friends Worldwide (NEW!)';
   }
+  // Made-up names and notes in the page's language, so the English screenshots have no Vietnamese in them.
+  const tx = (en, vi) => params.get('lang') === 'vi' ? vi : en;
   const minsAgo = m => new Date(Date.now() - m * 60000).toISOString();
   // Like the app: the next minute a preset's schedule starts at (local time), or null.
   const nextRun = s => {
@@ -48,28 +50,28 @@
   const MAX_PRESETS = 50;
 
   let accounts = params.has('empty') ? [] : [
-    { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', alias: 'Acc chính', label: 'Acc chính', group: 'Main', note: 'Tài khoản chơi chính, đừng dùng farm',
+    { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', alias: tx('Main', 'Acc chính'), label: tx('Main', 'Acc chính'), group: 'Main', note: tx("My main account, don't farm on it", 'Tài khoản chơi chính, đừng dùng farm'),
       hasPassword: true, hasAuthenticator: true, cookieValid: true, autoRejoin: true, lastUsed: minsAgo(3), avatarUrl: face('#2b3a55', '#f2c94c', '#3b82f6'), state: 'running',
       presence: { type: 'ingame', game: games[2753915549].name, placeId: 2753915549, iconUrl: games[2753915549].iconUrl },
       session: { pid: 1111, since: minsAgo(47), game: g(2753915549), connection: 'ingame' } },
     { id: id(2), userId: 5140000002, username: 'pixelfarmer01', displayName: 'pixelfarmer01', alias: 'Farm 1', label: 'Farm 1', group: 'Farm', note: '',
       hasPassword: false, cookieValid: true, lastUsed: minsAgo(2), avatarUrl: face('#1f3b2d', '#f2c94c', '#22c55e'), state: 'running',
       presence: { type: 'online' }, session: { pid: 2222, since: minsAgo(params.has('kicked') ? 12 : 1), game: g(2753915549), connection: params.has('kicked') ? 'disconnected' : 'joining', reason: params.has('kicked') ? 278 : null } },
-    { id: id(3), userId: 5140000003, username: 'pixelfarmer02', displayName: 'pixelfarmer02', alias: 'Farm 2', label: 'Farm 2', group: 'Farm', note: 'Hết hạn tuần trước',
+    { id: id(3), userId: 5140000003, username: 'pixelfarmer02', displayName: 'pixelfarmer02', alias: 'Farm 2', label: 'Farm 2', group: 'Farm', note: tx('Expired last week', 'Hết hạn tuần trước'),
       hasPassword: true, cookieValid: false, lastUsed: minsAgo(60 * 24 * 9), avatarUrl: face('#3a2a1f', '#e8b48a', '#f97316'), state: 'idle',
       presence: { type: 'offline', lastOnline: minsAgo(60 * 30) }, session: null },
     { id: id(4), userId: 5140000004, username: 'night_owl_rb', displayName: 'Night Owl', alias: '', label: 'Night Owl', group: 'Farm', note: '',
       hasPassword: false, cookieValid: true, lastUsed: minsAgo(60 * 5), avatarUrl: face('#262a3a', '#d6d9e0', null), state: 'idle',
       presence: { type: 'ingame', game: games[920587237].name, placeId: 920587237, jobId: 'b6f1c2d4-0000-4c5e-9a7b-123456789abc', iconUrl: games[920587237].iconUrl }, session: null },
-    { id: id(5), userId: 5140000005, username: 'lananh_2010', displayName: 'Lan Anh', alias: 'Acc phụ', label: 'Acc phụ', group: '', note: '',
+    { id: id(5), userId: 5140000005, username: 'lananh_2010', displayName: 'Lan Anh', alias: tx('Alt', 'Acc phụ'), label: tx('Alt', 'Acc phụ'), group: '', note: '',
       hasPassword: true, cookieValid: true, lastUsed: null, avatarUrl: face('#3a2440', '#f5d0b5', '#ec4899'), state: 'idle',
       presence: { type: 'studio', game: 'Place1' }, session: null },
-    { id: id(6), userId: 5140000006, username: 'tradepost_vn', displayName: 'Trade Post', alias: 'Trade', label: 'Trade', group: '', note: 'Chỉ dùng trade',
+    { id: id(6), userId: 5140000006, username: 'tradepost_vn', displayName: 'Trade Post', alias: 'Trade', label: 'Trade', group: '', note: tx('Trading only', 'Chỉ dùng trade'),
       hasPassword: false, cookieValid: true, banned: true, bannedSince: minsAgo(60 * 20), lastUsed: minsAgo(60 * 48), avatarUrl: face('#2f2a1c', '#c99a6b', '#a3762e'), state: 'idle',
       presence: null, session: null,
       // ?rejoin=1: dropped a few times in a row, so auto-rejoin waits a few minutes before the next try.
       rejoin: params.has('rejoin') ? { at: new Date(Date.now() + 4.5 * 60000).toISOString(), restart: false, game: g(920587237) } : null },
-    { id: id(7), userId: 0, username: 'noavatar_user', displayName: 'No Avatar', alias: 'Thử nghiệm', label: 'Thử nghiệm', group: '', note: '',
+    { id: id(7), userId: 0, username: 'noavatar_user', displayName: 'No Avatar', alias: tx('Testing', 'Thử nghiệm'), label: tx('Testing', 'Thử nghiệm'), group: '', note: '',
       hasPassword: false, cookieValid: null, lastUsed: null, avatarUrl: null, state: 'launching',
       presence: { type: 'offline' }, session: { pid: 0, since: minsAgo(0), game: g(4924922222) } },
   ];
@@ -79,8 +81,8 @@
       ['MegaLongAccountLabelWithoutAnySpaces', 'MegaLongAccountLabelWithoutAnySp', 'Farm farm farm farm farm farm farm'],
       ['Night Owl The Night Owl Of The Night Owls', 'night_owl_rb_night_owl_rb_nigh', 'Farm farm farm farm farm farm farm']];
     longs.forEach(([label, username, group], i) => Object.assign(accounts[i], { label, alias: label, username, displayName: username, group, note: 'A very long note about this account that goes on and on and on, and on, and on, and on.' }));
-    accounts[4].username = 'lananh_2010_lananh_2010_lananh'; accounts[4].label = accounts[4].alias = 'Lan Anh (acc phụ, dùng để trade và mua đồ)';
-    accounts[6].group = 'Nhóm thử nghiệm với tên rất dài không ngắt'; accounts[6].username = 'noavatar_user_noavatar_user';
+    accounts[4].username = 'lananh_2010_lananh_2010_lananh'; accounts[4].label = accounts[4].alias = tx('Lan Anh (alt, for trading and buying items)', 'Lan Anh (acc phụ, dùng để trade và mua đồ)');
+    accounts[6].group = tx('AVeryLongTestingGroupNameWithNoBreaksAtAll', 'Nhóm thử nghiệm với tên rất dài không ngắt'); accounts[6].username = 'noavatar_user_noavatar_user';
   }
   let locked = params.has('locked') || params.has('new');
   let language = params.get('lang') || 'en';
@@ -163,7 +165,7 @@
   // ?ivsame=1: the picked file is the vault in use.
   const IV_FILE = [
     { label: 'Farm 3', username: 'pixelfarmer03', realm: '', group: 'Farm', hasPassword: true, cookieValid: true, avatarUrl: face('#1f2f3b', '#f2c94c', '#14b8a6') },
-    { label: 'Kho đồ', username: 'khodo_vng', realm: 'vng', group: '', hasPassword: false, cookieValid: null, avatarUrl: null },
+    { label: tx('Storage', 'Kho đồ'), username: 'khodo_vng', realm: 'vng', group: '', hasPassword: false, cookieValid: null, avatarUrl: null },
     { label: 'Farm 2', username: 'pixelfarmer02', realm: '', group: 'Farm', hasPassword: true, cookieValid: true, avatarUrl: face('#3a2a1f', '#e8b48a', '#f97316') },
     { label: 'Main', username: 'sunny_builds', realm: '', group: '', hasPassword: true, cookieValid: true, avatarUrl: face('#2b3a55', '#f2c94c', '#3b82f6') },
     { label: 'Event runner', username: 'event_runner_2026', realm: '', group: 'Event', hasPassword: false, cookieValid: false, avatarUrl: face('#2a1f3a', '#d6d9e0', '#a855f7') },
@@ -335,11 +337,11 @@
           const banned = accounts.filter(y => a.ids.includes(y.id) && y.banned).map(y => `${shown(y)} is banned on Roblox, so it wasn't opened.`);
           const ids = a.ids.filter(x => !accounts.find(y => y.id === x)?.banned);
           if (!ids.length && banned.length) throw new Error(banned.join('\n'));
-          if (ids.length > 1 && !multi.armed && !a.force) return { needsConfirm: true, message: 'Multi-Roblox chưa sẵn sàng vì đã có Roblox chạy trước.\n\nVẫn tiếp tục mở?' };
+          if (ids.length > 1 && !multi.armed && !a.force) return { needsConfirm: true, message: language === 'vi' ? 'Multi-Roblox chưa sẵn sàng vì đã có Roblox chạy trước.\n\nVẫn tiếp tục mở?' : "Multi-Roblox isn't ready because Roblox was already running.\n\nOpen anyway?" };
           for (const x of ids) {
             const acc = accounts.find(y => y.id === x);
             if (acc) acc.state = 'launching';
-            emit('progress', { text: `Đang mở ${acc ? shown(acc) : ''}…` });
+            emit('progress', { text: language === 'vi' ? `Đang mở ${acc ? shown(acc) : ''}…` : `Opening ${acc ? shown(acc) : ''}…` });
             push();
             await wait(900);
           }
@@ -429,10 +431,10 @@
           if (!p) throw new Error('Preset not found.');
           const ids = p.accountIds.filter(x => accounts.some(y => y.id === x));
           if (!ids.length) throw new Error('This preset has no accounts left.');
-          if (ids.length > 1 && !multi.armed && !a.force) return { needsConfirm: true, message: 'Multi-Roblox chưa sẵn sàng vì đã có Roblox chạy trước.\n\nVẫn tiếp tục mở?' };
+          if (ids.length > 1 && !multi.armed && !a.force) return { needsConfirm: true, message: language === 'vi' ? 'Multi-Roblox chưa sẵn sàng vì đã có Roblox chạy trước.\n\nVẫn tiếp tục mở?' : "Multi-Roblox isn't ready because Roblox was already running.\n\nOpen anyway?" };
           const skipped = ids.filter(x => accounts.find(y => y.id === x).state !== 'idle').map(x => `${accounts.find(y => y.id === x).label}: already running — skipped.`);
           if (!['any', 'job'].includes(p.server) && p.placeInput) {
-            emit('progress', { text: 'Đang tìm server…' });
+            emit('progress', { text: language === 'vi' ? 'Đang tìm server…' : 'Finding a server…' });
             await wait(600);
             if (params.has('noroom')) emit('toast', { text: `No server has room for ${ids.length} accounts right now, so Roblox picks one.`, kind: 'warn' });
           }
@@ -466,7 +468,7 @@
         case 'addViaBrowser': throw new Error('Bản xem thử không mở được trình duyệt đăng nhập.');
         case 'closeAll': return 2;
         case 'friendServers': await wait(600); if (params.has('friendsfail')) throw new Error('HTTP 500'); return { asked: 2, friends: params.has('nofriends') ? [] : [
-          { userId: 5140000101, name: LONG ? 'kiwi_runner_kiwi_runner_kiwi' : 'kiwi_runner', displayName: LONG ? 'Kiwi The Fastest Runner In The World' : 'Kiwi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 1' : LONG ? 'Sunny_The_Builder_Of_Many_Worlds_2010' : 'Acc chính' },
+          { userId: 5140000101, name: LONG ? 'kiwi_runner_kiwi_runner_kiwi' : 'kiwi_runner', displayName: LONG ? 'Kiwi The Fastest Runner In The World' : 'Kiwi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 1' : LONG ? 'Sunny_The_Builder_Of_Many_Worlds_2010' : tx('Main', 'Acc chính') },
           { userId: 5140000102, name: 'mochi_cat', displayName: 'Mochi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 2' : 'Farm 1' }] };
         case 'pickLauncher': settings = { ...settings, customLauncher: 'Froststrap', launchVia: 'custom' }; push(); return null;
         case 'vaultImportPick':

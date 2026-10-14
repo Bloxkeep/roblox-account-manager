@@ -1,434 +1,440 @@
 <p align="center">
-  <img src="RobloxManager/wwwroot/logo.svg" width="88" alt="Logo Bloxkeep">
+  <img src="RobloxManager/wwwroot/logo.svg" width="88" alt="Bloxkeep logo">
 </p>
 <h1 align="center">Bloxkeep</h1>
-<p align="center">Quản lý và mở nhiều tài khoản Roblox trên Windows. Tài khoản được mã hóa và chỉ lưu trên máy của bạn.</p>
-<p align="center">Tiếng Việt | <a href="README.en.md">English</a></p>
-<p align="center"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 hoặc 11, 64-bit"> <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10"> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="Giấy phép MIT"></a></p>
-<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a></p>
+<p align="center">Manage and launch several Roblox accounts on Windows. Accounts are encrypted and stay on your PC.</p>
+<p align="center">English | <a href="README.vi.md">Tiếng Việt</a></p>
+<p align="center">
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 or 11, 64-bit">
+  <img src="https://img.shields.io/badge/.NET-10-512BD4" alt="Built with .NET 10">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
+<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a></p>
 
-<p align="center"><img src="docs/screenshots/hero.png" width="860" alt="Cửa sổ chính của Bloxkeep: danh sách tài khoản dạng thẻ với hai tài khoản đang được chọn, thanh chọn game ở dưới và Multi-Roblox đang bật"></p>
+<p align="center"><img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards with two accounts chosen, the game bar at the bottom, and Multi-Roblox turned on"></p>
 
-Bloxkeep dành cho người chơi nhiều tài khoản Roblox trên một máy Windows: giữ các tài khoản ở một chỗ, chọn game, chọn tài khoản rồi bấm **Vào game**. Dữ liệu chỉ nằm trên máy của bạn, được mã hóa bằng mật khẩu chủ; Bloxkeep không có máy chủ riêng.
+Bloxkeep is for people who play on several Roblox accounts on one Windows PC: keep the accounts in one place, pick a game, pick accounts and press **Play**. Your data stays on your PC, encrypted with your master password; Bloxkeep has no server of its own.
 
-*Bloxkeep là dự án độc lập, không liên kết, không được Roblox Corporation bảo trợ hay tài trợ. Roblox là thương hiệu của Roblox Corporation.*
+*Bloxkeep is an independent project. It is not affiliated with, endorsed or sponsored by Roblox Corporation. Roblox is a trademark of Roblox Corporation.*
 
-## Tính năng
+## Features
 
-- Thêm tài khoản bằng tên đăng nhập và mật khẩu (có xác minh 2 bước, captcha giải trong một cửa sổ nhỏ), bằng mã hoặc QR quét bằng app Roblox trên điện thoại, bằng trang roblox.com trong cửa sổ trình duyệt, bằng cookie, hoặc nhập từ Roblox Account Manager hay từ một file dữ liệu Bloxkeep khác.
-- Xem trạng thái từng tài khoản: online, đang chơi trên máy này hay thiết bị khác, bị văng vì lý do gì, RAM, thời gian đã chơi, PID, cần đăng nhập lại hay bị ban. Tìm, lọc theo trạng thái hoặc nhóm, sắp xếp, xem dạng thẻ hoặc dạng danh sách.
-- Chọn game theo tên, link hoặc Place ID. Chọn server (đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho N tài khoản, ngẫu nhiên), vào cùng bạn bè, hoặc vào đúng server của một người chơi theo tên đăng nhập.
-- Chạy nhiều cửa sổ Roblox cùng lúc với Multi-Roblox, mở cửa sổ đồng loạt ở chế độ cửa sổ và tự xếp chúng thành lưới. Tính năng này tắt sẵn, bạn tự bật khi cần.
-- Preset: lưu sẵn tài khoản, game và cách chọn server để chạy bằng một lần bấm, có hẹn giờ chạy và dừng, và tùy chọn riêng (chống AFK, tự vào lại game, chế độ treo máy nhẹ, mở lại Roblox theo giờ).
-- Tự vào lại game khi Roblox bị văng, bị kick hoặc mất kết nối, thử lại giãn dần chứ không bỏ cuộc.
-- Màn hình theo dõi: xem hình trực tiếp của mọi cửa sổ Roblox trong một tab. Thống kê thời gian chơi theo tài khoản và theo game, kèm nhật ký hoạt động.
-- Mã 2FA ngay trong app, ẩn tên tài khoản khi chụp màn hình hay livestream, kiểm tra đăng nhập mỗi ngày và phát hiện tài khoản bị ban.
-- Gửi tổng kết thời gian chơi, tin trạng thái và cảnh báo lên kênh Discord của bạn.
-- Sao lưu vào thư mục OneDrive hoặc Google Drive. Ngoài ra còn có 32 chủ đề, tìm nhanh bằng `Ctrl+K`, giao diện tiếng Anh và tiếng Việt, chạy ngầm ở khay hệ thống và thông báo Windows.
+- Add accounts with a username and password (with 2-step verification, and captchas solved in a small window), with a code or QR scanned in the Roblox phone app, through roblox.com in a browser window, with a cookie, or import them from Roblox Account Manager or from another Bloxkeep file.
+- See each account's status: online, playing on this PC or another device, why it was disconnected, RAM, play time, PID, whether it needs to sign in again or is banned. Search, filter by status or group, sort, and switch between cards and a list.
+- Pick a game by name, link or Place ID. Pick a server (most players, fewest, lowest ping, room for N accounts, random), join friends, or join the exact server a player is in by their username.
+- Run several Roblox windows at once with Multi-Roblox, open them all windowed and tile them. It's off until you turn it on.
+- Presets: save accounts, a game and a server choice to launch in one click, with a schedule to start and stop, and options of their own (anti-AFK, auto-rejoin, a light AFK mode, restarting Roblox every few hours).
+- Auto-rejoin when Roblox disconnects, kicks or loses the connection, retrying with longer waits instead of giving up.
+- Game monitor: live pictures of every Roblox window in one tab. Statistics of play time per account and per game, with an activity log.
+- Authenticator (2FA) codes in the app, hiding account names for screenshots and streams, a daily sign-in check, and spotting banned accounts.
+- Send play-time summaries, a status message and alerts to your Discord channel.
+- Back up to a OneDrive or Google Drive folder. Also: 32 themes, quick search with `Ctrl+K`, English and Vietnamese, runs from the tray, Windows notifications.
 
-<img src="docs/screenshots/themes.png" width="800" alt="Sáu chủ đề của Bloxkeep: Dark, City, Aurora, Sakura, Paper và Terminal">
+<img src="docs/screenshots/themes.png" width="800" alt="Six Bloxkeep themes: Dark, City, Aurora, Sakura, Paper and Terminal">
 
-## Tải về và cài đặt
+## Download and install
 
-Cần Windows 10 hoặc 11, bản 64-bit. Không cần cài .NET. Bộ cài tự cài Microsoft Edge WebView2 nếu máy chưa có.
+You need Windows 10 or 11, 64-bit. You don't need to install .NET. The installer installs Microsoft Edge WebView2 if it's missing.
 
-Tải ở trang [Releases](../../releases/latest):
+Get it from [Releases](../../releases/latest):
 
-| File | Dùng khi |
+| File | Use it when |
 |---|---|
-| `Bloxkeep-Setup.exe` | Cài bình thường. Cài cho người dùng Windows hiện tại, không cần quyền admin, tạo shortcut ở Start Menu và Desktop. |
-| `Bloxkeep-Portable.zip` | Không muốn cài. Giải nén rồi chạy `Bloxkeep.exe`; dữ liệu nằm trong thư mục `data` bên cạnh. Bản portable cũng tự cập nhật. |
+| `Bloxkeep-Setup.exe` | You want a normal install. It installs for your Windows user, needs no admin rights, and adds Start menu and Desktop shortcuts. |
+| `Bloxkeep-Portable.zip` | You'd rather not install. Unzip and run `Bloxkeep.exe`; its data goes into a `data` folder next to it. The portable copy updates itself too. |
 
 > [!CAUTION]
-> Chỉ tải Bloxkeep ở trang Releases của repo này. Bản tải ở nơi khác có thể đã bị sửa để lấy cắp tài khoản.
+> Only download Bloxkeep from this repository's Releases page. A copy from anywhere else may have been changed to steal accounts.
 
-File chưa có chữ ký số, nên lần đầu chạy Windows SmartScreen sẽ cảnh báo. Bấm **More info** rồi **Run anyway** (trên Windows tiếng Việt, hai nút này mang tên tiếng Việt tương ứng). Bạn có thể đối chiếu mã SHA-256 của file với `SHA256SUMS.txt` trong cùng bản phát hành.
+The files aren't code-signed yet, so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release.
 
-<img src="docs/screenshots/1-install.png" width="480" alt="Bộ cài Bloxkeep đang cài đặt">
+<img src="docs/screenshots/1-install.png" width="480" alt="The Bloxkeep installer at work">
 
-### Cập nhật
+### Updates
 
-Bloxkeep tự kiểm tra bản mới trên GitHub và tải về ở nền. Tải xong, thanh bên hiện nút **Khởi động lại để cập nhật**; Roblox vẫn chạy bình thường trong lúc đó. Nếu bạn không bấm, bản mới được cài khi tắt app. Sau khi cập nhật, app hiện bảng **Có gì mới trong Bloxkeep**.
+Bloxkeep checks GitHub for a new version and downloads it in the background. When it's ready, the sidebar shows **Restart to update**; Roblox keeps running meanwhile. If you don't click it, the update installs when you quit. After updating, the app shows **What's new in Bloxkeep**.
 
-Tự cập nhật chỉ hoạt động khi repo trên GitHub ở chế độ công khai.
+Updating itself only works while the GitHub repository is public.
 
-Muốn tắt tự cập nhật: bỏ chọn **Cài đặt › Cập nhật Bloxkeep › Tự động cập nhật**. Nút **Kiểm tra ngay** vẫn dùng được.
+To turn automatic updates off, untick **Settings › Bloxkeep updates › Update automatically**. **Check now** still works.
 
-Chạy `Bloxkeep-Setup.exe` bản mới hơn đè lên bản đã cài cũng được: bộ cài hỏi cập nhật (hoặc sửa lại nếu cùng phiên bản) và giữ nguyên dữ liệu.
+Running a newer `Bloxkeep-Setup.exe` over an installed copy works too: the installer offers to update (or repair, for the same version) and keeps your data.
 
-### Gỡ cài đặt
+### Uninstall
 
-Nếu Bloxkeep đang chạy, hãy thoát trước (chuột phải biểu tượng ở khay › **Thoát Bloxkeep**): trình gỡ sẽ tắt app ngay mà không hỏi, và biểu tượng của app vừa bị tắt có thể còn nằm ở khay cho đến khi bạn rê chuột qua. Sau đó vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (publisher `minhhoang0122`) và chọn **Uninstall**. Hộp thoại của bộ cài và trình gỡ chỉ có tiếng Anh.
+If Bloxkeep is running, quit it first (right-click the tray icon › **Quit Bloxkeep**): the uninstaller closes it without asking, and the icon of an app closed that way can stay in the tray until you move the mouse over it. Then open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publisher `minhhoang0122`) and choose **Uninstall**. The installer and uninstaller dialogs are in English only.
 
-| Bị xóa | Được giữ |
+| Removed | Kept |
 |---|---|
-| Chương trình trong `%LOCALAPPDATA%\BloxkeepApp`, shortcut ở Start menu và Desktop (kể cả shortcut bạn đã ghim vào Start hay thanh tác vụ), bộ nhớ đệm của giao diện, và mục Bloxkeep trong Installed apps. Bloxkeep không thêm gì khác vào Windows: không có mục khởi động cùng Windows, không có service, không chiếm giao thức `roblox-player:`. | Tài khoản và cài đặt trong `%LOCALAPPDATA%\Bloxkeep` (`vault.rmv`, `prefs.json`, `error.log`), nên cài lại là dùng tiếp; và các file sao lưu trong thư mục sao lưu. Muốn xóa cả những thứ này thì tự xóa thư mục đó và các file sao lưu. |
+| The program in `%LOCALAPPDATA%\BloxkeepApp`, the Start menu and Desktop shortcuts (including ones you pinned to Start or the taskbar), the interface cache, and the Installed apps entry. Bloxkeep adds nothing else to Windows: no startup entry, no service, and it doesn't take over the `roblox-player:` protocol. | Your accounts and settings in `%LOCALAPPDATA%\Bloxkeep` (`vault.rmv`, `prefs.json`, `error.log`), so a reinstall picks up where you left off; and the backup files in your backup folder. Delete that folder and the backups yourself to remove those too. |
 
 <details>
-<summary>Ảnh: cập nhật và gỡ cài đặt</summary>
+<summary>Pictures: updating and uninstalling</summary>
 
-<img src="docs/screenshots/2-restart-to-update.png" width="800" alt="Nút Khởi động lại để cập nhật ở thanh bên"> <img src="docs/screenshots/6-whats-new.png" width="800" alt="Bảng Có gì mới sau khi cập nhật"> <img src="docs/screenshots/3-settings-updates.png" width="800" alt="Trang Cập nhật Bloxkeep trong Cài đặt">
-<img src="docs/screenshots/4-uninstall-progress.png" width="480" alt="Đang gỡ Bloxkeep"> <img src="docs/screenshots/5-uninstall-done.png" width="480" alt="Gỡ xong, dữ liệu tài khoản được giữ lại">
+<img src="docs/screenshots/2-restart-to-update.png" width="800" alt="Restart to update in the sidebar"> <img src="docs/screenshots/6-whats-new.png" width="800" alt="What's new after an update"> <img src="docs/screenshots/3-settings-updates.png" width="800" alt="The Bloxkeep updates page in Settings">
+<img src="docs/screenshots/4-uninstall-progress.png" width="480" alt="Uninstalling Bloxkeep"> <img src="docs/screenshots/5-uninstall-done.png" width="480" alt="Uninstall finished, account data kept">
 </details>
 
-## Bắt đầu
+## Getting started
 
-1. **Đặt mật khẩu chủ** ở lần mở đầu tiên (ít nhất 6 ký tự). Mật khẩu này dùng để mở khóa Bloxkeep và **không khôi phục được** nếu quên, xem [Dữ liệu và bảo mật](#dữ-liệu-và-bảo-mật). Giao diện mặc định là tiếng Anh: bấm nút **VI** ở góc trên màn hình này để chuyển sang tiếng Việt. Nếu đang chuyển sang máy mới, bấm **Khôi phục từ bản sao lưu** thay vì tạo mới, xem [Sao lưu và khôi phục](#sao-lưu-và-khôi-phục).
+1. **Set a master password** the first time (at least 6 characters). It unlocks Bloxkeep and **can't be recovered** if you forget it; see [Data and security](#data-and-security). Moving to a new PC? Choose **Restore from a backup** instead; see [Backup and restore](#backup-and-restore).
 
-   <img src="docs/screenshots/lock.png" width="640" alt="Màn hình mở khóa với nút đổi ngôn ngữ EN/VI ở góc trên">
+   The app opens in English; the EN/VI switch in the top corner of this screen, or **Settings › Appearance › Language**, changes it.
 
-2. **Thêm tài khoản**: bấm **Thêm tài khoản**. Hộp thoại **Đăng nhập Roblox** có các cách:
-   - **Đăng nhập bằng điện thoại** (nên dùng): Bloxkeep hiện mã và QR. Trên điện thoại, mở **app Roblox**, vào **Cài đặt › Đăng nhập nhanh**, nhập mã hoặc quét QR rồi xác nhận. Không cần mật khẩu hay giải đố. Thêm xong một tài khoản thì có mã mới cho tài khoản tiếp theo.
-   - **Tên đăng nhập** và **Mật khẩu**: mật khẩu chỉ gửi tới máy chủ đăng nhập của Roblox. Đăng nhập bằng mật khẩu không lưu mật khẩu đó. Có **Xác minh 2 bước** (**App xác thực** hoặc **Email**); nếu tài khoản đã có khóa app xác thực trong Bloxkeep thì mã được điền sẵn, bạn chỉ cần bấm xác nhận. Nếu Roblox đòi captcha, bấm **Giải câu đố** và làm trong cửa sổ nhỏ hiện ra.
-   - **Cách khác: Đăng nhập bằng trình duyệt**: trang đăng nhập roblox.com chính thức mở trong một cửa sổ tạm. Đăng nhập xong, Bloxkeep lấy phiên đăng nhập rồi xóa cửa sổ tạm đó. Bloxkeep không đọc mật khẩu bạn gõ ở đây.
-   - **Cách khác: Nhập cookie**, hoặc **Nhập từ: Roblox Account Manager** / **File Bloxkeep**: xem [Chuyển tài khoản từ nơi khác](#chuyển-tài-khoản-từ-nơi-khác).
+   <img src="docs/screenshots/lock.png" width="640" alt="The unlock screen with the EN/VI switch in the top corner">
 
-   <img src="docs/screenshots/add-account.png" width="700" alt="Hộp thoại Đăng nhập Roblox với tab Roblox và Roblox VNG, đăng nhập bằng điện thoại, tên đăng nhập và mật khẩu, cùng các cách khác">
+2. **Add accounts**: click **Add account**. The **Sign in to Roblox** dialog offers:
+   - **Sign in with your phone** (recommended): Bloxkeep shows a code and a QR. In the **Roblox app** on your phone, open **Settings › Quick Log In**, enter the code or scan the QR, and confirm. No password or puzzle needed. After one account is added you get a new code for the next.
+   - **Username** and **Password**: the password only goes to Roblox's sign-in server. Signing in with a password doesn't save it. 2-step verification works (**Authenticator app** or **Email**); if the account already has an authenticator key in Bloxkeep, the code is filled in and you only confirm. If Roblox asks for a captcha, click **Solve the puzzle** and do it in the small window that opens.
+   - **Other ways: Sign in with a browser**: the official roblox.com sign-in page opens in a temporary window. Once you're in, Bloxkeep takes the session and deletes that temporary window. Bloxkeep doesn't read the password you type there.
+   - **Other ways: Paste a cookie**, or **Import from: Roblox Account Manager** / **Bloxkeep file**: see [Bringing accounts over](#bringing-accounts-over).
 
-3. **Chọn game, chọn tài khoản, bấm Vào game.** Gõ tên game hoặc dán link / Place ID vào ô ở thanh dưới, bấm vào các thẻ tài khoản để chọn (giữ `Shift` khi bấm để chọn liền một dãy), rồi bấm **Vào game**. Để trống ô game thì nút đổi thành **Mở Roblox**: mỗi tài khoản đã chọn mở Roblox ở trang chủ.
+   <img src="docs/screenshots/add-account.png" width="700" alt="Sign in to Roblox dialog with Roblox and Roblox VNG tabs, phone sign-in, username and password, and the other ways">
 
-   <img src="docs/screenshots/demo.gif" width="800" alt="Chọn hai tài khoản, đổi game, xem danh sách server rồi đổi chủ đề">
+3. **Pick a game, pick accounts, press Play.** Type a game name or paste a link / Place ID in the bar at the bottom, click account cards to choose them (`Shift`-click for a range), then press **Play**. With the game box empty the button becomes **Open Roblox**: each chosen account opens Roblox on its home screen.
 
-4. Phím tắt: `Ctrl+K` tìm nhanh tài khoản, preset, game và cài đặt; `Ctrl+F` tìm tài khoản; `Ctrl+A` chọn tất cả; `Enter` vào game; `F2` sửa; `Delete` xóa; `Esc` bỏ chọn. Chuột phải vào một tài khoản để xem thêm thao tác.
+   <img src="docs/screenshots/demo.gif" width="800" alt="Choosing two accounts, switching the game, looking at the server list, then changing the theme">
 
-## Sử dụng
+4. Shortcuts: `Ctrl+K` quick search for accounts, presets, games and settings; `Ctrl+F` search accounts; `Ctrl+A` select all; `Enter` play; `F2` edit; `Delete` delete; `Esc` clear the selection. Right-click an account for more.
 
-### Danh sách tài khoản
+## Using Bloxkeep
 
-- Lọc theo **Tất cả**, **Đang chơi**, **Online**, **Offline**, **Trên máy này**, **Cần đăng nhập lại**, **Bị ban**, và theo nhóm ở ô **Nhóm**; sắp xếp theo **Tên**, **Trạng thái**, **Chơi gần đây** hoặc **Thứ tự mở**; tìm theo tên, nhóm, ghi chú. Chuyển giữa **Dạng thẻ** và **Dạng danh sách**.
-- Trạng thái tự làm mới mỗi 30 giây. Khi bị văng, thẻ ghi rõ lý do đọc từ log của Roblox: **Bị kick vì AFK**, **Bị game kick**, **Đăng nhập ở thiết bị khác**, **Rớt mạng**, **Không vào được server**.
-- Tài khoản hết phiên được đánh dấu **Cần đăng nhập lại**; bấm **Đăng nhập** để đăng nhập lại. **Kiểm tra đăng nhập** có trong menu ⋯ của từng tài khoản, và **Kiểm tra đăng nhập của tất cả tài khoản** ở menu ⋯ phía trên danh sách. **Kiểm tra đăng nhập mỗi ngày** (bật sẵn, trong **Cài đặt › Hiệu năng**) tự làm việc này một lần mỗi ngày, để bạn biết trước khi bấm **Vào game**.
-- Lúc kiểm tra, Bloxkeep cũng xem tài khoản có **Bị ban** không (thông tin công khai của Roblox). Tài khoản bị ban có nhãn đỏ, và **Vào game** cũng như preset sẽ bỏ qua tài khoản đó.
-- **Sửa…** (`F2`) để đặt **Tên gợi nhớ**, **Nhóm**, **Ghi chú**. Tại đây bạn có thể tự lưu **Mật khẩu Roblox** nếu muốn (không bắt buộc); mật khẩu nằm trong kho đã mã hóa.
-- **Khóa app xác thực** (trong **Sửa…**): dán khóa 2FA hoặc link `otpauth://` của tài khoản, Bloxkeep hiện mã 6 số đang chạy. **Sao chép mã 2FA** có trong menu ⋯. Ai biết mật khẩu chủ của bạn cũng tạo được mã, nên chỉ lưu khóa khi bạn chấp nhận điều đó.
-- **Sao chép mật khẩu**, **Sao chép cookie** và **Sao chép mã 2FA** không vào lịch sử clipboard của Windows và tự xóa sau 30 giây.
-- **Ẩn tên tài khoản** (trong **Cài đặt › Giao diện**): mọi chỗ hiện **Tài khoản 1**, **Tài khoản 2**… thay cho tên, kể cả tiêu đề cửa sổ Roblox, tiện khi chụp màn hình hay livestream.
+### Account list
 
-<img src="docs/screenshots/accounts-list.png" width="800" alt="Danh sách tài khoản dạng danh sách với trạng thái từng tài khoản">
+- Filter by **All**, **Playing**, **Online**, **Offline**, **On this PC**, **Needs sign-in**, **Banned**, and by group with the **Group** dropdown; sort by **Name**, **Status**, **Last played** or **Launch order**; search names, groups and notes. Switch between **Cards** and **List**.
+- Status refreshes every 30 seconds. When an account drops, its card says why, read from Roblox's log: **Kicked for being idle**, **Kicked by the game**, **Signed in on another device**, **Connection lost**, **Couldn't join the server**.
+- An account whose session ended is marked **Needs sign-in**; click **Sign in** to renew it. **Check sign-in** is in each account's ⋯ menu, and **Check sign-in of all accounts** is in the ⋯ menu above the list. **Check sign-ins every day** (on by default, in **Settings › Performance**) does this once a day by itself, so you know before you press **Play**.
+- While checking, Bloxkeep also looks at whether the account is **Banned** (Roblox's public information). A banned account gets a red tag, and **Play** and presets skip it.
+- **Edit…** (`F2`) sets a **Nickname**, **Group** and **Note**. There you can also store the account's **Roblox password** if you want to (optional); it stays in the encrypted vault.
+- **Authenticator key** (in **Edit…**): paste the account's 2FA key or `otpauth://` link and Bloxkeep shows the running 6-digit code. **Copy 2FA code** is in the ⋯ menu. Anyone with your master password can make codes too, so only store the key if that's fine with you.
+- **Copy password**, **Copy cookie** and **Copy 2FA code** stay out of Windows clipboard history and are wiped after 30 seconds.
+- **Hide account names** (in **Settings › Appearance**): every place shows **Account 1**, **Account 2**… instead, Roblox window titles included, for screenshots and streams.
 
-### Chọn game và server
+<img src="docs/screenshots/accounts-list.png" width="800" alt="The account list in list view with each account's status">
 
-- Ô game nhận tên game, Place ID, link `roblox.com/games/…` (kể cả link server riêng), link chia sẻ server và link `roblox://`. Gõ tên thì chọn game trong danh sách hiện ra.
-- Bảng chọn game có các tab **Gần đây**, **Đã ghim**, **Yêu thích trên Roblox**, **Phổ biến**. Bấm ☆ để ghim game.
-- **Job ID (tùy chọn)**: vào đúng một server, để nhiều tài khoản vào chung.
-- Nút **Server** liệt kê server công khai còn chỗ: sắp theo **Đông nhất**, **Vắng nhất**, **Ping thấp nhất**, **FPS cao nhất**; lọc **Đủ chỗ cho N tài khoản**; hoặc bấm **Server ngẫu nhiên**. Mục **Bạn bè trong game này** cho bạn vào cùng bạn bè của các tài khoản (nếu cài đặt riêng tư của họ cho phép). Ping hiển thị là ping trung bình của người chơi trong server, không phải ping từ máy bạn.
-- **Vào cùng người chơi…** (nút cạnh ô Job ID): gõ tên đăng nhập hoặc ID của một người chơi, các tài khoản đang chọn vào đúng server người đó đang ở. Bloxkeep hỏi trạng thái người đó bằng chính các tài khoản bạn chọn; nếu cài đặt riêng tư của họ không cho xem thì app nói rõ, chứ không kết bạn hay theo dõi ai để lách.
-- Trên một tài khoản đang chơi, chọn **Vào cùng server** để các tài khoản khác vào đúng server đó.
+### Choosing a game and server
 
-<img src="docs/screenshots/game-picker.png" width="800" alt="Bảng chọn game với các tab Gần đây, Đã ghim, Yêu thích trên Roblox, Phổ biến">
+- The game box takes a game name, a Place ID, a `roblox.com/games/…` link (private-server links too), a server share link, or a `roblox://` link. When you type a name, pick the game from the list that appears.
+- The game picker has **Recent**, **Pinned**, **Roblox favorites** and **Popular** tabs. Click ☆ to pin a game.
+- **Job ID (optional)**: joins one exact server, so several accounts land together.
+- **Server** lists public servers with room: sort by **Most players**, **Fewest players**, **Lowest ping**, **Best FPS**; filter **Room for N**; or click **Random server**. **Friends in this game** lets you join your accounts' friends (when their privacy settings allow it). The ping shown is the average of the players in that server, not yours.
+- **Join a player…** (the button next to the Job ID box): type a player's username or user ID and the chosen accounts join the server that player is in. Bloxkeep asks for their status with the accounts you chose; when their privacy settings hide it, the app says so, and it never friends or follows anyone to get around that.
+- On an account that's playing, **Join this server** sends the other accounts into that same server.
 
-<img src="docs/screenshots/servers.png" width="700" alt="Danh sách server của một game, có mục bạn bè đang chơi và bộ lọc đủ chỗ cho 2 tài khoản">
+<img src="docs/screenshots/game-picker.png" width="800" alt="The game picker with Recent, Pinned, Roblox favorites and Popular tabs">
 
-### Preset
+<img src="docs/screenshots/servers.png" width="700" alt="A game's server list, with friends playing and a filter for room for 2 accounts">
 
-Một preset lưu tên, danh sách tài khoản (theo thứ tự), game, cách chọn server và thời gian chờ giữa các tài khoản. Ô **Game** chọn như ở thanh dưới. Để trống thì chỉ mở **Màn hình chính Roblox**. Server có thể là **Bất kỳ (Roblox tự chọn)**, **Đông nhất**, **Vắng nhất**, **Ping thấp nhất**, **Ngẫu nhiên** hoặc **Server cố định (Job ID)**.
+### Presets
 
-Quản lý preset ở tab **Preset**: **Thêm preset**, sửa, nhân bản, đổi thứ tự, **Chạy**. Nút preset ở thanh dưới có **Lưu thành preset…** và chạy nhanh. Lưu được tối đa 50 preset.
+A preset saves a name, a list of accounts (in order), a game, how to pick the server, and the wait between accounts. Leave the game empty to open only the **Roblox home screen**. The server can be **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random** or a **Fixed server (Job ID)**.
 
-Phần **Cho cửa sổ Roblox** của mỗi preset áp dụng cho các cửa sổ mà preset đó mở (kể cả khi chúng tự vào lại game). Bấm **Vào game** bình thường cho cùng tài khoản thì vẫn theo cài đặt chung.
+Manage them in the **Presets** tab: **New preset**, edit, duplicate, reorder, **Run**. The presets button in the bottom bar has **Save as preset…** and quick runs. Up to 50 presets.
 
-- **Chống AFK**: **Theo Cài đặt**, **Bật** hoặc **Tắt**.
-- **Tự vào lại game**: **Theo từng tài khoản**, **Bật** hoặc **Tắt**.
-- **Hiệu năng**: **Treo máy nhẹ** chọn đồ họa thấp nhất, 30 FPS, tắt tiếng, và thu nhỏ cửa sổ khi đã vào game. Cửa sổ mở không có tùy chọn này vẫn giữ cài đặt Roblox của bạn.
-- **Mở lại Roblox**: mỗi 2, 4, 6 hoặc 12 giờ, từng cửa sổ được đóng rồi mở lại vào đúng game, lần lượt từng cái. Cửa sổ bạn đang dùng sẽ được để sau.
+A preset's **For the Roblox windows** options apply to the windows that preset opens (also when they rejoin). Pressing **Play** for the same accounts the normal way still follows your general settings.
 
-**Hẹn giờ**: preset tự chạy vào **Giờ bắt đầu**, một lần hoặc lặp lại theo các ngày trong tuần, và có thể **Dừng** sau vài giờ hoặc lúc một giờ nhất định (chỉ đóng các cửa sổ mà lần chạy đó mở). Bloxkeep phải đang chạy và đã mở khóa vào lúc đó.
+- **Anti-AFK**: **Follow Settings**, **On** or **Off**.
+- **Auto-rejoin**: **Follow each account**, **On** or **Off**.
+- **Performance**: **Light AFK** sets the lowest graphics, 30 FPS, no sound, and minimises the window once it's in the game. Windows opened without it keep your Roblox settings.
+- **Restart Roblox**: every 2, 4, 6 or 12 hours, each window is closed and opened again into the same game, one at a time. The window you're using waits.
 
-<img src="docs/screenshots/presets.png" width="800" alt="Tab Preset với ba preset, một preset đang bật hẹn giờ">
+**Schedule**: a preset runs by itself at its **Start time**, once or on chosen weekdays, and can **Stop** after a few hours or at a set time (closing only the windows that run opened). Bloxkeep has to be running and unlocked at that moment.
 
-<img src="docs/screenshots/preset-editor.png" width="800" alt="Hộp thoại Sửa preset: phần Cho cửa sổ Roblox với Chống AFK, Tự vào lại game, Hiệu năng, Mở lại Roblox, và phần Hẹn giờ">
+<img src="docs/screenshots/presets.png" width="800" alt="The Presets tab with three presets, one with its schedule on">
+
+<img src="docs/screenshots/preset-editor.png" width="800" alt="Edit preset: the For the Roblox windows options (Anti-AFK, Auto-rejoin, Performance, Restart Roblox) and the Schedule">
 
 ### Multi-Roblox
 
-Multi-Roblox **tắt sẵn**. Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc; bạn tự chịu rủi ro khi bật. Bật bằng công tắc Multi-Roblox ở thanh bên hoặc trong **Cài đặt › Khởi chạy**.
+Multi-Roblox is **off by default**. Roblox doesn't officially support running several clients; use it at your own risk. Turn it on with the Multi-Roblox switch in the sidebar or in **Settings › Launching**.
 
-- Bloxkeep phải mở **trước** Roblox và để mở trong lúc chơi.
-- Đèn trạng thái: **Đang tắt**, **Đang bật — mở được nhiều cửa sổ**, hoặc **Chưa hoạt động — bấm để xem cách sửa** (đèn vàng). Cách sửa: đóng hết Roblox, kể cả Roblox ở khay hệ thống; nếu Roblox tự chạy cùng Windows, bấm **Tắt tự khởi động** (giống tắt trong Task Manager › Startup apps, bật lại được ở đó). Sau đó đèn chuyển xanh.
-- Bấm **Chi tiết** cạnh Multi-Roblox để chỉnh thêm:
-  - **Luôn mở Roblox ở chế độ cửa sổ** (bật sẵn): các cửa sổ Roblox dùng chung một cài đặt toàn màn hình nên dễ lệch nhau, cái toàn màn hình cái không. Bloxkeep mở mọi cửa sổ ở chế độ cửa sổ, rồi trả lại cài đặt của bạn.
-  - **Xếp các cửa sổ cạnh nhau sau khi mở** (tắt sẵn): mở xong các tài khoản thì các cửa sổ Roblox được xếp thành lưới trên màn hình chính.
-- Mỗi tài khoản một trang chủ riêng: chọn các tài khoản, để trống ô game, bấm **Mở Roblox**.
+- Bloxkeep has to be open **before** Roblox and stay open while you play.
+- The light shows **Off**, **On — several windows allowed**, or **Not working yet — click to fix** (yellow). To fix it: close every Roblox, including one in the system tray; if Roblox starts with Windows, click **Turn off autostart** (the same as switching it off in Task Manager › Startup apps, and you can switch it back there). The light then turns green.
+- **Details** next to Multi-Roblox has two more options:
+  - **Always open Roblox windowed** (on by default): all Roblox windows share one fullscreen setting, so with several open some end up fullscreen and some don't. Bloxkeep opens every window windowed and puts your setting back afterwards.
+  - **Tile the windows after opening** (off by default): once the accounts are open, the Roblox windows are laid out in a grid on the main screen.
+- One home screen per account: choose the accounts, leave the game box empty, press **Open Roblox**.
 
-Cách hoạt động: Roblox dùng một đối tượng tên `ROBLOX_singletonEvent` để chỉ cho chạy một cửa sổ; từ bản tháng 10/2026, cửa sổ mới dùng nó để đóng các cửa sổ cũ. Bloxkeep giữ trước cái tên đó khi chưa có Roblox nào chạy, nên Roblox không lập được cơ chế này và các cửa sổ không đóng nhau. Bloxkeep không chèn gì vào Roblox và không đọc gì từ tiến trình Roblox.
+How it works: Roblox uses an object named `ROBLOX_singletonEvent` to allow only one window; since its October 2026 builds, a new window uses it to close the older ones. Bloxkeep takes that name first, while no Roblox is running, so Roblox can't set this up and the windows don't close each other. Bloxkeep injects nothing into Roblox and reads nothing from the Roblox process.
 
-Nếu một bản Roblox mới lại đóng cửa sổ khi cửa sổ khác mở, **Cài đặt › Phiên bản & đồ họa** hiện cảnh báo vàng. Cảnh báo tự mất khi từ 2 tài khoản trở lên cùng ở trong game, khi Roblox cập nhật bản mới, hoặc khi bạn bấm **Ẩn**.
+If a newer Roblox build starts closing windows when another opens again, **Settings › Version & graphics** shows a yellow warning. It goes away once two or more accounts are in a game at the same time, when Roblox updates, or when you click **Hide**.
 
-### Tự vào lại game
+### Auto-rejoin
 
-Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game** (preset có thể ghi đè, xem [Preset](#preset)). Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Nếu cứ bị văng liên tục, từ lần thứ ba Bloxkeep chờ 2, 5, 10 rồi 15 phút giữa các lần thử (thẻ tài khoản hiện thời gian chờ và nút **Hủy**); ở lại trong game 10 phút thì đếm lại từ đầu. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
+Turn it on per account in the ⋯ menu › **Auto-rejoin** (a preset can override it; see [Presets](#presets)). When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. If it keeps dropping, from the third time Bloxkeep waits 2, 5, 10, then 15 minutes between tries (the card shows the wait with a **Cancel** button); 10 minutes in the game resets the count. Without a network, it retries every 30 seconds, up to 20 times.
 
-Bloxkeep không vào lại khi bạn tự thoát game, khi tài khoản đăng nhập ở thiết bị khác, khi tài khoản bị ban, hoặc khi chính Roblox đóng cửa sổ vì có cửa sổ khác mở. Tự tay đóng cửa sổ Roblox cũng tính là thoát game, nên hãy dùng nút **Đóng** trong app.
+Bloxkeep doesn't rejoin when you leave the game yourself, when the account signed in on another device, when it's banned, or when Roblox itself closed the window because another one opened. Closing the Roblox window by hand counts as leaving, so use **Close** in the app.
 
-### Cấu hình Roblox theo tài khoản
+### Roblox settings per account
 
-Trong **Cài đặt › Phiên bản & đồ họa › Cấu hình Roblox**, mục **Áp dụng cho** chọn **Không áp dụng**, **Mọi tài khoản** hoặc **Tài khoản được chọn** (chọn từng tài khoản bằng **Dùng cấu hình Roblox** trong menu ⋯). Đặt **Đồ họa** từ 1 đến 10, **Giới hạn FPS** 30/60/144/240, **Âm lượng** từ **Tắt tiếng** đến 100 %, hoặc **Giữ nguyên**.
+In **Settings › Version & graphics › Roblox settings**, **Apply to** chooses **Nobody**, **All accounts** or **Chosen accounts** (pick them with **Use Roblox settings** in the ⋯ menu). Set **Graphics quality** from 1 to 10, **Frame rate limit** 30/60/144/240, **Volume** from **Muted** to 100 %, or **Leave as is**.
 
-Bloxkeep ghi các giá trị này vào file cài đặt của Roblox ngay trước khi mở tài khoản, rồi trả lại cài đặt của bạn khi Roblox đã chạy.
+Bloxkeep writes these values into Roblox's settings file just before opening the account, and puts your own settings back once Roblox is running.
 
-Cùng trang này, nhóm **Cập nhật Roblox** cho biết bản Roblox đã cài, bản mới nhất Roblox đang phát hành, và lịch sử các bản đã thấy trên máy, mỗi bản có link **Ghi chú** phát hành của Roblox.
+The same page's **Roblox updates** group shows the installed Roblox build, the newest one Roblox serves, and the builds seen on this PC, each with a link to Roblox's release **Notes**.
 
-### Mở Roblox bằng
+### Open Roblox with
 
-Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep tự tìm các bản đã cài.
+Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's installed.
 
-| Lựa chọn | Ghi chú |
+| Choice | Notes |
 |---|---|
-| **Mặc định** | Trình đang mở link Roblox trên máy (Roblox, Bloxstrap, Fishstrap…) |
-| **Bloxstrap**, **Fishstrap** | Giữ nguyên mod và FFlag của bạn |
-| Trình mở kiểu Bloxstrap khác | Tự hiện nếu đã cài |
-| **Roblox (chính thức)** | Bản cài từ roblox.com |
-| **Chạy thẳng RobloxPlayerBeta (không qua ứng dụng mở Roblox)** | Không qua trình mở nào; thử khi trình mở chặn nhiều cửa sổ |
-| **Chọn ứng dụng mở Roblox khác…** | File exe bạn tự chọn |
-| **Roblox (Microsoft Store)** | Không hỗ trợ: không mở được tài khoản đã chọn. Hãy cài Roblox từ roblox.com |
+| **Default** | Whatever opens Roblox links on this PC (Roblox, Bloxstrap, Fishstrap…) |
+| **Bloxstrap**, **Fishstrap** | Keeps your mods and FFlags |
+| Other Bloxstrap-style launchers | Listed when installed |
+| **Roblox (official)** | The client from roblox.com |
+| **RobloxPlayerBeta directly (skip launchers)** | No launcher at all; try it when a launcher blocks several windows |
+| **Choose another launcher…** | An exe you pick |
+| **Roblox (Microsoft Store)** | Not supported: it can't open the account you chose. Install Roblox from roblox.com |
 
-### Cửa sổ, RAM và màn hình theo dõi
+### Windows, RAM and the game monitor
 
-- Thẻ **Roblox trên máy này** ở thanh bên hiện số cửa sổ Roblox, RAM chúng dùng, RAM máy còn trống, cùng nút **Cửa sổ nhỏ** và **Đóng tất cả**. Dòng phiên bản cho biết bản Roblox đã cài có phải mới nhất không.
-- **Màn hình theo dõi** (tab ở thanh bên): hình trực tiếp của mọi cửa sổ Roblox, kèm tên tài khoản, game, RAM và PID. Bấm vào một hình để đưa cửa sổ đó lên trước; chuột phải để xem thêm thao tác. Cửa sổ đang thu nhỏ thì không có hình trực tiếp. Hình do chính Windows vẽ (giống ảnh xem trước khi rê chuột lên taskbar), nên gần như không tốn thêm tài nguyên.
-- **Cửa sổ nhỏ**: một cửa sổ gọn để theo dõi các tài khoản đang chơi mà không cần mở cửa sổ chính.
-- **Xếp lưới cửa sổ Roblox** (nút ở thanh dưới) và **Kiểu xếp cửa sổ** (trong **Cài đặt › Khởi chạy**): **Lấp đầy màn hình**, hoặc **Ô nhỏ** / **Ô vừa** / **Ô lớn** xếp từ góc trên bên trái và chừa phần màn hình còn lại. Cửa sổ Roblox càng nhỏ thì card đồ họa càng đỡ tải.
-- **Báo khi sắp hết RAM** (bật sẵn): cảnh báo trước khi mở nhiều tài khoản hơn RAM trống chịu được, và khi máy dùng quá 92 % RAM.
-- **Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn): khi máy sắp hết RAM, cửa sổ chạy nền nhường RAM cho cửa sổ bạn đang chơi. Roblox có thể không nhả RAM; khi đó Bloxkeep bỏ qua.
-- **Hiện tên tài khoản trên cửa sổ** (bật sẵn): ghi tên tài khoản lên tiêu đề cửa sổ Roblox để dễ phân biệt trên taskbar.
-- **Chờ giữa các tài khoản**: từ 0 đến 60 giây, mặc định 8 giây. Mở quá nhiều tài khoản một lúc dễ bị lỗi.
+- The sidebar card **Roblox on this PC** shows the number of Roblox windows, the RAM they use, the free RAM, and **Mini window** and **Close all**. Its version line tells you whether your Roblox is the newest.
+- **Game monitor** (a sidebar tab): live pictures of every Roblox window with the account, game, RAM and PID. Click a picture to bring that window to the front; right-click for more. A minimised window has no live picture. Windows draws the pictures itself (like the previews when you hover the taskbar), so they cost next to nothing.
+- **Mini window**: a compact window to watch the accounts that are playing without the main window.
+- **Arrange Roblox windows** (in the bottom bar) and **Arranging windows** (in **Settings › Launching**): **Fill the screen**, or **Small tiles** / **Medium tiles** / **Large tiles** laid out from the top-left, leaving the rest of the screen free. The smaller a Roblox window, the less work for the graphics card.
+- **Low RAM warning** (on by default): warns before you open more accounts than the free RAM can take, and when the PC uses more than 92 % of its RAM.
+- **Save RAM on background windows** (off by default): when RAM runs low, background windows give RAM back to the one you're playing. Roblox may refuse; then Bloxkeep leaves it.
+- **Show account names on windows** (on by default): puts the account's name in the Roblox window title, to tell windows apart on the taskbar.
+- **Wait between accounts**: 0 to 60 seconds, 8 by default. Opening too many at once can fail.
 
-### Thống kê và hoạt động
+### Statistics and activity
 
-Tab **Thống kê** tính thời gian chơi, số lượt chơi và số lần mất kết nối theo **Hôm nay**, **7 ngày** hoặc **30 ngày**, theo từng tài khoản và từng game. Chỉ tính các game mở bằng Bloxkeep.
+The **Statistics** tab counts play time, sessions and disconnects for **Today**, **7 days** or **30 days**, per account and per game. Only games opened with Bloxkeep count.
 
-Chuyển sang **Hoạt động** để xem nhật ký: mở tài khoản, vào game, rời game, bị văng (kèm lý do), tự vào lại, preset hẹn giờ chạy và dừng, tài khoản cần đăng nhập lại. Lọc theo tài khoản và loại sự kiện, **Xuất CSV** khi cần. Bloxkeep giữ 1.000 sự kiện gần nhất, trong kho đã mã hóa.
+Switch to **Activity** for the log: accounts opened, games joined and left, drops (with the reason), rejoins, scheduled presets starting and stopping, accounts that need to sign in again. Filter by account and kind, and **Export CSV** when you need it. Bloxkeep keeps the last 1,000 events, in the encrypted vault.
 
-<img src="docs/screenshots/stats.png" width="800" alt="Tab Thống kê: tổng thời gian chơi, biểu đồ theo ngày, thời gian theo từng tài khoản và game chơi nhiều">
+<img src="docs/screenshots/stats.png" width="800" alt="The Statistics tab: total play time, a chart per day, play time per account and most played games">
 
-### Chạy ngầm, thông báo, Discord, giao diện
+### Tray, notifications, Discord and appearance
 
-- **Thu xuống khay khi đóng cửa sổ** (bật sẵn): bấm X thì Bloxkeep thu xuống khay hệ thống, tự vào lại game và Multi-Roblox vẫn chạy. Muốn thoát hẳn, chuột phải biểu tượng ở khay và chọn **Thoát Bloxkeep**. Lần mở sau, cửa sổ Bloxkeep về đúng vị trí, kích thước và trạng thái phóng to như lúc bạn để.
-- **Thông báo Windows** (bật sẵn): chỉ khi Bloxkeep chạy nền. Bật tắt từng loại trong **Cài đặt › Thông báo**: tài khoản bị văng hoặc tự vào lại, preset hẹn giờ, tài khoản cần đăng nhập lại, sắp hết RAM, lỗi khi mở game.
-- **Discord** (tắt sẵn): dán link webhook của một kênh vào **Cài đặt › Discord**. **Gửi tự động** tổng kết thời gian chơi **Hằng ngày**, **Hằng tuần** hoặc cả hai; một **Tin trạng thái** tự cập nhật; và **Cảnh báo** cho các sự kiện như trên, có **Tag** người hoặc vai trò. Có **Giờ yên lặng**, và **Tùy chỉnh tin nhắn** (tên và ảnh người gửi, ngôn ngữ, kiểu tin, **Ẩn tên tài khoản trong tin nhắn**).
-- **Cài đặt › Giao diện**: 32 **Chủ đề** cộng **Theo Windows** (mặc định **Tối**), **Ngôn ngữ** English / Tiếng Việt, và **Ẩn tên tài khoản**.
-- **Tăng tốc phần cứng** (trong **Cài đặt › Hiệu năng**): vẽ giao diện bằng card đồ họa thay vì CPU; tự tắt nếu driver card đồ họa gặp lỗi liên tục.
+- **Keep running in the tray when closed** (on by default): the X button hides Bloxkeep to the tray, and auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon and choose **Quit Bloxkeep**. Next time, the Bloxkeep window comes back where you left it, at the same size, maximised or not.
+- **Windows notifications** (on by default): only while Bloxkeep is in the background. Turn each kind on or off in **Settings › Notifications**: account dropped or auto-rejoin, scheduled presets, sign-in needs renewing, low RAM, launch problems.
+- **Discord** (off by default): paste a channel's webhook link in **Settings › Discord**. **Send automatically** a play-time summary every day, every week or both; keep a **Status message** up to date; and send **Alerts** for the events above, with a **Ping** for a person or a role. There are **Quiet hours** and **Customise messages** (sender name and picture, language, message style, **Hide account names in messages**).
+- **Settings › Appearance**: **Theme** has 32 themes plus **Sync with Windows** (**Dark** by default), **Language** English / Tiếng Việt, and **Hide account names**.
+- **Hardware acceleration** (in **Settings › Performance**): draws the interface with the graphics card instead of the CPU; it turns itself off if the graphics driver keeps failing.
 
-<img src="docs/screenshots/discord.png" width="800" alt="Trang Discord trong Cài đặt: gửi lên Discord, link webhook, tổng kết thời gian chơi">
+<img src="docs/screenshots/discord.png" width="800" alt="The Discord page in Settings: send to Discord, webhook link, play-time summary">
 
-### Chuyển tài khoản từ nơi khác
+### Bringing accounts over
 
-**Roblox Account Manager**: chương trình này mã hóa file `AccountData.json`, nên trước tiên hãy giải mã nó bằng công cụ chính thức [RAMDecrypt](https://github.com/ic3w0lf22/RAMDecrypt). Sau đó trong hộp thoại **Thêm tài khoản**, bấm **Nhập từ: Roblox Account Manager** và chọn file đã giải mã. Tên gợi nhớ, nhóm, ghi chú và mật khẩu (nếu RAM có lưu) được chép sang. Tài khoản đã có thì được cập nhật cookie, và cookie được kiểm tra ngay sau khi nhập.
+**Roblox Account Manager**: it encrypts `AccountData.json`, so first decrypt it with the official [RAMDecrypt](https://github.com/ic3w0lf22/RAMDecrypt) tool. Then in the **Add account** dialog click **Import from: Roblox Account Manager** and pick the decrypted file. Nicknames, groups, notes and passwords (if RAM had them) come along. Accounts you already have get the new cookie, and cookies are checked right after the import.
 
-**File dữ liệu Bloxkeep khác** (ví dụ `vault.rmv` hay bản sao lưu từ máy khác): bấm **Nhập từ: File Bloxkeep**, hoặc **Nhập…** trong **Cài đặt › Sao lưu & dữ liệu**. Nhập mật khẩu chủ của chính file đó, chọn các tài khoản muốn lấy, rồi bấm nhập. File gốc không bị sửa; tài khoản nhập vào được khóa lại bằng mật khẩu chủ hiện tại của bạn.
+**Another Bloxkeep file** (a `vault.rmv` or a backup from another PC): click **Import from: Bloxkeep file**, or **Import…** in **Settings › Backup & data**. Enter that file's own master password, tick the accounts you want, and import. The file itself isn't changed; the imported accounts are locked with your current master password.
 
-**Cookie**: chọn **Nhập cookie** rồi dán cookie `.ROBLOSECURITY`.
+**Cookie**: choose **Paste a cookie** and paste the `.ROBLOSECURITY` cookie.
 
 ### Roblox VNG
 
-Thêm được tài khoản Roblox VNG bằng tab **Roblox VNG** (đăng nhập bằng điện thoại hoặc bằng mật khẩu). Tài khoản VNG có nhãn "VNG". Hiện Bloxkeep **chưa mở được game** cho tài khoản VNG; nút **Vào game** của chúng tắt và có ghi lý do.
+You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone or with a password). They get a "VNG" tag. Bloxkeep **can't open games** for VNG accounts yet; their **Play** button is off, with the reason.
 
 <details>
-<summary>Thêm ảnh</summary>
+<summary>More pictures</summary>
 
-<img src="docs/screenshots/settings.png" width="800" alt="Trang Cài đặt, mục Khởi chạy: danh sách trang ở bên trái, Multi-Roblox và kiểu xếp cửa sổ ở bên phải"> <img src="docs/screenshots/palette.png" width="800" alt="Tìm nhanh bằng Ctrl+K: gõ farm ra các tài khoản và preset khớp">
+<img src="docs/screenshots/settings.png" width="800" alt="Settings, the Launching page: the page list on the left, Multi-Roblox and window arranging on the right"> <img src="docs/screenshots/palette.png" width="800" alt="Quick search with Ctrl+K: typing farm finds the matching accounts and preset">
 </details>
 
-## Dữ liệu và bảo mật
+## Data and security
 
-**Lưu những gì.** Tài khoản (cookie, tên đăng nhập, ID, tên gợi nhớ, nhóm, ghi chú, mật khẩu và khóa app xác thực nếu bạn tự nhập), cài đặt, preset, game gần đây và đã ghim, lịch sử chơi và nhật ký hoạt động, link webhook Discord.
+**What's stored.** Accounts (cookie, username, ID, nickname, group, note, and the password and authenticator key if you entered them), settings, presets, recent and pinned games, play history and the activity log, the Discord webhook link.
 
-**Lưu ở đâu.** Mọi thứ nằm trên máy của bạn. **Cài đặt › Sao lưu & dữ liệu › Nơi lưu dữ liệu** hiện thư mục này, có nút **Mở thư mục**.
+**Where.** Everything stays on your PC. **Settings › Backup & data › Data location** shows the folder, with **Open folder**.
 
-| Đường dẫn | Nội dung |
+| Path | Contents |
 |---|---|
-| `%LOCALAPPDATA%\Bloxkeep\` | Thư mục dữ liệu (bản cài). Bản portable dùng thư mục `data\` cạnh app. |
-| `vault.rmv` | Kho đã mã hóa: tài khoản, cài đặt, preset, game gần đây và đã ghim, lịch sử chơi, nhật ký hoạt động, link webhook |
-| `vault.rmv.bak` | Lần lưu trước đó, tự dùng nếu `vault.rmv` bị hỏng |
-| `vault.rmv.damaged-…`, `vault.rmv.spare-…`, `vault-before-restore-….rmv` | Bản giữ lại sau khi tự sửa kho hoặc sau khi khôi phục; app không bao giờ xóa |
-| `prefs.json` | Cài đặt không bí mật: ngôn ngữ, chủ đề, cập nhật, thông báo, thư mục sao lưu, vị trí cửa sổ, lịch sử bản Roblox |
-| `roblox-settings.json` | Cài đặt đồ họa, FPS, âm lượng, toàn màn hình của bạn, để trả lại sau khi mở tài khoản |
-| `error.log` | Lỗi và ghi chú ngắn khi đăng nhập, không chứa thông tin tài khoản |
-| `webview\`, `webview-safe\` | Bộ nhớ đệm của giao diện, bị xóa khi gỡ app |
-| `%LOCALAPPDATA%\BloxkeepApp\` | Chương trình đã cài (bị xóa khi gỡ) |
+| `%LOCALAPPDATA%\Bloxkeep\` | The data folder (installed copy). The portable copy uses a `data\` folder next to the app. |
+| `vault.rmv` | The encrypted vault: accounts, settings, presets, recent and pinned games, play history, activity log, webhook link |
+| `vault.rmv.bak` | The previous save, used automatically if `vault.rmv` is damaged |
+| `vault.rmv.damaged-…`, `vault.rmv.spare-…`, `vault-before-restore-….rmv` | Copies kept after a self-repair or a restore; the app never deletes them |
+| `prefs.json` | Non-secret settings: language, theme, updates, notifications, backup folder, window position, Roblox build history |
+| `roblox-settings.json` | Your graphics, FPS, volume and fullscreen settings, to put back after opening an account |
+| `error.log` | Errors and short sign-in notes, with no account details |
+| `webview\`, `webview-safe\` | The interface cache, removed on uninstall |
+| `%LOCALAPPDATA%\BloxkeepApp\` | The installed program (removed on uninstall) |
 
-**Bảo vệ thế nào.** Kho được mã hóa bằng AES-256-GCM. Khóa sinh từ mật khẩu chủ qua PBKDF2-HMAC-SHA256 với 600.000 vòng và salt ngẫu nhiên. Phần đầu file cũng được xác thực, nên sai mật khẩu hoặc file bị sửa đều bị phát hiện. Mật khẩu chủ không bao giờ được lưu. Mỗi lần lưu được ghi trọn vẹn rồi mới thay file cũ, và lần lưu trước được giữ trong `vault.rmv.bak`. Khi bạn khóa app, Bloxkeep bỏ hết dữ liệu đã giải mã mà nó đang giữ (cookie, mật khẩu, khóa app xác thực).
+**How it's protected.** The vault is encrypted with AES-256-GCM. The key comes from your master password through PBKDF2-HMAC-SHA256 with 600,000 iterations and a random salt. The file header is authenticated too, so a wrong password or a tampered file is detected. The master password is never stored. Every save is written in full before it replaces the old file, and the previous save is kept in `vault.rmv.bak`. When you lock the app, Bloxkeep drops all the decrypted data it was holding (cookies, passwords, authenticator keys).
 
 > [!WARNING]
-> Quên mật khẩu chủ thì không khôi phục được tài khoản đã lưu. Bản sao lưu cũng chỉ mở được bằng mật khẩu lúc nó được lưu.
+> If you forget the master password, your saved accounts can't be recovered. A backup also only opens with the password it was saved with.
 
-**Những gì rời khỏi máy.** Bloxkeep không có telemetry hay analytics. Dữ liệu chỉ đi tới:
+**What leaves your PC.** Bloxkeep has no telemetry or analytics. Data only goes to:
 
-| Nơi nhận | Khi nào, gửi gì |
+| Where | When, and what |
 |---|---|
-| Máy chủ API của Roblox (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Đăng nhập (mật khẩu chỉ gửi tới `auth.roblox.com`), kiểm tra phiên và tình trạng ban, trạng thái mỗi 30 giây, tìm game, server, bạn bè, người chơi, vé vào game, phiên bản Roblox mới nhất |
-| `www.roblox.com` | Cửa sổ đăng nhập bằng trình duyệt, trang cá nhân, link vào game giao cho Roblox |
-| `*.rbxcdn.com` | Ảnh đại diện và ảnh game |
-| `*.robloxapp.vnggames.com` | Như trên, chỉ cho tài khoản Roblox VNG |
-| Nhà cung cấp captcha của Roblox (Arkose Labs, HUMAN Security) | Chỉ trong cửa sổ câu đố, khi Roblox đòi captcha lúc đăng nhập bằng mật khẩu |
-| GitHub | Kiểm tra và tải bản cập nhật, không gửi dữ liệu tài khoản; tắt được |
-| Microsoft (`go.microsoft.com`) | Chỉ khi phải cài WebView2 |
-| Thư mục sao lưu bạn chọn | Bản sao của kho đã mã hóa; app OneDrive / Google Drive của bạn có thể đồng bộ nó |
-| Webhook Discord của bạn (`discord.com`) | Chỉ khi bạn bật **Cài đặt › Discord** (tắt sẵn): tên tài khoản (hoặc **Tài khoản 1**, **Tài khoản 2**… nếu bật **Ẩn tên tài khoản trong tin nhắn**), tên game, thời gian chơi, số lượt, PID, RAM. Không bao giờ gửi cookie, mật khẩu hay chính link webhook; link được lưu trong kho đã mã hóa |
+| Roblox's API hosts (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Signing in (the password only goes to `auth.roblox.com`), session and ban checks, status every 30 seconds, game, server, friend and player lookups, join tickets, the newest Roblox version |
+| `www.roblox.com` | The browser sign-in window, profiles, and the join link handed to Roblox |
+| `*.rbxcdn.com` | Avatars and game pictures |
+| `*.robloxapp.vnggames.com` | The same as the Roblox API hosts, for Roblox VNG accounts only |
+| Roblox's captcha providers (Arkose Labs, HUMAN Security) | Only in the puzzle window, when Roblox asks for a captcha during password sign-in |
+| GitHub | Checking for and downloading updates, with no account data; can be turned off |
+| Microsoft (`go.microsoft.com`) | Only when WebView2 has to be installed |
+| The backup folder you choose | A copy of the encrypted vault; your OneDrive / Google Drive app may sync it |
+| Your Discord webhook (`discord.com`) | Only when **Settings › Discord** is on (off by default): account names (or **Account 1**, **Account 2**… with **Hide account names in messages**), game names, play time, sessions, PID, RAM. Never cookies, passwords or the webhook link itself; the link is kept in the encrypted vault |
 
-**Trong app.** Giao diện bị khóa bằng Content Security Policy nên không tự gửi request ra mạng; mọi kết nối đi qua phần lõi của app. Mật khẩu hay cookie chỉ tới giao diện khi bạn bấm hiện hoặc sao chép. Bản sao chép không vào lịch sử clipboard và tự xóa sau 30 giây. `error.log` không chứa thông tin tài khoản.
+**Inside the app.** The interface is locked down with a Content Security Policy, so it can't send requests by itself; every connection goes through the app's core. A password or cookie only reaches the interface when you show or copy it. Copies stay out of clipboard history and are wiped after 30 seconds. `error.log` has no account details.
 
-**Giữ cookie an toàn.** Cookie là chìa khóa đăng nhập đầy đủ của tài khoản. Đừng gửi cookie, file `vault.rmv` hay file sao lưu cho ai. Nếu lỡ lộ, hãy đăng xuất khỏi mọi phiên khác trong phần cài đặt của Roblox (trên roblox.com hoặc trong app Roblox).
+**Keep cookies safe.** A cookie is a full sign-in key for its account. Never send anyone your cookies, `vault.rmv` or a backup file. If one leaks, sign out of all other sessions in Roblox's settings (on roblox.com or in the Roblox app).
 
-**Tự kiểm tra.** Đối chiếu SHA-256 với `SHA256SUMS.txt`, đọc mã nguồn, hoặc [tự build](#tự-build-từ-mã-nguồn).
+**Check it yourself.** Compare the SHA-256 with `SHA256SUMS.txt`, read the source, or [build it yourself](#build-from-source).
 
-## Sao lưu và khôi phục
+## Backup and restore
 
-Bật **Cài đặt › Sao lưu & dữ liệu › Sao lưu vào thư mục**, rồi bấm **Chọn…** hoặc dùng gợi ý thư mục OneDrive / Google Drive mà Bloxkeep tìm thấy trên máy (ví dụ **Dùng Google Drive**). Bloxkeep chỉ chép file vào thư mục đó; app OneDrive hoặc Google Drive của bạn tự tải lên.
+Turn on **Settings › Backup & data › Back up to a folder**, then click **Choose…** or use a OneDrive / Google Drive folder Bloxkeep found on your PC (for example **Use Google Drive**). Bloxkeep only copies files into that folder; your OneDrive or Google Drive app uploads them.
 
-- Bản sao lưu là bản sao của kho đã mã hóa, tên bắt đầu bằng `Bloxkeep-backup-` và kèm ngày giờ sao lưu.
-- Sao lưu sau mỗi thay đổi (tối đa 10 phút một lần), khi khóa hoặc tắt app nếu có thay đổi, và ngay sau khi đổi mật khẩu chủ hay chọn thư mục mới. Bấm **Sao lưu ngay** để sao lưu tức thì.
-- Giữ 10 bản mới nhất, cộng bản mới nhất của mỗi ngày trong 30 ngày gần đây. Bản vừa sao lưu không bao giờ bị dọn, kể cả khi đồng hồ máy bị chỉnh lùi. Bloxkeep chỉ dọn bản sao lưu của chính kho này, nên hai máy dùng chung một thư mục không xóa bản của nhau.
-- Nếu mật khẩu chủ dễ đoán và thư mục là thư mục đám mây, app sẽ nhắc bạn đặt mật khẩu dài hơn.
+- A backup is a copy of the encrypted vault, named `Bloxkeep-backup-` plus the date and time.
+- It backs up after every change (at most every 10 minutes), when you lock or quit if something changed, and right after you change the master password or pick a new folder. **Back up now** backs up at once.
+- It keeps the 10 newest, plus the newest of each day for the last 30 days. The backup just made is never cleaned up, even after the PC clock is set back. Bloxkeep only cleans up backups of its own vault, so two PCs sharing a folder never delete each other's.
+- If the master password is easy to guess and the folder is a cloud folder, the app suggests a longer one.
 
-**Khôi phục**: bấm **Khôi phục…** trong **Cài đặt › Sao lưu & dữ liệu**, hoặc **Khôi phục từ bản sao lưu** ở màn hình đầu tiên trên máy mới. Dữ liệu hiện tại được giữ lại thành `vault-before-restore-….rmv`, sau đó app khóa lại; mở khóa bằng mật khẩu lúc bản sao lưu được lưu.
+**Restore**: click **Restore…** in **Settings › Backup & data**, or **Restore from a backup** on the first screen of a new PC. Your current data is kept as `vault-before-restore-….rmv`, then the app locks; unlock it with the password the backup was saved with.
 
-**Chuyển sang máy mới**: cài Bloxkeep, bấm **Khôi phục từ bản sao lưu**, chọn file sao lưu mới nhất, nhập mật khẩu lúc nó được lưu. Muốn gộp tài khoản của hai máy thay vì thay hẳn, dùng **Nhập…** (xem [Chuyển tài khoản từ nơi khác](#chuyển-tài-khoản-từ-nơi-khác)).
+**Moving to a new PC**: install Bloxkeep, click **Restore from a backup**, pick the newest backup and enter the password it was saved with. To merge the accounts of two PCs instead of replacing them, use **Import…** (see [Bringing accounts over](#bringing-accounts-over)).
 
-<img src="docs/screenshots/settings-backup.png" width="800" alt="Trang Sao lưu & dữ liệu trong Cài đặt, sao lưu vào thư mục OneDrive">
+<img src="docs/screenshots/settings-backup.png" width="800" alt="The Backup & data page in Settings, backing up to a OneDrive folder">
 
-## Giới hạn và tình trạng thử nghiệm
+## Known limits and testing status
 
-- Trạng thái online của Roblox bị trễ: thoát game rồi mà Roblox vẫn có thể báo "đang chơi" thêm vài phút.
-- Không dùng được Roblox bản Microsoft Store.
-- Roblox VNG: thêm được tài khoản, chưa mở được game.
-- Multi-Roblox: Bloxkeep phải mở trước Roblox và để mở trong lúc chơi. Nếu Roblox (kể cả bản ở khay hệ thống) mở trước, đèn sẽ vàng đến khi đóng hết Roblox. Roblox không chính thức hỗ trợ nhiều client, và một bản Roblox sau này có thể đổi cách chặn.
-- VPN chỉ áp cho một số app: nếu Roblox đi qua VPN mà Bloxkeep thì không, mở game có thể báo lỗi 403. Xem [câu hỏi thường gặp](#câu-hỏi-thường-gặp).
-- Ping của server là ping trung bình của người chơi, không phải của bạn. Server của bạn bè hay của người chơi bạn tìm chỉ hiện nếu cài đặt riêng tư của họ cho phép.
-- Tiết kiệm RAM: Roblox có thể không nhả RAM.
-- File chưa có chữ ký số nên SmartScreen cảnh báo lần đầu. Tự cập nhật chỉ hoạt động khi repo GitHub để công khai.
-- Quên mật khẩu chủ thì không khôi phục được dữ liệu.
+- Roblox's online status lags: after you leave a game, Roblox can still report "playing" for a few minutes.
+- The Microsoft Store version of Roblox can't be used.
+- Roblox VNG accounts can be added, but games can't be opened for them yet.
+- Multi-Roblox: Bloxkeep has to be open before Roblox and stay open while you play. If Roblox (including one in the tray) opened first, the light stays yellow until every Roblox is closed. Roblox doesn't officially support several clients, and a later Roblox build may change how it blocks them.
+- Per-app VPNs: if Roblox goes through a VPN and Bloxkeep doesn't, opening a game can fail with error 403. See the [FAQ](#faq).
+- A server's ping is its players' average, not yours. Friends' servers, and the server of a player you look up, only show when their privacy settings allow it.
+- Saving RAM: Roblox may not give RAM back.
+- The files aren't code-signed, so SmartScreen warns the first time. Updating itself only works while the GitHub repository is public.
+- A forgotten master password can't be recovered.
 
-Đã thử với tài khoản thật trên Windows 11 (Roblox 0.742 và 0.743, tháng 10/2026): đăng nhập bằng mật khẩu qua bước proof-of-work và captcha nhấn-giữ của HUMAN, vào game, 5 tài khoản cùng vào một game bằng Multi-Roblox với bản Roblox tháng 10/2026, mở nhiều trang chủ riêng.
+Tried with real accounts on Windows 11 (Roblox 0.742 and 0.743, October 2026): password sign-in through the proof-of-work step and HUMAN's press-and-hold captcha, joining a game, 5 accounts in one game with Multi-Roblox on Roblox's October 2026 build, several separate home screens.
 
-**Chưa thử với tài khoản thật:**
+**Not tried with real accounts yet:**
 
-- Tự vào lại game và **Mở lại Roblox** theo giờ trong thời gian dài.
-- Hẹn giờ preset, gửi lên Discord, **Treo máy nhẹ**, kiểu xếp **Ô nhỏ**.
-- Mã 2FA điền sẵn khi đăng nhập, nhãn **Bị ban** với một tài khoản bị ban thật, **Vào cùng người chơi…** với người chơi thật.
-- Bước cuối của **Đăng nhập bằng điện thoại**, xác minh 2 bước, và captcha xoay hình (Arkose).
-- Chạy trên Windows 10.
+- Auto-rejoin and **Restart Roblox** over many hours.
+- Scheduled presets, sending to Discord, **Light AFK**, **Small tiles**.
+- The 2FA code filled in at sign-in, the **Banned** tag on an actually banned account, **Join a player…** with a real player.
+- The last step of **Sign in with your phone**, 2-step verification, and the rotating-picture captcha (Arkose).
+- Windows 10.
 
-Nếu gặp lỗi, hãy [mở issue](../../issues) kèm nội dung lỗi.
+If something breaks, please [open an issue](../../issues) with the error.
 
-## Câu hỏi thường gặp
+## FAQ
 
 <details>
-<summary>Tài khoản của tôi có bị ban không?</summary>
+<summary>Will my account get banned?</summary>
 
-Không ai đảm bảo được. Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc, nên dùng Multi-Roblox là bạn tự chịu rủi ro. Bloxkeep đăng nhập và mở game theo cùng cách trang roblox.com làm, và không đụng vào bộ nhớ của game. Một số game cấm dùng tài khoản phụ; hãy đọc luật của game bạn chơi.
+No one can promise that. Roblox doesn't officially support running several clients, so using Multi-Roblox is at your own risk. Bloxkeep signs in and opens games the same way roblox.com does, and doesn't touch the game's memory. Some games forbid alt accounts; check the rules of the game you play.
 </details>
 
 <details>
-<summary>Đây có phải virus không? Sao Windows hay antivirus cảnh báo?</summary>
+<summary>Is this a virus? Why do Windows or antivirus apps warn?</summary>
 
-Không. File chưa có chữ ký số nên SmartScreen và một số antivirus cảnh báo với file mới. Bạn có thể đối chiếu SHA-256 với `SHA256SUMS.txt`, đọc mã nguồn trong repo này, hoặc [tự build](#tự-build-từ-mã-nguồn).
+No. The files aren't code-signed yet, so SmartScreen and some antivirus apps warn about new files. You can compare the SHA-256 with `SHA256SUMS.txt`, read the source in this repository, or [build it yourself](#build-from-source).
 </details>
 
 <details>
-<summary>Tôi quên mật khẩu chủ.</summary>
+<summary>I forgot my master password.</summary>
 
-Không khôi phục được. Mật khẩu chủ không được lưu ở đâu cả. Bạn có thể xóa `vault.rmv` và `vault.rmv.bak` trong `%LOCALAPPDATA%\Bloxkeep` (mất toàn bộ tài khoản đã lưu) rồi thiết lập lại, hoặc khôi phục một bản sao lưu mà bạn còn nhớ mật khẩu.
+It can't be recovered; it isn't stored anywhere. You can delete `vault.rmv` and `vault.rmv.bak` in `%LOCALAPPDATA%\Bloxkeep` (losing every saved account) and start over, or restore a backup whose password you remember.
 </details>
 
 <details>
-<summary>Làm sao chuyển sang máy mới?</summary>
+<summary>How do I move to a new PC?</summary>
 
-Bật sao lưu vào thư mục OneDrive hoặc Google Drive trên máy cũ. Trên máy mới, cài Bloxkeep, bấm **Khôi phục từ bản sao lưu** và nhập mật khẩu lúc sao lưu. Xem [Sao lưu và khôi phục](#sao-lưu-và-khôi-phục).
+Turn on backups to a OneDrive or Google Drive folder on the old PC. On the new one, install Bloxkeep, click **Restore from a backup** and enter the password the backup was saved with. See [Backup and restore](#backup-and-restore).
 </details>
 
 <details>
-<summary>Đèn Multi-Roblox màu vàng.</summary>
+<summary>The Multi-Roblox light is yellow.</summary>
 
-Có Roblox đã mở trước Bloxkeep. Đóng hết Roblox, kể cả Roblox ở khay hệ thống. Nếu Roblox tự chạy cùng Windows, bấm **Tắt tự khởi động** trong bảng hướng dẫn. Đèn sẽ chuyển xanh. Lần sau hãy mở Bloxkeep trước Roblox.
+A Roblox was open before Bloxkeep. Close every Roblox, including one in the system tray. If Roblox starts with Windows, click **Turn off autostart** in the help dialog. The light turns green. Next time, open Bloxkeep before Roblox.
 </details>
 
 <details>
-<summary>Cửa sổ Roblox lúc toàn màn hình, lúc không.</summary>
+<summary>Some Roblox windows open fullscreen and some don't.</summary>
 
-Các cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cái dễ bị lệch nhau. Bật **Luôn mở Roblox ở chế độ cửa sổ** trong bảng **Chi tiết** của Multi-Roblox (bật sẵn): mọi cửa sổ mở ở chế độ cửa sổ, cài đặt của bạn được trả lại sau đó. Muốn xếp chúng gọn trên màn hình thì dùng **Kiểu xếp cửa sổ**.
+All Roblox windows share one fullscreen setting, so with several open they easily end up different. Keep **Always open Roblox windowed** on in Multi-Roblox's **Details** (it's on by default): every window opens windowed, and your setting is put back afterwards. To lay them out neatly, use **Arranging windows**.
 </details>
 
 <details>
-<summary>Dùng Bloxstrap / Fishstrap thì mod còn không?</summary>
+<summary>Do my Bloxstrap / Fishstrap mods still work?</summary>
 
-Còn, nếu chọn **Bloxstrap** hoặc **Fishstrap** trong **Mở Roblox bằng**. Nếu trình mở chặn nhiều cửa sổ, chọn **Chạy thẳng RobloxPlayerBeta (không qua ứng dụng mở Roblox)**; khi đó Roblox mở không qua trình mở.
+Yes, if you choose **Bloxstrap** or **Fishstrap** in **Open Roblox with**. If the launcher blocks several windows, choose **RobloxPlayerBeta directly (skip launchers)**; Roblox then opens without the launcher.
 </details>
 
 <details>
-<summary>Thoát game rồi mà vẫn hiện "đang chơi".</summary>
+<summary>I left the game but it still says "playing".</summary>
 
-Trạng thái của Roblox bị trễ, có khi vài phút. Với cửa sổ chạy trên máy này, Bloxkeep tự bỏ qua báo cáo cũ; trạng thái từ thiết bị khác vẫn có thể trễ.
+Roblox's status lags, sometimes by a few minutes. For windows on this PC Bloxkeep ignores the stale report; status from other devices can still lag.
 </details>
 
 <details>
-<summary>Mở game báo lỗi 403 "An error was encountered during authentication".</summary>
+<summary>Opening a game fails with 403 "An error was encountered during authentication".</summary>
 
-Thường do VPN chỉ áp cho một số app: Roblox đi qua VPN còn Bloxkeep thì không. Vé vào game gắn với địa chỉ IP đã xin nó, nên hãy cho Bloxkeep đi cùng đường với Roblox.
+Usually a per-app VPN: Roblox goes through it and Bloxkeep doesn't. A join ticket is tied to the IP address that asked for it, so let Bloxkeep take the same route as Roblox.
 </details>
 
 <details>
-<summary>Ở Việt Nam không vào được roblox.com thì có dùng được không?</summary>
+<summary>Can I use it in Vietnam without access to roblox.com?</summary>
 
-Thêm tài khoản thì được. Đăng nhập bằng tên và mật khẩu không cần vào www.roblox.com, vì chỉ gọi tới máy chủ API và captcha của Roblox. Cách **Đăng nhập bằng trình duyệt** thì cần roblox.com. Bloxkeep không có VPN hay cách vượt chặn theo vùng nào. Tài khoản Roblox VNG thêm được nhưng chưa mở được game.
+Partly. Password sign-in and phone sign-in go through Roblox's API hosts, not www.roblox.com, and the captcha page is served by the app itself. The browser method needs www.roblox.com. Bloxkeep has no VPN or region bypass. Roblox VNG accounts can be added, but games can't be opened for them yet.
 </details>
 
 <details>
-<summary>Bloxkeep có gửi mật khẩu hay cookie đi đâu không?</summary>
+<summary>Does Bloxkeep send my password or cookies anywhere?</summary>
 
-Chỉ tới Roblox. Mật khẩu chỉ gửi tới máy chủ đăng nhập của Roblox, cookie chỉ dùng để gọi máy chủ Roblox cho chính tài khoản đó. Danh sách đầy đủ ở bảng [Những gì rời khỏi máy](#dữ-liệu-và-bảo-mật).
+Only to Roblox. A password you sign in with only goes to Roblox's sign-in server, and each account's cookie is only sent to Roblox's own hosts (Roblox VNG's, for VNG accounts). Update checks to GitHub carry no account data. The full list is under [Data and security](#data-and-security).
 </details>
 
 <details>
-<summary>Sao không hỗ trợ Roblox bản Microsoft Store?</summary>
+<summary>Why isn't the Microsoft Store version of Roblox supported?</summary>
 
-Bản Microsoft Store không mở được tài khoản bạn chọn, nên Bloxkeep không dùng được nó. Hãy cài Roblox từ roblox.com (có thể dùng kèm Bloxstrap hoặc Fishstrap).
+The Store version can't open the account you choose, so Bloxkeep can't use it. Install Roblox from roblox.com (Bloxstrap or Fishstrap on top is fine).
 </details>
 
 <details>
-<summary>Làm sao xóa sạch Bloxkeep?</summary>
+<summary>How do I remove Bloxkeep completely?</summary>
 
-Gỡ Bloxkeep trong **Settings › Apps** của Windows, rồi xóa thư mục `%LOCALAPPDATA%\Bloxkeep`. Với bản portable, xóa thư mục chứa app (gồm cả `data`).
+Uninstall it in Windows **Settings › Apps**, then delete the `%LOCALAPPDATA%\Bloxkeep` folder. For the portable copy, delete the app's folder (with its `data`).
 </details>
 
-## Tự build từ mã nguồn
+## Build from source
 
-Cần Windows và **.NET 10 SDK**. App gồm phần lõi C# (.NET 10, WinForms) và giao diện HTML/CSS/JS chạy trong WebView2. Công cụ đóng gói [Velopack](https://velopack.io) (`vpk`) được khai báo trong `dotnet-tools.json` và script tự tải.
+You need Windows and the **.NET 10 SDK**. The app is a C# core (.NET 10, WinForms) with an HTML/CSS/JS interface in WebView2. The [Velopack](https://velopack.io) packager (`vpk`) is pinned in `dotnet-tools.json` and the scripts fetch it.
 
 ```bat
 build.bat 1.0.1
 ```
 
-Kết quả nằm trong `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, các gói cập nhật và `SHA256SUMS.txt`. Tham số thứ hai là link repo GitHub mà bản build sẽ tìm cập nhật (mặc định là repo này); truyền repo khác khi build bản fork.
+The output goes to `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, the update packages and `SHA256SUMS.txt`. A second argument is the GitHub repository the build looks for updates in (this one by default); pass another when you build a fork.
 
 ```bat
 release.bat 1.0.1 https://github.com/minhhoang0122/bloxkeep
 ```
 
-`release.bat` đăng lên GitHub Releases, cần biến môi trường `GITHUB_TOKEN` có quyền ghi release. Mỗi phiên bản cần ghi chú (tiếng Anh và tiếng Việt) trong `RobloxManager\whatsnew.json`; ghi chú này hiện trong app sau khi cập nhật và trên trang phát hành. Để thử cập nhật trước khi đăng, đặt `BLOXKEEP_UPDATE_SOURCE` là một thư mục chứa các file phát hành.
+This uploads the build to GitHub Releases and needs a `GITHUB_TOKEN` environment variable with write access to releases. Each version needs its notes, in English and Vietnamese, in `RobloxManager\whatsnew.json`; they show in the app after an update and become the release notes. To test updates before publishing, set `BLOXKEEP_UPDATE_SOURCE` to a local folder of release files.
 
-**Xem thử giao diện không cần build**: chạy một web server tĩnh ở thư mục gốc repo (ví dụ `python -m http.server 5178`), rồi mở `http://127.0.0.1:5178/dev/preview.html`. Trang này dùng dữ liệu giả trong `dev/mock.js`.
+**Try the interface without building**: serve the repository root with any static web server (for example `python -m http.server 5178`) and open `http://127.0.0.1:5178/dev/preview.html`. It runs on the made-up data in `dev/mock.js`.
 
 ```
-RobloxManager/             mã nguồn C#
-  wwwroot/                 giao diện (nhúng vào exe); chuỗi EN/VI trong i18n.js
-  AppController*.cs        nhận lệnh từ giao diện, mở game, theo dõi tiến trình, tự vào lại game, preset,
-                           hẹn giờ, Discord, thống kê, sao lưu (mỗi phần một file)
-  RobloxApi.cs             gọi API Roblox (đăng nhập, trạng thái, game, server)
-  RobloxLauncher.cs        mở Roblox qua trình mở đã chọn
-  RobloxLogWatcher.cs      đọc log của Roblox để biết vào game / bị kick
-  RobloxGameSettings.cs    ghi cấu hình Roblox trước khi mở tài khoản rồi trả lại
+RobloxManager/             C# source
+  wwwroot/                 the interface (embedded in the exe); EN/VI strings in i18n.js
+  AppController*.cs        commands from the interface, launching, process tracking, auto-rejoin, presets,
+                           schedules, Discord, statistics, backups (one file per part)
+  RobloxApi.cs             Roblox API calls (sign-in, status, games, servers)
+  RobloxLauncher.cs        opens Roblox through the chosen launcher
+  RobloxLogWatcher.cs      reads Roblox's logs to see joins and kicks
+  RobloxGameSettings.cs    writes Roblox settings before opening an account, then puts yours back
   MultiInstance.cs         Multi-Roblox
-  MonitorTab.cs            tab Màn hình theo dõi
-  Vault.cs                 kho mã hóa
-  AppUpdater.cs            tự cập nhật (Velopack)
-  whatsnew.json            ghi chú từng phiên bản
-Installer/                 ảnh màn hình chờ của bộ cài
-dev/                       xem thử giao diện với dữ liệu giả (không đóng gói)
-docs/screenshots/          ảnh chụp màn hình
+  MonitorTab.cs            the Game monitor tab
+  Vault.cs                 the encrypted vault
+  AppUpdater.cs            self-update (Velopack)
+  whatsnew.json            notes for each version
+Installer/                 the installer's splash image
+dev/                       interface preview with made-up data (not packaged)
+docs/screenshots/          screenshots (vi/: the Vietnamese ones)
 ```
 
-## Giấy phép
+## License
 
 [MIT](LICENSE) © 2026 minhhoang0122
 
-*Bloxkeep là dự án độc lập, không liên kết, không được Roblox Corporation bảo trợ hay tài trợ. Roblox là thương hiệu của Roblox Corporation.*
+*Bloxkeep is an independent project. It is not affiliated with, endorsed or sponsored by Roblox Corporation. Roblox is a trademark of Roblox Corporation.*
