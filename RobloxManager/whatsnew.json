@@ -1,28 +1,28 @@
 [
   {
     "version": "1.0.0",
-    "date": "2026-10-13",
+    "date": "2026-10-15",
     "en": [
       "Keep all your Roblox accounts in one place, saved only on this PC and locked with your master password.",
-      "Add accounts by signing in on the official Roblox page, with a code from the Roblox app, with a password, or from Roblox Account Manager.",
-      "Find a game by name, in recent, pinned, favorite or popular games, pick accounts and press Play.",
-      "Choose the server: most or fewest players, lowest ping, room for all your accounts, or the one a friend is in.",
-      "Save launch presets (accounts, game and server) and run them again with one click.",
-      "Run several Roblox windows at once with Multi-Roblox (off until you turn it on); switch running accounts to another game or back to the home screen.",
-      "Auto-rejoin, window grid, low-RAM warnings and Windows notifications when something needs you.",
-      "Back up your accounts and settings to a OneDrive or Google Drive folder and restore it on a new PC.",
-      "32 themes, keeps running in the tray when closed, and new versions download in the background."
+      "Add accounts with a code from the Roblox phone app, with a password (2-step verification and captchas included), on the official Roblox page, with a cookie, or from Roblox Account Manager or another Bloxkeep file.",
+      "Find a game by name or link, pick accounts and press Play; choose the server (most or fewest players, lowest ping, room for all your accounts), join a friend, or join the server a player is in.",
+      "Run several Roblox windows at once with Multi-Roblox (off until you turn it on), all opened windowed and tiled the way you choose.",
+      "Presets: save accounts, game and server, run them with one click or on a schedule, with their own anti-AFK, auto-rejoin, light AFK mode and timed restarts.",
+      "Auto-rejoin that keeps trying with longer waits, a game monitor with live pictures of every Roblox window, a mini window, and Ctrl+K quick search.",
+      "Statistics of play time per account and game, an activity log, and summaries, a status message and alerts sent to your Discord channel.",
+      "Authenticator (2FA) codes in the app, hidden account names for screenshots, a daily sign-in check and banned accounts flagged.",
+      "Back up to a OneDrive or Google Drive folder and restore on a new PC; 32 themes, English and Vietnamese, keeps running in the tray, and new versions download in the background."
     ],
     "vi": [
       "Giữ mọi acc Roblox ở một chỗ, chỉ lưu trên máy này và khóa bằng mật khẩu chủ.",
-      "Thêm acc bằng cách đăng nhập trên trang Roblox chính thức, bằng mã từ app Roblox, bằng mật khẩu, hoặc chuyển từ Roblox Account Manager.",
-      "Tìm game theo tên, trong game gần đây, đã ghim, yêu thích hoặc phổ biến, chọn acc rồi bấm Vào game.",
-      "Chọn server: đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho mọi acc, hoặc server có bạn bè.",
-      "Lưu preset (acc, game, server) và chạy lại chỉ với một lần bấm.",
-      "Mở nhiều cửa sổ Roblox cùng lúc với Multi-Roblox (chỉ chạy khi bạn bật); chuyển các acc đang chạy sang game khác hoặc về màn hình chính.",
-      "Tự vào lại game, xếp lưới cửa sổ, cảnh báo thiếu RAM và thông báo Windows khi có việc cần bạn.",
-      "Sao lưu acc và cài đặt vào thư mục OneDrive hoặc Google Drive và khôi phục trên máy mới.",
-      "32 giao diện, chạy tiếp ở khay hệ thống khi đóng cửa sổ, bản mới được tải ngầm."
+      "Thêm acc bằng mã từ app Roblox trên điện thoại, bằng mật khẩu (có xác minh 2 bước và captcha), trên trang Roblox chính thức, bằng cookie, hoặc chuyển từ Roblox Account Manager hay file Bloxkeep khác.",
+      "Tìm game theo tên hoặc link, chọn acc rồi bấm Vào game; chọn server (đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho mọi acc), vào cùng bạn bè, hoặc vào đúng server của một người chơi.",
+      "Mở nhiều cửa sổ Roblox cùng lúc với Multi-Roblox (chỉ chạy khi bạn bật), mọi cửa sổ mở ở chế độ cửa sổ và xếp theo kiểu bạn chọn.",
+      "Preset: lưu acc, game và server, chạy bằng một lần bấm hoặc theo giờ hẹn, với chống AFK, tự vào lại game, chế độ treo máy nhẹ và mở lại Roblox theo giờ riêng cho từng preset.",
+      "Tự vào lại game và thử tiếp với thời gian chờ giãn dần, màn hình theo dõi hình trực tiếp của mọi cửa sổ Roblox, cửa sổ nhỏ, và tìm nhanh bằng Ctrl+K.",
+      "Thống kê thời gian chơi theo acc và theo game, nhật ký hoạt động, và gửi tổng kết, tin trạng thái, cảnh báo lên kênh Discord của bạn.",
+      "Mã 2FA ngay trong app, ẩn tên acc khi chụp màn hình, kiểm tra đăng nhập mỗi ngày và đánh dấu acc bị ban.",
+      "Sao lưu vào thư mục OneDrive hoặc Google Drive và khôi phục trên máy mới; 32 giao diện, tiếng Anh và tiếng Việt, chạy tiếp ở khay hệ thống, bản mới được tải ngầm."
     ]
   }
 ]
