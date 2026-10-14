@@ -14,7 +14,9 @@ set REPO=https://github.com/minhhoang0122/bloxkeep
 if not "%~2"=="" set REPO=%~2
 
 if exist artifacts\app rmdir /s /q artifacts\app
-if not exist dist\releases mkdir dist\releases
+rem Files left from an earlier build would be listed in SHA256SUMS.txt and stop the same version from packing again.
+if exist dist\releases rmdir /s /q dist\releases
+mkdir dist\releases
 
 echo [1/4] Tools...
 dotnet tool restore >nul || goto :fail
@@ -31,8 +33,18 @@ if not "%REPO%"=="" (
 
 echo [4/4] Installer, portable zip and update packages...
 powershell -NoProfile -ExecutionPolicy Bypass -File release-notes.ps1 %VERSION% artifacts\release-notes.md || goto :fail
+rem What these become on the user's PC (Velopack 1.2.161):
+rem   --packId         the install folder, %LOCALAPPDATA%\BloxkeepApp, and the name of the uninstall registry key
+rem   --packTitle      "Bloxkeep" in Windows' Installed apps list, the shortcut names and the installer's dialogs
+rem   --packAuthors    the Publisher column in Installed apps (keep it the same as Company in the csproj)
+rem   --icon           the icon of Setup.exe; the shortcuts and the Apps list take theirs from Bloxkeep.exe itself
+rem   --shortcuts      Desktop and the Start menu's root (no folder), like VS Code and Discord; a user who deletes one
+rem                    doesn't get it back on update
+rem   --framework      Setup installs Microsoft Edge WebView2 first if the PC lacks it (asks, then downloads it from
+rem                    Microsoft, so that needs internet); --splashImage is shown at 100 %% and scaled up on high-DPI screens
 dotnet vpk pack --packId BloxkeepApp --packVersion %VERSION% --packDir artifacts\app --mainExe Bloxkeep.exe ^
-  --packTitle Bloxkeep --packAuthors Bloxkeep --icon RobloxManager\app.ico --runtime win-x64 ^
+  --packTitle Bloxkeep --packAuthors minhhoang0122 --icon RobloxManager\app.ico --runtime win-x64 ^
+  --shortcuts Desktop,StartMenuRoot ^
   --splashImage Installer\splash.png --splashProgressColor #f5c933 --framework webview2 ^
   --releaseNotes artifacts\release-notes.md -o dist\releases || goto :fail
 

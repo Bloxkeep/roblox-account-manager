@@ -22,13 +22,22 @@ public static class RobloxGameSettings
     static readonly (string Type, string Name)[] Keys =
     [
         ("token", "SavedQualityLevel"), ("int", "GraphicsQualityLevel"), ("int", "FramerateCap"), ("float", "MasterVolume"),
+        ("bool", "Fullscreen"),
     ];
 
-    static string? SettingsFile()
+    static string? _settingsFile;
+    static DateTime _nextFileLookup;
+    static readonly TimeSpan FileLookupInterval = TimeSpan.FromSeconds(10);
+
+    /// <param name="cached">The file found last time is fine while it still exists; the folder is listed again every 10 s at most.</param>
+    static string? SettingsFile(bool cached = false)
     {
+        if (cached && _settingsFile is not null && DateTime.UtcNow < _nextFileLookup && File.Exists(_settingsFile))
+            return _settingsFile;
+        _nextFileLookup = DateTime.UtcNow + FileLookupInterval;
         try
         {
-            return new DirectoryInfo(RobloxDir).Exists
+            return _settingsFile = new DirectoryInfo(RobloxDir).Exists
                 ? new DirectoryInfo(RobloxDir).EnumerateFiles("GlobalBasicSettings_*.xml")
                     .Where(f => !f.Name.Contains("Studio", StringComparison.OrdinalIgnoreCase))
                     .OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault()?.FullName
@@ -36,7 +45,7 @@ public static class RobloxGameSettings
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return null;
+            return _settingsFile = null;
         }
     }
 
@@ -63,16 +72,28 @@ public static class RobloxGameSettings
     public static int EngineQuality(int slider) => slider >= 10 ? 21 : slider * 2 - 1;
 
     /// <summary>
-    /// Before opening an account: the shared setup if the account uses it, otherwise the person's own values (so an
-    /// account without it never inherits what an earlier one got). Returns false when there was nothing to write.
+    /// A preset's light AFK profile: the lowest graphics, the lowest frame rate limit Roblox's own menu offers (30; a
+    /// lower number written to the file is untested) and no sound. Passed to <see cref="PrepareFor"/> as a setup in use.
     /// </summary>
-    public static bool PrepareFor(RobloxConfig config, bool useConfig)
+    public static RobloxConfig LightAfk => new() { Mode = "all", Graphics = 1, Fps = 30, Volume = 0 };
+
+    /// <summary>
+    /// Before opening an account: the shared setup if the account uses it, and the person's own values for everything
+    /// else Bloxkeep manages (so an account never inherits what an earlier one got, such as a light-AFK preset's 30 FPS
+    /// under a setup that only sets graphics). <paramref name="windowed"/>: Roblox's fullscreen switch off too — every
+    /// client reads the one switch, and those that save it while others start (Roblox saves when it joins a game) left
+    /// some windows fullscreen and some not. The person's own values are what the file holds, except a value still
+    /// equal to what Bloxkeep last wrote (the rule <see cref="Restore"/> follows): a setting changed meanwhile in a
+    /// Roblox window is theirs, and an older copy is never written over it. Returns false when there was nothing to
+    /// write, or the file couldn't be written.
+    /// </summary>
+    public static bool PrepareFor(RobloxConfig config, bool useConfig, bool windowed)
     {
         string? file = SettingsFile();
         if (file is null)
             return false;
         var baseline = LoadBaseline();
-        if (!useConfig && baseline is null)
+        if (!useConfig && !windowed && baseline is null)
             return false; // nothing of ours was ever written: leave the file alone
         string text = Read(file);
         if (text.Length == 0)
@@ -82,7 +103,32 @@ public static class RobloxGameSettings
             baseline = new Baseline { Values = Current(text), Written = new() };
             SaveBaseline(baseline);
         }
-        var target = useConfig ? Wanted(config) : baseline.Values;
+        else
+        {
+            // What the file holds now is the person's own, unless it is still what Bloxkeep wrote: a setting changed in
+            // a Roblox window since the copy was taken, or one the copy was taken without (by a version that didn't
+            // manage it).
+            bool refreshed = false;
+            foreach (var (name, value) in Current(text))
+            {
+                if (baseline.Written.TryGetValue(name, out var written) && written == value)
+                    continue;
+                if (!baseline.Values.TryGetValue(name, out var mine) || mine != value)
+                {
+                    baseline.Values[name] = value;
+                    refreshed = true;
+                }
+            }
+            if (refreshed)
+                SaveBaseline(baseline);
+        }
+        // Bloxkeep's values for this client over the person's own, for everything it manages.
+        var ours = useConfig ? Wanted(config) : new Dictionary<string, string>();
+        if (windowed)
+            ours["Fullscreen"] = "false";
+        var target = new Dictionary<string, string>(baseline.Values);
+        foreach (var (name, value) in ours)
+            target[name] = value;
         if (target.Count == 0)
             return false;
         string updated = text;
@@ -93,11 +139,13 @@ public static class RobloxGameSettings
         }
         if (updated == text)
             return true;
-        Write(file, updated);
+        // Not written (the file held by another program): nothing of Bloxkeep's is in it, so nothing is noted as written.
+        if (!Write(file, updated))
+            return false;
         _lastSeen = default;
-        if (useConfig)
+        if (ours.Count > 0)
         {
-            foreach (var (name, value) in target)
+            foreach (var (name, value) in ours)
                 baseline.Written[name] = value;
             SaveBaseline(baseline);
         }
@@ -113,7 +161,7 @@ public static class RobloxGameSettings
     /// </summary>
     public static void Restore(bool final)
     {
-        string? file = SettingsFile();
+        string? file = SettingsFile(cached: !final);
         // Nothing changed since the last look: skip reading anything (this runs every couple of seconds).
         if (!final && file is not null && new FileInfo(file) is { Exists: true } info && _lastSeen == (file, info.LastWriteTimeUtc, info.Length))
             return;
@@ -131,7 +179,7 @@ public static class RobloxGameSettings
                     updated = Element(type, name).Replace(updated, m => m.Groups[1].Value + mine + m.Groups[3].Value, 1);
             }
             if (updated != text)
-                Write(file, updated);
+                _ = Write(file, updated); // not written: tried again when the file changes, and at the final restore
             if (new FileInfo(file) is { Exists: true } written)
                 _lastSeen = (file, written.LastWriteTimeUtc, written.Length);
         }
@@ -198,18 +246,21 @@ public static class RobloxGameSettings
     }
 
     /// <summary>Written next to the file and swapped in, so Roblox never reads half a file.</summary>
-    static void Write(string file, string text)
+    /// <returns>false when it couldn't be written (logged).</returns>
+    static bool Write(string file, string text)
     {
         string temp = file + ".bloxkeep";
         try
         {
             File.WriteAllText(temp, text, new UTF8Encoding(false));
             File.Move(temp, file, overwrite: true);
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Log.Write(ex);
             try { File.Delete(temp); } catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException) { }
+            return false;
         }
     }
 }

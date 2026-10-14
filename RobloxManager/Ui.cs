@@ -49,8 +49,10 @@ static class Ui
     public static void UseThemedTitleBar(Form form, Themes.Theme theme)
     {
         const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20, DWMWA_CAPTION_COLOR = 35, DWMWA_TEXT_COLOR = 36;
+        // Windows 10 before 20H1 (build 19041) knew the dark-mode attribute under the number 19.
+        int darkMode = Environment.OSVersion.Version.Build >= 19041 ? DWMWA_USE_IMMERSIVE_DARK_MODE : 19;
         int dark = theme.Dark ? 1 : 0;
-        DwmSetWindowAttribute(form.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
+        DwmSetWindowAttribute(form.Handle, darkMode, ref dark, sizeof(int));
         int caption = ColorTranslator.ToWin32(theme.Background);
         DwmSetWindowAttribute(form.Handle, DWMWA_CAPTION_COLOR, ref caption, sizeof(int));
         int text = ColorTranslator.ToWin32(theme.Text);
@@ -58,10 +60,32 @@ static class Ui
     }
 
     public static void Error(IWin32Window? owner, string message) =>
-        MessageBox.Show(owner, message, Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        Modal(() => MessageBox.Show(owner, message, Title, MessageBoxButtons.OK, MessageBoxIcon.Error));
 
-    public static void Info(IWin32Window? owner, string message) =>
-        MessageBox.Show(owner, message, Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+    /// <summary>The windows the app may keep on top (the mini window): a message box would open behind them.</summary>
+    static readonly List<Form> _onTop = new();
+
+    /// <summary>Notes a window that can be always on top, so <see cref="Modal"/> lowers it while a box is shown.</summary>
+    public static void NoteOnTop(Form form) => _onTop.Add(form);
+
+    /// <summary>Shows a message box or dialog with the app's always-on-top windows lowered meanwhile, so it opens in front of them.</summary>
+    public static T Modal<T>(Func<T> show)
+    {
+        _onTop.RemoveAll(f => f.IsDisposed);
+        // Not from another thread: the box then opens as before, which is better than a cross-thread error.
+        var lowered = _onTop.Where(f => f.Visible && f.TopMost && !f.InvokeRequired).ToList();
+        foreach (var form in lowered)
+            form.TopMost = false;
+        try
+        {
+            return show();
+        }
+        finally
+        {
+            foreach (var form in lowered.Where(f => !f.IsDisposed))
+                form.TopMost = true;
+        }
+    }
 
     static string? _clipboardSecret;
 

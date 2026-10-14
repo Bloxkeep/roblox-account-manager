@@ -122,7 +122,29 @@ public static class RobloxInstalls
 
     /// <param name="Version">e.g. "0.742.0.7421053".</param>
     /// <param name="Folder">The version folder, e.g. "version-cec3ad5889b447cf" (Roblox's id for that build).</param>
-    public sealed record ClientVersion(string Version, string Folder);
+    /// <param name="Source">Whose copy it is ("Roblox", "Bloxstrap", …); only for a client found on this PC.</param>
+    /// <param name="Exe">The client file itself; never sent to the page.</param>
+    public sealed record ClientVersion(string Version, string Folder,
+        [property: System.Text.Json.Serialization.JsonIgnore] string? Source = null,
+        [property: System.Text.Json.Serialization.JsonIgnore] string? Exe = null);
+
+    static bool Under(string path, string root) =>
+        path.StartsWith(root.TrimEnd('\\', '/') + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Which install a client belongs to: Roblox's own, a known launcher's, or the folder its Versions folder is in.</summary>
+    public static string SourceOf(string exe)
+    {
+        string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+        if (Under(exe, Path.Combine(Local, "Roblox")) || Under(exe, Path.Combine(programFiles, "Roblox")))
+            return "Roblox";
+        foreach (var name in KnownBootstrappers.Concat(FindOtherBootstrappers()))
+        {
+            if (FindBootstrapper(name) is { } launcher && Path.GetDirectoryName(launcher) is { Length: > 0 } root && Under(exe, root))
+                return name;
+        }
+        // …\<install>\Versions\version-…\RobloxPlayerBeta.exe
+        return Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(exe)) ?? "") ?? "") ?? "";
+    }
 
     /// <summary>The client a launch option would start: bootstrappers keep their own copy of Roblox.</summary>
     public static string? ClientFor(string launchVia, string customLauncher = "")
@@ -158,7 +180,7 @@ public static class RobloxInstalls
             string version = string.Join('.', (info.FileVersion ?? "").Split(',', '.').Select(part => part.Trim()).Where(part => part.Length > 0));
             if (version.Length == 0)
                 version = $"{info.FileMajorPart}.{info.FileMinorPart}.{info.FileBuildPart}.{info.FilePrivatePart}";
-            return new ClientVersion(version, Path.GetFileName(Path.GetDirectoryName(exe)) ?? "");
+            return new ClientVersion(version, Path.GetFileName(Path.GetDirectoryName(exe)) ?? "", SourceOf(exe), exe);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

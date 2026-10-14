@@ -26,6 +26,12 @@ public sealed class Account
     public bool AutoRejoin { get; set; }
     /// <summary>Opened with the shared Roblox settings when those apply to chosen accounts only.</summary>
     public bool UseRobloxConfig { get; set; }
+    /// <summary>The authenticator (2-step) key, null when none. A secret like <see cref="Password"/>: only its current code leaves the app.</summary>
+    public TotpKey? Authenticator { get; set; }
+    /// <summary>What Roblox's public profile of the account said at the last check (see AppController.Health.cs); null until asked.</summary>
+    public bool? Banned { get; set; }
+    /// <summary>When the ban was first noticed; null while not banned.</summary>
+    public DateTime? BannedSince { get; set; }
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 
@@ -39,7 +45,13 @@ public sealed class AppSettings
     public string LastJobId { get; set; } = "";
     /// <summary>Off until the user opts in: Roblox does not officially support several clients.</summary>
     public bool MultiInstance { get; set; }
+    /// <summary>With Multi-Roblox on, open every client in a window (Roblox's fullscreen switch is shared by all of them). On by default.</summary>
+    public bool MultiInstanceWindowed { get; set; } = true;
+    /// <summary>With Multi-Roblox on, tile the Roblox windows once a launch has opened them.</summary>
+    public bool MultiInstanceTile { get; set; }
     public bool RenameWindows { get; set; } = true;
+    /// <summary>How Arrange windows lays the Roblox windows out: "fill" (the whole screen), or fixed tiles from the top-left, "small" / "medium" / "large".</summary>
+    public string WindowLayout { get; set; } = "fill";
     /// <summary>Replaced by <see cref="LaunchVia"/>; only read to migrate older vaults.</summary>
     public bool DirectLaunch { get; set; }
     public string LaunchVia { get; set; } = "";
@@ -56,7 +68,16 @@ public sealed class AppSettings
     public RobloxConfig RobloxConfig { get; set; } = new();
     public List<RecentGame> RecentGames { get; set; } = new();
     public List<RecentGame> PinnedGames { get; set; } = new();
+    /// <summary>Names last looked up with "Join a player…", newest first (see AppController.JoinPlayer.cs).</summary>
+    public List<string> RecentPlayers { get; set; } = new();
     public List<LaunchPreset> Presets { get; set; } = new();
+    /// <summary>Accounts in the order Play opens them; accounts missing here (added later) come after, as listed.</summary>
+    public List<Guid> LaunchOrder { get; set; } = new();
+    /// <summary>
+    /// Ids this vault had before its password changes (see <see cref="Vault.Id"/>): backups made under them are still
+    /// this vault's to prune.
+    /// </summary>
+    public List<string> PreviousVaultIds { get; set; } = new();
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -76,6 +97,38 @@ public sealed class LaunchPreset
     public string JobId { get; set; } = "";
     /// <summary>Seconds between accounts; null uses the global setting.</summary>
     public int? DelaySeconds { get; set; }
+    /// <summary>Runs by itself at set times; null (older presets) or Enabled = false when it doesn't.</summary>
+    public PresetSchedule? Schedule { get; set; }
+    /// <summary>When it last opened accounts (by hand or by schedule), UTC; null if it hasn't since this was added.</summary>
+    public DateTime? LastRunAt { get; set; }
+    // Options for the Roblox windows this preset opens (missing in older vaults: they follow the usual settings).
+    /// <summary>Anti-AFK for its windows; null follows Settings.</summary>
+    public bool? AntiAfk { get; set; }
+    /// <summary>Auto-rejoin for its windows; null follows each account's own switch.</summary>
+    public bool? AutoRejoin { get; set; }
+    /// <summary>"" (Roblox as set up) or "afk": lowest graphics, 30 FPS, no sound, minimised once in the game.</summary>
+    public string Profile { get; set; } = "";
+    /// <summary>Each of its windows in a game is closed and opened again after this many hours; 0 = never.</summary>
+    public int RestartHours { get; set; }
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>When a preset runs on its own (see AppController.Schedule.cs). Times are local wall-clock "HH:mm".</summary>
+public sealed class PresetSchedule
+{
+    public bool Enabled { get; set; }
+    public string Time { get; set; } = "";
+    /// <summary>Weekdays it repeats on, as <see cref="DayOfWeek"/> numbers (0 = Sunday); empty when it runs once.</summary>
+    public List<int> Days { get; set; } = new();
+    /// <summary>"yyyy-MM-dd" of a one-off run; empty when it repeats.</summary>
+    public string Date { get; set; } = "";
+    /// <summary>"never", "after" (<see cref="StopHours"/>) or "at" (<see cref="StopTime"/>).</summary>
+    public string Stop { get; set; } = "never";
+    public double StopHours { get; set; }
+    public string StopTime { get; set; } = "";
+    /// <summary>The scheduled minute that last ran, "yyyy-MM-dd HH:mm", so a clock set back can't run it again.</summary>
+    public string LastRun { get; set; } = "";
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -95,6 +148,146 @@ public sealed class VaultData
     public List<Account> Accounts { get; set; } = new();
     public AppSettings Settings { get; set; } = new();
     public List<OpenSession> OpenSessions { get; set; } = new();
+    /// <summary>Stays in games for the Statistics view (see AppController.Stats.cs); missing in older vaults.</summary>
+    public List<PlaySession> PlaySessions { get; set; } = new();
+    /// <summary>Statistics › Activity, oldest first (see AppController.Activity.cs); missing in older vaults.</summary>
+    public List<ActivityEntry> Activity { get; set; } = new();
+    /// <summary>Scheduled runs whose stop is still to come when the app closes; armed again at the next unlock.</summary>
+    public List<ScheduledRunState> ScheduledRuns { get; set; } = new();
+    /// <summary>Settings › Discord (see AppController.Discord.cs); kept here because the webhook link is a secret.</summary>
+    public DiscordSettings Discord { get; set; } = new();
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>Posting to a Discord channel through a webhook: off until the person turns it on.</summary>
+public sealed class DiscordSettings
+{
+    public bool Enabled { get; set; }
+    /// <summary>https://discord.com/api/webhooks/{id}/{token}; anyone with it can post to the channel.</summary>
+    public string WebhookUrl { get; set; } = "";
+    /// <summary>"gone" after Discord said the webhook no longer exists (sending stopped); null otherwise.</summary>
+    public string? Stopped { get; set; }
+    public string Username { get; set; } = "Bloxkeep";
+    public string AvatarUrl { get; set; } = "";
+    /// <summary>"app" (follows Bloxkeep's), "en" or "vi".</summary>
+    public string Language { get; set; } = "app";
+    /// <summary>"embed" or "plain".</summary>
+    public string Style { get; set; } = "embed";
+    /// <summary>Messages name accounts "Account 1", "Account 2"…, apart from Settings › Appearance's switch for the screen.</summary>
+    public bool HideNames { get; set; }
+    public bool SummaryDaily { get; set; }
+    public string SummaryDailyTime { get; set; } = "22:00";
+    public bool SummaryWeekly { get; set; }
+    /// <summary>A <see cref="DayOfWeek"/> number (0 = Sunday).</summary>
+    public int SummaryWeekday { get; set; }
+    public string SummaryWeeklyTime { get; set; } = "22:00";
+    public bool SummaryAfterSchedule { get; set; }
+    /// <summary>1 (today), 7 or 30.</summary>
+    public int SummaryDays { get; set; } = 1;
+    /// <summary>Of "total", "accounts", "games", "sessions", "kicks".</summary>
+    public List<string> SummaryParts { get; set; } = ["total", "accounts", "games", "sessions", "kicks"];
+    /// <summary>Accounts the summary covers; empty for all.</summary>
+    public List<Guid> SummaryAccounts { get; set; } = new();
+    /// <summary>Local "yyyy-MM-dd" the daily / weekly summary last went out, so neither goes twice (a clock set back included).</summary>
+    public string LastDaily { get; set; } = "";
+    public string LastWeekly { get; set; } = "";
+    public bool Board { get; set; }
+    public int BoardMinutes { get; set; } = 5;
+    /// <summary>The status message being edited in place; empty until posted (or after it was deleted).</summary>
+    public string BoardMessageId { get; set; } = "";
+    /// <summary>Event kinds sent (as in AppController.Notify.cs), apart from the Windows notification switches.</summary>
+    public List<string> Events { get; set; } = ["drop", "schedule", "signin", "launch"];
+    /// <summary>Per message kind ("summary" or an event kind): "none", "here", "everyone", "user:&lt;id&gt;", "role:&lt;id&gt;".</summary>
+    public Dictionary<string, string> Pings { get; set; } = new();
+    /// <summary>Between these local "HH:mm" times messages still go out, without pings.</summary>
+    public bool Quiet { get; set; }
+    public string QuietFrom { get; set; } = "23:00";
+    public string QuietTo { get; set; } = "07:00";
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>A scheduled preset run (see AppController.Schedule.cs) still waiting for its stop, as written to the vault.</summary>
+public sealed class ScheduledRunState
+{
+    public Guid PresetId { get; set; }
+    /// <summary>The preset's name when the run started, for its stop's notice if the preset was deleted since.</summary>
+    public string Name { get; set; } = "";
+    /// <summary>The accounts the run opened: the ones its stop closes.</summary>
+    public List<Guid> Opened { get; set; } = new();
+    /// <summary>When to stop (UTC), for "after N hours".</summary>
+    public DateTime? StopAt { get; set; }
+    /// <summary>Local minute ("yyyy-MM-dd HH:mm") to stop at, for "at a time".</summary>
+    public string? StopAtMinute { get; set; }
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>One stay in a game by a client Bloxkeep opened; still going while <see cref="EndedAt"/> is null.</summary>
+public sealed class PlaySession
+{
+    public Guid AccountId { get; set; }
+    /// <summary>The account's name when the stay began, shown once the account is deleted; null in stays from older versions.</summary>
+    public string? AccountLabel { get; set; }
+    /// <summary>The client's process, to go on with the stay after Bloxkeep restarts.</summary>
+    public int Pid { get; set; }
+    public long PlaceId { get; set; }
+    public long UniverseId { get; set; }
+    /// <summary>The game's name when the stay began (or once looked up), so the view needs no lookups.</summary>
+    public string GameName { get; set; } = "";
+    public DateTime StartedAt { get; set; }
+    public DateTime? EndedAt { get; set; }
+    /// <summary>When the client was last seen still playing: the end of a stay Bloxkeep didn't see end.</summary>
+    public DateTime? LastSeenAt { get; set; }
+    /// <summary>"left" (by choice), "disconnected" (see <see cref="ReasonCode"/>), "closed" (the window, by anyone), "sleep" (the PC went to sleep) or "appClosed" (Bloxkeep wasn't running).</summary>
+    public string? EndReason { get; set; }
+    /// <summary>Roblox's disconnect code when it gave one (273 = the same account joined elsewhere, 278 = idle).</summary>
+    public int? ReasonCode { get; set; }
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>One line of Statistics › Activity (see AppController.Activity.cs).</summary>
+public sealed class ActivityEntry
+{
+    /// <summary>When it happened (UTC).</summary>
+    public DateTime At { get; set; }
+    /// <summary>
+    /// "opened", "rejoined", "joined", "left", "disconnected", "signedOut", "closed", "closedByRoblox", or the type of
+    /// a notification (AppController.Notify.cs), whose own sentence is in <see cref="Text"/>.
+    /// </summary>
+    public string Kind { get; set; } = "";
+    public Guid? AccountId { get; set; }
+    /// <summary>The account's name then, shown once the account is deleted.</summary>
+    public string? AccountLabel { get; set; }
+    public long? PlaceId { get; set; }
+    /// <summary>The game's name, once known (filled in later for a place not looked up yet).</summary>
+    public string? GameName { get; set; }
+    /// <summary>Roblox's disconnect code, when it gave one.</summary>
+    public int? Code { get; set; }
+    /// <summary>A notification's own sentence, in English and in Vietnamese, so it shows in the language chosen later.</summary>
+    public string? Text { get; set; }
+    public string? TextVi { get; set; }
+    /// <summary>
+    /// The accounts <see cref="Text"/> names, in the order of its placeholders (U+E000, the number, U+E001): written out
+    /// when the log is shown, with the name each has then ("Account N" while names are hidden), so a sentence never
+    /// holds a name. Null in entries without names, and in older ones (which hold the names themselves).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ActivityName>? Names { get; set; }
+    /// <summary>"ok", "info", "warn" or "error", as the notification was shown; null for the kinds above.</summary>
+    public string? Tone { get; set; }
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>An account an activity entry's sentence names (see <see cref="ActivityEntry.Names"/>).</summary>
+public sealed class ActivityName
+{
+    public Guid Id { get; set; }
+    /// <summary>The account's name when the entry was noted, shown once the account is deleted.</summary>
+    public string Label { get; set; } = "";
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -106,4 +299,6 @@ public sealed class OpenSession
     public int Pid { get; set; }
     public DateTime StartedAt { get; set; }
     public GameTarget? Target { get; set; }
+    /// <summary>The preset that opened it, whose options still apply to it; null for one opened otherwise.</summary>
+    public Guid? PresetId { get; set; }
 }

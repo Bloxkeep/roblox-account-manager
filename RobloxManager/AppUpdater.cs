@@ -57,7 +57,16 @@ public sealed class AppUpdater
 
     public string? NewVersion { get; private set; }
     public int Progress { get; private set; }
-    public string? Error { get; private set; }
+
+    /// <summary>Why the last check failed, in the app's language at the time it is asked for; the details are in the log.</summary>
+    public string? Error => _offline is null ? null
+        : _offline.Value ? L.T("Couldn't reach the update server. Check your internet connection.")
+        : L.T("The update couldn't be checked or downloaded. Bloxkeep tries again later.");
+
+    /// <summary>The last check failed for want of a connection (true) or otherwise (false); null when it didn't fail.</summary>
+    bool? _offline;
+
+    bool _notFoundLogged;
 
     /// <summary>Checks for a newer version and downloads it. Calls made while one is running share it.</summary>
     public Task CheckAsync()
@@ -71,7 +80,7 @@ public sealed class AppUpdater
     {
         try
         {
-            Error = null;
+            _offline = null;
             Set("checking");
             var update = await manager.CheckForUpdatesAsync();
             if (update is null)
@@ -90,8 +99,11 @@ public sealed class AppUpdater
         // Offline, GitHub busy, or a download that failed its checksum: report it and try again later.
         catch (Exception ex)
         {
-            Log.Write(ex);
-            Error = ex.Message;
+            // A private (or renamed) repository answers 404 every time: that says nothing new after the first one.
+            if (ex is not System.Net.Http.HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound } || !_notFoundLogged)
+                Log.Write(ex);
+            _notFoundLogged |= ex is System.Net.Http.HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound };
+            _offline = ex is System.Net.Http.HttpRequestException { StatusCode: null } or TaskCanceledException;
             Set("error");
         }
     }

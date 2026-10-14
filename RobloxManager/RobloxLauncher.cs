@@ -86,11 +86,12 @@ public static class RobloxLauncher
                 break;
             case "direct":
                 Start(RobloxInstalls.FindAnyClient()
-                      ?? throw new FileNotFoundException(L.T("RobloxPlayerBeta.exe was not found. Pick another option under Settings › Roblox client, or reinstall Roblox.")), uri);
+                      ?? throw new FileNotFoundException(L.T("RobloxPlayerBeta.exe was not found. Pick another option under Settings › Open Roblox with, or reinstall Roblox.")), uri);
                 break;
             default:
+                // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
                 if (!IsProtocolRegistered())
-                    throw new InvalidOperationException(L.T("Roblox is not installed (the roblox-player protocol is missing)."));
+                    throw new FileNotFoundException(L.T("Roblox is not installed (the roblox-player protocol is missing)."));
                 Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true })?.Dispose();
                 break;
         }

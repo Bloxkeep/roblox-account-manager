@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Web.WebView2.Core;
 
 namespace RobloxManager;
 
@@ -12,6 +13,14 @@ namespace RobloxManager;
 static class WebView2Setup
 {
     const string BootstrapperUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+    const string SafeRenderingArgs = "--disable-gpu --disable-gpu-compositing";
+
+    /// <summary>
+    /// Switches for every browser the app opens (the window, sign-in, captcha): drawn on the CPU when the graphics
+    /// driver proved broken (<see cref="Prefs.SafeRendering"/>), otherwise null for the usual GPU drawing.
+    /// </summary>
+    public static CoreWebView2EnvironmentOptions? EnvironmentOptions() =>
+        Prefs.SafeRendering ? new CoreWebView2EnvironmentOptions(SafeRenderingArgs) : null;
 
     public static async Task<bool> TryInstallAsync(IWin32Window owner)
     {

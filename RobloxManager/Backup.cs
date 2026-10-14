@@ -14,40 +14,75 @@ static class Backup
     const string Prefix = "Bloxkeep-backup-";
     const int KeepLatest = 10;
     const int KeepDays = 30;
-    static readonly Regex Name = new(@"^Bloxkeep-backup-(\d{8}-\d{6})\.rmv$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    // Bloxkeep-backup-<vault id>-<time>.rmv; the first releases wrote no id.
+    static readonly Regex Name = new(@"^Bloxkeep-backup-(?:([0-9a-f]{8})-)?(\d{8}-\d{6})\.rmv$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     static readonly TimeSpan SuggestionCacheLifetime = TimeSpan.FromMinutes(1);
     static List<(string Path, string Name)>? _suggestions;
     static DateTime _suggestedAt;
 
     public sealed record Folder(string Path, string Name);
 
-    public static string FileName(DateTime at) => $"{Prefix}{at:yyyyMMdd-HHmmss}.rmv";
+    public static string FileName(string? vaultId, DateTime at) => $"{Prefix}{(vaultId is null ? "" : vaultId + "-")}{at:yyyyMMdd-HHmmss}.rmv";
 
-    /// <summary>Copies vault.rmv into the folder under a temp name, then renames it so the sync client never sees a half file.</summary>
-    public static string Write(string folder)
+    /// <summary>
+    /// Writes the vault's bytes (read by the caller, so no save can run meanwhile) into the folder under a temp
+    /// name, then renames it so the sync client never sees a half file. Safe on a worker thread.
+    /// </summary>
+    /// <param name="previousIds">Ids the vault had before its password changed (<see cref="AppSettings.PreviousVaultIds"/>).</param>
+    public static string Write(string folder, byte[] vault, IReadOnlyCollection<string>? previousIds = null)
     {
+        string? id = Vault.IdOf(vault);
         Directory.CreateDirectory(folder);
-        string final = Path.Combine(folder, FileName(DateTime.Now));
+        string final = Path.Combine(folder, FileName(id, DateTime.Now));
         string tmp = final + ".tmp";
-        File.Copy(Vault.VaultPath, tmp, overwrite: true);
+        File.WriteAllBytes(tmp, vault);
         File.Move(tmp, final, overwrite: true);
-        Prune(folder);
+        var ids = new HashSet<string>(previousIds ?? [], StringComparer.OrdinalIgnoreCase);
+        if (id is not null)
+            ids.Add(id);
+        Prune(folder, ids, justWritten: final);
         return final;
     }
 
-    /// <summary>Keeps the newest 10, plus the newest of each day in the last 30 days; only files named like a backup are touched.</summary>
-    public static void Prune(string folder)
+    /// <summary>A copy named later than this past the clock was made before the clock went back (see <see cref="Prune"/>).</summary>
+    static readonly TimeSpan FutureSlack = TimeSpan.FromMinutes(5);
+
+    /// <summary>Vault ids read from old-format files' headers, by path, good while the file's size and time are the same.</summary>
+    static readonly Dictionary<string, (long Size, DateTime WrittenAt, string? Id)> _headerIds = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>A copy cut short (the app ended mid-write) leaves its temp file behind; one this old isn't being written.</summary>
+    static readonly TimeSpan StaleTemp = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Keeps the newest 10, plus the newest of each day in the last 30 days. Only this vault's backups count: two PCs
+    /// with different vaults may share one synced folder. A vault's ids are its current one and the ones it had under
+    /// earlier passwords. A file from before the id was in the name is this vault's when its header says so.
+    /// The names carry the PC's clock, which can go back (a reset clock, a manual change, another time zone): a copy
+    /// named later than now is older than the ones made since, so it ranks after them, and the copy just written
+    /// (<paramref name="justWritten"/>) is never the one removed.
+    /// </summary>
+    public static void Prune(string folder, IReadOnlySet<string> vaultIds, string? justWritten = null)
     {
-        var backups = List(folder);
-        var keep = new HashSet<string>(backups.Take(KeepLatest).Select(b => b.Path), StringComparer.OrdinalIgnoreCase);
+        DeleteStaleTemps(folder);
+        var all = List(folder);
+        var backups = all.Where(b => b.VaultId is { } named ? vaultIds.Contains(named) : vaultIds.Count > 0 && HeaderId(b.Path) is { } read && vaultIds.Contains(read)).ToList();
+        lock (_headerIds)
+        {
+            // Headers of files no longer there are forgotten.
+            foreach (string path in _headerIds.Keys.Where(p => !all.Any(b => string.Equals(b.Path, p, StringComparison.OrdinalIgnoreCase))).ToList())
+                _headerIds.Remove(path);
+        }
+        var future = DateTime.Now + FutureSlack;
+        var keep = new HashSet<string>(backups.OrderBy(b => b.At > future).Take(KeepLatest).Select(b => b.Path), StringComparer.OrdinalIgnoreCase);
+        if (justWritten is not null)
+            keep.Add(justWritten);
         var days = new HashSet<DateTime>();
         var cutoff = DateTime.Now.Date.AddDays(-KeepDays);
-        foreach (var (path, at) in backups)
+        foreach (var (path, at, _) in backups)
         {
             if (at.Date >= cutoff && days.Add(at.Date))
                 keep.Add(path);
         }
-        foreach (var (path, _) in backups.Where(b => !keep.Contains(b.Path)))
+        foreach (var (path, _, _) in backups.Where(b => !keep.Contains(b.Path)))
         {
             try
             {
@@ -60,17 +95,61 @@ static class Backup
         }
     }
 
-    /// <summary>Backups in the folder, newest first.</summary>
-    public static List<(string Path, DateTime At)> List(string folder)
+    /// <summary>
+    /// The id in an old-format file's header, read once per file: reading a cloud-only copy downloads it, and the
+    /// size and time say whether the file changed since.
+    /// </summary>
+    static string? HeaderId(string path)
     {
-        var list = new List<(string, DateTime)>();
+        long size;
+        DateTime writtenAt;
+        try
+        {
+            var info = new FileInfo(path);
+            (size, writtenAt) = (info.Length, info.LastWriteTimeUtc);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+        lock (_headerIds)
+        {
+            if (_headerIds.TryGetValue(path, out var known) && known.Size == size && known.WrittenAt == writtenAt)
+                return known.Id;
+        }
+        string? id = Vault.IdOf(path);
+        lock (_headerIds)
+            _headerIds[path] = (size, writtenAt, id);
+        return id;
+    }
+
+    static void DeleteStaleTemps(string folder)
+    {
+        foreach (string tmp in Directory.EnumerateFiles(folder, Prefix + "*.rmv.tmp"))
+        {
+            try
+            {
+                if (DateTime.UtcNow - File.GetLastWriteTimeUtc(tmp) > StaleTemp)
+                    File.Delete(tmp);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Held by the sync client; next time.
+            }
+        }
+    }
+
+    /// <summary>Backups in the folder, of every vault, newest first; <c>VaultId</c> is null for files named the old way.</summary>
+    public static List<(string Path, DateTime At, string? VaultId)> List(string folder)
+    {
+        var list = new List<(string, DateTime, string?)>();
         if (!Directory.Exists(folder))
             return list;
         foreach (string path in Directory.EnumerateFiles(folder, Prefix + "*.rmv"))
         {
             var m = Name.Match(Path.GetFileName(path));
-            if (m.Success && DateTime.TryParseExact(m.Groups[1].Value, "yyyyMMdd-HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var at))
-                list.Add((path, at));
+            if (m.Success && DateTime.TryParseExact(m.Groups[2].Value, "yyyyMMdd-HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var at))
+                list.Add((path, at, m.Groups[1].Success ? m.Groups[1].Value.ToLowerInvariant() : null));
         }
         return list.OrderByDescending(b => b.Item2).ToList();
     }

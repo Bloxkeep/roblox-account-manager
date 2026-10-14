@@ -5,64 +5,58 @@ namespace RobloxManager;
 public sealed record TrayAutostart(string ValueName, bool Enabled);
 
 /// <summary>
-/// Roblox allows one client per Windows session by creating two named kernel objects when it starts.
-/// Creating them first, and holding them while this app runs, makes each client's singleton check fail open,
-/// so several clients can run side by side. Nothing is injected into, or read from, the Roblox process.
+/// Roblox allows one client per Windows session through a named event, "ROBLOX_singletonEvent": a client opening
+/// it tells the one already running to close. Taking that name first with an object of another kind (a mutex) makes
+/// Roblox's own create fail, so it never sets up the check and several clients run side by side — Windows lets one
+/// object own a name, whatever its kind. Holding the event itself stopped working with Roblox's October 2026 builds
+/// (the clients open it and use it to close each other). Nothing is injected into, or read from, the Roblox process.
 /// </summary>
 public static class MultiInstance
 {
-    const string MutexName = "ROBLOX_singletonMutex";
     const string EventName = "ROBLOX_singletonEvent";
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     const string StartupApprovedKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
 
-    static Mutex? _mutex;
-    static bool _ownsMutex;
-    static EventWaitHandle? _event;
+    static Mutex? _name;
+    static bool _owned;
 
-    /// <summary>True only when this app created both objects, i.e. no Roblox client got there first.</summary>
+    /// <summary>
+    /// True while the name is held as a mutex — by this app, or by another multi-instance tool (then it works too).
+    /// False when a Roblox client got there first: the name is its event, until every client has closed.
+    /// </summary>
     public static bool Armed { get; private set; }
 
     /// <remarks>Must be called on the UI thread: the mutex is owned by the thread that creates it.</remarks>
     public static void Enable()
     {
         Disable();
-        bool createdMutex = false, createdEvent = false;
         try
         {
-            _mutex = new Mutex(initiallyOwned: true, MutexName, out createdMutex);
-            _ownsMutex = createdMutex;
+            _name = new Mutex(initiallyOwned: true, EventName, out _owned);
+            Armed = true;
         }
+        // The name is Roblox's event (a client is running, perhaps the one Windows starts in the tray): the process
+        // check tries again once no client is running.
         catch (Exception ex) when (ex is UnauthorizedAccessException or WaitHandleCannotBeOpenedException or IOException)
         {
-            _mutex = null;
+            _name = null;
+            Armed = false;
         }
-        try
-        {
-            _event = new EventWaitHandle(false, EventResetMode.ManualReset, EventName, out createdEvent);
-        }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or WaitHandleCannotBeOpenedException or IOException)
-        {
-            _event = null;
-        }
-        Armed = createdMutex && createdEvent;
     }
 
     public static void Disable()
     {
-        if (_mutex is not null)
+        if (_name is not null)
         {
-            if (_ownsMutex)
+            if (_owned)
             {
-                try { _mutex.ReleaseMutex(); }
+                try { _name.ReleaseMutex(); }
                 catch (ApplicationException) { }
             }
-            _mutex.Dispose();
-            _mutex = null;
-            _ownsMutex = false;
+            _name.Dispose();
+            _name = null;
+            _owned = false;
         }
-        _event?.Dispose();
-        _event = null;
         Armed = false;
     }
 

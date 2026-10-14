@@ -14,7 +14,7 @@ namespace RobloxManager;
 /// <item>HUMAN Security's press-and-hold ("captchav2"), fetched from apis.roblox.com/v2/captcha; <see cref="Token"/> is
 /// Roblox's redemption token.</item>
 /// </list>
-/// The page that hosts the puzzle is served by the app itself under www.roblox.com, because that site is unreachable
+/// The page that hosts the puzzle is served by the app itself under the realm's site (www.roblox.com), because that site is unreachable
 /// from some networks (Vietnam) while the captcha and API hosts are not. HUMAN's "first-party" requests, which would go
 /// to www.roblox.com as well, are passed on to HUMAN's own hosts.
 /// </summary>
@@ -37,6 +37,16 @@ public sealed class CaptchaForm : Form
     WebView2? _web;
     string? _profileDir;
     bool _closing;
+    /// <summary>From opening the window to the puzzle being ready, and to it being solved: written to the log.</summary>
+    readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+    bool _readyNoted;
+
+    /// <summary>
+    /// One browser profile kept for the puzzle windows (not a fresh one each time): Arkose's scripts stay cached and it
+    /// sees a browser it already knows, so its "Verifying browser…" step doesn't start from nothing every time. It
+    /// only ever holds the puzzle pages' own data — never a Roblox sign-in, which goes through the app.
+    /// </summary>
+    public static string ProfileDir => Path.Combine(Vault.DataDir, "captcha");
 
     public string? Token { get; private set; }
 
@@ -62,9 +72,9 @@ public sealed class CaptchaForm : Form
         Load += async (_, _) => await OpenAsync();
     }
 
-    /// <summary>Arkose Labs' FunCaptcha.</summary>
-    public static CaptchaForm Arkose(string publicKey, string blob) =>
-        new("https://www.roblox.com", ArkosePage(publicKey, blob), relayHuman: false);
+    /// <summary>Arkose Labs' FunCaptcha, on the site of the realm whose key it is (as the press-and-hold is).</summary>
+    public static CaptchaForm Arkose(string realm, string publicKey, string blob) =>
+        new(Realm.Website(realm), ArkosePage(publicKey, blob), relayHuman: false);
 
     /// <summary>HUMAN's press-and-hold, for the "captchav2" challenge with this id.</summary>
     public static CaptchaForm Human(string realm, string captchaChallengeId) =>
@@ -78,13 +88,13 @@ public sealed class CaptchaForm : Form
 
     async Task OpenAsync()
     {
-        _profileDir = Path.Combine(Path.GetTempPath(), ProfilePrefix + Guid.NewGuid().ToString("N"));
+        _profileDir = ProfileDir;
         var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = BackColor };
         Controls.Add(web);
         _web = web;
         try
         {
-            var env = await CoreWebView2Environment.CreateAsync(null, _profileDir);
+            var env = await CoreWebView2Environment.CreateAsync(null, _profileDir, WebView2Setup.EnvironmentOptions());
             await web.EnsureCoreWebView2Async(env);
             if (_closing || web.IsDisposed)
                 return;
@@ -201,12 +211,18 @@ public sealed class CaptchaForm : Form
             using var doc = JsonDocument.Parse(json);
             var m = doc.RootElement;
             if (m.TryGetProperty("ready", out _))
+            {
                 _slow.Stop();
+                if (!_readyNoted)
+                    Log.Note($"Captcha ready after {_clock.Elapsed.TotalSeconds:0.0} s");
+                _readyNoted = true;
+            }
             else if (m.TryGetProperty("log", out var note))
                 Log.Note($"Captcha: {note.GetString()}");
             else if (m.TryGetProperty("token", out var token) && token.GetString() is { Length: > 0 } value)
             {
                 Token = value;
+                Log.Note($"Captcha solved after {_clock.Elapsed.TotalSeconds:0.0} s");
                 DialogResult = DialogResult.OK;
                 Close();
             }
@@ -392,29 +408,10 @@ public sealed class CaptchaForm : Form
             _web.Dispose();
             _web = null;
         }
-        if (_profileDir is { } dir)
-            _ = Task.Run(() => DeleteProfileAsync(dir));
         base.OnFormClosed(e);
     }
 
-    /// <summary>The browser process exits a moment after the control is disposed, so deletion is retried.</summary>
-    static async Task DeleteProfileAsync(string dir)
-    {
-        for (int i = 0; i < 20 && Directory.Exists(dir); i++)
-        {
-            try
-            {
-                Directory.Delete(dir, recursive: true);
-                return;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                await Task.Delay(500);
-            }
-        }
-    }
-
-    /// <summary>Removes profiles left behind if the app was closed before deletion finished.</summary>
+    /// <summary>Removes the per-window profiles older versions made in %TEMP%.</summary>
     public static void CleanupLeftoverProfiles()
     {
         try

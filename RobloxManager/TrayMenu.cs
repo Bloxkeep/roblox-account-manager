@@ -9,17 +9,15 @@ namespace RobloxManager;
 /// </summary>
 sealed class TrayMenu : ContextMenuStrip
 {
-    readonly ToolStripMenuItem _open = new(), _quit = new();
-    /// <summary>The launch presets (and their separator) currently at the top of the menu.</summary>
-    readonly List<ToolStripItem> _presetItems = new();
+    readonly ToolStripMenuItem _mini = new(), _open = new(), _quit = new();
 
+    public event Action? MiniClicked;
     public event Action? OpenClicked;
     public event Action? QuitClicked;
-    public event Action<Guid>? PresetClicked;
 
-    /// <summary>Launch presets to list above Open/Quit, read each time the menu opens (empty while locked).</summary>
+    /// <summary>Whether the mini window is open right now, for the check mark next to its item.</summary>
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-    public Func<List<(Guid Id, string Name)>>? Presets { get; set; }
+    public Func<bool>? MiniOpen { get; set; }
 
     public TrayMenu()
     {
@@ -29,60 +27,38 @@ sealed class TrayMenu : ContextMenuStrip
         Font = new Font("Segoe UI", 9.75f);
         Padding = new Padding(4, 5, 4, 5);
         _open.Font = new Font("Segoe UI Semibold", 9.75f);
-        foreach (var item in new[] { _open, _quit })
+        foreach (var item in new[] { _mini, _open, _quit })
             item.Padding = new Padding(10, 6, 24, 6);
+        _mini.Click += (_, _) => MiniClicked?.Invoke();
         _open.Click += (_, _) => OpenClicked?.Invoke();
         _quit.Click += (_, _) => QuitClicked?.Invoke();
-        Items.AddRange([_open, new ToolStripSeparator(), _quit]);
+        Items.AddRange([_mini, _open, new ToolStripSeparator(), _quit]);
     }
 
     protected override void OnOpening(System.ComponentModel.CancelEventArgs e)
     {
         // The language and the theme can both change while the app runs.
+        _mini.Text = L.T("Mini window");
+        _mini.Checked = MiniOpen?.Invoke() == true;
         _open.Text = L.T("Open Bloxkeep");
         _quit.Text = L.T("Quit Bloxkeep");
-        ShowPresets();
         var theme = Themes.Current;
-        Renderer = new ThemedRenderer(theme, RoundCorners(theme));
+        Renderer = new ThemedRenderer(theme, RoundCorners(Handle, theme));
         base.OnOpening(e);
-    }
-
-    /// <summary>Presets can be added, renamed or removed (or the vault locked) between two openings: rebuilt each time.</summary>
-    void ShowPresets()
-    {
-        foreach (var item in _presetItems)
-        {
-            Items.Remove(item);
-            item.Dispose();
-        }
-        _presetItems.Clear();
-        foreach (var (id, name) in Presets?.Invoke() ?? [])
-        {
-            // "&" would underline the next letter instead of showing.
-            string text = (name.Length > 40 ? name[..39] + "…" : name).Replace("&", "&&");
-            var item = new ToolStripMenuItem(text) { Padding = new Padding(10, 6, 24, 6) };
-            item.Click += (_, _) => PresetClicked?.Invoke(id);
-            _presetItems.Add(item);
-        }
-        if (_presetItems.Count == 0)
-            return;
-        _presetItems.Add(new ToolStripSeparator());
-        for (int i = 0; i < _presetItems.Count; i++)
-            Items.Insert(i, _presetItems[i]);
     }
 
     [DllImport("dwmapi.dll")]
     static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
     /// <summary>Windows 11 rounds the popup and draws its border; false on older Windows, where we draw the border.</summary>
-    bool RoundCorners(Themes.Theme theme)
+    internal static bool RoundCorners(IntPtr hwnd, Themes.Theme theme)
     {
         const int DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWA_BORDER_COLOR = 34, DWMWCP_ROUND = 2;
         int round = DWMWCP_ROUND;
-        if (DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref round, sizeof(int)) != 0)
+        if (DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref round, sizeof(int)) != 0)
             return false;
         int border = ColorTranslator.ToWin32(theme.Line);
-        DwmSetWindowAttribute(Handle, DWMWA_BORDER_COLOR, ref border, sizeof(int));
+        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref border, sizeof(int));
         return true;
     }
 
@@ -96,7 +72,8 @@ sealed class TrayMenu : ContextMenuStrip
         base.Dispose(disposing);
     }
 
-    sealed class ThemedRenderer(Themes.Theme theme, bool systemBorder) : ToolStripRenderer
+    /// <summary>Shared with the game monitor tab's tile menu, so every native menu looks the same.</summary>
+    internal sealed class ThemedRenderer(Themes.Theme theme, bool systemBorder) : ToolStripRenderer
     {
         static Color Mix(Color a, Color b, float amount) => Color.FromArgb(
             (int)(a.R + (b.R - a.R) * amount), (int)(a.G + (b.G - a.G) * amount), (int)(a.B + (b.B - a.B) * amount));
@@ -138,6 +115,15 @@ sealed class TrayMenu : ContextMenuStrip
         {
             e.TextColor = e.Item.Enabled ? theme.Text : theme.Text2;
             base.OnRenderItemText(e);
+            // No check margin (it would indent every item): a checked item gets a small tick in its right padding.
+            if (e.Item is ToolStripMenuItem { Checked: true })
+            {
+                float scale = e.ToolStrip!.DeviceDpi / 96f;
+                float x = e.Item.Width - 18 * scale, y = e.Item.Height / 2f;
+                using var pen = new Pen(theme.Text, 1.6f * scale) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.DrawLines(pen, [new PointF(x, y), new PointF(x + 3 * scale, y + 3 * scale), new PointF(x + 9 * scale, y - 4 * scale)]);
+            }
         }
 
         protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)

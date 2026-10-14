@@ -14,7 +14,7 @@ namespace RobloxManager;
 /// </summary>
 public sealed class RobloxLogWatcher
 {
-    /// <param name="Status">joining, ingame, left (back in the app, by choice) or disconnected.</param>
+    /// <param name="Status">joining, ingame, left (back in the app, by choice), disconnected, or signedout (signed out inside the window).</param>
     /// <param name="Reason">Roblox's disconnect code when it gave one (278 = idle for 20 minutes).</param>
     public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At);
 
@@ -29,39 +29,93 @@ public sealed class RobloxLogWatcher
         /// <summary>When the last teleport line was logged; only a disconnect soon after it belongs to that teleport.</summary>
         public DateTime? TeleportAt;
         public int? PendingReason;
+        /// <summary>When the client logged that another Roblox client's start told it to close (see <see cref="ClosedByNewWindowAt"/>).</summary>
+        public DateTime? ClosedByNewWindow;
     }
 
-    static readonly string LogDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox", "logs");
+    /// <summary>The usual client's logs, and the Microsoft Store edition's (it writes them to a folder of its own).</summary>
+    static readonly string[] LogDirs =
+    [
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox", "logs"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCGDK", "logs"),
+    ];
+    // A game start, logged before "Joining game" (seen 2026-10-13 in 0.742, and in the Store edition): a launch that
+    // stalls while loading never gets further, so it counts as joining from here.
+    const string LaunchMark = "[FLog::SingleSurfaceApp] launchUGCGameInternal";
     // Lines seen in Roblox 0.742 logs.
     static readonly Regex JoiningLine = new(@"\[FLog::Output\] ! Joining game '([0-9a-fA-F-]+)' place (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     static readonly Regex ReasonLine = new(@"setting replicator disconnect reason to (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // A second source of the reason, used only when the replicator line gave none (285: the player left). Not yet
+    // seen on a real kick, so it may come before or after the disconnect line.
+    static readonly Regex NotificationReasonLine = new(@"Disconnection Notification\. Reason: (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     const string ConnectedMark = "[FLog::Network] serverId:";
     const string LeavingMark = "[FLog::SingleSurfaceApp] leaveUGCGameInternal";
+    // Signing out inside the Roblox window (seen 2026-10-13): the window stays open on the sign-in screen.
+    const string SignedOutMark = "logout sync cookie to native";
     const string DisconnectedMark = "[FLog::Network] Time to disconnect replication data";
     // A game moving the player to another of its places (seen 2026-10-13): doTeleport, then the same disconnect line
     // as a kick, then "Teleported." and a new "Joining game" a fraction of a second later.
     const string TeleportMark = "UgcExperienceController: doTeleport";
     // A teleport that never got that far (it failed) must not turn a kick minutes later into "joining".
     static readonly TimeSpan TeleportWindow = TimeSpan.FromSeconds(30);
+    // Every client waits for word that a newer one started (seen 2026-10-13 in 0.742): it logs
+    // "waitForNewPlayerProcess new waiting for mutex result is 0X000102" (nothing yet) four times a second. A result
+    // of 0X000001, or "WindowsAppReloadTelemetry EventWaitResultUpdate", is that word arriving, and the client then
+    // closes: Roblox making room for the new window, which is what Multi-Roblox is meant to prevent.
+    const string WndCheckMark = "[FLog::WndProcessCheck]";
+    const string NewProcessEventMark = "WindowsAppReloadTelemetry EventWaitResultUpdate";
+    const string NewProcessMutexMark = "waiting for mutex result is 0X000001";
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
     readonly HashSet<string> _foreign = new(StringComparer.OrdinalIgnoreCase);
-    DateTime _nextScan;
+    /// <summary>
+    /// Clients without a log yet: since when, and when to look again. Each miss waits longer (3 s up to 30 s), and
+    /// one still without a log after two minutes (a copy that writes none) is left alone — the folder scan and the
+    /// "who has this file open" questions aren't free.
+    /// </summary>
+    readonly Dictionary<int, (DateTime FirstSeen, DateTime NextTry, TimeSpan Wait)> _unmatched = new();
+    static readonly TimeSpan FirstWait = TimeSpan.FromSeconds(3), MaxWait = TimeSpan.FromSeconds(30), GiveUp = TimeSpan.FromMinutes(2);
 
     public ClientState? StateOf(int pid) => _tails.GetValueOrDefault(pid)?.State;
+
+    /// <summary>
+    /// When this client's log said a newer Roblox client told it to close; null when it didn't (or its log isn't
+    /// followed). Read after <see cref="LastStateOf"/>, which takes in the client's last lines.
+    /// </summary>
+    public DateTime? ClosedByNewWindowAt(int pid) => _tails.GetValueOrDefault(pid)?.ClosedByNewWindow;
+
+    /// <summary>
+    /// What a client that has just quit logged last, including the lines written in its final moments (a leave by
+    /// choice, a disconnect): read now, since the next <see cref="Poll"/> drops its log unread.
+    /// </summary>
+    public ClientState? LastStateOf(int pid)
+    {
+        if (_tails.GetValueOrDefault(pid) is not { } tail)
+            return null;
+        Read(tail);
+        return tail.State;
+    }
 
     /// <summary>Reads what the clients with these process ids logged since the last call; true when a state changed.</summary>
     public bool Poll(IReadOnlyCollection<int> pids)
     {
         foreach (int gone in _tails.Keys.Where(pid => !pids.Contains(pid)).ToList())
             _tails.Remove(gone);
+        TakeSearch(pids);
+        foreach (int gone in _unmatched.Keys.Where(pid => !pids.Contains(pid) || _tails.ContainsKey(pid)).ToList())
+            _unmatched.Remove(gone);
         if (pids.Count == 0)
             return false;
-        if (pids.Any(pid => !_tails.ContainsKey(pid)) && DateTime.UtcNow >= _nextScan)
+        var now = DateTime.UtcNow;
+        foreach (int pid in pids.Where(pid => !_tails.ContainsKey(pid)))
+            _unmatched.TryAdd(pid, (now, now, FirstWait));
+        if (_search is null && _unmatched.Any(u => now >= u.Value.NextTry && now - u.Value.FirstSeen < GiveUp))
         {
-            _nextScan = DateTime.UtcNow + TimeSpan.FromSeconds(3);
-            FindLogs(pids);
+            // Every client without a log takes part (a log found is a log found); only a due one starts the search.
+            StartSearch(pids);
+            foreach (var (pid, u) in _unmatched.ToList())
+                _unmatched[pid] = (u.FirstSeen, now + u.Wait, TimeSpan.FromTicks(Math.Min(u.Wait.Ticks * 2, MaxWait.Ticks)));
         }
         bool changed = false;
         foreach (var tail in _tails.Values)
@@ -69,37 +123,85 @@ public sealed class RobloxLogWatcher
         return changed;
     }
 
-    /// <summary>A new client opens a new log; ask Windows which of the recent logs each client holds open.</summary>
-    void FindLogs(IReadOnlyCollection<int> pids)
+    /// <param name="Found">Logs held open by a client looked for: the log, its length then, the client.</param>
+    /// <param name="Foreign">Old logs no client looked for holds: not asked about again.</param>
+    /// <param name="Listed">The recent logs the search went through.</param>
+    sealed record LogSearch(List<(string Path, long Length, int Pid)> Found, List<string> Foreign, List<string> Listed);
+
+    /// <summary>
+    /// A search for the logs of clients without one, on a worker: asking Windows who holds a file open takes 15-50 ms
+    /// a file (more right after Bloxkeep starts, with up to 40 recent logs to ask about), too long for the window's
+    /// thread. Its result is taken in at the next poll.
+    /// </summary>
+    Task<LogSearch>? _search;
+
+    void StartSearch(IReadOnlyCollection<int> pids)
     {
-        IEnumerable<FileInfo> logs;
+        var wanted = pids.Where(pid => !_tails.ContainsKey(pid)).ToHashSet();
+        var skip = _tails.Values.Select(t => t.Path).Concat(_foreign).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _search = Task.Run(() => FindLogs(wanted, skip));
+    }
+
+    /// <summary>The finished search's logs are followed (for clients still running and still without one).</summary>
+    void TakeSearch(IReadOnlyCollection<int> pids)
+    {
+        if (_search is not { IsCompleted: true } search)
+            return;
+        _search = null;
+        if (!search.IsCompletedSuccessfully)
+        {
+            if (search.Exception?.InnerException is { } ex)
+                Log.Write(ex);
+            return;
+        }
+        var result = search.Result;
+        // Only logs still among the recent ones are remembered: the list doesn't grow with every client ever started.
+        if (result.Listed.Count > 0)
+            _foreign.IntersectWith(result.Listed);
+        _foreign.UnionWith(result.Foreign);
+        foreach (var (path, length, pid) in result.Found)
+        {
+            if (pids.Contains(pid) && !_tails.ContainsKey(pid) && !_tails.Values.Any(t => string.Equals(t.Path, path, StringComparison.OrdinalIgnoreCase)))
+                _tails[pid] = new Tail(path, pid) { Offset = Math.Max(0, length - MaxRead) };
+        }
+    }
+
+    /// <summary>A new client opens a new log; ask Windows which of the recent logs each client looked for holds open.</summary>
+    static LogSearch FindLogs(HashSet<int> wanted, HashSet<string> skip)
+    {
+        var result = new LogSearch([], [], []);
+        List<FileInfo> logs;
         try
         {
-            logs = new DirectoryInfo(LogDir).Exists
-                ? new DirectoryInfo(LogDir).EnumerateFiles("*_Player_*.log")
-                    .Where(f => !f.Name.Contains("CrashHandler", StringComparison.OrdinalIgnoreCase) && f.LastWriteTimeUtc > DateTime.UtcNow.AddDays(-2))
-                    .OrderByDescending(f => f.LastWriteTimeUtc)
-                    .Take(40)
-                    .ToList()
-                : [];
+            logs = LogDirs.Select(dir => new DirectoryInfo(dir)).Where(dir => dir.Exists)
+                .SelectMany(dir => dir.EnumerateFiles("*_Player_*.log"))
+                .Where(f => !f.Name.Contains("CrashHandler", StringComparison.OrdinalIgnoreCase) && f.LastWriteTimeUtc > DateTime.UtcNow.AddDays(-2))
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .Take(40)
+                .ToList();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return;
+            return result;
         }
-        var followed = _tails.Values.Select(t => t.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        result.Listed.AddRange(logs.Select(log => log.FullName));
+        var found = new HashSet<int>();
         foreach (var log in logs)
         {
-            if (followed.Contains(log.FullName) || _foreign.Contains(log.FullName))
+            if (skip.Contains(log.FullName))
                 continue;
-            int? owner = OpenedBy(log.FullName).Cast<int?>().FirstOrDefault(pid => pids.Contains(pid!.Value));
+            int? owner = OpenedBy(log.FullName).Cast<int?>().FirstOrDefault(pid => wanted.Contains(pid!.Value) && !found.Contains(pid.Value));
             if (owner is int pid)
-                _tails[pid] = new Tail(log.FullName, pid) { Offset = Math.Max(0, log.Length - MaxRead) };
+            {
+                found.Add(pid);
+                result.Found.Add((log.FullName, log.Length, pid));
+            }
             else if (log.LastWriteTimeUtc < DateTime.UtcNow.AddMinutes(-2))
-                _foreign.Add(log.FullName); // an old log, or another program's client: don't ask again
-            if (pids.All(_tails.ContainsKey))
+                result.Foreign.Add(log.FullName); // an old log, or another program's client: don't ask again
+            if (wanted.All(found.Contains))
                 break;
         }
+        return result;
     }
 
     bool Read(Tail tail)
@@ -135,21 +237,48 @@ public sealed class RobloxLogWatcher
 
     static void Apply(Tail tail, string line)
     {
+        // A number too big for its type (a line not in the format seen so far) reads as no place, never as an error
+        // that would stop the process check.
         if (line.Contains("! Joining game", StringComparison.Ordinal) && JoiningLine.Match(line) is { Success: true } join)
         {
             tail.Leaving = false;
             tail.TeleportAt = null;
             tail.PendingReason = null;
-            tail.State = new ClientState("joining", long.Parse(join.Groups[2].Value, CultureInfo.InvariantCulture), join.Groups[1].Value, null, TimeOf(line));
+            tail.State = new ClientState("joining", long.TryParse(join.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long place) ? place : null,
+                join.Groups[1].Value, null, TimeOf(line));
+        }
+        else if (line.Contains(LaunchMark, StringComparison.Ordinal))
+        {
+            tail.Leaving = false;
+            tail.TeleportAt = null;
+            tail.PendingReason = null;
+            tail.State = new ClientState("joining", null, null, null, TimeOf(line));
         }
         else if (line.Contains(ConnectedMark, StringComparison.Ordinal) && tail.State is { Status: "joining" } joining)
             tail.State = joining with { Status = "ingame", At = TimeOf(line) };
         else if (line.Contains(LeavingMark, StringComparison.Ordinal))
+        {
             tail.Leaving = true;
+            // Left while the game was still loading (or before anything was logged): no disconnect line follows.
+            if (tail.State is null or { Status: "joining" })
+                tail.State = (tail.State ?? new ClientState("left", null, null, null, TimeOf(line))) with { Status = "left", Reason = null, At = TimeOf(line) };
+        }
+        else if (line.Contains(SignedOutMark, StringComparison.Ordinal))
+            tail.State = (tail.State ?? new ClientState("signedout", null, null, null, TimeOf(line))) with { Status = "signedout", Reason = null, At = TimeOf(line) };
         else if (line.Contains(TeleportMark, StringComparison.Ordinal))
             tail.TeleportAt = TimeOf(line);
         else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine.Match(line) is { Success: true } reason)
-            tail.PendingReason = int.Parse(reason.Groups[1].Value, CultureInfo.InvariantCulture);
+            tail.PendingReason = int.TryParse(reason.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int why) ? why : null;
+        else if (line.Contains("Disconnection Notification", StringComparison.Ordinal) && NotificationReasonLine.Match(line) is { Success: true } notified
+                 && int.TryParse(notified.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code))
+        {
+            // Never over the replicator's reason: after the disconnect line it completes one shown without a reason,
+            // before it waits for that line like the replicator's does.
+            if (tail.State is { Status: "disconnected", Reason: null } shown)
+                tail.State = shown with { Reason = code };
+            else
+                tail.PendingReason ??= code;
+        }
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.State is { } state)
         {
             var at = TimeOf(line);
@@ -168,6 +297,9 @@ public sealed class RobloxLogWatcher
             tail.Leaving = false;
             tail.PendingReason = null;
         }
+        else if (line.Contains(WndCheckMark, StringComparison.Ordinal)
+                 && (line.Contains(NewProcessEventMark, StringComparison.Ordinal) || line.Contains(NewProcessMutexMark, StringComparison.Ordinal)))
+            tail.ClosedByNewWindow ??= TimeOf(line);
     }
 
     /// <summary>Lines start with an ISO UTC time ("2026-10-12T05:14:35.082Z,…").</summary>

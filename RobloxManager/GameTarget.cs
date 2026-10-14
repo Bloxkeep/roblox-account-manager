@@ -11,10 +11,13 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
 
     /// <summary>
     /// Accepts a place id, a roblox.com/games/… link (with privateServerLinkCode or gameInstanceId),
-    /// a roblox.com/share?code=…&amp;type=Server link, or a roblox:// deep link with placeId (after ? or
-    /// directly after the scheme).
+    /// a roblox.com/share?code=…&amp;type=Server link (also as the roblox://navigation/share_links form, or wrapped
+    /// in a ro.blox.com link), or a roblox:// deep link with placeId (after ? or directly after the scheme).
     /// </summary>
-    public static bool TryParse(string placeInput, string jobInput, out GameTarget? target, out string error)
+    public static bool TryParse(string placeInput, string jobInput, out GameTarget? target, out string error) =>
+        TryParse(placeInput, jobInput, out target, out error, depth: 0);
+
+    static bool TryParse(string placeInput, string jobInput, out GameTarget? target, out string error, int depth)
     {
         target = null;
         error = "";
@@ -30,16 +33,29 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
         string? linkCode = null, shareCode = null, jobId = null;
         if (!long.TryParse(input, out placeId))
         {
+            // Words, not a link (a game typed by name and not picked from the search): say what to do instead.
+            if (!input.Contains('/') && !input.Contains('?') && !input.Contains("roblox", StringComparison.OrdinalIgnoreCase))
+            {
+                error = L.T("Pick the game from the search list, or paste a game link or Place ID.");
+                return false;
+            }
             var query = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (Match m in QueryPair.Matches(input))
                 query.TryAdd(Uri.UnescapeDataString(m.Groups[1].Value), Uri.UnescapeDataString(m.Groups[2].Value));
+
+            // A ro.blox.com link from the Roblox app wraps the real link in af_web_dp (or af_dp); read that one.
+            if (depth < 2 && (query.TryGetValue("af_web_dp", out var wrapped) || query.TryGetValue("af_dp", out wrapped))
+                && wrapped.Contains("roblox", StringComparison.OrdinalIgnoreCase))
+                return TryParse(wrapped, jobInput, out target, out error, depth + 1);
 
             if (GamePath.Match(input) is { Success: true } path)
                 long.TryParse(path.Groups[1].Value, out placeId);
             else if (query.TryGetValue("placeId", out var p))
                 long.TryParse(p, out placeId);
 
-            if (input.Contains("roblox.com/share", StringComparison.OrdinalIgnoreCase) && query.TryGetValue("code", out var code))
+            bool share = input.Contains("roblox.com/share", StringComparison.OrdinalIgnoreCase)
+                         || input.Contains("share_links", StringComparison.OrdinalIgnoreCase);
+            if (share && query.TryGetValue("code", out var code))
             {
                 if (query.TryGetValue("type", out var type) && !type.Equals("Server", StringComparison.OrdinalIgnoreCase))
                 {
@@ -68,10 +84,14 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
 
         if (job.Length > 0)
             jobId = job;
-        if (!string.IsNullOrEmpty(jobId) && !Guid.TryParse(jobId, out _))
+        if (!string.IsNullOrEmpty(jobId))
         {
-            error = L.T("Invalid Job ID (expected xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).");
-            return false;
+            if (!Guid.TryParse(jobId, out var guid))
+            {
+                error = L.T("Invalid Job ID (expected xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).");
+                return false;
+            }
+            jobId = guid.ToString("D"); // Guid also accepts {…} and undashed forms, which Roblox and the log comparison don't
         }
 
         target = new GameTarget(placeId, NullIfEmpty(jobId), NullIfEmpty(linkCode), shareCode);

@@ -29,7 +29,7 @@ public sealed class Vault : IDisposable
     /// <summary>Removes the interface's browser caches (rebuilt when needed). Accounts and settings stay.</summary>
     public static void DeleteCaches()
     {
-        foreach (string name in new[] { "webview", "webview-safe" })
+        foreach (string name in new[] { "webview", "webview-safe", "captcha" })
         {
             string dir = Path.Combine(DataDir, name);
             // The browser processes may need a moment to let go of their files.
@@ -179,7 +179,11 @@ public sealed class Vault : IDisposable
         return true;
     }
 
+    /// <summary>The newest <see cref="VaultData.Version"/> this build understands; a newer one must not be re-saved by it.</summary>
+    const int SupportedVersion = 1;
+
     /// <returns>null when the key does not open the file (wrong password, or the file was changed).</returns>
+    /// <exception cref="InvalidDataException">The file opens but was written by a newer Bloxkeep.</exception>
     static VaultData? Decrypt(byte[] file, byte[] key)
     {
         var cipher = file.AsSpan(HeaderSize + NonceSize + TagSize);
@@ -191,11 +195,19 @@ public sealed class Vault : IDisposable
                 aes.Decrypt(file.AsSpan(HeaderSize, NonceSize), cipher,
                     file.AsSpan(HeaderSize + NonceSize, TagSize), plain, file.AsSpan(0, HeaderSize));
             }
-            return JsonSerializer.Deserialize<VaultData>(plain) ?? new VaultData();
+            var data = JsonSerializer.Deserialize<VaultData>(plain) ?? new VaultData();
+            if (data.Version > SupportedVersion)
+                throw new InvalidDataException(L.T("This data file was made by a newer Bloxkeep. Update Bloxkeep to open it."));
+            return data;
         }
         catch (AuthenticationTagMismatchException)
         {
             return null;
+        }
+        // The password was right (the tag matched): a field changed shape in a newer version.
+        catch (JsonException)
+        {
+            throw new InvalidDataException(L.T("This data file was made by a newer Bloxkeep. Update Bloxkeep to open it."));
         }
         finally
         {
@@ -222,8 +234,9 @@ public sealed class Vault : IDisposable
     /// <summary>
     /// A save writes vault.rmv.tmp, then swaps it in and keeps the file it replaced as vault.rmv.bak. When that swap
     /// is cut short (antivirus holding the file, power cut) vault.rmv can be gone while .bak/.tmp survive, and the app
-    /// would offer to set up a new vault over them. The previous save is complete for sure, so it goes back; .tmp may
-    /// be cut short and can only be checked by decrypting, so it is kept beside the vault, never trusted or deleted.
+    /// would offer to set up a new vault over them. The .tmp is the newest save, written in full before the swap
+    /// began, so it goes back with .bak left in place as its fallback: should it turn out damaged after all, opening
+    /// it falls back to the previous save (see <see cref="Open"/>). Without a usable .tmp the previous save goes back.
     /// </summary>
     static void RestoreIfMissing()
     {
@@ -231,13 +244,14 @@ public sealed class Vault : IDisposable
         {
             if (File.Exists(VaultPath))
                 return;
-            string? restore = LooksLikeVault(BackupPath) ? BackupPath : LooksLikeVault(TempPath) ? TempPath : null;
+            string? restore = LooksLikeVault(TempPath) ? TempPath : LooksLikeVault(BackupPath) ? BackupPath : null;
             if (restore is null)
                 return;
             File.Move(restore, VaultPath);
+            // Only what can't serve as the fallback is set aside (a .tmp that isn't a vault, a .bak when .bak went back).
             foreach (string other in new[] { BackupPath, TempPath })
             {
-                if (File.Exists(other))
+                if (File.Exists(other) && (restore == BackupPath || other != BackupPath))
                     File.Move(other, VaultPath + ".spare-" + Stamp());
             }
             Log.Note($"vault.rmv was missing; put back {Path.GetFileName(restore)}.");
@@ -250,6 +264,50 @@ public sealed class Vault : IDisposable
 
     /// <summary>Starts like a vault file; whether it opens is only known with its password (see <see cref="Backup"/>).</summary>
     public static bool LooksLikeVault(string path) => File.Exists(path) && HeaderOk(File.ReadAllBytes(path), out _, out _);
+
+    /// <summary>What <see cref="ReadOther"/> found in a file.</summary>
+    public enum OtherStatus { Opened, TooLarge, Unreadable, NotAVault, WrongPassword, Newer }
+
+    /// <summary>Far above any real vault (a thousand accounts are well under 5 MB); a bigger file isn't read into memory.</summary>
+    public const long MaxOtherSize = 50L * 1024 * 1024;
+
+    /// <summary>
+    /// Opens another vault file (one from another PC, or a backup) with its own master password, to bring accounts
+    /// over. Read-only: the file is never written, and this vault's key and files aren't touched. The key it derives
+    /// is wiped before returning, as is the decrypted JSON (see <see cref="Decrypt"/>). Slow (key stretching), so
+    /// call it off the UI thread.
+    /// </summary>
+    /// <returns>The data when <see cref="OtherStatus.Opened"/>; null otherwise.</returns>
+    public static (OtherStatus Status, VaultData? Data) ReadOther(string path, string password)
+    {
+        byte[] file;
+        try
+        {
+            if (new FileInfo(path).Length > MaxOtherSize)
+                return (OtherStatus.TooLarge, null);
+            file = File.ReadAllBytes(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Log.Write(ex);
+            return (OtherStatus.Unreadable, null);
+        }
+        if (!HeaderOk(file, out int iterations, out byte[] salt))
+            return (OtherStatus.NotAVault, null);
+        byte[] key = DeriveKey(password, salt, iterations);
+        try
+        {
+            return Decrypt(file, key) is { } data ? (OtherStatus.Opened, data) : (OtherStatus.WrongPassword, null);
+        }
+        catch (InvalidDataException)
+        {
+            return (OtherStatus.Newer, null);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+    }
 
     /// <summary>Puts other vault bytes (a backup) in place of vault.rmv, with the same safe swap as a save.</summary>
     public static void ReplaceFile(byte[] bytes) => WriteAtomic(bytes);
@@ -351,8 +409,51 @@ public sealed class Vault : IDisposable
             _salt = prepared.Salt;
             _iterations = DefaultIterations;
         }
-        // The backup is still encrypted with the old password; drop it so the old password stops working.
-        File.Delete(BackupPath);
+        // The previous save is still encrypted with the old password; drop it so it doesn't open with that one.
+        // (Older copies — backups in the backup folder, .spare/.damaged/before-restore files — still do; they are
+        // the person's to delete.) The change itself has succeeded by now, so a file that won't go is only logged.
+        try
+        {
+            File.Delete(BackupPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Write(ex);
+        }
+    }
+
+    /// <summary>
+    /// A short id of the vault these bytes belong to (from the salt in the header, so it needs no password); null
+    /// when they aren't a vault. Backups carry it in their name, so vaults sharing a folder don't prune each other's.
+    /// </summary>
+    public static string? IdOf(byte[] file) =>
+        HeaderOk(file, out _, out byte[] salt) ? IdOfSalt(salt) : null;
+
+    static string IdOfSalt(byte[] salt) => Convert.ToHexString(SHA256.HashData(salt))[..8].ToLowerInvariant();
+
+    /// <summary>This vault's own id, as its backups carry it; it changes with the password (a new salt).</summary>
+    public string Id
+    {
+        get
+        {
+            lock (_sync)
+                return IdOfSalt(_salt);
+        }
+    }
+
+    /// <summary>The same id from a file on disk, reading its header only; null when unreadable or not a vault.</summary>
+    public static string? IdOf(string path)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            byte[] header = new byte[HeaderSize + NonceSize + TagSize];
+            return stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false) == header.Length ? IdOf(header) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     public void Dispose()

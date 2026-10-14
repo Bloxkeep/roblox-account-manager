@@ -104,7 +104,7 @@ public sealed class BrowserLoginForm : Form
         _web = web;
         try
         {
-            var env = await CoreWebView2Environment.CreateAsync(null, _profileDir);
+            var env = await CoreWebView2Environment.CreateAsync(null, _profileDir, WebView2Setup.EnvironmentOptions());
             await web.EnsureCoreWebView2Async(env);
             if (_closing || web.IsDisposed)
                 return;

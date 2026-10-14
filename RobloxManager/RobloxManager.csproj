@@ -11,7 +11,8 @@
     <AssemblyName>Bloxkeep</AssemblyName>
     <RootNamespace>RobloxManager</RootNamespace>
     <Product>Bloxkeep</Product>
-    <Company>Bloxkeep</Company>
+    <!-- Shown in the exe's Properties, Details tab; build.bat passes the same name as the Publisher in Installed apps. -->
+    <Company>minhhoang0122</Company>
     <Description>Encrypted Roblox account manager and launcher</Description>
     <Version>1.0.0</Version>
     <!-- WinForms ships translated resource DLLs for every language; the UI has its own strings, so keep English only. -->
