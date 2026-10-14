@@ -11,339 +11,365 @@
 </p>
 <p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a></p>
 
-<p align="center"><img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards, the game bar at the bottom, and Multi-Roblox turned on"></p>
+<p align="center"><img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards with two accounts chosen, the game bar at the bottom, and Multi-Roblox turned on"></p>
 
-Bloxkeep keeps your Roblox accounts in one list. You sign in once per account, then open one or several of them in the game and server you pick. It is meant for people who play on more than one account on the same Windows PC, and it runs entirely on that PC: there is no Bloxkeep server and no Bloxkeep account.
+Bloxkeep is for people who play on several Roblox accounts on one Windows PC: keep the accounts in one place, pick a game, pick accounts and press **Play**. Your data stays on your PC, encrypted with your master password; Bloxkeep has no server of its own.
 
-*Bloxkeep is an independent project. It is not affiliated with, endorsed by, or sponsored by Roblox Corporation. Roblox is a trademark of Roblox Corporation.*
+*Bloxkeep is an independent project. It is not affiliated with, endorsed or sponsored by Roblox Corporation. Roblox is a trademark of Roblox Corporation.*
 
 ## Features
 
-- Add accounts five ways: username and password (with 2-step verification; if Roblox asks for a captcha, you solve it in a small window), a code or QR scanned with the Roblox phone app, the roblox.com sign-in page in a browser window, a pasted cookie, or an import from Roblox Account Manager.
-- See where each account stands: online, playing on this PC or on another device, why it was disconnected, how much RAM its Roblox window uses and how long it has played, or that it was signed out. Search, filter, sort, and switch between cards and a list.
-- Pick a game by name, link or Place ID, or from **Recent**, **Pinned**, **Roblox favorites** and **Popular**. Choose a server (most or fewest players, lowest ping, room for your accounts, random) or join a friend, so several accounts end up in the same server.
-- Run several Roblox windows at the same time with Multi-Roblox. It stays off until you turn it on.
-- Save presets (accounts, game and server choice) and run them again with one click.
-- Rejoin a game automatically, per account, after a crash, a kick or a lost connection.
-- Set Roblox graphics quality, FPS limit and volume per account.
-- Keep RAM under control: warnings before you run out, freeing RAM from background windows, arranging Roblox windows in a grid, and account names on window titles.
-- Back up to a OneDrive or Google Drive folder. Also: 32 themes, English and Vietnamese, runs from the tray, Windows notifications.
+- Add accounts with a username and password (with 2-step verification, and captchas solved in a small window), with a code or QR scanned in the Roblox phone app, through roblox.com in a browser window, with a cookie, or import them from Roblox Account Manager or from another Bloxkeep file.
+- See each account's status: online, playing on this PC or another device, why it was disconnected, RAM, play time, PID, whether it needs to sign in again or is banned. Search, filter by status or group, sort, and switch between cards and a list.
+- Pick a game by name, link or Place ID. Pick a server (most players, fewest, lowest ping, room for N accounts, random), join friends, or join the exact server a player is in by their username.
+- Run several Roblox windows at once with Multi-Roblox, open them all windowed and tile them. It's off until you turn it on.
+- Presets: save accounts, a game and a server choice to launch in one click, with a schedule to start and stop, and options of their own (anti-AFK, auto-rejoin, a light AFK mode, restarting Roblox every few hours).
+- Auto-rejoin when Roblox disconnects, kicks or loses the connection, retrying with longer waits instead of giving up.
+- Game monitor: live pictures of every Roblox window in one tab. Statistics of play time per account and per game, with an activity log.
+- Authenticator (2FA) codes in the app, hiding account names for screenshots and streams, a daily sign-in check, and spotting banned accounts.
+- Send play-time summaries, a status message and alerts to your Discord channel.
+- Back up to a OneDrive or Google Drive folder. Also: 32 themes, quick search with `Ctrl+K`, English and Vietnamese, runs from the tray, Windows notifications.
 
-<img src="docs/screenshots/themes.png" width="800" alt="Six Bloxkeep themes: Aurora, Sunset, Sakura, Paper, Terminal and Dark">
+<img src="docs/screenshots/themes.png" width="800" alt="Six Bloxkeep themes: Dark, City, Aurora, Sakura, Paper and Terminal">
 
 ## Download and install
 
-Windows 10 or 11, 64-bit. You don't need to install .NET. Microsoft Edge WebView2 is installed automatically if it's missing.
+You need Windows 10 or 11, 64-bit. You don't need to install .NET. The installer installs Microsoft Edge WebView2 if it's missing.
 
-Download from the [Releases page](../../releases/latest):
+Get it from [Releases](../../releases/latest):
 
-| File | When to use |
+| File | Use it when |
 |---|---|
-| `Bloxkeep-Setup.exe` | Normal install. Installs for your Windows user only (no admin rights needed), adds Start Menu and Desktop shortcuts, and installs WebView2 if the PC doesn't have it. |
-| `Bloxkeep-Portable.zip` | No install. Unzip it and run `Bloxkeep.exe`. Your data is kept in a `data` folder next to it. The portable copy updates itself too. |
+| `Bloxkeep-Setup.exe` | You want a normal install. It installs for your Windows user, needs no admin rights, and adds Start menu and Desktop shortcuts. |
+| `Bloxkeep-Portable.zip` | You'd rather not install. Unzip and run `Bloxkeep.exe`; its data goes into a `data` folder next to it. The portable copy updates itself too. |
 
 > [!CAUTION]
-> Download Bloxkeep only from this repository's Releases page. Copies from other sites may be modified to steal your accounts.
+> Only download Bloxkeep from this repository's Releases page. A copy from anywhere else may have been changed to steal accounts.
 
-The files aren't code-signed, so Windows SmartScreen warns the first time you run them. Click **More info › Run anyway**. To check that your file is the one published here, compare its SHA-256 hash (in PowerShell: `Get-FileHash .\Bloxkeep-Setup.exe`) with `SHA256SUMS.txt` from the same release.
+The files aren't code-signed yet, so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release.
 
-<img src="docs/screenshots/1-install.png" width="480" alt="Bloxkeep installer while installing">
+<img src="docs/screenshots/1-install.png" width="480" alt="The Bloxkeep installer at work">
 
 ### Updates
 
-Bloxkeep checks this repository's Releases about 20 seconds after it starts and then every 6 hours, and downloads a new version in the background. When it's ready, the sidebar shows **Restart to update**. Roblox keeps running while Bloxkeep restarts. If you don't restart, the update is installed when you quit. Updates only work while the GitHub repository is public.
+Bloxkeep checks GitHub for a new version and downloads it in the background. When it's ready, the sidebar shows **Restart to update**; Roblox keeps running meanwhile. If you don't click it, the update installs when you quit. After updating, the app shows **What's new in Bloxkeep**.
 
-After an update, Bloxkeep shows **What's new** for that version. To stop automatic updates, turn off **Settings › Updates › Update automatically**. **Check now** works either way.
+Updating itself only works while the GitHub repository is public.
 
-Running a newer `Bloxkeep-Setup.exe` over an installed copy works too: it offers to update (or to repair the same version) and keeps your data.
+To turn automatic updates off, untick **Settings › Bloxkeep updates › Update automatically**. **Check now** still works.
+
+Running a newer `Bloxkeep-Setup.exe` over an installed copy works too: the installer offers to update (or repair, for the same version) and keeps your data.
 
 ### Uninstall
 
-Quit Bloxkeep first if it's running (right-click the tray icon › **Quit Bloxkeep**): the uninstaller ends it without asking, and an ended app's tray icon can linger until the mouse passes over it. Then go to Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publisher `minhhoang0122`) and choose **Uninstall**. The installer and uninstaller dialogs are in English on every Windows language.
+If Bloxkeep is running, quit it first (right-click the tray icon › **Quit Bloxkeep**): the uninstaller closes it without asking, and the icon of an app closed that way can stay in the tray until you move the mouse over it. Then open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publisher `minhhoang0122`) and choose **Uninstall**. The installer and uninstaller dialogs are in English only.
 
 | Removed | Kept |
 |---|---|
-| The program in `%LOCALAPPDATA%\BloxkeepApp`, the Start menu and Desktop shortcuts (also ones you pinned to Start or the taskbar), the interface cache, and the entry in Installed apps. Bloxkeep adds nothing else to Windows: no startup entry, no service, no `roblox-player:` link handler. | Your accounts and settings in `%LOCALAPPDATA%\Bloxkeep` (`vault.rmv`, `prefs.json`, `error.log`), so a reinstall picks them up where you left off, and any backup files in your backup folder. To remove these as well, delete that folder and the backups yourself. |
+| The program in `%LOCALAPPDATA%\BloxkeepApp`, the Start menu and Desktop shortcuts (including ones you pinned to Start or the taskbar), the interface cache, and the Installed apps entry. Bloxkeep adds nothing else to Windows: no startup entry, no service, and it doesn't take over the `roblox-player:` protocol. | Your accounts and settings in `%LOCALAPPDATA%\Bloxkeep` (`vault.rmv`, `prefs.json`, `error.log`), so a reinstall picks up where you left off; and the backup files in your backup folder. Delete that folder and the backups yourself to remove those too. |
 
 <details>
-<summary>Screenshots: updating and uninstalling</summary>
+<summary>Pictures: updating and uninstalling</summary>
 
-<img src="docs/screenshots/2-restart-to-update.png" width="800" alt="Restart to update button in the sidebar">
-<img src="docs/screenshots/6-whats-new.png" width="800" alt="What's new panel after an update">
-<img src="docs/screenshots/3-settings-updates.png" width="800" alt="Updates section in Settings">
-<img src="docs/screenshots/4-uninstall-progress.png" width="480" alt="Uninstall in progress">
-<img src="docs/screenshots/5-uninstall-done.png" width="480" alt="Uninstall finished, account data kept">
+<img src="docs/screenshots/2-restart-to-update.png" width="800" alt="Restart to update in the sidebar"> <img src="docs/screenshots/6-whats-new.png" width="800" alt="What's new after an update"> <img src="docs/screenshots/3-settings-updates.png" width="800" alt="The Bloxkeep updates page in Settings">
+<img src="docs/screenshots/4-uninstall-progress.png" width="480" alt="Uninstalling Bloxkeep"> <img src="docs/screenshots/5-uninstall-done.png" width="480" alt="Uninstall finished, account data kept">
 </details>
 
 ## Getting started
 
-1. **Set a master password.** On first start, Bloxkeep asks for a master password of at least 6 characters. It unlocks the app and protects your saved accounts, and it can't be recovered if you forget it (see [Data and security](#data-and-security)). Setting up on a new PC? Choose **Restore from a backup** on this screen instead (see [Backup and restore](#backup-and-restore)).
+1. **Set a master password** the first time (at least 6 characters). It unlocks Bloxkeep and **can't be recovered** if you forget it; see [Data and security](#data-and-security). Moving to a new PC? Choose **Restore from a backup** instead; see [Backup and restore](#backup-and-restore).
 
-   The app opens in English. The screenshots in this README show the Vietnamese interface; the EN/VI switch in the top corner of this screen, or **Settings › Language**, changes it.
+   The app opens in English. The screenshots in this README show the Vietnamese interface; the EN/VI switch in the top corner of this screen, or **Settings › Appearance › Language**, changes it.
 
-   <img src="docs/screenshots/lock.png" width="640" alt="Unlock screen with the EN/VI language switch in the top corner">
+   <img src="docs/screenshots/lock.png" width="640" alt="The unlock screen with the EN/VI switch in the top corner">
 
-2. **Add an account.** With an empty list, Bloxkeep offers **Use your phone**, **Use a browser** and **Use account & password**. Later, **Add account** opens the same choices.
-   - **Use your phone**: Bloxkeep shows a code and a QR code. In the Roblox app on your phone, go to **Settings › Quick Log In**, enter the code or scan the QR, and confirm. A new code appears for the next account. Quick Log In is only in the phone app, not in the Roblox PC client.
-   - **Use a browser**: the official roblox.com sign-in page opens in a temporary browser window. After you sign in, Bloxkeep keeps the session and deletes the temporary browser profile. It never reads the password you type there.
-   - **Use account & password**: the password goes only to Roblox's sign-in server and is not saved. 2-step verification works with an authenticator app or email. If Roblox asks for a captcha, you solve it in a small window.
-   - **Use a cookie** and **Import from Roblox Account Manager**: see [Moving from Roblox Account Manager](#moving-from-roblox-account-manager).
+2. **Add accounts**: click **Add account**. The **Sign in to Roblox** dialog offers:
+   - **Sign in with your phone** (recommended): Bloxkeep shows a code and a QR. In the **Roblox app** on your phone, open **Settings › Quick Log In**, enter the code or scan the QR, and confirm. No password or puzzle needed. After one account is added you get a new code for the next.
+   - **Username** and **Password**: the password only goes to Roblox's sign-in server. Signing in with a password doesn't save it. 2-step verification works (**Authenticator app** or **Email**); if the account already has an authenticator key in Bloxkeep, the code is filled in and you only confirm. If Roblox asks for a captcha, click **Solve the puzzle** and do it in the small window that opens.
+   - **Other ways: Sign in with a browser**: the official roblox.com sign-in page opens in a temporary window. Once you're in, Bloxkeep takes the session and deletes that temporary window. Bloxkeep doesn't read the password you type there.
+   - **Other ways: Paste a cookie**, or **Import from: Roblox Account Manager** / **Bloxkeep file**: see [Bringing accounts over](#bringing-accounts-over).
 
-   <img src="docs/screenshots/add-account.png" width="700" alt="Sign in to Roblox dialog with Roblox and Roblox VNG tabs and the other sign-in options">
+   <img src="docs/screenshots/add-account.png" width="700" alt="Sign in to Roblox dialog with Roblox and Roblox VNG tabs, phone sign-in, username and password, and the other ways">
 
-3. **Pick a game, select accounts, press Play.** Type a game name, or paste a game link or Place ID, into the bar at the bottom. Click accounts to select them (`Shift`+click selects a range) and press **Play**. If you leave the game box empty, the button becomes **Open Roblox** and opens Roblox's home screen for each selected account.
+3. **Pick a game, pick accounts, press Play.** Type a game name or paste a link / Place ID in the bar at the bottom, click account cards to choose them (`Shift`-click for a range), then press **Play**. With the game box empty the button becomes **Open Roblox**: each chosen account opens Roblox on its home screen.
 
-   <img src="docs/screenshots/demo.gif" width="800" alt="Choosing a game, selecting two accounts and pressing Play">
+   <img src="docs/screenshots/demo.gif" width="800" alt="Choosing two accounts, switching the game, looking at the server list, then changing the theme">
 
-4. Keyboard: `Ctrl+F` search, `Ctrl+A` select all, `Enter` play the selected accounts, `F2` edit, `Delete` delete, `Esc` clear the selection or close a dialog. Right-click an account for more actions.
+4. Shortcuts: `Ctrl+K` quick search for accounts, presets, games and settings; `Ctrl+F` search accounts; `Ctrl+A` select all; `Enter` play; `F2` edit; `Delete` delete; `Esc` clear the selection. Right-click an account for more.
 
 ## Using Bloxkeep
 
 ### Account list
 
-- Filter by **All**, **Playing**, **Online**, **Offline**, **On this PC** or **Needs sign-in**. **Sort** by **Name**, **Status** or **Last played**. Search covers names, groups and notes. Switch between **Cards** and **List**.
-- Status refreshes every 30 seconds, or right away with **Refresh online status**. When a Roblox window on this PC drops, the account shows why, taken from Roblox's own log files: **Kicked for being idle**, **Kicked by the game**, **Signed in on another device**, **Connection lost**, **Couldn't join the server**, or an error code.
-- An account whose session has ended shows **Signed out** and a **Sign in** button. **Check sign-in** checks one account; **Check sign-in of all accounts** is in the ⋯ menu at the top of the list.
-- **Edit…** (`F2`) sets a **Nickname**, **Group** and **Note**, and optionally a **Roblox password** for your own reference.
-- **Copy password** and **Copy cookie** keep the copied text out of Windows clipboard history and the cloud clipboard, and clear it after 30 seconds or when you lock or quit.
+- Filter by **All**, **Playing**, **Online**, **Offline**, **On this PC**, **Needs sign-in**, **Banned**, and by group with the **Group** dropdown; sort by **Name**, **Status**, **Last played** or **Launch order**; search names, groups and notes. Switch between **Cards** and **List**.
+- Status refreshes every 30 seconds. When an account drops, its card says why, read from Roblox's log: **Kicked for being idle**, **Kicked by the game**, **Signed in on another device**, **Connection lost**, **Couldn't join the server**.
+- An account whose session ended is marked **Needs sign-in**; click **Sign in** to renew it. **Check sign-in** is in each account's ⋯ menu, and **Check sign-in of all accounts** is in the ⋯ menu above the list. **Check sign-ins every day** (on by default, in **Settings › Performance**) does this once a day by itself, so you know before you press **Play**.
+- While checking, Bloxkeep also looks at whether the account is **Banned** (Roblox's public information). A banned account gets a red tag, and **Play** and presets skip it.
+- **Edit…** (`F2`) sets a **Nickname**, **Group** and **Note**. There you can also store the account's **Roblox password** if you want to (optional); it stays in the encrypted vault.
+- **Authenticator key** (in **Edit…**): paste the account's 2FA key or `otpauth://` link and Bloxkeep shows the running 6-digit code. **Copy 2FA code** is in the ⋯ menu. Anyone with your master password can make codes too, so only store the key if that's fine with you.
+- **Copy password**, **Copy cookie** and **Copy 2FA code** stay out of Windows clipboard history and are wiped after 30 seconds.
+- **Hide account names** (in **Settings › Appearance**): every place shows **Account 1**, **Account 2**… instead, Roblox window titles included, for screenshots and streams.
 
-<img src="docs/screenshots/accounts-list.png" width="800" alt="Account list in list view with each account's status">
+<img src="docs/screenshots/accounts-list.png" width="800" alt="The account list in list view with each account's status">
 
 ### Choosing a game and server
 
-- The game box takes a game name, a Place ID, a `roblox.com/games/…` link (private server links included), a `roblox.com/share` server link, or a `roblox://` link.
-- The picker has **Recent**, **Pinned**, **Roblox favorites** (games your accounts favorited on Roblox) and **Popular**. Pin a game with ☆.
-- **Job ID (optional)** sends every selected account to one exact server.
-- **Servers** lists public servers with free slots, sorted by **Most players**, **Fewest players**, **Lowest ping** or **Best FPS**. The **Room for N** filter, **Random server** and **Load more** are there too. The ping shown is the average of the players in that server, not your own.
-- **Friends in this game**, in the same dialog, lists friends of your accounts who are playing it, each with a **Join** button. Friends only appear if their privacy settings allow it.
-- On an account that is already playing, **Join this server** in its ⋯ menu picks that server for the other accounts.
+- The game box takes a game name, a Place ID, a `roblox.com/games/…` link (private-server links too), a server share link, or a `roblox://` link. When you type a name, pick the game from the list that appears.
+- The game picker has **Recent**, **Pinned**, **Roblox favorites** and **Popular** tabs. Click ☆ to pin a game.
+- **Job ID (optional)**: joins one exact server, so several accounts land together.
+- **Server** lists public servers with room: sort by **Most players**, **Fewest players**, **Lowest ping**, **Best FPS**; filter **Room for N**; or click **Random server**. **Friends in this game** lets you join your accounts' friends (when their privacy settings allow it). The ping shown is the average of the players in that server, not yours.
+- **Join a player…** (the button next to the Job ID box): type a player's username or user ID and the chosen accounts join the server that player is in. Bloxkeep asks for their status with the accounts you chose; when their privacy settings hide it, the app says so, and it never friends or follows anyone to get around that.
+- On an account that's playing, **Join this server** sends the other accounts into that same server.
 
-<img src="docs/screenshots/game-picker.png" width="800" alt="Game picker with Recent, Pinned, Roblox favorites and Popular tabs">
+<img src="docs/screenshots/game-picker.png" width="800" alt="The game picker with Recent, Pinned, Roblox favorites and Popular tabs">
 
-<img src="docs/screenshots/servers.png" width="700" alt="Server list for a game, with friends in the game and a filter for servers with room for 2 accounts">
+<img src="docs/screenshots/servers.png" width="700" alt="A game's server list, with friends playing and a filter for room for 2 accounts">
 
 ### Presets
 
-A preset stores a name, a list of accounts in order, a game, a server choice and, if you want, its own delay. The **Game** box works like the bottom bar: pick from the **Recent**, **Pinned**, **Roblox favorites** and **Popular** tabs, type a name to search, or paste a link / Place ID. Leave it empty to open the **Roblox home** screen. Server choices are **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random** and **Fixed server (Job ID)**.
+A preset saves a name, a list of accounts (in order), a game, how to pick the server, and the wait between accounts. Leave the game empty to open only the **Roblox home screen**. The server can be **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random** or a **Fixed server (Job ID)**.
 
-The **Presets** button in the bottom bar has **Save as preset…**, **Edit presets…** and **Run**. You can keep up to 50 presets.
+Manage them in the **Presets** tab: **New preset**, edit, duplicate, reorder, **Run**. The presets button in the bottom bar has **Save as preset…** and quick runs. Up to 50 presets.
 
-A preset's **Options** apply to the Roblox windows it opens (also after they rejoin). Pressing **Play** for the same accounts uses the usual settings.
+A preset's **For the Roblox windows** options apply to the windows that preset opens (also when they rejoin). Pressing **Play** for the same accounts the normal way still follows your general settings.
 
 - **Anti-AFK**: **Follow Settings**, **On** or **Off**.
 - **Auto-rejoin**: **Follow each account**, **On** or **Off**.
-- **Performance**: **Light AFK** sets the lowest graphics, 30 FPS and no sound, and minimises the window once it's in the game. Windows opened without it keep your own Roblox settings.
-- **Restart Roblox**: every 2, 4, 6 or 12 hours, each window is closed and opened again into the same game, one at a time. A window you're using waits.
+- **Performance**: **Light AFK** sets the lowest graphics, 30 FPS, no sound, and minimises the window once it's in the game. Windows opened without it keep your Roblox settings.
+- **Restart Roblox**: every 2, 4, 6 or 12 hours, each window is closed and opened again into the same game, one at a time. The window you're using waits.
 
-<img src="docs/screenshots/presets.png" width="700" alt="New preset dialog: name, game, server, delay and accounts">
+**Schedule**: a preset runs by itself at its **Start time**, once or on chosen weekdays, and can **Stop** after a few hours or at a set time (closing only the windows that run opened). Bloxkeep has to be running and unlocked at that moment.
+
+<img src="docs/screenshots/presets.png" width="800" alt="The Presets tab with three presets, one with its schedule on">
+
+<img src="docs/screenshots/preset-editor.png" width="800" alt="Edit preset: the For the Roblox windows options (Anti-AFK, Auto-rejoin, Performance, Restart Roblox) and the Schedule">
 
 ### Multi-Roblox
 
-Multi-Roblox is off by default. Roblox doesn't officially support running several clients at once, so use it at your own risk, especially with accounts you care about. Turn it on with the switch in the sidebar or in Settings.
+Multi-Roblox is **off by default**. Roblox doesn't officially support running several clients; use it at your own risk. Turn it on with the Multi-Roblox switch in the sidebar or in **Settings › Launching**.
 
-- Start Bloxkeep before Roblox and keep it open while you play.
-- The light in the sidebar shows **Off**, **On — several windows allowed** or **Not working yet — click to fix**. If it isn't working, close every Roblox, including the one in the system tray. If Roblox starts with Windows, click **Turn off autostart**; this does the same as turning it off in Task Manager › Startup apps, and you can turn it back on there. The light then turns green by itself.
-- If Bloxstrap or Fishstrap blocks a second window, choose **RobloxPlayerBeta directly (skip launchers)** in **Settings › Open Roblox with**.
-- To give each account its own Roblox home screen, select the accounts, leave the game box empty and press **Open Roblox**.
+- Bloxkeep has to be open **before** Roblox and stay open while you play.
+- The light shows **Off**, **On — several windows allowed**, or **Not working yet — click to fix** (yellow). To fix it: close every Roblox, including one in the system tray; if Roblox starts with Windows, click **Turn off autostart** (the same as switching it off in Task Manager › Startup apps, and you can switch it back there). The light then turns green.
+- **Details** next to Multi-Roblox has two more options:
+  - **Always open Roblox windowed** (on by default): all Roblox windows share one fullscreen setting, so with several open some end up fullscreen and some don't. Bloxkeep opens every window windowed and puts your setting back afterwards.
+  - **Tile the windows after opening** (off by default): once the accounts are open, the Roblox windows are laid out in a grid on the main screen.
+- One home screen per account: choose the accounts, leave the game box empty, press **Open Roblox**.
 
-How it works: Roblox allows a single window by holding two system objects, `ROBLOX_singletonMutex` and `ROBLOX_singletonEvent`. Bloxkeep creates and holds them before Roblox starts, so a new Roblox window no longer closes the previous one. Nothing is injected into Roblox, and its memory isn't read.
+How it works: Roblox uses an object named `ROBLOX_singletonEvent` to allow only one window; since its October 2026 builds, a new window uses it to close the older ones. Bloxkeep takes that name first, while no Roblox is running, so Roblox can't set this up and the windows don't close each other. Bloxkeep injects nothing into Roblox and reads nothing from the Roblox process.
+
+If a newer Roblox build starts closing windows when another opens again, **Settings › Version & graphics** shows a yellow warning. It goes away once two or more accounts are in a game at the same time, when Roblox updates, or when you click **Hide**.
 
 ### Auto-rejoin
 
-Turn on **Auto-rejoin** for an account in its ⋯ menu; Settings shows how many accounts have it on. When that account's Roblox crashes, is kicked or loses its connection, Bloxkeep opens the same game (or private server) again after 10 seconds. It doesn't return to the exact same server.
+Turn it on per account in the ⋯ menu › **Auto-rejoin** (a preset can override it; see [Presets](#presets)). When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. If it keeps dropping, from the third time Bloxkeep waits 2, 5, 10, then 15 minutes between tries (the card shows the wait with a **Cancel** button); 10 minutes in the game resets the count. Without a network, it retries every 30 seconds, up to 20 times.
 
-- If it keeps dropping, the third try onwards waits 2, 5, 10, then 15 minutes between tries; the account's card shows the wait and a **Cancel** button. Staying in the game for 10 minutes starts the count over.
-- It doesn't rejoin when you left the game yourself or when the account signed in on another device.
-- Closing a Roblox window yourself counts as leaving. To close an account's Roblox, use **Close** in Bloxkeep.
-- Without a network connection it waits and retries every 30 seconds.
+Bloxkeep doesn't rejoin when you leave the game yourself, when the account signed in on another device, when it's banned, or when Roblox itself closed the window because another one opened. Closing the Roblox window by hand counts as leaving, so use **Close** in the app.
 
 ### Roblox settings per account
 
-The **Roblox settings** card in Settings sets **Graphics quality** (1–10), **Frame rate limit** (30, 60, 144 or 240) and **Volume** (**Muted**, 25, 50, 75 or 100 %). Each can also be **Leave as is**. **Use for** applies them to **Nobody**, **All accounts** or **Chosen accounts**; choose accounts with **Use Roblox settings** in each account's ⋯ menu.
+In **Settings › Version & graphics › Roblox settings**, **Apply to** chooses **Nobody**, **All accounts** or **Chosen accounts** (pick them with **Use Roblox settings** in the ⋯ menu). Set **Graphics quality** from 1 to 10, **Frame rate limit** 30/60/144/240, **Volume** from **Muted** to 100 %, or **Leave as is**.
 
-Bloxkeep writes these values into Roblox's settings file right before it opens the account, then puts your own values back once Roblox has started. If you changed a value yourself in the meantime, your change is kept.
+Bloxkeep writes these values into Roblox's settings file just before opening the account, and puts your own settings back once Roblox is running.
+
+The same page's **Roblox updates** group shows the installed Roblox build, the newest one Roblox serves, and the builds seen on this PC, each with a link to Roblox's release **Notes**.
 
 ### Open Roblox with
 
-**Settings › Open Roblox with** chooses what opens Roblox. Installed launchers are found automatically.
+Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's installed.
 
-| Option | What it does |
+| Choice | Notes |
 |---|---|
-| **Default (…)** | Uses whatever opens Roblox links on your PC: Roblox, Bloxstrap, Fishstrap or similar |
-| **Bloxstrap**, **Fishstrap** | Opens Roblox through that launcher, so your mods and FFlags still apply |
-| Other Bloxstrap-style launchers | Listed if they are installed |
-| **Roblox (official)** | The client installed from roblox.com |
-| **RobloxPlayerBeta directly (skip launchers)** | Starts the newest `RobloxPlayerBeta.exe` without a launcher. Try it when a launcher blocks several windows |
-| **Choose another launcher…** | Any program you pick; it gets the Roblox link as its first argument |
-| **Roblox (Microsoft Store)** | Not supported: it can't open a chosen account. Install Roblox from roblox.com instead |
+| **Default** | Whatever opens Roblox links on this PC (Roblox, Bloxstrap, Fishstrap…) |
+| **Bloxstrap**, **Fishstrap** | Keeps your mods and FFlags |
+| Other Bloxstrap-style launchers | Listed when installed |
+| **Roblox (official)** | The client from roblox.com |
+| **RobloxPlayerBeta directly (skip launchers)** | No launcher at all; try it when a launcher blocks several windows |
+| **Choose another launcher…** | An exe you pick |
+| **Roblox (Microsoft Store)** | Not supported: it can't open the account you chose. Install Roblox from roblox.com |
 
-### RAM and windows
+### Windows, RAM and the game monitor
 
-- The **Roblox on this PC** card in the sidebar shows how many Roblox windows are open, the RAM they use and how much RAM the PC has free. **Close all** closes them; **Force close all Roblox** is in the ⋯ menu at the top of the list.
-- The **Roblox version** line compares the installed Roblox with the latest version.
-- **Low RAM warning** (on by default) warns before you open more accounts than your free RAM can hold, counting about 900 MB per window, and when the PC goes over 92 % RAM use.
-- **Save RAM on background windows** (off by default): when the PC is low on RAM, background Roblox windows are asked to give memory back to the one you're playing. Roblox can refuse, and then that window is skipped.
-- **Arrange Roblox windows** tiles every Roblox window in a grid on the screen you choose. **Show account names on windows** (on by default) puts the account name in each window's title, so you can tell them apart on the taskbar.
-- **Delay between accounts** spaces out launches: 0 to 60 seconds, 8 by default. Opening too many at once can fail.
+- The sidebar card **Roblox on this PC** shows the number of Roblox windows, the RAM they use, the free RAM, and **Mini window** and **Close all**. Its version line tells you whether your Roblox is the newest.
+- **Game monitor** (a sidebar tab): live pictures of every Roblox window with the account, game, RAM and PID. Click a picture to bring that window to the front; right-click for more. A minimised window has no live picture. Windows draws the pictures itself (like the previews when you hover the taskbar), so they cost next to nothing.
+- **Mini window**: a compact window to watch the accounts that are playing without the main window.
+- **Arrange Roblox windows** (in the bottom bar) and **Arranging windows** (in **Settings › Launching**): **Fill the screen**, or **Small tiles** / **Medium tiles** / **Large tiles** laid out from the top-left, leaving the rest of the screen free. The smaller a Roblox window, the less work for the graphics card.
+- **Low RAM warning** (on by default): warns before you open more accounts than the free RAM can take, and when the PC uses more than 92 % of its RAM.
+- **Save RAM on background windows** (off by default): when RAM runs low, background windows give RAM back to the one you're playing. Roblox may refuse; then Bloxkeep leaves it.
+- **Show account names on windows** (on by default): puts the account's name in the Roblox window title, to tell windows apart on the taskbar.
+- **Wait between accounts**: 0 to 60 seconds, 8 by default. Opening too many at once can fail.
 
-### Tray, notifications and appearance
+### Statistics and activity
 
-- **Keep running when closed** (on by default): the X button hides Bloxkeep to the tray, and auto-rejoin and Multi-Roblox keep working. To exit, right-click the tray icon and choose **Quit Bloxkeep**.
-- **Windows notifications** (on by default) appear only while Bloxkeep is in the background: an account dropped, an account keeps getting disconnected, or RAM is low. You get at most one per account and event every 5 minutes.
-- **Discord** (off by default): paste a channel's webhook link in **Settings › Discord** to get a daily or weekly play-time summary, a status message that updates itself, and the same alerts, each with its own switch and optional ping.
-- **Theme**: 32 themes in five groups (Basic, Scenery, Colourful, Styles, Seasonal), or **Sync with Windows**. The default is **Dark**, and the window's title bar follows the theme.
-- **Language**: English or Tiếng Việt.
-- **Hardware acceleration** switches the interface between GPU and CPU drawing. It turns itself off if the graphics driver keeps failing.
+The **Statistics** tab counts play time, sessions and disconnects for **Today**, **7 days** or **30 days**, per account and per game. Only games opened with Bloxkeep count.
 
-### Moving from Roblox Account Manager
+Switch to **Activity** for the log: accounts opened, games joined and left, drops (with the reason), rejoins, scheduled presets starting and stopping, accounts that need to sign in again. Filter by account and kind, and **Export CSV** when you need it. Bloxkeep keeps the last 1,000 events, in the encrypted vault.
 
-Roblox Account Manager (by ic3w0lf22) encrypts its `AccountData.json`, so decrypt it first with RAM's official [RAMDecrypt](https://github.com/ic3w0lf22/RAMDecrypt) tool. Then choose **Import from Roblox Account Manager** in the **Add account** dialog (or **Move over from Roblox Account Manager…** in the ▾ menu next to it) and pick the decrypted file. An encrypted file is refused with a hint to decrypt it.
+<img src="docs/screenshots/stats.png" width="800" alt="The Statistics tab: total play time, a chart per day, play time per account and most played games">
 
-Nicknames, groups, notes and any passwords RAM had are copied over. Accounts that are already in Bloxkeep get their cookie updated, and every imported cookie is checked right away.
+### Tray, notifications, Discord and appearance
 
-To add a single account by cookie, choose **Use a cookie** and paste its `.ROBLOSECURITY` value.
+- **Keep running in the tray when closed** (on by default): the X button hides Bloxkeep to the tray, and auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon and choose **Quit Bloxkeep**. Next time, the Bloxkeep window comes back where you left it, at the same size, maximised or not.
+- **Windows notifications** (on by default): only while Bloxkeep is in the background. Turn each kind on or off in **Settings › Notifications**: account dropped or auto-rejoin, scheduled presets, sign-in needs renewing, low RAM, launch problems.
+- **Discord** (off by default): paste a channel's webhook link in **Settings › Discord**. **Send automatically** a play-time summary every day, every week or both; keep a **Status message** up to date; and send **Alerts** for the events above, with a **Ping** for a person or a role. There are **Quiet hours** and **Customise messages** (sender name and picture, language, message style, **Hide account names in messages**).
+- **Settings › Appearance**: **Theme** has 32 themes plus **Sync with Windows** (**Dark** by default), **Language** English / Tiếng Việt, and **Hide account names**.
+- **Hardware acceleration** (in **Settings › Performance**): draws the interface with the graphics card instead of the CPU; it turns itself off if the graphics driver keeps failing.
+
+<img src="docs/screenshots/discord.png" width="800" alt="The Discord page in Settings: send to Discord, webhook link, play-time summary">
+
+### Bringing accounts over
+
+**Roblox Account Manager**: it encrypts `AccountData.json`, so first decrypt it with the official [RAMDecrypt](https://github.com/ic3w0lf22/RAMDecrypt) tool. Then in the **Add account** dialog click **Import from: Roblox Account Manager** and pick the decrypted file. Nicknames, groups, notes and passwords (if RAM had them) come along. Accounts you already have get the new cookie, and cookies are checked right after the import.
+
+**Another Bloxkeep file** (a `vault.rmv` or a backup from another PC): click **Import from: Bloxkeep file**, or **Import…** in **Settings › Backup & data**. Enter that file's own master password, tick the accounts you want, and import. The file itself isn't changed; the imported accounts are locked with your current master password.
+
+**Cookie**: choose **Paste a cookie** and paste the `.ROBLOSECURITY` cookie.
 
 ### Roblox VNG
 
-You can add Roblox VNG accounts with **Use your phone** (on the **Roblox VNG** tab) or with a username and password on the **Roblox VNG** tab of **Sign in to Roblox**. They get a VNG tag in the list. Bloxkeep can't open games for VNG accounts yet.
+You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone or with a password). They get a "VNG" tag. Bloxkeep **can't open games** for VNG accounts yet; their **Play** button is off, with the reason.
 
 <details>
-<summary>More screenshots</summary>
+<summary>More pictures</summary>
 
-<img src="docs/screenshots/settings.png" width="800" alt="Settings page">
+<img src="docs/screenshots/settings.png" width="800" alt="Settings, the Launching page: the page list on the left, Multi-Roblox and window arranging on the right"> <img src="docs/screenshots/palette.png" width="800" alt="Quick search with Ctrl+K: typing farm finds the matching accounts and preset">
 </details>
 
 ## Data and security
 
-**What is stored.** For each account: its Roblox session cookie, username and ID, and the nickname, group and note you set. Also your settings, recent and pinned games, and presets. Signing in with a password doesn't save it. You can store one yourself in **Edit…**, as an option; it stays in the encrypted vault. An import from Roblox Account Manager also copies passwords RAM had saved.
+**What's stored.** Accounts (cookie, username, ID, nickname, group, note, and the password and authenticator key if you entered them), settings, presets, recent and pinned games, play history and the activity log, the Discord webhook link.
 
-**Where.** Everything is stored only on this PC:
+**Where.** Everything stays on your PC. **Settings › Backup & data › Data location** shows the folder, with **Open folder**.
 
-| Path | What's in it |
+| Path | Contents |
 |---|---|
-| `%LOCALAPPDATA%\Bloxkeep\` | The data folder of the installed app. The portable build uses `data\` next to `Bloxkeep.exe`. |
-| `vault.rmv` | Accounts, settings, recent and pinned games, and presets, encrypted with your master password |
+| `%LOCALAPPDATA%\Bloxkeep\` | The data folder (installed copy). The portable copy uses a `data\` folder next to the app. |
+| `vault.rmv` | The encrypted vault: accounts, settings, presets, recent and pinned games, play history, activity log, webhook link |
 | `vault.rmv.bak` | The previous save, used automatically if `vault.rmv` is damaged |
-| `vault.rmv.damaged-…`, `vault.rmv.spare-…`, `vault-before-restore-….rmv` | Copies kept after an automatic repair or a restore; the app never deletes them |
-| `prefs.json` | Preferences that aren't secret: language, theme, tray, updates, notifications, backup folder |
-| `roblox-settings.json` | Your own Roblox graphics, FPS and volume, to put back after a launch |
-| `error.log` | Errors and short sign-in notes, never account data |
-| `webview\`, `webview-safe\` | Interface cache, deleted on uninstall |
-| `%LOCALAPPDATA%\BloxkeepApp\` | The installed program, removed on uninstall |
+| `vault.rmv.damaged-…`, `vault.rmv.spare-…`, `vault-before-restore-….rmv` | Copies kept after a self-repair or a restore; the app never deletes them |
+| `prefs.json` | Non-secret settings: language, theme, updates, notifications, backup folder, window position, Roblox build history |
+| `roblox-settings.json` | Your graphics, FPS, volume and fullscreen settings, to put back after opening an account |
+| `error.log` | Errors and short sign-in notes, with no account details |
+| `webview\`, `webview-safe\` | The interface cache, removed on uninstall |
+| `%LOCALAPPDATA%\BloxkeepApp\` | The installed program (removed on uninstall) |
 
-**Settings › Data › Data location** shows the folder, and **Open folder** opens it.
-
-**How it's protected.** The vault is encrypted with AES-256-GCM. The key is derived from your master password with PBKDF2-HMAC-SHA256 (600,000 iterations, random 16-byte salt). The file header is authenticated together with the data, so a wrong password or any change to the file is detected. The master password itself is never saved, and the key is wiped from memory when you lock or quit. Saves are atomic: the new file is written first and then swapped in, and the previous save is kept as `vault.rmv.bak`.
+**How it's protected.** The vault is encrypted with AES-256-GCM. The key comes from your master password through PBKDF2-HMAC-SHA256 with 600,000 iterations and a random salt. The file header is authenticated too, so a wrong password or a tampered file is detected. The master password is never stored. Every save is written in full before it replaces the old file, and the previous save is kept in `vault.rmv.bak`. When you lock the app, Bloxkeep drops all the decrypted data it was holding (cookies, passwords, authenticator keys).
 
 > [!WARNING]
-> If you forget the master password, your saved accounts can't be recovered. A backup only opens with the password it was saved with.
+> If you forget the master password, your saved accounts can't be recovered. A backup also only opens with the password it was saved with.
 
-**What leaves the PC.** There is no telemetry or analytics. Bloxkeep only talks to:
+**What leaves your PC.** Bloxkeep has no telemetry or analytics. Data only goes to:
 
-| Destination | When and what |
+| Where | When, and what |
 |---|---|
-| Roblox API hosts (`auth`, `users`, `presence`, `friends`, `games`, `develop`, `thumbnails`, `apis`, `twostepverification`, `clientsettingscdn` on `roblox.com`) | Sign-in (the password goes only to `auth.roblox.com/v2/login`), session checks, status every 30 seconds with each account's own cookie, game search and info, server lists, friends, favorites, popular games, the launch ticket, and the latest Roblox version |
-| `www.roblox.com` | The browser sign-in window, profile links, and the launch link handed to Roblox |
-| `*.rbxcdn.com` | Avatar and game images |
+| Roblox's API hosts (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Signing in (the password only goes to `auth.roblox.com`), session and ban checks, status every 30 seconds, game, server, friend and player lookups, join tickets, the newest Roblox version |
+| `www.roblox.com` | The browser sign-in window, profiles, and the join link handed to Roblox |
+| `*.rbxcdn.com` | Avatars and game pictures |
 | `*.robloxapp.vnggames.com` | The same as the Roblox API hosts, for Roblox VNG accounts only |
-| Roblox's captcha providers: Arkose Labs (`arkoselabs.roblox.com`) and HUMAN Security (`*.px-cloud.net`, `captcha.px-cdn.net`) | Only in the puzzle window, when Roblox asks for a captcha during password sign-in |
-| GitHub | Update checks and downloads, with no account data. Can be turned off |
-| Microsoft (`go.microsoft.com`) | Only if WebView2 has to be installed. The downloaded installer runs only if it is signed by Microsoft Corporation |
-| Your backup folder | An encrypted copy of the vault. If it's a OneDrive or Google Drive folder, their app syncs it |
-| Your Discord webhook (`discord.com`) | Only if you turn on **Settings › Discord** (off by default): account names, game names, play times, counts, PIDs and RAM. Never cookies, passwords or the webhook link itself, which is kept in the encrypted vault |
+| Roblox's captcha providers (Arkose Labs, HUMAN Security) | Only in the puzzle window, when Roblox asks for a captcha during password sign-in |
+| GitHub | Checking for and downloading updates, with no account data; can be turned off |
+| Microsoft (`go.microsoft.com`) | Only when WebView2 has to be installed |
+| The backup folder you choose | A copy of the encrypted vault; your OneDrive / Google Drive app may sync it |
+| Your Discord webhook (`discord.com`) | Only when **Settings › Discord** is on (off by default): account names (or **Account 1**, **Account 2**… with **Hide account names in messages**), game names, play time, sessions, PID, RAM. Never cookies, passwords or the webhook link itself; the link is kept in the encrypted vault |
 
-**Inside the app.** The interface runs in WebView2 under a Content Security Policy (`connect-src 'none'`), so it can't make network requests itself; every network call goes through the app's C# side. A password or cookie reaches the interface only when you reveal or copy it. Copies are kept out of clipboard history and cleared after 30 seconds. Bloxkeep doesn't read the session of a Roblox client that is already signed in on your PC. To track game sessions it reads only Roblox's log files in `%LOCALAPPDATA%\Roblox\logs`. Requests to Roblox go over IPv4, because the launch ticket is tied to the IP address that requested it.
+**Inside the app.** The interface is locked down with a Content Security Policy, so it can't send requests by itself; every connection goes through the app's core. A password or cookie only reaches the interface when you show or copy it. Copies stay out of clipboard history and are wiped after 30 seconds. `error.log` has no account details.
 
-**Keep your cookie private.** A `.ROBLOSECURITY` cookie is a full login to that account. Never paste it into a website or send it to anyone, and don't share `vault.rmv` or a backup file. If a cookie leaks, sign out of all other sessions in Roblox's settings (on roblox.com or in the Roblox app).
+**Keep cookies safe.** A cookie is a full sign-in key for its account. Never send anyone your cookies, `vault.rmv` or a backup file. If one leaks, sign out of all other sessions in Roblox's settings (on roblox.com or in the Roblox app).
 
-**Check it yourself.** Compare the SHA-256 hash of your download with `SHA256SUMS.txt`, read the source, or [build it yourself](#build-from-source).
+**Check it yourself.** Compare the SHA-256 with `SHA256SUMS.txt`, read the source, or [build it yourself](#build-from-source).
 
 ## Backup and restore
 
-Turn on **Settings › Backup › Back up to a folder** and pick a folder. Bloxkeep suggests the OneDrive and Google Drive folders it finds on the PC (a `Bloxkeep` folder inside them), or you can pick any folder with **Choose…**. Bloxkeep never connects to OneDrive or Google Drive itself; it writes the file into the folder and their sync app uploads it. The folder can't be inside Bloxkeep's own data folder.
+Turn on **Settings › Backup & data › Back up to a folder**, then click **Choose…** or use a OneDrive / Google Drive folder Bloxkeep found on your PC (for example **Use Google Drive**). Bloxkeep only copies files into that folder; your OneDrive or Google Drive app uploads them.
 
-- A backup is a copy of the already encrypted vault. Its name starts with `Bloxkeep-backup-` and includes the date and time.
-- Bloxkeep makes one after a change (at most every 10 minutes), on lock and quit if something changed, and right away after you change the master password or pick a new folder. **Back up now** makes one on the spot.
-- It keeps the newest 10 backups plus the newest one from each of the last 30 days, and removes the rest. It only prunes this vault's own backups, so two PCs sharing one folder don't delete each other's.
-- If your master password is weak (under 8 characters, or only lowercase letters and digits) and the folder is a cloud folder, Bloxkeep warns you.
+- A backup is a copy of the encrypted vault, named `Bloxkeep-backup-` plus the date and time.
+- It backs up after every change (at most every 10 minutes), when you lock or quit if something changed, and right after you change the master password or pick a new folder. **Back up now** backs up at once.
+- It keeps the 10 newest, plus the newest of each day for the last 30 days. The backup just made is never cleaned up, even after the PC clock is set back. Bloxkeep only cleans up backups of its own vault, so two PCs sharing a folder never delete each other's.
+- If the master password is easy to guess and the folder is a cloud folder, the app suggests a longer one.
 
-To restore, use **Restore…** in **Settings › Backup**, or **Restore from a backup** on the first-run screen. Your current data is first kept as `vault-before-restore-….rmv`. Bloxkeep then locks; unlock it with the password the backup was saved with.
+**Restore**: click **Restore…** in **Settings › Backup & data**, or **Restore from a backup** on the first screen of a new PC. Your current data is kept as `vault-before-restore-….rmv`, then the app locks; unlock it with the password the backup was saved with.
 
-Moving to a new PC: install Bloxkeep, choose **Restore from a backup** on the first screen, pick the latest backup file, and enter the master password it was saved with.
+**Moving to a new PC**: install Bloxkeep, click **Restore from a backup**, pick the newest backup and enter the password it was saved with. To merge the accounts of two PCs instead of replacing them, use **Import…** (see [Bringing accounts over](#bringing-accounts-over)).
 
-<img src="docs/screenshots/settings-backup.png" width="700" alt="Backup section in Settings, backing up to a OneDrive folder">
+<img src="docs/screenshots/settings-backup.png" width="800" alt="The Backup & data page in Settings, backing up to a OneDrive folder">
 
 ## Known limits and testing status
 
-- Roblox's online status lags. After you leave a game, Roblox can still report the account as playing for a few minutes. Bloxkeep corrects this for windows that ran on this PC, but status from other devices can still lag.
+- Roblox's online status lags: after you leave a game, Roblox can still report "playing" for a few minutes.
 - The Microsoft Store version of Roblox can't be used.
 - Roblox VNG accounts can be added, but games can't be opened for them yet.
-- Multi-Roblox needs Bloxkeep to start before Roblox and stay open. If any Roblox was open first (including the tray copy that starts with Windows), the light stays yellow until every Roblox window is closed. Roblox doesn't officially support several clients.
-- With a per-app (split-tunnel) VPN, if Roblox goes through the VPN and Bloxkeep doesn't, opening a game can fail with 403 "An error was encountered during authentication". See the [FAQ](#faq).
-- Server ping is the players' average, not yours. Friends' servers only show if their privacy settings allow it.
-- **Save RAM on background windows** can't force Roblox to give memory back; if Roblox refuses, that window is skipped.
-- The files are unsigned, so SmartScreen warns on first run.
-- A forgotten master password means the saved accounts can't be recovered.
-- Automatic updates only work while this GitHub repository is public.
+- Multi-Roblox: Bloxkeep has to be open before Roblox and stay open while you play. If Roblox (including one in the tray) opened first, the light stays yellow until every Roblox is closed. Roblox doesn't officially support several clients, and a later Roblox build may change how it blocks them.
+- Per-app VPNs: if Roblox goes through a VPN and Bloxkeep doesn't, opening a game can fail with error 403. See the [FAQ](#faq).
+- A server's ping is its players' average, not yours. Friends' servers, and the server of a player you look up, only show when their privacy settings allow it.
+- Saving RAM: Roblox may not give RAM back.
+- The files aren't code-signed, so SmartScreen warns the first time. Updating itself only works while the GitHub repository is public.
+- A forgotten master password can't be recovered.
 
-Tested with 2 real accounts on Windows 11 with Roblox 0.742, in October 2026: password sign-in with the proof-of-work check and the press-and-hold captcha, joining a game, 2 accounts in the same server with Multi-Roblox, and 2 separate home screens.
+Tried with real accounts on Windows 11 (Roblox 0.742 and 0.743, October 2026): password sign-in through the proof-of-work step and HUMAN's press-and-hold captcha, joining a game, 5 accounts in one game with Multi-Roblox on Roblox's October 2026 build, several separate home screens.
 
-Not tested with real accounts yet:
+**Not tried with real accounts yet:**
 
-- Auto-rejoin over long sessions.
-- The last step of **Use your phone** sign-in, 2-step verification, and the rotate-image (Arkose) captcha.
-- Running on Windows 10.
+- Auto-rejoin and **Restart Roblox** over many hours.
+- Scheduled presets, sending to Discord, **Light AFK**, **Small tiles**.
+- The 2FA code filled in at sign-in, the **Banned** tag on an actually banned account, **Join a player…** with a real player.
+- The last step of **Sign in with your phone**, 2-step verification, and the rotating-picture captcha (Arkose).
+- Windows 10.
 
-If something fails, please [open an issue](../../issues) with the error text.
+If something breaks, please [open an issue](../../issues) with the error.
 
 ## FAQ
 
 <details>
-<summary>Can my account get banned for using Bloxkeep?</summary>
+<summary>Will my account get banned?</summary>
 
-There's no guarantee either way. Roblox doesn't officially support running several clients; use Multi-Roblox at your own risk. Bloxkeep signs in and launches games the same way roblox.com does, and it doesn't read or change Roblox's memory. Some games also forbid alt accounts in their own rules.
+No one can promise that. Roblox doesn't officially support running several clients, so using Multi-Roblox is at your own risk. Bloxkeep signs in and opens games the same way roblox.com does, and doesn't touch the game's memory. Some games forbid alt accounts; check the rules of the game you play.
 </details>
 
 <details>
-<summary>Is this a virus? Why does Windows or my antivirus warn about it?</summary>
+<summary>Is this a virus? Why do Windows or antivirus apps warn?</summary>
 
-No. The exe isn't code-signed, and Windows SmartScreen warns about unsigned programs. You can compare the SHA-256 hash with `SHA256SUMS.txt` from the release, read the source, or [build it yourself](#build-from-source).
+No. The files aren't code-signed yet, so SmartScreen and some antivirus apps warn about new files. You can compare the SHA-256 with `SHA256SUMS.txt`, read the source in this repository, or [build it yourself](#build-from-source).
 </details>
 
 <details>
 <summary>I forgot my master password.</summary>
 
-The saved accounts can't be recovered. Close Bloxkeep, delete `vault.rmv` and `vault.rmv.bak` from `%LOCALAPPDATA%\Bloxkeep` (or from `data\` in the portable build), start Bloxkeep, set a new master password and add your accounts again. If you have a backup whose password you remember, restore that instead.
+It can't be recovered; it isn't stored anywhere. You can delete `vault.rmv` and `vault.rmv.bak` in `%LOCALAPPDATA%\Bloxkeep` (losing every saved account) and start over, or restore a backup whose password you remember.
 </details>
 
 <details>
 <summary>How do I move to a new PC?</summary>
 
-Install Bloxkeep on the new PC, choose **Restore from a backup** on the first screen, pick the latest backup file and enter the password it was saved with. This needs backups turned on beforehand; see [Backup and restore](#backup-and-restore).
+Turn on backups to a OneDrive or Google Drive folder on the old PC. On the new one, install Bloxkeep, click **Restore from a backup** and enter the password the backup was saved with. See [Backup and restore](#backup-and-restore).
 </details>
 
 <details>
 <summary>The Multi-Roblox light is yellow.</summary>
 
-A Roblox window was open before Multi-Roblox could take over. Close every Roblox, including the one in the system tray. If Roblox starts with Windows, click **Turn off autostart**. The light turns green by itself. Next time, start Bloxkeep before Roblox.
+A Roblox was open before Bloxkeep. Close every Roblox, including one in the system tray. If Roblox starts with Windows, click **Turn off autostart** in the help dialog. The light turns green. Next time, open Bloxkeep before Roblox.
 </details>
 
 <details>
-<summary>Bloxstrap / Fishstrap: do my mods still work?</summary>
+<summary>Some Roblox windows open fullscreen and some don't.</summary>
 
-Yes, when **Settings › Open Roblox with** is set to Bloxstrap, Fishstrap, or a **Default** that points to one of them. If the launcher blocks a second Roblox window, try **RobloxPlayerBeta directly (skip launchers)**.
+All Roblox windows share one fullscreen setting, so with several open they easily end up different. Keep **Always open Roblox windowed** on in Multi-Roblox's **Details** (it's on by default): every window opens windowed, and your setting is put back afterwards. To lay them out neatly, use **Arranging windows**.
 </details>
 
 <details>
-<summary>The status still says "playing" after I left the game.</summary>
+<summary>Do my Bloxstrap / Fishstrap mods still work?</summary>
 
-Roblox's own online status lags by a few minutes. Bloxkeep corrects it for windows that ran on this PC; for other devices, wait a few minutes.
+Yes, if you choose **Bloxstrap** or **Fishstrap** in **Open Roblox with**. If the launcher blocks several windows, choose **RobloxPlayerBeta directly (skip launchers)**; Roblox then opens without the launcher.
+</details>
+
+<details>
+<summary>I left the game but it still says "playing".</summary>
+
+Roblox's status lags, sometimes by a few minutes. For windows on this PC Bloxkeep ignores the stale report; status from other devices can still lag.
 </details>
 
 <details>
 <summary>Opening a game fails with 403 "An error was encountered during authentication".</summary>
 
-This usually means a per-app (split-tunnel) VPN sends Roblox through the VPN but not Bloxkeep. The launch ticket Bloxkeep gets is tied to the IP address that requested it, so put Bloxkeep on the same route as Roblox.
+Usually a per-app VPN: Roblox goes through it and Bloxkeep doesn't. A join ticket is tied to the IP address that asked for it, so let Bloxkeep take the same route as Roblox.
 </details>
 
 <details>
@@ -353,32 +379,32 @@ Partly. Password sign-in and phone sign-in go through Roblox's API hosts, not ww
 </details>
 
 <details>
-<summary>Does Bloxkeep send my password or cookie anywhere?</summary>
+<summary>Does Bloxkeep send my password or cookies anywhere?</summary>
 
-Only to Roblox. A password you sign in with goes only to `auth.roblox.com/v2/login`, and each account's cookie is only sent to Roblox's own hosts (Roblox VNG's, for VNG accounts). Update checks to GitHub carry no account data. The full list is under [Data and security](#data-and-security).
+Only to Roblox. A password you sign in with only goes to Roblox's sign-in server, and each account's cookie is only sent to Roblox's own hosts (Roblox VNG's, for VNG accounts). Update checks to GitHub carry no account data. The full list is under [Data and security](#data-and-security).
 </details>
 
 <details>
 <summary>Why isn't the Microsoft Store version of Roblox supported?</summary>
 
-It signs itself in, so Bloxkeep can't make it open a chosen account. Install Roblox from roblox.com; Bloxkeep finds it automatically.
+The Store version can't open the account you choose, so Bloxkeep can't use it. Install Roblox from roblox.com (Bloxstrap or Fishstrap on top is fine).
 </details>
 
 <details>
-<summary>How do I remove everything?</summary>
+<summary>How do I remove Bloxkeep completely?</summary>
 
-Uninstall Bloxkeep in Windows **Settings › Apps**, then delete `%LOCALAPPDATA%\Bloxkeep`. For the portable build, delete the folder you unzipped, including `data\`. Backup files in your backup folder stay until you delete them.
+Uninstall it in Windows **Settings › Apps**, then delete the `%LOCALAPPDATA%\Bloxkeep` folder. For the portable copy, delete the app's folder (with its `data`).
 </details>
 
 ## Build from source
 
-You need Windows and the .NET 10 SDK. The app is C# (.NET 10, WinForms) with an HTML/CSS/JS interface running in WebView2. The packaging tool, [Velopack](https://velopack.io) (`vpk`), is a local dotnet tool listed in `dotnet-tools.json` and restored by the build script.
+You need Windows and the **.NET 10 SDK**. The app is a C# core (.NET 10, WinForms) with an HTML/CSS/JS interface in WebView2. The [Velopack](https://velopack.io) packager (`vpk`) is pinned in `dotnet-tools.json` and the scripts fetch it.
 
 ```bat
 build.bat 1.0.1
 ```
 
-This builds into `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, the update packages (`*.nupkg`, `releases.win.json`) and `SHA256SUMS.txt`. An optional second argument is the GitHub repository URL the build checks for updates. It defaults to this repository; pass your own when you build a fork.
+The output goes to `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, the update packages and `SHA256SUMS.txt`. A second argument is the GitHub repository the build looks for updates in (this one by default); pass another when you build a fork.
 
 ```bat
 release.bat 1.0.1 https://github.com/minhhoang0122/bloxkeep
@@ -386,21 +412,24 @@ release.bat 1.0.1 https://github.com/minhhoang0122/bloxkeep
 
 This uploads the build to GitHub Releases and needs a `GITHUB_TOKEN` environment variable with write access to releases. Each version needs its notes, in English and Vietnamese, in `RobloxManager\whatsnew.json`; they show in the app after an update and become the release notes. To test updates before publishing, set `BLOXKEEP_UPDATE_SOURCE` to a local folder of release files.
 
-To preview the interface without building, serve the repository root with any static web server (for example `python -m http.server 5178`) and open `http://127.0.0.1:5178/dev/preview.html`. It uses fake data from `dev/mock.js`.
+**Try the interface without building**: serve the repository root with any static web server (for example `python -m http.server 5178`) and open `http://127.0.0.1:5178/dev/preview.html`. It runs on the made-up data in `dev/mock.js`.
 
 ```
-RobloxManager/             source code
-  wwwroot/                 interface (embedded in the exe); EN/VI strings in i18n.js
-  AppController.cs         handles interface commands, launches games, watches processes, auto-rejoin
+RobloxManager/             C# source
+  wwwroot/                 the interface (embedded in the exe); EN/VI strings in i18n.js
+  AppController*.cs        commands from the interface, launching, process tracking, auto-rejoin, presets,
+                           schedules, Discord, statistics, backups (one file per part)
   RobloxApi.cs             Roblox API calls (sign-in, status, games, servers)
   RobloxLauncher.cs        opens Roblox through the chosen launcher
   RobloxLogWatcher.cs      reads Roblox's logs to see joins and kicks
+  RobloxGameSettings.cs    writes Roblox settings before opening an account, then puts yours back
   MultiInstance.cs         Multi-Roblox
-  Vault.cs                 encrypted vault
-  AppUpdater.cs            automatic updates (Velopack)
+  MonitorTab.cs            the Game monitor tab
+  Vault.cs                 the encrypted vault
+  AppUpdater.cs            self-update (Velopack)
   whatsnew.json            notes for each version
-Installer/                 installer splash image
-dev/                       interface preview with fake data (not shipped)
+Installer/                 the installer's splash image
+dev/                       interface preview with made-up data (not packaged)
 docs/screenshots/          screenshots
 ```
 
@@ -408,4 +437,4 @@ docs/screenshots/          screenshots
 
 [MIT](LICENSE) © 2026 minhhoang0122
 
-*Bloxkeep is an independent project. It is not affiliated with, endorsed by, or sponsored by Roblox Corporation. Roblox is a trademark of Roblox Corporation.*
+*Bloxkeep is an independent project. It is not affiliated with, endorsed or sponsored by Roblox Corporation. Roblox is a trademark of Roblox Corporation.*
