@@ -8,11 +8,13 @@ namespace RobloxManager;
 /// </summary>
 public sealed partial class AppController
 {
-    /// <param name="NeedsConfirm">Nothing was opened yet: <paramref name="Message"/> asks whether to open anyway.</param>
+    /// <param name="NeedsConfirm">Nothing was opened yet: <paramref name="Message"/> says what to look at before opening anyway.</param>
     /// <param name="Notice">Something the person should know that isn't an error (no server had room).</param>
     /// <param name="Skipped">Accounts left as they were because they were already open where asked.</param>
+    /// <param name="Asks">With NeedsConfirm, the kinds of warning in the message ("switch", "multiOff", "multiNotReady",
+    /// "watch", "memory"): the page offers the fix that goes with one, and "Don't ask again" only for skippable ones.</param>
     sealed record LaunchResult(bool NeedsConfirm = false, string? Message = null, int Launched = 0, List<string>? Errors = null,
-        bool Cancelled = false, string? Notice = null, List<string>? Skipped = null);
+        bool Cancelled = false, string? Notice = null, List<string>? Skipped = null, List<string>? Asks = null);
 
     const int MaxPresets = 50;
     const int MaxPresetName = 60;

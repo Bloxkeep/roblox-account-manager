@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace RobloxManager;
@@ -134,6 +135,8 @@ public static class RobloxInstalls
     /// <summary>Which install a client belongs to: Roblox's own, a known launcher's, or the folder its Versions folder is in.</summary>
     public static string SourceOf(string exe)
     {
+        if (IsStoreClient(exe))
+            return "Microsoft Store";
         string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
         if (Under(exe, Path.Combine(Local, "Roblox")) || Under(exe, Path.Combine(programFiles, "Roblox")))
             return "Roblox";
@@ -159,6 +162,7 @@ public static class RobloxInstalls
             "custom" => (File.Exists(customLauncher) ? Newest(ClientsIn(Path.GetDirectoryName(customLauncher))) : null) ?? FindAnyClient(),
             "roblox" => FindOfficialClient(),
             "direct" => FindAnyClient(),
+            "store" => FindStoreClient(),
             // Whatever opens roblox-player: links: the client itself, or a bootstrapper with its own copies.
             _ => ProtocolHandlerPath() is { } handler && File.Exists(handler)
                 ? Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase)
@@ -180,6 +184,9 @@ public static class RobloxInstalls
             string version = string.Join('.', (info.FileVersion ?? "").Split(',', '.').Select(part => part.Trim()).Where(part => part.Length > 0));
             if (version.Length == 0)
                 version = $"{info.FileMajorPart}.{info.FileMinorPart}.{info.FileBuildPart}.{info.FilePrivatePart}";
+            // The Store's package folder isn't one of Roblox's build ids: no build to note (Settings › Roblox updates).
+            if (IsStoreClient(exe))
+                return new ClientVersion(StoreVersion(version), "", SourceOf(exe), exe);
             return new ClientVersion(version, Path.GetFileName(Path.GetDirectoryName(exe)) ?? "", SourceOf(exe), exe);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -189,19 +196,70 @@ public static class RobloxInstalls
     }
 
     /// <summary>
-    /// The Microsoft Store edition signs in by itself and cannot be started as a chosen account
-    /// or in several windows, so it is only reported, never used.
+    /// Roblox from the Microsoft Store (since September 2025 built with Microsoft's game kit; it replaced the old
+    /// ROBLOXCORPORATION.ROBLOX app). Its Start menu entry runs Microsoft's GameLaunchHelper.exe, which only brings an open
+    /// Roblox forward, so Bloxkeep starts its RobloxPlayerBeta.exe inside the package (RobloxLauncher, "store").
     /// </summary>
-    public static bool StoreEditionInstalled()
+    public const string StoreFamily = "ROBLOXCorporation.RobloxGDK_55nm5eh3cm0pr";
+    public const string StoreAppId = "Game";
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    static extern int GetPackagesByPackageFamily(string packageFamilyName, ref uint count, IntPtr packageFullNames, ref uint bufferLength, IntPtr buffer);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    static extern int GetPackagePathByFullName(string packageFullName, ref uint pathLength, [Out] char[]? path);
+    const int ErrorInsufficientBuffer = 122;
+
+    /// <summary>The Microsoft Store edition's RobloxPlayerBeta.exe, or null when it isn't installed for this user.</summary>
+    public static string? FindStoreClient()
     {
+        IntPtr names = IntPtr.Zero, buffer = IntPtr.Zero;
         try
         {
-            string packages = Path.Combine(Local, "Packages");
-            return Directory.Exists(packages) && Directory.EnumerateDirectories(packages, "ROBLOXCORPORATION.ROBLOX_*").Any();
+            uint count = 0, length = 0;
+            if (GetPackagesByPackageFamily(StoreFamily, ref count, IntPtr.Zero, ref length, IntPtr.Zero) != ErrorInsufficientBuffer || count == 0)
+                return null;
+            names = Marshal.AllocHGlobal((int)count * IntPtr.Size);
+            buffer = Marshal.AllocHGlobal((int)length * sizeof(char));
+            if (GetPackagesByPackageFamily(StoreFamily, ref count, names, ref length, buffer) != 0 || count == 0)
+                return null;
+            string? fullName = Marshal.PtrToStringUni(Marshal.ReadIntPtr(names));
+            if (string.IsNullOrEmpty(fullName))
+                return null;
+            uint size = 0;
+            if (GetPackagePathByFullName(fullName, ref size, null) != ErrorInsufficientBuffer || size == 0)
+                return null;
+            var path = new char[size];
+            if (GetPackagePathByFullName(fullName, ref size, path) != 0)
+                return null;
+            string exe = Path.Combine(new string(path, 0, (int)size - 1), "RobloxPlayerBeta.exe");
+            return File.Exists(exe) ? exe : null;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is EntryPointNotFoundException or DllNotFoundException or IOException or UnauthorizedAccessException)
         {
-            return false;
+            return null;
         }
+        finally
+        {
+            Marshal.FreeHGlobal(names);
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public static bool StoreEditionInstalled() => FindStoreClient() is not null;
+
+    /// <summary>A client in the Store edition's package folder (…\WindowsApps\ROBLOXCorporation.RobloxGDK_…).</summary>
+    public static bool IsStoreClient(string exe) =>
+        Path.GetFileName(Path.GetDirectoryName(exe) ?? "").StartsWith(StoreFamily.Split('_')[0] + "_", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The Store client's version in Roblox's own form: the package numbers it 2.743.0.1134 where the website's client
+    /// is 0.743.0.7431134, so it compares with what Roblox serves.
+    /// </summary>
+    static string StoreVersion(string version)
+    {
+        var parts = version.Split('.');
+        return parts.Length == 4 && parts[0] == "2" && int.TryParse(parts[1], out _) && int.TryParse(parts[3], out int build)
+            ? $"0.{parts[1]}.0.{parts[1]}{build:0000}"
+            : version;
     }
 }

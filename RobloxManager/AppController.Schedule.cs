@@ -263,8 +263,8 @@ public sealed partial class AppController
             LaunchResult result;
             try
             {
-                // "Open anyway" answered for good: the warning doesn't stop a scheduled run either.
-                result = await StartPresetAsync(preset.Id, force: Prefs.SkipConfirm.Contains("openAnyway"));
+                // A warning answered "Don't ask again" is left out by the launch itself, so it doesn't stop this run either.
+                result = await StartPresetAsync(preset.Id, force: false);
             }
             catch (Exception ex) when (ex is UserError or RobloxApiException || RobloxApi.IsExpectedError(ex))
             {
@@ -274,7 +274,7 @@ public sealed partial class AppController
             if (result.NeedsConfirm)
             {
                 // The question Play would ask (Multi-Roblox not ready, low RAM) isn't answered for the person.
-                string why = (result.Message ?? "").Replace("\n\n" + L.T("Open anyway?"), "").Replace("\n\n", " ");
+                string why = (result.Message ?? "").Replace("\n\n", " ");
                 Notify(L.F("Scheduled preset {0} didn't run: {1}", name, why), "warn", "scheduleFail", preset.Id);
                 return;
             }

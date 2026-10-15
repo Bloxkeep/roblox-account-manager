@@ -9,7 +9,7 @@ public static class RobloxLauncher
     /// Values of <see cref="AppSettings.LaunchVia"/>, plus "other:&lt;Name&gt;" for another Bloxstrap-style launcher found on
     /// this PC and "custom" for one the user picked (<see cref="AppSettings.CustomLauncher"/>).
     /// </summary>
-    public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct", "custom"];
+    public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct", "store", "custom"];
 
     const string OtherPrefix = "other:";
 
@@ -88,10 +88,16 @@ public static class RobloxLauncher
                 Start(RobloxInstalls.FindAnyClient()
                       ?? throw new FileNotFoundException(L.T("RobloxPlayerBeta.exe was not found. Pick another option under Settings › Open Roblox with, or reinstall Roblox.")), uri);
                 break;
+            case "store":
+                StartInStorePackage(RobloxInstalls.FindStoreClient()
+                                    ?? throw new FileNotFoundException(L.T("Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Open Roblox with.")), uri);
+                break;
             default:
                 // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
                 if (!IsProtocolRegistered())
-                    throw new FileNotFoundException(L.T("Roblox is not installed (the roblox-player protocol is missing)."));
+                    throw new FileNotFoundException(RobloxInstalls.StoreEditionInstalled()
+                        ? L.T("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Open Roblox with, or install Roblox from roblox.com/download.")
+                        : L.T("Roblox isn't installed. Install it from roblox.com/download, then try again."));
                 // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
                 Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true, WorkingDirectory = Path.GetTempPath() })?.Dispose();
                 break;
@@ -104,5 +110,42 @@ public static class RobloxLauncher
         foreach (var arg in args)
             psi.ArgumentList.Add(arg);
         Process.Start(psi)?.Dispose();
+    }
+
+    /// <summary>
+    /// Roblox from the Microsoft Store, given the link like the other clients. Started from its Start menu entry (or its
+    /// roblox: links), Microsoft's GameLaunchHelper only brings an open Roblox forward; started inside its package with
+    /// Windows' Invoke-CommandInDesktopPackage, the client keeps the package's sign-in and files and opens a window of
+    /// its own (seen 2026-10-16, Store Roblox 2.743).
+    /// </summary>
+    /// <summary>The ticket in a launch link, and any long token-like run (a wrapped line may cut "gameinfo:" off).</summary>
+    static readonly System.Text.RegularExpressions.Regex TicketText = new(@"gameinfo:[^+\s'""]*|[A-Za-z0-9_\-]{40,}", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    static void StartInStorePackage(string exe, string uri)
+    {
+        static string Quote(string s) => "'" + s.Replace("'", "''") + "'";
+        var psi = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"))
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardError = true,
+            WorkingDirectory = Path.GetTempPath(),
+        };
+        foreach (var arg in new[] { "-NoProfile", "-NonInteractive", "-Command",
+                     $"Invoke-CommandInDesktopPackage -PackageFamilyName {Quote(RobloxInstalls.StoreFamily)} -AppId {Quote(RobloxInstalls.StoreAppId)} -Command {Quote(exe)} -Args {Quote(uri)}" })
+            psi.ArgumentList.Add(arg);
+        var shell = Process.Start(psi) ?? throw new FileNotFoundException(L.T("Couldn't start Roblox from the Microsoft Store."));
+        // Not waited for (a second or two): a failure goes to the log, and the window that doesn't come is reported as usual.
+        var error = new System.Text.StringBuilder();
+        shell.ErrorDataReceived += (_, e) => { if (e.Data is { Length: > 0 } line && error.Length < 2000) error.AppendLine(line); };
+        shell.EnableRaisingEvents = true;
+        shell.Exited += (_, _) =>
+        {
+            // PowerShell's error repeats the command, sign-in ticket included: that part never reaches the log.
+            if (shell.ExitCode != 0 || error.Length > 0)
+                Log.Note($"Store Roblox start: exit {shell.ExitCode} {TicketText.Replace(error.ToString().Trim(), "<hidden>")}");
+            shell.Dispose();
+        };
+        shell.BeginErrorReadLine();
     }
 }

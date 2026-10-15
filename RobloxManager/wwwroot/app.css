@@ -1386,6 +1386,9 @@ b, strong { font-weight: 650; }
 .lock-card .logo-img { width: 72px; height: 72px; }
 .lock-card h2 { font: 650 24px/1.2 var(--font-display); margin: 18px 0 8px; letter-spacing: -.01em; }
 .lock-card p { margin: 0 0 22px; color: var(--muted); }
+/* Locked while in use: the line before the box says what waits for the unlock. */
+.lock-card p:has(+ .lock-paused) { margin-bottom: 8px; }
+.lock-card .lock-paused { font-size: 12.5px; line-height: 1.45; }
 .lock-card .field { width: 100%; height: 46px; font-size: 15px; }
 .lock-card .stack { display: grid; gap: 10px; text-align: left; }
 .lock-error { min-height: 20px; margin: 10px 0 8px; color: var(--bad-ink); font-size: 13px; overflow-wrap: anywhere; }
@@ -1767,6 +1770,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .empty h2 { margin: 0 0 6px; font: 650 18px var(--font-display); }
 .empty p { margin: 0 0 20px; color: var(--muted); max-width: 440px; }
 .empty .row { display: flex; gap: 10px; justify-content: center; }
+/* No accounts yet: no dock (nothing to play, and it would cover the sign-in choices in a small window). */
+#view-accounts.no-accounts .dock { display: none; }
 
 /* ───────── launch dock ───────── */
 .dock {
@@ -1809,7 +1814,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .dock-inputs { display: flex; gap: 8px; }
 .inwrap { position: relative; display: flex; align-items: center; }
 .inwrap.grow { flex: 1; min-width: 0; }
-.inwrap.job { flex: 0 1 250px; min-width: 150px; }
+/* The game box gets the room (it shows a game's name or a link); the optional Job ID box stays small. */
+.inwrap.job { flex: 0 1 200px; min-width: 120px; }
 /* "Join a player…", beside the Job ID box: drawn like the boxes, since it is another way to say where to go. */
 .dock-join { flex: none; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; border-radius: 11px; border: 1px solid var(--line-field); background: var(--field); color: var(--muted); transition: border-color .15s, color .15s; }
 .dock-join:hover:not(:disabled) { color: var(--text); border-color: var(--focus-line); }
@@ -2552,7 +2558,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .search { flex: 1; width: auto; }
   .dock { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
   .game-thumb { display: none; }
-  .inwrap.job { flex-basis: 170px; }
+  .inwrap.job { flex-basis: 140px; }
   .pw-form { grid-template-columns: 1fr 1fr; }
 }
 /* Too narrow for one row: the game inputs on top, the buttons under them. */

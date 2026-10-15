@@ -63,11 +63,23 @@ public sealed partial class AppController
     }
 
     /// <summary>
-    /// The questions that offer "Don't ask again": ones asked often whose yes can be undone (a preset deleted, windows
-    /// closed, a launch despite a warning, Multi-Roblox switched on, a form's typing left). Deleting accounts, restoring
-    /// a backup and removing the Discord link always ask.
+    /// The launch warnings that offer "Don't ask again", each on its own: Multi-Roblox off (someone who switches accounts
+    /// one at a time on purpose), the Roblox watch's warning and low RAM. Accounts being moved out of what they're
+    /// playing, and Multi-Roblox turned on but not working, are always asked. A skipped one doesn't hold back a
+    /// scheduled preset either.
     /// </summary>
-    static readonly string[] SkippableConfirms = ["deletePreset", "closeAll", "killAll", "openAnyway", "multi", "discard"];
+    static readonly string[] SkippableLaunchWarnings = ["multiOff", "watch", "memory"];
+
+    static string LaunchWarningKey(string kind) => "launch." + kind;
+
+    /// <summary>
+    /// The questions that offer "Don't ask again": ones asked often whose yes can be undone (a preset deleted, windows
+    /// closed, a launch despite one kind of warning, Multi-Roblox switched on, a form's typing left, the app locked).
+    /// Deleting accounts, restoring a backup and removing the Discord link always ask. (Before 1.1.0 one "openAnyway"
+    /// answered every launch warning at once; it is no longer read, so those are asked again.)
+    /// </summary>
+    static readonly string[] SkippableConfirms = ["deletePreset", "closeAll", "killAll", "multi", "discard", "lock",
+        .. SkippableLaunchWarnings.Select(LaunchWarningKey)];
 
     /// <summary>A question answered "Don't ask again": from now on its yes is assumed.</summary>
     public object? SkipConfirm(string key)
@@ -81,6 +93,19 @@ public sealed partial class AppController
         }
         return null;
     }
+
+    /// <summary>Settings › Notifications › Ask again: every "Don't ask again" is forgotten. Returns how many there were.</summary>
+    object ResetSkipConfirm()
+    {
+        int n = SkippedConfirms().Length;
+        Prefs.SkipConfirm.Clear();
+        Prefs.Save();
+        PushState();
+        return n;
+    }
+
+    /// <summary>The questions answered "Don't ask again" that are still in use (an old key from an earlier version isn't).</summary>
+    static string[] SkippedConfirms() => Prefs.SkipConfirm.Where(SkippableConfirms.Contains).Order(StringComparer.Ordinal).ToArray();
 
     /// <summary>{enabled} for the switch over all of them; {kind, enabled} for one kind.</summary>
     object? SetNotifications(JsonElement a)

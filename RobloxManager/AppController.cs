@@ -357,6 +357,7 @@ public sealed partial class AppController : IDisposable
         "setNotifications" => Done(SetNotifications(a)),
         "setDailySignInCheck" => Done(SetDailySignInCheck(Bool(a, "enabled"))),
         "skipConfirm" => Done(SkipConfirm(Str(a, "key"))),
+        "resetSkipConfirm" => Done(ResetSkipConfirm()),
         "toggleMini" => Done(ToggleMini()),
         "window" => Done(ControlWindow(Str(a, "action"))),
         "setBackup" => Done(SetBackup(a)),
@@ -484,7 +485,7 @@ public sealed partial class AppController : IDisposable
         notifications = Prefs.Notifications,
         notifyOff = Prefs.NotifyOff.Where(NotifyKinds.Contains).Order().ToArray(),
         dailySignInCheck = Prefs.DailySignInCheck,
-        skipConfirm = Prefs.SkipConfirm.Order(StringComparer.Ordinal).ToArray(),
+        skipConfirm = SkippedConfirms(),
         lastSignInCheck = Prefs.LastSignInCheck, // shown next to the switch, like the update check's time
         miniOpen = Prefs.MiniOpen,
         backup = BackupDto(),
@@ -552,7 +553,8 @@ public sealed partial class AppController : IDisposable
             Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")));
         // Roblox (or its launcher) put a new build in place since the last look — or an older one (a launcher set to a
         // version, an older copy chosen), which isn't an update.
-        if (before is not null && _installs.Client is { } now && now.Folder != before)
+        // (The Store edition has no build folder: switching to or from it says nothing.)
+        if (before is { Length: > 0 } && _installs.Client is { Folder.Length: > 0 } now && now.Folder != before)
         {
             bool older = Version.TryParse(now.Version, out var have) && Version.TryParse(beforeVersion, out var had) && have < had;
             string updated = older ? L.F("Roblox went back to version {0}.", now.Version) : L.F("Roblox updated to {0}.", now.Version);
@@ -2430,7 +2432,8 @@ public sealed partial class AppController : IDisposable
         }
 
         var s = vault.Data.Settings;
-        var warnings = new List<string>();
+        // [kind, text]: the kinds in SkippableLaunchWarnings can be answered "Don't ask again" one by one.
+        var warnings = new List<(string Kind, string Text)>();
         var switching = new List<Account>();
         var errors = leftOutText;
         // Accounts left as they were (already open where asked): not failures.
@@ -2464,7 +2467,7 @@ public sealed partial class AppController : IDisposable
                 // "Open Roblox" (home screen): clients in a game go back to the home screen; ones already there stay.
                 switching = accounts.Where(acc => _running.TryGetValue(acc.Id, out var run) && InGameHere(run)).ToList();
                 if (switching.Count > 0)
-                    warnings.Add(L.F("{0} will leave the game and go to the Roblox home screen.", Names(switching)));
+                    warnings.Add(("switch", L.F("{0} will leave the game and go to the Roblox home screen.", Names(switching))));
             }
             else if (accounts.Any(acc => _running.ContainsKey(acc.Id)))
             {
@@ -2472,24 +2475,27 @@ public sealed partial class AppController : IDisposable
                     .Append((target.PlaceId, 0L)).Where(p => p.Item1 > 0).ToList());
                 switching = accounts.Where(acc => _running.TryGetValue(acc.Id, out var run) && NeedsSwitch(run, target)).ToList();
                 if (switching.Count > 0)
-                    warnings.Add(L.F("{0} will leave what they're playing now and open this game instead.",
-                        Names(switching)));
+                    warnings.Add(("switch", L.F("{0} will leave what they're playing now and open this game instead.",
+                        Names(switching))));
             }
             bool robloxOpen = RobloxProcesses.VisibleWindows(players.Select(p => p.Pid)).Values.Any(list => list.Count > 0);
             if ((accounts.Count > 1 || robloxOpen) && !MultiInstance.Armed)
-                warnings.Add(s.MultiInstance ? MultiNotReadyText() : L.T("Multi-Roblox is off, so each new Roblox window closes the previous one."));
+                warnings.Add(s.MultiInstance ? ("multiNotReady", MultiNotReadyText())
+                    : ("multiOff", L.T("Multi-Roblox is off, so each new Roblox window closes the previous one.")));
             else if ((accounts.Count > 1 || robloxOpen) && WatchWarning() is { } watchWarning)
-                warnings.Add(watchWarning);
+                warnings.Add(("watch", watchWarning));
             int toOpen = accounts.Count(acc => !_running.ContainsKey(acc.Id));
             var memory = SystemMemory.Read();
             long perClientMb = players.Count > 0 ? Math.Max(400, (long)players.Average(p => p.WorkingSet) / MB) : DefaultClientMb;
             long neededMb = toOpen * perClientMb;
             if (s.MemoryWarnings && memory.TotalMb > 0 && memory.AvailableMb - neededMb < memory.TotalMb * 8 / 100)
-                warnings.Add(L.P(toOpen, "Only {0} of RAM is free, and {1} more Roblox window needs about {2}. The PC may slow down or Roblox may crash.",
+                warnings.Add(("memory", L.P(toOpen, "Only {0} of RAM is free, and {1} more Roblox window needs about {2}. The PC may slow down or Roblox may crash.",
                     "Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash.",
-                    FormatMb(memory.AvailableMb), toOpen, FormatMb(neededMb)));
+                    FormatMb(memory.AvailableMb), toOpen, FormatMb(neededMb))));
+            warnings.RemoveAll(w => SkippableLaunchWarnings.Contains(w.Kind) && Prefs.SkipConfirm.Contains(LaunchWarningKey(w.Kind)));
             if (warnings.Count > 0 && !force)
-                return new LaunchResult(NeedsConfirm: true, Message: string.Join("\n\n", warnings) + "\n\n" + L.T("Open anyway?"));
+                return new LaunchResult(NeedsConfirm: true, Message: string.Join("\n\n", warnings.Select(w => w.Text)),
+                    Asks: warnings.Select(w => w.Kind).ToList());
 
             started = true;
             PushState();

@@ -170,7 +170,20 @@
     settings.presets[1].name = 'Adopt_Me_trade_with_no_spaces_in_the_name_at_all_so_it_cant_wrap';
     settings.presets[0].gameName = games[2753915549].name; settings.presets[1].gameName = games[920587237].name;
   }
-  let multi = { enabled: true, armed: !params.has('notready'), windowed: true, tile: false, trayAutostart: true };
+  let multi = { enabled: !params.has('multioff'), armed: !params.has('notready') && !params.has('multioff'), windowed: true, tile: false, trayAutostart: true };
+  /**
+   * The app's launch warnings (AppController.LaunchAccountsAsync): Multi-Roblox off or not ready with several accounts,
+   * low RAM with ?lowram; one answered "Don't ask again" (launch.<kind>) is left out, as the app does.
+   */
+  function launchAsks(count, force) {
+    const vi = language === 'vi', asks = [];
+    if (count > 1 && !multi.armed) asks.push(multi.enabled
+      ? ['multiNotReady', vi ? 'Multi-Roblox chưa hoạt động: Roblox đã mở từ trước khi bật Multi-Roblox. Cửa sổ Roblox mới có thể đóng cửa sổ cũ.' : "Multi-Roblox isn't working yet: Roblox was already open before it was turned on. A new Roblox window may close the old one."]
+      : ['multiOff', vi ? 'Multi-Roblox đang tắt nên mỗi lần mở Roblox mới, cửa sổ cũ sẽ bị đóng.' : 'Multi-Roblox is off, so each new Roblox window closes the previous one.']);
+    if (params.has('lowram')) asks.push(['memory', vi ? 'RAM chỉ còn trống 1.2 GB, mà mở thêm 2 cửa sổ Roblox cần khoảng 1.6 GB. Máy có thể bị chậm hoặc Roblox bị văng.' : 'Only 1.2 GB of RAM is free, and 2 more Roblox windows need about 1.6 GB. The PC may slow down or Roblox may crash.']);
+    const left = asks.filter(([k]) => !(['multiOff', 'watch', 'memory'].includes(k) && skipConfirm.includes(`launch.${k}`)));
+    return left.length && !force ? { needsConfirm: true, message: left.map(x => x[1]).join('\n\n'), asks: left.map(x => x[0]) } : null;
+  }
   // Import from another vault file: the made-up file's accounts (display fields only, as the app sends them) and
   // presets. Its master password is "demo"; three wrong ones make each next try wait 10 s, as in the app.
   // ?ivsame=1: the picked file is the vault in use.
@@ -288,6 +301,7 @@
           return null;
         case 'setDailySignInCheck': dailySignInCheck = a.enabled; push(); return null;
         case 'skipConfirm': if (!skipConfirm.includes(a.key)) skipConfirm.push(a.key); push(); return null;
+        case 'resetSkipConfirm': { const n = skipConfirm.length; skipConfirm.length = 0; push(); return n; }
         case 'toggleMini': miniOpen = !miniOpen; push(); return null;
         case 'window': console.log('window', a.action); return null;
         case 'setBackup':
@@ -355,7 +369,7 @@
         case 'setSettings':
           if (a.multiTile) { multi.tile = true; settings.maximizeOnOpen = false; } else if (a.multiTile === false) multi.tile = false;
           if (a.maximizeOnOpen) { settings.maximizeOnOpen = true; multi.tile = false; } else if (a.maximizeOnOpen === false) settings.maximizeOnOpen = false;
-          if ('multiInstance' in a) multi = { ...multi, enabled: a.multiInstance };
+          if ('multiInstance' in a) multi = { ...multi, enabled: a.multiInstance, armed: a.multiInstance && !params.has('notready') };
           // The Multi-Roblox dialog's two switches (kept, so reopening it shows them as left).
           if ('multiWindowed' in a) multi = { ...multi, windowed: !!a.multiWindowed };
           if ('multiTile' in a) multi = { ...multi, tile: !!a.multiTile };
@@ -369,7 +383,7 @@
           const banned = accounts.filter(y => a.ids.includes(y.id) && y.banned).map(y => `${shown(y)} is banned on Roblox, so it wasn't opened.`);
           const ids = a.ids.filter(x => !accounts.find(y => y.id === x)?.banned);
           if (!ids.length && banned.length) throw new Error(banned.join('\n'));
-          if (ids.length > 1 && !multi.armed && !a.force) return { needsConfirm: true, message: language === 'vi' ? 'Multi-Roblox chưa sẵn sàng vì đã có Roblox chạy trước.\n\nVẫn tiếp tục mở?' : "Multi-Roblox isn't ready because Roblox was already running.\n\nOpen anyway?" };
+          { const ask = launchAsks(ids.length, a.force); if (ask) return ask; }
           for (const x of ids) {
             const acc = accounts.find(y => y.id === x);
             if (acc) acc.state = 'launching';
@@ -477,7 +491,7 @@
           if (!p) throw new Error('Preset not found.');
           const ids = p.accountIds.filter(x => accounts.some(y => y.id === x));
           if (!ids.length) throw new Error('This preset has no accounts left.');
-          if (ids.length > 1 && !multi.armed && !a.force) return { needsConfirm: true, message: language === 'vi' ? 'Multi-Roblox chưa sẵn sàng vì đã có Roblox chạy trước.\n\nVẫn tiếp tục mở?' : "Multi-Roblox isn't ready because Roblox was already running.\n\nOpen anyway?" };
+          { const ask = launchAsks(ids.length, a.force); if (ask) return ask; }
           const skipped = ids.filter(x => accounts.find(y => y.id === x).state !== 'idle').map(x => `${accounts.find(y => y.id === x).label}: already running — skipped.`);
           if (!['any', 'job'].includes(p.server) && p.placeInput) {
             emit('progress', { text: language === 'vi' ? 'Đang tìm server…' : 'Finding a server…' });
@@ -648,7 +662,7 @@
         case 'forgetPlayer': settings = { ...settings, recentPlayers: settings.recentPlayers.filter(n => n.toLowerCase() !== String(a.name).toLowerCase()) }; push(); return null;
         case 'joinServer':
           await wait(300);
-          if (a.ids.length > 1 && !multi.armed && !a.force) return { needsConfirm: true, message: 'Multi-Roblox isn’t ready because Roblox was already running.\n\nOpen anyway?' };
+          { const ask = launchAsks(a.ids.length, a.force); if (ask) return ask; }
           return { launched: a.ids.length, errors: [], cancelled: false };
         case 'activity': {
           await wait(150);

@@ -98,7 +98,13 @@ public static class L
             "Không tìm thấy RobloxPlayerBeta.exe. Hãy chọn cách mở khác ở Cài đặt › Mở Roblox bằng, hoặc cài lại Roblox.",
         ["{0} is not installed."] = "Máy chưa cài {0}.",
         ["The official Roblox client is not installed."] = "Máy chưa cài Roblox bản chính thức.",
-        ["Roblox is not installed (the roblox-player protocol is missing)."] = "Máy chưa cài Roblox (không tìm thấy giao thức roblox-player).",
+        ["Roblox isn't installed. Install it from roblox.com/download, then try again."] =
+            "Máy chưa cài Roblox. Hãy cài từ roblox.com/download rồi thử lại.",
+        ["Only Roblox from the Microsoft Store is installed. Choose it under Settings › Open Roblox with, or install Roblox from roblox.com/download."] =
+            "Máy chỉ có Roblox bản Microsoft Store. Hãy chọn nó ở Cài đặt › Mở Roblox bằng, hoặc cài Roblox từ roblox.com/download.",
+        ["Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Open Roblox with."] =
+            "Máy chưa cài Roblox bản Microsoft Store. Hãy chọn cách mở khác ở Cài đặt › Mở Roblox bằng.",
+        ["Couldn't start Roblox from the Microsoft Store."] = "Không mở được Roblox bản Microsoft Store.",
         ["Enter a Place ID or paste a Roblox game link."] = "Hãy nhập Place ID hoặc dán link game Roblox.",
         ["Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link."] =
             "Chỉ hỗ trợ link chia sẻ server riêng (type=Server). Với game thường, hãy dán link dạng roblox.com/games/…",
@@ -216,7 +222,6 @@ public static class L
             "RAM chỉ còn trống {0}, mà mở thêm {1} cửa sổ Roblox cần khoảng {2}. Máy có thể bị chậm hoặc Roblox bị văng.",
         ["Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash."] =
             "RAM chỉ còn trống {0}, mà mở thêm {1} cửa sổ Roblox cần khoảng {2}. Máy có thể bị chậm hoặc Roblox bị văng.",
-        ["Open anyway?"] = "Vẫn mở?",
         ["This file is too large to be an account list."] = "File này quá lớn, không thể là danh sách tài khoản.",
         ["This file is still encrypted. Decrypt it first with RAM's official RAMDecrypt tool, then import the decrypted file."] =
             "File này vẫn còn bị mã hóa. Hãy giải mã bằng công cụ RAMDecrypt chính thức của RAM trước, rồi nhập file đã giải mã.",

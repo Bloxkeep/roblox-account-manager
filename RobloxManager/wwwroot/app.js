@@ -551,6 +551,8 @@
     const form0 = $('#lock-form');
     const kept = form0?.dataset.mode === mode ? { pw1: $('#pw1')?.value || '', pw2: $('#pw2')?.value || '' } : null;
     S.lockMode = mode;
+    // Locked while in use (not at start-up): the lock screen says what waits for the unlock.
+    if (S.shell) S.lockedInUse = true;
     S.shell = false;
     closeMenu();
     closeAllModals();
@@ -563,6 +565,7 @@
         <img class="logo-img" src="${LOGO}" alt="">
         <h2>${t(create ? 'lock.createTitle' : 'lock.unlockTitle')}</h2>
         <p>${t(create ? 'lock.createText' : 'lock.unlockText')}</p>
+        ${!create && S.lockedInUse ? `<p class="lock-paused">${t('lock.paused')}</p>` : ''}
         <div class="stack">
           <div class="pw"><input class="field" type="password" id="pw1" placeholder="${t('lock.pw')}" maxlength="256" aria-label="${t('lock.pw')}">
             <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}" aria-label="${t('lock.showPw')}" aria-pressed="false">${icon('eye')}</button></div>
@@ -630,6 +633,7 @@
   function buildShell() {
     S.shell = true;
     S.lockMode = null;
+    S.lockedInUse = false;
     // Dialogs stay open (the lock screen already closed them): a language change from elsewhere mustn't throw away a
     // form being typed in. They keep their old language until closed.
     $('#app').innerHTML = `<div class="shell">
@@ -825,7 +829,7 @@
     const watched = m.enabled && m.armed && !closed && watchWarns();
     const cls = !m.enabled ? 'off' : m.armed && !closed && !watched ? 'ok' : 'warn';
     const text = t(!m.enabled ? 'multi.off' : closed ? 'multi.closed' : watched ? 'multi.watchWarn' : m.armed ? 'multi.ready' : 'multi.notReady');
-    const tip = closed ? t('multi.closedTip') : watched ? t('multi.watchTip') : text;
+    const tip = closed ? t('multi.closedTip', { page: t('set.p.roblox') }) : watched ? t('multi.watchTip', { page: t('set.p.roblox') }) : text;
     // The light and text open the details; the switch turns it on or off right here.
     setHtml($('#multi-card'), `<div class="multi ${cls}">
         <button class="multi-open" data-act="${closed || watched ? 'ru-open' : 'multi-help'}" title="${t('multi.title')}: ${esc(tip)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div></button>
@@ -874,14 +878,15 @@
     const groups = accountGroups();
     if (S.group && !groups.includes(S.group)) S.group = '';
     const inGroup = S.group ? list.filter(a => a.group === S.group) : list;
+    // Accounts that need something done come right after All: at the end of the row they were cut off in a narrow window.
     const chips = [
       { f: 'all', text: t('chip.all'), n: inGroup.length },
+      { f: 'invalid', text: t('chip.invalid'), n: inGroup.filter(a => a.cookieValid === false).length, dot: 'var(--bad)', hide: !list.some(a => a.cookieValid === false) },
+      { f: 'banned', text: t('chip.banned'), n: inGroup.filter(a => a.banned).length, dot: 'var(--bad)', hide: !list.some(a => a.banned) },
       { f: 'ingame', text: t('chip.ingame'), n: inGroup.filter(inGame).length, dot: 'var(--ok)' },
       { f: 'online', text: t('chip.online'), n: inGroup.filter(isOnline).length, dot: 'var(--online)' },
       { f: 'offline', text: t('chip.offline'), n: inGroup.filter(a => !isOnline(a)).length, dot: 'var(--dim)' },
       { f: 'local', text: t('chip.local'), n: inGroup.filter(isLocal).length, hide: !list.some(isLocal) },
-      { f: 'invalid', text: t('chip.invalid'), n: inGroup.filter(a => a.cookieValid === false).length, dot: 'var(--bad)', hide: !list.some(a => a.cookieValid === false) },
-      { f: 'banned', text: t('chip.banned'), n: inGroup.filter(a => a.banned).length, dot: 'var(--bad)', hide: !list.some(a => a.banned) },
     ].filter(c => !c.hide);
     const groupBtn = $('#group-btn');
     groupBtn.hidden = !groups.length;
@@ -1131,6 +1136,8 @@
     if (!host) return;
     const all = accounts();
     const shown = all.length ? visible() : [];
+    // No accounts yet: nothing to play, and in a small window the dock would cover the sign-in choices.
+    $('#view-accounts').classList.toggle('no-accounts', !all.length);
     if (!shown.length) {
       host._cards = null;
       setHtml(host, all.length
@@ -1469,7 +1476,8 @@
             ${row(t('set.gpu'), t('set.gpuDesc'), sw('s-gpu'))}`)}`)}
         ${page('notify', `
           ${setGroup('notify', '', row(t('set.notify'), t('set.notifyDesc'), sw('s-notify')))}
-          ${setGroup('notify-kinds', t('set.notifyKinds'), `<div class="set-sub" id="s-notify-kinds">${NOTIFY_KINDS.map(k => row(t(`set.notify.${k}`), '', sw(`s-notify-${k}`, t(`set.notify.${k}`)))).join('')}</div>`)}`)}
+          ${setGroup('notify-kinds', t('set.notifyKinds'), `<div class="set-sub" id="s-notify-kinds">${NOTIFY_KINDS.map(k => row(t(`set.notify.${k}`), '', sw(`s-notify-${k}`, t(`set.notify.${k}`)))).join('')}</div>`)}
+          ${setGroup('asks', t('set.g.asks'), row(t('set.asks'), '<span id="s-asks-n"></span>', `<button class="btn sm" data-act="reset-asks" id="s-asks-btn">${t('set.asksBtn')}</button>`))}`)}
         ${page('discord', discordHtml(row, sw))}
         ${page('appearance', setGroup('appearance', '', `
           ${row(t('set.theme'), '<span id="s-theme-name"></span>', '')}
@@ -1962,6 +1970,10 @@
     if (document.activeElement !== $('#s-openas')) $('#s-openas').value = S.app.multi?.tile ? 'tile' : st.maximizeOnOpen ? 'maximize' : 'roblox';
     $('#s-memwarn').checked = st.memoryWarnings;
     $('#s-trim').checked = st.trimBackground;
+    // Questions answered "Don't ask again" (a launch warning, closing all Roblox, locking…): all asked again at once.
+    const skipped = (S.app.skipConfirm || []).length;
+    setText($('#s-asks-n'), skipped ? tn('set.asksN', skipped) : t('set.asksNone'));
+    $('#s-asks-btn').disabled = !skipped;
     $('#s-antiafk').checked = !!st.antiAfk;
     const rc = st.robloxConfig || { mode: 'off', graphics: 0, fps: 0, volume: -1 };
     for (const [key, value] of [['mode', rc.mode], ['graphics', rc.graphics], ['fps', rc.fps], ['volume', rc.volume]]) {
@@ -2011,7 +2023,7 @@
       ...[...new Set([...others, ...(savedOther ? [savedOther] : [])])].map(n => [`other:${esc(n)}`, esc(n), others.includes(n)]),
       ['roblox', t('launch.roblox'), ins.roblox],
       ['direct', t('launch.direct'), ins.direct],
-      ...(ins.store ? [['store', t('launch.storeName'), false, t('launch.storeOpt')]] : []),
+      ...(ins.store || st.launchVia === 'store' ? [['store', t('launch.storeName'), ins.store]] : []),
       ...(st.customLauncher ? [['custom', t('launch.custom', { name: esc(st.customLauncher) }), true]] : []),
     ];
     const select = $('#s-launch');
@@ -2028,7 +2040,9 @@
       : rv.upToDate ? t('rbx.latest') : t('rbx.unknown');
     setHtml($('#s-rbxver'), `<div class="set-row"><div><div class="t">${t('rbx.title')}</div><div class="d">${rvText}</div></div><div class="ctl"><span class="state-pill ${rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'}">${esc(rv.installed || '—')}</span></div></div>`);
     syncRobloxUpdates();
-    setHtml($('#s-store'), ins.store ? `<div class="set-note">${icon('alert')}<span>${t('launch.store')}</span></div>` : '');
+    // The Store edition is new here: said while it is the one chosen, or when it is the only Roblox on the PC.
+    const storeNote = !ins.store ? '' : st.launchVia === 'store' ? t('launch.storeTest') : !ins.direct ? t('launch.storeOnly') : '';
+    setHtml($('#s-store'), storeNote ? `<div class="set-note">${icon('info')}<span>${storeNote}</span></div>` : '');
     syncRejoinAll();
     const delay = $('#s-delay');
     if (document.activeElement !== delay) delay.value = st.launchDelaySeconds;
@@ -2191,6 +2205,7 @@
       ${row(t('rw.title'), `${watchDesc} <button type="button" class="link" data-act="rw-how">${t('rw.how')}</button>`,
         `<span class="state-pill ${word[0]}"${w.version ? ` title="${esc(`Roblox ${w.version}`)}"` : ''}>${esc(word[1])}</span>`)}
       ${nextWord ? row(t('rw.next'), esc(t('rw.nextDesc', { v: w.next.version })), `<span class="state-pill ${nextWord[0]}">${esc(nextWord[1])}</span>`) : ''}
+      ${watchWarns() || c ? `<div class="set-note">${icon('info')}<span>${t(c ? 'rw.todoClosed' : 'rw.todo')} <button type="button" class="link" data-act="rw-check">${t('rw.checkBloxkeep')}</button></span></div>` : ''}
       <div class="ru-head">${t('ru.history')}</div>
       ${items ? `<ul class="ru-list">${items}</ul>` : `<p class="set-hint">${t('ru.none')}</p>`}`);
     // The note went (Hide) with the focus in it: on to the page's next control, not back to the top of the window.
@@ -2683,14 +2698,68 @@
     } finally {
       inFlight.delete('launch');
     }
-    return launchDone(r, () => launch(ids, appOnly, true));
+    return launchDone(r, force => launch(ids, appOnly, force));
   }
 
-  /** What a launch (Play or a preset) did; a warning that needs an answer runs it again with retry(). */
+  /**
+   * Locking keeps the Roblox windows open but pauses what Bloxkeep does for them until it is unlocked (AppController.Lock):
+   * auto-rejoin, scheduled presets and Discord. When any of that is in use, it says so first.
+   */
+  async function lockApp() {
+    const paused = [];
+    const rejoining = accounts().filter(a => (isLocal(a) && rejoinOn(a)) || a.rejoin).length;
+    if (rejoining) paused.push(tn('lockq.rejoin', rejoining));
+    const scheduled = presets().filter(p => p.schedule?.enabled).length;
+    if (scheduled) paused.push(tn('lockq.schedule', scheduled));
+    if (S.app.discord?.enabled && S.app.discord.hasWebhook) paused.push(t('lockq.discord'));
+    if (paused.length && !await confirmBox(`${t('lockq.text')}\n${paused.map(p => `• ${p}`).join('\n')}`,
+      { title: t('lockq.title'), ok: t('side.lock'), remember: 'lock' })) return;
+    return call('lock');
+  }
+
+  /** The launch warnings with their own "Don't ask again" (AppController.SkippableLaunchWarnings). */
+  const SKIPPABLE_ASKS = ['multiOff', 'watch', 'memory'];
+  /**
+   * The warnings before a launch, each with the way out that goes with it: Multi-Roblox off → turn it on and play; on
+   * but not working → its fix. "Don't ask again" only when every warning shown can be skipped, and then for those kinds
+   * alone (never for accounts being moved out of their game). Resolves 'open', 'multi', 'fix', or null for Cancel.
+   */
+  function launchAsk(r) {
+    const asks = r.asks || [];
+    const canSkip = asks.length > 0 && asks.every(k => SKIPPABLE_ASKS.includes(k));
+    const multiOff = asks.includes('multiOff'), notReady = asks.includes('multiNotReady');
+    return new Promise(resolve => {
+      let answer = null;
+      const m = modal({
+        title: t('t.confirmTitle'),
+        body: `<p class="pre modal-text">${esc(r.message)}</p>${canSkip ? `<label class="dont-ask"><input type="checkbox" id="dont-ask"><span>${t('common.dontAsk')}</span></label>` : ''}`,
+        actions: [
+          { text: t('common.cancel'), onClick: ({ close }) => close() },
+          ...(notReady ? [{ text: t('t.fixMulti'), onClick: ({ close }) => { answer = 'fix'; close(); } }] : []),
+          { text: t('t.openAnyway'), kind: multiOff || notReady ? '' : 'primary', onClick: ({ el, close }) => {
+            if (canSkip && el.querySelector('#dont-ask')?.checked) asks.forEach(k => call('skipConfirm', { key: `launch.${k}` }));
+            answer = 'open';
+            close();
+          } },
+          ...(multiOff ? [{ text: t('t.multiAndPlay'), kind: 'primary', onClick: ({ close }) => { answer = 'multi'; close(); } }] : []),
+        ],
+        onClose: () => resolve(answer),
+      });
+      setTimeout(() => (m.el.querySelector('.modal-foot .btn.primary') || m.el.querySelector('.modal-foot .btn'))?.focus(), 30);
+    });
+  }
+
+  /** What a launch (Play or a preset) did; a warning that needs an answer runs it again with retry(force). */
   async function launchDone(r, retry) {
     if (!r || S.app.locked) return; // locked meanwhile: nothing to ask or report
     if (r.needsConfirm) {
-      if (await confirmBox(r.message, { title: t('t.confirmTitle'), ok: t('t.openAnyway'), remember: 'openAnyway' })) return retry();
+      const answer = await launchAsk(r);
+      if (S.app.locked) return;
+      if (answer === 'open') return retry(true);
+      // Turned on, the launch runs again with its other questions still asked (and Multi-Roblox's own, if Roblox was
+      // already open and it can't work yet).
+      if (answer === 'multi' && await setMulti(true)) return retry(false);
+      if (answer === 'fix') multiHelp();
       return;
     }
     if (r.errors?.length && !S.app.locked) {
@@ -2848,7 +2917,7 @@
     } finally {
       inFlight.delete('preset');
     }
-    return launchDone(r, () => runPreset(id, true));
+    return launchDone(r, force => runPreset(id, force));
   }
 
   async function deletePreset(p) {
@@ -4117,14 +4186,15 @@
 
   const confirmMulti = () => confirmBox(t('set.multiConfirm'), { title: t('set.multiConfirmTitle'), ok: t('set.multiOk'), remember: 'multi' });
   /** Turns Multi-Roblox on (after the risk warning) or off; a switch that was flipped goes back if the warning is declined. */
+  /** @returns whether the change was made. */
   async function setMulti(on) {
     const box = typeof on === 'object' ? on : null;
     const enable = box ? box.checked : on;
     if (enable && !await confirmMulti()) {
       if (box) box.checked = false;
-      return;
+      return false;
     }
-    call('setSettings', { multiInstance: enable });
+    return (await call('setSettings', { multiInstance: enable })) !== undefined;
   }
 
   /**
@@ -4623,15 +4693,16 @@
         clearTimeout(codeTick);
         clearTimeout(typeWait);
       },
+      // A new account: the cookie (the one box it needs) comes first, then the optional ones.
       body: `${head}
         <div class="form">
+          ${isNew ? `<label>${t('am.cookie')}
+            <div class="pw"><input class="field mono" type="password" name="cookie" maxlength="4096" placeholder="_|WARNING:-DO-NOT-SHARE-THIS…" spellcheck="false">${reveal('cookie')}</div></label>` : ''}
           <label>${t('am.alias')}<input class="field" name="alias" maxlength="60" ${aliasHidden ? `disabled placeholder="${t('am.aliasHidden')}"` : `placeholder="${t('am.aliasPh')}" value="${esc(a?.alias)}"`}></label>
           <label>${t('am.group')}<input class="field" name="group" maxlength="40" list="dl-groups" placeholder="${t('am.groupPh')}" value="${esc(a?.group)}"></label>
           <datalist id="dl-groups">${groups.map(g => `<option value="${esc(g)}">`).join('')}</datalist>
           <label><span>${t('am.pw')} <span class="muted">${t('am.pwHint')}</span></span>
             <div class="pw"><input class="field" type="password" name="password" maxlength="200" placeholder="${!isNew && a.hasPassword ? t('am.pwSaved') : t('am.pwNone')}">${reveal('password')}</div></label>
-          ${isNew ? `<label>${t('am.cookie')}
-            <div class="pw"><input class="field mono" type="password" name="cookie" maxlength="4096" placeholder="_|WARNING:-DO-NOT-SHARE-THIS…" spellcheck="false">${reveal('cookie')}</div></label>` : ''}
           ${totpHtml}
           <label>${t('am.note')}<textarea class="field" name="note" maxlength="500" rows="2">${esc(a?.note)}</textarea></label>
         </div>
@@ -5113,7 +5184,7 @@
       { id: 'feedback', icon: 'message', text: t('fb.title'), keywords: ['bug', 'report', 'idea', 'feedback', 'góp ý', 'báo lỗi'], run: () => feedbackModal() },
       { id: 'export', icon: 'history', text: t('pal.exportActivity'), keywords: ['csv', 'log'], run: () => { setView('stats'); toActivity(); exportActivity(null); } }, // the list may not be loaded yet: the app knows
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
-      { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => call('lock') },
+      { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => lockApp() },
     ].filter(x => !x.off).map(x => ({ ...x, kind: 'action' }));
     const tabs = [['accounts', 'users'], ['presets', 'layers'], ['monitor', 'screens'], ['stats', 'clock'], ['settings', 'sliders']]
       .map(([view, ic]) => ({ id: `tab:${view}`, kind: 'tab', icon: ic, text: t(`nav.${view}`), run: go(view) }));
@@ -5393,7 +5464,7 @@
     } finally {
       inFlight.delete('launch');
     }
-    return launchDone(r, () => joinServer(ids, placeId, jobId, true));
+    return launchDone(r, force => joinServer(ids, placeId, jobId, force));
   }
 
   /* ───────────────────────── events ───────────────────────── */
@@ -5444,7 +5515,8 @@
       case 'view': return setView(el.dataset.view);
       case 'stats-period': return setStatsPeriod(+el.dataset.days);
       case 'stats-tab': return setStatsTab(el.dataset.tab);
-      case 'lock': return call('lock');
+      case 'lock': return lockApp();
+      case 'reset-asks': return call('resetSkipConfirm').then(n => n !== undefined && toast(t('set.asksDone'), 'ok'));
       case 'add-choose': return addChooser();
       case 'add-password': leaveChooser(el); return passwordLogin();
       case 'add-phone': leaveChooser(el); return quickLogin();
@@ -5576,6 +5648,15 @@
       // First-run screen: the chosen file becomes the vault; the app then shows the unlock screen.
       case 'restore-backup': return busy(el, () => call('restoreBackup'));
       case 'check-updates': return busy(el, () => call('checkUpdates'));
+      // From the Multi-Roblox check (Settings › Roblox): the answer comes here, not only on the updates page.
+      case 'rw-check': return busy(el, async () => {
+        if (await call('checkUpdates') === undefined) return;
+        const u = S.app.update || {};
+        toast(!u.supported ? t('upd.unsupported') : u.status === 'upToDate' ? t('upd.latest')
+          : u.status === 'ready' ? t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version })
+          : u.status === 'downloading' ? t('upd.downloading', { v: u.version, p: u.progress })
+          : u.status === 'error' ? t('upd.error') : t('upd.checking'), u.status === 'error' ? 'warn' : 'info');
+      });
       case 'whats-new': return busy(el, async () => {
         const list = await call('whatsNew');
         if (list?.length) showWhatsNew(list); else if (list) toast(t('wn.none'), 'info');
