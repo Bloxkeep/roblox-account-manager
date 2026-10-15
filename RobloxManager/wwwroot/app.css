@@ -353,20 +353,27 @@
 }
 /* Seasonal. */
 [data-theme="halloween"] {
-  --bg: #141018;
-  --bg-2: #100d14;
-  --surface: #1d1722;
-  --surface-2: #251d2b;
-  --surface-3: #312638;
-  --raised: #221b28;
-  --field: #100d14;
-  --card: #1a1520;
-  --card-hover: #1f1925;
+  /* Glass over its night, like the Scenery themes. */
+  --backdrop: url("scene-halloween.svg") center / cover no-repeat, #1c0d24;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(16, 8, 20, .34);
+  --bg-2: rgba(16, 8, 20, .58);
+  --surface: rgba(26, 14, 32, .7);
+  --surface-2: rgba(255, 236, 220, .08);
+  --surface-3: rgba(255, 236, 220, .15);
+  --raised: rgba(28, 16, 34, .94);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(22, 12, 28, .6);
+  --card-hover: rgba(28, 16, 36, .7);
+  --well: rgba(0, 0, 0, .25);
   --tint: 255, 236, 220;
-  --text: #f4ece4;
-  --text-2: #cfc0b4;
-  --muted: #a293a0;
-  --dim: #7f727e;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #f6eee6;
+  --text-2: #d6c7bb;
+  --muted: #b9a9b4;
+  --dim: #8a7b88;
   --inv: #ff8a2a;
   --inv-hover: #ff9d4d;
   --inv-ink: #1c0d02;
@@ -383,10 +390,11 @@
   --warn-ink: #ffe29a;
   --studio-ink: #ffd08a;
   --bad-ink: #ffb3bc;
-  --meter: #cfc0b4;
-  --meter-2: #4a3d52;
-  --scrim: rgba(8, 5, 10, .72);
-  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cfc0b4' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --meter: #d6c7bb;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(8, 4, 10, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d6c7bb' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 [data-theme="lunar"] {
   --bg: #2a0d0f;
@@ -1932,9 +1940,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .side, .dock, .picker, .modal, .menu, .toast, .lock-card, .set-card { backdrop-filter: var(--blur); }
 /* Settings' page list and group headings sit straight on the picture, and the bright parts of some (lit windows, pale
    trees) left them hard to read: on the picture themes the page gets the sidebar's veil behind it. */
-:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"]) #view-settings { background: var(--bg-2); }
+:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"]) #view-settings { background: var(--bg-2); }
 /* The warning look of the Multi-Roblox card keeps the card's surface under its tint, or its text sat on the picture. */
-:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"]) .multi.warn { background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
+:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"]) .multi.warn { background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
 
 /* ───────── statistics ─────────
    Totals, a bar per day (or hour, for today), play time per account and the top games. Bars are plain blocks in the
