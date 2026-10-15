@@ -1229,7 +1229,7 @@ namespace BloxkeepSetup
                 Para(T.S("No accounts are saved on this PC.", "Máy này không có tài khoản nào được lưu."), what.Bottom + S(14), Theme.Muted);
                 go = Button(T.S("Uninstall", "Gỡ cài đặt"), true, delegate { Remove(); });
             }
-            if (Ops.AppRunning())
+            if (Ops.AppRunning() && !_shooting)
                 Para(T.S("Bloxkeep is running; it will be closed.", "Bloxkeep đang chạy; nó sẽ được đóng lại."), S(300) - S(28), Theme.Muted);
         }
 
@@ -1373,6 +1373,7 @@ namespace BloxkeepSetup
         /// <summary>Saves a page as a PNG (checking the layout, and the README's pictures).</summary>
         public int SaveShot(string path, string page)
         {
+            _shooting = true;
             if (page == "installing")
             {
                 _target = @"D:\Bloxkeep";
@@ -1396,7 +1397,6 @@ namespace BloxkeepSetup
                     "Trình cài dừng lại với mã {0}. Nhật ký cài đặt bên dưới ghi lý do. Nếu Bloxkeep đang mở, hãy đóng nó rồi thử lại."), 1) : null;
                 ShowPage(page);
             }
-            _shooting = true;
             StartPosition = FormStartPosition.Manual;
             Location = new Point(-20000, -20000);
             ShowInTaskbar = false;
@@ -1406,6 +1406,8 @@ namespace BloxkeepSetup
                 Application.DoEvents();
                 Thread.Sleep(50);
             }
+            Refresh(); // every control drawn before the picture
+            Application.DoEvents();
             // As Windows draws it (its own title bar and buttons, dark), cut to the visible frame: DrawToBitmap
             // would paint an old-style frame of its own.
             RECT whole, visible;
