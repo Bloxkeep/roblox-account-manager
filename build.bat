@@ -19,10 +19,14 @@ rem Files left from an earlier build would be listed in SHA256SUMS.txt and stop 
 if exist dist\releases rmdir /s /q dist\releases
 mkdir dist\releases
 
-echo [1/4] Tools...
+echo [1/5] Tools...
 dotnet tool restore >nul || goto :fail
 
-echo [2/4] App files...
+rem The checks in Tests\Bloxkeep.Tests (each in its own process, with throwaway data): a failing one stops the build.
+echo [2/5] Checks...
+dotnet run --project Tests\Bloxkeep.Tests -c Release || goto :fail
+
+echo [3/5] App files...
 dotnet publish RobloxManager\RobloxManager.csproj -c Release -r win-x64 --self-contained true -p:Version=%VERSION% -p:UpdateRepo=%REPO% -p:DebugType=none -p:AllowedReferenceRelatedFileExtensions=none -o artifacts\app || goto :fail
 rem Bloxkeep's own installer and uninstaller windows (Installer\Setup\Setup.cs), compiled with the C# compiler that
 rem ships with Windows (.NET Framework 4.x), so they need nothing installed. Velopack does the work underneath them.
@@ -32,13 +36,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Installer\Setup\info.ps1 %VE
 %CSC% /out:artifacts\app\BloxkeepUninstall.exe Installer\Setup\Setup.cs artifacts\SetupInfo.cs || goto :fail
 
 if not "%REPO%"=="" (
-  echo [3/4] Previous release, so updates only download what changed...
+  echo [4/5] Previous release, so updates only download what changed...
   dotnet vpk download github --repoUrl %REPO% -o dist\releases || echo     none yet - this will be the first release
 ) else (
-  echo [3/4] No repo url: skipping the previous release
+  echo [4/5] No repo url: skipping the previous release
 )
 
-echo [4/4] Installer, portable zip and update packages...
+echo [5/5] Installer, portable zip and update packages...
 powershell -NoProfile -ExecutionPolicy Bypass -File release-notes.ps1 %VERSION% artifacts\release-notes.md || goto :fail
 rem What these become on the user's PC (Velopack 1.2.161):
 rem   --packId         the install folder, %LOCALAPPDATA%\BloxkeepApp, and the name of the uninstall registry key

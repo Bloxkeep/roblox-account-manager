@@ -417,7 +417,7 @@ Cần Windows và **.NET 10 SDK**. App gồm phần lõi C# (.NET 10, WinForms) 
 build.bat 1.0.1
 ```
 
-Kết quả nằm trong `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, các gói cập nhật và `SHA256SUMS.txt`. Tham số thứ hai là link repo GitHub mà bản build sẽ tìm cập nhật (mặc định là repo này); truyền repo khác khi build bản fork.
+Lệnh này chạy các bài kiểm tra trong `Tests\Bloxkeep.Tests` trước và dừng nếu có bài hỏng (chạy riêng bằng `dotnet run --project Tests\Bloxkeep.Tests`; thêm `--online` cho các bài cần hỏi máy chủ Roblox). Mỗi bài chạy trong tiến trình riêng với dữ liệu tạm, không bao giờ đụng dữ liệu của bạn. Kết quả nằm trong `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, các gói cập nhật và `SHA256SUMS.txt`. Tham số thứ hai là link repo GitHub mà bản build sẽ tìm cập nhật (mặc định là repo này); truyền repo khác khi build bản fork.
 
 ```bat
 release.bat 1.0.1 https://github.com/minhhoang0122/bloxkeep

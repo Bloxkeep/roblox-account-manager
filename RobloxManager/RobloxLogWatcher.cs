@@ -33,12 +33,17 @@ public sealed class RobloxLogWatcher
         public DateTime? ClosedByNewWindow;
     }
 
-    /// <summary>The usual client's logs, and the Microsoft Store edition's (it writes them to a folder of its own).</summary>
-    static readonly string[] LogDirs =
-    [
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox", "logs"),
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCGDK", "logs"),
-    ];
+    /// <summary>
+    /// The usual client's logs, and the Microsoft Store edition's (it writes them to a folder of its own).
+    /// BLOXKEEP_ROBLOX_LOGS (set by the tests only) points at a folder of made-up logs instead.
+    /// </summary>
+    static readonly string[] LogDirs = Environment.GetEnvironmentVariable("BLOXKEEP_ROBLOX_LOGS") is { Length: > 0 } testLogs
+        ? [testLogs]
+        :
+        [
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox", "logs"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCGDK", "logs"),
+        ];
     // A game start, logged before "Joining game" (seen 2026-10-13 in 0.742, and in the Store edition): a launch that
     // stalls while loading never gets further, so it counts as joining from here.
     const string LaunchMark = "[FLog::SingleSurfaceApp] launchUGCGameInternal";

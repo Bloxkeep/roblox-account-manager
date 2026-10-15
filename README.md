@@ -423,7 +423,7 @@ You need Windows and the **.NET 10 SDK**. The app is a C# core (.NET 10, WinForm
 build.bat 1.0.1
 ```
 
-The output goes to `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, the update packages and `SHA256SUMS.txt`. A second argument is the GitHub repository the build looks for updates in (this one by default); pass another when you build a fork.
+It runs the checks in `Tests\Bloxkeep.Tests` first and stops if one fails (run them alone with `dotnet run --project Tests\Bloxkeep.Tests`; add `--online` for the ones that ask Roblox's servers). Each runs in its own process with throwaway data, never yours. The output goes to `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, the update packages and `SHA256SUMS.txt`. A second argument is the GitHub repository the build looks for updates in (this one by default); pass another when you build a fork.
 
 ```bat
 release.bat 1.0.1 https://github.com/minhhoang0122/bloxkeep
