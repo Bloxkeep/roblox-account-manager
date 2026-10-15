@@ -92,7 +92,8 @@ public static class RobloxLauncher
                 // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
                 if (!IsProtocolRegistered())
                     throw new FileNotFoundException(L.T("Roblox is not installed (the roblox-player protocol is missing)."));
-                Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true })?.Dispose();
+                // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
+                Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true, WorkingDirectory = Path.GetTempPath() })?.Dispose();
                 break;
         }
     }

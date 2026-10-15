@@ -227,6 +227,8 @@ public static class L
             "Chưa vào lại {0}: Multi-Roblox chưa sẵn sàng, mở Roblox mới sẽ đóng mất cửa sổ đang mở.",
         ["Waiting for the previous Roblox window to open…"] = "Chờ cửa sổ Roblox trước mở xong…",
         ["Couldn't restart to update. It installs by itself when you quit Bloxkeep."] = "Không khởi động lại để cập nhật được. Bản cập nhật sẽ tự cài khi bạn thoát Bloxkeep.",
+        ["Bloxkeep couldn't update to {0}: a program it opened earlier (Bloxstrap, or a Roblox window) was still using its folder. Close those, then click Restart to update again."] = "Bloxkeep chưa cập nhật lên {0} được: một chương trình nó mở trước đó (Bloxstrap, hoặc cửa sổ Roblox) vẫn đang giữ thư mục của nó. Đóng chúng rồi bấm Khởi động lại để cập nhật.",
+        ["Bloxkeep couldn't update to {0}. Click Restart to update to try again."] = "Bloxkeep chưa cập nhật lên {0} được. Bấm Khởi động lại để cập nhật để thử lại.",
         ["Bloxkeep was updated to {0}. Unlock it to carry on."] = "Bloxkeep đã cập nhật lên {0}. Mở khóa để tiếp tục.",
         ["The update to {0} didn't install, so Bloxkeep started again as it was. Unlock it to carry on."] = "Bản cập nhật {0} chưa cài được nên Bloxkeep đã mở lại như cũ. Mở khóa để tiếp tục.",
         ["The update is still downloading. Try again in a moment."] = "Bản cập nhật vẫn đang tải. Thử lại sau một lát.",

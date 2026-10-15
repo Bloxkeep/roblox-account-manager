@@ -30,6 +30,8 @@ public sealed partial class AppController
 
     /// <summary>This run was started again after an update (see <see cref="Resume"/>).</summary>
     Relaunch.State? _resumedFrom;
+    /// <summary>Said once a page (or Windows' notification) can show it: the update this run was meant to be didn't install.</summary>
+    string? _updateFailedNotice;
 
     /// <summary>Not this soon after a start (a restart can never loop), nor while someone used the PC this recently with a window of the app on screen.</summary>
     static readonly TimeSpan RelaunchAfterStart = TimeSpan.FromMinutes(3);
@@ -229,7 +231,11 @@ public sealed partial class AppController
         if (!string.IsNullOrEmpty(state.To) && state.To != _updater.CurrentVersion)
         {
             _autoRelaunchPausedUntil = DateTime.UtcNow.AddDays(1);
-            Log.Note($"The update to {state.To} didn't install (this is {_updater.CurrentVersion}); no new try by itself today.");
+            bool busy = UpdateFolderWasBusy();
+            Log.Note($"The update to {state.To} didn't install (this is {_updater.CurrentVersion}{(busy ? ", its folder was in use" : "")}); no new try by itself today.");
+            _updateFailedNotice = busy
+                ? L.F("Bloxkeep couldn't update to {0}: a program it opened earlier (Bloxstrap, or a Roblox window) was still using its folder. Close those, then click Restart to update again.", state.To)
+                : L.F("Bloxkeep couldn't update to {0}. Click Restart to update to try again.", state.To);
         }
         if (state.Key is { } key && state.Salt is { } salt)
         {
@@ -261,6 +267,36 @@ public sealed partial class AppController
             ResumingPage = true;
         }
         Log.Note($"{(state.From is { } from ? $"Updated from {from}" : "Started again after an update")}; {(_vault is not null ? "unlocked again" : "locked")}, window {state.Window}.");
+    }
+
+    /// <summary>
+    /// Whether Velopack's last try to install said Bloxkeep's folder was in use (its log, the newest "Applying package"
+    /// onwards): a program Bloxkeep started before 1.0.6 was still running "in" that folder.
+    /// </summary>
+    static bool UpdateFolderWasBusy()
+    {
+        try
+        {
+            string log = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "velopack", "velopack_BloxkeepApp.log");
+            using var file = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            file.Seek(Math.Max(0, file.Length - 64_000), SeekOrigin.Begin);
+            string tail = new StreamReader(file).ReadToEnd();
+            int apply = tail.LastIndexOf("Applying package", StringComparison.Ordinal);
+            return apply >= 0 && tail.IndexOf("used by another process", apply, StringComparison.Ordinal) >= 0;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The failed update, said once the page is up (a toast) or, in the tray, as a Windows notification.</summary>
+    void SayUpdateFailed()
+    {
+        if (_updateFailedNotice is not { } notice || (!PageAttached && !_background))
+            return;
+        _updateFailedNotice = null;
+        Notify(notice, "warn", "updateFailed");
     }
 
     /// <summary>

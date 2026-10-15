@@ -10,6 +10,16 @@ static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        // Out of the program folder first: every program Bloxkeep starts (Roblox through Bloxstrap, a browser) starts
+        // "in" the same folder, and one that keeps running (Bloxstrap stays while Roblox does) made an update fail —
+        // Windows won't let Velopack move a folder some process is in. Nothing here uses relative paths.
+        try
+        {
+            Environment.CurrentDirectory = Path.GetTempPath();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+        }
         // The installer and updater run the app with special arguments for install/update/uninstall steps; those
         // are handled here (and exit) before anything else starts. Uninstalling removes the program folder, the
         // shortcuts and the interface caches; the accounts and settings in %LOCALAPPDATA%\Bloxkeep go only when the

@@ -3146,6 +3146,7 @@ public sealed partial class AppController : IDisposable
             _ = _updater.CheckAsync();
         }
         Step(() => RelaunchIfQuiet(now)); // a downloaded update, installed once nobody is using the app
+        Step(SayUpdateFailed); // one that didn't install, said once something can show it
 
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
         if (_vault is null)

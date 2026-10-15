@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.6",
+    "date": "2026-10-15",
+    "en": [
+      "Updates no longer fail while Roblox is open. Programs Bloxkeep starts (Bloxstrap, Roblox) used to start inside Bloxkeep's own folder, and one still running there (Bloxstrap stays while Roblox does) kept Windows from replacing that folder. If an update can't install anyway, Bloxkeep now says why instead of showing Restart to update again as if nothing happened."
+    ],
+    "vi": [
+      "Cập nhật không còn thất bại khi Roblox đang mở. Trước đây các chương trình Bloxkeep mở ra (Bloxstrap, Roblox) chạy bên trong thư mục của Bloxkeep, và cái nào còn chạy (Bloxstrap chạy suốt lúc Roblox mở) khiến Windows không thay được thư mục đó. Nếu vẫn không cài được, Bloxkeep giờ báo rõ lý do thay vì lặng lẽ hiện lại nút Khởi động lại để cập nhật."
+    ]
+  },
+  {
     "version": "1.0.5",
     "date": "2026-10-15",
     "en": [
