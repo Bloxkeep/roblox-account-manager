@@ -523,7 +523,8 @@ public sealed partial class AppController : IDisposable
     sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, List<string> Others, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client);
 
     /// <param name="UpToDate">null until both versions are known.</param>
-    sealed record RobloxVersionInfo(string? Installed, string? Latest, bool? UpToDate, bool Direct);
+    /// <param name="Store">Roblox from the Microsoft Store is chosen: the Store installs its updates, not Roblox itself.</param>
+    sealed record RobloxVersionInfo(string? Installed, string? Latest, bool? UpToDate, bool Direct, bool Store = false);
 
     /// <summary>Registry facts shown on the page; BuildState runs on every push, so they're re-read at most every 30 s.</summary>
     (bool Protocol, bool TrayAutostart) RegistryInfo()
@@ -581,7 +582,8 @@ public sealed partial class AppController : IDisposable
             && _latestRoblox?.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase) == true;
         bool? upToDate = installed is null || _latestRoblox is null ? null
             : sameBuild || newer || (!foldersKnown && installed.Version == _latestRoblox.Version);
-        return new RobloxVersionInfo(installed?.Version, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct");
+        return new RobloxVersionInfo(installed?.Version, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct",
+            _vault?.Data.Settings.LaunchVia == "store");
     }
 
     async Task RefreshLatestRobloxAsync()

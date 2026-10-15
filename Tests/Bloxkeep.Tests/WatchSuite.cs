@@ -13,6 +13,11 @@ static class WatchSuite
     {
         Harness.UseDataFolder(dir);
         await LaunchWarning(c);
+        // Roblox from the Microsoft Store: its exe has no version, its package folder does (seen 2026-10-16).
+        c.Check("the Store client's version, in Roblox's form",
+            RobloxInstalls.StoreVersion("ROBLOXCorporation.RobloxGDK_2.743.1134.0_x64__55nm5eh3cm0pr") == "0.743.0.7431134"
+            && RobloxInstalls.StoreVersion("ROBLOXCorporation.RobloxGDK_2.744.84.0_x64__55nm5eh3cm0pr") == "0.744.0.7440084"
+            && RobloxInstalls.StoreVersion("RobloxPlayerBeta") is null);
         string tooLong = "ROBLOX_" + new string('x', 70);
         string json = $$"""
             {

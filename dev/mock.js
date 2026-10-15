@@ -223,7 +223,7 @@
   const state = () => ({
     language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
-    robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false },
+    robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store' },
     // Settings › Roblox updates, newest first: a new build under the same version, an update, the first build seen.
     // ?rbxclosed=1: Roblox closed windows when another one opened (the warning there and on the Multi-Roblox card).
     // ?rw=changed|renamed|gone: what the Roblox watch found in the installed build (default: no change, and the next

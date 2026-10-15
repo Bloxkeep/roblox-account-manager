@@ -184,9 +184,10 @@ public static class RobloxInstalls
             string version = string.Join('.', (info.FileVersion ?? "").Split(',', '.').Select(part => part.Trim()).Where(part => part.Length > 0));
             if (version.Length == 0)
                 version = $"{info.FileMajorPart}.{info.FileMinorPart}.{info.FileBuildPart}.{info.FilePrivatePart}";
-            // The Store's package folder isn't one of Roblox's build ids: no build to note (Settings › Roblox updates).
+            // The Store's exe carries no version (it reads 0.0.0.0): its package folder's name has it. That folder isn't
+            // one of Roblox's build ids, so there is no build to note either (Settings › Roblox updates).
             if (IsStoreClient(exe))
-                return new ClientVersion(StoreVersion(version), "", SourceOf(exe), exe);
+                return StoreVersion(Path.GetFileName(Path.GetDirectoryName(exe)) ?? "") is { } store ? new ClientVersion(store, "", SourceOf(exe), exe) : null;
             return new ClientVersion(version, Path.GetFileName(Path.GetDirectoryName(exe)) ?? "", SourceOf(exe), exe);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -252,14 +253,16 @@ public static class RobloxInstalls
         Path.GetFileName(Path.GetDirectoryName(exe) ?? "").StartsWith(StoreFamily.Split('_')[0] + "_", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// The Store client's version in Roblox's own form: the package numbers it 2.743.0.1134 where the website's client
-    /// is 0.743.0.7431134, so it compares with what Roblox serves.
+    /// The Store client's version in Roblox's own form, from its package folder
+    /// ("ROBLOXCorporation.RobloxGDK_2.743.1134.0_x64__…"): the package numbers it 2.743.1134.0 where the website's
+    /// client is 0.743.0.7431134, so it compares with what Roblox serves. Null when the name isn't of that form.
     /// </summary>
-    static string StoreVersion(string version)
+    public static string? StoreVersion(string packageFolder)
     {
-        var parts = version.Split('.');
-        return parts.Length == 4 && parts[0] == "2" && int.TryParse(parts[1], out _) && int.TryParse(parts[3], out int build)
-            ? $"0.{parts[1]}.0.{parts[1]}{build:0000}"
-            : version;
+        var name = packageFolder.Split('_');
+        var parts = name.Length > 1 ? name[1].Split('.') : [];
+        return parts.Length == 4 && int.TryParse(parts[1], out int release) && int.TryParse(parts[2], out int build)
+            ? $"0.{release}.0.{release}{build:0000}"
+            : null;
     }
 }

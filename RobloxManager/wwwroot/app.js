@@ -2036,7 +2036,7 @@
     }
     const rv = S.app.robloxVersion || {};
     const rvText = !rv.installed ? t('rbx.notInstalled')
-      : rv.upToDate === false ? t(rv.direct ? 'rbx.outdatedDirect' : 'rbx.outdated', { v: esc(rv.latest) })
+      : rv.upToDate === false ? t(rv.store ? 'rbx.outdatedStore' : rv.direct ? 'rbx.outdatedDirect' : 'rbx.outdated', { v: esc(rv.latest) })
       : rv.upToDate ? t('rbx.latest') : t('rbx.unknown');
     setHtml($('#s-rbxver'), `<div class="set-row"><div><div class="t">${t('rbx.title')}</div><div class="d">${rvText}</div></div><div class="ctl"><span class="state-pill ${rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'}">${esc(rv.installed || '—')}</span></div></div>`);
     syncRobloxUpdates();
