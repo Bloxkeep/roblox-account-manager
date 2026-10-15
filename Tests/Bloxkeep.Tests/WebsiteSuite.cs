@@ -7,9 +7,9 @@ namespace Bloxkeep.Tests;
 
 /// <summary>
 /// Account menu › Open website and Add account › Open roblox.com, with made-up session cookies (no real account): two
-/// windows at once, each with only its own account's cookie, in memory only; a saved account's sign-out stopped, a blank
-/// window's not; a renewed cookie read back; Save to Bloxkeep; everything gone from %TEMP% once the windows close.
-/// Needs the WebView2 runtime; www.roblox.com need not be reachable.
+/// tabs at once in one window, each with only its own account's cookie, in memory only; a saved account's sign-out
+/// stopped, a blank tab's not; a renewed cookie read back; Save to Bloxkeep; everything gone from %TEMP% once the tabs
+/// close. Needs the WebView2 runtime; www.roblox.com need not be reachable.
 /// </summary>
 static class WebsiteSuite
 {
@@ -45,7 +45,7 @@ static class WebsiteSuite
         return done.Task;
     }
 
-    static object? Static(string field) => typeof(WebsiteForm).GetField(field, Harness.F)!.GetValue(null);
+    static object? Static(string field) => typeof(WebsiteTab).GetField(field, Harness.F)!.GetValue(null);
 
     static async Task<bool> Until(Func<bool> condition, int seconds = 20)
     {
@@ -68,17 +68,22 @@ static class WebsiteSuite
         seed.Save();
         using var app = new AppController(host, _ => { });
         await Harness.Unlock(app);
-        var windows = Harness.Get<Dictionary<Guid, WebsiteForm>>(app, "_websites");
+        var tabs = Harness.Get<Dictionary<Guid, WebsiteTab>>(app, "_websites");
+        WebsiteForm? Window() => Harness.Get<WebsiteForm?>(app, "_webWindow");
 
-        c.Check("a Roblox VNG account is refused", await Harness.Try(app, "openWebsite", new { id = vng.Id }) is UserError && windows.Count == 0);
+        c.Check("a Roblox VNG account is refused", await Harness.Try(app, "openWebsite", new { id = vng.Id }) is UserError && tabs.Count == 0);
         await Harness.Call(app, "openWebsite", new { id = a.Id });
         await Harness.Call(app, "openWebsite", new { id = b.Id });
-        await Harness.Call(app, "openWebsite", new { id = a.Id }); // brings the open one to the front
-        c.Check("one window per account, two open", windows.Count == 2, windows.Count);
-        var formA = windows[a.Id];
-        var formB = windows[b.Id];
-        var webA = Harness.Get<WebView2>(formA, "_web");
-        var webB = Harness.Get<WebView2>(formB, "_web");
+        var window = Window()!;
+        c.Check("one tab per account, both in one window", tabs.Count == 2 && window.Tabs.Count == 2 && tabs.Values.All(t => t.FindForm() == window),
+            $"{tabs.Count} tabs, {window.Tabs.Count} in the window");
+        var tabA = tabs[a.Id];
+        var tabB = tabs[b.Id];
+        c.Check("a new tab is the one shown", window.SelectedTab == tabB && tabB.Visible && !tabA.Visible);
+        await Harness.Call(app, "openWebsite", new { id = a.Id });
+        c.Check("opening an account again goes back to its tab", tabs.Count == 2 && window.Tabs.Count == 2 && window.SelectedTab == tabA);
+        var webA = Harness.Get<WebView2>(tabA, "_web");
+        var webB = Harness.Get<WebView2>(tabB, "_web");
         bool ready = await Until(() => webA.CoreWebView2 is not null && webB.CoreWebView2 is not null);
         c.Check("both browsers start", ready);
         if (!ready)
@@ -86,20 +91,20 @@ static class WebsiteSuite
         var coreA = webA.CoreWebView2;
         var coreB = webB.CoreWebView2;
         var screen = Screen.FromControl(host).WorkingArea;
-        c.Check("the windows open on screen, the second a little lower right",
-            screen.Contains(formA.Bounds) && screen.Contains(formB.Bounds) && formB.Left > formA.Left && formB.Top > formA.Top, $"{screen} {formA.Bounds} {formB.Bounds}");
-        c.Check("the title says which account", formA.Text == "webA — Roblox" && formB.Text == "webB — Roblox", formA.Text + " | " + formB.Text);
-        c.Check("each window is InPrivate", coreA.Profile.IsInPrivateModeEnabled && coreB.Profile.IsInPrivateModeEnabled);
-        c.Check("each window has a profile of its own", coreA.Profile.ProfileName != coreB.Profile.ProfileName);
-        c.Check("the windows share one browser", coreA.BrowserProcessId == coreB.BrowserProcessId);
+        c.Check("the window opens on screen", screen.Contains(window.Bounds), $"{screen} {window.Bounds}");
+        c.Check("the tabs and the window say which account", tabA.Title == "webA" && tabB.Title == "webB" && window.Text == "webA — Roblox",
+            $"{tabA.Title} | {tabB.Title} | {window.Text}");
+        c.Check("each tab is InPrivate", coreA.Profile.IsInPrivateModeEnabled && coreB.Profile.IsInPrivateModeEnabled);
+        c.Check("each tab has a profile of its own", coreA.Profile.ProfileName != coreB.Profile.ProfileName);
+        c.Check("the tabs share one browser", coreA.BrowserProcessId == coreB.BrowserProcessId);
         string? inA = await SessionIn(coreA), inB = await SessionIn(coreB);
-        c.Check("window A holds A's session only", inA == a.Cookie, inA);
-        c.Check("window B holds B's session only", inB == b.Cookie, inB);
+        c.Check("tab A holds A's session only", inA == a.Cookie, inA);
+        c.Check("tab B holds B's session only", inB == b.Cookie, inB);
 
         // The site's sign-out, as its menu sends it and as a page link; "log out of other sessions" is let through.
         int asked = 0;
         bool closeOnAsk = false;
-        Harness.Set(formA, "_askCloseOnLogout", (Func<WebsiteForm, bool>)(_ => { asked++; return closeOnAsk; }));
+        Harness.Set(tabA, "_askCloseOnLogout", (Func<WebsiteTab, bool>)(_ => { asked++; return closeOnAsk; }));
         coreA.NavigateToString("<html><body>test</body></html>");
         await Task.Delay(500);
         await coreA.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
@@ -113,57 +118,68 @@ static class WebsiteSuite
 
         // Roblox renewing the session: the new cookie goes to the app (here a stand-in that only records it).
         var reported = new List<string>();
-        typeof(WebsiteForm).GetField("_onSessionChanged", Harness.F)!.SetValue(formA, (Func<Guid, string, Task<bool>>)((_, v) => { reported.Add(v); return Task.FromResult(true); }));
+        typeof(WebsiteTab).GetField("_onSessionChanged", Harness.F)!.SetValue(tabA, (Func<Guid, string, Task<bool>>)((_, v) => { reported.Add(v); return Task.FromResult(true); }));
         string renewed = "_TEST_A2_" + mark;
         var cookie = coreA.CookieManager.CreateCookie(".ROBLOSECURITY", renewed, ".roblox.com", "/");
         cookie.IsSecure = true;
         cookie.IsHttpOnly = true;
         cookie.Expires = DateTime.Now.AddDays(30); // as Roblox sets it: a lasting cookie, still not written to disk
         coreA.CookieManager.AddOrUpdateCookie(cookie);
-        await (Task)Harness.Invoke(formA, "SyncSessionAsync")!;
-        await (Task)Harness.Invoke(formA, "SyncSessionAsync")!;
+        await (Task)Harness.Invoke(tabA, "SyncSessionAsync")!;
+        await (Task)Harness.Invoke(tabA, "SyncSessionAsync")!;
         c.Check("a renewed session is handed to the app once", reported.SequenceEqual([renewed]), string.Join(",", reported));
-        c.Check("window B still holds B's session", await SessionIn(coreB) == b.Cookie);
+        c.Check("tab B still holds B's session", await SessionIn(coreB) == b.Cookie);
 
-        // Nothing of either session on disk while the windows are open.
+        // Nothing of either session on disk while the tabs are open.
         string envDir = (string)Static("_envDir")!;
         await Task.Delay(2000);
         var found = Scan(envDir, [a.Cookie, b.Cookie, renewed]);
         c.Check("no session cookie on disk while open", found.Count == 0, string.Join(", ", found));
 
-        // Closing: A after another stopped sign-out (the person chose "Close window"), B when the vault locks.
+        // Closing: A after another stopped sign-out (the person chose "Close tab"), B when the vault locks.
         closeOnAsk = true;
         await coreA.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
-        c.Check("\"Close window\" closes it", await Until(() => formA.IsDisposed, 10));
-        c.Check("the app lets go of a closed window", !windows.ContainsKey(a.Id));
+        c.Check("\"Close tab\" closes that tab only", await Until(() => tabA.IsClosed, 10) && !window.IsDisposed && window.Tabs.SequenceEqual([tabB]) && window.SelectedTab == tabB);
+        c.Check("the app lets go of a closed tab", !tabs.ContainsKey(a.Id));
         await Harness.Call(app, "lock", new { });
-        c.Check("locking closes the other window", await Until(() => formB.IsDisposed, 10) && windows.Count == 0, windows.Count);
-        c.Check("the browser's folder is deleted after the last window", await Until(() => !Directory.Exists(envDir), 30), envDir);
-        c.Check("the next window gets a new folder", Static("_envDir") is null && (int)Static("_windows")! == 0);
+        c.Check("locking closes the window and its tabs", await Until(() => tabB.IsClosed && window.IsDisposed, 10) && tabs.Count == 0 && Window() is null, tabs.Count);
+        c.Check("the browser's folder is deleted after the last tab", await Until(() => !Directory.Exists(envDir), 30), envDir);
+        c.Check("the next tab gets a new folder", Static("_envDir") is null && (int)Static("_tabs")! == 0);
 
-        // Add account › Open roblox.com: blank windows, signed in on the site, saved only when asked.
+        // Add account › Open roblox.com: blank tabs, signed in on the site, saved only when asked.
         await Harness.Unlock(app);
-        var all = Harness.Get<List<WebsiteForm>>(app, "_webWindows");
+        var all = Harness.Get<List<WebsiteTab>>(app, "_webTabs");
         await Harness.Call(app, "openWebsiteBlank", new { });
         await Harness.Call(app, "openWebsiteBlank", new { });
-        c.Check("each Open roblox.com is a new blank window", all.Count == 2 && all.All(f => f.AccountId is null && f.Text == "Roblox") && windows.Count == 0,
-            string.Join(" | ", all.Select(f => f.Text)));
+        var window2 = Window()!;
+        c.Check("each Open roblox.com is a new blank tab in the one window", all.Count == 2 && all.All(f => f.AccountId is null && f.Title == "Roblox" && f.FindForm() == window2) && tabs.Count == 0,
+            string.Join(" | ", all.Select(f => f.Title)));
         var blank = all[0];
         var other = all[1];
         var webW = Harness.Get<WebView2>(blank, "_web");
         var webO = Harness.Get<WebView2>(other, "_web");
+        // A tab not shown yet starts its browser when it is first shown.
+        window2.SelectTab(blank);
         c.Check("both blank browsers start", await Until(() => webW.CoreWebView2 is not null && webO.CoreWebView2 is not null));
         var coreW = webW.CoreWebView2!;
         var coreO = webO.CoreWebView2!;
-        c.Check("a blank window starts signed out", await SessionIn(coreW) is null && await SessionIn(coreO) is null);
+        c.Check("a blank tab starts signed out", await SessionIn(coreW) is null && await SessionIn(coreO) is null);
+
+        // The + at the end of the tabs (and Ctrl+T): one more blank tab; its ✕ closes only that one.
+        window2.NewBlankTab!();
+        var extra = all.Count == 3 ? all[2] : null;
+        c.Check("+ opens a blank tab and shows it", extra is not null && window2.SelectedTab == extra && window2.Tabs.Count == 3);
+        if (extra is not null)
+            await window2.CloseTabAsync(extra);
+        c.Check("a tab's ✕ closes only that tab", extra is { IsClosed: true } && all.Count == 2 && window2.Tabs.Count == 2 && !window2.IsDisposed);
 
         int askedW = 0;
-        Harness.Set(blank, "_askCloseOnLogout", (Func<WebsiteForm, bool>)(_ => { askedW++; return false; }));
+        Harness.Set(blank, "_askCloseOnLogout", (Func<WebsiteTab, bool>)(_ => { askedW++; return false; }));
         coreW.NavigateToString("<html><body>test</body></html>");
         await Task.Delay(500);
         await coreW.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
         await Task.Delay(1500);
-        c.Check("a window not saved signs out like any browser", askedW == 0, askedW);
+        c.Check("a tab not saved signs out like any browser", askedW == 0, askedW);
 
         // Signing in on the site = Roblox setting the cookie; who it is comes from a stand-in for Roblox's answer.
         var userW = new RobloxUser(2004, "webW", "Web W");
@@ -181,42 +197,54 @@ static class WebsiteSuite
         }
         SignIn(coreW, cookieW);
         SignIn(coreO, cookieO);
-        for (int i = 0; i < 20 && (blank.Text == "Roblox" || other.Text == "Roblox"); i++)
+        for (int i = 0; i < 20 && (blank.Title == "Roblox" || other.Title == "Roblox"); i++)
         {
             await (Task)Harness.Invoke(blank, "SyncSessionAsync")!;
             await (Task)Harness.Invoke(other, "SyncSessionAsync")!;
             await Task.Delay(250);
         }
         var saveW = Harness.Get<Button>(blank, "_saveButton");
-        c.Check("signing in on the site names the account and offers Save", blank.Text == "webW — Roblox" && other.Text == "webO — Roblox" && saveW.Visible,
-            blank.Text + " | " + other.Text);
-        c.Check("the two blank windows keep their own sign-in", await SessionIn(coreW) == cookieW && await SessionIn(coreO) == cookieO);
+        window2.SelectTab(blank); // a button reads as hidden while its tab is
+        // BLOXKEEP_SNAP_DIR set: a picture of the window (tabs and address bar; the page itself draws as blank).
+        if (Environment.GetEnvironmentVariable("BLOXKEEP_SNAP_DIR") is { Length: > 0 } snapDir)
+        {
+            await Task.Delay(300);
+            using var shot = new Bitmap(window2.Width, window2.Height);
+            window2.DrawToBitmap(shot, new Rectangle(Point.Empty, window2.Size));
+            Directory.CreateDirectory(snapDir);
+            shot.Save(Path.Combine(snapDir, "website-tabs.png"));
+        }
+        c.Check("signing in on the site names the tab and offers Save", blank.Title == "webW" && other.Title == "webO" && saveW.Visible,
+            blank.Title + " | " + other.Title);
+        c.Check("the two blank tabs keep their own sign-in", await SessionIn(coreW) == cookieW && await SessionIn(coreO) == cookieO);
         var saved = Harness.Get<Vault>(app, "_vault").Data.Accounts;
         c.Check("nothing is saved before Save", !saved.Any(x => x.UserId is 2004 or 2005));
 
         Harness.Invoke(blank, "SaveAccount");
         var savedW = saved.SingleOrDefault(x => x.UserId == 2004);
         c.Check("Save to Bloxkeep adds the account with that sign-in", savedW is { Username: "webW", Cookie: var k } && k == cookieW && saved.All(x => x.UserId != 2005));
-        c.Check("the window is then that account's", savedW is not null && blank.AccountId == savedW.Id && windows.TryGetValue(savedW.Id, out var mine) && mine == blank && !saveW.Visible);
+        c.Check("the tab is then that account's", savedW is not null && blank.AccountId == savedW.Id && tabs.TryGetValue(savedW.Id, out var mine) && mine == blank && !saveW.Visible);
         await coreW.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
         c.Check("once saved, its sign-out is stopped", await Until(() => askedW == 1, 10), askedW);
 
         foreach (var gone in (await coreO.CookieManager.GetCookiesAsync("https://www.roblox.com")).Where(x => x.Name == ".ROBLOSECURITY"))
             coreO.CookieManager.DeleteCookie(gone);
-        // The window reads every 2 s by itself too; a read already running makes this one return at once.
-        for (int i = 0; i < 20 && other.Text != "Roblox"; i++)
+        // The tab reads every 2 s by itself too; a read already running makes this one return at once.
+        for (int i = 0; i < 20 && other.Title != "Roblox"; i++)
         {
             await (Task)Harness.Invoke(other, "SyncSessionAsync")!;
             await Task.Delay(250);
         }
-        c.Check("signing out on a blank window: nobody again", other.Text == "Roblox" && !Harness.Get<Button>(other, "_saveButton").Visible, other.Text);
+        window2.SelectTab(other);
+        c.Check("signing out on a blank tab: nobody again", other.Title == "Roblox" && !Harness.Get<Button>(other, "_saveButton").Visible, other.Title);
 
         string envDir2 = (string)Static("_envDir")!;
         await Task.Delay(2000);
         var found2 = Scan(envDir2, [cookieW, cookieO]);
-        c.Check("no blank window's session on disk", found2.Count == 0, string.Join(", ", found2));
-        await Harness.Call(app, "lock", new { });
-        c.Check("locking closes blank windows too", await Until(() => blank.IsDisposed && other.IsDisposed, 10) && all.Count == 0 && windows.Count == 0);
+        c.Check("no blank tab's session on disk", found2.Count == 0, string.Join(", ", found2));
+        // Closing the window (its X): every tab goes, after a last read of the saved ones.
+        window2.Close();
+        c.Check("closing the window closes every tab", await Until(() => blank.IsClosed && other.IsClosed && window2.IsDisposed, 10) && all.Count == 0 && tabs.Count == 0 && Window() is null);
         c.Check("their folder is deleted", await Until(() => !Directory.Exists(envDir2), 30), envDir2);
     }
 

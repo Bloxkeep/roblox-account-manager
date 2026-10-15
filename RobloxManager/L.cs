@@ -313,14 +313,16 @@ public static class L
         ["Opening roblox.com…"] = "Đang mở roblox.com…",
         ["Couldn't open the Roblox website: {0}"] = "Không mở được trang Roblox: {0}",
         ["Sign-out stopped"] = "Đã chặn đăng xuất",
-        ["Signing out here would also sign this account out of Bloxkeep, and you'd have to add it again. When you're done, just close this window."] =
-            "Đăng xuất ở đây cũng sẽ đăng xuất tài khoản này khỏi Bloxkeep, và bạn sẽ phải thêm lại. Xem xong thì chỉ cần đóng cửa sổ này.",
-        ["Close window"] = "Đóng cửa sổ",
+        ["Signing out here would also sign this account out of Bloxkeep, and you'd have to add it again. When you're done, just close this tab."] =
+            "Đăng xuất ở đây cũng sẽ đăng xuất tài khoản này khỏi Bloxkeep, và bạn sẽ phải thêm lại. Xem xong thì chỉ cần đóng tab này.",
+        ["Close tab"] = "Đóng tab",
         ["Keep browsing"] = "Xem tiếp",
         ["The website can't be opened for Roblox VNG accounts yet."] = "Chưa mở được trang web cho tài khoản Roblox VNG.",
         ["Save to Bloxkeep"] = "Lưu vào Bloxkeep",
-        ["Opens signed in next time. Without saving, closing this window signs it out here."] =
-            "Lần sau mở sẽ vào thẳng. Nếu không lưu, đóng cửa sổ này là mất phiên đăng nhập ở đây.",
+        ["Opens signed in next time. Without saving, closing this tab signs it out here."] =
+            "Lần sau mở sẽ vào thẳng. Nếu không lưu, đóng tab này là mất phiên đăng nhập ở đây.",
+        ["New tab"] = "Tab mới",
+        ["New tab, to sign in on roblox.com (Ctrl+T)"] = "Tab mới để đăng nhập trên roblox.com (Ctrl+T)",
         ["Signed in."] = "Đã đăng nhập.",
         ["Signed in as {0}."] = "Đã đăng nhập bằng {0}.",
         ["Can't reach roblox.com. Check your internet connection, then press Retry."] =

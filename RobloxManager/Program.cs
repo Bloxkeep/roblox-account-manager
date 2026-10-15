@@ -33,7 +33,7 @@ static class Program
                 // Sign-in and captcha browser profiles in %TEMP%, normally removed at the next start that never comes.
                 BrowserLoginForm.CleanupLeftoverProfiles();
                 CaptchaForm.CleanupLeftoverProfiles();
-                WebsiteForm.CleanupLeftovers();
+                WebsiteTab.CleanupLeftovers();
                 // Bloxkeep's uninstaller window has already asked and says so here; when Velopack's uninstall runs on
                 // its own (an entry an update reset), ask now.
                 bool delete = Environment.GetEnvironmentVariable("BLOXKEEP_UNINSTALL_DATA") switch
@@ -77,7 +77,7 @@ static class Program
         Prefs.Load();
         BrowserLoginForm.CleanupLeftoverProfiles();
         CaptchaForm.CleanupLeftoverProfiles();
-        WebsiteForm.CleanupLeftovers();
+        WebsiteTab.CleanupLeftovers();
         UseOurUninstaller();
         // Started again by an update in the background: what the last run handed over (also removed when not).
         var resume = Relaunch.Take(args);
