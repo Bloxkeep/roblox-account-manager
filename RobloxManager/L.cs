@@ -302,6 +302,22 @@ public static class L
         ["Couldn't open the sign-in browser: {0}"] = "Không mở được trình duyệt đăng nhập: {0}",
         ["Retry"] = "Thử lại",
         ["Opening the Roblox sign-in page…"] = "Đang mở trang đăng nhập Roblox…",
+        ["Back"] = "Quay lại",
+        ["Forward"] = "Tiến tới",
+        ["Reload"] = "Tải lại",
+        ["Opening roblox.com…"] = "Đang mở roblox.com…",
+        ["Couldn't open the Roblox website: {0}"] = "Không mở được trang Roblox: {0}",
+        ["Sign-out stopped"] = "Đã chặn đăng xuất",
+        ["Signing out here would also sign this account out of Bloxkeep, and you'd have to add it again. When you're done, just close this window."] =
+            "Đăng xuất ở đây cũng sẽ đăng xuất tài khoản này khỏi Bloxkeep, và bạn sẽ phải thêm lại. Xem xong thì chỉ cần đóng cửa sổ này.",
+        ["Close window"] = "Đóng cửa sổ",
+        ["Keep browsing"] = "Xem tiếp",
+        ["The website can't be opened for Roblox VNG accounts yet."] = "Chưa mở được trang web cho tài khoản Roblox VNG.",
+        ["Save to Bloxkeep"] = "Lưu vào Bloxkeep",
+        ["Opens signed in next time. Without saving, closing this window signs it out here."] =
+            "Lần sau mở sẽ vào thẳng. Nếu không lưu, đóng cửa sổ này là mất phiên đăng nhập ở đây.",
+        ["Signed in."] = "Đã đăng nhập.",
+        ["Signed in as {0}."] = "Đã đăng nhập bằng {0}.",
         ["Can't reach roblox.com. Check your internet connection, then press Retry."] =
             "Không kết nối được với roblox.com. Hãy kiểm tra mạng rồi bấm Thử lại.",
         ["Microsoft Edge WebView2 isn't installed. Install it from Microsoft's website, then reopen Bloxkeep."] = "Máy chưa có Microsoft Edge WebView2. Hãy cài từ trang web của Microsoft rồi mở lại Bloxkeep.",

@@ -208,6 +208,7 @@ public sealed partial class AppController : IDisposable
 
     public void PushState()
     {
+        RenameWebsites();
         if (PageAttached)
             PostState(BuildState(), force: true);
     }
@@ -349,6 +350,8 @@ public sealed partial class AppController : IDisposable
         "disableTrayAutostart" => Done(DisableTrayAutostart()),
         "removeRecent" => Done(RemoveRecent(Long(a, "placeId"))),
         "openProfile" => Done(OpenUrl($"https://www.roblox.com/users/{Long(a, "userId")}/profile")),
+        "openWebsite" => Done(OpenWebsite(Id(a))),
+        "openWebsiteBlank" => Done(OpenBlankWebsite()),
         "openDataFolder" => Done(OpenDataFolder()),
         "monitorArea" => Done(MonitorAreaCommand(a)),
         "setNotifications" => Done(SetNotifications(a)),
@@ -1005,6 +1008,7 @@ public sealed partial class AppController : IDisposable
         QuickLoginCancel();
         LoginCancel();
         DropVaultImport(); // another vault's accounts, opened for an import, go with this one
+        CloseWebsites(); // signed in as saved accounts
         Ui.ClearSecretClipboard();
         // A second lock (already locked) would start the missed-schedule bookkeeping over and lose what was noted.
         if (_vault is not null)
@@ -1702,6 +1706,7 @@ public sealed partial class AppController : IDisposable
         var set = ids.ToHashSet();
         var data = RequireVault().Data;
         int removed = data.Accounts.RemoveAll(a => set.Contains(a.Id));
+        CloseWebsites(set);
         // Gone from the presets too; one left with no account has nothing to run, so its schedule goes off rather than
         // reporting "no accounts left" every day.
         foreach (var preset in data.Settings.Presets)
@@ -4249,6 +4254,7 @@ public sealed partial class AppController : IDisposable
         SaveBeforeClosing(); // normally done already, before the window agreed to close
         _backupTimer?.Dispose();
         DropVaultImport();
+        CloseWebsites();
         // A downloaded update is installed once the app has closed; the next start is the new version (started at
         // once, carrying on, when this quit is the update in the background).
         _updater.ApplyOnExit(_relaunchArgs);

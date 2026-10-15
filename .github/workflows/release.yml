@@ -1,0 +1,65 @@
+# Builds Bloxkeep on GitHub's own Windows machines and publishes the GitHub release, so every file people download is
+# made from the source in this repository by a build anyone can read (what SignPath Foundation asks for before it
+# signs a project). It runs the same build.bat and release.bat as a build on your own PC.
+# Start a release: add the version's notes to RobloxManager\whatsnew.json, commit, then push a tag:
+#   git tag v1.0.12 && git push origin v1.0.12
+# Try a build without releasing: Actions > Release > Run workflow, with "Publish the release" off; the files stay on
+# the run (Artifacts) for 14 days.
+# The web installer (Installer\Web\Bloxkeep-Setup.exe) is copied from the repository as it is, not built here: it stays
+# the same file in every release (see Installer\Web\make.bat).
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build, e.g. 1.0.12 (its notes must be in RobloxManager/whatsnew.json)
+        required: true
+      publish:
+        description: Publish the release (off = only build, the files stay on the run)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+
+jobs:
+  release:
+    runs-on: windows-2025
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Version
+        id: version
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+          INPUT: ${{ inputs.version }}
+        run: |
+          $v = if ($env:GITHUB_EVENT_NAME -eq 'push') { $env:TAG.TrimStart('v') } else { $env:INPUT.Trim() }
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Not a version: '$v' (expected something like 1.0.12)" }
+          "value=$v" >> $env:GITHUB_OUTPUT
+      - name: Build ${{ steps.version.outputs.value }}
+        shell: cmd
+        run: build.bat ${{ steps.version.outputs.value }} https://github.com/${{ github.repository }}
+      - name: Keep the files on the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bloxkeep-${{ steps.version.outputs.value }}
+          path: dist/releases
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish the release
+        if: github.event_name == 'push' || inputs.publish
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: release.bat ${{ steps.version.outputs.value }} https://github.com/${{ github.repository }}
