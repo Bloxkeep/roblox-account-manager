@@ -4467,8 +4467,11 @@
         run: () => call('openWebsite', { id }) },
       '-',
       { icon: 'copy', text: t('m.copyUser'), disabled: many, run: () => copy(id, 'username') },
-      { icon: 'key', text: t('m.copyPw'), disabled: many || !a.hasPassword, run: () => copy(id, 'password') },
-      { icon: 'shieldCheck', text: t('m.copyCode'), disabled: many || !a.hasAuthenticator, run: () => copy(id, 'totp') },
+      // Nothing saved to copy: picking it says why (a sign-in never keeps the password) instead of a dimmed line.
+      { icon: 'key', text: t('m.copyPw'), disabled: many, title: a.hasPassword ? '' : esc(t('m.noPw')),
+        run: () => a.hasPassword ? copy(id, 'password') : toast(t('m.noPw'), 'info') },
+      { icon: 'shieldCheck', text: t('m.copyCode'), disabled: many, title: a.hasAuthenticator ? '' : esc(t('m.noCode')),
+        run: () => a.hasAuthenticator ? copy(id, 'totp') : toast(t('m.noCode'), 'info') },
       '-',
       { icon: 'trash', text: many ? t('m.deleteN', { n: ids.length }) : t('m.delete'), hint: 'Del', danger: true, run: () => removeIds(ids) },
     ], x, y);
