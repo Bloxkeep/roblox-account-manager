@@ -54,11 +54,17 @@ Setup shows where Bloxkeep will go (`%LOCALAPPDATA%\BloxkeepApp` unless you choo
 
 ### Updates
 
-Bloxkeep checks GitHub for a new version and downloads it in the background. When it's ready, the sidebar shows **Restart to update**; Roblox keeps running meanwhile. If you don't click it, the update installs when you quit. After updating, the app shows **What's new in Bloxkeep**.
+Bloxkeep checks GitHub for a new version and downloads it in the background. It then installs it by itself the next time you aren't using it, and comes back in a few seconds as it was: still unlocked, on the same tab, the window still in the tray or minimised. Roblox windows keep running all along and are followed again.
+
+"Not using it" means the window is in the tray or minimised, or nobody has touched the PC for 10 minutes, and Bloxkeep is in the middle of nothing: no Roblox opening, auto-rejoin or planned restart under way, no sign-in, backup, import or half-filled form. A Roblox window that is just running doesn't hold the update back.
+
+To update right away, click **Restart to update** in the sidebar as soon as it shows. Quitting Bloxkeep installs it too. After updating, the app shows **What's new in Bloxkeep**.
+
+To come back unlocked, the running copy hands the vault key to the new one in a file that only your Windows account can read (Windows DPAPI, mixed with a random value given to the new copy alone). The new copy deletes it as it reads it, and refuses one older than 3 minutes. If you would rather type the master password again after each update, lock Bloxkeep: a locked copy hands over nothing.
 
 Updating itself only works while the GitHub repository is public.
 
-To turn automatic updates off, untick **Settings › Bloxkeep updates › Update automatically**. **Check now** still works.
+To turn automatic updates off, untick **Settings › Bloxkeep updates › Update automatically**: nothing is downloaded or installed by itself then. **Check now** still works.
 
 Running a newer `Bloxkeep-Setup.exe` over an installed copy works too: it installs into the same folder, closes a running Bloxkeep first, and keeps your data. To move Bloxkeep to another drive, uninstall it, then install it again in the new folder.
 

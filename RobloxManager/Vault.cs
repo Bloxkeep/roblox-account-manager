@@ -197,6 +197,32 @@ public sealed class Vault : IDisposable
         throw new InvalidDataException(L.T("The data file is not in the right format or is damaged."));
     }
 
+    /// <summary>
+    /// Opens the vault with the key the previous run handed over for an update's restart (see <see cref="Relaunch"/>)
+    /// instead of the password. Only the main file, and only while it still has that key's salt (the password wasn't
+    /// changed meanwhile); otherwise the lock screen asks as usual.
+    /// </summary>
+    /// <exception cref="InvalidPasswordException">The key doesn't open the file.</exception>
+    public static Vault OpenWithKey(byte[] key, byte[] salt, int iterations)
+    {
+        byte[] file = File.ReadAllBytes(VaultPath);
+        if (HeaderOk(file, out int fileIterations, out byte[] fileSalt) && fileIterations == iterations
+            && fileSalt.AsSpan().SequenceEqual(salt) && Decrypt(file, key) is { } data)
+            return new Vault(key, salt, iterations, data);
+        CryptographicOperations.ZeroMemory(key);
+        throw new InvalidPasswordException();
+    }
+
+    /// <summary>A copy of the key, salt and iteration count, for the run that follows an update (see <see cref="Relaunch"/>).</summary>
+    public (byte[] Key, byte[] Salt, int Iterations) ExportKey()
+    {
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_key.Length == 0, this);
+            return (_key.ToArray(), _salt.ToArray(), _iterations);
+        }
+    }
+
     /// <summary>The file is big enough to hold a vault, starts with the magic and has a sane iteration count.</summary>
     static bool HeaderOk(byte[] file, out int iterations, out byte[] salt)
     {

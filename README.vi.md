@@ -50,11 +50,17 @@ Bộ cài cho bạn chọn nơi cài (mặc định là `%LOCALAPPDATA%\Bloxkeep
 
 ### Cập nhật
 
-Bloxkeep tự kiểm tra bản mới trên GitHub và tải về ở nền. Tải xong, thanh bên hiện nút **Khởi động lại để cập nhật**; Roblox vẫn chạy bình thường trong lúc đó. Nếu bạn không bấm, bản mới được cài khi tắt app. Sau khi cập nhật, app hiện bảng **Có gì mới trong Bloxkeep**.
+Bloxkeep tự kiểm tra bản mới trên GitHub và tải về ở nền. Sau đó app tự cài vào lần tới bạn không dùng nó, và quay lại sau vài giây y như cũ: vẫn mở khóa, đúng tab đang xem, cửa sổ vẫn ở khay hay vẫn thu nhỏ như trước. Các cửa sổ Roblox chạy suốt và được theo dõi lại như thường.
+
+"Không dùng" nghĩa là cửa sổ đang ở khay hoặc thu nhỏ, hoặc không ai chạm vào máy trong 10 phút, và Bloxkeep không đang làm dở việc gì: không đang mở Roblox, tự vào lại hay khởi động lại theo lịch, không đang đăng nhập, sao lưu, nhập dữ liệu hay điền dở form. Cửa sổ Roblox đang chạy treo không làm việc cập nhật phải chờ.
+
+Muốn cập nhật ngay thì bấm **Khởi động lại để cập nhật** ở thanh bên khi nút hiện ra. Thoát Bloxkeep cũng sẽ cài bản mới. Sau khi cập nhật, app hiện bảng **Có gì mới trong Bloxkeep**.
+
+Để quay lại mà vẫn mở khóa, bản đang chạy chuyển chìa khóa vault cho bản mới qua một file chỉ tài khoản Windows của bạn đọc được (Windows DPAPI, kèm một giá trị ngẫu nhiên chỉ bản mới nhận được). Bản mới đọc xong là xóa ngay, và từ chối file quá 3 phút. Nếu bạn muốn nhập lại mật khẩu chủ sau mỗi lần cập nhật thì khóa Bloxkeep lại: bản đang khóa không chuyển gì cả.
 
 Tự cập nhật chỉ hoạt động khi repo trên GitHub ở chế độ công khai.
 
-Muốn tắt tự cập nhật: bỏ chọn **Cài đặt › Cập nhật Bloxkeep › Tự động cập nhật**. Nút **Kiểm tra ngay** vẫn dùng được.
+Muốn tắt tự cập nhật: bỏ chọn **Cài đặt › Cập nhật Bloxkeep › Tự động cập nhật**; khi đó app không tự tải hay tự cài gì nữa. Nút **Kiểm tra ngay** vẫn dùng được.
 
 Chạy `Bloxkeep-Setup.exe` bản mới hơn đè lên bản đã cài cũng được: bộ cài cài vào đúng thư mục cũ, đóng Bloxkeep đang chạy trước và giữ nguyên dữ liệu. Muốn chuyển Bloxkeep sang ổ khác thì gỡ cài đặt rồi cài lại vào thư mục mới.
 

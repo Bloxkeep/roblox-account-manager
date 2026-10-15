@@ -72,7 +72,8 @@ public sealed class ShellForm : Form
 
     static string StartMarker => Path.Combine(Vault.DataDir, "starting.flag");
 
-    public ShellForm()
+    /// <param name="resume">What the previous run handed over when it quit for an update in the background (see <see cref="Relaunch"/>).</param>
+    public ShellForm(Relaunch.State? resume = null)
     {
         // Created first: setting Size below already raises OnResize.
         _app = new AppController(this, PostToPage)
@@ -85,7 +86,18 @@ public sealed class ShellForm : Form
             PageShown = RemoveCover,
             SetMiniOpen = open => SetMiniOpen(open),
             SetMonitorArea = area => _monitor?.SetArea(area),
+            QuitForUpdate = Quit,
+            WindowNow = () => (!Visible ? "hidden" : WindowState == FormWindowState.Minimized ? "minimized" : "shown",
+                Visible && WindowState != FormWindowState.Minimized && InFront, _mini is { Visible: true }),
         };
+        if (resume is not null)
+        {
+            _app.Resume(resume);
+            _resumeWindow = resume.Window;
+            _startHidden = resume.Window == "hidden";
+            _showQuietly = !resume.Foreground;
+            _frontAtStart = GetForegroundWindow();
+        }
         _monitor = new MonitorTab(this, _app, () => _web);
         _themeId = Themes.Current.Id;
         Text = Ui.Title;
@@ -123,8 +135,62 @@ public sealed class ShellForm : Form
         {
             if (Prefs.MiniOpen)
                 SetMiniOpen(true, activate: false);
+            // Back after an update in the background while another program was in front: that one keeps the keyboard
+            // (a minimised or maximised window is activated as it shows, so the keyboard goes back) and stays on top.
+            if (_showQuietly)
+            {
+                _showQuietly = false;
+                IntPtr front = _frontAtStart;
+                if (front != IntPtr.Zero && front != Handle && IsWindow(front))
+                {
+                    if (GetForegroundWindow() == Handle)
+                        SetForegroundWindow(front);
+                    SetWindowPos(Handle, front, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                }
+            }
         };
     }
+
+    /// <summary>The program in front when this run started after an update in the background.</summary>
+    readonly IntPtr _frontAtStart;
+
+    /// <summary>How the window comes back after an update in the background: hidden, minimized or shown (null on a normal start).</summary>
+    readonly string? _resumeWindow;
+    /// <summary>Stays in the tray at start (it was there when the update in the background began).</summary>
+    bool _startHidden;
+    /// <summary>Comes up without taking the keyboard from the program the person is in.</summary>
+    bool _showQuietly;
+
+    protected override bool ShowWithoutActivation => _showQuietly;
+
+    protected override void SetVisibleCore(bool value)
+    {
+        // An update in the background that began with the window in the tray: back in the tray, no window. The
+        // window (and its browser) is made the first time it is opened from there.
+        if (value && _startHidden)
+        {
+            _startHidden = false;
+            if (!IsHandleCreated)
+                CreateHandle();
+            _tray.Visible = true;
+            _app.Background = true;
+            if (Prefs.MiniOpen)
+                BeginInvoke(() => SetMiniOpen(true, activate: false));
+            value = false;
+        }
+        base.SetVisibleCore(value);
+    }
+
+    const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
+
+    [DllImport("user32.dll")]
+    static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    [DllImport("user32.dll")]
+    static extern bool SetForegroundWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    static extern bool IsWindow(IntPtr hwnd);
 
     /// <summary>Shows or hides the mini window (null toggles); the page is told, since its button shows the state.</summary>
     bool SetMiniOpen(bool? open, bool activate = true)
@@ -501,6 +567,14 @@ public sealed class ShellForm : Form
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
+        RestorePlace();
+        // An update in the background found the window minimised: it comes back that way.
+        if (_resumeWindow == "minimized")
+            WindowState = FormWindowState.Minimized;
+    }
+
+    void RestorePlace()
+    {
         // Only now, with the window real: moved to a screen with another scale, it then gets a proper dpi change.
         if (!SavedPlace(out var saved))
             return;

@@ -810,7 +810,7 @@
     setHtml($('#side-warn'), S.app.robloxInstalled ? '' : `<div class="warn-card" title="${esc(t('side.noRoblox'))}">${icon('alert')}<span>${t('side.noRoblox')}</span></div>`);
     const u = S.app.update;
     setHtml($('#update-slot'), u?.status === 'ready'
-      ? `<button class="btn primary w update-btn" data-act="apply-update" title="${esc(t('upd.restartTip', { v: u.version }))}">${icon('refresh')}<span><b>${t('upd.restart')}</b><small>${t('upd.versionN', { v: esc(u.version) })}</small></span></button>` : '');
+      ? `<button class="btn primary w update-btn" data-act="apply-update" title="${esc(t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version }))}">${icon('refresh')}<span><b>${t('upd.restart')}</b><small>${t('upd.versionN', { v: esc(u.version) })}</small></span></button>` : '');
     setText($('#nav-count'), String(accounts().length));
     // Which window is whose, by process id (other tools pick a client by it).
     const pids = accounts().filter(a => isLocal(a) && a.session?.pid > 0).map(a => `${a.label} · PID ${a.session.pid}`);
@@ -1855,7 +1855,7 @@
     const status = !u.supported ? t('upd.unsupported')
       : u.status === 'checking' ? t('upd.checking')
       : u.status === 'downloading' ? t('upd.downloading', { v: u.version, p: u.progress })
-      : u.status === 'ready' ? t('upd.ready', { v: u.version })
+      : u.status === 'ready' ? t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version })
       : u.status === 'upToDate' ? t('upd.latest')
       : u.status === 'error' ? (u.error ? `${t('upd.error')}: ${u.error}` : t('upd.error')) // the reason, when the app gives one
       : t('upd.idle');
@@ -5610,6 +5610,8 @@
     bridge.call('keepView', { view: JSON.stringify(view), restart }).catch(() => {});
   }
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveView(); });
+  // Bloxkeep is about to install an update in the background and start again: the new page comes back like this one.
+  bridge.on('saveView', () => saveView(true));
 
   bridge.call('getState').then(first => {
     let saved = null;

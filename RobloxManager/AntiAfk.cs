@@ -80,6 +80,16 @@ static class AntiAfk
     /// <summary>The PC's last-input time right after our own nudges, which must not be mistaken for a person.</summary>
     static uint _ownInput;
 
+    /// <summary>
+    /// How long since someone last used the mouse or keyboard. When the last input was our own nudge, the person
+    /// has been away longer than any of these waits (nudges only go out once they are).
+    /// </summary>
+    public static TimeSpan IdleTime()
+    {
+        uint last = LastInputTick();
+        return last == _ownInput ? TimeSpan.MaxValue : TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - last));
+    }
+
     /// <summary>Someone used the mouse or keyboard within <see cref="UserIdleNeeded"/> (our own nudges don't count).</summary>
     public static bool PersonActive()
     {

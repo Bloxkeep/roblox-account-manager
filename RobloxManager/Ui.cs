@@ -68,6 +68,10 @@ static class Ui
     /// <summary>Notes a window that can be always on top, so <see cref="Modal"/> lowers it while a box is shown.</summary>
     public static void NoteOnTop(Form form) => _onTop.Add(form);
 
+    /// <summary>Message boxes and dialogs open now (an update waits for them, see AppController.QuietForRelaunch).</summary>
+    public static int ModalsOpen => _modalsOpen;
+    static int _modalsOpen;
+
     /// <summary>Shows a message box or dialog with the app's always-on-top windows lowered meanwhile, so it opens in front of them.</summary>
     public static T Modal<T>(Func<T> show)
     {
@@ -76,12 +80,14 @@ static class Ui
         var lowered = _onTop.Where(f => f.Visible && f.TopMost && !f.InvokeRequired).ToList();
         foreach (var form in lowered)
             form.TopMost = false;
+        Interlocked.Increment(ref _modalsOpen);
         try
         {
             return show();
         }
         finally
         {
+            Interlocked.Decrement(ref _modalsOpen);
             foreach (var form in lowered.Where(f => !f.IsDisposed))
                 form.TopMost = true;
         }

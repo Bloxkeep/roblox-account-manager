@@ -130,14 +130,17 @@ public sealed class AppUpdater
             _manager.ApplyUpdatesAndRestart(_ready);
     }
 
-    /// <summary>Has the downloaded version installed once this process has exited, without starting it.</summary>
-    public void ApplyOnExit()
+    /// <summary>
+    /// Has the downloaded version installed once this process has exited; started again with <paramref name="restartArgs"/>
+    /// when given (an update in the background, see <see cref="Relaunch"/>), else left for the next start.
+    /// </summary>
+    public void ApplyOnExit(string[]? restartArgs = null)
     {
         if (_manager is null || _ready is null)
             return;
         try
         {
-            _manager.WaitExitThenApplyUpdates(_ready, silent: true, restart: false);
+            _manager.WaitExitThenApplyUpdates(_ready, silent: true, restart: restartArgs is not null, restartArgs: restartArgs);
         }
         catch (Exception ex)
         {

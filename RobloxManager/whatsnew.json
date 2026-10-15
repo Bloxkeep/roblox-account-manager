@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.2",
+    "date": "2026-10-15",
+    "en": [
+      "Updates install by themselves while you're not using Bloxkeep, and it comes back as it was: still unlocked, on the same tab, still in the tray. Roblox windows keep running. \"Restart to update\" is still there for right away.",
+      "The uninstaller opens in the middle of the screen, and a second copy started by mistake just brings the first one up.",
+      "Settings: \"Version & graphics\" is now \"Roblox version & graphics\", since it is about Roblox. Bloxkeep's own version is under Bloxkeep updates."
+    ],
+    "vi": [
+      "Bản cập nhật tự cài vào lúc bạn không dùng Bloxkeep, và app quay lại y như cũ: vẫn mở khóa, đúng tab đang xem, vẫn ở khay. Cửa sổ Roblox vẫn chạy. Nút \"Khởi động lại để cập nhật\" vẫn còn nếu muốn cập nhật ngay.",
+      "Bộ gỡ cài đặt mở ở giữa màn hình, và lỡ mở hai lần thì chỉ đưa cửa sổ đầu lên trước.",
+      "Cài đặt: mục \"Phiên bản & đồ họa\" đổi thành \"Phiên bản & đồ họa Roblox\" cho rõ. Phiên bản của Bloxkeep nằm ở Cập nhật Bloxkeep."
+    ]
+  },
+  {
     "version": "1.0.1",
     "date": "2026-10-15",
     "en": [

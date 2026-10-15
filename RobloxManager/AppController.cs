@@ -401,7 +401,8 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>
     /// What the page had on screen (selection, filter, search, scroll), kept in memory only while the browser is
-    /// closed in the background, so a recreated page looks exactly the same. Never written to disk.
+    /// closed in the background, so a recreated page looks exactly the same. Written to disk only inside the
+    /// encrypted hand-over of an update in the background (see <see cref="Relaunch"/>).
     /// </summary>
     /// <param name="restart">Sent right before the page asks for a browser restart (GPU switch), while the window is in front.</param>
     object? KeepView(string view, bool restart)
@@ -3178,6 +3179,7 @@ public sealed partial class AppController : IDisposable
             _nextUpdateCheck = now + UpdateCheckInterval;
             _ = _updater.CheckAsync();
         }
+        Step(() => RelaunchIfQuiet(now)); // a downloaded update, installed once nobody is using the app
 
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
         if (_vault is null)
@@ -4196,15 +4198,18 @@ public sealed partial class AppController : IDisposable
         SaveBeforeClosing(); // normally done already, before the window agreed to close
         _backupTimer?.Dispose();
         DropVaultImport();
-        // A downloaded update is installed once the app has closed; the next start is the new version.
-        _updater.ApplyOnExit();
+        // A downloaded update is installed once the app has closed; the next start is the new version (started at
+        // once, carrying on, when this quit is the update in the background).
+        _updater.ApplyOnExit(_relaunchArgs);
         Ui.ClearSecretClipboard();
         _launchCts?.Cancel();
         _rejoinCts?.Cancel();
-        // The Discord status message says Bloxkeep closed, if Discord answers within a moment.
+        // The Discord status message says Bloxkeep closed, if Discord answers within a moment; not for an update in
+        // the background, whose next run carries on within seconds.
         try
         {
-            FinalDiscordBoard(closing: true)?.Wait(TimeSpan.FromSeconds(2));
+            if (_relaunchArgs is null)
+                FinalDiscordBoard(closing: true)?.Wait(TimeSpan.FromSeconds(2));
         }
         catch (AggregateException)
         {

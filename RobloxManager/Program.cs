@@ -8,7 +8,7 @@ static class Program
     static DateTime _lastErrorBox;
 
     [STAThread]
-    static void Main()
+    static void Main(string[] args)
     {
         // The installer and updater run the app with special arguments for install/update/uninstall steps; those
         // are handled here (and exit) before anything else starts. Uninstalling removes the program folder, the
@@ -67,10 +67,12 @@ static class Program
         BrowserLoginForm.CleanupLeftoverProfiles();
         CaptchaForm.CleanupLeftoverProfiles();
         UseOurUninstaller();
+        // Started again by an update in the background: what the last run handed over (also removed when not).
+        var resume = Relaunch.Take(args);
         ShellForm shell;
         try
         {
-            shell = new ShellForm();
+            shell = new ShellForm(resume);
         }
         // Nothing is running yet, so report why the window could not be created instead of vanishing.
         catch (Exception ex)
