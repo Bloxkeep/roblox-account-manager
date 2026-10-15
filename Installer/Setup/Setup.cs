@@ -773,7 +773,9 @@ namespace BloxkeepSetup
         {
             _uninstall = uninstall;
             _root = root;
-            using (Graphics g = CreateGraphics())
+            // The screen's scale, read without creating the window: a window made this early ignores StartPosition
+            // and opens in Windows' default corner.
+            using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
                 _k = g.DpiX / 96f;
             Font = new Font("Segoe UI", 9.75f);
             AutoScaleMode = AutoScaleMode.None;
@@ -813,6 +815,17 @@ namespace BloxkeepSetup
             int on = 1;
             if (DwmSetWindowAttribute(Handle, 20, ref on, 4) != 0)
                 DwmSetWindowAttribute(Handle, 19, ref on, 4);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            // In the middle of the screen the mouse is on (with several screens, the one the person is looking at).
+            if (StartPosition == FormStartPosition.CenterScreen)
+            {
+                Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
+                Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
+            }
         }
 
         protected override void OnShown(EventArgs e)
