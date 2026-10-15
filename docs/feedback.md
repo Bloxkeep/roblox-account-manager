@@ -27,8 +27,8 @@ turned off, so `@everyone` in a message pings nobody. The log arrives as a file,
    secret `FEEDBACK_WEBHOOK` (without it, the Roblox watch's `DISCORD_WEBHOOK` channel gets feedback too).
 2. The Cloudflare account and its secrets as in [the Roblox watch's setup](roblox-watch.md#setting-it-up), and the
    account's workers.dev subdomain chosen once: Workers & Pages in the Cloudflare dashboard.
-3. Actions › **Cloudflare workers** › Run workflow. Its summary says the feedback address,
-   `https://bloxkeep-feedback.<subdomain>.workers.dev/feedback`.
+3. Actions › **Cloudflare workers** › Run workflow (or connect the repository in Workers & Pages, root directory `Feedback/worker`). The feedback address is
+   `https://bloxkeep-feedback.bloxkeep-app.workers.dev/feedback`.
 4. That address goes in `FeedbackUrl` (`RobloxManager/AppController.Feedback.cs`). Until then the checks
    (`Tests/Bloxkeep.Tests`, suite `feedback`) fail, so no build goes out with the feature pointing nowhere.
 

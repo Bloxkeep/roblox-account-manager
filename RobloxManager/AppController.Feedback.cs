@@ -16,7 +16,7 @@ namespace RobloxManager;
 public sealed partial class AppController
 {
     /// <summary>The feedback Worker (BLOXKEEP_FEEDBACK_URL points elsewhere: the checks' own little server).</summary>
-    const string FeedbackUrl = "https://bloxkeep-feedback.SUBDOMAIN.workers.dev/feedback";
+    const string FeedbackUrl = "https://bloxkeep-feedback.bloxkeep-app.workers.dev/feedback";
     const int FeedbackTextMax = 2000, FeedbackContactMax = 100, FeedbackLogMax = 12_000;
     static readonly TimeSpan FeedbackGap = TimeSpan.FromSeconds(60);
     static readonly HttpClient FeedbackHttp = new(new SocketsHttpHandler { UseCookies = false, AllowAutoRedirect = false })
