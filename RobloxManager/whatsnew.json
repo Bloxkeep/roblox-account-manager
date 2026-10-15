@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.0.7",
+    "date": "2026-10-15",
+    "en": [
+      "Anti-AFK no longer lets Roblox windows get kicked after Bloxkeep restarts (an update, a crash): windows that were already open are looked after at once instead of 15 minutes later. It now steps in from 12 minutes, and a window about to be kicked stays in game even while you use the PC: it goes in a 2-second pause in your typing, never over a full-screen app.",
+      "When an account is kicked for idling anyway, Bloxkeep says why (the PC was in use, locked, or Windows kept the window in the background) instead of always blaming a locked PC.",
+      "Questions you see often (deleting a preset, closing all Roblox, opening anyway, turning on Multi-Roblox, leaving a form you typed in) have a Don't ask again box. Deleting accounts, restoring a backup and removing the Discord link still always ask.",
+      "Statistics: games played days ago and the presets' games show their icons again. On a wide window the page uses the room: how many accounts played, the longest stay, and play time by preset."
+    ],
+    "vi": [
+      "Chống AFK không còn để cửa sổ Roblox bị kick sau khi Bloxkeep khởi động lại (cập nhật, bị tắt đột ngột): các cửa sổ đang mở được lo ngay thay vì 15 phút sau. Giờ chống AFK bắt đầu từ phút thứ 12, và cửa sổ sắp bị kick vẫn được giữ lại cả khi bạn đang dùng máy: vào lúc bạn ngừng gõ 2 giây, không bao giờ chen ngang ứng dụng toàn màn hình.",
+      "Nếu tài khoản vẫn bị kick vì AFK, Bloxkeep nói rõ lý do (máy đang được dùng, máy đang khóa, hay Windows giữ cửa sổ ở phía sau) thay vì lúc nào cũng bảo máy đang khóa.",
+      "Các câu hỏi hay gặp (xóa Preset, đóng tất cả Roblox, vẫn mở, bật Multi-Roblox, bỏ những gì đang nhập) có ô Không hỏi lại. Xóa tài khoản, khôi phục bản sao lưu và gỡ link Discord thì vẫn luôn hỏi.",
+      "Thống kê: game chơi từ mấy hôm trước và game của Preset hiện lại logo. Khi mở rộng cửa sổ, trang dùng hết chỗ: thêm số tài khoản đã chơi, lượt chơi dài nhất và thời gian chơi theo Preset."
+    ]
+  },
+  {
     "version": "1.0.6",
     "date": "2026-10-15",
     "en": [

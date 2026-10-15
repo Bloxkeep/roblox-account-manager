@@ -175,6 +175,10 @@ How it works: Roblox uses an object named `ROBLOX_singletonEvent` to allow only 
 
 If a newer Roblox build starts closing windows when another opens again, **Settings › Version & graphics** shows a yellow warning. It goes away once two or more accounts are in a game at the same time, when Roblox updates, or when you click **Hide**.
 
+### Anti-AFK
+
+Roblox kicks an account after 20 minutes without input. With **Settings › Performance › Anti-AFK** on (a preset can override it), Bloxkeep brings each Roblox window that is in a game to the front for a moment, moves the mouse a few pixels over it and back, and returns you to the window you were in. No key is pressed and nothing is clicked. It steps in from 12 minutes after a window's last input, at the first minute nobody uses the PC; a window two minutes from its kick goes in a 2-second pause even while you use the PC, but never over a full-screen app. It can't work while the PC is locked. If an account is kicked anyway, Bloxkeep says why.
+
 ### Auto-rejoin
 
 Turn it on per account in the ⋯ menu › **Auto-rejoin**, or for every account at once in **Settings › Performance › Auto-rejoin** (a preset can override it; see [Presets](#presets)). If Roblox ended an account's sign-in, auto-rejoin turns itself off for it, and back on once the account is signed in again. When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. If it keeps dropping, from the third time Bloxkeep waits 2, 5, 10, then 15 minutes between tries (the card shows the wait with a **Cancel** button); 10 minutes in the game resets the count. Without a network, it retries every 30 seconds, up to 20 times.
@@ -217,7 +221,7 @@ Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's
 
 ### Statistics and activity
 
-The **Statistics** tab counts play time, sessions and disconnects for **Today**, **7 days** or **30 days**, per account and per game. Only games opened with Bloxkeep count.
+The **Statistics** tab counts play time, sessions and disconnects for **Today**, **7 days** or **30 days**, per account and per game. Only games opened with Bloxkeep count. On a wide window it also shows how many accounts played, the longest stay, and play time by preset.
 
 Switch to **Activity** for the log: accounts opened, games joined and left, drops (with the reason), rejoins, scheduled presets starting and stopping, accounts that need to sign in again. Filter by account and kind, and **Export CSV** when you need it. Bloxkeep keeps the last 1,000 events, in the encrypted vault.
 

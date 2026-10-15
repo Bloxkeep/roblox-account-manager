@@ -169,6 +169,10 @@ Cách hoạt động: Roblox dùng một đối tượng tên `ROBLOX_singletonE
 
 Nếu một bản Roblox mới lại đóng cửa sổ khi cửa sổ khác mở, **Cài đặt › Phiên bản & đồ họa** hiện cảnh báo vàng. Cảnh báo tự mất khi từ 2 tài khoản trở lên cùng ở trong game, khi Roblox cập nhật bản mới, hoặc khi bạn bấm **Ẩn**.
 
+### Chống AFK
+
+Roblox kick tài khoản sau 20 phút không có thao tác. Khi bật **Cài đặt › Hiệu năng › Chống AFK** (preset có thể ghi đè), Bloxkeep đưa từng cửa sổ Roblox đang ở trong game lên trước trong chốc lát, nhích chuột vài pixel rồi trả về, và đưa bạn lại cửa sổ đang dùng. Không bấm phím, không click gì. Chống AFK bắt đầu từ phút thứ 12 kể từ thao tác cuối của cửa sổ, vào phút đầu tiên không ai dùng máy; cửa sổ còn 2 phút là bị kick thì được làm vào lúc bạn ngừng gõ 2 giây, kể cả khi bạn đang dùng máy, nhưng không bao giờ chen ngang ứng dụng toàn màn hình. Không chạy được khi máy đang khóa. Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do.
+
 ### Tự vào lại game
 
 Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game**, hoặc cho mọi tài khoản cùng lúc ở **Cài đặt › Hiệu năng › Tự vào lại game** (preset có thể ghi đè, xem [Preset](#preset)). Nếu Roblox kết thúc phiên đăng nhập của một tài khoản, tự vào lại game tự tắt cho tài khoản đó, và tự bật lại khi tài khoản được đăng nhập lại. Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Nếu cứ bị văng liên tục, từ lần thứ ba Bloxkeep chờ 2, 5, 10 rồi 15 phút giữa các lần thử (thẻ tài khoản hiện thời gian chờ và nút **Hủy**); ở lại trong game 10 phút thì đếm lại từ đầu. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
@@ -211,7 +215,7 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 
 ### Thống kê và hoạt động
 
-Tab **Thống kê** tính thời gian chơi, số lượt chơi và số lần mất kết nối theo **Hôm nay**, **7 ngày** hoặc **30 ngày**, theo từng tài khoản và từng game. Chỉ tính các game mở bằng Bloxkeep.
+Tab **Thống kê** tính thời gian chơi, số lượt chơi và số lần mất kết nối theo **Hôm nay**, **7 ngày** hoặc **30 ngày**, theo từng tài khoản và từng game. Chỉ tính các game mở bằng Bloxkeep. Khi mở rộng cửa sổ, trang còn hiện số tài khoản đã chơi, lượt chơi dài nhất và thời gian chơi theo Preset.
 
 Chuyển sang **Hoạt động** để xem nhật ký: mở tài khoản, vào game, rời game, bị văng (kèm lý do), tự vào lại, preset hẹn giờ chạy và dừng, tài khoản cần đăng nhập lại. Lọc theo tài khoản và loại sự kiện, **Xuất CSV** khi cần. Bloxkeep giữ 1.000 sự kiện gần nhất, trong kho đã mã hóa.
 
