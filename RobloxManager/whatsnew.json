@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.3",
+    "date": "2026-10-15",
+    "en": [
+      "Looks for a new version every hour instead of every 6 hours, so updates arrive sooner (and still install by themselves while you're not using Bloxkeep)."
+    ],
+    "vi": [
+      "Kiểm tra bản mới mỗi giờ thay vì 6 tiếng một lần, nên bản cập nhật đến sớm hơn (và vẫn tự cài vào lúc bạn không dùng Bloxkeep)."
+    ]
+  },
+  {
     "version": "1.0.2",
     "date": "2026-10-15",
     "en": [

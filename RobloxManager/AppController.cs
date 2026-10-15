@@ -40,7 +40,11 @@ public sealed partial class AppController : IDisposable
     static readonly TimeSpan NetworkRetryDelay = TimeSpan.FromSeconds(30);
     static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(5);
     const int MaxNetworkRetries = 20;
-    static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(6);
+    /// <summary>
+    /// Like the Claude app: a new version is found within the hour, then downloaded and installed by itself. One small
+    /// request to GitHub's API each time, well within its 60 an hour for anonymous callers (several PCs on one IP too).
+    /// </summary>
+    static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(1);
     static readonly TimeSpan RobloxVersionInterval = TimeSpan.FromMinutes(30);
     static readonly TimeSpan TrimInterval = TimeSpan.FromMinutes(2);
     const int TrimLoadPercent = 85;

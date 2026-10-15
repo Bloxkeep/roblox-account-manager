@@ -54,7 +54,7 @@ Setup shows where Bloxkeep will go (`%LOCALAPPDATA%\BloxkeepApp` unless you choo
 
 ### Updates
 
-Bloxkeep checks GitHub for a new version and downloads it in the background. It then installs it by itself the next time you aren't using it, and comes back in a few seconds as it was: still unlocked, on the same tab, the window still in the tray or minimised. Roblox windows keep running all along and are followed again.
+Bloxkeep checks GitHub for a new version when it starts and every hour after, and downloads it in the background. It then installs it by itself the next time you aren't using it, and comes back in a few seconds as it was: still unlocked, on the same tab, the window still in the tray or minimised. Roblox windows keep running all along and are followed again.
 
 "Not using it" means the window is in the tray or minimised, or nobody has touched the PC for 10 minutes, and Bloxkeep is in the middle of nothing: no Roblox opening, auto-rejoin or planned restart under way, no sign-in, backup, import or half-filled form. A Roblox window that is just running doesn't hold the update back.
 
