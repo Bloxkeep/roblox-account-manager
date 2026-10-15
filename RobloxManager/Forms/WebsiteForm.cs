@@ -144,8 +144,10 @@ public sealed class WebsiteForm : Form
     public void PlaceNear(Form owner, int index)
     {
         var area = Screen.FromControl(owner).WorkingArea;
-        var size = new Size(Math.Min(LogicalToDeviceUnits(1280), area.Width), Math.Min(LogicalToDeviceUnits(860), area.Height));
-        int step = LogicalToDeviceUnits(32) * (index % 6);
+        // On a small screen the window leaves room for all six steps, so the next one still shows below and to the right.
+        int stepSize = LogicalToDeviceUnits(32), room = stepSize * 5;
+        var size = new Size(Math.Min(LogicalToDeviceUnits(1280), area.Width - room), Math.Min(LogicalToDeviceUnits(860), area.Height - room));
+        int step = stepSize * (index % 6);
         Bounds = new Rectangle(
             Math.Clamp(area.Left + (area.Width - size.Width) / 2 + step, area.Left, area.Right - size.Width),
             Math.Clamp(area.Top + (area.Height - size.Height) / 2 + step, area.Top, area.Bottom - size.Height),
