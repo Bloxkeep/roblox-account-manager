@@ -5,12 +5,14 @@
     "en": [
       "Looks for a new version 5 seconds after it opens (was 20) and every hour instead of every 6 hours, so updates arrive sooner (and still install by themselves while you're not using Bloxkeep).",
       "Settings › Bloxkeep updates says when it last checked, so \"up to date\" is never an old answer passed off as new.",
-      "\"Restart to update\" shows Bloxkeep's own Updating window instead of a Windows dialog, and Bloxkeep comes back as it was: still unlocked, on the same tab."
+      "\"Restart to update\" shows Bloxkeep's own Updating window instead of a Windows dialog, and Bloxkeep comes back as it was: still unlocked, on the same tab.",
+      "Questions and error messages use Bloxkeep's own window, in your theme, instead of Windows' plain white box; Setup and the uninstaller have just a close button."
     ],
     "vi": [
       "Kiểm tra bản mới 5 giây sau khi mở (trước là 20) và mỗi giờ thay vì 6 tiếng một lần, nên bản cập nhật đến sớm hơn (và vẫn tự cài vào lúc bạn không dùng Bloxkeep).",
       "Cài đặt › Cập nhật Bloxkeep ghi rõ lần kiểm tra gần nhất lúc mấy giờ, nên \"đã là bản mới nhất\" không còn là kết quả cũ trông như mới.",
-      "Nút \"Khởi động lại để cập nhật\" hiện cửa sổ Đang cập nhật của Bloxkeep thay cho hộp thoại của Windows, và Bloxkeep quay lại y như cũ: vẫn mở khóa, đúng tab đang xem."
+      "Nút \"Khởi động lại để cập nhật\" hiện cửa sổ Đang cập nhật của Bloxkeep thay cho hộp thoại của Windows, và Bloxkeep quay lại y như cũ: vẫn mở khóa, đúng tab đang xem.",
+      "Các câu hỏi và thông báo lỗi dùng cửa sổ riêng của Bloxkeep theo theme bạn chọn, thay cho hộp thoại trắng của Windows; bộ cài và bộ gỡ chỉ còn nút đóng."
     ]
   },
   {

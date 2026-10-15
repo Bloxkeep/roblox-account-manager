@@ -455,6 +455,12 @@ public static class L
         ["Updated every {0} min"] = "Cập nhật mỗi {0} phút",
         ["({0} older message couldn't be sent while offline and was dropped.)"] = "({0} tin cũ không gửi được lúc mất mạng nên đã bỏ.)",
         ["({0} older messages couldn't be sent while offline and were dropped.)"] = "({0} tin cũ không gửi được lúc mất mạng nên đã bỏ.)",
+        ["OK"] = "OK",
+        ["Cancel"] = "Hủy",
+        ["Quit anyway"] = "Vẫn thoát",
+        ["Keep Bloxkeep open"] = "Không thoát",
+        ["Install"] = "Cài đặt",
+        ["Not now"] = "Để sau",
         ["Uninstall Bloxkeep"] = "Gỡ cài đặt Bloxkeep",
         ["Delete your accounts too?"] = "Xóa luôn tài khoản?",
         ["Bloxkeep is being removed from this PC. Your accounts and settings stay unless you delete them."] =

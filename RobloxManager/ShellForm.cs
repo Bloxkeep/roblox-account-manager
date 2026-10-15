@@ -282,8 +282,8 @@ public sealed class ShellForm : Form
         // Changes that still can't be written (the file held by an antivirus) would be gone with the window; the
         // person decides, except when Windows itself is shutting down.
         if (!_app.SaveBeforeClosing() && e.CloseReason != CloseReason.WindowsShutDown
-            && Ui.Modal(() => MessageBox.Show(this, L.T("Couldn't save your changes. Quit anyway and lose them?"), Ui.Title,
-                MessageBoxButtons.YesNo, MessageBoxIcon.Warning)) != DialogResult.Yes)
+            && !Ui.Modal(() => Dialog.Confirm(this, L.T("Couldn't save your changes. Quit anyway and lose them?"),
+                L.T("Quit anyway"), L.T("Keep Bloxkeep open"), danger: true)))
         {
             e.Cancel = true;
             _quitting = false;

@@ -350,8 +350,8 @@ sealed class MiniForm : Form
     void CloseAllClicked()
     {
         // The same question the page asks.
-        if (Ui.Modal(() => MessageBox.Show(this, L.T("Close ALL Roblox running on this PC (including Roblox in the system tray)?"), Ui.Title,
-                MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2)) != DialogResult.Yes)
+        if (!Ui.Modal(() => Dialog.Confirm(this, L.T("Close ALL Roblox running on this PC (including Roblox in the system tray)?"),
+                L.T("Close all"), L.T("Cancel"), danger: true)))
             return;
         _app.CloseAllClients();
         RefreshRows();

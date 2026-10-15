@@ -60,7 +60,7 @@ static class Ui
     }
 
     public static void Error(IWin32Window? owner, string message) =>
-        Modal(() => MessageBox.Show(owner, message, Title, MessageBoxButtons.OK, MessageBoxIcon.Error));
+        Modal(() => { Dialog.Error(owner, message); return 0; });
 
     /// <summary>The windows the app may keep on top (the mini window): a message box would open behind them.</summary>
     static readonly List<Form> _onTop = new();

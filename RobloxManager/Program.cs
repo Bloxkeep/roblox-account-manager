@@ -159,27 +159,16 @@ static class Program
             return false;
         Prefs.Load();
         ApplicationConfiguration.Initialize();
-        var keep = new TaskDialogCommandLinkButton(L.T("Keep my accounts and settings"), L.T("Installing Bloxkeep again picks up where you left off."));
-        var delete = new TaskDialogCommandLinkButton(L.T("Delete my accounts and settings"),
-            L.F("Deletes the vault with your saved accounts, your settings and logs in {0}. This can't be undone.", Vault.DataDir));
-        var page = new TaskDialogPage
-        {
-            Caption = L.T("Uninstall Bloxkeep"),
-            Heading = L.T("Delete your accounts too?"),
-            Text = L.T("Bloxkeep is being removed from this PC. Your accounts and settings stay unless you delete them."),
-            Buttons = { keep, delete },
-            DefaultButton = keep,
-            Footnote = new TaskDialogFootnote(L.T("Kept if you don't choose within a minute.")),
-            AllowCancel = true,
-        };
-        using var timer = new System.Windows.Forms.Timer { Interval = (int)Math.Clamp((deadline - DateTime.UtcNow).TotalMilliseconds, 5000, 50000) };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            page.BoundDialog?.Close();
-        };
-        page.Created += (_, _) => timer.Start();
-        return TaskDialog.ShowDialog(page) == delete;
+        int picked = Dialog.Show(null, L.T("Bloxkeep is being removed from this PC. Your accounts and settings stay unless you delete them."),
+            L.T("Delete your accounts too?"), Dialog.Kind.Warning,
+            [
+                new Dialog.Choice(L.T("Keep my accounts and settings"), L.T("Installing Bloxkeep again picks up where you left off.")),
+                new Dialog.Choice(L.T("Delete my accounts and settings"),
+                    L.F("Deletes the vault with your saved accounts, your settings and logs in {0}. This can't be undone.", Vault.DataDir), Danger: true),
+            ],
+            defaultIndex: 0, cancelIndex: 0, footnote: L.T("Kept if you don't choose within a minute."),
+            timeout: TimeSpan.FromMilliseconds(Math.Clamp((deadline - DateTime.UtcNow).TotalMilliseconds, 5000, 50000)));
+        return picked == 1;
     }
 
     /// <summary>

@@ -24,9 +24,9 @@ static class WebView2Setup
 
     public static async Task<bool> TryInstallAsync(IWin32Window owner)
     {
-        if (MessageBox.Show(owner,
+        if (!Ui.Modal(() => Dialog.Confirm(owner,
                 L.T("Bloxkeep needs Microsoft Edge WebView2, which isn't installed. Install it now? (about 2 MB)"),
-                Ui.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                L.T("Install"), L.T("Not now"))))
             return false;
 
         string dir = Path.Combine(Path.GetTempPath(), "Bloxkeep-webview2-" + Guid.NewGuid().ToString("N"));

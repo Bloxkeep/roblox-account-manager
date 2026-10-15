@@ -121,7 +121,7 @@ namespace BloxkeepSetup
 
         static void Message(string text)
         {
-            MessageBox.Show(text, "Bloxkeep", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Prompt.Ask(null, text, "OK", null);
         }
 
         /// <summary>The language Bloxkeep already uses on this PC, else Windows' display language.</summary>
@@ -800,7 +800,9 @@ namespace BloxkeepSetup
             Font = new Font("Segoe UI", 9.75f);
             AutoScaleMode = AutoScaleMode.None;
             FormBorderStyle = FormBorderStyle.FixedSingle;
+            // Only the close button: these windows don't maximise, and a greyed-out maximise button is just noise.
             MaximizeBox = false;
+            MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Theme.Bg;
             ForeColor = Theme.Text;
@@ -890,6 +892,18 @@ namespace BloxkeepSetup
 
         [DllImport("dwmapi.dll")]
         static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        [DllImport("dwmapi.dll")]
+        static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out RECT value, int size);
+
+        [DllImport("user32.dll")]
+        static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+
+        [DllImport("user32.dll")]
+        static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct RECT { public int Left, Top, Right, Bottom; }
 
         [DllImport("user32.dll")]
         static extern bool DrawIconEx(IntPtr hdc, int x, int y, IntPtr icon, int width, int height, int step, IntPtr brush, int flags);
@@ -1090,9 +1104,9 @@ namespace BloxkeepSetup
                 _problem.Text = error;
                 return;
             }
-            if (Ops.AppRunning() && MessageBox.Show(this,
+            if (Ops.AppRunning() && !Prompt.Ask(this,
                     T.S("Bloxkeep is running. Setup will close it first.", "Bloxkeep đang chạy. Bộ cài sẽ đóng nó trước."),
-                    Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Information) != DialogResult.OK)
+                    T.S("Close and install", "Đóng và cài đặt"), T.S("Cancel", "Hủy")))
                 return;
             string target = Ops.Full(_path.Text);
             _target = target;
@@ -1387,15 +1401,106 @@ namespace BloxkeepSetup
             Location = new Point(-20000, -20000);
             ShowInTaskbar = false;
             Show();
-            Application.DoEvents();
-            using (var bmp = new Bitmap(Width, Height))
+            for (int i = 0; i < 6; i++)
             {
-                DrawToBitmap(bmp, new Rectangle(0, 0, Width, Height));
-                bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                Application.DoEvents();
+                Thread.Sleep(50);
+            }
+            // As Windows draws it (its own title bar and buttons, dark), cut to the visible frame: DrawToBitmap
+            // would paint an old-style frame of its own.
+            RECT whole, visible;
+            GetWindowRect(Handle, out whole);
+            if (DwmGetWindowAttribute(Handle, 9, out visible, Marshal.SizeOf(typeof(RECT))) != 0) // DWMWA_EXTENDED_FRAME_BOUNDS
+                visible = whole;
+            using (var full = new Bitmap(whole.Right - whole.Left, whole.Bottom - whole.Top))
+            {
+                using (Graphics g = Graphics.FromImage(full))
+                {
+                    IntPtr hdc = g.GetHdc();
+                    try { PrintWindow(Handle, hdc, 2); } // PW_RENDERFULLCONTENT
+                    finally { g.ReleaseHdc(hdc); }
+                }
+                var crop = new Rectangle(visible.Left - whole.Left, visible.Top - whole.Top, visible.Right - visible.Left, visible.Bottom - visible.Top);
+                using (Bitmap cut = full.Clone(crop, full.PixelFormat))
+                    cut.Save(path, System.Drawing.Imaging.ImageFormat.Png);
             }
             _page = null;
             Close();
             return 0;
+        }
+    }
+
+    /// <summary>A notice or question in the installer's own style (Windows' message box looked out of place).</summary>
+    sealed class Prompt : Form
+    {
+        bool _yes;
+        readonly float _k;
+
+        Prompt(string text, string yes, string no, bool owned)
+        {
+            using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
+                _k = g.DpiX / 96f;
+            Text = "Bloxkeep";
+            Font = new Font("Segoe UI", 9.75f);
+            AutoScaleMode = AutoScaleMode.None;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MinimizeBox = MaximizeBox = false;
+            ShowIcon = false;
+            ShowInTaskbar = !owned;
+            StartPosition = owned ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;
+            BackColor = Theme.Bg;
+            ForeColor = Theme.Text;
+            KeyPreview = true;
+            int width = S(440), pad = S(24);
+            var label = new Label { Text = text, ForeColor = Theme.Text, AutoSize = true, MaximumSize = new Size(width - 2 * pad, 0), Location = new Point(pad, pad) };
+            Controls.Add(label);
+            int y = label.Bottom + S(22), right = width - pad;
+            Btn cancel = null;
+            if (no != null)
+            {
+                cancel = MakeButton(no, false, right, y, delegate { _yes = false; Close(); });
+                right = cancel.Left - S(10);
+            }
+            Btn ok = MakeButton(yes, true, right, y, delegate { _yes = true; Close(); });
+            AcceptButton = ok;
+            CancelButton = cancel ?? ok;
+            ClientSize = new Size(width, y + S(36) + pad);
+            Shown += delegate { ok.Focus(); };
+        }
+
+        int S(float px) { return (int)Math.Round(px * _k); }
+
+        Btn MakeButton(string text, bool primary, int right, int y, EventHandler click)
+        {
+            var b = primary ? new Btn(Theme.Accent, Theme.AccentHover, Theme.Ink) : new Btn(Theme.Field, Theme.FieldHover, Theme.Text);
+            b.Text = text;
+            b.Font = new Font("Segoe UI Semibold", 9.75f);
+            int w = Math.Max(S(96), TextRenderer.MeasureText(text, b.Font).Width + S(32));
+            b.Bounds = new Rectangle(right - w, y, w, S(36));
+            b.Click += click;
+            Controls.Add(b);
+            return b;
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            int on = 1;
+            if (DwmSetWindowAttribute(Handle, 20, ref on, 4) != 0)
+                DwmSetWindowAttribute(Handle, 19, ref on, 4);
+        }
+
+        [DllImport("dwmapi.dll")]
+        static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        /// <summary>True for the main button; false for the other one, Esc or the X.</summary>
+        public static bool Ask(IWin32Window owner, string text, string yes, string no)
+        {
+            using (var prompt = new Prompt(text, yes, no, owner != null))
+            {
+                prompt.ShowDialog(owner);
+                return prompt._yes;
+            }
         }
     }
 
