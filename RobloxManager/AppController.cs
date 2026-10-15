@@ -113,7 +113,8 @@ public sealed partial class AppController : IDisposable
     readonly Dictionary<Guid, int> _rejoinsInARow = new();
     readonly Dictionary<Guid, int> _offlineStrikes = new();
     readonly AppUpdater _updater = new();
-    DateTime _nextUpdateCheck = DateTime.UtcNow + TimeSpan.FromSeconds(20);
+    /// <summary>The first check a few seconds after the start (one small request, out of the way of the window's own start).</summary>
+    DateTime _nextUpdateCheck = DateTime.UtcNow + TimeSpan.FromSeconds(5);
     DateTime _nextRobloxVersionCheck;
     RobloxInstalls.ClientVersion? _latestRoblox;
     /// <summary>The version that ran before an update, until the page has shown what's new since then.</summary>
