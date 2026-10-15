@@ -161,12 +161,6 @@ public sealed partial class AppController : IDisposable
     /// <summary>Recreates the interface drawing on the CPU (true) or the graphics card (false).</summary>
     public Func<bool, Task>? SetSafeRendering { get; init; }
 
-    /// <summary>Runs right before the updater restarts the app (which skips the window's normal shutdown).</summary>
-    public Action? BeforeRestart { get; init; }
-
-    /// <summary>Runs when the updater couldn't restart after all: the app keeps running (its tray icon comes back).</summary>
-    public Action? RestartFailed { get; init; }
-
     /// <summary>The window applies a new theme or close-to-tray choice.</summary>
     public Action? AppearanceChanged { get; init; }
 
@@ -278,7 +272,7 @@ public sealed partial class AppController : IDisposable
         "pageBusy" => Done(SetPageBusy(Bool(a, "busy"))),
         "pageShown" => Done(OnPageShown()),
         "checkUpdates" => CheckUpdatesAsync(),
-        "applyUpdate" => Done(ApplyUpdate()),
+        "applyUpdate" => ApplyUpdateAsync(),
         "setAutoUpdate" => Done(SetAutoUpdate(Bool(a, "enabled"))),
         "whatsNew" => Done(WhatsNew.Between(null, _updater.CurrentVersion)),
         "seenWhatsNew" => Done(SeenWhatsNew()),
@@ -3696,41 +3690,7 @@ public sealed partial class AppController : IDisposable
         return _updater.Dto();
     }
 
-    /// <summary>Closes Bloxkeep, installs the downloaded version and opens it again. Roblox windows stay open.</summary>
-    object? ApplyUpdate()
-    {
-        // A second click while the first one is on its way out does nothing.
-        if (_applyingUpdate)
-            return null;
-        // The button can be older than the state (the page pushed before a failed re-check): say why nothing happens.
-        if (_updater.Status != "ready")
-            throw new UserError(_updater.Status is "checking" or "downloading"
-                ? L.T("The update is still downloading. Try again in a moment.")
-                : L.T("No update is ready to install. Check for updates again."));
-        if (_launchCts is not null)
-            throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
-        if (!SaveBeforeClosing())
-            throw new UserError(L.T("Couldn't save your changes, so the update waits. Try again in a moment."));
-        // The updater ends the process at once; the window's own cleanup (the tray icon, the clipboard, a rejoin
-        // getting its ticket) doesn't run.
-        _applyingUpdate = true;
-        _rejoinCts?.Cancel();
-        Ui.ClearSecretClipboard();
-        BeforeRestart?.Invoke();
-        try
-        {
-            _updater.RestartToUpdate();
-        }
-        catch (Exception ex)
-        {
-            Log.Write(ex);
-            _applyingUpdate = false;
-            RestartFailed?.Invoke();
-            throw new UserError(L.T("Couldn't restart to update. It installs by itself when you quit Bloxkeep."));
-        }
-        return null;
-    }
-
+    /// <summary>"Restart to update" was clicked and the app is on its way out (see ApplyUpdateAsync).</summary>
     bool _applyingUpdate;
 
     /// <summary>

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -59,40 +60,11 @@ public sealed partial class AppController
         _relaunching = true;
         try
         {
-            // A page on screen says what it shows now (one in the background did so as it went there).
-            if (PageAttached && !_background)
-            {
-                Emit("saveView", null);
-                await Task.Delay(700);
-            }
+            await SaveViewAsync();
             // Something may have started meanwhile: the next quiet moment then.
             if (_disposed || _updater.Status != "ready" || !QuietForRelaunch(DateTime.UtcNow) || !SaveBeforeClosing())
                 return;
-            var (window, foreground, _) = WindowNow?.Invoke() ?? ("hidden", false, false);
-            var state = new Relaunch.State
-            {
-                WrittenAt = DateTime.UtcNow, From = _updater.CurrentVersion, Window = window, Foreground = foreground,
-                View = _vault is not null ? _pageView : null, WeakPassword = _weakPassword,
-            };
-            if (_vault is { } vault)
-            {
-                var (key, salt, iterations) = vault.ExportKey();
-                state.Key = Convert.ToBase64String(key);
-                state.Salt = Convert.ToBase64String(salt);
-                state.Iterations = iterations;
-                CryptographicOperations.ZeroMemory(key);
-            }
-            _relaunchArgs = Relaunch.Write(state);
-            Log.Note($"Installing {_updater.NewVersion} in the background (window {window}).");
-            _rejoinCts?.Cancel();
-            Ui.ClearSecretClipboard();
-            QuitForUpdate?.Invoke();
-            // Still here: the window refused to close (changes it couldn't save). The key mustn't stay on disk.
-            if (!_disposed)
-            {
-                Relaunch.Discard();
-                _relaunchArgs = null;
-            }
+            QuitIntoUpdate(showWindow: false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or CryptographicException or ObjectDisposedException)
         {
@@ -103,6 +75,115 @@ public sealed partial class AppController
         finally
         {
             _relaunching = _relaunchArgs is not null;
+        }
+    }
+
+    /// <summary>
+    /// "Restart to update": the same restart as an update in the background, at once, with Bloxkeep's own "Updating"
+    /// window over the seconds it takes (Velopack's own is a plain Windows dialog). Roblox windows stay open.
+    /// </summary>
+    async Task<object?> ApplyUpdateAsync()
+    {
+        // A second click while the first one is on its way out does nothing.
+        if (_applyingUpdate || _relaunching)
+            return null;
+        // The button can be older than the state (the page pushed before a failed re-check): say why nothing happens.
+        if (_updater.Status != "ready")
+            throw new UserError(_updater.Status is "checking" or "downloading"
+                ? L.T("The update is still downloading. Try again in a moment.")
+                : L.T("No update is ready to install. Check for updates again."));
+        if (_launchCts is not null)
+            throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
+        _applyingUpdate = true;
+        try
+        {
+            await SaveViewAsync();
+            if (!SaveBeforeClosing())
+                throw new UserError(L.T("Couldn't save your changes, so the update waits. Try again in a moment."));
+            QuitIntoUpdate(showWindow: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or CryptographicException or ObjectDisposedException)
+        {
+            Log.Write(ex);
+            Relaunch.Discard();
+            _relaunchArgs = null;
+        }
+        finally
+        {
+            _applyingUpdate = _relaunchArgs is not null;
+        }
+        if (!_disposed)
+            throw new UserError(L.T("Couldn't restart to update. It installs by itself when you quit Bloxkeep."));
+        return null;
+    }
+
+    /// <summary>A page on screen says what it shows now (one in the background did so as it went there).</summary>
+    async Task SaveViewAsync()
+    {
+        if (!PageAttached || _background)
+            return;
+        Emit("saveView", null);
+        await Task.Delay(700);
+    }
+
+    /// <summary>
+    /// Writes the hand-over for the next run and quits; once this process is gone Velopack installs the update
+    /// silently and starts the new version with it (see Dispose: ApplyOnExit). When the window refuses to close
+    /// (changes it couldn't save), nothing of it stays: the key mustn't wait on disk.
+    /// </summary>
+    void QuitIntoUpdate(bool showWindow)
+    {
+        var (window, foreground, _) = WindowNow?.Invoke() ?? ("hidden", false, false);
+        var state = new Relaunch.State
+        {
+            WrittenAt = DateTime.UtcNow, From = _updater.CurrentVersion, Window = window, Foreground = foreground,
+            View = _vault is not null ? _pageView : null, WeakPassword = _weakPassword,
+        };
+        if (_vault is { } vault)
+        {
+            var (key, salt, iterations) = vault.ExportKey();
+            state.Key = Convert.ToBase64String(key);
+            state.Salt = Convert.ToBase64String(salt);
+            state.Iterations = iterations;
+            CryptographicOperations.ZeroMemory(key);
+        }
+        _relaunchArgs = Relaunch.Write(state);
+        Log.Note($"Installing {_updater.NewVersion} {(showWindow ? "now (Restart to update)" : "in the background")}, window {window}.");
+        if (showWindow)
+            ShowUpdatingWindow(_updater.NewVersion);
+        _rejoinCts?.Cancel();
+        Ui.ClearSecretClipboard();
+        QuitForUpdate?.Invoke();
+        if (!_disposed)
+        {
+            Relaunch.Discard();
+            _relaunchArgs = null;
+        }
+    }
+
+    /// <summary>
+    /// Bloxkeep's "Updating Bloxkeep to x" window (the installer's window program, shipped beside the app), run from a
+    /// copy in %TEMP% since the program folder is about to be replaced; it closes once the new version is up.
+    /// </summary>
+    void ShowUpdatingWindow(string? version)
+    {
+        try
+        {
+            string source = Path.Combine(AppContext.BaseDirectory, "BloxkeepUninstall.exe");
+            if (!File.Exists(source))
+                return;
+            string dir = Path.Combine(Path.GetTempPath(), "Bloxkeep-Updating-" + Guid.NewGuid().ToString("N")[..8]);
+            Directory.CreateDirectory(dir);
+            string copy = Path.Combine(dir, "BloxkeepUpdating.exe");
+            File.Copy(source, copy);
+            var info = new ProcessStartInfo(copy) { UseShellExecute = false, WorkingDirectory = dir };
+            foreach (string arg in new[] { "--updating", version ?? "", "--lang", L.Language })
+                info.ArgumentList.Add(arg);
+            Process.Start(info)?.Dispose();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            Log.Write(ex);
         }
     }
 

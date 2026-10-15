@@ -129,13 +129,6 @@ public sealed class AppUpdater
     /// <summary>When the last check got its answer (or failed); null before the first.</summary>
     public DateTime? CheckedAt { get; private set; }
 
-    /// <summary>Ends this process, installs the downloaded version and starts it.</summary>
-    public void RestartToUpdate()
-    {
-        if (_manager is not null && _ready is not null)
-            _manager.ApplyUpdatesAndRestart(_ready);
-    }
-
     /// <summary>
     /// Has the downloaded version installed once this process has exited; started again with <paramref name="restartArgs"/>
     /// when given (an update in the background, see <see cref="Relaunch"/>), else left for the next start.

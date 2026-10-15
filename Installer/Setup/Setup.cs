@@ -34,7 +34,9 @@ namespace BloxkeepSetup
             T.Vi = PickVietnamese(Arg(args, "--lang"));
             bool silent = Has(args, "--silent");
             string shot = Arg(args, "--shot");
-            bool uninstall = Has(args, "--uninstall") || !Ops.HasPayload;
+            // Started by the app for "Restart to update": the "Updating Bloxkeep" window (run from a copy in %TEMP%).
+            string updating = Arg(args, "--updating");
+            bool uninstall = updating == null && (Has(args, "--uninstall") || !Ops.HasPayload);
 
             if (uninstall && shot == null && Arg(args, "--root") == null)
             {
@@ -63,6 +65,15 @@ namespace BloxkeepSetup
                     return 1;
                 }
                 Activate = activate;
+                if (updating != null)
+                {
+                    var window = new SetupWindow(false, null, updating);
+                    if (shot != null)
+                        return window.SaveShot(shot, Arg(args, "--page"));
+                    Application.Run(window);
+                    Ops.RemoveTempCopy();
+                    return 0;
+                }
                 if (uninstall)
                 {
                     string root = Arg(args, "--root") ?? @"D:\Bloxkeep";
@@ -471,7 +482,9 @@ namespace BloxkeepSetup
         public static void RemoveTempCopy()
         {
             string dir = Path.GetDirectoryName(Application.ExecutablePath);
-            if (!Path.GetFileName(dir).StartsWith("Bloxkeep-Uninstall-", StringComparison.Ordinal) || !Same(Path.GetDirectoryName(dir), Path.GetTempPath()))
+            string name = Path.GetFileName(dir);
+            if (!(name.StartsWith("Bloxkeep-Uninstall-", StringComparison.Ordinal) || name.StartsWith("Bloxkeep-Updating-", StringComparison.Ordinal))
+                || !Same(Path.GetDirectoryName(dir), Path.GetTempPath()))
                 return;
             var info = new ProcessStartInfo("cmd.exe", "/C choice /C Y /N /D Y /T 3 >NUL & rmdir /s /q \"" + dir + "\"");
             info.UseShellExecute = false;
@@ -769,10 +782,17 @@ namespace BloxkeepSetup
         TextBox _path;
         Label _space, _problem;
 
-        public SetupWindow(bool uninstall, string root)
+        /// <summary>Drawn to a picture (--shot): nothing is watched or run.</summary>
+        bool _shooting;
+
+        /// <summary>The version "Restart to update" is installing (the "Updating Bloxkeep" window), else null.</summary>
+        readonly string _updatingTo;
+
+        public SetupWindow(bool uninstall, string root, string updatingTo = null)
         {
             _uninstall = uninstall;
             _root = root;
+            _updatingTo = updatingTo;
             // The screen's scale, read without creating the window: a window made this early ignores StartPosition
             // and opens in Windows' default corner.
             using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
@@ -798,6 +818,14 @@ namespace BloxkeepSetup
             _body.BackColor = Theme.Bg;
             Controls.Add(_body);
             Controls.Add(_footer);
+            if (updatingTo != null)
+            {
+                // Only a moment on screen: no buttons, a smaller window.
+                _footer.Visible = false;
+                ClientSize = new Size(S(600), S(214));
+                ShowPage("updating");
+                return;
+            }
             if (!uninstall)
             {
                 _existing = Ops.ExistingInstall();
@@ -831,6 +859,8 @@ namespace BloxkeepSetup
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            if (_page == "updating" && !_shooting)
+                WatchForNewVersion();
             if (Program.Activate != null)
                 _activateWait = ThreadPool.RegisterWaitForSingleObject(Program.Activate, delegate
                 {
@@ -876,7 +906,7 @@ namespace BloxkeepSetup
         void ShowPage(string page)
         {
             _page = page;
-            Text = _uninstall ? T.S("Uninstall Bloxkeep", "Gỡ cài đặt Bloxkeep") : T.S("Bloxkeep Setup", "Cài đặt Bloxkeep");
+            Text = _updatingTo != null ? "Bloxkeep" : _uninstall ? T.S("Uninstall Bloxkeep", "Gỡ cài đặt Bloxkeep") : T.S("Bloxkeep Setup", "Cài đặt Bloxkeep");
             SuspendLayout();
             foreach (Control c in new List<Control>(Ctrls(_body)))
                 c.Dispose();
@@ -895,6 +925,8 @@ namespace BloxkeepSetup
                 case "uninstall": Confirm(); break;
                 case "removing": Removing(); break;
                 case "removed": Removed(); break;
+                case "updating": Updating(); break;
+                case "updateSlow": UpdateSlow(); break;
             }
             ResumeLayout();
         }
@@ -1237,6 +1269,75 @@ namespace BloxkeepSetup
             Button(T.S("Close", "Đóng"), true, delegate { Result = 0; Close(); });
         }
 
+        // ---- "Restart to update" ----------------------------------------------------------------------------------
+
+        void Updating()
+        {
+            Header("logo", T.S("Updating Bloxkeep", "Đang cập nhật Bloxkeep"), string.Format(T.S("To version {0}", "Lên phiên bản {0}"), _updatingTo), false);
+            Para(T.S("Bloxkeep opens again by itself in a few seconds, as it was. Your Roblox windows keep running.",
+                "Bloxkeep sẽ tự mở lại sau vài giây, y như cũ. Các cửa sổ Roblox vẫn chạy bình thường."), S(106), Theme.Muted);
+            _bar = new Bar { Bounds = new Rectangle(S(32), S(166), ClientSize.Width - S(64), S(8)), Value = -1 };
+            Add(_bar);
+        }
+
+        void UpdateSlow()
+        {
+            _footer.Visible = true;
+            ClientSize = new Size(S(600), S(300));
+            Header("problem", T.S("Bloxkeep hasn't opened again yet", "Bloxkeep chưa mở lại"), string.Format(T.S("Version {0}", "Phiên bản {0}"), _updatingTo), false);
+            var text = Para(T.S("It's taking longer than usual. If it doesn't open in a moment, start it from the Start menu or the Desktop shortcut; your accounts are safe.",
+                "Lâu hơn bình thường. Nếu lát nữa vẫn chưa mở, hãy mở từ Start menu hoặc shortcut trên Desktop; tài khoản của bạn vẫn an toàn."), S(106), Theme.Text);
+            var log = new LinkLabel { Text = T.S("Open the setup log", "Mở nhật ký cài đặt"), AutoSize = true, LinkBehavior = LinkBehavior.HoverUnderline, Location = new Point(S(32), text.Bottom + S(12)) };
+            log.LinkColor = log.VisitedLinkColor = Theme.Accent;
+            log.ActiveLinkColor = Theme.AccentHover;
+            log.LinkClicked += delegate
+            {
+                try { Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Ops.VelopackLog + "\"")).Dispose(); }
+                catch (System.ComponentModel.Win32Exception) { }
+            };
+            Add(log);
+            CancelButton = Button(T.S("Close", "Đóng"), true, delegate { Close(); });
+        }
+
+        /// <summary>
+        /// Closes the "Updating" window once the new version is up: the old run lets go of Bloxkeep's single-instance
+        /// name as it quits, the new one takes it again. After a minute without that, says so instead.
+        /// </summary>
+        void WatchForNewVersion()
+        {
+            var worker = new Thread(delegate ()
+            {
+                var clock = Stopwatch.StartNew();
+                bool gone = false, back = false;
+                while (clock.Elapsed < TimeSpan.FromSeconds(60))
+                {
+                    bool running = Ops.AppRunning();
+                    if (!running)
+                        gone = true;
+                    else if (gone)
+                    {
+                        back = true;
+                        Thread.Sleep(700); // its window comes up meanwhile
+                        break;
+                    }
+                    Thread.Sleep(150);
+                }
+                try
+                {
+                    BeginInvoke((MethodInvoker)delegate
+                    {
+                        if (back)
+                            Close();
+                        else
+                            ShowPage("updateSlow");
+                    });
+                }
+                catch (InvalidOperationException) { } // already closed by the person
+            });
+            worker.IsBackground = true;
+            worker.Start();
+        }
+
         /// <summary>Runs <paramref name="job"/> off the window's thread, then <paramref name="done"/> on it.</summary>
         void Work(Func<int> job, Action<int> done)
         {
@@ -1281,6 +1382,7 @@ namespace BloxkeepSetup
                     "Trình cài dừng lại với mã {0}. Nhật ký cài đặt bên dưới ghi lý do. Nếu Bloxkeep đang mở, hãy đóng nó rồi thử lại."), 1) : null;
                 ShowPage(page);
             }
+            _shooting = true;
             StartPosition = FormStartPosition.Manual;
             Location = new Point(-20000, -20000);
             ShowInTaskbar = false;

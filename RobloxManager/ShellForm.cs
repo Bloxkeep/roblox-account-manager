@@ -80,8 +80,6 @@ public sealed class ShellForm : Form
         {
             SetSafeRendering = safe => RestartWebViewAsync(safe, automatic: false),
             AppearanceChanged = ApplyAppearance,
-            BeforeRestart = HideTrayIcon,
-            RestartFailed = ShowTrayIcon,
             ShowNotification = ShowNotification,
             PageShown = RemoveCover,
             SetMiniOpen = open => SetMiniOpen(open),
@@ -263,12 +261,6 @@ public sealed class ShellForm : Form
         if (!IsDisposed && !BalloonShowing)
             _tray.Visible = Prefs.CloseToTray;
     }
-
-    /// <summary>The updater ends the process without the window's normal shutdown; don't leave a dead tray icon.</summary>
-    void HideTrayIcon() => _tray.Visible = false;
-
-    /// <summary>The update's restart failed after all: the app keeps running, so the icon comes back.</summary>
-    void ShowTrayIcon() => _tray.Visible = Prefs.CloseToTray;
 
     /// <summary>Closes for real, even with "keep running when closed" on.</summary>
     public void Quit()
