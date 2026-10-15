@@ -1914,7 +1914,7 @@
     scenery: ['aurora', 'sunset', 'city', 'space', 'mist', 'snow', 'desert', 'meadow'],
     color: ['frost', 'ocean', 'forest', 'mocha', 'grape', 'lava', 'neon', 'candy', 'matcha', 'sakura'],
     style: ['retro', 'terminal', 'gameboy', 'blueprint', 'newspaper'],
-    season: ['halloween', 'lunar', 'spring'],
+    season: ['lunar', 'spring', 'summer', 'midautumn', 'autumn', 'halloween', 'christmas', 'newyear'],
   };
   /** One small swatch per theme, one line per group. Each swatch carries data-theme, so it shows that theme's own colours. */
   function themesHtml() {

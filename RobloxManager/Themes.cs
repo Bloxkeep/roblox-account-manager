@@ -44,10 +44,15 @@ public static class Themes
         new("candy", false, Rgb(0xfdf4fb), Rgb(0xfffafe), Rgb(0x3b2340), Rgb(0x6b4a73), Rgb(0xecd3e6), Rgb(0x047857), Rgb(0x9f1239)),
         new("matcha", false, Rgb(0xf1f3e6), Rgb(0xfafbf3), Rgb(0x263018), Rgb(0x4b5636), Rgb(0xd6dcbf), Rgb(0x047857), Rgb(0x9f1239)),
         new("newspaper", false, Rgb(0xf4f1ea), Rgb(0xfbf9f4), Rgb(0x111111), Rgb(0x333333), Rgb(0xcfc9bb), Rgb(0x047857), Rgb(0x9f1239)),
-        new("halloween", true, Rgb(0x141018), Rgb(0x1d1722), Rgb(0xf4ece4), Rgb(0xcfc0b4), Rgb(0x3e3346), Rgb(0xcdf3ac), Rgb(0xffb3bc)),
-        new("lunar", true, Rgb(0x2a0d0f), Rgb(0x361316), Rgb(0xfbeee0), Rgb(0xe6c9b0), Rgb(0x6e3a33), Rgb(0xc4ecc7), Rgb(0xffc4bd)),
-        new("spring", false, Rgb(0xf2f7ec), Rgb(0xfbfdf8), Rgb(0x1f2d1a), Rgb(0x45573c), Rgb(0xcfdfbf), Rgb(0x047857), Rgb(0x9f1239)),
+        new("halloween", true, Rgb(0x0d0714), Rgb(0x1d1222), Rgb(0xf6eee6), Rgb(0xd6c7bb), Rgb(0x3e3346), Rgb(0xcdf3ac), Rgb(0xffb3bc)),
+        new("lunar", true, Rgb(0x2c0709), Rgb(0x3a0c0f), Rgb(0xfbeee0), Rgb(0xe6c9b0), Rgb(0x6e3a33), Rgb(0xc4ecc7), Rgb(0xffc4bd)),
+        new("spring", false, Rgb(0xdaeefa), Rgb(0xf3f8fb), Rgb(0x2a1d22), Rgb(0x5a4048), Rgb(0xe2d2d8), Rgb(0x047857), Rgb(0x9f1239)),
         new("sakura", false, Rgb(0xfbf0f2), Rgb(0xfffafb), Rgb(0x3a1f27), Rgb(0x6a4450), Rgb(0xe9cdd4), Rgb(0x047857), Rgb(0x9f1239)),
+        new("summer", false, Rgb(0xa0ddf5), Rgb(0xeef8fc), Rgb(0x0f2a3a), Rgb(0x2e4d5e), Rgb(0xc6dde6), Rgb(0x047857), Rgb(0x9f1239)),
+        new("autumn", false, Rgb(0xf7dfbe), Rgb(0xfbf0e0), Rgb(0x2f1a0c), Rgb(0x5a3a22), Rgb(0xe6cfb4), Rgb(0x047857), Rgb(0x9f1239)),
+        new("midautumn", true, Rgb(0x07112c), Rgb(0x13224a), Rgb(0xeef2fb), Rgb(0xc4cde2), Rgb(0x34406a), Rgb(0xa7f3d0), Rgb(0xfecdd3)),
+        new("christmas", true, Rgb(0x091426), Rgb(0x14263d), Rgb(0xeef4fb), Rgb(0xc6d3e2), Rgb(0x33465e), Rgb(0x6fdc8c), Rgb(0xfecdd3)),
+        new("newyear", true, Rgb(0x070714), Rgb(0x14112e), Rgb(0xf3f1fb), Rgb(0xcbc6e2), Rgb(0x36325a), Rgb(0xa7f3d0), Rgb(0xfecdd3)),
     ];
 
     /// <summary>Follows the Windows "app mode" (light or dark).</summary>
