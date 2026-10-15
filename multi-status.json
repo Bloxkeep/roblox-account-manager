@@ -30,38 +30,10 @@
       "liveAt": "2026-10-07T17:02:30Z"
     },
     {
-      "version": "0.743.0.7431129",
-      "hash": "version-7a0c6d10fcb34a2c",
-      "seenAt": "2026-10-15T19:20:08Z",
-      "verdict": "same",
-      "locks": [
-        "ROBLOX_MAINTENANCE",
-        "ROBLOX_singletonEvent",
-        "ROBLOX_singletonMutex"
-      ],
-      "related": [
-        "EnableWindowsAppReloadCheck",
-        "EventWaitResultUpdate",
-        "FLog::WndProcessCheck",
-        "MutexWaitResultLoopUpdate",
-        "SingleInstanceGuard",
-        "SingleInstanceGuardReadHwndRetries",
-        "SingleInstanceGuardTimeoutMilliSec",
-        "WindowsAppReloadTelemetry",
-        "WindowsAppReloadTracking",
-        "WindowsAppReloadTrackingThrottleHundredthsPercent",
-        "WndProcessCheck"
-      ],
-      "added": [],
-      "removed": [],
-      "channel": "live",
-      "liveAt": "2026-10-15T19:20:08Z"
-    },
-    {
       "version": "0.743.0.7431134",
       "hash": "version-11f155f3450f4c8e",
       "channel": "beta",
-      "seenAt": "2026-10-15T19:22:32Z",
+      "seenAt": "2026-10-15T19:24:59Z",
       "verdict": "same",
       "locks": [
         "ROBLOX_MAINTENANCE",
@@ -83,6 +55,34 @@
       ],
       "added": [],
       "removed": []
+    },
+    {
+      "version": "0.743.0.7431129",
+      "hash": "version-7a0c6d10fcb34a2c",
+      "channel": "live",
+      "seenAt": "2026-10-15T19:25:05Z",
+      "verdict": "same",
+      "locks": [
+        "ROBLOX_MAINTENANCE",
+        "ROBLOX_singletonEvent",
+        "ROBLOX_singletonMutex"
+      ],
+      "related": [
+        "EnableWindowsAppReloadCheck",
+        "EventWaitResultUpdate",
+        "FLog::WndProcessCheck",
+        "MutexWaitResultLoopUpdate",
+        "SingleInstanceGuard",
+        "SingleInstanceGuardReadHwndRetries",
+        "SingleInstanceGuardTimeoutMilliSec",
+        "WindowsAppReloadTelemetry",
+        "WindowsAppReloadTracking",
+        "WindowsAppReloadTrackingThrottleHundredthsPercent",
+        "WndProcessCheck"
+      ],
+      "added": [],
+      "removed": [],
+      "liveAt": "2026-10-15T19:25:05Z"
     }
   ],
   "live": {
@@ -98,7 +98,7 @@
     "DFIntWindowsAppReloadTrackingThrottleHundredthsPercent": "50",
     "FFlagRemoveSingleInstanceSempahore": "True"
   },
-  "changedAt": "2026-10-15T19:22:34Z",
+  "changedAt": "2026-10-15T19:25:05Z",
   "beta": {
     "version": "0.743.0.7431134",
     "hash": "version-11f155f3450f4c8e"
