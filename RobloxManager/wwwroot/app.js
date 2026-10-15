@@ -810,6 +810,7 @@
     $('#view-settings').hidden = view !== 'settings';
     $('#view-stats').hidden = view !== 'stats';
     $('#view-monitor').hidden = view !== 'monitor';
+    $(`#view-${view}`)?.classList.add('seen'); // keeps its layout once it's left (app.css: .view.seen[hidden])
     watchStats(view === 'stats');
     watchMonitor();
     // Synced folders to offer under Backup are looked for when Settings opens, not with every state.
@@ -891,17 +892,36 @@
     const sortBtn = $('#sort-btn');
     sortBtn.hidden = list.length < 2;
     setHtml(sortBtn, `${icon('sort')}<span>${t('sort.label')}: ${t(`sort.${S.sort}`)}</span>`);
-    // A newly chosen chip half under the faded edge (or off the row) slides fully into view.
-    const row = $('#chips'), on = row?.querySelector('.chip.on');
-    if (on && S.filter !== chipShown) {
-      chipShown = S.filter;
-      const r = on.getBoundingClientRect(), box = row.getBoundingClientRect(), edge = 40;
-      if (r.left < box.left + edge) row.scrollLeft -= box.left + edge - r.left;
-      else if (r.right > box.right - edge) row.scrollLeft += r.right - (box.right - edge);
-    }
-    syncChipFade();
+    measureLater();
   }
   let chipShown = 'all';
+
+  /**
+   * The chip row's fades and scroll and the dock's recent-game chips depend on measured sizes. Measuring right after
+   * changing the page forces a layout of all of it there and then, again after the next change (hundreds of cards on
+   * a state push); measured once at the start of the next frame, after every change, it's one layout.
+   */
+  let measureQueued = false, recentsChanged = false;
+  function measureLater(recents = false) {
+    recentsChanged ||= recents;
+    if (measureQueued) return;
+    measureQueued = true;
+    requestAnimationFrame(() => {
+      measureQueued = false;
+      const fit = recentsChanged;
+      recentsChanged = false;
+      // A newly chosen chip half under the faded edge (or off the row) slides fully into view.
+      const row = $('#chips'), on = row?.querySelector('.chip.on');
+      if (on && S.filter !== chipShown) {
+        chipShown = S.filter;
+        const r = on.getBoundingClientRect(), box = row.getBoundingClientRect(), edge = 40;
+        if (r.left < box.left + edge) row.scrollLeft -= box.left + edge - r.left;
+        else if (r.right > box.right - edge) row.scrollLeft += r.right - (box.right - edge);
+      }
+      syncChipFade();
+      if (fit) fitRecents(); // only when the dock's game line changed: it shows and re-hides chips to find what fits
+    });
+  }
 
   /** The chip row scrolls sideways when it holds more than fits: its edges fade on the side(s) with more chips. */
   function syncChipFade() {
@@ -1297,7 +1317,7 @@
     if (recents.length && !S.progress) {
       info += `<div class="recents">${recents.map(r => `<div class="recent" title="${esc(r.name)}"><button class="recent-pick" data-act="recent" data-place="${r.placeId}">${r.iconUrl ? `<img src="${esc(r.iconUrl)}" alt="">` : '<i class="ph"></i>'}<span>${esc(r.name)}</span></button><button class="rm" data-act="recent-remove" data-place="${r.placeId}" title="${t('dock.recentRemove')}" aria-label="${t('dock.recentRemove')}">${icon('x')}</button></div>`).join('')}</div>`;
     }
-    if (setHtml($('#dock-info'), info)) fitRecents();
+    if (setHtml($('#dock-info'), info)) measureLater(true);
   }
 
   /**
@@ -5602,7 +5622,7 @@
       if (document.activeElement?.closest?.('[data-act="lang"]')) {
         setTimeout(() => {
           if (document.activeElement === document.body || !document.activeElement)
-            [...document.querySelectorAll(`[data-act="lang"][data-lang="${lang}"]`)].find(b => b.offsetParent)?.focus();
+            [...document.querySelectorAll(`[data-act="lang"][data-lang="${lang}"]`)].find(b => b.offsetParent && !b.closest('.view[hidden]'))?.focus();
         });
       }
     }

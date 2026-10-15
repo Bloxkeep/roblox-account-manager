@@ -1582,6 +1582,11 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
   background: var(--bg);
 }
 .view { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+/* A tab you leave keeps its layout: content-visibility: hidden skips drawing it but remembers how it was laid out, so
+   coming back to hundreds of account cards doesn't lay them all out again (display: none forgot it all). Meanwhile
+   it sits under the shown tab (behind .main's own background), out of reach of clicks and Tab. Only tabs already
+   opened once (.seen, set by setView): the others stay display: none, which costs nothing while the app starts. */
+.view.seen[hidden] { display: flex !important; content-visibility: hidden; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 26px 30px 14px; flex-wrap: wrap; }
 .top h1 { margin: 0; font: 700 26px/1.15 var(--font-display); letter-spacing: -.02em; }
 .top p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
