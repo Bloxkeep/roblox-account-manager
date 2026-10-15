@@ -713,6 +713,7 @@ public sealed partial class AppController : IDisposable
         s.LastJobId,
         s.RenameWindows,
         s.WindowLayout,
+        s.MaximizeOnOpen,
         s.LaunchVia,
         customLauncher = s.CustomLauncher.Length > 0 ? Path.GetFileNameWithoutExtension(s.CustomLauncher) : null,
         s.Layout,
@@ -3103,6 +3104,7 @@ public sealed partial class AppController : IDisposable
         TrackPlay(now);
         RunAntiAfk(now, windows);
         MinimiseAfkWindows(windows);
+        MaximiseNewWindows(now, windows);
 
         if (_vault is { Data.Settings.RenameWindows: true })
         {
@@ -4044,8 +4046,19 @@ public sealed partial class AppController : IDisposable
         // Both take effect at the next launch; the person's own fullscreen setting is put back by the process check.
         if (OptBool(a, "multiWindowed") is { } windowed)
             s.MultiInstanceWindowed = windowed;
+        // How windows come up: tiled, maximised, or as Roblox sizes them; one or the other, never both.
         if (OptBool(a, "multiTile") is { } tile)
+        {
             s.MultiInstanceTile = tile;
+            if (tile)
+                s.MaximizeOnOpen = false;
+        }
+        if (OptBool(a, "maximizeOnOpen") is { } maximize)
+        {
+            s.MaximizeOnOpen = maximize;
+            if (maximize)
+                s.MultiInstanceTile = false;
+        }
         Persist();
         PushState();
         return null;

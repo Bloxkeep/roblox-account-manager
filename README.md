@@ -208,6 +208,7 @@ Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's
 - The sidebar card **Roblox on this PC** shows the number of Roblox windows, the RAM they use, the free RAM, and **Mini window** and **Close all**. Its version line tells you whether your Roblox is the newest.
 - **Game monitor** (a sidebar tab): live pictures of every Roblox window with the account, game, RAM and PID. Click a picture to bring that window to the front; right-click for more. A minimised window has no live picture. Windows draws the pictures itself (like the previews when you hover the taskbar), so they cost next to nothing.
 - **Mini window**: a compact window to watch the accounts that are playing without the main window.
+- **When a Roblox window opens** (in **Settings › Launching**): **As Roblox sizes it**, **Maximise it** (still a window, so the windows don't fight over Roblox's one fullscreen setting), or **Tile them side by side** (needs Multi-Roblox). A preset can tile its own windows whatever this says.
 - **Arrange Roblox windows** (in the bottom bar) and **Arranging windows** (in **Settings › Launching**): **Fill the screen**, or **Small tiles** / **Medium tiles** / **Large tiles** laid out from the top-left, leaving the rest of the screen free. The smaller a Roblox window, the less work for the graphics card.
 - **Low RAM warning** (on by default): warns before you open more accounts than the free RAM can take, and when the PC uses more than 92 % of its RAM.
 - **Save RAM on background windows** (off by default): when RAM runs low, background windows give RAM back to the one you're playing. Roblox may refuse; then Bloxkeep leaves it.
@@ -226,7 +227,7 @@ Switch to **Activity** for the log: accounts opened, games joined and left, drop
 
 - **Keep running in the tray when closed** (on by default): the X button hides Bloxkeep to the tray, and auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon and choose **Quit Bloxkeep**. Next time, the Bloxkeep window comes back where you left it, at the same size, maximised or not.
 - **Windows notifications** (on by default): only while Bloxkeep is in the background. Turn each kind on or off in **Settings › Notifications**: account dropped or auto-rejoin, scheduled presets, sign-in needs renewing, low RAM, launch problems.
-- **Discord** (off by default): paste a channel's webhook link in **Settings › Discord** (switching **Send to Discord** on without one asks for it). **Send automatically** a play-time summary every day, every week or both; keep a **Status message** up to date; and send **Alerts** for the events above, with a **Ping** for a person or a role. There are **Quiet hours** and **Customise messages** (sender name and picture, language, message style, **Hide account names in messages**).
+- **Discord** (off by default): paste a channel's webhook link in **Settings › Discord** (switching **Send to Discord** on without one asks for it). **Send automatically** a play-time summary every day, every week or both: a picture of play time by hour (or day) coloured by game with a row per account and its avatar, the totals against the period before, drops with Roblox's codes, the longest stay, the most windows at once, the top games, and a block per preset with its accounts; keep a **Status message** up to date; and send **Alerts** for the events above, with a **Ping** for a person or a role. There are **Quiet hours** and **Customise messages** (sender name and picture, language, message style, **Hide account names in messages**).
 - **Settings › Appearance**: **Theme** has 32 themes plus **Sync with Windows** (**Dark** by default), **Language** English / Tiếng Việt, and **Hide account names**.
 - **Hardware acceleration** (in **Settings › Performance**): draws the interface with the graphics card instead of the CPU; it turns itself off if the graphics driver keeps failing.
 
@@ -365,7 +366,7 @@ A Roblox was open before Bloxkeep. Close every Roblox, including one in the syst
 <details>
 <summary>Some Roblox windows open fullscreen and some don't.</summary>
 
-All Roblox windows share one fullscreen setting, so with several open they easily end up different. Keep **Always open Roblox windowed** on in Multi-Roblox's **Details** (it's on by default): every window opens windowed, and your setting is put back afterwards. To lay them out neatly, use **Arranging windows**.
+All Roblox windows share one fullscreen setting, so with several open they easily end up different. Keep **Always open Roblox windowed** on in Multi-Roblox's **Details** (it's on by default): every window opens windowed, and your setting is put back afterwards. To have each one fill the screen, choose **Maximise it** under **When a Roblox window opens**; to lay them out side by side, **Tile them side by side** or **Arranging windows**.
 </details>
 
 <details>

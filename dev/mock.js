@@ -324,6 +324,8 @@
           return { ok: true, kind: /privateServerLinkCode/.test(a.input) ? 'private' : 'game', placeId: +m[1], ...(info || {}) };
         }
         case 'setSettings':
+          if (a.multiTile) { multi.tile = true; settings.maximizeOnOpen = false; } else if (a.multiTile === false) multi.tile = false;
+          if (a.maximizeOnOpen) { settings.maximizeOnOpen = true; multi.tile = false; } else if (a.maximizeOnOpen === false) settings.maximizeOnOpen = false;
           if ('multiInstance' in a) multi = { ...multi, enabled: a.multiInstance };
           // The Multi-Roblox dialog's two switches (kept, so reopening it shows them as left).
           if ('multiWindowed' in a) multi = { ...multi, windowed: !!a.multiWindowed };

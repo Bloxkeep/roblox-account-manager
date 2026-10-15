@@ -51,6 +51,8 @@ public sealed class AppSettings
     public bool MultiInstanceWindowed { get; set; } = true;
     /// <summary>With Multi-Roblox on, tile the Roblox windows once a launch has opened them.</summary>
     public bool MultiInstanceTile { get; set; }
+    /// <summary>Maximise each Roblox window Bloxkeep opens (still a window, not Roblox's shared fullscreen); not with <see cref="MultiInstanceTile"/>.</summary>
+    public bool MaximizeOnOpen { get; set; }
     public bool RenameWindows { get; set; } = true;
     /// <summary>How Arrange windows lays the Roblox windows out: "fill" (the whole screen), or fixed tiles from the top-left, "small" / "medium" / "large".</summary>
     public string WindowLayout { get; set; } = "fill";
@@ -253,6 +255,8 @@ public sealed class PlaySession
     public string? EndReason { get; set; }
     /// <summary>Roblox's disconnect code when it gave one (273 = the same account joined elsewhere, 278 = idle).</summary>
     public int? ReasonCode { get; set; }
+    /// <summary>The preset whose window it was (summaries group play by preset); null opened otherwise, or before 1.0.5.</summary>
+    public Guid? PresetId { get; set; }
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }

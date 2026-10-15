@@ -160,6 +160,7 @@ public sealed partial class AppController
             GameName = info?.Name ?? "",
             StartedAt = at > now ? now : at,
             LastSeenAt = now,
+            PresetId = _running.TryGetValue(accountId, out var run) ? run.Launch.PresetId : null,
         };
         _playing[accountId] = session;
         vault.Data.PlaySessions.Add(session);

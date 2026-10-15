@@ -417,6 +417,50 @@ public sealed partial class AppController
         }
     }
 
+    /// <summary>Windows maximised for Settings' "Maximise" (by process id), and at which point of starting up.</summary>
+    readonly Dictionary<int, string> _maximised = new();
+    /// <summary>When each window Bloxkeep opened was first seen (by process id): one whose client writes no log is maximised a while after.</summary>
+    readonly Dictionary<int, DateTime> _windowFirstSeen = new();
+    /// <summary>Roblox gives its window its size as it finishes starting up: a window not in a game yet is left this long first.</summary>
+    static readonly TimeSpan MaximiseWithoutLog = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// Settings' "Maximise" for windows as they open: each window Bloxkeep opened in this run is maximised once it has
+    /// been up a few seconds or is in a game, and again when it joins a game if Roblox sized it otherwise meanwhile. A
+    /// maximised window is still a window, so the windows don't fight over Roblox's one fullscreen switch. Not a light-AFK
+    /// preset's (minimised), nor one a preset tiles, nor one the person minimised; and not while they're busy in another
+    /// window, since Windows brings a maximised window to the front.
+    /// </summary>
+    void MaximiseNewWindows(DateTime now, Dictionary<int, List<IntPtr>> windows)
+    {
+        foreach (int gone in _maximised.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
+            _maximised.Remove(gone);
+        foreach (int gone in _windowFirstSeen.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
+            _windowFirstSeen.Remove(gone);
+        if (_vault is not { Data.Settings.MaximizeOnOpen: true })
+            return;
+        int? foreground = null;
+        foreach (var run in _running.Values)
+        {
+            // Only windows opened since Bloxkeep started: ones it picked up again after a restart (an update) were
+            // sized by the person already.
+            if (run.Launch.StartedAt < _started || !windows.TryGetValue(run.Pid, out var list) || list.Count == 0)
+                continue;
+            if (PresetFor(run.Launch.PresetId) is { } preset && (preset.Profile == AfkProfile || preset.Arrange == true))
+                continue;
+            if (!_windowFirstSeen.TryGetValue(run.Pid, out var seen))
+                _windowFirstSeen[run.Pid] = seen = now;
+            // In a game, or up a while (Roblox's home screen, still loading, or a client that writes no log).
+            string step = _logs.StateOf(run.Pid)?.Status == "ingame" ? "ingame" : now - seen >= MaximiseWithoutLog ? "shown" : "";
+            if (step.Length == 0 || (_maximised.TryGetValue(run.Pid, out var done) && (done == step || done == "ingame")))
+                continue;
+            if ((foreground ??= RobloxProcesses.ForegroundPid()) != run.Pid && AntiAfk.PersonActive())
+                continue; // the next tick: not over what the person is doing
+            RobloxProcesses.Maximise(RobloxProcesses.MainWindowOf(list));
+            _maximised[run.Pid] = step;
+        }
+    }
+
     /// <summary>Restarts under way: the account's client is closing, to open again into this target (see <see cref="QueueRejoin"/>).</summary>
     readonly Dictionary<Guid, (GameTarget Target, DateTime At)> _restarts = new();
     /// <summary>At least this long after the last client started, so a preset's windows (opened together) aren't all reopened at once.</summary>

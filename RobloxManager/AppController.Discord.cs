@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace RobloxManager;
@@ -28,8 +29,6 @@ public sealed partial class AppController
 
     /// <summary>A summary sent more than this after its time says it is late.</summary>
     static readonly TimeSpan DiscordLate = TimeSpan.FromMinutes(10);
-    /// <summary>Accounts listed in a summary by name; the rest are counted.</summary>
-    const int MaxSummaryAccounts = 15;
 
     readonly List<DiscordItem> _discordQueue = new();
     /// <summary>Events waiting to be sent together: their kind, text, ping, and the preset whose webhook they go to (null: Settings' one).</summary>
@@ -389,67 +388,6 @@ public sealed partial class AppController
         return string.CompareOrdinal(day, last) > 0 && !_discordQueue.Any(i => queuedDay(i) == day) ? at : null;
     }
 
-    /// <summary>The Statistics figures (the same <see cref="PlayStats"/> the page shows) as a message.</summary>
-    /// <param name="days">1 (that day), 7 or 30.</param>
-    /// <param name="dueAt">When a daily or weekly summary was due (local): the figures end there when it goes out late.</param>
-    /// <param name="local">Now, for telling whether it is late.</param>
-    /// <param name="today">One day is today so far (after a scheduled preset), not the 24 hours before.</param>
-    /// <param name="preset">After that scheduled preset's stop: only its accounts, under its name.</param>
-    DiscordMessage SummaryMessage(DiscordSettings d, int days, DateTime? dueAt = null, DateTime? local = null, bool today = false, LaunchPreset? preset = null)
-    {
-        var vault = RequireVault();
-        var only = preset is not null ? preset.AccountIds.ToHashSet() : d.SummaryAccounts.Count > 0 ? d.SummaryAccounts.ToHashSet() : null;
-        bool late = dueAt is { } due && local is { } at && at - due > DiscordLate;
-        // A day is the 24 hours up to the summary's time: one at midnight covers the day that just ended, and no play
-        // falls between two daily summaries. Up to the time it was due, also when it goes out a little after.
-        var stats = JsonSerializer.SerializeToElement(PlayStats(days, only, dueAt?.ToUniversalTime(), last24Hours: !today), Json);
-        long total = stats.GetProperty("totalSeconds").GetInt64();
-        // A day sent late says when it ended: "the last 24 hours" would be other ones by now.
-        string period = days switch
-        {
-            7 => DT("last 7 days"), 30 => DT("last 30 days"),
-            _ => today ? DT("today") : late ? DF("24 hours to {0}", dueAt!.Value.ToString("yyyy-MM-dd HH:mm", Inv)) : DT("last 24 hours"),
-        };
-        var fields = new List<DiscordField>();
-        var parts = d.SummaryParts;
-        if (parts.Contains("total"))
-            fields.Add(new(DT("Play time"), Duration(total), true));
-        if (parts.Contains("sessions"))
-            fields.Add(new(DT("Sessions"), stats.GetProperty("sessions").GetInt32().ToString(Inv), true));
-        if (parts.Contains("kicks"))
-            fields.Add(new(DT("Disconnects"), stats.GetProperty("kicks").GetInt32().ToString(Inv), true));
-        if (parts.Contains("accounts") && total > 0)
-        {
-            var played = stats.GetProperty("accounts").EnumerateArray().Where(x => x.GetProperty("seconds").GetInt64() > 0).ToList();
-            var lines = played.Take(MaxSummaryAccounts).Select(x =>
-            {
-                string name = x.GetProperty("label").GetString() is { Length: > 0 } label ? label : DT("Deleted account");
-                // Names hidden in messages: "Account N" by its place in the list, as the page shows it.
-                if (d.HideNames)
-                    name = x.GetProperty("id").GetGuid() is var id && FindAccount(id) is { } account ? DiscordName(account) : DT("Deleted account");
-                return $"{DiscordWebhook.Escape(name)} — {Duration(x.GetProperty("seconds").GetInt64())}";
-            });
-            // The rest counted, so a long list doesn't read as complete.
-            if (played.Count > MaxSummaryAccounts)
-                lines = lines.Append(DF("and {0} more", played.Count - MaxSummaryAccounts));
-            fields.Add(new(DT("Per account"),DiscordWebhook.Cut(string.Join("\n", lines), DiscordWebhook.MaxFieldValue)));
-        }
-        if (parts.Contains("games") && total > 0)
-        {
-            var lines = stats.GetProperty("games").EnumerateArray().Take(5).Select((g, i) =>
-                $"{i + 1}. {DiscordWebhook.Escape(g.GetProperty("name").GetString())} — {Duration(g.GetProperty("seconds").GetInt64())}");
-            fields.Add(new(DT("Top games"), DiscordWebhook.Cut(string.Join("\n", lines), DiscordWebhook.MaxFieldValue)));
-        }
-        string text = total > 0 ? "" : DT("Nothing played in this period.");
-        if (only is not null && preset is null)
-        {
-            int chosen = only.Count(id => vault.Data.Accounts.Any(x => x.Id == id));
-            text = (text + "\n" + DF(chosen == 1 ? "{0} chosen account." : "{0} chosen accounts.", chosen)).Trim();
-        }
-        string title = preset is null ? DF("Play time — {0}", period) : DF("Play time — {0} · {1}", period, DiscordWebhook.Escape(preset.Name));
-        return new DiscordMessage(late ? DF("{0} (late)", title) : title, text, fields, "Bloxkeep", DiscordWebhook.Green, DateTime.UtcNow);
-    }
-
     /// <summary>The status message: every account with a Roblox window open here, its game, time playing, PID and RAM.</summary>
     DiscordMessage BoardMessage(DiscordSettings d, List<RobloxProcesses.PlayerProcess> players)
     {
@@ -533,14 +471,14 @@ public sealed partial class AppController
         // The daily one covering 7 days at the weekly one's time would say the same twice: one message for both.
         if (dailyAt is { } both && weeklyAt == both && d.SummaryDays == 7)
         {
-            EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 7, both, local), PingFor(d, "summary"), DayKey(both), DayKey(both)));
+            EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 7, both, local, kind: "both"), PingFor(d, "summary"), DayKey(both), DayKey(both)));
         }
         else
         {
             if (dailyAt is { } day)
-                EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, d.SummaryDays, day, local), PingFor(d, "summary"), DailyDay: DayKey(day)));
+                EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, d.SummaryDays, day, local, kind: "daily"), PingFor(d, "summary"), DailyDay: DayKey(day)));
             if (weeklyAt is { } week)
-                EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 7, week, local), PingFor(d, "summary"), WeeklyDay: DayKey(week)));
+                EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 7, week, local, kind: "weekly"), PingFor(d, "summary"), WeeklyDay: DayKey(week)));
         }
         // After a scheduled preset: today so far, for its accounts, to its own webhook when it has one.
         foreach (var (presetId, after) in _discordSummariesDue.Where(x => now >= x.Value).ToList())
@@ -548,7 +486,7 @@ public sealed partial class AppController
             _discordSummariesDue.Remove(presetId);
             var preset = PresetFor(presetId);
             if (preset is not null)
-                EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 1, today: true, preset: preset), PingFor(d, "summary"), Route: RouteFor(presetId)));
+                EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 1, today: true, preset: preset, kind: "preset"), PingFor(d, "summary"), Route: RouteFor(presetId)));
         }
         if (d.Board && now >= _discordNextBoard)
         {
@@ -628,13 +566,14 @@ public sealed partial class AppController
             message = message with { Text = (DF(dropped == 1 ? "({0} older message couldn't be sent while offline and was dropped.)" : "({0} older messages couldn't be sent while offline and were dropped.)", dropped) + "\n" + message.Text).Trim() };
         bool board = item.Kind == "board";
         string? edit = board && d.BoardMessageId.Length > 0 ? d.BoardMessageId : null;
-        var payload = DiscordWebhook.Build(message, item.Ping, d.Style != "plain", d.Username, d.AvatarUrl);
         string url = UrlFor(d, item.Route);
         _discordSending = true;
         DiscordResult result;
         try
         {
-            result = await DiscordWebhook.SendAsync(url, payload, edit, wait: board);
+            var picture = await SummaryPictureAsync(message);
+            var payload = DiscordWebhook.Build(message, item.Ping, d.Style != "plain", d.Username, d.AvatarUrl, picture?.Name);
+            result = await DiscordWebhook.SendAsync(url, payload, edit, wait: board, file: picture);
         }
         finally
         {
@@ -805,6 +744,22 @@ public sealed partial class AppController
         };
     }
 
+    /// <summary>A summary's picture (see <see cref="SummaryCard"/>), or none: the message goes without it rather than not at all.</summary>
+    static async Task<DiscordFile?> SummaryPictureAsync(DiscordMessage message)
+    {
+        if (message.Card is not { } card)
+            return null;
+        try
+        {
+            return new DiscordFile(SummaryPicture, await SummaryCard.RenderAsync(card));
+        }
+        catch (Exception ex) when (ex is ArgumentException or ExternalException or InvalidOperationException or OutOfMemoryException)
+        {
+            Log.Write(ex);
+            return null;
+        }
+    }
+
     /// <summary>"Send test" and "Send summary now": straight out, past the queue, with the answer shown at once.</summary>
     async Task<object?> SendDiscordNowAsync(bool summary)
     {
@@ -814,7 +769,9 @@ public sealed partial class AppController
             throw new UserError(L.T("Paste a webhook link first."));
         var message = summary ? SummaryMessage(d, d.SummaryDays)
             : new DiscordMessage(DT("Test message"), DT("Bloxkeep can post to this channel. Choose what it sends under Settings › Discord."), [], "Bloxkeep", DiscordWebhook.Blue, DateTime.UtcNow);
-        var result = await DiscordWebhook.SendAsync(d.WebhookUrl, DiscordWebhook.Build(message, summary ? PingFor(d, "summary") : DiscordPing.None, d.Style != "plain", d.Username, d.AvatarUrl), null, wait: true);
+        var picture = await SummaryPictureAsync(message);
+        var result = await DiscordWebhook.SendAsync(d.WebhookUrl, DiscordWebhook.Build(message, summary ? PingFor(d, "summary") : DiscordPing.None, d.Style != "plain", d.Username, d.AvatarUrl, picture?.Name),
+            null, wait: true, file: picture);
         if (_vault != vault)
             throw new UserError(L.T("Bloxkeep was locked."));
         switch (result.Outcome)

@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.5",
+    "date": "2026-10-15",
+    "en": [
+      "Discord summaries are redone: a picture of play time by hour (or day) coloured by game, with a row per account and its avatar; the totals against the period before, drops with Roblox's codes, the longest stay, the most windows at once and the top games; and a block per preset with its accounts. Play is now noted with the preset that opened it.",
+      "Settings › Launching › When a Roblox window opens: as Roblox sizes it, maximised, or tiled side by side. A maximised window is still a window, so the windows don't fight over Roblox's one fullscreen setting."
+    ],
+    "vi": [
+      "Làm lại bản tổng kết Discord: có ảnh biểu đồ thời gian chơi theo giờ (hoặc ngày) tô màu theo game, mỗi tài khoản một dòng kèm avatar; so với kỳ trước, số lần văng kèm mã lỗi Roblox, lượt chơi dài nhất, số cửa sổ cùng lúc nhiều nhất, game chơi nhiều nhất; và mỗi preset một khung riêng với các tài khoản của nó. Từ bản này mỗi lượt chơi được ghi lại thuộc preset nào.",
+      "Cài đặt › Khởi chạy › Khi mở cửa sổ Roblox: để Roblox tự chọn, phóng to, hoặc xếp cạnh nhau. Phóng to vẫn là cửa sổ nên các cửa sổ không giành nhau công tắc toàn màn hình chung của Roblox."
+    ]
+  },
+  {
     "version": "1.0.4",
     "date": "2026-10-15",
     "en": [

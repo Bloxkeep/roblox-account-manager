@@ -202,6 +202,7 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 - Thẻ **Roblox trên máy này** ở thanh bên hiện số cửa sổ Roblox, RAM chúng dùng, RAM máy còn trống, cùng nút **Cửa sổ nhỏ** và **Đóng tất cả**. Dòng phiên bản cho biết bản Roblox đã cài có phải mới nhất không.
 - **Màn hình theo dõi** (tab ở thanh bên): hình trực tiếp của mọi cửa sổ Roblox, kèm tên tài khoản, game, RAM và PID. Bấm vào một hình để đưa cửa sổ đó lên trước; chuột phải để xem thêm thao tác. Cửa sổ đang thu nhỏ thì không có hình trực tiếp. Hình do chính Windows vẽ (giống ảnh xem trước khi rê chuột lên taskbar), nên gần như không tốn thêm tài nguyên.
 - **Cửa sổ nhỏ**: một cửa sổ gọn để theo dõi các tài khoản đang chơi mà không cần mở cửa sổ chính.
+- **Khi mở cửa sổ Roblox** (trong **Cài đặt › Khởi chạy**): **Để Roblox tự chọn**, **Phóng to** (vẫn là cửa sổ nên các cửa sổ không giành nhau công tắc toàn màn hình chung của Roblox), hoặc **Xếp cạnh nhau** (cần Multi-Roblox). Preset có thể tự xếp cửa sổ của nó bất kể lựa chọn này.
 - **Xếp lưới cửa sổ Roblox** (nút ở thanh dưới) và **Kiểu xếp cửa sổ** (trong **Cài đặt › Khởi chạy**): **Lấp đầy màn hình**, hoặc **Ô nhỏ** / **Ô vừa** / **Ô lớn** xếp từ góc trên bên trái và chừa phần màn hình còn lại. Cửa sổ Roblox càng nhỏ thì card đồ họa càng đỡ tải.
 - **Báo khi sắp hết RAM** (bật sẵn): cảnh báo trước khi mở nhiều tài khoản hơn RAM trống chịu được, và khi máy dùng quá 92 % RAM.
 - **Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn): khi máy sắp hết RAM, cửa sổ chạy nền nhường RAM cho cửa sổ bạn đang chơi. Roblox có thể không nhả RAM; khi đó Bloxkeep bỏ qua.
@@ -220,7 +221,7 @@ Chuyển sang **Hoạt động** để xem nhật ký: mở tài khoản, vào g
 
 - **Thu xuống khay khi đóng cửa sổ** (bật sẵn): bấm X thì Bloxkeep thu xuống khay hệ thống, tự vào lại game và Multi-Roblox vẫn chạy. Muốn thoát hẳn, chuột phải biểu tượng ở khay và chọn **Thoát Bloxkeep**. Lần mở sau, cửa sổ Bloxkeep về đúng vị trí, kích thước và trạng thái phóng to như lúc bạn để.
 - **Thông báo Windows** (bật sẵn): chỉ khi Bloxkeep chạy nền. Bật tắt từng loại trong **Cài đặt › Thông báo**: tài khoản bị văng hoặc tự vào lại, preset hẹn giờ, tài khoản cần đăng nhập lại, sắp hết RAM, lỗi khi mở game.
-- **Discord** (tắt sẵn): dán link webhook của một kênh vào **Cài đặt › Discord** (bật **Gửi lên Discord** khi chưa có link thì app sẽ hỏi link). **Gửi tự động** tổng kết thời gian chơi **Hằng ngày**, **Hằng tuần** hoặc cả hai; một **Tin trạng thái** tự cập nhật; và **Cảnh báo** cho các sự kiện như trên, có **Tag** người hoặc vai trò. Có **Giờ yên lặng**, và **Tùy chỉnh tin nhắn** (tên và ảnh người gửi, ngôn ngữ, kiểu tin, **Ẩn tên tài khoản trong tin nhắn**).
+- **Discord** (tắt sẵn): dán link webhook của một kênh vào **Cài đặt › Discord** (bật **Gửi lên Discord** khi chưa có link thì app sẽ hỏi link). **Gửi tự động** tổng kết thời gian chơi **Hằng ngày**, **Hằng tuần** hoặc cả hai: ảnh biểu đồ thời gian chơi theo giờ (hoặc ngày) tô màu theo game, mỗi tài khoản một dòng kèm avatar, so với kỳ trước, số lần văng kèm mã lỗi Roblox, lượt chơi dài nhất, số cửa sổ cùng lúc nhiều nhất, game chơi nhiều nhất, và mỗi preset một khung riêng với các tài khoản của nó; một **Tin trạng thái** tự cập nhật; và **Cảnh báo** cho các sự kiện như trên, có **Tag** người hoặc vai trò. Có **Giờ yên lặng**, và **Tùy chỉnh tin nhắn** (tên và ảnh người gửi, ngôn ngữ, kiểu tin, **Ẩn tên tài khoản trong tin nhắn**).
 - **Cài đặt › Giao diện**: 32 **Chủ đề** cộng **Theo Windows** (mặc định **Tối**), **Ngôn ngữ** English / Tiếng Việt, và **Ẩn tên tài khoản**.
 - **Tăng tốc phần cứng** (trong **Cài đặt › Hiệu năng**): vẽ giao diện bằng card đồ họa thay vì CPU; tự tắt nếu driver card đồ họa gặp lỗi liên tục.
 
@@ -359,7 +360,7 @@ Có Roblox đã mở trước Bloxkeep. Đóng hết Roblox, kể cả Roblox �
 <details>
 <summary>Cửa sổ Roblox lúc toàn màn hình, lúc không.</summary>
 
-Các cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cái dễ bị lệch nhau. Bật **Luôn mở Roblox ở chế độ cửa sổ** trong bảng **Chi tiết** của Multi-Roblox (bật sẵn): mọi cửa sổ mở ở chế độ cửa sổ, cài đặt của bạn được trả lại sau đó. Muốn xếp chúng gọn trên màn hình thì dùng **Kiểu xếp cửa sổ**.
+Các cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cái dễ bị lệch nhau. Bật **Luôn mở Roblox ở chế độ cửa sổ** trong bảng **Chi tiết** của Multi-Roblox (bật sẵn): mọi cửa sổ mở ở chế độ cửa sổ, cài đặt của bạn được trả lại sau đó. Muốn mỗi cửa sổ choán cả màn hình thì chọn **Phóng to** ở **Khi mở cửa sổ Roblox**; muốn xếp cạnh nhau thì chọn **Xếp cạnh nhau** hoặc dùng **Kiểu xếp cửa sổ**.
 </details>
 
 <details>

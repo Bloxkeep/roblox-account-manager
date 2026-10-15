@@ -1407,6 +1407,7 @@
           ${setGroup('launch', t('set.g.windows'), `
             ${row(t('set.multi'), `${t('set.multiDesc')} <button type="button" class="link" data-act="multi-help">${t('set.details')}</button>`, sw('s-multi'), ' <span class="state-pill" id="s-multi-pill"></span>')}
             ${row(t('set.rename'), t('set.renameDesc'), sw('s-rename'))}
+            ${row(t('set.openAs'), t('set.openAsDesc'), `<select class="select" id="s-openas" aria-label="${esc(t('set.openAs'))}">${['roblox', 'maximize', 'tile'].map(k => `<option value="${k}">${t(`set.openAs.${k}`)}</option>`).join('')}</select>`)}
             ${row(t('set.winLayout'), t('set.winLayoutDesc'), `<select class="select" id="s-winlayout" aria-label="${esc(t('set.winLayout'))}">${['fill', 'small', 'medium', 'large'].map(k => `<option value="${k}">${t(`set.winLayout.${k}`)}</option>`).join('')}</select>`)}`)}
           ${setGroup('client', t('set.g.client'), `
             ${row(t('set.client'), t('set.clientDesc'), `<select class="select" id="s-launch" aria-label="Roblox client"></select><button class="btn sm" data-act="pick-launcher" title="${t('launch.pick')}">${t('launch.pickBtn')}</button>`)}
@@ -1555,6 +1556,9 @@
     });
     $('#s-launch').addEventListener('change', e => call('setSettings', { launchVia: e.target.value }));
     $('#s-winlayout').addEventListener('change', e => call('setSettings', { windowLayout: e.target.value }));
+    // One of three: as Roblox sizes it, maximised, or tiled (the app keeps the other one off).
+    $('#s-openas').addEventListener('change', e => call('setSettings', e.target.value === 'tile' ? { multiTile: true }
+      : e.target.value === 'maximize' ? { maximizeOnOpen: true } : { multiTile: false, maximizeOnOpen: false }));
     // Theme swatches: one Tab stop; the arrow keys (Home/End to the ends) move between them and pick as they go, like
     // radio buttons. The pick shows at once; it is saved once the keys rest, not once per press.
     $('#s-themes').addEventListener('keydown', e => {
@@ -1921,6 +1925,7 @@
     $('#s-multi').checked = m.enabled;
     $('#s-rename').checked = st.renameWindows;
     $('#s-winlayout').value = st.windowLayout || 'fill';
+    if (document.activeElement !== $('#s-openas')) $('#s-openas').value = S.app.multi?.tile ? 'tile' : st.maximizeOnOpen ? 'maximize' : 'roblox';
     $('#s-memwarn').checked = st.memoryWarnings;
     $('#s-trim').checked = st.trimBackground;
     $('#s-antiafk').checked = !!st.antiAfk;

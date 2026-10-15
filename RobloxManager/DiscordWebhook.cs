@@ -8,7 +8,20 @@ namespace RobloxManager;
 
 /// <summary>What a message says, before it is shaped: the same content goes out as an embed or as plain text.</summary>
 /// <param name="Timestamp">Shown by Discord under an embed, in each reader's own time zone.</param>
-public sealed record DiscordMessage(string Title, string Text, IReadOnlyList<DiscordField> Fields, string? Footer = null, int Color = DiscordWebhook.Blue, DateTime? Timestamp = null);
+public sealed record DiscordMessage(string Title, string Text, IReadOnlyList<DiscordField> Fields, string? Footer = null, int Color = DiscordWebhook.Blue, DateTime? Timestamp = null)
+{
+    /// <summary>A small line above the title.</summary>
+    public string? Author { get; init; }
+    /// <summary>A picture in the top-right corner (a game's icon from Roblox's servers).</summary>
+    public string? Thumbnail { get; init; }
+    /// <summary>More embeds after this one, in the same message (a summary's presets).</summary>
+    public IReadOnlyList<DiscordMessage> More { get; init; } = [];
+    /// <summary>A summary's picture: drawn when it goes out and attached to the message, shown in this embed.</summary>
+    public SummaryCardData? Card { get; init; }
+}
+
+/// <summary>A file sent with a message (a summary's picture).</summary>
+public sealed record DiscordFile(string Name, byte[] Data);
 
 public sealed record DiscordField(string Name, string Value, bool Inline = false);
 
@@ -50,7 +63,7 @@ public sealed record DiscordResult(DiscordOutcome Outcome, string? MessageId = n
 public static partial class DiscordWebhook
 {
     // Discord's limits (docs.discord.com, Resources › Message / Webhook).
-    public const int MaxContent = 2000, MaxTitle = 256, MaxDescription = 4096, MaxFields = 25, MaxFieldName = 256,
+    public const int MaxEmbeds = 10, MaxContent = 2000, MaxTitle = 256, MaxDescription = 4096, MaxFields = 25, MaxFieldName = 256,
         MaxFieldValue = 1024, MaxFooter = 2048, MaxEmbedTotal = 6000, MaxUsername = 80;
     public const int Blue = 0x5865F2, Green = 0x2EA043, Amber = 0xD29922, Red = 0xD1453B, Grey = 0x6E7681;
 
@@ -115,7 +128,8 @@ public static partial class DiscordWebhook
     /// The JSON Discord gets: an embed (or plain text) within every limit, the pings first in <c>content</c>, and
     /// <c>allowed_mentions</c> listing exactly those, so a name like "@everyone" inside the text pings nobody.
     /// </summary>
-    public static JsonObject Build(DiscordMessage message, DiscordPing ping, bool embed, string? username, string? avatarUrl)
+    /// <param name="picture">The name of a picture sent with it (<see cref="DiscordFile"/>): the first embed shows it.</param>
+    public static JsonObject Build(DiscordMessage message, DiscordPing ping, bool embed, string? username, string? avatarUrl, string? picture = null)
     {
         var mentions = ping.Users.Select(u => $"<@{u}>").Concat(ping.Roles.Select(r => $"<@&{r}>")).ToList();
         if (ping.Here)
@@ -132,11 +146,16 @@ public static partial class DiscordWebhook
         {
             if (pings.Length > 0)
                 payload["content"] = pings;
-            payload["embeds"] = new JsonArray(Embed(message));
+            // Up to 10 embeds and 6000 characters across them all: the last ones go first.
+            var embeds = new List<JsonObject> { Embed(message, picture) };
+            embeds.AddRange(message.More.Take(MaxEmbeds - 1).Select(m => Embed(m, null)));
+            while (embeds.Count > 1 && embeds.Sum(Length) > MaxEmbedTotal)
+                embeds.RemoveAt(embeds.Count - 1);
+            payload["embeds"] = new JsonArray(embeds.Select(e => (JsonNode)e).ToArray());
         }
         else
         {
-            string body = PlainText(message);
+            string body = string.Join("\n\n", new[] { message }.Concat(message.More).Select(PlainText));
             payload["content"] = pings.Length > 0 ? pings + "\n" + Cut(body, MaxContent - pings.Length - 1) : Cut(body, MaxContent);
         }
         var allowed = new JsonObject { ["parse"] = ping.Here || ping.Everyone ? new JsonArray("everyone") : new JsonArray() };
@@ -145,10 +164,19 @@ public static partial class DiscordWebhook
         if (ping.Roles.Count > 0)
             allowed["roles"] = new JsonArray(ping.Roles.Take(100).Select(r => (JsonNode)r!).ToArray());
         payload["allowed_mentions"] = allowed;
+        if (picture is not null)
+            payload["attachments"] = new JsonArray(new JsonObject { ["id"] = 0, ["filename"] = picture });
         return payload;
     }
 
-    static JsonObject Embed(DiscordMessage m)
+    /// <summary>The characters Discord counts towards an embed's 6000.</summary>
+    static int Length(JsonObject e) =>
+        Str(e, "title") + Str(e["author"] as JsonObject, "name") + Str(e, "description") + Str(e["footer"] as JsonObject, "text")
+        + (e["fields"] as JsonArray ?? []).OfType<JsonObject>().Sum(f => Str(f, "name") + Str(f, "value"));
+
+    static int Str(JsonObject? o, string name) => o?[name]?.GetValue<string>().Length ?? 0;
+
+    static JsonObject Embed(DiscordMessage m, string? picture)
     {
         string title = Cut(m.Title, MaxTitle), description = Cut(m.Text, MaxDescription), footer = Cut(m.Footer, MaxFooter);
         var fields = m.Fields.Select(f => new DiscordField(Cut(Blank(f.Name), MaxFieldName), Cut(Blank(f.Value), MaxFieldValue), f.Inline)).ToList();
@@ -164,6 +192,12 @@ public static partial class DiscordWebhook
         if (Total() > MaxEmbedTotal)
             description = Cut(description, Math.Max(0, MaxEmbedTotal - (Total() - description.Length)));
         var embed = new JsonObject { ["title"] = title, ["color"] = m.Color };
+        if (!string.IsNullOrEmpty(m.Author))
+            embed["author"] = new JsonObject { ["name"] = Cut(m.Author, MaxTitle) };
+        if (m.Thumbnail is { Length: > 0 } thumbnail && Uri.TryCreate(thumbnail, UriKind.Absolute, out var thumb) && thumb.Scheme == Uri.UriSchemeHttps)
+            embed["thumbnail"] = new JsonObject { ["url"] = thumbnail };
+        if (picture is not null)
+            embed["image"] = new JsonObject { ["url"] = "attachment://" + picture };
         if (description.Length > 0)
             embed["description"] = description;
         if (fields.Count > 0)
@@ -195,7 +229,8 @@ public static partial class DiscordWebhook
     /// Posts a new message (<paramref name="wait"/>: Discord answers with it, for its id) or edits one this webhook
     /// sent. Never throws for Discord's or the network's answers: the outcome says what happened.
     /// </summary>
-    public static async Task<DiscordResult> SendAsync(string url, JsonObject payload, string? editMessageId, bool wait, CancellationToken ct = default)
+    /// <param name="file">Sent with a new message (a summary's picture), as multipart form data.</param>
+    public static async Task<DiscordResult> SendAsync(string url, JsonObject payload, string? editMessageId, bool wait, CancellationToken ct = default, DiscordFile? file = null)
     {
         bool edit = !string.IsNullOrEmpty(editMessageId);
         if (!TryNormalize(url, out string target) || (edit && !IsId(editMessageId)))
@@ -207,10 +242,19 @@ public static partial class DiscordWebhook
             payload["content"] ??= "";
             payload["embeds"] ??= new JsonArray();
         }
+        HttpContent content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+        if (file is not null && !edit)
+        {
+            var form = new MultipartFormDataContent { { content, "payload_json" } };
+            var data = new ByteArrayContent(file.Data);
+            data.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+            form.Add(data, "files[0]", file.Name);
+            content = form;
+        }
         using var req = new HttpRequestMessage(edit ? HttpMethod.Patch : HttpMethod.Post,
             edit ? $"{target}/messages/{editMessageId}" : wait ? target + "?wait=true" : target)
         {
-            Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json"),
+            Content = content,
         };
         req.Headers.TryAddWithoutValidation("User-Agent", "Bloxkeep");
         try

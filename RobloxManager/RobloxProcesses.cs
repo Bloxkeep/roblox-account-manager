@@ -14,7 +14,7 @@ public static class RobloxProcesses
     const string PlayerProcessName = "RobloxPlayerBeta";
     const uint WM_SETTEXT = 0x000C, WM_CLOSE = 0x0010, SMTO_ABORTIFHUNG = 0x0002, GW_OWNER = 4;
     const uint SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_ASYNCWINDOWPOS = 0x4000;
-    const int SW_RESTORE = 9, SW_SHOWMINNOACTIVE = 7;
+    const int SW_RESTORE = 9, SW_SHOWMINNOACTIVE = 7, SW_SHOWMAXIMIZED = 3, GWL_STYLE = -16, WS_CAPTION = 0x00C00000;
     const uint SYNCHRONIZE = 0x00100000, PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
     [DllImport("user32.dll")]
@@ -31,6 +31,9 @@ public static class RobloxProcesses
 
     [DllImport("user32.dll")]
     static extern bool ShowWindowAsync(IntPtr hWnd, int cmd);
+
+    [DllImport("user32.dll")]
+    static extern int GetWindowLong(IntPtr hWnd, int index);
 
     [DllImport("user32.dll")]
     static extern bool SetWindowPos(IntPtr hWnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
@@ -521,6 +524,18 @@ public static class RobloxProcesses
     }
 
     public static bool IsMinimised(IntPtr hWnd) => IsIconic(hWnd);
+
+    /// <summary>
+    /// Maximises a window that has a title bar (Roblox in a window; its fullscreen has none and is left alone), unless it
+    /// is minimised or maximised already. A window message only; Windows brings the window to the front with it.
+    /// </summary>
+    /// <returns>false when it left the window as it was.</returns>
+    public static bool Maximise(IntPtr hWnd)
+    {
+        if (hWnd == IntPtr.Zero || IsIconic(hWnd) || IsZoomed(hWnd) || (GetWindowLong(hWnd, GWL_STYLE) & WS_CAPTION) != WS_CAPTION)
+            return false;
+        return ShowWindowAsync(hWnd, SW_SHOWMAXIMIZED);
+    }
 
     /// <summary>Minimises a window without bringing another one to the front (a window message only).</summary>
     public static void Minimise(IntPtr hWnd)
