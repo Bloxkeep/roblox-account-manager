@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/.NET-10-512BD4" alt="Built with .NET 10">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
 </p>
-<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a></p>
+<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 <p align="center"><img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards with two accounts chosen, the game bar at the bottom, and Multi-Roblox turned on"></p>
 
@@ -47,7 +47,7 @@ Get it from [Releases](../../releases/latest):
 > [!CAUTION]
 > Only download Bloxkeep from this repository's Releases page. A copy from anywhere else may have been changed to steal accounts.
 
-The files aren't code-signed yet, so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release. `Bloxkeep-Setup.exe` is the same file in every release (only what it downloads changes), so SmartScreen gets to know it over time; the web installer checks its download against `SHA256SUMS.txt` itself.
+The files aren't code-signed yet ([code signing policy](CODE_SIGNING_POLICY.md)), so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release. `Bloxkeep-Setup.exe` is the same file in every release (only what it downloads changes), so SmartScreen gets to know it over time; the web installer checks its download against `SHA256SUMS.txt` itself.
 
 Setup shows where Bloxkeep will go (`%LOCALAPPDATA%\BloxkeepApp` unless you choose another folder; the program takes about 230 MB), copies it with a progress bar and can open it when it's done. Your accounts and settings stay apart from the program, in `%LOCALAPPDATA%\Bloxkeep` (a few MB). Setup and the uninstaller speak English and Vietnamese.
 
@@ -279,7 +279,7 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone or wi
 > [!WARNING]
 > If you forget the master password, your saved accounts can't be recovered. A backup also only opens with the password it was saved with.
 
-**What leaves your PC.** Bloxkeep has no telemetry or analytics. Data only goes to:
+**What leaves your PC.** Bloxkeep has no telemetry or analytics. Data only goes to (also in the [privacy policy](PRIVACY.md)):
 
 | Where | When, and what |
 |---|---|
@@ -288,7 +288,8 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone or wi
 | `*.rbxcdn.com` | Avatars and game pictures |
 | `*.robloxapp.vnggames.com` | The same as the Roblox API hosts, for Roblox VNG accounts only |
 | Roblox's captcha providers (Arkose Labs, HUMAN Security) | Only in the puzzle window, when Roblox asks for a captcha during password sign-in |
-| GitHub | Checking for and downloading updates, with no account data; can be turned off |
+| GitHub | Checking for and downloading updates, with no account data (can be turned off), and reading the [Roblox watch](docs/roblox-watch.md)'s findings |
+| Bloxkeep's feedback service (a Cloudflare Worker that forwards to the developer's Discord) | Only when you press **Send** in **Send feedback**, and only what **See exactly what will be sent** shows ([details](docs/feedback.md)) |
 | Microsoft (`go.microsoft.com`) | Only when WebView2 has to be installed |
 | The backup folder you choose | A copy of the encrypted vault; your OneDrive / Google Drive app may sync it |
 | Your Discord webhook (`discord.com`) | Only when **Settings › Discord** is on (off by default): account names (or **Account 1**, **Account 2**… with **Hide account names in messages**), game names, play time, sessions, PID, RAM. Never cookies, passwords or the webhook link itself; the link is kept in the encrypted vault |
@@ -454,6 +455,10 @@ Installer/                 the installer's splash image; Setup/ the installer an
 dev/                       interface preview with made-up data (not packaged)
 docs/screenshots/          screenshots (vi/: the Vietnamese ones)
 ```
+
+## Code signing policy
+
+Releases are built from this repository by the [Release workflow](.github/workflows/release.yml) on GitHub's own Windows machines. Bloxkeep is applying to SignPath Foundation for free code signing; what gets signed, how, and who approves it is in the [code signing policy](CODE_SIGNING_POLICY.md). What the app sends and where is in the [privacy policy](PRIVACY.md).
 
 ## License
 
