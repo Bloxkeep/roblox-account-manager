@@ -47,7 +47,7 @@ Get it from [Releases](../../releases/latest):
 > [!CAUTION]
 > Only download Bloxkeep from this repository's Releases page. A copy from anywhere else may have been changed to steal accounts.
 
-The files aren't code-signed yet ([code signing policy](CODE_SIGNING_POLICY.md)), so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release. `Bloxkeep-Setup.exe` is the same file in every release (only what it downloads changes), so SmartScreen gets to know it over time; the web installer checks its download against `SHA256SUMS.txt` itself.
+The files aren't code-signed yet: Bloxkeep is applying to SignPath Foundation for free code signing ([code signing policy](CODE_SIGNING_POLICY.md)). Until then Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release. `Bloxkeep-Setup.exe` is the same file in every release (only what it downloads changes), so SmartScreen gets to know it over time; the web installer checks its download against `SHA256SUMS.txt` itself.
 
 Setup shows where Bloxkeep will go (`%LOCALAPPDATA%\BloxkeepApp` unless you choose another folder; the program takes about 230 MB), copies it with a progress bar and can open it when it's done. Your accounts and settings stay apart from the program, in `%LOCALAPPDATA%\Bloxkeep` (a few MB). Setup and the uninstaller speak English and Vietnamese.
 
