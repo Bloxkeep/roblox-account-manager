@@ -51,7 +51,6 @@
 <main id="out"></main>
 <script>
   // The repository's own files (the logo) from this checkout, so a picture not pushed yet still shows.
-  const RAW = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/';
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
     .replace(/https:\/\/raw\.githubusercontent\.com\/minhhoang0122\/bloxkeep\/main\//g, '../');
   // Discord shows <t:unix:style> in the reader's own time zone and language: here the browser's.
@@ -76,8 +75,8 @@
   // The markdown Discord draws in embeds and messages, the parts these messages use.
   function md(text) {
     const lines = esc(text).split('\n').map(line => {
-      if (line.startsWith('-# ')) return `<span class="small">${line.slice(3)}</span>`;
-      if (line.startsWith('&gt; ')) return `<span class="quote">${line.slice(5)}</span>`;
+      if (line.startsWith('-# ')) return `<span class="small">${line.slice(3)}</span><!--block-->`;
+      if (line.startsWith('&gt; ')) return `<span class="quote">${line.slice(5)}</span><!--block-->`;
       return line;
     });
     let h = lines.join('\n');
@@ -89,7 +88,8 @@
       .replace(/&lt;t:(\d+)(?::([tTdDfFR]))?&gt;/g, (_, u, s) => `<span class="ts">${esc(stamp(+u, s))}</span>`)
       .replace(/&lt;@&amp;?(\d+)&gt;|@everyone|@here/g, m => `<span class="mention">${m.startsWith('@') ? m : '@someone'}</span>`)
       .replace(/\\([\\*_~`|>\[\]<@])/g, '$1');
-    return h.replace(/<\/span>\n/g, '</span>');
+    // A small line or a quote is a block of its own: the line break after it isn't drawn twice.
+    return h.replace(/<!--block-->\n?/g, '');
   }
   // Inline fields sit three to a row, beside a thumbnail too (seen in Discord, 2026-10-16); a field that isn't inline
   // takes the whole row.

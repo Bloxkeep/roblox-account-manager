@@ -43,7 +43,10 @@ BLIND_AFTER = {'crtsh': datetime.timedelta(days=2), 'hagezi': datetime.timedelta
                'whoisds': datetime.timedelta(days=3)}
 LABEL = {'crtsh': 'crt.sh', 'hagezi': 'hagezi\'s NRD list', 'whoisds': 'WhoisDS'}
 MAX_LISTED = 15
-COLORS = {'new': 0xD9453D, 'first': 0x2E9E5B, 'blind': 0xE0A030, 'back': 0x2E9E5B}
+# How the messages look: docs/discord-style.md (sender, Discord's colours, short title, facts in fields).
+LOGO = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png'
+DOCS = 'https://github.com/minhhoang0122/bloxkeep/blob/main/docs/domain-watch.md'
+GREEN, YELLOW, RED = 0x57F287, 0xFEE75C, 0xED4245
 
 
 def now():
@@ -194,32 +197,64 @@ def from_nrd(wanted):
     return found, failed
 
 
-def line(name, info):
+def stamp(text, style='R'):
+    """An ISO time or date as a Discord timestamp, which each reader sees in their own time zone and language."""
+    try:
+        at = datetime.datetime.fromisoformat(text.replace('Z', '+00:00'))
+        if at.tzinfo is None:
+            at = at.replace(tzinfo=datetime.timezone.utc)
+        return f'<t:{int(at.timestamp())}:{style}>'
+    except ValueError:
+        return text
+
+
+def field(name, info):
+    """One address as a field: where it was seen, when, and where to look it up."""
     if 'crtsh' in info:
-        return f'`{name}` · {info["issuer"]} · first seen {info["firstSeen"][:10]} · [crt.sh]({info["crtsh"]})'
-    return (f'`{name}` · newly registered, in {info["list"]} · [whois](https://who.is/whois/{name}) · '
-            f'[crt.sh](https://crt.sh/?q={name})')
+        value = (f'Certificate from {info["issuer"]}\nFirst seen {stamp(info["firstSeen"], "D")}\n'
+                 f'[crt.sh]({info["crtsh"]}) · [whois](https://who.is/whois/{name})')
+    else:
+        value = (f'Newly registered ({info["list"]})\n'
+                 f'[whois](https://who.is/whois/{name}) · [crt.sh](https://crt.sh/?q={name})')
+    return name, value, True
 
 
-def listing(names, found):
-    lines = [line(n, found[n]) for n in names[:MAX_LISTED]]
+def fields(names, found):
+    out = [field(n, found[n]) for n in names[:MAX_LISTED]]
     if len(names) > MAX_LISTED:
-        lines.append(f'and {len(names) - MAX_LISTED} more (domain-status.json on the domain-status branch)')
-    return '\n'.join(lines)
+        out.append(('And more', f'{len(names) - MAX_LISTED} more in domain-status.json (domain-status branch)', False))
+    return out
+
+
+def message(title, color, description, fields=()):
+    """A webhook post in Bloxkeep's style: one embed, the logo, short fields side by side."""
+    embed = {'title': title[:256], 'color': color, 'description': description[:4000],
+             'fields': [{'name': n[:256], 'value': v[:1024], 'inline': inline} for n, v, inline in fields],
+             'thumbnail': {'url': LOGO},
+             'footer': {'text': 'Bloxkeep · Domain watch', 'icon_url': LOGO},
+             'timestamp': now()}
+    return {'username': 'Bloxkeep', 'avatar_url': LOGO, 'embeds': [embed], 'allowed_mentions': {'parse': []}}
+
+
+def found_message(names, found):
+    title = (f'An address like Bloxkeep turned up: {names[0]}' if len(names) == 1
+             else f'{len(names)} addresses like Bloxkeep turned up')
+    return message(title, RED, "If it isn't Bloxkeep's, check what it hands out and report it.\n"
+                   f'-# [What to do]({DOCS})', fields(names, found))
 
 
 failed_posts = 0
 
 
-def post(webhook, title, text, color):
+def post(webhook, payload):
     """A post that fails doesn't stop the status being saved; the run fails after, and the names aren't posted again."""
     global failed_posts
+    embed = payload['embeds'][0]
     if not webhook:
-        print(f'[discord] {title}\n{text}')
+        print(f'[discord] {embed["title"]}\n{embed["description"]}',
+              *(f'  {f["name"]}: {f["value"]}' for f in embed.get('fields', [])), sep='\n')
         return
-    embed = {'title': title, 'description': text[:4000], 'color': color,
-             'footer': {'text': 'Bloxkeep domain watch'}, 'timestamp': now()}
-    body = json.dumps({'embeds': [embed], 'allowed_mentions': {'parse': []}}).encode()
+    body = json.dumps(payload).encode()
     req = urllib.request.Request(webhook, data=body, method='POST',
                                  headers={'User-Agent': UA, 'Content-Type': 'application/json'})
     try:
@@ -237,15 +272,15 @@ def health(status, key, failing, detail, webhook):
         h.setdefault('since', now())
         since = datetime.datetime.fromisoformat(h['since'].replace('Z', '+00:00'))
         if not h.get('told') and datetime.datetime.now(datetime.timezone.utc) - since >= BLIND_AFTER[key]:
-            post(webhook, f'Domain watch can\'t reach {LABEL[key]}', f'{LABEL[key]} hasn\'t answered fully since '
-                 f'{h["since"][:16].replace("T", " ")} UTC{detail}. New lookalike addresses may be missed until it '
-                 'does. Said once.', COLORS['blind'])
+            post(webhook, message(f'Domain watch can\'t reach {LABEL[key]}', YELLOW,
+                                  f'No full answer since {stamp(h["since"])}{detail}. New addresses like Bloxkeep may be '
+                                  'missed until it answers again.\n-# Said once.'))
             h['told'] = True
         known[key] = h
     else:
         if h.get('told'):
-            post(webhook, f'Domain watch reaches {LABEL[key]} again', 'Anything it missed meanwhile is posted as it\'s '
-                 'found.', COLORS['back'])
+            post(webhook, message(f'Domain watch reaches {LABEL[key]} again', GREEN,
+                                  'Anything it missed meanwhile is posted as it\'s found.'))
         known.pop(key, None)
     if not known:
         status.pop('failing')
@@ -268,24 +303,23 @@ def check(path, dry, patterns, sources):
         status['names'][n] = {**found[n], 'postedAt': now()}
     down = [LABEL['crtsh']] * bool(crt_failed) + [LABEL[k] for k in nrd_failed]
     if before is None:
+        searched = []
+        if 'crtsh' in sources and len(crt_failed) < len(patterns):
+            searched.append('certificates for names starting with ' + ', '.join(f'`{p}`' for p in patterns if p not in crt_failed))
+        if 'nrd' in sources and len(nrd_failed) < 2:
+            searched.append('newly registered names with one of them anywhere')
+        note = (f'\n-# {", ".join(down)} didn\'t answer fully this time: tried again next run, and anything found then '
+                'is posted as new.') if down else ''
         if new:
-            text = f'Already there ({len(new)}), worth a look:\n' + listing(new, found)
+            post(webhook, message(f'Domain watch is on: {len(new)} address{"es" if len(new) > 1 else ""} already there', RED,
+                                  "Worth a look: if one isn't Bloxkeep's, check what it hands out and report it.\n"
+                                  f'-# [What to do]({DOCS})' + note, fields(new, found)))
         else:
-            nothing = []
-            if 'crtsh' in sources and len(crt_failed) < len(patterns):
-                nothing.append('no certificate for a name starting with '
-                               + ', '.join(f'`{p}`' for p in patterns if p not in crt_failed))
-            if 'nrd' in sources and len(nrd_failed) < 2:
-                nothing.append('no newly registered name with one of them anywhere in it')
-            text = ('Nothing like Bloxkeep now: ' + ', and '.join(nothing) + '.') if nothing else 'Nothing searched yet.'
-        if down:
-            text += (f'\n{", ".join(down)} didn\'t answer fully this time: tried again next run, and anything found '
-                     'then is posted as new.')
-        post(webhook, 'Domain watch started', text, COLORS['new' if new else 'first'])
+            post(webhook, message('Domain watch is on', GREEN,
+                                  ('Nothing like Bloxkeep right now. Searched ' + ' and '.join(searched) + '.'
+                                   if searched else 'Nothing searched yet.') + note))
     elif new:
-        post(webhook, 'New web address that looks like Bloxkeep',
-             'A name like Bloxkeep got a certificate or was just registered. If it isn\'t yours, check what it hands '
-             'out and report it (docs/domain-watch.md).\n' + listing(new, found), COLORS['new'])
+        post(webhook, found_message(new, found))
 
     if 'crtsh' in sources:
         health(status, 'crtsh', crt_failed, f' (this time: {", ".join(crt_failed)})', webhook)
