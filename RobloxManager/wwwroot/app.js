@@ -227,7 +227,7 @@
   const hue = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
   const initials = s => (String(s).match(/[\p{L}\p{N}]/gu) || ['?']).slice(0, 2).join('').toUpperCase();
   const avatarInner = a => a.avatarUrl
-    ? `<img src="${esc(a.avatarUrl)}" alt="" draggable="false" loading="lazy" decoding="async">`
+    ? `<img src="${esc(a.avatarUrl)}" alt="" draggable="false" loading="lazy" decoding="async" data-ini="${esc(initials(a.label || a.username))}" style="--h:${hue(a.username || a.label)}">`
     : `<span class="initials" style="--h:${hue(a.username || a.label)}">${esc(initials(a.label || a.username))}</span>`;
 
   /* ───────────────────────── toasts ───────────────────────── */
@@ -236,7 +236,7 @@
     const box = $('#toasts');
     if (!box || !text) return;
     // Long messages stay long enough to be read (about 60 ms a character).
-    const life = Math.max(kind === 'error' ? 6500 : action ? 9000 : 3800, text.length * 60);
+    const life = Math.min(Math.max(kind === 'error' ? 6500 : action ? 9000 : 3800, text.length * 60), 15000);
     // The same message again while it still shows (a double click, a repeated event): the one toast stays longer
     // instead of a second copy stacking under it.
     const same = !action && [...box.children].find(x => !x.classList.contains('out') && x.dataset.text === text && x.classList.contains(kind));
@@ -367,8 +367,10 @@
       if (back && !el.contains(back)) back.focus();
     };
     let asking = false;
+    // A save under way (see hold): the dialog stays until it is through, so Cancel can't look like it undid it.
+    let held = 0;
     const tryClose = async () => {
-      if (asking || closed) return;
+      if (asking || closed || held) return;
       if (askClose?.()) {
         asking = true;
         const leave = await confirmBox(t('common.discardQ'), { title: t('common.discardTitle'), ok: t('common.discard'), danger: true });
@@ -388,7 +390,12 @@
     const openedAt = performance.now();
     if (dismissable) el.addEventListener('mousedown', e => { if (e.target === el && e.detail < 2 && performance.now() - openedAt > 450) tryClose(); });
     el.querySelector('[data-x]').onclick = tryClose;
-    const api = { el, close };
+    const api = {
+      el,
+      close: () => { if (!held) close(); },
+      /** Runs a save with the dialog kept open meanwhile (Cancel, the X and Esc wait for it). */
+      hold: async job => { held++; try { return await job(); } finally { held--; } },
+    };
     el.querySelectorAll('.modal-foot .btn').forEach(btn => {
       btn.onclick = () => actions[+btn.dataset.i].onClick?.({ ...api, btn });
     });
@@ -866,6 +873,7 @@
     groupBtn.hidden = !groups.length;
     groupBtn.classList.toggle('on', !!S.group);
     setHtml(groupBtn, `${icon('tag')}<span>${t('grp.label')}: ${S.group ? esc(S.group) : t('chip.all')}</span>`);
+    groupBtn.title = S.group ? `${t('grp.label')}: ${S.group}` : '';
     if (!chips.some(c => c.f === S.filter)) S.filter = 'all';
     setHtml($('#chips'), list.length ? chips.map(c => `<button class="chip ${S.filter === c.f ? 'on' : ''}" data-act="filter" data-f="${esc(c.f)}" aria-pressed="${S.filter === c.f}">${c.dot ? `<i class="dot" style="background:${c.dot}"></i>` : ''}${c.text}<em>${c.n}</em></button>`).join('') : '');
     setHtml($('#layout-seg'), list.length ? ['cards', 'list'].map(l =>
@@ -1866,7 +1874,7 @@
       : u.status === 'ready' ? t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version })
       : u.status === 'upToDate' ? t('upd.latest') + (when ? ' · ' + t('upd.checkedAt', { t: when }) : '')
       : u.status === 'error' ? (u.error ? `${t('upd.error')}: ${u.error}` : t('upd.error')) // the reason, when the app gives one
-      : t('upd.idle');
+      : u.auto ? t('upd.idle') : t('upd.off');
     const notes = `<button class="btn sm ghost" data-act="whats-new">${t('wn.link')}</button>`;
     const action = !u.supported ? ''
       : u.status === 'ready' ? `<button class="btn sm primary" data-act="apply-update">${icon('refresh')}${t('upd.restart')}</button>`
@@ -2826,7 +2834,7 @@
         ...(isNew ? [] : [{ text: t('ps.delete'), kind: 'danger push', onClick: async ({ close }) => { if (await deletePreset(p)) close(); } }]),
         { text: t('common.cancel'), onClick: ({ close }) => close() },
         {
-          text: t('ps.saveBtn'), kind: 'primary', onClick: async ({ el, close, btn }) => {
+          text: t('ps.saveBtn'), kind: 'primary', onClick: async ({ el, close, btn, hold }) => {
             if (btn.disabled) return;
             const val = sel => el.querySelector(sel).value.trim();
             const delay = val('#ps-delay');
@@ -2846,7 +2854,7 @@
               return fail(t('ps.schHoursBad'), el.querySelector('#ps-sch-hours'));
             }
             let refused = null;
-            await busy(btn, () => bridge.call('savePreset', {
+            await busy(btn, () => hold(() => bridge.call('savePreset', {
               id: p?.id || '',
               name: val('#ps-name'),
               placeInput: val('#ps-place'),
@@ -2867,7 +2875,7 @@
                 stopHours: +val('#ps-sch-hours') || 0,
                 stopTime: val('#ps-sch-stoptime'),
               },
-            }).catch(e => { refused = e; }));
+            })).catch(e => { refused = e; }));
             if (refused) {
               // The box the app's reason is most likely about, from what the form holds.
               const on = el.querySelector('#ps-sch-on').checked, sel = s => el.querySelector(s);
@@ -3383,7 +3391,7 @@
     </div>
     <div class="start-more">
       <div class="ways"><span>${t('start.more')}</span><button class="btn sm ghost" data-act="add-cookie">${t('start.cookie')}</button></div>
-      <div class="ways"><span>${t('start.importFrom')}</span><button class="btn sm ghost" data-act="import-ram" title="${t('start.ramTip')}">${t('start.ram')}</button><button class="btn sm ghost" data-act="import-vault" title="${t('start.vaultTip')}">${t('start.vault')}</button></div>
+      <div class="ways"><span>${t('start.importFrom')}</span><button class="btn sm ghost" data-act="import-vault" title="${t('start.vaultTip')}">${t('start.vault')}</button></div>
     </div>`;
 
   /** The sign-in screen lists every way to add an account. */
@@ -3518,9 +3526,9 @@
           <div class="auth-or"><span>${t('pw.orPw')}</span></div>
           <form id="pw-login" class="auth-form tight" autocomplete="off">
             <label class="auth-label">${t('pw.user')}
-              <input class="field" id="pw-user" maxlength="60" autocomplete="off" spellcheck="false" value="${esc(user)}"></label>
+              <span class="lead-ic">${icon('user')}<input class="field" id="pw-user" maxlength="60" autocomplete="off" spellcheck="false" value="${esc(user)}"></span></label>
             <label class="auth-label">${t('pw.pass')}
-              <span class="pw"><input class="field" type="password" id="pw-pass" maxlength="200" autocomplete="off">
+              <span class="pw lead-ic">${icon('lock')}<input class="field" type="password" id="pw-pass" maxlength="200" autocomplete="off">
               <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}" aria-label="${t('lock.showPw')}" aria-pressed="false">${icon('eye')}</button></span></label>
             <div class="form-error" id="pw-err" hidden></div>
             <button class="btn w" type="submit" id="pw-go">${t('pw.go')}</button>
@@ -3528,7 +3536,7 @@
           </form>
           <div class="auth-more">
             <div class="ways"><span>${t('start.more')}</span>${realm === 'vng' ? '' : `<button type="button" class="btn sm ghost" data-x2="browser">${t('pw.withBrowser')}</button>`}<button type="button" class="btn sm ghost" data-x2="cookie">${t('pw.cookie')}</button></div>
-            <div class="ways"><span>${t('start.importFrom')}</span><button type="button" class="btn sm ghost" data-x2="ram" title="${t('start.ramTip')}">${t('pw.ram')}</button><button type="button" class="btn sm ghost" data-x2="vault" title="${t('start.vaultTip')}">${t('pw.vault')}</button></div>
+            <div class="ways"><span>${t('start.importFrom')}</span><button type="button" class="btn sm ghost" data-x2="vault" title="${t('start.vaultTip')}">${t('pw.vault')}</button></div>
           </div>
           <p class="auth-note">${icon('lock')}<span>${t('pw.note')}</span></p>`;
       }
@@ -3581,7 +3589,6 @@
         else if (way === 'phone') quickLogin(realm);
         else if (way === 'cookie') accountModal(null);
         else if (way === 'vault') importVault();
-        else importRam();
       });
       const solve = m.el.querySelector('#pw-solve');
       if (solve) solve.onclick = async () => {
@@ -3993,30 +4000,6 @@
   }
 
   /**
-   * Moving over from Roblox Account Manager: first says which file and that it must be decrypted, then asks for it.
-   * The dialog stays until a file was read, so cancelling the file picker leaves the way back open.
-   */
-  function importRam() {
-    modal({
-      title: t('ram.title'),
-      body: `<ol class="steps ram-steps"><li><div>${t('ram.s1')}</div></li><li><div>${t('ram.s2')}</div></li></ol>`,
-      actions: [
-        { text: t('common.cancel'), onClick: ({ close }) => close() },
-        {
-          text: t('ram.choose'), kind: 'primary', onClick: async ({ close, btn }) => {
-            const r = await busy(btn, () => call('importRam'));
-            if (!r) return; // cancelled, or the reason is in a toast: try another file
-            close();
-            if (!r.total) toast(t('t.importedNone'), 'warn');
-            else if (!r.added && !r.updated) toast(tn('t.importedSkipped', r.skipped ?? r.total), 'warn');
-            else toast(t('t.imported', { added: r.added, updated: r.updated }), 'ok');
-          },
-        },
-      ],
-    });
-  }
-
-  /**
    * Accounts from another Bloxkeep vault file (another PC's, or a backup): pick the file, type that file's own master
    * password, tick what to bring over. The app keeps the opened file; this page only ever sees names and states,
    * never cookies or passwords. Closing the dialog (or locking) makes the app forget it.
@@ -4161,8 +4144,9 @@
       m.close();
       const parts = r.added && r.updated ? t('iv.doneBoth', { n: r.added, u: r.updated })
         : r.added ? tn('iv.done', r.added) : r.updated ? tn('iv.doneUpd', r.updated) : '';
-      const presets = r.presets ? tn('iv.donePresets', r.presets) : '';
-      toast(parts || presets ? `${parts}${parts && presets ? ' ' : ''}${presets}` : t('iv.doneNone'), parts || presets ? 'ok' : 'info');
+      // Presets past the limit are left out: said, so the count above doesn't read as all of them.
+      const presets = [r.presets ? tn('iv.donePresets', r.presets) : '', r.presetsSkipped ? tn('iv.presetsSkipped', r.presetsSkipped) : ''].filter(Boolean).join(' ');
+      toast(parts || presets ? `${parts}${parts && presets ? ' ' : ''}${presets}` : t('iv.doneNone'), r.presetsSkipped ? 'warn' : parts || presets ? 'ok' : 'info');
       if (r.ids?.length) {
         S.selected = new Set(r.ids);
         S.anchor = r.ids[r.ids.length - 1];
@@ -4887,7 +4871,6 @@
       { id: 'preset', icon: 'layers', text: t('ps.save'), run: () => newPreset() },
       { id: 'backup', icon: 'cloud', text: t('bk.now'), keywords: ['backup'],
         run: () => S.app.backup?.folder ? busy(null, async () => { if (await call('backupNow') !== undefined) toast(t('bk.done'), 'ok'); }) : openSection('backup')() },
-      { id: 'ram', icon: 'download', text: t('m.importRam'), keywords: ['import', 'RAM'], run: () => importRam() },
       { id: 'updates', icon: 'download', text: t('pal.checkUpdates'), run: () => { openSection('updates')(); $('#sec-updates [data-act="check-updates"]')?.click(); } },
       { id: 'export', icon: 'history', text: t('pal.exportActivity'), keywords: ['csv', 'log'], run: () => { setView('stats'); toActivity(); exportActivity(null); } }, // the list may not be loaded yet: the app knows
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
@@ -5173,7 +5156,17 @@
   // not the browser's broken-image mark. Inline onerror isn't allowed by the page's CSP, so one listener catches them.
   document.addEventListener('error', e => {
     const img = e.target;
-    if (!(img instanceof HTMLImageElement) || !img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .pv-item, .activity, .pal-ic')) return;
+    if (!(img instanceof HTMLImageElement)) return;
+    // An account's picture that doesn't load (offline, gone from the CDN): its initials, as without one.
+    if (img.parentElement?.classList.contains('avatar') && img.dataset.ini) {
+      const ini = document.createElement('span');
+      ini.className = 'initials';
+      ini.style.cssText = img.style.cssText;
+      ini.textContent = img.dataset.ini;
+      img.replaceWith(ini);
+      return;
+    }
+    if (!img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .pv-item, .activity, .pal-ic')) return;
     const ph = document.createElement(img.closest('.recent') ? 'i' : 'span');
     ph.className = img.closest('.recent') ? 'ph' : img.matches('.gicon, .pv-icon') ? img.className : 'gph';
     if (!img.closest('.recent')) ph.innerHTML = icon('gamepad');
@@ -5210,7 +5203,6 @@
       case 'add-choose': return addChooser();
       case 'add-password': leaveChooser(el); return passwordLogin();
       case 'add-phone': leaveChooser(el); return quickLogin();
-      case 'import-ram': leaveChooser(el); return importRam();
       case 'import-vault': leaveChooser(el); return importVault();
       case 'relogin': { const a = byId(id); return quickLogin(a?.realm, a?.label); }
       case 'add-browser': leaveChooser(el); return addBrowser(el);
@@ -5221,7 +5213,6 @@
           { icon: 'globe', text: t('m.addBrowser'), run: () => addBrowser(null) },
           { icon: 'cookie', text: t('m.addCookie'), run: () => accountModal(null) },
           '-',
-          { icon: 'download', text: t('m.importRam'), run: importRam },
           { icon: 'folder', text: t('m.importVault'), run: importVault },
         ], 320);
       case 'tools-menu':
@@ -5350,6 +5341,24 @@
     }
   });
 
+  // The second click of a double click that closed a dialog or menu lands on what was under it (a card's tick, its
+  // Sign in button): swallowed, with its mousedown, rather than acting on something the person never aimed at.
+  for (const type of ['mousedown', 'click'])
+    document.addEventListener(type, e => {
+      if (e.detail > 1 && performance.now() - lastOverlayClose < 500 && !e.target.closest?.('.overlay:not(.out), .menu')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true);
+  // Likewise an Enter still held (or pressed twice) after it closed a dialog or the palette: the focus is back on the
+  // button that opened it (Edit), or on the page with accounts chosen (Play).
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && performance.now() - lastOverlayClose < (e.repeat ? 1000 : 300) && !e.target.closest?.('.overlay:not(.out), .menu')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true);
+
   document.addEventListener('dblclick', e => {
     // The second click of a double click that closed a dialog or menu lands on the card behind it: not a Play.
     if (performance.now() - lastOverlayClose < 500) return;
@@ -5451,6 +5460,17 @@
       // Rebuild everything in the new language; inputs come back from settings / page state.
       S.shell = false;
       S.lockMode = null;
+      // What was being typed in Settings (a search, a new master password) and the sections left open aren't settings:
+      // put back into the rebuilt page.
+      const typed = ['#set-q', '#pw-cur', '#pw-new', '#pw-new2'].map(sel => [sel, $(sel)?.value]).filter(([, v]) => v);
+      const open = [...document.querySelectorAll('details.set-more')].map(d => d.open);
+      setTimeout(() => {
+        for (const [sel, v] of typed) {
+          const f = $(sel);
+          if (f && !f.value) { f.value = v; f.dispatchEvent(new Event('input', { bubbles: true })); }
+        }
+        document.querySelectorAll('details.set-more').forEach((d, i) => { if (open[i]) d.open = true; });
+      });
       // Picked with a language button: the focus goes to that button in the rebuilt page, not to the page itself.
       if (document.activeElement?.closest?.('[data-act="lang"]')) {
         setTimeout(() => {

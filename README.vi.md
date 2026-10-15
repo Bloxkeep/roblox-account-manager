@@ -15,7 +15,7 @@ Bloxkeep dành cho người chơi nhiều tài khoản Roblox trên một máy W
 
 ## Tính năng
 
-- Thêm tài khoản bằng tên đăng nhập và mật khẩu (có xác minh 2 bước, captcha giải trong một cửa sổ nhỏ), bằng mã hoặc QR quét bằng app Roblox trên điện thoại, bằng trang roblox.com trong cửa sổ trình duyệt, bằng cookie, hoặc nhập từ Roblox Account Manager hay từ một file dữ liệu Bloxkeep khác.
+- Thêm tài khoản bằng tên đăng nhập và mật khẩu (có xác minh 2 bước, captcha giải trong một cửa sổ nhỏ), bằng mã hoặc QR quét bằng app Roblox trên điện thoại, bằng trang roblox.com trong cửa sổ trình duyệt, bằng cookie, hoặc nhập từ một file dữ liệu Bloxkeep khác.
 - Xem trạng thái từng tài khoản: online, đang chơi trên máy này hay thiết bị khác, bị văng vì lý do gì, RAM, thời gian đã chơi, PID, cần đăng nhập lại hay bị ban. Tìm, lọc theo trạng thái hoặc nhóm, sắp xếp, xem dạng thẻ hoặc dạng danh sách.
 - Chọn game theo tên, link hoặc Place ID. Chọn server (đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho N tài khoản, ngẫu nhiên), vào cùng bạn bè, hoặc vào đúng server của một người chơi theo tên đăng nhập.
 - Chạy nhiều cửa sổ Roblox cùng lúc với Multi-Roblox, mở cửa sổ đồng loạt ở chế độ cửa sổ và tự xếp chúng thành lưới. Tính năng này tắt sẵn, bạn tự bật khi cần.
@@ -58,6 +58,8 @@ Muốn cập nhật ngay thì bấm **Khởi động lại để cập nhật** 
 
 Để quay lại mà vẫn mở khóa, bản đang chạy chuyển chìa khóa vault cho bản mới qua một file chỉ tài khoản Windows của bạn đọc được (Windows DPAPI, kèm một giá trị ngẫu nhiên chỉ bản mới nhận được). Bản mới đọc xong là xóa ngay, và từ chối file quá 3 phút. Nếu bạn muốn nhập lại mật khẩu chủ sau mỗi lần cập nhật thì khóa Bloxkeep lại: bản đang khóa không chuyển gì cả.
 
+Một chương trình canh nhỏ (chính chương trình gỡ cài đặt, chạy từ một bản sao tạm) chờ bản mới mở lên. Nếu khoảng một phút sau vẫn chưa thấy (cài lỗi, bản mới bị crash), nó xóa file kia và tự mở Bloxkeep: nằm ở khay, đang khóa, kèm một thông báo nói rõ. Bản cập nhật cài không được sẽ không tự thử lại trong một ngày; nút **Khởi động lại để cập nhật** vẫn dùng được.
+
 Tự cập nhật chỉ hoạt động khi repo trên GitHub ở chế độ công khai.
 
 Muốn tắt tự cập nhật: bỏ chọn **Cài đặt › Cập nhật Bloxkeep › Tự động cập nhật**; khi đó app không tự tải hay tự cài gì nữa. Nút **Kiểm tra ngay** vẫn dùng được.
@@ -90,7 +92,7 @@ Vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (
    - **Đăng nhập bằng điện thoại** (nên dùng): Bloxkeep hiện mã và QR. Trên điện thoại, mở **app Roblox**, vào **Cài đặt › Đăng nhập nhanh**, nhập mã hoặc quét QR rồi xác nhận. Không cần mật khẩu hay giải đố. Thêm xong một tài khoản thì có mã mới cho tài khoản tiếp theo.
    - **Tên đăng nhập** và **Mật khẩu**: mật khẩu chỉ gửi tới máy chủ đăng nhập của Roblox. Đăng nhập bằng mật khẩu không lưu mật khẩu đó. Có **Xác minh 2 bước** (**App xác thực** hoặc **Email**); nếu tài khoản đã có khóa app xác thực trong Bloxkeep thì mã được điền sẵn, bạn chỉ cần bấm xác nhận. Nếu Roblox đòi captcha, bấm **Giải câu đố** và làm trong cửa sổ nhỏ hiện ra.
    - **Cách khác: Đăng nhập bằng trình duyệt**: trang đăng nhập roblox.com chính thức mở trong một cửa sổ tạm. Đăng nhập xong, Bloxkeep lấy phiên đăng nhập rồi xóa cửa sổ tạm đó. Bloxkeep không đọc mật khẩu bạn gõ ở đây.
-   - **Cách khác: Nhập cookie**, hoặc **Nhập từ: Roblox Account Manager** / **File Bloxkeep**: xem [Chuyển tài khoản từ nơi khác](#chuyển-tài-khoản-từ-nơi-khác).
+   - **Cách khác: Nhập cookie**, hoặc **Nhập từ: File Bloxkeep**: xem [Chuyển tài khoản từ nơi khác](#chuyển-tài-khoản-từ-nơi-khác).
 
    <img src="docs/screenshots/vi/add-account.png" width="700" alt="Hộp thoại Đăng nhập Roblox với tab Roblox và Roblox VNG, đăng nhập bằng điện thoại, tên đăng nhập và mật khẩu, cùng các cách khác">
 
@@ -220,8 +222,6 @@ Chuyển sang **Hoạt động** để xem nhật ký: mở tài khoản, vào g
 <img src="docs/screenshots/vi/discord.png" width="800" alt="Trang Discord trong Cài đặt: gửi lên Discord, link webhook, tổng kết thời gian chơi">
 
 ### Chuyển tài khoản từ nơi khác
-
-**Roblox Account Manager**: chương trình này mã hóa file `AccountData.json`, nên trước tiên hãy giải mã nó bằng công cụ chính thức [RAMDecrypt](https://github.com/ic3w0lf22/RAMDecrypt). Sau đó trong hộp thoại **Thêm tài khoản**, bấm **Nhập từ: Roblox Account Manager** và chọn file đã giải mã. Tên gợi nhớ, nhóm, ghi chú và mật khẩu (nếu RAM có lưu) được chép sang. Tài khoản đã có thì được cập nhật cookie, và cookie được kiểm tra ngay sau khi nhập.
 
 **File dữ liệu Bloxkeep khác** (ví dụ `vault.rmv` hay bản sao lưu từ máy khác): bấm **Nhập từ: File Bloxkeep**, hoặc **Nhập…** trong **Cài đặt › Sao lưu & dữ liệu**. Nhập mật khẩu chủ của chính file đó, chọn các tài khoản muốn lấy, rồi bấm nhập. File gốc không bị sửa; tài khoản nhập vào được khóa lại bằng mật khẩu chủ hiện tại của bạn.
 

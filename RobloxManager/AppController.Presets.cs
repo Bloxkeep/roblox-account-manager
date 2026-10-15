@@ -110,6 +110,7 @@ public sealed partial class AppController
         if (schedule is not null && (old is null || old.Enabled != schedule.Enabled || old.Time != schedule.Time || old.Date != schedule.Date || !old.Days.SequenceEqual(schedule.Days)))
             _scheduledStartTick.Remove(preset.Id);
         preset.Schedule = schedule;
+        ScheduleChanged(preset);
         Persist();
         PushState();
         return preset.Id;
@@ -229,6 +230,7 @@ public sealed partial class AppController
             });
             preset.Schedule = ParseSchedule(form, s);
             _scheduledStartTick.Remove(preset.Id); // as in the form: a schedule turned on again may run today
+            ScheduleChanged(preset);
             Persist();
         }
         PushState();

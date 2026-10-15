@@ -423,7 +423,7 @@ public sealed partial class AppController
             InitialDirectory = Prefs.BackupFolder is { } current && Directory.Exists(current) ? current
                 : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         };
-        if (dialog.ShowDialog(_owner) == DialogResult.OK)
+        if (Ui.Modal(() => dialog.ShowDialog(_owner)) == DialogResult.OK)
         {
             UseBackupFolder(dialog.SelectedPath);
             Prefs.Save();
@@ -468,7 +468,7 @@ public sealed partial class AppController
             Filter = L.T("Bloxkeep backups") + " (*.rmv)|*.rmv",
             InitialDirectory = Prefs.BackupFolder is { } folder && Directory.Exists(folder) ? folder : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         };
-        if (dialog.ShowDialog(_owner) != DialogResult.OK)
+        if (Ui.Modal(() => dialog.ShowDialog(_owner)) != DialogResult.OK)
         {
             PushState();
             return null;

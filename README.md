@@ -19,7 +19,7 @@ Bloxkeep is for people who play on several Roblox accounts on one Windows PC: ke
 
 ## Features
 
-- Add accounts with a username and password (with 2-step verification, and captchas solved in a small window), with a code or QR scanned in the Roblox phone app, through roblox.com in a browser window, with a cookie, or import them from Roblox Account Manager or from another Bloxkeep file.
+- Add accounts with a username and password (with 2-step verification, and captchas solved in a small window), with a code or QR scanned in the Roblox phone app, through roblox.com in a browser window, with a cookie, or import them from another Bloxkeep file.
 - See each account's status: online, playing on this PC or another device, why it was disconnected, RAM, play time, PID, whether it needs to sign in again or is banned. Search, filter by status or group, sort, and switch between cards and a list.
 - Pick a game by name, link or Place ID. Pick a server (most players, fewest, lowest ping, room for N accounts, random), join friends, or join the exact server a player is in by their username.
 - Run several Roblox windows at once with Multi-Roblox, open them all windowed and tile them. It's off until you turn it on.
@@ -62,6 +62,8 @@ To update right away, click **Restart to update** in the sidebar as soon as it s
 
 To come back unlocked, the running copy hands the vault key to the new one in a file that only your Windows account can read (Windows DPAPI, mixed with a random value given to the new copy alone). The new copy deletes it as it reads it, and refuses one older than 3 minutes. If you would rather type the master password again after each update, lock Bloxkeep: a locked copy hands over nothing.
 
+A small watcher (the uninstaller's program, run from a temporary copy) waits for the new version to come up. If it doesn't within a minute or so (the install failed, the new version crashed), the watcher deletes that file and starts Bloxkeep itself: back in the tray, locked, with a notification saying so. An update that didn't install isn't tried again by itself for a day; **Restart to update** still works.
+
 Updating itself only works while the GitHub repository is public.
 
 To turn automatic updates off, untick **Settings › Bloxkeep updates › Update automatically**: nothing is downloaded or installed by itself then. **Check now** still works.
@@ -96,7 +98,7 @@ Open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publis
    - **Sign in with your phone** (recommended): Bloxkeep shows a code and a QR. In the **Roblox app** on your phone, open **Settings › Quick Log In**, enter the code or scan the QR, and confirm. No password or puzzle needed. After one account is added you get a new code for the next.
    - **Username** and **Password**: the password only goes to Roblox's sign-in server. Signing in with a password doesn't save it. 2-step verification works (**Authenticator app** or **Email**); if the account already has an authenticator key in Bloxkeep, the code is filled in and you only confirm. If Roblox asks for a captcha, click **Solve the puzzle** and do it in the small window that opens.
    - **Other ways: Sign in with a browser**: the official roblox.com sign-in page opens in a temporary window. Once you're in, Bloxkeep takes the session and deletes that temporary window. Bloxkeep doesn't read the password you type there.
-   - **Other ways: Paste a cookie**, or **Import from: Roblox Account Manager** / **Bloxkeep file**: see [Bringing accounts over](#bringing-accounts-over).
+   - **Other ways: Paste a cookie**, or **Import from: Bloxkeep file**: see [Bringing accounts over](#bringing-accounts-over).
 
    <img src="docs/screenshots/add-account.png" width="700" alt="Sign in to Roblox dialog with Roblox and Roblox VNG tabs, phone sign-in, username and password, and the other ways">
 
@@ -226,8 +228,6 @@ Switch to **Activity** for the log: accounts opened, games joined and left, drop
 <img src="docs/screenshots/discord.png" width="800" alt="The Discord page in Settings: send to Discord, webhook link, play-time summary">
 
 ### Bringing accounts over
-
-**Roblox Account Manager**: it encrypts `AccountData.json`, so first decrypt it with the official [RAMDecrypt](https://github.com/ic3w0lf22/RAMDecrypt) tool. Then in the **Add account** dialog click **Import from: Roblox Account Manager** and pick the decrypted file. Nicknames, groups, notes and passwords (if RAM had them) come along. Accounts you already have get the new cookie, and cookies are checked right after the import.
 
 **Another Bloxkeep file** (a `vault.rmv` or a backup from another PC): click **Import from: Bloxkeep file**, or **Import…** in **Settings › Backup & data**. Enter that file's own master password, tick the accounts you want, and import. The file itself isn't changed; the imported accounts are locked with your current master password.
 

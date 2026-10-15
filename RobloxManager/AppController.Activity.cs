@@ -362,7 +362,7 @@ public sealed partial class AppController
                    OverwritePrompt = true,
                })
         {
-            if (dialog.ShowDialog(_owner) != DialogResult.OK)
+            if (Ui.Modal(() => dialog.ShowDialog(_owner)) != DialogResult.OK)
                 return null;
             path = dialog.FileName;
         }

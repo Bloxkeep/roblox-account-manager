@@ -92,7 +92,15 @@ public sealed partial class AppController
             if (!DateTime.TryParseExact(s.Date, "yyyy-MM-dd", Inv, DateTimeStyles.None, out var date))
                 throw new UserError(L.T("Pick the date to run on."));
             if (NextRun(s) is null)
+            {
+                // Saved again as it was (the preset renamed, say) after its time went by: over, so off, not in the way.
+                if (old is { Enabled: true } && old.Date == s.Date && old.Time == s.Time)
+                {
+                    s.Enabled = false;
+                    return s;
+                }
                 throw new UserError(L.T("That date and time have already passed."));
+            }
         }
         else if (s.Days.Count == 0)
             throw new UserError(L.T("Pick at least one weekday, or a date."));
@@ -133,6 +141,18 @@ public sealed partial class AppController
         s.Time == local.ToString("HH\\:mm", Inv)
         && (s.Date.Length > 0 ? s.Date == local.ToString("yyyy-MM-dd", Inv) : s.Days.Contains((int)local.DayOfWeek));
 
+    /// <summary>
+    /// A preset's schedule was saved or switched: the minute it is now is looked at again, so one set for this very
+    /// minute still runs (LastRun keeps one that ran from running twice); and a planned stop goes with a schedule
+    /// switched off or set to never stop, since nothing on screen shows it any more.
+    /// </summary>
+    void ScheduleChanged(LaunchPreset preset)
+    {
+        _lastScheduleMinute = "";
+        if (preset.Schedule is not { Enabled: true, Stop: not "never" } && _scheduledRuns.RemoveAll(r => r.PresetId == preset.Id) > 0)
+            NoteScheduledRuns(); // saved with the preset
+    }
+
     /// <summary>Every process-timer tick: stops that are due, then (once per wall-clock minute) starts that are due.</summary>
     void CheckSchedules()
     {
@@ -162,6 +182,22 @@ public sealed partial class AppController
         // The timer didn't tick for a while (the PC slept, or hung): a run due in between is said to be missed, once.
         if (lastCheck != default && local - lastCheck > TimeSpan.FromSeconds(90))
             ReportScheduleGap(vault, lastCheck, local);
+        // A one-off whose time went by unseen (the PC was off, Bloxkeep closed): over, as if it had run, rather than
+        // left switched on with no next run.
+        bool over = false;
+        foreach (var preset in vault.Data.Settings.Presets)
+        {
+            if (preset.Schedule is { Enabled: true } once && once.Date.Length > 0 && !DueAt(once, local) && NextRun(once) is null)
+            {
+                once.Enabled = false;
+                over = true;
+            }
+        }
+        if (over)
+        {
+            PersistSoon();
+            PushState();
+        }
         var due = new List<LaunchPreset>();
         foreach (var preset in vault.Data.Settings.Presets)
         {

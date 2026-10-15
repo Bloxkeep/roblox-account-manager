@@ -133,6 +133,8 @@ public sealed class ShellForm : Form
         {
             if (Prefs.MiniOpen)
                 SetMiniOpen(true, activate: false);
+            if (_resumeWindow is not null)
+                TellIfLockedAfterUpdate();
             // Back after an update in the background while another program was in front: that one keeps the keyboard
             // (a minimised or maximised window is activated as it shows, so the keyboard goes back) and stays on top.
             if (_showQuietly)
@@ -161,6 +163,16 @@ public sealed class ShellForm : Form
 
     protected override bool ShowWithoutActivation => _showQuietly;
 
+    /// <summary>Back after an update but locked: said once, since the window may be in the tray and a scheduled preset waits for the unlock.</summary>
+    void TellIfLockedAfterUpdate()
+    {
+        if (_toldLockedAfterUpdate || _app.LockedAfterUpdate() is not { } text)
+            return;
+        _toldLockedAfterUpdate = true;
+        BeginInvoke(() => ShowNotification(text, "warn"));
+    }
+    bool _toldLockedAfterUpdate;
+
     protected override void SetVisibleCore(bool value)
     {
         // An update in the background that began with the window in the tray: back in the tray, no window. The
@@ -168,12 +180,15 @@ public sealed class ShellForm : Form
         if (value && _startHidden)
         {
             _startHidden = false;
+            // Quiet only for the restart itself: opened from the tray later, the window comes to the front as usual.
+            _showQuietly = false;
             if (!IsHandleCreated)
                 CreateHandle();
             _tray.Visible = true;
             _app.Background = true;
             if (Prefs.MiniOpen)
                 BeginInvoke(() => SetMiniOpen(true, activate: false));
+            TellIfLockedAfterUpdate();
             value = false;
         }
         base.SetVisibleCore(value);

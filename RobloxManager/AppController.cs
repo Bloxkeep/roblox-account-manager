@@ -296,7 +296,6 @@ public sealed partial class AppController : IDisposable
         "loginCancel" => Done(LoginCancel()),
         "loginCaptcha" => LoginStepAsync(LoginCaptchaAsync),
         "addViaCookie" => AddViaCookieAsync(a),
-        "importRam" => ImportRamAsync(),
         "vaultImportPick" => Done(VaultImportPick()),
         "vaultImportOpen" => VaultImportOpenAsync(Str(a, "password")),
         "vaultImportApply" => Done(VaultImportApply(a)),
@@ -415,7 +414,12 @@ public sealed partial class AppController : IDisposable
     }
 
     /// <summary>The window came back with its page still open: what the page kept is out of date from here on.</summary>
-    public void DropKeptView() => _pageView = null;
+    public void DropKeptView()
+    {
+        // Not before any page has come: a view handed over by an update is for the first one.
+        if (PageAttached)
+            _pageView = null;
+    }
 
     /// <summary>
     /// The page has something open that closing the browser would lose (a form being filled in, a sign-in under way):
@@ -1543,80 +1547,6 @@ public sealed partial class AppController : IDisposable
         _ = LoadAvatarsAsync([account.UserId]);
         RefreshPresenceSoon(TimeSpan.FromSeconds(2));
         return new AddResult(account.Id, NameText(account), existing is not null);
-    }
-
-    /// <summary>Imports a decrypted AccountData.json from Roblox Account Manager, then checks the cookies in the background.</summary>
-    async Task<object?> ImportRamAsync()
-    {
-        var vault = RequireVault();
-        string path;
-        using (var dialog = new OpenFileDialog
-               {
-                   Title = L.T("Choose the decrypted AccountData.json from Roblox Account Manager"),
-                   Filter = "AccountData (*.json)|*.json|*.*|*.*",
-                   CheckFileExists = true,
-               })
-        {
-            if (dialog.ShowDialog(_owner) != DialogResult.OK)
-                return null;
-            path = dialog.FileName;
-        }
-
-        var imported = await Task.Run(() => RamImport.Read(path));
-        if (_vault != vault)
-            throw new UserError(L.T("Bloxkeep was locked."));
-
-        int added = 0, updated = 0, skipped = 0;
-        var touched = new List<Account>();
-        foreach (var item in imported)
-        {
-            string cookie = RobloxApi.NormalizeCookie(item.Cookie);
-            if (cookie.Length == 0)
-            {
-                skipped++;
-                continue;
-            }
-            var existing = vault.Data.Accounts.FirstOrDefault(a =>
-                (item.UserId != 0 && a.UserId == item.UserId && Realm.Normalize(a.Realm) == Realm.Global) || (item.UserId == 0 && a.Cookie == cookie));
-            if (existing is not null)
-            {
-                // A sign-in that works here is newer than RAM's copy; only a dead or unchecked one is replaced.
-                if (existing.Cookie != cookie && existing.CookieValid != true)
-                {
-                    existing.Cookie = cookie;
-                    existing.CookieValid = null;
-                }
-                if (existing.Alias.Length == 0) existing.Alias = item.Alias;
-                if (existing.Note.Length == 0) existing.Note = item.Note;
-                if (existing.Password.Length == 0) existing.Password = item.Password;
-                if (existing.Group.Length == 0) existing.Group = item.Group;
-                touched.Add(existing);
-                updated++;
-                continue;
-            }
-            var account = new Account
-            {
-                Cookie = cookie,
-                UserId = item.UserId,
-                Username = item.Username,
-                Alias = item.Alias,
-                Note = item.Note,
-                Password = item.Password,
-                Group = item.Group,
-                LastUsed = item.LastUse,
-            };
-            vault.Data.Accounts.Add(account);
-            touched.Add(account);
-            added++;
-        }
-        Persist();
-        PushState();
-        if (touched.Count > 0)
-        {
-            _ = LoadAvatarsAsync(touched.Select(a => a.UserId));
-            _ = CheckImportedAsync(touched.Select(a => a.Id).ToArray());
-        }
-        return new { added, updated, skipped, total = imported.Count };
     }
 
     /// <summary>Imported cookies may be old, so verify them right away and report the result.</summary>
@@ -2925,6 +2855,7 @@ public sealed partial class AppController : IDisposable
             _nextPresence = _nextRobloxVersionCheck = _nextUpdateCheck = now;
             _sweepBackgroundUntil = MovedBack(_sweepBackgroundUntil, back);
             _resumedAt = MovedBack(_resumedAt, back);
+            _started = MovedBack(_started, back);
             _lastSessionStart = MovedBack(_lastSessionStart, back);
             _robloxSettingsWrittenAt = MovedBack(_robloxSettingsWrittenAt, back);
             foreach (var launch in _pending.Concat(_late).Concat(_running.Values.Select(r => r.Launch)))
@@ -4129,7 +4060,7 @@ public sealed partial class AppController : IDisposable
             InitialDirectory = File.Exists(s.CustomLauncher) ? Path.GetDirectoryName(s.CustomLauncher)
                 : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         };
-        if (dialog.ShowDialog(_owner) == DialogResult.OK)
+        if (Ui.Modal(() => dialog.ShowDialog(_owner)) == DialogResult.OK)
         {
             if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(Application.ExecutablePath), StringComparison.OrdinalIgnoreCase))
                 throw new UserError(L.T("Pick the program that opens Roblox, not Bloxkeep itself."));

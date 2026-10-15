@@ -43,7 +43,7 @@ public sealed partial class AppController
                    InitialDirectory = Prefs.BackupFolder is { } folder && Directory.Exists(folder) ? folder : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                })
         {
-            if (dialog.ShowDialog(_owner) != DialogResult.OK)
+            if (Ui.Modal(() => dialog.ShowDialog(_owner)) != DialogResult.OK)
                 return null;
             path = Path.GetFullPath(dialog.FileName);
         }

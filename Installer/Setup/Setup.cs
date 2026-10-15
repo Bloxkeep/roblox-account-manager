@@ -8,6 +8,8 @@
 //
 // Command line: --installto <folder> [--silent] installs without the window; the uninstaller takes --silent and
 // --delete-data. --shot <png> --page <name> [--lang en|vi] saves a page as a picture (for the README).
+// --updating <version> --wait-pid <pid> --app <Bloxkeep.exe> --data <folder> [--quiet]: the watch over an update's
+// restart, started by the app as it quits (the "Updating Bloxkeep" window; none with --quiet).
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,6 +40,14 @@ namespace BloxkeepSetup
             string updating = Arg(args, "--updating");
             bool uninstall = updating == null && (Has(args, "--uninstall") || !Ops.HasPayload);
 
+            // The watch over an update installed in the background: no window (see UpdateWatch).
+            if (updating != null && shot == null && Has(args, "--quiet"))
+            {
+                new UpdateWatch(args, updating).Run(null);
+                Ops.RemoveTempCopy();
+                return 0;
+            }
+
             if (uninstall && shot == null && Arg(args, "--root") == null)
             {
                 // Windows › Apps runs the uninstaller inside the program folder, which is about to be deleted: carry on
@@ -62,12 +72,13 @@ namespace BloxkeepSetup
                 {
                     AllowSetForegroundWindow(-1);
                     activate.Set();
+                    Ops.RemoveTempCopy();
                     return 1;
                 }
                 Activate = activate;
                 if (updating != null)
                 {
-                    var window = new SetupWindow(false, null, updating);
+                    var window = new SetupWindow(false, null, updating) { Watch = new UpdateWatch(args, updating) };
                     if (shot != null)
                         return window.SaveShot(shot, Arg(args, "--page"));
                     Application.Run(window);
@@ -161,6 +172,127 @@ namespace BloxkeepSetup
         }
     }
 
+    /// <summary>
+    /// The watch over an update's restart (the app starts it as it quits: AppController.WatchUpdate). Waits for that
+    /// run to end, then for Bloxkeep to be up again. When it isn't in time (the install failed, the new version
+    /// crashed), it removes the vault key's hand-over, which mustn't wait on disk, and starts Bloxkeep itself.
+    /// </summary>
+    sealed class UpdateWatch
+    {
+        public const int Back = 0, Stayed = 1, NotBack = 2;
+        static readonly TimeSpan QuitWait = TimeSpan.FromSeconds(30), StartWait = TimeSpan.FromSeconds(30), InstallLimit = TimeSpan.FromMinutes(10);
+
+        readonly int _pid;
+        readonly string _app, _handOver, _version;
+        readonly bool _quiet;
+
+        public UpdateWatch(string[] args, string version)
+        {
+            int.TryParse(Program.Arg(args, "--wait-pid"), out _pid);
+            _app = Program.Arg(args, "--app");
+            string data = Program.Arg(args, "--data");
+            _handOver = data != null ? Path.Combine(data, "resume.bin") : null;
+            _version = version;
+            _quiet = Program.Has(args, "--quiet");
+        }
+
+        /// <summary>Back, Stayed (the old run didn't quit) or NotBack. <paramref name="slow"/> runs when it starts Bloxkeep itself.</summary>
+        public int Run(Action slow)
+        {
+            if (!OldRunEnded())
+                return Stayed;
+            // Velopack installs the update now and starts the new version.
+            if (WaitForApp(TimeSpan.FromSeconds(_quiet ? 90 : 60), true))
+                return Back;
+            if (_handOver != null)
+            {
+                try { File.Delete(_handOver); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            if (slow != null)
+                slow();
+            if (_app == null || !File.Exists(_app))
+                return NotBack;
+            try
+            {
+                var info = new ProcessStartInfo(_app) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(_app) };
+                // In the background it comes back in the tray, saying it needs unlocking (the app's Relaunch.AfterUpdate).
+                if (_quiet)
+                    info.Arguments = "--after-update \"" + _version + "\"";
+                Process.Start(info).Dispose();
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                return NotBack;
+            }
+            return WaitForApp(StartWait, false) ? Back : NotBack;
+        }
+
+        bool OldRunEnded()
+        {
+            var clock = Stopwatch.StartNew();
+            if (_pid <= 0)
+            {
+                // Not told which run: Bloxkeep's single-instance name going away.
+                while (Ops.AppRunning())
+                {
+                    if (clock.Elapsed > QuitWait)
+                        return false;
+                    Thread.Sleep(150);
+                }
+                return true;
+            }
+            Process old;
+            try { old = Process.GetProcessById(_pid); }
+            catch (ArgumentException) { return true; } // gone already
+            using (old)
+            {
+                while (!old.WaitForExit(150))
+                {
+                    // Its close was refused: the app removes the hand-over at once and stays open.
+                    if ((_handOver != null && !File.Exists(_handOver)) || clock.Elapsed > QuitWait)
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>Bloxkeep holds its single-instance name within <paramref name="wait"/> (longer while its install is still at work).</summary>
+        bool WaitForApp(TimeSpan wait, bool whileInstalling)
+        {
+            var clock = Stopwatch.StartNew();
+            while (true)
+            {
+                if (Ops.AppRunning())
+                {
+                    Thread.Sleep(700); // its window comes up meanwhile
+                    return true;
+                }
+                if (clock.Elapsed > wait && !(whileInstalling && clock.Elapsed < InstallLimit && Installing()))
+                    return false;
+                Thread.Sleep(250);
+            }
+        }
+
+        /// <summary>Velopack's Update.exe of this install still at work (a large update, a slow disk).</summary>
+        bool Installing()
+        {
+            if (_app == null)
+                return false;
+            string update = Path.Combine(Path.GetDirectoryName(_app), "Update.exe");
+            bool found = false;
+            foreach (Process p in Process.GetProcessesByName("Update"))
+            {
+                try { found |= string.Equals(p.MainModule.FileName, update, StringComparison.OrdinalIgnoreCase); }
+                catch (System.ComponentModel.Win32Exception) { }
+                catch (InvalidOperationException) { } // ended meanwhile
+                finally { p.Dispose(); }
+            }
+            return found;
+        }
+    }
+
     /// <summary>English and Vietnamese, like the app.</summary>
     static class T
     {
@@ -176,6 +308,8 @@ namespace BloxkeepSetup
         public static readonly string LocalAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         public static readonly string DefaultDir = Path.Combine(LocalAppData, "BloxkeepApp");
         public static readonly string VelopackLog = Path.Combine(LocalAppData, "velopack", "velopack.log");
+        /// <summary>Where Velopack's Update.exe writes how an update was installed.</summary>
+        public static readonly string UpdateLog = Path.Combine(LocalAppData, "velopack", "velopack_BloxkeepApp.log");
 
         /// <summary>Accounts and settings, as the app finds them: never inside the program folder, which uninstalling
         /// deletes whole.</summary>
@@ -184,7 +318,21 @@ namespace BloxkeepSetup
             get
             {
                 string custom = Environment.GetEnvironmentVariable("BLOXKEEP_DATA");
-                return string.IsNullOrEmpty(custom) ? Path.Combine(LocalAppData, "Bloxkeep") : custom;
+                if (!string.IsNullOrEmpty(custom))
+                {
+                    // One that isn't a path at all (a typo in the variable) must not stop Setup.
+                    try
+                    {
+                        Path.GetFullPath(custom);
+                        return custom;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!(ex is ArgumentException || ex is NotSupportedException || ex is PathTooLongException))
+                            throw;
+                    }
+                }
+                return Path.Combine(LocalAppData, "Bloxkeep");
             }
         }
 
@@ -228,9 +376,19 @@ namespace BloxkeepSetup
             }
         }
 
+        /// <summary>
+        /// An installed Bloxkeep: Velopack's Update.exe with current\Bloxkeep.exe (another Velopack app's folder has its
+        /// own exe), and not the portable one, whose accounts live inside its folder (data\): installing over it
+        /// (Velopack replaces the whole folder) would delete them.
+        /// </summary>
         public static bool IsBloxkeepFolder(string dir)
         {
-            return File.Exists(Path.Combine(dir, "Update.exe")) && Directory.Exists(Path.Combine(dir, "current"));
+            return File.Exists(Path.Combine(dir, "Update.exe")) && File.Exists(Path.Combine(dir, "current", "Bloxkeep.exe")) && !IsPortable(dir);
+        }
+
+        static bool IsPortable(string dir)
+        {
+            return File.Exists(Path.Combine(dir, ".portable")) || Directory.Exists(Path.Combine(dir, "data"));
         }
 
         /// <summary>The install folder when <paramref name="dir"/> is its "current" folder (where the app runs from).</summary>
@@ -301,15 +459,30 @@ namespace BloxkeepSetup
             if (!drive.IsReady || (drive.DriveType != DriveType.Fixed && drive.DriveType != DriveType.Removable))
                 return anyDrive;
             bool reinstall = Directory.Exists(full) && IsBloxkeepFolder(full);
+            if (Directory.Exists(full) && IsPortable(full))
+                return T.S("That's the portable Bloxkeep's folder, with its accounts inside. Choose another one.",
+                    "Đó là thư mục của Bloxkeep bản portable, có tài khoản bên trong. Hãy chọn thư mục khác.");
             if (drive.AvailableFreeSpace < (reinstall ? NeededBytes / 4 : NeededBytes))
                 return string.Format(T.S("Not enough free space on {0} (needs about {1}).", "Ổ {0} không đủ chỗ trống (cần khoảng {1})."), drive.Name.TrimEnd('\\'), Size(NeededBytes));
-            if (Directory.Exists(full) && !reinstall && Directory.GetFileSystemEntries(full).Length > 0)
+            bool hasFiles;
+            try { hasFiles = Directory.Exists(full) && Directory.GetFileSystemEntries(full).Length > 0; }
+            catch (UnauthorizedAccessException) { return NoAccess; }
+            catch (IOException) { return NoAccess; }
+            if (!reinstall && hasFiles)
                 return T.S("That folder already has other files in it. Choose an empty or new folder: uninstalling deletes the program folder.",
                     "Thư mục đó đã có file khác. Hãy chọn thư mục trống hoặc thư mục mới, vì gỡ cài đặt sẽ xóa cả thư mục chương trình.");
             if (!CanWrite(full))
+                return NoAccess;
+            return null;
+        }
+
+        static string NoAccess
+        {
+            get
+            {
                 return T.S("Bloxkeep installs without admin rights, so it can't use this folder. Choose another one, for example D:\\Bloxkeep.",
                     "Bloxkeep cài không cần quyền admin nên không dùng được thư mục này. Hãy chọn thư mục khác, ví dụ D:\\Bloxkeep.");
-            return null;
+            }
         }
 
         /// <summary>Tries a file in the folder (made for the test and removed again when it didn't exist).</summary>
@@ -361,14 +534,31 @@ namespace BloxkeepSetup
         public static bool AppRunning()
         {
             Mutex single;
-            if (!Mutex.TryOpenExisting(@"Local\Bloxkeep.SingleInstance", out single))
-                return false;
+            try
+            {
+                if (!Mutex.TryOpenExisting(@"Local\Bloxkeep.SingleInstance", out single))
+                    return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return true; // there, run as administrator
+            }
             single.Dispose();
             return true;
         }
 
         /// <summary>Asks a running Bloxkeep to quit (the signal its own uninstall step uses) and waits until it has.</summary>
         public static void CloseRunningApp()
+        {
+            try
+            {
+                CloseApp();
+            }
+            // Run as administrator: out of reach (Velopack then says its files are in use).
+            catch (UnauthorizedAccessException) { }
+        }
+
+        static void CloseApp()
         {
             EventWaitHandle quit;
             if (!EventWaitHandle.TryOpenExisting(@"Local\Bloxkeep.Quit", out quit))
@@ -787,6 +977,8 @@ namespace BloxkeepSetup
 
         /// <summary>The version "Restart to update" is installing (the "Updating Bloxkeep" window), else null.</summary>
         readonly string _updatingTo;
+        /// <summary>What that window watches.</summary>
+        public UpdateWatch Watch;
 
         public SetupWindow(bool uninstall, string root, string updatingTo = null)
         {
@@ -1088,9 +1280,19 @@ namespace BloxkeepSetup
 
         void Browse()
         {
-            string start = _path.Text;
-            while (!string.IsNullOrEmpty(start) && !Directory.Exists(start))
-                start = Path.GetDirectoryName(start);
+            // The nearest folder that exists, from whatever is typed (quotes from "Copy as path", a broken path).
+            string start = _path.Text.Trim().Trim('"');
+            try
+            {
+                while (!string.IsNullOrEmpty(start) && !Directory.Exists(start))
+                    start = Path.GetDirectoryName(start);
+            }
+            catch (Exception ex)
+            {
+                if (!(ex is ArgumentException || ex is PathTooLongException))
+                    throw;
+                start = null;
+            }
             string picked = FolderPicker.Pick(this, T.S("Choose where to install Bloxkeep", "Chọn nơi cài Bloxkeep"), start);
             if (picked != null)
                 _path.Text = Ops.ProgramFolderIn(picked);
@@ -1098,12 +1300,29 @@ namespace BloxkeepSetup
 
         void Install()
         {
-            string error = Ops.Check(_path.Text, _existing);
+            string chosen = _path.Text;
+            // Typed or pasted, like picked with Browse: the program gets a folder of its own in there (see ProgramFolderIn).
+            if (_existing == null && !string.IsNullOrWhiteSpace(chosen))
+            {
+                try
+                {
+                    if (Path.IsPathRooted(chosen.Trim().Trim('"')))
+                        chosen = Ops.ProgramFolderIn(chosen);
+                }
+                catch (Exception ex)
+                {
+                    if (!(ex is ArgumentException || ex is NotSupportedException || ex is IOException || ex is UnauthorizedAccessException))
+                        throw;
+                }
+            }
+            string error = Ops.Check(chosen, _existing);
             if (error != null)
             {
                 _problem.Text = error;
                 return;
             }
+            if (chosen != _path.Text)
+                _path.Text = chosen;
             if (Ops.AppRunning() && !Prompt.Ask(this,
                     T.S("Bloxkeep is running. Setup will close it first.", "Bloxkeep đang chạy. Bộ cài sẽ đóng nó trước."),
                     T.S("Close and install", "Đóng và cài đặt"), T.S("Cancel", "Hủy")))
@@ -1299,14 +1518,14 @@ namespace BloxkeepSetup
             _footer.Visible = true;
             ClientSize = new Size(S(600), S(300));
             Header("problem", T.S("Bloxkeep hasn't opened again yet", "Bloxkeep chưa mở lại"), string.Format(T.S("Version {0}", "Phiên bản {0}"), _updatingTo), false);
-            var text = Para(T.S("It's taking longer than usual. If it doesn't open in a moment, start it from the Start menu or the Desktop shortcut; your accounts are safe.",
-                "Lâu hơn bình thường. Nếu lát nữa vẫn chưa mở, hãy mở từ Start menu hoặc shortcut trên Desktop; tài khoản của bạn vẫn an toàn."), S(106), Theme.Text);
-            var log = new LinkLabel { Text = T.S("Open the setup log", "Mở nhật ký cài đặt"), AutoSize = true, LinkBehavior = LinkBehavior.HoverUnderline, Location = new Point(S(32), text.Bottom + S(12)) };
+            var text = Para(T.S("It's taking longer than usual, so it's being started again. If it still doesn't open, start it from the Start menu or the Desktop shortcut; your accounts are safe.",
+                "Lâu hơn bình thường nên Bloxkeep đang được mở lại. Nếu vẫn chưa mở, hãy mở từ Start menu hoặc shortcut trên Desktop; tài khoản của bạn vẫn an toàn."), S(106), Theme.Text);
+            var log = new LinkLabel { Text = T.S("Open the update log", "Mở nhật ký cập nhật"), AutoSize = true, LinkBehavior = LinkBehavior.HoverUnderline, Location = new Point(S(32), text.Bottom + S(12)) };
             log.LinkColor = log.VisitedLinkColor = Theme.Accent;
             log.ActiveLinkColor = Theme.AccentHover;
             log.LinkClicked += delegate
             {
-                try { Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Ops.VelopackLog + "\"")).Dispose(); }
+                try { Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Ops.UpdateLog + "\"")).Dispose(); }
                 catch (System.ComponentModel.Win32Exception) { }
             };
             Add(log);
@@ -1314,42 +1533,29 @@ namespace BloxkeepSetup
         }
 
         /// <summary>
-        /// Closes the "Updating" window once the new version is up: the old run lets go of Bloxkeep's single-instance
-        /// name as it quits, the new one takes it again. After a minute without that, says so instead.
+        /// Closes the "Updating" window once the new version is up, or when the old run didn't quit after all (the
+        /// app says why). When it isn't up after a minute, says so while the watch starts it again.
         /// </summary>
         void WatchForNewVersion()
         {
+            UpdateWatch watch = Watch ?? new UpdateWatch(new string[0], _updatingTo);
             var worker = new Thread(delegate ()
             {
-                var clock = Stopwatch.StartNew();
-                bool gone = false, back = false;
-                while (clock.Elapsed < TimeSpan.FromSeconds(60))
+                int result = watch.Run(delegate { OnWindow(delegate { ShowPage("updateSlow"); }); });
+                OnWindow(delegate
                 {
-                    bool running = Ops.AppRunning();
-                    if (!running)
-                        gone = true;
-                    else if (gone)
-                    {
-                        back = true;
-                        Thread.Sleep(700); // its window comes up meanwhile
-                        break;
-                    }
-                    Thread.Sleep(150);
-                }
-                try
-                {
-                    BeginInvoke((MethodInvoker)delegate
-                    {
-                        if (back)
-                            Close();
-                        else
-                            ShowPage("updateSlow");
-                    });
-                }
-                catch (InvalidOperationException) { } // already closed by the person
+                    if (result != UpdateWatch.NotBack)
+                        Close();
+                });
             });
             worker.IsBackground = true;
             worker.Start();
+        }
+
+        void OnWindow(MethodInvoker action)
+        {
+            try { BeginInvoke(action); }
+            catch (InvalidOperationException) { } // already closed by the person
         }
 
         /// <summary>Runs <paramref name="job"/> off the window's thread, then <paramref name="done"/> on it.</summary>

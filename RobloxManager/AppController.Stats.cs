@@ -11,6 +11,9 @@ public sealed partial class AppController
 {
     static readonly TimeSpan PlayHistory = TimeSpan.FromDays(90);
     const int MaxPlaySessions = 4000;
+    /// <summary>The last month's stays are kept past <see cref="MaxPlaySessions"/> (the 30-day view needs them all), up to this many.</summary>
+    const int MaxRecentPlaySessions = 20000;
+    static readonly TimeSpan RecentPlay = TimeSpan.FromDays(31);
     const int MaxTopGames = 8;
     /// <summary>A client still without a log after this long is counted from its launch, as playing what it was opened with.</summary>
     static readonly TimeSpan NoLogGrace = TimeSpan.FromSeconds(45);
@@ -240,16 +243,24 @@ public sealed partial class AppController
             PersistSoon();
     }
 
-    /// <summary>Stays older than 90 days go, and the oldest finished ones when the list is long.</summary>
+    /// <summary>
+    /// Stays older than 90 days go, and the oldest finished ones when the list is long: first those older than a
+    /// month, so the 30-day view stays whole (many accounts rejoining all day make thousands a week).
+    /// </summary>
     static bool PrunePlay(List<PlaySession> list, DateTime now)
     {
         var cutoff = now - PlayHistory;
         int removed = list.RemoveAll(s => (s.EndedAt ?? now) < cutoff);
-        if (list.Count > MaxPlaySessions)
+        int Trim(int max, Func<PlaySession, bool> may)
         {
-            var oldest = list.Where(s => s.EndedAt is not null).OrderBy(s => s.StartedAt).Take(list.Count - MaxPlaySessions).ToHashSet();
-            removed += list.RemoveAll(oldest.Contains);
+            if (list.Count <= max)
+                return 0;
+            var oldest = list.Where(s => s.EndedAt is not null && may(s)).OrderBy(s => s.StartedAt).Take(list.Count - max).ToHashSet();
+            return list.RemoveAll(oldest.Contains);
         }
+        var recent = now - RecentPlay;
+        removed += Trim(MaxPlaySessions, s => s.EndedAt < recent);
+        removed += Trim(MaxRecentPlaySessions, _ => true);
         return removed > 0;
     }
 
@@ -259,15 +270,18 @@ public sealed partial class AppController
     /// </summary>
     /// <param name="only">The accounts to count (a Discord summary for chosen accounts); null for all.</param>
     /// <param name="until">The period ends here (UTC) instead of now: a Discord summary sent late covers its own day.</param>
-    object PlayStats(int days, IReadOnlySet<Guid>? only = null, DateTime? until = null)
+    /// <param name="last24Hours">One day is the 24 hours before the end rather than the calendar day (a Discord summary).</param>
+    object PlayStats(int days, IReadOnlySet<Guid>? only = null, DateTime? until = null, bool last24Hours = false)
     {
         var vault = RequireVault();
         days = days is 7 or 30 ? days : 1;
         bool hourly = days == 1;
         var now = until is { } stop && stop < DateTime.UtcNow ? stop : DateTime.UtcNow;
         var today = now.ToLocalTime().Date;
-        var since = (hourly ? today : today.AddDays(1 - days)).ToUniversalTime();
-        var starts = Enumerable.Range(0, hourly ? 24 : days).Select(i => (hourly ? today.AddHours(i) : today.AddDays(i + 1 - days)).ToUniversalTime()).ToList();
+        bool rolling = hourly && last24Hours;
+        var since = rolling ? now.AddDays(-1) : (hourly ? today : today.AddDays(1 - days)).ToUniversalTime();
+        var starts = Enumerable.Range(0, hourly ? 24 : days)
+            .Select(i => rolling ? since.AddHours(i) : (hourly ? today.AddHours(i) : today.AddDays(i + 1 - days)).ToUniversalTime()).ToList();
         var bucketSeconds = new double[starts.Count];
 
         var byAccount = new Dictionary<Guid, (double Seconds, int Sessions, int Kicks, string? Label)>();

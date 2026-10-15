@@ -73,7 +73,7 @@ sealed class Dialog : Form
         {
             foreach (var b in buttons)
             {
-                b.Bounds = new Rectangle(textLeft - S(8), y, textWidth + S(8), b.PreferredHeight(textWidth));
+                b.Bounds = new Rectangle(textLeft - S(8), y, textWidth + S(8), b.PreferredHeight(textWidth + S(8)));
                 y = b.Bottom + S(8);
             }
         }
@@ -207,13 +207,17 @@ sealed class Dialog : Form
             TabStop = true;
         }
 
+        /// <summary>The height for the button at this width: measured as it is drawn (see OnPaint).</summary>
         public int PreferredHeight(int width)
         {
             int h = TextRenderer.MeasureText(Text, Font).Height + LogicalToDeviceUnits(22);
             if (_choice.Detail is { } detail)
-                h += TextRenderer.MeasureText(detail, _detailFont, new Size(width - LogicalToDeviceUnits(28), 0), TextFormatFlags.WordBreak).Height + LogicalToDeviceUnits(2);
+                h += TextRenderer.MeasureText(detail, _detailFont, new Size(width - 2 * LogicalToDeviceUnits(14), 0), DetailFlags).Height + LogicalToDeviceUnits(2);
             return h;
         }
+
+        /// <summary>Wrapped like a text box: a word too long for the line (a folder path) breaks too, instead of running off the edge.</summary>
+        const TextFormatFlags DetailFlags = TextFormatFlags.Left | TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl;
 
         readonly Font _detailFont = new("Segoe UI", 9f);
 
@@ -290,7 +294,7 @@ sealed class Dialog : Form
             if (_choice.Detail is { } detail)
             {
                 var under = new Rectangle(x, title.Bottom + LogicalToDeviceUnits(2), Width - 2 * x, Height - title.Bottom);
-                TextRenderer.DrawText(g, detail, _detailFont, under, _theme.Text2, fill, TextFormatFlags.Left | TextFormatFlags.WordBreak);
+                TextRenderer.DrawText(g, detail, _detailFont, under, _theme.Text2, fill, DetailFlags);
             }
         }
 

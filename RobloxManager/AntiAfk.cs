@@ -79,15 +79,18 @@ static class AntiAfk
 
     /// <summary>The PC's last-input time right after our own nudges, which must not be mistaken for a person.</summary>
     static uint _ownInput;
+    /// <summary>The person's last input before those nudges.</summary>
+    static uint _personInput;
 
     /// <summary>
-    /// How long since someone last used the mouse or keyboard. When the last input was our own nudge, the person
-    /// has been away longer than any of these waits (nudges only go out once they are).
+    /// How long since someone last used the mouse or keyboard; our own nudges don't count.
     /// </summary>
     public static TimeSpan IdleTime()
     {
         uint last = LastInputTick();
-        return last == _ownInput ? TimeSpan.MaxValue : TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - last));
+        if (last == _ownInput)
+            last = _personInput;
+        return TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - last));
     }
 
     /// <summary>Someone used the mouse or keyboard within <see cref="UserIdleNeeded"/> (our own nudges don't count).</summary>
@@ -106,6 +109,9 @@ static class AntiAfk
         IntPtr previous = GetForegroundWindow();
         bool haveCursor = GetCursorPos(out var cursor);
         uint baseline = LastInputTick();
+        // Still our last round's input: the person's own is older.
+        uint person = baseline == _ownInput ? _personInput : baseline;
+        bool sent = false;
         try
         {
             foreach (var hWnd in windows)
@@ -129,6 +135,7 @@ static class AntiAfk
                     ClientToScreen(hWnd, ref center);
                     SetCursorPos(center.X, center.Y);
                     MoveMouse(Nudge, Nudge);
+                    sent = true;
                     await Task.Delay(40);
                     MoveMouse(-Nudge, -Nudge);
                     await Task.Delay(60);
@@ -145,7 +152,12 @@ static class AntiAfk
         }
         finally
         {
-            _ownInput = baseline;
+            // Only when something was sent: else the last input is the person's, and must stay theirs.
+            if (sent)
+            {
+                _ownInput = baseline;
+                _personInput = person;
+            }
             if (haveCursor)
                 SetCursorPos(cursor.X, cursor.Y);
             if (previous != IntPtr.Zero && IsWindow(previous))

@@ -56,18 +56,22 @@ public sealed class Vault : IDisposable
         if (!Directory.Exists(DataDir))
             return;
         DeleteCaches();
-        foreach (string pattern in new[] { "vault.rmv*", "vault-before-restore-*.rmv", "prefs.json*", "error.log*", "roblox-settings.json*", "starting.flag" })
-            foreach (string file in Directory.EnumerateFiles(DataDir, pattern))
+        // By exact name: in a folder of the person's own, "prefs.json5" or "error.logs" aren't ours.
+        var own = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "vault.rmv", "vault.rmv.bak", "vault.rmv.tmp", "prefs.json", "prefs.json.tmp", "error.log", "roblox-settings.json", "starting.flag", "resume.bin" };
+        bool Own(string name) => own.Contains(name) || name.StartsWith("vault.rmv.damaged-", StringComparison.OrdinalIgnoreCase)
+            || (name.StartsWith("vault-before-restore-", StringComparison.OrdinalIgnoreCase) && name.EndsWith(".rmv", StringComparison.OrdinalIgnoreCase));
+        foreach (string file in Directory.EnumerateFiles(DataDir).Where(f => Own(Path.GetFileName(f))).ToList())
+        {
+            try
             {
-                try
-                {
-                    File.Delete(file);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    // Left behind; the folder then stays too.
-                }
+                File.Delete(file);
             }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Left behind; the folder then stays too.
+            }
+        }
         try
         {
             if (!Directory.EnumerateFileSystemEntries(DataDir).Any())

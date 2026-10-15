@@ -524,7 +524,6 @@
           return { added: added.length, updated, presets, presetsSkipped: 0, ids: added };
         }
         case 'vaultImportCancel': ivToken = null; return null;
-        case 'importRam': return params.has('ramskip') ? { added: 0, updated: 0, skipped: 2, total: 2 } : { added: 3, updated: 1, skipped: 0, total: 4 }; // ?ramskip=1: no cookies in the file
         case 'arrangeWindows': return 2;
         case 'monitorArea': return null; // the live pictures are the app's own; the preview shows the empty area
         case 'setUseRobloxConfig':

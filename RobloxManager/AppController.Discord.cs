@@ -27,6 +27,8 @@ public sealed partial class AppController
 
     /// <summary>A summary sent more than this after its time says it is late.</summary>
     static readonly TimeSpan DiscordLate = TimeSpan.FromMinutes(10);
+    /// <summary>Accounts listed in a summary by name; the rest are counted.</summary>
+    const int MaxSummaryAccounts = 15;
 
     readonly List<DiscordItem> _discordQueue = new();
     /// <summary>Events waiting to be sent together: their kind, text and ping.</summary>
@@ -366,15 +368,22 @@ public sealed partial class AppController
     /// <param name="days">1 (that day), 7 or 30.</param>
     /// <param name="dueAt">When a daily or weekly summary was due (local): the figures end there when it goes out late.</param>
     /// <param name="local">Now, for telling whether it is late.</param>
-    DiscordMessage SummaryMessage(DiscordSettings d, int days, DateTime? dueAt = null, DateTime? local = null)
+    /// <param name="today">One day is today so far (after a scheduled preset), not the 24 hours before.</param>
+    DiscordMessage SummaryMessage(DiscordSettings d, int days, DateTime? dueAt = null, DateTime? local = null, bool today = false)
     {
         var vault = RequireVault();
         var only = d.SummaryAccounts.Count > 0 ? d.SummaryAccounts.ToHashSet() : null;
         bool late = dueAt is { } due && local is { } at && at - due > DiscordLate;
-        var stats = JsonSerializer.SerializeToElement(PlayStats(days, only, late ? dueAt!.Value.ToUniversalTime() : null), Json);
+        // A day is the 24 hours up to the summary's time: one at midnight covers the day that just ended, and no play
+        // falls between two daily summaries. Up to the time it was due, also when it goes out a little after.
+        var stats = JsonSerializer.SerializeToElement(PlayStats(days, only, dueAt?.ToUniversalTime(), last24Hours: !today), Json);
         long total = stats.GetProperty("totalSeconds").GetInt64();
-        // A day sent late is named by its date: "today" would be another one by now.
-        string period = days switch { 7 => DT("last 7 days"), 30 => DT("last 30 days"), _ => late ? DayKey(dueAt!.Value) : DT("today") };
+        // A day sent late says when it ended: "the last 24 hours" would be other ones by now.
+        string period = days switch
+        {
+            7 => DT("last 7 days"), 30 => DT("last 30 days"),
+            _ => today ? DT("today") : late ? DF("24 hours to {0}", dueAt!.Value.ToString("yyyy-MM-dd HH:mm", Inv)) : DT("last 24 hours"),
+        };
         var fields = new List<DiscordField>();
         var parts = d.SummaryParts;
         if (parts.Contains("total"))
@@ -385,7 +394,8 @@ public sealed partial class AppController
             fields.Add(new(DT("Disconnects"), stats.GetProperty("kicks").GetInt32().ToString(Inv), true));
         if (parts.Contains("accounts") && total > 0)
         {
-            var lines = stats.GetProperty("accounts").EnumerateArray().Where(x => x.GetProperty("seconds").GetInt64() > 0).Take(15).Select(x =>
+            var played = stats.GetProperty("accounts").EnumerateArray().Where(x => x.GetProperty("seconds").GetInt64() > 0).ToList();
+            var lines = played.Take(MaxSummaryAccounts).Select(x =>
             {
                 string name = x.GetProperty("label").GetString() is { Length: > 0 } label ? label : DT("Deleted account");
                 // Names hidden in messages: "Account N" by its place in the list, as the page shows it.
@@ -393,7 +403,10 @@ public sealed partial class AppController
                     name = x.GetProperty("id").GetGuid() is var id && FindAccount(id) is { } account ? DiscordName(account) : DT("Deleted account");
                 return $"{DiscordWebhook.Escape(name)} — {Duration(x.GetProperty("seconds").GetInt64())}";
             });
-            fields.Add(new(DT("Per account"), DiscordWebhook.Cut(string.Join("\n", lines), DiscordWebhook.MaxFieldValue)));
+            // The rest counted, so a long list doesn't read as complete.
+            if (played.Count > MaxSummaryAccounts)
+                lines = lines.Append(DF("and {0} more", played.Count - MaxSummaryAccounts));
+            fields.Add(new(DT("Per account"),DiscordWebhook.Cut(string.Join("\n", lines), DiscordWebhook.MaxFieldValue)));
         }
         if (parts.Contains("games") && total > 0)
         {
@@ -502,7 +515,7 @@ public sealed partial class AppController
         if (_discordSummaryDue is { } after && now >= after)
         {
             _discordSummaryDue = null;
-            EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 1), PingFor(d, "summary")));
+            EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 1, today: true), PingFor(d, "summary")));
         }
         if (d.Board && now >= _discordNextBoard)
         {

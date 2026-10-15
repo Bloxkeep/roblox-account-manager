@@ -1171,6 +1171,8 @@ b, strong { font-weight: 650; }
   background: var(--surface);
   border: 1px solid var(--line-2); border-radius: 26px; box-shadow: 0 30px 80px var(--shadow);
   animation: rise .45s cubic-bezier(.2, .9, .3, 1.2);
+  /* A very short window (a small laptop at 200 %): the card scrolls rather than losing its last link. */
+  max-height: calc(100vh - 16px); overflow-y: auto; scrollbar-width: thin;
 }
 @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.98); } }
 .lock-card .logo-img { width: 72px; height: 72px; }
@@ -1178,7 +1180,7 @@ b, strong { font-weight: 650; }
 .lock-card p { margin: 0 0 22px; color: var(--muted); }
 .lock-card .field { width: 100%; height: 46px; font-size: 15px; }
 .lock-card .stack { display: grid; gap: 10px; text-align: left; }
-.lock-error { min-height: 20px; margin: 10px 0 8px; color: var(--bad-ink); font-size: 13px; }
+.lock-error { min-height: 20px; margin: 10px 0 8px; color: var(--bad-ink); font-size: 13px; overflow-wrap: anywhere; }
 .lock-alt { margin-top: 16px; font-size: 13px; }
 .lock-alt .link { color: var(--text-2); }
 .lock-caps { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; color: var(--warn-ink); font-size: 12.5px; }
@@ -1280,6 +1282,11 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .pw { position: relative; }
 .pw .field { padding-right: 44px; }
 .pw .icon-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+/* A field with a small icon in front saying what goes in it (the sign-in form's user name and password). */
+.lead-ic { position: relative; display: block; }
+.lead-ic > .i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); pointer-events: none; transition: color .15s; }
+.lead-ic .field { padding-left: 38px; }
+.lead-ic:focus-within > .i { color: var(--text-2); }
 
 .switch { position: relative; width: 42px; height: 24px; flex: none; }
 .switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
@@ -1288,6 +1295,10 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .switch input:checked + span { background: var(--accent); border-color: transparent; }
 .switch input:checked + span::after { transform: translateX(18px); background: var(--accent-ink); }
 .switch input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* Off controls look off: dimmed, no hand cursor. */
+.switch input:disabled { cursor: default; }
+.switch input:disabled + span { opacity: .5; }
+.select:disabled, .field:disabled { opacity: .5; cursor: default; }
 
 input[type=range] { -webkit-appearance: none; appearance: none; width: 180px; height: 6px; border-radius: 6px; background: var(--surface-3); outline: none; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--inv); box-shadow: 0 0 0 4px var(--active); cursor: pointer; }
@@ -1302,7 +1313,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .side > * { flex-shrink: 0; }
 /* The tabs take the room that's left and scroll when it runs out, so the cards, the update button and Lock below are
    always on screen, however many tabs there are and however short the window. */
-.side > .side-nav { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; scrollbar-width: thin; margin: -2px -4px; padding: 2px 4px; }
+.side > .side-nav { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; scrollbar-width: thin; margin: -4px; padding: 4px; } /* room for a tab's focus ring */
 .side-nav > * { flex-shrink: 0; }
 .side-bottom { display: flex; flex-direction: column; gap: 6px; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 18px; }
@@ -1377,7 +1388,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 #chips.fade-l.fade-r { mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
 .sort-btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; flex: none; border-radius: 20px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .sort-btn:hover { border-color: var(--line-3); color: var(--text); }
-.sort-btn .i { width: 15px; height: 15px; }
+.sort-btn .i { width: 15px; height: 15px; flex: none; }
+#group-btn { max-width: 240px; }
+#group-btn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .lang { display: inline-flex; gap: 2px; padding: 3px; border-radius: 11px; background: var(--field); border: 1px solid var(--line-2); }
 .lang button { height: 28px; min-width: 40px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-weight: 700; font-size: 12px; letter-spacing: .04em; }
 .lang button:hover { color: var(--text); }
@@ -2108,7 +2121,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .ways .btn.sm:hover { color: var(--text); }
 .ways .btn.sm .i { width: 15px; height: 15px; }
 /* An empty account list: the last row clears the game bar at the bottom. */
-.empty:has(.start-opts) { padding: 32px 20px 110px; }
+.empty:has(.start-opts) { padding: 28px 20px 100px; } /* fits the default window without a scrollbar */
 .empty:has(.start-opts) .art { width: 72px; height: 72px; margin-bottom: 14px; }
 /* The recommended way (the phone): an accent border and tag, nothing more. */
 .start-opt.rec { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -2150,15 +2163,15 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 @media (max-width: 520px) { .ql { grid-template-columns: 1fr; justify-items: center; text-align: center; } .ql-steps { text-align: left; } }
 .center { text-align: center; }
 .range-v { width: 70px; text-align: right; font-variant-numeric: tabular-nums; }
-.errs { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: var(--text-2); font-size: 13px; }
+.errs { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: var(--text-2); font-size: 13px; overflow-wrap: anywhere; }
 
-.menu { position: fixed; z-index: 60; min-width: 230px; padding: 6px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--raised); box-shadow: 0 18px 50px var(--shadow); animation: fade .1s ease; }
+.menu { position: fixed; z-index: 60; min-width: 230px; max-width: min(420px, calc(100vw - 16px)); max-height: calc(100vh - 16px); overflow-y: auto; scrollbar-width: thin; padding: 6px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--raised); box-shadow: 0 18px 50px var(--shadow); animation: fade .1s ease; }
 .menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; font-size: 13px; text-align: left; color: var(--text-2); }
 .menu button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
 .menu button:disabled { opacity: .38; }
 .menu button.danger { color: var(--bad-ink); }
 .menu button.danger:hover:not(:disabled) { background: var(--bad-soft); }
-.menu button span { flex: 1; }
+.menu button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu kbd { font: 11px var(--font); color: var(--muted); }
 .menu hr { border: 0; height: 1px; background: var(--line-2); margin: 5px 4px; }
 .menu .i { width: 16px; height: 16px; }
@@ -2211,7 +2224,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 
 #toasts { position: fixed; right: 22px; bottom: 22px; z-index: 70; display: grid; gap: 10px; justify-items: end; pointer-events: none; }
 /* Only the Accounts tab has the dock at the bottom: toasts sit above it there, in the corner everywhere else. */
-body:has(#view-accounts:not([hidden])) #toasts { bottom: 120px; }
+body:has(#view-accounts:not([hidden])) #toasts { bottom: 138px; } /* clear of the dock */
 /* Under a dialog's backdrop or a menu while one is up: never over its edge or its text. */
 #toasts.behind { z-index: 45; }
 .toast.again { animation: nudge .3s ease; }
@@ -2221,7 +2234,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 .toast.out { animation: slide .2s ease reverse forwards; }
 @keyframes slide { from { opacity: 0; transform: translateY(10px); } }
 .toast .i { flex: none; }
-.toast span { min-width: 0; overflow-wrap: anywhere; } /* a long name with no spaces breaks instead of widening the toast */
+.toast span { min-width: 0; overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; } /* a long name with no spaces breaks instead of widening the toast */
 .toast.ok .i { color: var(--ok); }
 .toast.error { border-color: var(--bad-line); }
 .toast.error .i { color: var(--bad); }
@@ -2308,6 +2321,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .card:not(.row) { padding: 8px 12px 8px; }
   .card:not(.row) .card-top { margin-bottom: -6px; }
   .card:not(.row) .avatar { width: 46px; height: 46px; margin-bottom: 4px; }
+  .card:not(.row) .avatar .initials { font-size: 15px; }
   .card:not(.row) .activity { margin-top: 7px; min-height: 42px; padding: 4px 8px; }
   .card:not(.row) .meta { margin-top: 7px; }
   .card:not(.row) .note { display: none; }
@@ -2354,7 +2368,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .brand { padding-bottom: 10px; }
   .lock-card { padding: 26px 28px 20px; }
   .lock-card .logo-img { width: 56px; height: 56px; }
-  body:has(#view-accounts:not([hidden])) #toasts { bottom: 96px; }
+  body:has(#view-accounts:not([hidden])) #toasts { bottom: 114px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

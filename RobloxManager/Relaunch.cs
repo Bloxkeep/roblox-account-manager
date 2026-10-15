@@ -14,6 +14,8 @@ namespace RobloxManager;
 public static class Relaunch
 {
     const string Arg = "--resume";
+    /// <summary>Started again after an update to this version (with or without a hand-over): see <see cref="AfterUpdate"/>.</summary>
+    public const string AfterUpdateArg = "--after-update";
     static readonly TimeSpan Life = TimeSpan.FromMinutes(3);
     static string FilePath => Path.Combine(Vault.DataDir, "resume.bin");
 
@@ -21,6 +23,8 @@ public static class Relaunch
     {
         public DateTime WrittenAt { get; set; }
         public string? From { get; set; }
+        /// <summary>The version being installed: a run that comes back as anything else knows the install didn't take.</summary>
+        public string? To { get; set; }
         /// <summary>The vault's key, salt and iterations (base64), or null when it was locked.</summary>
         public string? Key { get; set; }
         public string? Salt { get; set; }
@@ -68,7 +72,19 @@ public static class Relaunch
     /// What the previous run left, when this run was started by it (and in time); null otherwise. The file goes
     /// either way, so a key never stays on disk.
     /// </summary>
-    public static State? Take(string[] args)
+    public static State? Take(string[] args) => Read(args) ?? AfterUpdate(args);
+
+    /// <summary>
+    /// Started after an update without a usable hand-over (it came too late, or Bloxkeep was started by the watch over
+    /// the update): back in the tray, locked, saying so, rather than a lock screen popping up over what the person is doing.
+    /// </summary>
+    static State? AfterUpdate(string[] args)
+    {
+        int at = Array.IndexOf(args, AfterUpdateArg);
+        return at < 0 ? null : new State { Window = "hidden", To = at + 1 < args.Length ? args[at + 1] : null };
+    }
+
+    static State? Read(string[] args)
     {
         int at = Array.IndexOf(args, Arg);
         byte[]? entropy = null;

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
-using System.Text.Json;
 
 namespace RobloxManager;
 
@@ -20,7 +19,17 @@ public sealed partial class AppController
     /// <summary>What Velopack starts the new version with, once the app quits for an update in the background.</summary>
     string[]? _relaunchArgs;
     bool _relaunching;
-    readonly DateTime _started = DateTime.UtcNow;
+    /// <summary>Moved back with the clock (see TrackProcesses), like every other start time.</summary>
+    DateTime _started = DateTime.UtcNow;
+
+    /// <summary>
+    /// An update in the background didn't take (the run that came back is still the old version): no new try by
+    /// itself for a day, so a failing install can't go round every few minutes. The button still works.
+    /// </summary>
+    DateTime _autoRelaunchPausedUntil;
+
+    /// <summary>This run was started again after an update (see <see cref="Resume"/>).</summary>
+    Relaunch.State? _resumedFrom;
 
     /// <summary>Not this soon after a start (a restart can never loop), nor while someone used the PC this recently with a window of the app on screen.</summary>
     static readonly TimeSpan RelaunchAfterStart = TimeSpan.FromMinutes(3);
@@ -28,7 +37,8 @@ public sealed partial class AppController
 
     void RelaunchIfQuiet(DateTime now)
     {
-        if (_relaunching || _applyingUpdate || _disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || !QuietForRelaunch(now))
+        if (_relaunching || _applyingUpdate || _disposed || !Prefs.CheckUpdates || _updater.Status != "ready"
+            || now < _autoRelaunchPausedUntil || !QuietForRelaunch(now))
             return;
         _ = RelaunchAsync();
     }
@@ -42,8 +52,7 @@ public sealed partial class AppController
     {
         if (now - _started < RelaunchAfterStart || Settling)
             return false;
-        if (_launchCts is not null || _pending.Count > 0 || _rejoinQueue.Count > 0 || _rejoining || _closingForRejoin.Count > 0
-            || _restarts.Count > 0 || _handedOver.Count > 0 || _nudging || now < _sweepBackgroundUntil)
+        if (OpeningRoblox || _restarts.Count > 0 || _nudging || now < _sweepBackgroundUntil)
             return false;
         if (_quickLogin is not null || _vaultImportOpening || _vaultImportPath is not null || _backupWrite is { IsCompleted: false }
             || _signInCheckRunning || _discordSending || _saveFailed || PageBusy || Ui.ModalsOpen > 0)
@@ -55,14 +64,21 @@ public sealed partial class AppController
         return (window != "shown" && !mini) || AntiAfk.IdleTime() >= RelaunchIdle;
     }
 
+    /// <summary>
+    /// Roblox being opened or rejoined: a launch, a window still awaited (a late one too, whose account a restart
+    /// would forget), a rejoin queued or under way.
+    /// </summary>
+    bool OpeningRoblox => _launchCts is not null || _pending.Count > 0 || _late.Count > 0 || _handedOver.Count > 0
+        || _rejoinQueue.Count > 0 || _rejoining || _closingForRejoin.Count > 0;
+
     async Task RelaunchAsync()
     {
         _relaunching = true;
         try
         {
             await SaveViewAsync();
-            // Something may have started meanwhile: the next quiet moment then.
-            if (_disposed || _updater.Status != "ready" || !QuietForRelaunch(DateTime.UtcNow) || !SaveBeforeClosing())
+            // Something may have started meanwhile (or updates were turned off): the next quiet moment then.
+            if (_disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || !QuietForRelaunch(DateTime.UtcNow) || !SaveBeforeClosing())
                 return;
             QuitIntoUpdate(showWindow: false);
         }
@@ -92,12 +108,15 @@ public sealed partial class AppController
             throw new UserError(_updater.Status is "checking" or "downloading"
                 ? L.T("The update is still downloading. Try again in a moment.")
                 : L.T("No update is ready to install. Check for updates again."));
-        if (_launchCts is not null)
+        if (OpeningRoblox)
             throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
         _applyingUpdate = true;
         try
         {
             await SaveViewAsync();
+            // Started during that moment (a scheduled preset, a rejoin): the restart would cut it off.
+            if (OpeningRoblox)
+                throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
             if (!SaveBeforeClosing())
                 throw new UserError(L.T("Couldn't save your changes, so the update waits. Try again in a moment."));
             QuitIntoUpdate(showWindow: true);
@@ -136,7 +155,7 @@ public sealed partial class AppController
         var (window, foreground, _) = WindowNow?.Invoke() ?? ("hidden", false, false);
         var state = new Relaunch.State
         {
-            WrittenAt = DateTime.UtcNow, From = _updater.CurrentVersion, Window = window, Foreground = foreground,
+            WrittenAt = DateTime.UtcNow, From = _updater.CurrentVersion, To = _updater.NewVersion, Window = window, Foreground = foreground,
             View = _vault is not null ? _pageView : null, WeakPassword = _weakPassword,
         };
         if (_vault is { } vault)
@@ -148,9 +167,12 @@ public sealed partial class AppController
             CryptographicOperations.ZeroMemory(key);
         }
         _relaunchArgs = Relaunch.Write(state);
+        // In the background, a hand-over that comes too late starts it back in the tray (see Relaunch.AfterUpdate);
+        // after the click, the person is waiting for the window.
+        if (!showWindow)
+            _relaunchArgs = [.. _relaunchArgs, Relaunch.AfterUpdateArg, _updater.NewVersion ?? ""];
         Log.Note($"Installing {_updater.NewVersion} {(showWindow ? "now (Restart to update)" : "in the background")}, window {window}.");
-        if (showWindow)
-            ShowUpdatingWindow(_updater.NewVersion);
+        WatchUpdate(_updater.NewVersion, showWindow);
         _rejoinCts?.Cancel();
         Ui.ClearSecretClipboard();
         QuitForUpdate?.Invoke();
@@ -162,22 +184,30 @@ public sealed partial class AppController
     }
 
     /// <summary>
-    /// Bloxkeep's "Updating Bloxkeep to x" window (the installer's window program, shipped beside the app), run from a
-    /// copy in %TEMP% since the program folder is about to be replaced; it closes once the new version is up.
+    /// The watch over the restart, by the installer's window program (shipped beside the app, run from a copy in
+    /// %TEMP% since the program folder is about to be replaced). For "Restart to update" it shows "Updating Bloxkeep
+    /// to x"; in the background it shows nothing. When this process doesn't quit (the close was refused) it goes
+    /// away; when Bloxkeep isn't up again after a minute or so (the install failed, the new version crashed) it
+    /// removes the hand-over, since the key mustn't wait on disk, and starts Bloxkeep itself.
     /// </summary>
-    void ShowUpdatingWindow(string? version)
+    void WatchUpdate(string? version, bool showWindow)
     {
         try
         {
-            string source = Path.Combine(AppContext.BaseDirectory, "BloxkeepUninstall.exe");
-            if (!File.Exists(source))
+            string appDir = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
+            string source = Path.Combine(appDir, "BloxkeepUninstall.exe");
+            if (!File.Exists(source) || Path.GetDirectoryName(appDir) is not { } root)
                 return;
             string dir = Path.Combine(Path.GetTempPath(), "Bloxkeep-Updating-" + Guid.NewGuid().ToString("N")[..8]);
             Directory.CreateDirectory(dir);
             string copy = Path.Combine(dir, "BloxkeepUpdating.exe");
             File.Copy(source, copy);
             var info = new ProcessStartInfo(copy) { UseShellExecute = false, WorkingDirectory = dir };
-            foreach (string arg in new[] { "--updating", version ?? "", "--lang", L.Language })
+            List<string> args = ["--updating", version ?? "", "--lang", L.Language, "--wait-pid", Environment.ProcessId.ToString(),
+                "--app", Path.Combine(root, "Bloxkeep.exe"), "--data", Vault.DataDir];
+            if (!showWindow)
+                args.Add("--quiet");
+            foreach (string arg in args)
                 info.ArgumentList.Add(arg);
             Process.Start(info)?.Dispose();
         }
@@ -188,23 +218,41 @@ public sealed partial class AppController
     }
 
     /// <summary>
-    /// The run that follows an update in the background: unlocked with the key the previous run handed over, its
-    /// page's view kept for the page. When the key doesn't open the vault (the password changed meanwhile), the lock
-    /// screen asks as usual.
+    /// The run that follows an update: unlocked with the key the previous run handed over, its page's view kept for
+    /// the page. When there is no key (it came too late, or Bloxkeep was started by the watch over the update) or
+    /// it doesn't open the vault (the password changed meanwhile), the lock screen asks as usual.
     /// </summary>
     public void Resume(Relaunch.State state)
     {
+        _resumedFrom = state;
+        // Still the version it was meant to leave: the install didn't take. No new try by itself for a while.
+        if (!string.IsNullOrEmpty(state.To) && state.To != _updater.CurrentVersion)
+        {
+            _autoRelaunchPausedUntil = DateTime.UtcNow.AddDays(1);
+            Log.Note($"The update to {state.To} didn't install (this is {_updater.CurrentVersion}); no new try by itself today.");
+        }
         if (state.Key is { } key && state.Salt is { } salt)
         {
-            try
+            // An antivirus can hold the vault a moment right after an install.
+            for (int attempt = 1; _vault is null; attempt++)
             {
-                var vault = Vault.OpenWithKey(Convert.FromBase64String(key), Convert.FromBase64String(salt), state.Iterations);
-                _weakPassword = state.WeakPassword;
-                OnUnlocked(vault);
-            }
-            catch (Exception ex) when (ex is InvalidPasswordException or IOException or UnauthorizedAccessException or InvalidDataException or JsonException or FormatException)
-            {
-                Log.Write(ex);
+                try
+                {
+                    var vault = Vault.OpenWithKey(Convert.FromBase64String(key), Convert.FromBase64String(salt), state.Iterations);
+                    _weakPassword = state.WeakPassword;
+                    OnUnlocked(vault);
+                }
+                catch (IOException ex) when (attempt < 3)
+                {
+                    Log.Write(ex);
+                    Thread.Sleep(400);
+                }
+                // Anything else (the password changed meanwhile, a damaged file): the lock screen asks as usual.
+                catch (Exception ex)
+                {
+                    Log.Write(ex);
+                    break;
+                }
             }
         }
         if (_vault is not null && state.View is { } view)
@@ -212,6 +260,19 @@ public sealed partial class AppController
             _pageView = view;
             ResumingPage = true;
         }
-        Log.Note($"Updated from {state.From} in the background; {(_vault is not null ? "unlocked again" : "locked")}, window {state.Window}.");
+        Log.Note($"{(state.From is { } from ? $"Updated from {from}" : "Started again after an update")}; {(_vault is not null ? "unlocked again" : "locked")}, window {state.Window}.");
+    }
+
+    /// <summary>
+    /// What to tell someone whose Bloxkeep came back locked after an update (a scheduled preset can't run until it is
+    /// unlocked); null when it came back unlocked, or after a normal start.
+    /// </summary>
+    public string? LockedAfterUpdate()
+    {
+        if (_resumedFrom is not { } state || _vault is not null)
+            return null;
+        return !string.IsNullOrEmpty(state.To) && state.To != _updater.CurrentVersion
+            ? L.F("The update to {0} didn't install, so Bloxkeep started again as it was. Unlock it to carry on.", state.To)
+            : L.F("Bloxkeep was updated to {0}. Unlock it to carry on.", _updater.CurrentVersion ?? "");
     }
 }
