@@ -52,14 +52,17 @@ namespace BloxkeepSetup
 
             bool first;
             using (var only = new Mutex(true, @"Local\Bloxkeep.Setup", out first))
+            using (var activate = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\Bloxkeep.Setup.Activate"))
             {
-                // A second copy (a double double-click) would work on the first one's files.
+                // Started twice (Edge's download panel can, so can a double double-click): two installs at once would
+                // trip over each other's files, so the second one just brings the first window to the front.
                 if (!first)
                 {
-                    if (!silent)
-                        Message(T.S("Bloxkeep Setup is already open.", "Bộ cài Bloxkeep đang mở rồi."));
+                    AllowSetForegroundWindow(-1);
+                    activate.Set();
                     return 1;
                 }
+                Activate = activate;
                 if (uninstall)
                 {
                     string root = Arg(args, "--root") ?? @"D:\Bloxkeep";
@@ -98,6 +101,12 @@ namespace BloxkeepSetup
                 return form.Result;
             }
         }
+
+        /// <summary>Set by a second copy of the program, to have this one's window come to the front.</summary>
+        public static EventWaitHandle Activate;
+
+        [DllImport("user32.dll")]
+        static extern bool AllowSetForegroundWindow(int processId);
 
         static void Message(string text)
         {
@@ -806,11 +815,33 @@ namespace BloxkeepSetup
                 DwmSetWindowAttribute(Handle, 19, ref on, 4);
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            if (Program.Activate != null)
+                _activateWait = ThreadPool.RegisterWaitForSingleObject(Program.Activate, delegate
+                {
+                    try { BeginInvoke((MethodInvoker)BringUp); }
+                    catch (InvalidOperationException) { } // Closing.
+                }, null, Timeout.Infinite, false);
+        }
+
+        RegisteredWaitHandle _activateWait;
+
+        void BringUp()
+        {
+            if (WindowState == FormWindowState.Minimized)
+                WindowState = FormWindowState.Normal;
+            Activate();
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             // Not while Velopack is busy: closing then would leave a half-done install.
             if (_page == "installing" || _page == "removing")
                 e.Cancel = true;
+            else if (_activateWait != null)
+                _activateWait.Unregister(null);
             base.OnFormClosing(e);
         }
 
