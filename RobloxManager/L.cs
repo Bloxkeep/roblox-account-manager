@@ -262,8 +262,10 @@ public static class L
         ["Waiting {0}s before the next account…"] = "Chờ {0} giây trước tài khoản tiếp theo…",
         ["Waiting for Roblox to open {0}… (Roblox is updating to {1})"] = "Chờ Roblox mở {0}… (Roblox đang cập nhật lên {1})",
         ["Waiting for Roblox to open {0}… (Roblox may be updating)"] = "Chờ Roblox mở {0}… (Roblox có thể đang cập nhật)",
-        ["{0} was kicked for being AFK: the PC was in use, and anti-AFK waits for a minute without mouse or keyboard."] =
-            "{0} bị kick vì AFK: máy đang được dùng, mà chống AFK chờ chuột và bàn phím rảnh một phút mới chạy.",
+        ["{0} was kicked for being AFK: the PC was in use without a pause of two seconds, so anti-AFK couldn't step in."] =
+            "{0} bị kick vì AFK: máy được dùng liên tục, không ngừng tay được 2 giây nên chống AFK không chen vào được.",
+        ["{0} was kicked for being AFK: a full-screen app was in front, and anti-AFK doesn't interrupt one."] =
+            "{0} bị kick vì AFK: đang có ứng dụng toàn màn hình ở trước, chống AFK không cắt ngang nó.",
         ["{0} was kicked for being AFK: the PC was locked, and anti-AFK can't reach Roblox then."] = "{0} bị kick vì AFK: máy đang khóa, lúc đó chống AFK không chạm được tới Roblox.",
         ["{0} was kicked for being AFK: Windows didn't let Bloxkeep bring its window to the front."] = "{0} bị kick vì AFK: Windows không cho Bloxkeep đưa cửa sổ của nó lên trước.",
         ["{0} was kicked for being AFK."] = "{0} bị kick vì AFK.",

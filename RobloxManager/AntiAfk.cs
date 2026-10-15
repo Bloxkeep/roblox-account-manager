@@ -7,14 +7,28 @@ namespace RobloxManager;
 /// each window is brought to the front for a moment and the mouse is moved a few pixels over it and back; then the
 /// previous window and cursor position are restored (a minimized window is minimized again). No key is pressed and
 /// nothing is clicked. It stops as soon as real input arrives. Windows doesn't allow it while the PC is locked.
+/// A window about to be kicked gets it even while the PC is in use, in a pause of a couple of seconds (see
+/// <see cref="LastChance"/>).
 /// </summary>
 static class AntiAfk
 {
-    /// <summary>Well inside Roblox's 20 minutes (counted from joining a server or the last input).</summary>
-    public static readonly TimeSpan Interval = TimeSpan.FromMinutes(15);
+    /// <summary>
+    /// From here a window is nudged at the first minute nobody uses the PC: well inside Roblox's 20 minutes (counted
+    /// from joining a server or the last input), so a person at the PC most of the time still leaves one.
+    /// </summary>
+    public static readonly TimeSpan Interval = TimeSpan.FromMinutes(12);
+
+    /// <summary>
+    /// From here, two minutes before Roblox's kick, a window doesn't wait for the PC to be free: it is nudged in the
+    /// first pause of <see cref="PauseNeeded"/> (unless a full-screen app is in front).
+    /// </summary>
+    public static readonly TimeSpan LastChance = TimeSpan.FromMinutes(18);
 
     /// <summary>How long the PC must have been untouched before a window may be brought to the front.</summary>
     public static readonly TimeSpan UserIdleNeeded = TimeSpan.FromSeconds(60);
+
+    /// <summary>A pause in typing or moving the mouse long enough for a last-chance nudge (about a quarter of a second).</summary>
+    public static readonly TimeSpan PauseNeeded = TimeSpan.FromSeconds(2);
 
     const int Nudge = 3;
 
@@ -75,6 +89,17 @@ static class AntiAfk
     [DllImport("wtsapi32.dll")] static extern void WTSFreeMemory(IntPtr memory);
 
     const int WTS_CURRENT_SESSION = -1, WTSSessionInfoEx = 25, WTS_SESSIONSTATE_LOCK = 0;
+
+    [DllImport("shell32.dll")] static extern int SHQueryUserNotificationState(out int state);
+
+    const int QUNS_BUSY = 2, QUNS_RUNNING_D3D_FULL_SCREEN = 3, QUNS_PRESENTATION_MODE = 4;
+
+    /// <summary>
+    /// A full-screen app (a game, a video, a presentation) is in front, as Windows judges it for its notifications:
+    /// a last-chance nudge would interrupt it.
+    /// </summary>
+    public static bool FullScreenInFront() =>
+        SHQueryUserNotificationState(out int state) == 0 && state is QUNS_BUSY or QUNS_RUNNING_D3D_FULL_SCREEN or QUNS_PRESENTATION_MODE;
 
     /// <summary>
     /// The PC is locked (the sign-in screen is up): no window can come to the front then. Read from WTSINFOEX level 1,

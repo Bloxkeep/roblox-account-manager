@@ -102,7 +102,10 @@ public sealed partial class AppController : IDisposable
     /// <summary>Nudges in a row each window missed: the wait before the next one doubles.</summary>
     readonly Dictionary<int, int> _nudgeMisses = new();
 
-    enum AfkHeld { InUse, Locked, Refused }
+    enum AfkHeld { InUse, FullScreen, Locked, Refused }
+
+    /// <summary>Anti-AFK has seen the windows that were already open when Bloxkeep started (or was unlocked).</summary>
+    bool _afkAdopted;
 
     /// <summary>
     /// Why anti-AFK last held back from a window that was due, since a nudge last reached it: said if Roblox kicks
@@ -3428,10 +3431,11 @@ public sealed partial class AppController : IDisposable
     }
 
     /// <summary>
-    /// Every <see cref="AntiAfk.Interval"/> per Roblox window (counted from joining a server or its last input), and
-    /// only while nobody is using the PC, nudges every Roblox window on the PC that is in a server — also ones opened
-    /// outside Bloxkeep. A window the person is playing in gets their input anyway. Settings' switch covers them all;
-    /// a preset's own anti-AFK option decides for the windows it opened (<see cref="AntiAfkOn"/>).
+    /// From <see cref="AntiAfk.Interval"/> per Roblox window (counted from joining a server or its last input), at the
+    /// first minute nobody uses the PC, nudges every Roblox window on the PC that is in a server — also ones opened
+    /// outside Bloxkeep; from <see cref="AntiAfk.LastChance"/>, in a short pause even while the PC is in use. A window
+    /// the person is playing in gets their input anyway. Settings' switch covers them all; a preset's own anti-AFK
+    /// option decides for the windows it opened (<see cref="AntiAfkOn"/>).
     /// </summary>
     void RunAntiAfk(DateTime now, Dictionary<int, List<IntPtr>> windows)
     {
@@ -3450,45 +3454,75 @@ public sealed partial class AppController : IDisposable
         if (on.Count == 0)
             return;
         ReportIdleKicks(on);
-        // A window seen for the first time has been idle at least since it joined its server (or since now).
+        // A window opened while Bloxkeep runs has been idle at least since it joined its server (or since now). One
+        // already open when Bloxkeep started (an update, a restart) may have had no input for nearly 20 minutes —
+        // Bloxkeep can't know — so it is due at once: counting from the start had Roblox kick it first.
         foreach (int pid in on)
-            _lastInput.TryAdd(pid, _logs.StateOf(pid) is { Status: "ingame" } joined ? joined.At : now);
+            _lastInput.TryAdd(pid, _logs.StateOf(pid) is { Status: "ingame" } joined ? joined.At : _afkAdopted ? now : now - AntiAfk.Interval);
+        _afkAdopted = true;
         if (_nudging)
             return;
+        var due = AntiAfkDue(now, on, windows, AntiAfk.Locked(), AntiAfk.IdleTime(), RobloxProcesses.ForegroundPid(), AntiAfk.FullScreenInFront);
+        if (due.Count > 0)
+            _ = NudgeAsync(due.Select(pid => (pid, windows[pid][0])).ToList());
+    }
 
-        bool Due(int pid) => windows[pid].Count > 0 && _logs.StateOf(pid)?.Status is null or "ingame" && now - LastInput(pid) >= AntiAfk.Interval;
+    /// <summary>
+    /// One tick's decision: the windows to nudge now (of <paramref name="on"/>); why the others due wait is noted in
+    /// <see cref="_afkHeld"/>.
+    /// </summary>
+    /// <param name="idle">How long nobody has used the PC (anti-AFK's own nudges don't count).</param>
+    /// <param name="foreground">The process in front.</param>
+    /// <param name="fullScreen">Whether a full-screen app is in front, asked only when it matters.</param>
+    List<int> AntiAfkDue(DateTime now, HashSet<int> on, Dictionary<int, List<IntPtr>> windows, bool locked, TimeSpan idle, int foreground, Func<bool> fullScreen)
+    {
+        bool Due(int pid, TimeSpan after) =>
+            windows[pid].Count > 0 && _logs.StateOf(pid)?.Status is null or "ingame" && now - LastInput(pid) >= after;
+        bool Waiting(int pid) => _nudgeRetryAt.TryGetValue(pid, out var retry) && now < retry;
         // Locked: no window can come to the front, so none is tried (a minimised one would be restored and minimised
         // again for nothing).
-        if (AntiAfk.Locked())
+        if (locked)
         {
-            foreach (int pid in on.Where(Due))
+            foreach (int pid in on.Where(pid => Due(pid, AntiAfk.Interval)))
                 _afkHeld[pid] = AfkHeld.Locked;
-            return;
+            return [];
         }
-        bool personHere = AntiAfk.PersonActive();
-        int foreground = RobloxProcesses.ForegroundPid();
-        if (personHere && windows.ContainsKey(foreground))
+        if (idle < AntiAfk.UserIdleNeeded && windows.ContainsKey(foreground))
         {
             _lastInput[foreground] = now;
             _afkHeld.Remove(foreground);
         }
-        if (personHere)
+        if (idle >= AntiAfk.UserIdleNeeded)
+            return on.Where(pid => Due(pid, AntiAfk.Interval) && !Waiting(pid)).ToList();
+        // Someone is using the PC: the windows due wait for a minute without input, but one about to be kicked goes
+        // in a pause of two seconds (typed into then, a key would reach Roblox) — unless a full-screen app is in
+        // front, which isn't interrupted.
+        var last = on.Where(pid => Due(pid, AntiAfk.LastChance)).ToHashSet();
+        foreach (int pid in on.Where(pid => Due(pid, AntiAfk.Interval)))
+            _afkHeld[pid] = AfkHeld.InUse;
+        // The next idle spell tries every other window again from the start.
+        foreach (int pid in _nudgeRetryAt.Keys.Where(pid => !last.Contains(pid)).ToList())
         {
-            // Someone is using the PC: the windows due wait for a minute without input (taking the screen from them
-            // would put their typing into Roblox). The next idle spell tries every window again from the start.
-            foreach (int pid in on.Where(Due))
-                _afkHeld[pid] = AfkHeld.InUse;
-            _nudgeMisses.Clear();
-            _nudgeRetryAt.Clear();
-            return;
+            _nudgeRetryAt.Remove(pid);
+            _nudgeMisses.Remove(pid);
         }
+        if (last.Count == 0 || idle < AntiAfk.PauseNeeded)
+            return [];
+        if (!windows.ContainsKey(foreground) && fullScreen())
+        {
+            foreach (int pid in last)
+                _afkHeld[pid] = AfkHeld.FullScreen;
+            return [];
+        }
+        return last.Where(pid => !Waiting(pid)).ToList();
+    }
 
-        var due = windows
-            .Where(w => on.Contains(w.Key) && Due(w.Key) && !(_nudgeRetryAt.TryGetValue(w.Key, out var retry) && now < retry))
-            .Select(w => (Pid: w.Key, Window: w.Value[0]))
-            .ToList();
-        if (due.Count > 0)
-            _ = NudgeAsync(due);
+    /// <summary>When to try a window again after <paramref name="misses"/> missed nudges in a row (1 min, doubling to 15).</summary>
+    static DateTime NudgeRetryAt(DateTime now, int misses, DateTime lastInput)
+    {
+        var later = now + TimeSpan.FromTicks(Math.Min(NudgeRetry.Ticks << Math.Min(misses - 1, 4), MaxNudgeRetry.Ticks));
+        var lastChance = lastInput + AntiAfk.LastChance;
+        return later < lastChance ? later : lastChance > now + NudgeRetry ? lastChance : now + NudgeRetry;
     }
 
     DateTime LastInput(int pid)
@@ -3517,11 +3551,12 @@ public sealed partial class AppController : IDisposable
                 else
                 {
                     // Not reached: the person came back meanwhile, or Windows kept it in the background.
-                    _afkHeld[pid] = AntiAfk.PersonActive() ? AfkHeld.InUse : AntiAfk.Locked() ? AfkHeld.Locked : AfkHeld.Refused;
-                    // Focus refused or the PC is locked: not every tick, and less often while it lasts (a locked PC
-                    // all night would otherwise restore and minimise a minimised window every minute), 15 min at most.
+                    _afkHeld[pid] = AntiAfk.IdleTime() < AntiAfk.UserIdleNeeded ? AfkHeld.InUse : AntiAfk.Locked() ? AfkHeld.Locked : AfkHeld.Refused;
+                    // Focus refused: not every tick, and less often while it lasts (a minimised window would otherwise
+                    // be restored and minimised again every minute), 15 min at most — but never past the window's last
+                    // chance, which is tried again within a minute.
                     int misses = _nudgeMisses[pid] = _nudgeMisses.GetValueOrDefault(pid) + 1;
-                    _nudgeRetryAt[pid] = DateTime.UtcNow + TimeSpan.FromTicks(Math.Min(NudgeRetry.Ticks << Math.Min(misses - 1, 4), MaxNudgeRetry.Ticks));
+                    _nudgeRetryAt[pid] = NudgeRetryAt(DateTime.UtcNow, misses, LastInput(pid));
                 }
             }
         }
@@ -3547,7 +3582,8 @@ public sealed partial class AppController : IDisposable
                      + $"held back by: {held?.ToString() ?? "nothing noted"}.");
             Notify(held switch
             {
-                AfkHeld.InUse => L.F("{0} was kicked for being AFK: the PC was in use, and anti-AFK waits for a minute without mouse or keyboard.", Name(account)),
+                AfkHeld.InUse => L.F("{0} was kicked for being AFK: the PC was in use without a pause of two seconds, so anti-AFK couldn't step in.", Name(account)),
+                AfkHeld.FullScreen => L.F("{0} was kicked for being AFK: a full-screen app was in front, and anti-AFK doesn't interrupt one.", Name(account)),
                 AfkHeld.Locked => L.F("{0} was kicked for being AFK: the PC was locked, and anti-AFK can't reach Roblox then.", Name(account)),
                 AfkHeld.Refused => L.F("{0} was kicked for being AFK: Windows didn't let Bloxkeep bring its window to the front.", Name(account)),
                 _ => L.F("{0} was kicked for being AFK.", Name(account)),
