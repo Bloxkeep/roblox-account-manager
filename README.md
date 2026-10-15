@@ -294,7 +294,7 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone or wi
 | Bloxkeep's feedback service (a Cloudflare Worker that forwards to the developer's Discord) | Only when you press **Send** in **Send feedback**, and only what **See exactly what will be sent** shows ([details](docs/feedback.md)) |
 | Microsoft (`go.microsoft.com`) | Only when WebView2 has to be installed |
 | The backup folder you choose | A copy of the encrypted vault; your OneDrive / Google Drive app may sync it |
-| Your Discord webhook (`discord.com`) | Only when **Settings › Discord** is on (off by default): account names (or **Account 1**, **Account 2**… with **Hide account names in messages**), game names, play time, sessions, PID, RAM. Never cookies, passwords or the webhook link itself; the link is kept in the encrypted vault |
+| Your Discord webhook (`discord.com`) | Only when **Settings › Discord** is on (off by default): account names (or **Account 1**, **Account 2**… with **Hide account names in messages**), game names, play time, sessions, PID, RAM, and links to Roblox's own pictures of the games and of the accounts' avatars (no avatar when names are hidden). Never cookies, passwords or the webhook link itself; the link is kept in the encrypted vault |
 
 **Inside the app.** The interface is locked down with a Content Security Policy, so it can't send requests by itself; every connection goes through the app's core. A password or cookie only reaches the interface when you show or copy it. Copies stay out of clipboard history and are wiped after 30 seconds. `error.log` has no account details.
 

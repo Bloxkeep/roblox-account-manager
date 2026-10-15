@@ -21,7 +21,7 @@ stored. The other files in Bloxkeep's data folder, and how they're protected, ar
 | GitHub (`github.com`, `raw.githubusercontent.com`) | Checking for and downloading Bloxkeep updates (can be turned off in **Settings › Bloxkeep updates**), and reading the Roblox watch's findings about Roblox builds (`multi-status.json`). No account data is sent |
 | Microsoft (`go.microsoft.com`) | Only when WebView2 has to be installed |
 | Bloxkeep's feedback service (a Cloudflare Worker that forwards to the developer's Discord) | Only when you press **Send** in **Send feedback**: your message, a contact if you give one, Bloxkeep's and Windows' versions, the app's language and, if ticked, the end of `error.log` with account names, ids, passwords, cookies and similar details removed. **See exactly what will be sent** shows all of it first ([details](docs/feedback.md)) |
-| Your Discord webhook (`discord.com`) | Only when you turn on **Settings › Discord**: account names (or **Account 1**, **Account 2**… when hidden), game names, play time, sessions, PID, RAM. Never cookies or passwords |
+| Your Discord webhook (`discord.com`) | Only when you turn on **Settings › Discord**: account names (or **Account 1**, **Account 2**… when hidden), game names, play time, sessions, PID, RAM, and links to Roblox's own pictures of the games and of the accounts' avatars (no avatar when names are hidden). Never cookies or passwords |
 | The backup folder you choose | A copy of the encrypted vault; a OneDrive or Google Drive app may sync it |
 
 Each of these services has its own privacy policy: [Roblox](https://www.roblox.com/info/privacy),

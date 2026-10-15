@@ -288,7 +288,7 @@ Thêm được tài khoản Roblox VNG bằng tab **Roblox VNG** (đăng nhập 
 | Dịch vụ góp ý của Bloxkeep (một Cloudflare Worker chuyển tiếp vào Discord của nhà phát triển) | Chỉ khi bạn bấm **Gửi** trong **Gửi góp ý**, và chỉ những gì **Xem chính xác những gì sẽ được gửi** hiển thị ([chi tiết](docs/feedback.md), tiếng Anh) |
 | Microsoft (`go.microsoft.com`) | Chỉ khi phải cài WebView2 |
 | Thư mục sao lưu bạn chọn | Bản sao của kho đã mã hóa; app OneDrive / Google Drive của bạn có thể đồng bộ nó |
-| Webhook Discord của bạn (`discord.com`) | Chỉ khi bạn bật **Cài đặt › Discord** (tắt sẵn): tên tài khoản (hoặc **Tài khoản 1**, **Tài khoản 2**… nếu bật **Ẩn tên tài khoản trong tin nhắn**), tên game, thời gian chơi, số lượt, PID, RAM. Không bao giờ gửi cookie, mật khẩu hay chính link webhook; link được lưu trong kho đã mã hóa |
+| Webhook Discord của bạn (`discord.com`) | Chỉ khi bạn bật **Cài đặt › Discord** (tắt sẵn): tên tài khoản (hoặc **Tài khoản 1**, **Tài khoản 2**… nếu bật **Ẩn tên tài khoản trong tin nhắn**), tên game, thời gian chơi, số lượt, PID, RAM, và link tới ảnh của game và avatar tài khoản trên máy chủ của Roblox (không kèm avatar khi tên được ẩn). Không bao giờ gửi cookie, mật khẩu hay chính link webhook; link được lưu trong kho đã mã hóa |
 
 **Trong app.** Giao diện bị khóa bằng Content Security Policy nên không tự gửi request ra mạng; mọi kết nối đi qua phần lõi của app. Mật khẩu hay cookie chỉ tới giao diện khi bạn bấm hiện hoặc sao chép. Bản sao chép không vào lịch sử clipboard và tự xóa sau 30 giây. `error.log` không chứa thông tin tài khoản.
 
