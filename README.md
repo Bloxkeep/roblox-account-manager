@@ -28,7 +28,7 @@ Bloxkeep is for people who play on several Roblox accounts on one Windows PC: ke
 - Game monitor: live pictures of every Roblox window in one tab. Statistics of play time per account and per game, with an activity log.
 - Authenticator (2FA) codes in the app, hiding account names for screenshots and streams, a daily sign-in check, and spotting banned accounts.
 - Send play-time summaries, a status message and alerts to your Discord channel.
-- Back up to a OneDrive or Google Drive folder. Also: 32 themes, quick search with `Ctrl+K`, English and Vietnamese, runs from the tray, Windows notifications.
+- Back up to a OneDrive or Google Drive folder. Also: 74 themes, quick search with `Ctrl+K`, English and Vietnamese, runs from the tray, Windows notifications.
 
 <img src="docs/screenshots/themes.png" width="800" alt="Six Bloxkeep themes: Dark, City, Aurora, Sakura, Paper and Terminal">
 
@@ -232,7 +232,7 @@ Switch to **Activity** for the log: accounts opened, games joined and left, drop
 - **Keep running in the tray when closed** (on by default): the X button hides Bloxkeep to the tray, and auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon and choose **Quit Bloxkeep**. Next time, the Bloxkeep window comes back where you left it, at the same size, maximised or not.
 - **Windows notifications** (on by default): only while Bloxkeep is in the background. Turn each kind on or off in **Settings › Notifications**: account dropped or auto-rejoin, scheduled presets, sign-in needs renewing, low RAM, launch problems.
 - **Discord** (off by default): paste a channel's webhook link in **Settings › Discord** (switching **Send to Discord** on without one asks for it). **Send automatically** a play-time summary every day, every week or both: a picture of play time by hour (or day) coloured by game with a row per account and its avatar, the totals against the period before, drops with Roblox's codes, the longest stay, the most windows at once, the top games, and a block per preset with its accounts; keep a **Status message** up to date; and send **Alerts** for the events above, with a **Ping** for a person or a role. There are **Quiet hours** and **Customise messages** (sender name and picture, language, message style, **Hide account names in messages**).
-- **Settings › Appearance**: **Theme** has 32 themes plus **Sync with Windows** (**Dark** by default), **Language** English / Tiếng Việt, and **Hide account names**.
+- **Settings › Appearance**: **Theme** has 74 themes in five groups (Basic, Scenery, Colourful, Styles, Seasonal) plus **Sync with Windows** (**Dark** by default). Scenery and Seasonal themes have a drawn scene behind glass panels; Styles change the shapes too (Windows 98, macOS with working window buttons, GNOME, Ubuntu, KDE, Game Boy, Notebook…). Also **Language** English / Tiếng Việt, and **Hide account names**.
 - **Hardware acceleration** (in **Settings › Performance**): draws the interface with the graphics card instead of the CPU; it turns itself off if the graphics driver keeps failing.
 
 <img src="docs/screenshots/discord.png" width="800" alt="The Discord page in Settings: send to Discord, webhook link, play-time summary">
