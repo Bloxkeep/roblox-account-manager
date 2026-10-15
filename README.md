@@ -176,6 +176,8 @@ How it works: Roblox uses an object named `ROBLOX_singletonEvent` to allow only 
 
 If a newer Roblox build starts closing windows when another opens again, **Settings › Version & graphics** shows a yellow warning. It goes away once two or more accounts are in a game at the same time, when Roblox updates, or when you click **Hide**.
 
+Bloxkeep's Roblox watch also checks each new Roblox build as soon as Roblox offers it, often before it reaches players: it downloads the build and compares the lock Multi-Roblox relies on with the build before ([how it works](docs/roblox-watch.md)). **Settings › Version & graphics** shows what it found for your Roblox under **Multi-Roblox check**, and the Multi-Roblox card turns yellow when the lock changed. Opening several accounts then asks first, until two windows have played together on that build. When Roblox only renamed its lock, Bloxkeep holds the new name as well, without an update. The check can't prove Multi-Roblox works; two windows playing together can, and Bloxkeep remembers that for each build.
+
 ### Anti-AFK
 
 Roblox kicks an account after 20 minutes without input. With **Settings › Performance › Anti-AFK** on (a preset can override it), Bloxkeep brings each Roblox window that is in a game to the front for a moment, moves the mouse a few pixels over it and back, and returns you to the window you were in. No key is pressed and nothing is clicked. It steps in from 12 minutes after a window's last input, at the first minute nobody uses the PC; a window two minutes from its kick goes in a 2-second pause even while you use the PC, but never over a full-screen app. It can't work while the PC is locked. If an account is kicked anyway, Bloxkeep says why.

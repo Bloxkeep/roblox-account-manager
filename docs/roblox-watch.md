@@ -11,9 +11,12 @@ track Roblox exploits. Nothing runs on your PC.
 
 ## What it can and can't tell
 
-- **The lock names.** Bloxkeep holds `ROBLOX_singletonEvent` (`RobloxManager/MultiInstance.cs`). If a build no longer
-  has that name, Multi-Roblox is likely blocked (red). If a build adds or drops a lock name, or a name in Roblox's
-  single-window code (`SingleInstanceGuard`, `WndProcessCheck`, `WindowsAppReload…`), it may be blocked (amber).
+- **The lock names.** Bloxkeep holds `ROBLOX_singletonEvent` (`RobloxManager/MultiInstance.cs`). If a build adds or
+  drops a lock name, or a name in Roblox's single-window code (`SingleInstanceGuard`, `WndProcessCheck`,
+  `WindowsAppReload…`), Multi-Roblox may be blocked (`changed`, amber). If the name Bloxkeep holds is gone and exactly
+  one new `ROBLOX_…singleton…` name came in its place, Roblox renamed its lock (`renamed`, amber): the build's `hold`
+  says to hold the new name, and Bloxkeep does, without an update of its own. With nothing to put in its place, it's
+  likely blocked (`gone`, red).
 - **Roblox's settings.** Flags such as `DFFlagEnableWindowsAppReloadCheck` switch the single-window check from Roblox's
   servers, with no new build. Any change to one is posted (amber).
 - **Before release.** Roblox's beta channel (`…/client-version/WindowsPlayer/channel/zbeta`) offers the next build
@@ -58,11 +61,24 @@ make a new one and replace `WATCH_TOKEN`, then run step 4 again.
   "future": { "version": "0.743.0.7431134", "uploadedAt": "10/15/2026 11:43:03 AM" },
   "flags":  { "DFFlagEnableWindowsAppReloadCheck": "True", "…": "…" },
   "builds": [ { "version": "…", "hash": "version-…", "channel": "beta | live", "seenAt": "…", "liveAt": "…",
-                "verdict": "first | same | changed | gone", "locks": ["…"], "related": ["…"],
-                "added": [], "removed": [] } ],
+                "verdict": "first | same | changed | renamed | gone", "hold": ["ROBLOX_singletonEvent"],
+                "locks": ["…"], "related": ["…"], "added": [], "removed": [] } ],
   "changedAt": "…"
 }
 ```
 
-A build's `hash` is the name of its folder under Roblox's `Versions` folder, so the app can find the verdict for the
-build it has installed.
+A build's `hash` is the name of its folder under Roblox's `Versions` folder, so the app finds the verdict for the build
+it has installed.
+
+## In the app
+
+Bloxkeep reads this file from the `roblox-status` branch when it starts and every 30 minutes (`RobloxManager/RobloxWatch.cs`).
+It takes only the verdicts and the `hold` names shaped like `ROBLOX_…`, at most four for a build; the rest is ignored.
+
+- **Settings › Version & graphics › Roblox updates** shows the verdict for the build Multi-Roblox meets next (the
+  installed one, or the live one a launcher updates to first), the next build checked ahead of release, and a verdict
+  next to each build in the history.
+- When that verdict is `changed`, `renamed` or `gone`, the Multi-Roblox card turns yellow and opening several accounts
+  asks first, until two windows have played together on that build here (remembered in `prefs.json`, `multiWorked`).
+- The `hold` names of the installed and the live build are held next to `ROBLOX_singletonEvent`, taken again once no
+  Roblox is running.

@@ -185,6 +185,7 @@
   let ivWrong = 0, ivWaitUntil = 0, ivToken = null;
   const ivHere = u => accounts.find(x => x.username.toLowerCase() === u.toLowerCase());
   let rbxClosedHidden = false;
+  const rw = ['changed', 'renamed', 'gone', 'worked', 'none'].includes(params.get('rw')) ? params.get('rw') : 'same';
   // Statistics › Activity: made-up events, the same on every call (minutes back from now). ?noactivity=1: none yet;
   // ?activityfail=1: the list can't be loaded. Like the app, each line comes in the page's language.
   const ACTIVITY = params.has('noactivity') ? [] : [
@@ -212,13 +213,20 @@
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false },
     // Settings › Roblox updates, newest first: a new build under the same version, an update, the first build seen.
     // ?rbxclosed=1: Roblox closed windows when another one opened (the warning there and on the Multi-Roblox card).
+    // ?rw=changed|renamed|gone: what the Roblox watch found in the installed build (default: no change, and the next
+    // build checked ahead); ?rw=worked: it changed, but two windows played together on it here since; ?rw=none: not read.
     robloxUpdates: {
       installed: { version: '0.742.0.7421053', build: 'version-cec3ad5889b447cf', source: 'Bloxstrap' },
       history: [
-        { at: minsAgo(60 * 20), version: '0.742.0.7421053', build: 'version-cec3ad5889b447cf', source: 'Bloxstrap', first: false },
-        { at: minsAgo(60 * 50), version: '0.742.0.7421053', build: 'version-5b1e07d2a6c84f13', source: 'Bloxstrap', first: false },
-        { at: minsAgo(60 * 24 * 9), version: '0.741.0.7410829', build: 'version-91f0c3ab72d14e6e', source: 'Bloxstrap', first: true },
+        { at: minsAgo(60 * 20), version: '0.742.0.7421053', build: 'version-cec3ad5889b447cf', source: 'Bloxstrap', first: false,
+          check: rw === 'worked' ? 'changed' : rw === 'none' ? null : rw, worked: rw === 'worked' },
+        { at: minsAgo(60 * 50), version: '0.742.0.7421053', build: 'version-5b1e07d2a6c84f13', source: 'Bloxstrap', first: false, check: rw === 'none' ? null : 'same', worked: true },
+        { at: minsAgo(60 * 24 * 9), version: '0.741.0.7410829', build: 'version-91f0c3ab72d14e6e', source: 'Bloxstrap', first: true, check: null, worked: false },
       ],
+      watch: rw === 'none' ? { readAt: null, version: '0.742.0.7421053', updatesFirst: false, check: null, worked: false, next: null, held: [] } : {
+        readAt: minsAgo(4), version: '0.742.0.7421053', updatesFirst: false, check: rw === 'worked' ? 'changed' : rw, worked: rw === 'worked',
+        next: rw === 'same' ? { version: '0.743.0.7431134', check: 'same' } : null, held: rw === 'renamed' ? ['ROBLOX_singletonEvent2'] : [],
+      },
       closed: params.has('rbxclosed') && !rbxClosedHidden ? { at: minsAgo(12), count: 3, updatedAt: minsAgo(60 * 20) } : null,
     },
     update: { supported: true, current: '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? '1.0.1' : null, progress: 0, error: null, auto: true, checkedAt: minsAgo(23) },
@@ -291,6 +299,7 @@
         case 'backupNow': await wait(300); if (params.has('bkerr')) throw new Error("Couldn't back up: Access to the path is denied."); backup = { ...backup, lastBackup: new Date().toISOString() }; push(); return null;
         case 'openBackupFolder': return null;
         case 'openReleaseNotes': return null; // the app opens Roblox's page in the default browser
+        case 'openRobloxWatch': return null; // likewise, docs/roblox-watch.md on GitHub
         case 'hideRobloxClosed': rbxClosedHidden = true; push(); return null;
         // Like the app: only the fields sent change; a ping is { kind, value }, an alert switch { kind, enabled }.
         case 'setDiscord': {

@@ -819,13 +819,16 @@
 
   function renderSide() {
     const m = S.app.multi;
-    // Roblox closed windows when another one opened (Settings › Roblox updates): the card says so and leads there.
+    // Roblox closed windows when another one opened, or the Roblox watch found the lock changed in the build Multi-Roblox
+    // meets next (Settings › Roblox updates): the card says so and leads there.
     const closed = m.enabled && !!S.app.robloxUpdates?.closed;
-    const cls = !m.enabled ? 'off' : m.armed && !closed ? 'ok' : 'warn';
-    const text = t(!m.enabled ? 'multi.off' : closed ? 'multi.closed' : m.armed ? 'multi.ready' : 'multi.notReady');
+    const watched = m.enabled && m.armed && !closed && watchWarns();
+    const cls = !m.enabled ? 'off' : m.armed && !closed && !watched ? 'ok' : 'warn';
+    const text = t(!m.enabled ? 'multi.off' : closed ? 'multi.closed' : watched ? 'multi.watchWarn' : m.armed ? 'multi.ready' : 'multi.notReady');
+    const tip = closed ? t('multi.closedTip') : watched ? t('multi.watchTip') : text;
     // The light and text open the details; the switch turns it on or off right here.
     setHtml($('#multi-card'), `<div class="multi ${cls}">
-        <button class="multi-open" data-act="${closed ? 'ru-open' : 'multi-help'}" title="${t('multi.title')}: ${esc(closed ? t('multi.closedTip') : text)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div></button>
+        <button class="multi-open" data-act="${closed || watched ? 'ru-open' : 'multi-help'}" title="${t('multi.title')}: ${esc(tip)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div></button>
         <label class="switch" title="${t(m.enabled ? 'multi.turnOff' : 'multi.turnOn')}"><input type="checkbox" id="side-multi" ${m.enabled ? 'checked' : ''} aria-label="${t('multi.title')}"><span></span></label>
       </div>`);
     setHtml($('#side-warn'), S.app.robloxInstalled ? '' : `<div class="warn-card" title="${esc(t('side.noRoblox'))}">${icon('alert')}<span>${t('side.noRoblox')}</span></div>`);
@@ -2140,12 +2143,34 @@
   const shortBuild = b => String(b || '').replace(/^version-/i, '').slice(0, 8);
 
   /**
+   * What Bloxkeep's Roblox watch found in a build, as [tone, words]: two windows having played together on it here
+   * outweighs that; null when the watch hasn't checked it.
+   */
+  function watchWord(check, worked) {
+    return worked ? ['ok', t('rw.worked')]
+      : check === 'same' || check === 'first' ? ['ok', t('rw.same')]
+      : check === 'changed' ? ['warn', t('rw.changed')] : check === 'renamed' ? ['warn', t('rw.renamed')]
+      : check === 'gone' ? ['warn', t('rw.gone')] : null;
+  }
+  /** The watch found the lock changed in the build Multi-Roblox meets next, and it hasn't worked on it here since. */
+  function watchWarns() {
+    const w = S.app.robloxUpdates?.watch;
+    return !!w && ['changed', 'renamed', 'gone'].includes(w.check) && !w.worked;
+  }
+
+  /**
    * Settings › Roblox updates: Roblox closing windows (the warning), the installed build and the newest Roblox serves,
-   * and the builds seen on this PC, newest first, each with a link to Roblox's release notes for its version.
+   * what the Roblox watch found in the build Multi-Roblox meets next and in the one Roblox is about to release, and the
+   * builds seen on this PC, newest first, each with a link to Roblox's release notes for its version.
    */
   function syncRobloxUpdates() {
     const ru = S.app.robloxUpdates || {}, rv = S.app.robloxVersion || {};
     const row = (title, desc, ctl) => `<div class="set-row"><div><div class="t">${title}</div>${desc ? `<div class="d">${desc}</div>` : ''}</div><div class="ctl">${ctl}</div></div>`;
+    const w = ru.watch || {};
+    const word = watchWord(w.check, w.worked) || ['off', t(w.readAt ? 'rw.unchecked' : 'rbx.unknown')];
+    const watchDesc = [w.updatesFirst && w.version ? esc(t('rw.updatesTo', { v: w.version })) : '', t('rw.desc'),
+      w.held?.length ? esc(t('rw.held', { n: w.held.join(', ') })) : ''].filter(Boolean).join(' ');
+    const nextWord = w.next && watchWord(w.next.check);
     const c = ru.closed;
     const closedBox = $('#s-rbxclosed'), closedFocused = closedBox.contains(document.activeElement);
     setHtml(closedBox, c ? `<div class="set-note">${icon('alert')}<span>${tn('ru.closed', c.count, { t: esc(fmtWhen(c.at)) })}${c.updatedAt
@@ -2154,7 +2179,9 @@
     const items = hist.map((h, i) => {
       const older = hist[i + 1];
       const note = h.first ? t('ru.first') : older && older.version === h.version ? t('ru.sameVersion') : '';
-      return `<li class="ru-item"><div class="ru-text"><div class="ru-main"><b>${esc(h.version)}</b>${note ? `<span class="ru-note">${note}</span>` : ''}</div>
+      const check = watchWord(h.check, h.worked);
+      return `<li class="ru-item"><div class="ru-text"><div class="ru-main"><b>${esc(h.version)}</b>${note ? `<span class="ru-note">${note}</span>` : ''}${check
+        ? `<span class="ru-note ${check[0]}">${esc(t('rw.h', { s: check[1] }))}</span>` : ''}</div>
         <div class="ru-sub">${esc(fmtWhen(h.at))} · <span title="${esc(h.build)}">${t('ru.build', { b: esc(shortBuild(h.build)) })}</span>${h.source ? ` · ${esc(h.source)}` : ''}</div></div>
         <button type="button" class="link ru-link" data-act="ru-notes" data-v="${esc(h.version)}" title="${esc(`${t('ru.notes')} — ${t('ru.notesHint')}`)}" aria-label="${esc(`${t('ru.notes')} ${h.version}`)}">${t('ru.notesShort')}</button></li>`;
     }).join('');
@@ -2162,6 +2189,9 @@
     setHtml($('#s-rbxupd'), `
       ${row(t('ru.installed'), inst?.source ? esc(t('ru.via', { s: inst.source })) : '', inst ? `<span class="ru-build" title="${esc(inst.build)}">${t('ru.build', { b: esc(shortBuild(inst.build)) })}</span>` : '—')}
       ${rv.latest && rv.latest === rv.installed ? '' : row(t('ru.newest'), '', `<span class="state-pill ${rv.latest ? 'off' : 'warn'}">${esc(rv.latest || t('rbx.unknown'))}</span>`)}
+      ${row(t('rw.title'), `${watchDesc} <button type="button" class="link" data-act="rw-how">${t('rw.how')}</button>`,
+        `<span class="state-pill ${word[0]}"${w.version ? ` title="${esc(`Roblox ${w.version}`)}"` : ''}>${esc(word[1])}</span>`)}
+      ${nextWord ? row(t('rw.next'), esc(t('rw.nextDesc', { v: w.next.version })), `<span class="state-pill ${nextWord[0]}">${esc(nextWord[1])}</span>`) : ''}
       <div class="ru-head">${t('ru.history')}</div>
       ${items ? `<ul class="ru-list">${items}</ul>` : `<p class="set-hint">${t('ru.none')}</p>`}`);
     // The note went (Hide) with the focus in it: on to the page's next control, not back to the top of the window.
@@ -2175,7 +2205,7 @@
 
   /** A dot on a page in the list when something there needs a look: Roblox closed windows, Discord stopped sending. */
   function syncSettingsNav() {
-    const need = { roblox: !!S.app.robloxUpdates?.closed, discord: !!S.app.discord?.stopped };
+    const need = { roblox: !!S.app.robloxUpdates?.closed || !!S.app.multi?.enabled && watchWarns(), discord: !!S.app.discord?.stopped };
     for (const dot of document.querySelectorAll('#view-settings .set-nav-dot')) dot.hidden = !need[dot.closest('[data-set-page]').dataset.setPage];
   }
 
@@ -5430,6 +5460,7 @@
       case 'ru-notes': return call('openReleaseNotes', { version: el.dataset.v });
       case 'ru-hide': return call('hideRobloxClosed');
       case 'ru-open': return openSettings('rbxupd');
+      case 'rw-how': return call('openRobloxWatch');
       case 'select-all': return selectAllVisible();
       case 'clear-search':
         S.query = '';

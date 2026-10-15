@@ -90,11 +90,17 @@ public static class Prefs
 
     public static DateTime? RobloxClosedNotified { get; set; }
 
+    /// <summary>
+    /// Roblox builds (folder names) on which two windows played together here with Multi-Roblox on, oldest first: what
+    /// "it works" looks like, so a warning from the Roblox watch about that build no longer applies.
+    /// </summary>
+    public static List<string> MultiWorked { get; } = new();
+
     static readonly string[] Known =
     [
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
-        "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm",
+        "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -188,6 +194,14 @@ public static class Prefs
                 RobloxClosedCount = Math.Max(0, count);
             if (root.TryGetProperty("robloxClosedNotified", out var notified) && notified.ValueKind == JsonValueKind.String && notified.TryGetDateTime(out var notifiedUtc))
                 RobloxClosedNotified = notifiedUtc.ToUniversalTime();
+            if (root.TryGetProperty("multiWorked", out var worked) && worked.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var build in worked.EnumerateArray())
+                {
+                    if (build.ValueKind == JsonValueKind.String && build.GetString() is { Length: > 0 and <= 80 } workedFolder)
+                        MultiWorked.Add(workedFolder);
+                }
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
@@ -213,6 +227,7 @@ public static class Prefs
                 ["robloxHistory"] = RobloxHistory.Select(h => new { at = h.At, version = h.Version, folder = h.Folder, source = h.Source, first = h.First }).ToArray(),
                 ["robloxClosedAt"] = RobloxClosedAt, ["robloxClosedCount"] = RobloxClosedCount, ["robloxClosedNotified"] = RobloxClosedNotified,
                 ["skipConfirm"] = SkipConfirm.Order(StringComparer.Ordinal).ToArray(),
+                ["multiWorked"] = MultiWorked.ToArray(),
             };
             // Never over a known key: a pref missing from Known would otherwise revert to its loaded value every restart.
             foreach (var (key, value) in _extra)

@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.11",
+    "date": "2026-10-16",
+    "en": [
+      "Multi-Roblox check: each new Roblox build is checked as soon as Roblox offers it, often before it reaches you, for changes to the lock Multi-Roblox relies on. Settings › Version & graphics shows what was found for your Roblox, and the Multi-Roblox card turns yellow when the lock changed; opening several accounts then asks first, until two windows have played together on that build.",
+      "If Roblox only renames that lock, Bloxkeep holds the new name by itself, with no need to wait for a Bloxkeep update."
+    ],
+    "vi": [
+      "Kiểm tra Multi-Roblox: từng bản Roblox mới được kiểm tra ngay khi Roblox đưa ra, thường là trước khi bản đó đến máy bạn, xem khoá mà Multi-Roblox dựa vào có bị đổi không. Cài đặt › Phiên bản & đồ họa cho biết kết quả cho bản Roblox của bạn, và thẻ Multi-Roblox chuyển vàng khi khoá bị đổi; lúc đó mở nhiều tài khoản sẽ được hỏi lại trước, cho đến khi hai cửa sổ đã cùng chơi được trên bản đó.",
+      "Nếu Roblox chỉ đổi tên khoá đó, Bloxkeep tự giữ tên mới, không cần chờ bản cập nhật Bloxkeep."
+    ]
+  },
+  {
     "version": "1.0.10",
     "date": "2026-10-15",
     "en": [

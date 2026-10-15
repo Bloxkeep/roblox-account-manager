@@ -14,7 +14,9 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("restart", false, RestartSuite.Run),
     ("presets", false, PresetSuite.Run),
     ("window", false, WindowSuite.Run),
+    ("watch", false, WatchSuite.Run),
     ("stats-icons", true, StatsIconSuite.Run),
+    ("watch-online", true, WatchSuite.RunOnline),
 };
 
 if (args is ["--suite", var only, var dataDir])

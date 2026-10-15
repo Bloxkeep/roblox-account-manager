@@ -10,53 +10,77 @@ public sealed record TrayAutostart(string ValueName, bool Enabled);
 /// Roblox's own create fail, so it never sets up the check and several clients run side by side — Windows lets one
 /// object own a name, whatever its kind. Holding the event itself stopped working with Roblox's October 2026 builds
 /// (the clients open it and use it to close each other). Nothing is injected into, or read from, the Roblox process.
+/// When Roblox renames that object, Bloxkeep's Roblox watch says what to hold instead (<see cref="RobloxWatch"/>), and
+/// those names are taken the same way, next to this one.
 /// </summary>
 public static class MultiInstance
 {
-    const string EventName = "ROBLOX_singletonEvent";
+    public const string EventName = "ROBLOX_singletonEvent";
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     const string StartupApprovedKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
 
-    static Mutex? _name;
-    static bool _owned;
+    static readonly List<(Mutex Name, bool Owned)> _held = new();
+    static string[] _heldNames = [];
+    static string[] _extra = [];
 
     /// <summary>
-    /// True while the name is held as a mutex — by this app, or by another multi-instance tool (then it works too).
+    /// True while every name is held as a mutex — by this app, or by another multi-instance tool (then it works too).
     /// False when a Roblox client got there first: the name is its event, until every client has closed.
     /// </summary>
     public static bool Armed { get; private set; }
 
-    /// <remarks>Must be called on the UI thread: the mutex is owned by the thread that creates it.</remarks>
+    /// <summary>The names held besides <see cref="EventName"/> (the Roblox watch's), for the page.</summary>
+    public static IReadOnlyList<string> ExtraHeld => Armed ? _heldNames.Skip(1).ToArray() : [];
+
+    /// <summary>
+    /// Held, but the names to hold changed since (the Roblox watch found Roblox renamed its lock): taken again once no
+    /// Roblox client is running, like <see cref="Enable"/> after a client got there first.
+    /// </summary>
+    public static bool Stale => Armed && !_heldNames.SequenceEqual(Wanted());
+
+    /// <summary>Names to hold next to <see cref="EventName"/> from the next <see cref="Enable"/> on.</summary>
+    public static void SetExtraNames(IEnumerable<string> names) =>
+        _extra = names.Where(n => n != EventName).Distinct(StringComparer.Ordinal).ToArray();
+
+    static string[] Wanted() => [EventName, .. _extra];
+
+    /// <remarks>Must be called on the UI thread: a mutex is owned by the thread that creates it.</remarks>
     public static void Enable()
     {
         Disable();
-        try
+        var names = Wanted();
+        foreach (var name in names)
         {
-            _name = new Mutex(initiallyOwned: true, EventName, out _owned);
-            Armed = true;
+            try
+            {
+                var mutex = new Mutex(initiallyOwned: true, name, out bool owned);
+                _held.Add((mutex, owned));
+            }
+            // The name is Roblox's event (a client is running, perhaps the one Windows starts in the tray): the
+            // process check tries again once no client is running.
+            catch (Exception ex) when (ex is UnauthorizedAccessException or WaitHandleCannotBeOpenedException or IOException)
+            {
+                Disable();
+                return;
+            }
         }
-        // The name is Roblox's event (a client is running, perhaps the one Windows starts in the tray): the process
-        // check tries again once no client is running.
-        catch (Exception ex) when (ex is UnauthorizedAccessException or WaitHandleCannotBeOpenedException or IOException)
-        {
-            _name = null;
-            Armed = false;
-        }
+        _heldNames = names;
+        Armed = true;
     }
 
     public static void Disable()
     {
-        if (_name is not null)
+        foreach (var (name, owned) in _held)
         {
-            if (_owned)
+            if (owned)
             {
-                try { _name.ReleaseMutex(); }
+                try { name.ReleaseMutex(); }
                 catch (ApplicationException) { }
             }
-            _name.Dispose();
-            _name = null;
-            _owned = false;
+            name.Dispose();
         }
+        _held.Clear();
+        _heldNames = [];
         Armed = false;
     }
 

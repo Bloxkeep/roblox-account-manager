@@ -376,6 +376,7 @@ public sealed partial class AppController : IDisposable
         "discordSummaryNow" => SendDiscordNowAsync(summary: true),
         "openReleaseNotes" => Done(OpenReleaseNotes(Str(a, "version"))),
         "hideRobloxClosed" => Done(HideRobloxClosed()),
+        "openRobloxWatch" => Done(OpenUrl(RobloxWatch.DocsUrl)),
         _ => throw new UserError(L.F("Unknown command: {0}", cmd)),
     };
 
@@ -2446,7 +2447,8 @@ public sealed partial class AppController : IDisposable
             }
             // Things worth a second look before opening more windows.
             var players = RobloxProcesses.GetPlayers();
-            if (s.MultiInstance && !MultiInstance.Armed && players.Count == 0)
+            ApplyWatchNames();
+            if (s.MultiInstance && (!MultiInstance.Armed || MultiInstance.Stale) && players.Count == 0)
                 MultiInstance.Enable();
             // Accounts already playing here: left alone in the same game, switched over when another game (or server)
             // is chosen. Roblox kicks a second client of the same account, so the old one is closed first.
@@ -2469,6 +2471,8 @@ public sealed partial class AppController : IDisposable
             bool robloxOpen = RobloxProcesses.VisibleWindows(players.Select(p => p.Pid)).Values.Any(list => list.Count > 0);
             if ((accounts.Count > 1 || robloxOpen) && !MultiInstance.Armed)
                 warnings.Add(s.MultiInstance ? MultiNotReadyText() : L.T("Multi-Roblox is off, so each new Roblox window closes the previous one."));
+            else if ((accounts.Count > 1 || robloxOpen) && WatchWarning() is { } watchWarning)
+                warnings.Add(watchWarning);
             int toOpen = accounts.Count(acc => !_running.ContainsKey(acc.Id));
             var memory = SystemMemory.Read();
             long perClientMb = players.Count > 0 ? Math.Max(400, (long)players.Average(p => p.WorkingSet) / MB) : DefaultClientMb;
@@ -3139,8 +3143,12 @@ public sealed partial class AppController : IDisposable
             }
         }
 
-        if (_vault is { Data.Settings.MultiInstance: true } && !MultiInstance.Armed && scan && pids.Count == 0)
-            MultiInstance.Enable();
+        if (_vault is { Data.Settings.MultiInstance: true } && scan && pids.Count == 0)
+        {
+            ApplyWatchNames();
+            if (!MultiInstance.Armed || MultiInstance.Stale)
+                MultiInstance.Enable();
+        }
         if (MultiInstance.Armed != _lastArmed)
         {
             _lastArmed = MultiInstance.Armed;
@@ -3159,6 +3167,7 @@ public sealed partial class AppController : IDisposable
         {
             _nextRobloxVersionCheck = now + RobloxVersionInterval;
             _ = RefreshLatestRobloxAsync();
+            _ = RefreshRobloxWatchAsync();
         }
         // The periodic jobs from here on don't depend on each other: one that fails (logged) doesn't stop the rest,
         // least of all the vault's save and auto-rejoin.

@@ -5,7 +5,8 @@ namespace RobloxManager;
 /// <summary>
 /// Settings › Roblox updates: the Roblox builds seen on this PC (kept in prefs.json, not the vault, so it also works
 /// while locked), and noticing when Roblox starts closing its other windows as soon as one more opens — what an
-/// update that stops Multi-Roblox working looks like from here.
+/// update that stops Multi-Roblox working looks like from here. Next to that, what Bloxkeep's Roblox watch found in
+/// each build before it got here (<see cref="RobloxWatch"/>), and the builds two windows played together on.
 /// </summary>
 public sealed partial class AppController
 {
@@ -149,6 +150,16 @@ public sealed partial class AppController
             _togetherSince = null;
         else
             _togetherSince ??= now;
+        // Two windows in a game together for a while: Multi-Roblox works on this build, whatever the Roblox watch said.
+        if (_togetherSince is { } together && now - together >= WorkingAgain && Installs().Client?.Folder is { Length: > 0 } folder
+            && !Prefs.MultiWorked.Contains(folder))
+        {
+            Prefs.MultiWorked.Add(folder);
+            if (Prefs.MultiWorked.Count > MaxRobloxHistory)
+                Prefs.MultiWorked.RemoveRange(0, Prefs.MultiWorked.Count - MaxRobloxHistory);
+            Prefs.Save();
+            PushStateIfChanged();
+        }
         if (_closedNoticeDue is null && Prefs.RobloxClosedAt is { } closedAt
             && (_togetherSince is { } since && now - since >= WorkingAgain && closedAt < since
                 || Prefs.RobloxHistory.Any(h => !h.First && h.At > closedAt)))
@@ -216,7 +227,12 @@ public sealed partial class AppController
         {
             installed = installed is null ? null : new { version = installed.Version, build = installed.Folder, source = installed.Source },
             history = Prefs.RobloxHistory.AsEnumerable().Reverse()
-                .Select(h => new { at = h.At, version = h.Version, build = h.Folder, source = h.Source, first = h.First }).ToArray(),
+                .Select(h => new
+                {
+                    at = h.At, version = h.Version, build = h.Folder, source = h.Source, first = h.First,
+                    check = RobloxWatch.For(h.Folder)?.Verdict, worked = Prefs.MultiWorked.Contains(h.Folder),
+                }).ToArray(),
+            watch = WatchDto(),
             closed = Prefs.RobloxClosedAt is { } at && now - at < ClosedWarningShown && at <= now + TimeSpan.FromMinutes(5)
                 ? new
                 {
@@ -243,5 +259,74 @@ public sealed partial class AppController
         Prefs.Save();
         PushState();
         return null;
+    }
+
+    /// <summary>Reads what Bloxkeep's Roblox watch found (<see cref="RobloxWatch"/>), at the Roblox version check's pace.</summary>
+    async Task RefreshRobloxWatchAsync()
+    {
+        try
+        {
+            if (await RobloxWatch.RefreshAsync())
+                ApplyWatchNames();
+            PushStateIfChanged();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            // Shown as "couldn't check"; tried again next time.
+        }
+    }
+
+    /// <summary>The lock names the watch says to hold besides Multi-Roblox's own, for the next time it takes them.</summary>
+    void ApplyWatchNames() =>
+        MultiInstance.SetExtraNames(RobloxWatch.ExtraNames(Installs().Client?.Folder, MultiInstance.EventName));
+
+    /// <summary>
+    /// The build Multi-Roblox meets next and what the Roblox watch says about it: the installed one, or the live one
+    /// when a launcher updates to it before starting Roblox (an older build here, not started directly).
+    /// </summary>
+    /// <returns>Worked: two windows played together on that build here, which outweighs anything the watch says.</returns>
+    (string? Version, string? Hash, RobloxWatch.Build? Check, bool Worked) WatchedBuild()
+    {
+        var installed = Installs().Client;
+        var rv = RobloxVersionDto();
+        var live = RobloxWatch.Current?.Live;
+        bool updatesFirst = rv.UpToDate == false && !rv.Direct && live is not null;
+        string? hash = updatesFirst ? live!.Hash : installed?.Folder;
+        string? version = updatesFirst ? live!.Version : installed?.Version;
+        return (version, hash, RobloxWatch.For(hash), hash is not null && Prefs.MultiWorked.Contains(hash));
+    }
+
+    /// <summary>
+    /// Said before opening several windows when the Roblox watch found the single-window lock changed in the build they
+    /// will run, and two windows haven't played together on that build here since.
+    /// </summary>
+    string? WatchWarning()
+    {
+        var (version, _, check, worked) = WatchedBuild();
+        if (check is null || worked)
+            return null;
+        return check.Verdict switch
+        {
+            "changed" => L.F("Bloxkeep's Roblox watch found that Roblox {0} changed its single-window code, so Multi-Roblox may not work. If Roblox closes a window when the next one opens, Bloxkeep will say so.", version),
+            "renamed" => L.F("Roblox {0} renamed its single-window lock. Bloxkeep holds the new name as well, but that isn't proven yet. If Roblox closes a window when the next one opens, Bloxkeep will say so.", version),
+            "gone" => L.F("Roblox {0} no longer has the single-window lock Multi-Roblox holds, so Roblox will probably close each window when the next one opens.", version),
+            _ => null,
+        };
+    }
+
+    object WatchDto()
+    {
+        var (version, hash, check, worked) = WatchedBuild();
+        var next = RobloxWatch.Current?.Next;
+        return new
+        {
+            readAt = RobloxWatch.ReadAt,
+            version,
+            updatesFirst = hash is not null && hash != Installs().Client?.Folder,
+            check = check?.Verdict,
+            worked,
+            next = next is null ? null : new { version = next.Version, check = next.Verdict },
+            held = MultiInstance.ExtraHeld,
+        };
     }
 }

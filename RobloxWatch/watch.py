@@ -25,9 +25,10 @@ LOCK_NAME_WIDE = re.compile(rb'R\x00O\x00B\x00L\x00O\x00X\x00_\x00(?:[A-Za-z0-9_
 # Roblox's single-window code: its source file, log category, telemetry and the flags that tune it.
 RELATED = re.compile(rb'(?<![A-Za-z0-9_:])[A-Za-z0-9_:]*(?:SingleInstance|AppReload|WndProcessCheck|EventWaitResult|MutexWaitResult)[A-Za-z0-9_:]*')
 FLAG = re.compile(r'SingleInstance|AppReload|WndProcessCheck|Singleton(?:Event|Mutex)|MultipleInstance')
+SINGLETON = re.compile(r'(?i)singleton')
 FUTURE_LINE = re.compile(r'New WindowsPlayer (\S+) at (.+?), file version: (\d+), (\d+), (\d+), (\d+)')
 MAX_BUILDS = 40
-COLORS = {'same': 0x2E9E5B, 'first': 0x2E9E5B, 'changed': 0xE0A030, 'gone': 0xD9453D, 'future': 0x5B7FD9, 'flags': 0xE0A030}
+COLORS = {'same': 0x2E9E5B, 'first': 0x2E9E5B, 'changed': 0xE0A030, 'renamed': 0xE0A030, 'gone': 0xD9453D, 'future': 0x5B7FD9, 'flags': 0xE0A030}
 
 
 def get(url, headers=None):
@@ -84,14 +85,32 @@ def now():
     return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
+def holds(fp, before):
+    """The lock names Bloxkeep should hold for a build (the app reads them): the ones held for the build before while
+    they're still there, else its own; when that is gone too and exactly one new singleton name came in its place,
+    that one (Roblox renamed its lock). Empty when there's no telling."""
+    prev = (before or {}).get('hold') or [HELD]
+    kept = [n for n in prev if n in fp['locks']]
+    if kept:
+        return kept
+    if HELD in fp['locks']:
+        return [HELD]
+    new = [n for n in fp['locks'] if SINGLETON.search(n) and n not in (before or {}).get('locks', [])]
+    return new if len(new) == 1 else []
+
+
 def judge(fp, before):
-    if HELD not in fp['locks']:
-        return 'gone', [], []
+    """(verdict, names to hold, names added, names removed) for a build against the build seen before it."""
+    hold = holds(fp, before)
     if before is None:
-        return 'first', [], []
+        return ('first' if hold else 'gone'), hold, [], []
     added = sorted(set(fp['locks'] + fp['related']) - set(before['locks'] + before['related']))
     removed = sorted(set(before['locks'] + before['related']) - set(fp['locks'] + fp['related']))
-    return ('changed' if added or removed else 'same'), added, removed
+    if not hold:
+        return 'gone', hold, added, removed
+    if hold != (before.get('hold') or [HELD]):
+        return 'renamed', hold, added, removed
+    return ('changed' if added or removed else 'same'), hold, added, removed
 
 
 VERDICT_TEXT = {
@@ -99,7 +118,10 @@ VERDICT_TEXT = {
     'same': "No change to Roblox's single-window lock or its code names. Multi-Roblox should keep working "
             '(proven only once two windows play together).',
     'changed': "Roblox changed its single-window code in this build. Multi-Roblox may be blocked: try two windows.",
-    'gone': f'The lock Bloxkeep holds ({HELD}) is gone from this build. Multi-Roblox is likely blocked.',
+    'renamed': 'Roblox renamed its single-window lock in this build. Bloxkeep holds the new name by itself (it reads '
+               "this watch's findings), but that isn't proven yet: try two windows.",
+    'gone': f'The lock Bloxkeep holds ({HELD}) is gone from this build, with nothing to put in its place. '
+            'Multi-Roblox is likely blocked.',
 }
 
 
@@ -134,13 +156,15 @@ def inspect(status, version, build, channel):
     """Downloads a build, compares it with the build seen before it and adds it to the status: the post's fields."""
     fp = fingerprint(download_player(build))
     before = next((b for b in reversed(status['builds']) if b['hash'] != build), None)
-    verdict, added, removed = judge(fp, before)
-    entry = {'version': version, 'hash': build, 'channel': channel, 'seenAt': now(), 'verdict': verdict, **fp,
-             'added': added, 'removed': removed}
+    verdict, hold, added, removed = judge(fp, before)
+    entry = {'version': version, 'hash': build, 'channel': channel, 'seenAt': now(), 'verdict': verdict, 'hold': hold,
+             **fp, 'added': added, 'removed': removed}
     if channel == 'live':
         entry['liveAt'] = entry['seenAt']
     status['builds'] = ([b for b in status['builds'] if b['hash'] != build] + [entry])[-MAX_BUILDS:]
     fields = [('Version', f'`{version}`'), ('Hash', f'`{build}`'), ('Lock names', listing(fp['locks']))]
+    if hold != [HELD]:
+        fields.append(('Bloxkeep holds', listing(hold) if hold else '(nothing found to hold)'))
     if added:
         fields.append(('New in this build', listing(added)))
     if removed:

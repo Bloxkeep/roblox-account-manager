@@ -170,6 +170,8 @@ Cách hoạt động: Roblox dùng một đối tượng tên `ROBLOX_singletonE
 
 Nếu một bản Roblox mới lại đóng cửa sổ khi cửa sổ khác mở, **Cài đặt › Phiên bản & đồ họa** hiện cảnh báo vàng. Cảnh báo tự mất khi từ 2 tài khoản trở lên cùng ở trong game, khi Roblox cập nhật bản mới, hoặc khi bạn bấm **Ẩn**.
 
+Ngoài ra, máy dò Roblox của Bloxkeep kiểm tra từng bản Roblox mới ngay khi Roblox đưa ra, thường là trước khi bản đó đến tay người chơi: nó tải bản đó về và so khoá mà Multi-Roblox dựa vào với bản trước ([cách hoạt động](docs/roblox-watch.md), tiếng Anh). **Cài đặt › Phiên bản & đồ họa** cho biết kết quả cho bản Roblox của bạn ở dòng **Kiểm tra Multi-Roblox**, và thẻ Multi-Roblox chuyển vàng khi khoá bị đổi. Lúc đó, mở nhiều tài khoản sẽ được hỏi lại trước, cho đến khi đã có hai cửa sổ cùng chơi được trên bản đó. Nếu Roblox chỉ đổi tên khoá, Bloxkeep giữ luôn tên mới mà không cần cập nhật app. Kết quả kiểm tra không chứng minh được Multi-Roblox chạy; chỉ hai cửa sổ cùng chơi được mới chứng minh, và Bloxkeep nhớ điều đó cho từng bản.
+
 ### Chống AFK
 
 Roblox kick tài khoản sau 20 phút không có thao tác. Khi bật **Cài đặt › Hiệu năng › Chống AFK** (preset có thể ghi đè), Bloxkeep đưa từng cửa sổ Roblox đang ở trong game lên trước trong chốc lát, nhích chuột vài pixel rồi trả về, và đưa bạn lại cửa sổ đang dùng. Không bấm phím, không click gì. Chống AFK bắt đầu từ phút thứ 12 kể từ thao tác cuối của cửa sổ, vào phút đầu tiên không ai dùng máy; cửa sổ còn 2 phút là bị kick thì được làm vào lúc bạn ngừng gõ 2 giây, kể cả khi bạn đang dùng máy, nhưng không bao giờ chen ngang ứng dụng toàn màn hình. Không chạy được khi máy đang khóa. Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do.

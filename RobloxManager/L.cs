@@ -194,6 +194,12 @@ public static class L
         ["A new Roblox window may close the old one."] = "Cửa sổ Roblox mới có thể đóng cửa sổ cũ.",
         ["Multi-Roblox is off, so each new Roblox window closes the previous one."] =
             "Multi-Roblox đang tắt nên mỗi lần mở Roblox mới, cửa sổ cũ sẽ bị đóng.",
+        ["Bloxkeep's Roblox watch found that Roblox {0} changed its single-window code, so Multi-Roblox may not work. If Roblox closes a window when the next one opens, Bloxkeep will say so."] =
+            "Bloxkeep phát hiện Roblox {0} đã đổi phần mã chặn mở nhiều cửa sổ, nên Multi-Roblox có thể không chạy. Nếu Roblox đóng một cửa sổ khi cửa sổ tiếp theo mở ra, Bloxkeep sẽ báo.",
+        ["Roblox {0} renamed its single-window lock. Bloxkeep holds the new name as well, but that isn't proven yet. If Roblox closes a window when the next one opens, Bloxkeep will say so."] =
+            "Roblox {0} đã đổi tên khoá chặn mở nhiều cửa sổ. Bloxkeep đã giữ cả tên mới, nhưng chưa chắc chắn có tác dụng. Nếu Roblox đóng một cửa sổ khi cửa sổ tiếp theo mở ra, Bloxkeep sẽ báo.",
+        ["Roblox {0} no longer has the single-window lock Multi-Roblox holds, so Roblox will probably close each window when the next one opens."] =
+            "Roblox {0} không còn khoá mà Multi-Roblox giữ, nên nhiều khả năng Roblox sẽ đóng từng cửa sổ khi cửa sổ tiếp theo mở ra.",
         ["Only {0} of RAM is free, and {1} more Roblox window needs about {2}. The PC may slow down or Roblox may crash."] =
             "Máy chỉ còn trống {0} RAM, trong khi mở thêm {1} cửa sổ Roblox cần khoảng {2}. Máy có thể bị lag hoặc Roblox bị văng.",
         ["Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash."] =
