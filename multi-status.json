@@ -64,7 +64,7 @@
       "version": "0.743.0.7431134",
       "hash": "version-11f155f3450f4c8e",
       "channel": "live",
-      "seenAt": "2026-10-15T21:22:28Z",
+      "seenAt": "2026-10-15T21:27:00Z",
       "verdict": "same",
       "hold": [
         "ROBLOX_singletonEvent"
@@ -89,7 +89,7 @@
       ],
       "added": [],
       "removed": [],
-      "liveAt": "2026-10-15T21:22:28Z"
+      "liveAt": "2026-10-15T21:27:00Z"
     }
   ],
   "live": {
@@ -105,7 +105,7 @@
     "DFIntWindowsAppReloadTrackingThrottleHundredthsPercent": "50",
     "FFlagRemoveSingleInstanceSempahore": "True"
   },
-  "changedAt": "2026-10-15T21:22:29Z",
+  "changedAt": "2026-10-15T21:27:00Z",
   "beta": {
     "version": "0.743.0.7431134",
     "hash": "version-11f155f3450f4c8e"
