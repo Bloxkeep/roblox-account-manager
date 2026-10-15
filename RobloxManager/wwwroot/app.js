@@ -3519,6 +3519,7 @@
     <div class="start-more">
       <div class="ways"><span>${t('start.more')}</span><button class="btn sm ghost" data-act="add-cookie">${t('start.cookie')}</button></div>
       <div class="ways"><span>${t('start.importFrom')}</span><button class="btn sm ghost" data-act="import-vault" title="${t('start.vaultTip')}">${t('start.vault')}</button></div>
+      <div class="ways"><span>${t('start.webQ')}</span><button class="btn sm ghost" data-act="open-web" title="${t('start.webTip')}">${t('start.web')}</button></div>
     </div>`;
 
   /** The sign-in screen lists every way to add an account. */
@@ -5451,6 +5452,8 @@
       case 'relogin': { const a = byId(id); return quickLogin(a?.realm, a?.label); }
       case 'add-browser': leaveChooser(el); return addBrowser(el);
       case 'add-cookie': leaveChooser(el); return accountModal(null);
+      // roblox.com in a blank window of Bloxkeep's own, to sign in on the site (several side by side).
+      case 'open-web': leaveChooser(el); return call('openWebsiteBlank');
       case 'add-menu':
         return menuAt(el, [
           { icon: 'qr', text: t('m.addCode'), run: () => quickLogin() },
@@ -5458,6 +5461,8 @@
           { icon: 'cookie', text: t('m.addCookie'), run: () => accountModal(null) },
           '-',
           { icon: 'folder', text: t('m.importVault'), run: importVault },
+          '-',
+          { icon: 'external', text: t('m.openWeb'), title: esc(t('start.webTip')), run: () => call('openWebsiteBlank') },
         ], 320);
       case 'tools-menu':
         return menuAt(el, [

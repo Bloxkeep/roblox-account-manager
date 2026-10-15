@@ -5,16 +5,19 @@ using Microsoft.Web.WebView2.WinForms;
 namespace RobloxManager;
 
 /// <summary>
-/// www.roblox.com signed in as one saved account, in a browser of Bloxkeep's own. Every window is an InPrivate profile
-/// of its own, so several accounts can be open side by side: the account's session cookie is placed only in that
-/// profile, kept in memory and never written to disk, and it never reaches the person's Chrome or Edge. All windows
-/// share one browser (one temporary folder in %TEMP%), deleted when the last window closes.
-/// Signing out on the site would end the saved session too, so it is stopped and explained instead.
+/// www.roblox.com in a browser of Bloxkeep's own: signed in as a saved account, or blank for the person to sign in on
+/// the site (Save to Bloxkeep then keeps that account). Every window is an InPrivate profile of its own, so several
+/// accounts can be open side by side: a session cookie lives only in that profile, in memory, is never written to disk
+/// and never reaches the person's Chrome or Edge; a blank window's sign-in is gone when it closes, unless saved. All
+/// windows share one browser (one temporary folder in %TEMP%), deleted when the last window closes.
+/// Once the window is a saved account's, signing out on the site would end the saved session too, so it is stopped
+/// and explained instead.
 /// </summary>
 public sealed class WebsiteForm : Form
 {
     const string FolderPrefix = "Bloxkeep-web-";
     const string HomeUrl = "https://www.roblox.com/home";
+    const string LoginUrl = "https://www.roblox.com/login";
     const string CookieName = ".ROBLOSECURITY";
     /// <summary>A blocked connection hangs instead of failing, so don't wait for the browser to give up.</summary>
     static readonly TimeSpan SlowAfter = TimeSpan.FromSeconds(12);
@@ -25,40 +28,52 @@ public sealed class WebsiteForm : Form
     static int _windows;
 
     readonly Themes.Theme _theme = Themes.Current;
-    readonly Func<string, Task<bool>> _onSessionChanged;
+    readonly Func<Guid, string, Task<bool>> _onSessionChanged;
+    readonly Func<string, RobloxUser, (Guid Id, string Name, string Message)> _save;
     readonly ToolTip _tips = new();
     readonly System.Windows.Forms.Timer _slow = new() { Interval = (int)SlowAfter.TotalMilliseconds };
-    // Roblox may hand the site a new session cookie (after "Log out of all other sessions", for one); read back now and
-    // then, so the saved account keeps a session that works.
-    readonly System.Windows.Forms.Timer _sync = new() { Interval = 15000 };
+    // A saved account's: Roblox may hand the site a new session cookie (after "Log out of all other sessions", for one),
+    // read back now and then so the account keeps a session that works. A blank window's: who signed in there, soon.
+    readonly System.Windows.Forms.Timer _sync = new();
+    const int SavedSyncMs = 15000, BlankSyncMs = 2000;
     readonly Label _message;
-    readonly Button _retry, _back, _forward;
+    readonly Button _retry, _back, _forward, _saveButton;
     readonly WebView2 _web;
     string _cookie;
+    /// <summary>Who is signed in on a blank window's site, until saved; null when nobody (or not known yet).</summary>
+    RobloxUser? _user;
+    /// <summary>Asks Roblox whose a session cookie is; replaced by the checks.</summary>
+    Func<string, Task<RobloxUser?>> _identify = cookie => RobloxApi.GetAuthenticatedUserAsync(cookie);
     bool _closing, _synced, _syncing, _askingLogout, _hasWindow;
     /// <summary>Asks whether to close the window after a sign-out was stopped; replaced by the checks.</summary>
     Func<WebsiteForm, bool> _askCloseOnLogout = AskCloseOnLogout;
 
-    public Guid AccountId { get; }
+    /// <summary>The saved account this window is signed in as; null for a blank window not saved (yet).</summary>
+    public Guid? AccountId { get; private set; }
 
+    /// <param name="accountId">The saved account to open signed in; null for a blank window at the sign-in page.</param>
     /// <param name="onSessionChanged">
-    /// Gets a session cookie the site holds that differs from the one this window was given, to check and save it;
-    /// false = couldn't tell yet (no internet), ask again at the next read.
+    /// Gets a session cookie a saved account's site holds that differs from the one this window was given, to check and
+    /// save it; false = couldn't tell yet (no internet), ask again at the next read.
     /// </param>
-    public WebsiteForm(Guid accountId, string name, string cookie, Func<string, Task<bool>> onSessionChanged)
+    /// <param name="save">Save to Bloxkeep: keeps the account signed in on a blank window and says how that went.</param>
+    public WebsiteForm(Guid? accountId, string? name, string cookie, Func<Guid, string, Task<bool>> onSessionChanged,
+        Func<string, RobloxUser, (Guid Id, string Name, string Message)> save)
     {
         AccountId = accountId;
         _cookie = cookie;
         _onSessionChanged = onSessionChanged;
+        _save = save;
+        _sync.Interval = accountId is null ? BlankSyncMs : SavedSyncMs;
         SetName(name);
         Icon = Ui.AppIcon;
         BackColor = _theme.Background;
         StartPosition = FormStartPosition.Manual;
         MinimumSize = new Size(LogicalToDeviceUnits(480), LogicalToDeviceUnits(360));
 
-        _back = NavButton("", L.T("Back"), core => core.GoBack());
-        _forward = NavButton("", L.T("Forward"), core => core.GoForward());
-        var reload = NavButton("", L.T("Reload"), core => core.Reload());
+        _back = NavButton("\uE72B", L.T("Back"), core => core.GoBack());
+        _forward = NavButton("\uE72A", L.T("Forward"), core => core.GoForward());
+        var reload = NavButton("\uE72C", L.T("Reload"), core => core.Reload());
         _back.Enabled = _forward.Enabled = false;
         _message = new Label
         {
@@ -81,9 +96,24 @@ public sealed class WebsiteForm : Form
         };
         _retry.FlatAppearance.BorderColor = _theme.Line;
         _retry.Click += (_, _) => OpenHome();
+        _saveButton = new Button
+        {
+            Text = L.T("Save to Bloxkeep"),
+            Dock = DockStyle.Right,
+            Width = LogicalToDeviceUnits(140),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = _theme.Text,
+            ForeColor = _theme.Background,
+            Cursor = Cursors.Hand,
+            Visible = false,
+        };
+        _saveButton.FlatAppearance.BorderSize = 0;
+        _tips.SetToolTip(_saveButton, L.T("Opens signed in next time. Without saving, closing this window signs it out here."));
+        _saveButton.Click += (_, _) => SaveAccount();
         var bar = new Panel { Dock = DockStyle.Top, Height = LogicalToDeviceUnits(40), Padding = new Padding(6, 4, 8, 4), BackColor = _theme.Surface };
         bar.Controls.Add(_message);
         bar.Controls.Add(_retry);
+        bar.Controls.Add(_saveButton);
         bar.Controls.Add(reload);
         bar.Controls.Add(_forward);
         bar.Controls.Add(_back);
@@ -100,8 +130,15 @@ public sealed class WebsiteForm : Form
         Load += async (_, _) => await OpenAsync();
     }
 
-    /// <summary>The title: which account this window is signed in as (follows Settings › Hide account names).</summary>
-    public void SetName(string name) => Text = L.F("{0} — Roblox", name);
+    /// <summary>
+    /// The title: which account this window is signed in as (follows Settings › Hide account names); for a blank window
+    /// the name of whoever signed in there (hidden alike), or just Roblox.
+    /// </summary>
+    public void SetName(string? name)
+    {
+        name ??= _user is { } user && !Prefs.HideNames ? user.Name : null;
+        Text = name is null ? "Roblox" : L.F("{0} — Roblox", name);
+    }
 
     /// <summary>Opens beside the main window, each further window a little lower and to the right.</summary>
     public void PlaceNear(Form owner, int index)
@@ -178,7 +215,7 @@ public sealed class WebsiteForm : Form
             core.Settings.IsGeneralAutofillEnabled = false;
             // DevTools would show the session cookie, which is how cookie thieves talk people into sharing it.
             core.Settings.AreDevToolsEnabled = false;
-            if (_cookie.Length > 0)
+            if (AccountId is not null && _cookie.Length > 0)
             {
                 // Only in this window's profile, as a cookie for this browser session only.
                 var session = core.CookieManager.CreateCookie(CookieName, _cookie, ".roblox.com", "/");
@@ -270,15 +307,15 @@ public sealed class WebsiteForm : Form
         core.WebResourceRequested += (_, e) =>
         {
             // "Log out of all other sessions" (logoutfromallsessionsandreauthenticate) goes through: this session gets a
-            // new cookie, which SyncSessionAsync saves.
-            if (!IsSignOut(e.Request.Uri) || !e.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
+            // new cookie, which SyncSessionAsync saves. A window not saved signs out like any browser.
+            if (AccountId is null || !IsSignOut(e.Request.Uri) || !e.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                 return;
             e.Response = env.CreateWebResourceResponse(null, 403, "Forbidden", "Content-Type: application/json");
             BeginInvoke(SignOutStopped);
         };
         core.NavigationStarting += (_, e) =>
         {
-            if (!IsSignOut(e.Uri))
+            if (AccountId is null || !IsSignOut(e.Uri))
                 return;
             e.Cancel = true;
             BeginInvoke(SignOutStopped);
@@ -314,7 +351,7 @@ public sealed class WebsiteForm : Form
             return;
         _retry.Visible = false;
         Say(L.T("Opening roblox.com…"), _theme.Text2);
-        core.Navigate(HomeUrl);
+        core.Navigate(AccountId is null && _user is null ? LoginUrl : HomeUrl);
     }
 
     void ShowUnreachable()
@@ -341,10 +378,15 @@ public sealed class WebsiteForm : Form
         {
             var cookies = await core.CookieManager.GetCookiesAsync("https://www.roblox.com");
             string? now = cookies.FirstOrDefault(c => c.Name == CookieName && !string.IsNullOrEmpty(c.Value))?.Value;
+            if (AccountId is not { } id)
+            {
+                await TrackSignInAsync(now);
+                return;
+            }
             // None: signed out some other way, or not yet; the saved session is left as it is.
             if (now is null || now == _cookie)
                 return;
-            if (await _onSessionChanged(now))
+            if (await _onSessionChanged(id, now))
                 _cookie = now;
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
@@ -354,6 +396,55 @@ public sealed class WebsiteForm : Form
         finally
         {
             _syncing = false;
+        }
+    }
+
+    /// <summary>A blank window: who signed in on the site (or out), shown in the title, with Save to Bloxkeep.</summary>
+    async Task TrackSignInAsync(string? now)
+    {
+        now ??= "";
+        if (now == _cookie)
+            return;
+        RobloxUser? user = null;
+        if (now.Length > 0)
+        {
+            try
+            {
+                user = await _identify(now);
+            }
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+            {
+                return; // no answer from Roblox: asked again at the next read
+            }
+        }
+        if (_closing || AccountId is not null)
+            return;
+        _cookie = now;
+        _user = user; // a cookie that doesn't work is nobody
+        SetName(null);
+        _saveButton.Visible = user is not null;
+        if (user is not null)
+            Say(Prefs.HideNames ? L.T("Signed in.") : L.F("Signed in as {0}.", user.Name), _theme.Text2);
+    }
+
+    void SaveAccount()
+    {
+        if (_user is not { } user || _cookie.Length == 0 || AccountId is not null)
+            return;
+        try
+        {
+            var (id, name, message) = _save(_cookie, user);
+            // From now on the saved account's window: its sign-out is guarded and a renewed session saved.
+            AccountId = id;
+            _user = null;
+            _sync.Interval = SavedSyncMs;
+            _saveButton.Visible = false;
+            SetName(name);
+            Say(message, _theme.Good);
+        }
+        catch (UserError ex)
+        {
+            Say(ex.Message, _theme.Bad);
         }
     }
 
@@ -367,7 +458,7 @@ public sealed class WebsiteForm : Form
     protected override async void OnFormClosing(FormClosingEventArgs e)
     {
         base.OnFormClosing(e);
-        if (e.Cancel || _synced || _web.CoreWebView2 is null)
+        if (e.Cancel || _synced || AccountId is null || _web.CoreWebView2 is null)
             return;
         // One last read of the session before the window goes, a moment at most.
         e.Cancel = true;

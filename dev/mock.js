@@ -307,6 +307,7 @@
             : (language === 'vi' ? '(không kèm nhật ký lỗi)' : '(no error log)')].join('\n') };
         case 'sendFeedback': await wait(700); if (params.has('fbfail')) throw new Error(language === 'vi' ? 'Không kết nối được tới dịch vụ nhận góp ý. Kiểm tra mạng rồi thử lại.' : 'Couldn’t reach the feedback service. Check the internet connection and try again.'); return { sent: true };
         case 'openWebsite': console.log('openWebsite', a.id); return null; // the app opens its own roblox.com window for the account
+        case 'openWebsiteBlank': console.log('openWebsiteBlank'); return null; // likewise, blank, to sign in on the site
         case 'hideRobloxClosed': rbxClosedHidden = true; push(); return null;
         // Like the app: only the fields sent change; a ping is { kind, value }, an alert switch { kind, enabled }.
         case 'setDiscord': {
