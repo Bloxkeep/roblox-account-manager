@@ -1910,11 +1910,11 @@
   }
 
   const THEMES = {
-    basic: ['system', 'light', 'paper', 'dim', 'dark', 'black', 'contrast'],
-    scenery: ['aurora', 'sunset', 'city', 'space', 'mist', 'snow', 'desert', 'meadow'],
-    color: ['frost', 'ocean', 'forest', 'mocha', 'grape', 'lava', 'neon', 'candy', 'matcha', 'sakura'],
-    style: ['retro', 'terminal', 'gameboy', 'blueprint', 'newspaper'],
-    season: ['lunar', 'spring', 'summer', 'midautumn', 'autumn', 'halloween', 'christmas', 'newyear'],
+    basic: ['system', 'light', 'paper', 'gray', 'dim', 'dark', 'midnight', 'black', 'contrast', 'contrastlight'],
+    scenery: ['aurora', 'sunset', 'city', 'space', 'moon', 'mist', 'snow', 'desert', 'meadow', 'halong', 'terraces', 'hoian', 'fuji', 'jungle', 'underwater', 'skyislands'],
+    color: ['frost', 'ocean', 'teal', 'forest', 'mocha', 'amber', 'grape', 'indigo', 'crimson', 'lava', 'neon', 'candy', 'matcha', 'mint', 'sky', 'lavender', 'peach', 'sakura'],
+    style: ['retro', 'macclassic', 'terminal', 'gameboy', 'arcade', 'blueprint', 'newspaper', 'notebook', 'chalkboard', 'brutal', 'cyberpunk'],
+    season: ['lunar', 'valentine', 'spring', 'flametree', 'summer', 'kites', 'rainy', 'school', 'midautumn', 'autumn', 'skylanterns', 'halloween', 'winter', 'christmas', 'newyear'],
   };
   /** One small swatch per theme, one line per group. Each swatch carries data-theme, so it shows that theme's own colours. */
   function themesHtml() {

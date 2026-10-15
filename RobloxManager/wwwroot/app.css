@@ -6,6 +6,7 @@
 :root, [data-theme="dark"], [data-theme="dim"], [data-theme="black"],
 [data-theme="frost"], [data-theme="ocean"], [data-theme="forest"], [data-theme="mocha"], [data-theme="grape"], [data-theme="terminal"],
 [data-theme="halloween"], [data-theme="lunar"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"],
+[data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="midnight"], [data-theme="indigo"], [data-theme="crimson"], [data-theme="teal"], [data-theme="amber"], [data-theme="chalkboard"], [data-theme="arcade"], [data-theme="cyberpunk"],
 [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="lava"], [data-theme="neon"], [data-theme="blueprint"], [data-theme="contrast"] {
   --bg: #0a0c11;
   --bg-2: #0d1017;
@@ -782,6 +783,7 @@
 }
 /* Light is the base for the light themes. */
 [data-theme="light"], [data-theme="paper"], [data-theme="sakura"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"],
+[data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"], [data-theme="gray"], [data-theme="contrastlight"], [data-theme="sky"], [data-theme="lavender"], [data-theme="peach"], [data-theme="mint"], [data-theme="notebook"], [data-theme="brutal"], [data-theme="macclassic"],
 [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="candy"], [data-theme="matcha"], [data-theme="newspaper"], [data-theme="retro"], [data-theme="gameboy"] {
   --backdrop: var(--bg);
   --blur: none;
@@ -2138,9 +2140,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .side, .dock, .picker, .modal, .menu, .toast, .lock-card, .set-card { backdrop-filter: var(--blur); }
 /* Settings' page list and group headings sit straight on the picture, and the bright parts of some (lit windows, pale
    trees) left them hard to read: on the picture themes the page gets the sidebar's veil behind it. */
-:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"]) #view-settings { background: var(--bg-2); }
+:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) #view-settings { background: var(--bg-2); }
 /* The warning look of the Multi-Roblox card keeps the card's surface under its tint, or its text sat on the picture. */
-:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"]) .multi.warn { background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
+:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .multi.warn { background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
 
 /* ───────── statistics ─────────
    Totals, a bar per day (or hour, for today), play time per account and the top games. Bars are plain blocks in the
@@ -2605,11 +2607,1037 @@ body:has(.lock) #toasts { bottom: 24px; }
 }
 @keyframes still-busy { 50% { opacity: .35; } }
 
+[data-theme="valentine"] {
+  /* Valentine: heart balloons over the hills at dusk, behind glass. */
+  --backdrop: url("scene-valentine.svg") center / cover no-repeat, #5e1c4c;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(38, 14, 44, .32);
+  --bg-2: rgba(38, 14, 44, .56);
+  --surface: rgba(52, 18, 58, .7);
+  --surface-2: rgba(255, 220, 232, .08);
+  --surface-3: rgba(255, 220, 232, .15);
+  --raised: rgba(52, 18, 58, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(52, 18, 58, .6);
+  --card-hover: rgba(52, 18, 58, .7);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 255, 220, 232;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #fdeef3;
+  --text-2: #ecc6d4;
+  --muted: #d9aabf;
+  --dim: #a07a8c;
+  --inv: #ff4d6d;
+  --inv-hover: #ff6b85;
+  --inv-ink: #ffffff;
+  --accent: #ff4d6d;
+  --accent-hover: #ff6b85;
+  --accent-ink: #ffffff;
+  --meter: #ecc6d4;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(19, 7, 22, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ecc6d4' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="rainy"] {
+  /* Rainy season: a street at night in the rain, behind glass. */
+  --backdrop: url("scene-rainy.svg") center / cover no-repeat, #1a2b3a;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(10, 18, 26, .32);
+  --bg-2: rgba(10, 18, 26, .56);
+  --surface: rgba(18, 30, 42, .7);
+  --surface-2: rgba(210, 225, 240, .08);
+  --surface-3: rgba(210, 225, 240, .15);
+  --raised: rgba(18, 30, 42, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(18, 30, 42, .6);
+  --card-hover: rgba(18, 30, 42, .7);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 210, 225, 240;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #e8eff6;
+  --text-2: #b8c7d6;
+  --muted: #a2b3c4;
+  --dim: #6f8193;
+  --inv: #ffc861;
+  --inv-hover: #ffd27f;
+  --inv-ink: #2a1c00;
+  --accent: #ffc861;
+  --accent-hover: #ffd27f;
+  --accent-ink: #2a1c00;
+  --meter: #b8c7d6;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(5, 9, 13, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8c7d6' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="skylanterns"] {
+  /* Sky lanterns rising over a lake at night, behind glass. */
+  --backdrop: url("scene-skylanterns.svg") center / cover no-repeat, #16204a;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(8, 12, 34, .32);
+  --bg-2: rgba(8, 12, 34, .56);
+  --surface: rgba(16, 22, 58, .7);
+  --surface-2: rgba(225, 230, 255, .08);
+  --surface-3: rgba(225, 230, 255, .15);
+  --raised: rgba(16, 22, 58, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(16, 22, 58, .6);
+  --card-hover: rgba(16, 22, 58, .7);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 225, 230, 255;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #eef0fb;
+  --text-2: #c4c9e2;
+  --muted: #b2b8d4;
+  --dim: #7c83a3;
+  --inv: #ffb84a;
+  --inv-hover: #ffc76a;
+  --inv-ink: #2a1600;
+  --accent: #ffb84a;
+  --accent-hover: #ffc76a;
+  --accent-ink: #2a1600;
+  --meter: #c4c9e2;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 6, 17, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c4c9e2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="hoian"] {
+  /* Hoi An: silk lanterns over the old street and the river, behind glass. */
+  --backdrop: url("scene-hoian.svg") center / cover no-repeat, #1e1a3e;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(12, 14, 36, .32);
+  --bg-2: rgba(12, 14, 36, .56);
+  --surface: rgba(22, 22, 52, .7);
+  --surface-2: rgba(255, 236, 210, .08);
+  --surface-3: rgba(255, 236, 210, .15);
+  --raised: rgba(22, 22, 52, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(22, 22, 52, .6);
+  --card-hover: rgba(22, 22, 52, .7);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 255, 236, 210;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #fbf1e4;
+  --text-2: #e2cdb2;
+  --muted: #cfb89c;
+  --dim: #94816c;
+  --inv: #f5a623;
+  --inv-hover: #f7b84a;
+  --inv-ink: #2a1600;
+  --accent: #f5a623;
+  --accent-hover: #f7b84a;
+  --accent-ink: #2a1600;
+  --meter: #e2cdb2;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(6, 7, 18, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e2cdb2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="underwater"] {
+  /* Under the sea: coral, fish and light from above, behind glass. */
+  --backdrop: url("scene-underwater.svg") center / cover no-repeat, #0a4a6e;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(4, 30, 52, .32);
+  --bg-2: rgba(4, 30, 52, .56);
+  --surface: rgba(6, 42, 70, .7);
+  --surface-2: rgba(210, 240, 255, .08);
+  --surface-3: rgba(210, 240, 255, .15);
+  --raised: rgba(6, 42, 70, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(6, 42, 70, .6);
+  --card-hover: rgba(6, 42, 70, .7);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 210, 240, 255;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #e8f6fc;
+  --text-2: #b4d6e6;
+  --muted: #a0c4d6;
+  --dim: #6a90a4;
+  --inv: #ffb02e;
+  --inv-hover: #ffc04f;
+  --inv-ink: #2a1800;
+  --accent: #ffb02e;
+  --accent-hover: #ffc04f;
+  --accent-ink: #2a1800;
+  --meter: #b4d6e6;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(2, 15, 26, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b4d6e6' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="jungle"] {
+  /* Jungle: a waterfall between green walls, behind glass. */
+  --backdrop: url("scene-jungle.svg") center / cover no-repeat, #16402f;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(8, 28, 20, .32);
+  --bg-2: rgba(8, 28, 20, .56);
+  --surface: rgba(14, 44, 32, .7);
+  --surface-2: rgba(220, 245, 230, .08);
+  --surface-3: rgba(220, 245, 230, .15);
+  --raised: rgba(14, 44, 32, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(14, 44, 32, .6);
+  --card-hover: rgba(14, 44, 32, .7);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 220, 245, 230;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #e8f6ee;
+  --text-2: #b6d6c2;
+  --muted: #a2c4b0;
+  --dim: #6e8f7a;
+  --inv: #ff8a1a;
+  --inv-hover: #ff9f42;
+  --inv-ink: #2a1200;
+  --accent: #ff8a1a;
+  --accent-hover: #ff9f42;
+  --accent-ink: #2a1200;
+  --meter: #b6d6c2;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 14, 10, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b6d6c2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="moon"] {
+  /* The Moon: craters, a lander and the Earth rising, behind glass. */
+  --backdrop: url("scene-moon.svg") center / cover no-repeat, #080a18;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(4, 5, 14, .32);
+  --bg-2: rgba(4, 5, 14, .56);
+  --surface: rgba(16, 18, 32, .7);
+  --surface-2: rgba(225, 228, 240, .08);
+  --surface-3: rgba(225, 228, 240, .15);
+  --raised: rgba(16, 18, 32, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(16, 18, 32, .6);
+  --card-hover: rgba(16, 18, 32, .7);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 225, 228, 240;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #f0f2f8;
+  --text-2: #c8ccd8;
+  --muted: #b4b8c6;
+  --dim: #7c8090;
+  --inv: #6aa8ff;
+  --inv-hover: #86b9ff;
+  --inv-ink: #04122a;
+  --accent: #6aa8ff;
+  --accent-hover: #86b9ff;
+  --accent-ink: #04122a;
+  --meter: #c8ccd8;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(2, 2, 7, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c8ccd8' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="winter"] {
+  /* Winter: snowy mountains over a frozen lake, behind glass. */
+  --backdrop: url("scene-winter.svg") center / cover no-repeat, #dfe6f2;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 30, 50, 80;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #14233a;
+  --text-2: #3a4c66;
+  --muted: #44566e;
+  --dim: #6e7f96;
+  --inv: #2f6fbf;
+  --inv-hover: #285fa6;
+  --inv-ink: #fff;
+  --accent: #2f6fbf;
+  --accent-hover: #285fa6;
+  --accent-ink: #fff;
+  --meter: #3a4c66;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233a4c66' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="school"] {
+  /* Back to school: bunting and balloons on the school, behind glass. */
+  --backdrop: url("scene-school.svg") center / cover no-repeat, #bfe6f8;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 20, 60, 90;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #10283a;
+  --text-2: #2e4a5e;
+  --muted: #385468;
+  --dim: #66808f;
+  --inv: #e2553a;
+  --inv-hover: #c8472e;
+  --inv-ink: #fff;
+  --accent: #e2553a;
+  --accent-hover: #c8472e;
+  --accent-ink: #fff;
+  --meter: #2e4a5e;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232e4a5e' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="kites"] {
+  /* Kite season over the rice fields, behind glass. */
+  --backdrop: url("scene-kites.svg") center / cover no-repeat, #a9dcf5;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 20, 60, 90;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #0f2a3a;
+  --text-2: #2e4d5e;
+  --muted: #38566a;
+  --dim: #64808f;
+  --inv: #8a4bd9;
+  --inv-hover: #7a3dca;
+  --inv-ink: #fff;
+  --accent: #8a4bd9;
+  --accent-hover: #7a3dca;
+  --accent-ink: #fff;
+  --meter: #2e4d5e;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232e4d5e' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="flametree"] {
+  /* Flame tree: red blossoms over the school yard, behind glass. */
+  --backdrop: url("scene-flametree.svg") center / cover no-repeat, #c6e9f8;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 90, 30, 20;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #2a1612;
+  --text-2: #5a3a30;
+  --muted: #634238;
+  --dim: #8a6a60;
+  --inv: #d8402e;
+  --inv-hover: #bf3524;
+  --inv-ink: #fff;
+  --accent: #d8402e;
+  --accent-hover: #bf3524;
+  --accent-ink: #fff;
+  --meter: #5a3a30;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a3a30' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="halong"] {
+  /* Ha Long Bay: limestone towers and a junk boat, behind glass. */
+  --backdrop: url("scene-halong.svg") center / cover no-repeat, #cfe8ec;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 20, 60, 55;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #102a26;
+  --text-2: #2f4c47;
+  --muted: #395751;
+  --dim: #66807a;
+  --inv: #2f8f7a;
+  --inv-hover: #277a68;
+  --inv-ink: #fff;
+  --accent: #2f8f7a;
+  --accent-hover: #277a68;
+  --accent-ink: #fff;
+  --meter: #2f4c47;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f4c47' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="terraces"] {
+  /* Rice terraces at sunset, behind glass. */
+  --backdrop: url("scene-terraces.svg") center / cover no-repeat, #f6d9a8;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 70, 60, 20;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #262a10;
+  --text-2: #4b5230;
+  --muted: #555c38;
+  --dim: #7d8460;
+  --inv: #6a8f2a;
+  --inv-hover: #5a7a22;
+  --inv-ink: #fff;
+  --accent: #6a8f2a;
+  --accent-hover: #5a7a22;
+  --accent-ink: #fff;
+  --meter: #4b5230;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234b5230' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="fuji"] {
+  /* Mount Fuji with cherry blossom and a pagoda, behind glass. */
+  --backdrop: url("scene-fuji.svg") center / cover no-repeat, #f8d6d6;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 70, 30, 45;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #2a1a22;
+  --text-2: #5a404a;
+  --muted: #634a54;
+  --dim: #8a7078;
+  --inv: #c8483e;
+  --inv-hover: #ad3d34;
+  --inv-ink: #fff;
+  --accent: #c8483e;
+  --accent-hover: #ad3d34;
+  --accent-ink: #fff;
+  --meter: #5a404a;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a404a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="skyislands"] {
+  /* Floating islands in the sky, an obby to cross, behind glass. */
+  --backdrop: url("scene-skyislands.svg") center / cover no-repeat, #a9d8f3;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 20, 60, 90;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #0f2a3a;
+  --text-2: #2e4d5e;
+  --muted: #38566a;
+  --dim: #64808f;
+  --inv: #3ea04f;
+  --inv-hover: #348a43;
+  --inv-ink: #fff;
+  --accent: #3ea04f;
+  --accent-hover: #348a43;
+  --accent-ink: #fff;
+  --meter: #2e4d5e;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232e4d5e' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="gray"] {
+  /* Grey: neutral light grey. */
+  --bg: #e9eaec;
+  --bg-2: #dfe0e3;
+  --surface: #f4f4f5;
+  --surface-2: #ebebed;
+  --surface-3: #dcdde0;
+  --raised: #f8f8f9;
+  --field: #ffffff;
+  --card: #f4f4f5;
+  --card-hover: #f8f8f9;
+  --tint: 30, 32, 38;
+  --text: #18191c;
+  --text-2: #3c3e44;
+  --muted: #4a4c52;
+  --dim: #74767c;
+  --inv: #18191c;
+  --inv-hover: #33353a;
+  --inv-ink: #ffffff;
+  --accent: #15803d;
+  --accent-hover: #166534;
+  --accent-ink: #ffffff;
+  --meter: #3c3e44;
+  --meter-2: #cfd0d4;
+  --scrim: rgba(20, 22, 26, .3);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233c3e44' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="midnight"] {
+  /* Midnight: deep navy. */
+  --bg: #0b1020;
+  --bg-2: #080c19;
+  --surface: #111833;
+  --surface-2: #16203f;
+  --surface-3: #1e2a50;
+  --raised: #141c3a;
+  --field: #080c19;
+  --card: #0f1630;
+  --card-hover: #131b38;
+  --tint: 214, 224, 255;
+  --text: #e6ebfa;
+  --text-2: #b3bedc;
+  --muted: #8f9bbd;
+  --dim: #6c779a;
+  --inv: #e6ebfa;
+  --inv-hover: #ffffff;
+  --inv-ink: #0b1020;
+  --accent: #4ade80;
+  --accent-hover: #6ee79a;
+  --accent-ink: #052e16;
+  --meter: #b3bedc;
+  --meter-2: #2a3660;
+  --scrim: rgba(4, 6, 14, .7);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b3bedc' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="contrastlight"] {
+  /* High contrast, light: black on white with strong lines. */
+  --bg: #ffffff;
+  --bg-2: #f2f2f2;
+  --surface: #ffffff;
+  --surface-2: #f2f2f2;
+  --surface-3: #e0e0e0;
+  --raised: #ffffff;
+  --field: #ffffff;
+  --card: #ffffff;
+  --card-hover: #fafafa;
+  --tint: 0, 0, 0;
+  --text: #000000;
+  --text-2: #1a1a1a;
+  --muted: #333333;
+  --dim: #555555;
+  --inv: #000000;
+  --inv-hover: #222222;
+  --inv-ink: #ffffff;
+  --accent: #006b2e;
+  --accent-hover: #005a26;
+  --accent-ink: #ffffff;
+  --meter: #1a1a1a;
+  --meter-2: #bbbbbb;
+  --scrim: rgba(0, 0, 0, .35);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1a1a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --line: rgba(0, 0, 0, .35);
+  --line-2: rgba(0, 0, 0, .5);
+  --line-3: rgba(0, 0, 0, .75);
+  --line-field: rgba(0, 0, 0, .6);
+  --ok: #006b2e;
+  --bad: #b00020;
+  --ok-ink: #00561f;
+  --bad-ink: #9a001a;
+}
+[data-theme="indigo"] {
+  /* Indigo. */
+  --bg: #12122a;
+  --bg-2: #0e0e22;
+  --surface: #1a1a3a;
+  --surface-2: #212147;
+  --surface-3: #2a2a58;
+  --raised: #1e1e42;
+  --field: #0e0e22;
+  --card: #181836;
+  --card-hover: #1c1c3e;
+  --tint: 224, 224, 255;
+  --text: #ececfb;
+  --text-2: #c0c0e6;
+  --muted: #9c9ccc;
+  --dim: #7676a6;
+  --inv: #a5b4fc;
+  --inv-hover: #bfcafd;
+  --inv-ink: #11124a;
+  --accent: #818cf8;
+  --accent-hover: #9aa3fa;
+  --accent-ink: #0c0d3a;
+  --meter: #c0c0e6;
+  --meter-2: #34345e;
+  --scrim: rgba(6, 6, 20, .7);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c0c0e6' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="crimson"] {
+  /* Crimson. */
+  --bg: #1c0b10;
+  --bg-2: #160810;
+  --surface: #261018;
+  --surface-2: #30141e;
+  --surface-3: #3e1a26;
+  --raised: #2a121b;
+  --field: #160810;
+  --card: #231016;
+  --card-hover: #28121a;
+  --tint: 255, 220, 228;
+  --text: #fbeaf0;
+  --text-2: #e2bcc8;
+  --muted: #c497a6;
+  --dim: #94707c;
+  --inv: #fb7185;
+  --inv-hover: #fc8fa0;
+  --inv-ink: #2a0510;
+  --accent: #f43f5e;
+  --accent-hover: #f65f79;
+  --accent-ink: #ffffff;
+  --meter: #e2bcc8;
+  --meter-2: #4e2532;
+  --scrim: rgba(14, 4, 8, .7);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e2bcc8' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="teal"] {
+  /* Teal. */
+  --bg: #071a1a;
+  --bg-2: #051414;
+  --surface: #0c2626;
+  --surface-2: #103030;
+  --surface-3: #163e3e;
+  --raised: #0e2a2a;
+  --field: #051414;
+  --card: #0b2323;
+  --card-hover: #0e2828;
+  --tint: 210, 250, 245;
+  --text: #e2f7f4;
+  --text-2: #a8d4cf;
+  --muted: #86b4ae;
+  --dim: #64908a;
+  --inv: #5eead4;
+  --inv-hover: #81f0de;
+  --inv-ink: #032a25;
+  --accent: #14b8a6;
+  --accent-hover: #2dd4bf;
+  --accent-ink: #022a25;
+  --meter: #a8d4cf;
+  --meter-2: #1e4a48;
+  --scrim: rgba(2, 10, 10, .7);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8d4cf' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="amber"] {
+  /* Amber. */
+  --bg: #1a1406;
+  --bg-2: #141004;
+  --surface: #241b0a;
+  --surface-2: #2e230e;
+  --surface-3: #3a2c12;
+  --raised: #281e0c;
+  --field: #141004;
+  --card: #211909;
+  --card-hover: #261d0b;
+  --tint: 255, 240, 210;
+  --text: #fbf2e0;
+  --text-2: #e2cfa8;
+  --muted: #c4ae84;
+  --dim: #94805c;
+  --inv: #fbbf24;
+  --inv-hover: #fcd34d;
+  --inv-ink: #2a1a00;
+  --accent: #f59e0b;
+  --accent-hover: #f7b13a;
+  --accent-ink: #2a1600;
+  --meter: #e2cfa8;
+  --meter-2: #4a3a18;
+  --scrim: rgba(10, 8, 2, .7);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e2cfa8' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="sky"] {
+  /* Sky. */
+  --bg: #eef6fc;
+  --bg-2: #e1eef9;
+  --surface: #fafdff;
+  --surface-2: #eef5fb;
+  --surface-3: #d8e8f5;
+  --raised: #fafdff;
+  --field: #ffffff;
+  --card: #fafdff;
+  --card-hover: #ffffff;
+  --tint: 20, 60, 100;
+  --text: #10243a;
+  --text-2: #34506a;
+  --muted: #3e5870;
+  --dim: #6a8298;
+  --inv: #1d6fd0;
+  --inv-hover: #185fb4;
+  --inv-ink: #ffffff;
+  --accent: #1d6fd0;
+  --accent-hover: #185fb4;
+  --accent-ink: #ffffff;
+  --meter: #34506a;
+  --meter-2: #cddff0;
+  --scrim: rgba(15, 40, 70, .28);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2334506a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="lavender"] {
+  /* Lavender. */
+  --bg: #f5f2fc;
+  --bg-2: #ece6f8;
+  --surface: #fdfcff;
+  --surface-2: #f3effb;
+  --surface-3: #e2daf3;
+  --raised: #fdfcff;
+  --field: #ffffff;
+  --card: #fdfcff;
+  --card-hover: #ffffff;
+  --tint: 60, 30, 100;
+  --text: #241a38;
+  --text-2: #4e4068;
+  --muted: #574870;
+  --dim: #7f7296;
+  --inv: #7c4dd8;
+  --inv-hover: #6a3dc4;
+  --inv-ink: #ffffff;
+  --accent: #7c4dd8;
+  --accent-hover: #6a3dc4;
+  --accent-ink: #ffffff;
+  --meter: #4e4068;
+  --meter-2: #ddd2f0;
+  --scrim: rgba(40, 20, 70, .28);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234e4068' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="peach"] {
+  /* Peach. */
+  --bg: #fdf3ec;
+  --bg-2: #f9e7da;
+  --surface: #fffaf6;
+  --surface-2: #fcefe5;
+  --surface-3: #f3dccb;
+  --raised: #fffaf6;
+  --field: #ffffff;
+  --card: #fffaf6;
+  --card-hover: #ffffff;
+  --tint: 100, 50, 20;
+  --text: #36200f;
+  --text-2: #64422a;
+  --muted: #6c4a32;
+  --dim: #94725a;
+  --inv: #e2643a;
+  --inv-hover: #c9552e;
+  --inv-ink: #ffffff;
+  --accent: #e2643a;
+  --accent-hover: #c9552e;
+  --accent-ink: #ffffff;
+  --meter: #64422a;
+  --meter-2: #f0d4c0;
+  --scrim: rgba(70, 35, 10, .28);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364422a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="mint"] {
+  /* Mint. */
+  --bg: #effaf5;
+  --bg-2: #e0f4ea;
+  --surface: #fbfffd;
+  --surface-2: #eef9f3;
+  --surface-3: #d4efe1;
+  --raised: #fbfffd;
+  --field: #ffffff;
+  --card: #fbfffd;
+  --card-hover: #ffffff;
+  --tint: 20, 80, 50;
+  --text: #0f2a1e;
+  --text-2: #2e5442;
+  --muted: #375c4a;
+  --dim: #64857a;
+  --inv: #12925f;
+  --inv-hover: #0f7d51;
+  --inv-ink: #ffffff;
+  --accent: #12925f;
+  --accent-hover: #0f7d51;
+  --accent-ink: #ffffff;
+  --meter: #2e5442;
+  --meter-2: #c8eadb;
+  --scrim: rgba(10, 40, 25, .28);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232e5442' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="notebook"] {
+  /* Notebook: ruled paper with a red margin, ink-blue handwriting for the titles, hand-drawn outlines. */
+  --backdrop: linear-gradient(90deg, transparent 54px, #f0a3a3 54px 56px, transparent 56px), repeating-linear-gradient(transparent 0 27px, #cfe0f2 27px 28px), #fdfcf6;
+  --bg: #fdfcf6;
+  --bg-2: #f6f2e4;
+  --surface: #fffffb;
+  --surface-2: #f7f4ea;
+  --surface-3: #ece6d4;
+  --raised: #fffffb;
+  --field: #ffffff;
+  --card: #fffffb;
+  --card-hover: #ffffff;
+  --tint: 30, 40, 70;
+  --text: #1f2a44;
+  --text-2: #3e4a66;
+  --muted: #4a5470;
+  --dim: #7a8298;
+  --inv: #2a5bd7;
+  --inv-hover: #234dba;
+  --inv-ink: #fff;
+  --accent: #2a5bd7;
+  --accent-hover: #234dba;
+  --accent-ink: #fff;
+  --meter: #2a5bd7;
+  --meter-2: #dfe4f0;
+  --scrim: rgba(30, 40, 70, .28);
+  --font-display: "Segoe Print", "Ink Free", cursive;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233e4a66' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="chalkboard"] {
+  /* Chalkboard: slate green, chalk lines drawn by hand, a wooden frame for the sidebar. */
+  --backdrop: #2a3d34;
+  --bg: #2a3d34;
+  --bg-2: #5a3c22;
+  --surface: #2f443a;
+  --surface-2: #34493f;
+  --surface-3: #3d5449;
+  --raised: #33493e;
+  --field: #24362d;
+  --card: #2d4137;
+  --card-hover: #31463b;
+  --tint: 244, 244, 238;
+  --line: rgba(244, 244, 238, .35);
+  --line-2: rgba(244, 244, 238, .5);
+  --line-3: rgba(244, 244, 238, .75);
+  --text: #f4f4ee;
+  --text-2: #dcdcd2;
+  --muted: #c4c6b8;
+  --dim: #98a094;
+  --inv: #f7e27a;
+  --inv-hover: #faea9c;
+  --inv-ink: #2a2a10;
+  --accent: #f7e27a;
+  --accent-hover: #faea9c;
+  --accent-ink: #2a2a10;
+  --ok: #a8e6a1;
+  --online: #9fd0ff;
+  --bad: #f7a8a8;
+  --warn: #f7e27a;
+  --meter: #f4f4ee;
+  --meter-2: rgba(244, 244, 238, .2);
+  --scrim: rgba(10, 16, 12, .6);
+  --font-display: "Ink Free", "Segoe Print", cursive;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dcdcd2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="brutal"] {
+  /* Neo-brutalism: cream paper, thick black outlines, hard black shadows, loud flat colours. */
+  --backdrop: #fff6dc;
+  --bg: #fff6dc;
+  --bg-2: #ffe8a3;
+  --surface: #ffffff;
+  --surface-2: #fff6dc;
+  --surface-3: #f2e6c4;
+  --raised: #ffffff;
+  --field: #ffffff;
+  --card: #ffffff;
+  --card-hover: #ffffff;
+  --tint: 0, 0, 0;
+  --line: #000;
+  --line-2: #000;
+  --line-3: #000;
+  --line-field: #000;
+  --text: #000000;
+  --text-2: #1a1a1a;
+  --muted: #2e2e2e;
+  --dim: #5a5a5a;
+  --inv: #000000;
+  --inv-hover: #222222;
+  --inv-ink: #ffffff;
+  --accent: #ffd23f;
+  --accent-hover: #ffdc66;
+  --accent-ink: #000000;
+  --meter: #000000;
+  --meter-2: #f2e6c4;
+  --scrim: rgba(0, 0, 0, .35);
+  --font-display: "Segoe UI Black", "Segoe UI", sans-serif;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="arcade"] {
+  /* Arcade: an 8-bit console's black screen, its bright palette, notched pixel borders. */
+  --backdrop: #0a0a12;
+  --bg: #0a0a12;
+  --bg-2: #101020;
+  --surface: #14142a;
+  --surface-2: #1c1c38;
+  --surface-3: #262648;
+  --raised: #14142a;
+  --field: #0a0a12;
+  --card: #14142a;
+  --card-hover: #181832;
+  --tint: 255, 255, 255;
+  --text: #ffffff;
+  --text-2: #d8d8f0;
+  --muted: #b0b0d0;
+  --dim: #7a7aa0;
+  --inv: #f8d020;
+  --inv-hover: #fadc50;
+  --inv-ink: #0a0a12;
+  --accent: #38c838;
+  --accent-hover: #50d850;
+  --accent-ink: #0a0a12;
+  --ok: #38c838;
+  --online: #3a8ae8;
+  --bad: #e83a3a;
+  --warn: #f8d020;
+  --meter: #f8d020;
+  --meter-2: #262648;
+  --scrim: rgba(0, 0, 0, .7);
+  --font: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --font-display: "Cascadia Mono", Consolas, ui-monospace, monospace;
+}
+[data-theme="cyberpunk"] {
+  /* Cyberpunk: near-black panels with cut corners, warning yellow and a cold cyan. */
+  --backdrop: repeating-linear-gradient(90deg, rgba(0, 240, 255, .04) 0 1px, transparent 1px 64px), #0b0b10;
+  --bg: #0b0b10;
+  --bg-2: #08080c;
+  --surface: #15151d;
+  --surface-2: #1c1c26;
+  --surface-3: #262632;
+  --raised: #15151d;
+  --field: #08080c;
+  --card: #13131a;
+  --card-hover: #17171f;
+  --tint: 240, 240, 255;
+  --text: #f2f2f8;
+  --text-2: #c8c8d6;
+  --muted: #a6a6b8;
+  --dim: #74748a;
+  --inv: #fcee0a;
+  --inv-hover: #fff35a;
+  --inv-ink: #0b0b10;
+  --accent: #fcee0a;
+  --accent-hover: #fff35a;
+  --accent-ink: #0b0b10;
+  --online: #00e5ff;
+  --meter: #00e5ff;
+  --meter-2: #262632;
+  --scrim: rgba(0, 0, 0, .72);
+  --font: Bahnschrift, "Segoe UI", sans-serif;
+  --font-display: Bahnschrift, "Segoe UI", sans-serif;
+}
+[data-theme="macclassic"] {
+  /* Classic Mac: one bit. A dithered grey desktop, white windows with striped title bars, black for the chosen. */
+  --backdrop: repeating-conic-gradient(#000 0 25%, #fff 0 50%) 0 0 / 2px 2px;
+  --bg: #ffffff;
+  --bg-2: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --surface-3: #e6e6e6;
+  --raised: #ffffff;
+  --field: #ffffff;
+  --card: #ffffff;
+  --card-hover: #ffffff;
+  --tint: 0, 0, 0;
+  --line: #000;
+  --line-2: #000;
+  --line-3: #000;
+  --line-field: #000;
+  --text: #000000;
+  --text-2: #000000;
+  --muted: #333333;
+  --dim: #666666;
+  --inv: #000000;
+  --inv-hover: #333333;
+  --inv-ink: #ffffff;
+  --accent: #000000;
+  --accent-hover: #333333;
+  --accent-ink: #ffffff;
+  --ok: #000000;
+  --online: #000000;
+  --studio: #000000;
+  --warn: #000000;
+  --bad: #000000;
+  --ok-ink: #000000;
+  --online-ink: #000000;
+  --studio-ink: #000000;
+  --warn-ink: #000000;
+  --bad-ink: #000000;
+  --meter: #000000;
+  --meter-2: #ffffff;
+  --scrim: rgba(0, 0, 0, .25);
+  --font: Tahoma, "Segoe UI", sans-serif;
+  --font-display: Tahoma, "Segoe UI", sans-serif;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* Scenes with bright parts right behind the cards (lit walls, a waterfall, the lunar ground): denser panels keep text readable. */
+[data-theme="hoian"] { --card: rgba(22, 22, 52, .8); --card-hover: rgba(22, 22, 52, .86); --surface: rgba(22, 22, 52, .82); }
+[data-theme="jungle"] { --card: rgba(14, 44, 32, .8); --card-hover: rgba(14, 44, 32, .86); --surface: rgba(14, 44, 32, .82); }
+[data-theme="moon"] { --card: rgba(16, 18, 32, .8); --card-hover: rgba(16, 18, 32, .86); --surface: rgba(16, 18, 32, .82); }
+
 /* ───────── Styles: each one a look of its own, not only other colours ─────────
    All five have square corners (the theme picker's swatches stay round). */
-:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"]) :not(.swatch, .swatch *),
-:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"]) .switch span::after { border-radius: 0 !important; }
-:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"]) .card:hover { transform: none; }
+:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"], [data-theme="brutal"], [data-theme="arcade"], [data-theme="cyberpunk"]) :not(.swatch, .swatch *),
+:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"], [data-theme="brutal"], [data-theme="arcade"], [data-theme="cyberpunk"]) .switch span::after { border-radius: 0 !important; }
+:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"], [data-theme="brutal"], [data-theme="arcade"], [data-theme="cyberpunk"]) .card:hover { transform: none; }
 
 /* Retro (Windows 98): raised grey panels and buttons, sunken white fields, navy title bars and selection. */
 [data-theme="retro"] * { scrollbar-color: #c0c0c0 #dfdfdf; }
@@ -2705,3 +3733,71 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="newspaper"] .nav.on .i { color: #f4f1ea; }
 [data-theme="newspaper"] .avatar { background: #111; }
 [data-theme="newspaper"] img { filter: grayscale(1) contrast(1.06); }
+
+/* Notebook: hand-drawn outlines (uneven corners), handwriting for titles and names, ink-blue for what is chosen. */
+[data-theme="notebook"] .main { background: var(--backdrop); }
+[data-theme="notebook"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .grid.list) { border: 1.5px solid #3e4a66; border-radius: 255px 14px 225px 14px / 14px 225px 14px 255px; box-shadow: 2px 3px 0 rgba(30, 40, 70, .12); }
+[data-theme="notebook"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg, .field, .select) { border: 1.5px solid #3e4a66; border-radius: 120px 10px 110px 10px / 10px 110px 10px 120px; }
+[data-theme="notebook"] .side { border-right: 2px solid #f0a3a3; }
+[data-theme="notebook"] :is(.top h1, .name, .brand-name, .set-page-title, .set-grp-title, .stat-card h3) { font-family: var(--font-display); font-weight: 700; }
+[data-theme="notebook"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: transparent; color: #2a5bd7; box-shadow: inset 0 -2px 0 #2a5bd7; }
+[data-theme="notebook"] .nav.on .i { color: #2a5bd7; }
+[data-theme="notebook"] .card:hover { transform: rotate(-.4deg); }
+
+/* Chalkboard: chalk outlines drawn by hand, chalk handwriting for titles, the sidebar as the board's wooden frame. */
+[data-theme="chalkboard"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .grid.list) { border: 2px solid rgba(244, 244, 238, .7); border-radius: 255px 12px 225px 12px / 12px 225px 12px 255px; box-shadow: none; }
+[data-theme="chalkboard"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg, .field, .select) { border: 1.5px solid rgba(244, 244, 238, .65); border-radius: 120px 9px 110px 9px / 9px 110px 9px 120px; }
+[data-theme="chalkboard"] .side { background: #5a3c22; border-right: 6px solid #3e2814; }
+[data-theme="chalkboard"] .side :is(.side-card, .multi) { background: #2a3d34; }
+[data-theme="chalkboard"] :is(.top h1, .name, .brand-name, .set-page-title, .set-grp-title, .stat-card h3) { font-family: var(--font-display); font-weight: 700; letter-spacing: .01em; }
+[data-theme="chalkboard"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: rgba(247, 226, 122, .16); color: #f7e27a; }
+[data-theme="chalkboard"] .nav.on .i { color: #f7e27a; }
+
+/* Neo-brutalism: thick black outlines, hard black shadows a press pushes away, loud flat colours. */
+[data-theme="brutal"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .grid.list) { border: 3px solid #000; box-shadow: 5px 5px 0 #000; }
+[data-theme="brutal"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg) { border: 2px solid #000; box-shadow: 3px 3px 0 #000; font-weight: 800; }
+[data-theme="brutal"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg):active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
+[data-theme="brutal"] :is(.field, .select) { border: 2px solid #000; }
+[data-theme="brutal"] .play-btn { border: 3px solid #000; box-shadow: 4px 4px 0 #000; }
+[data-theme="brutal"] .play-btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: none; }
+[data-theme="brutal"] .side { border-right: 3px solid #000; }
+[data-theme="brutal"] .chip.on { background: #ff8fd0; color: #000; }
+[data-theme="brutal"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: #a3e635; color: #000; box-shadow: 3px 3px 0 #000; outline: 2px solid #000; }
+[data-theme="brutal"] .nav.on .i { color: #000; }
+[data-theme="brutal"] .top h1 { font-size: 30px; }
+
+/* Arcade: notched pixel borders (four hard shadows, empty corners), uppercase titles, the console's yellow for the chosen. */
+[data-theme="arcade"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .grid.list) { border: 0; box-shadow: 0 -4px 0 #d8d8f0, 0 4px 0 #d8d8f0, -4px 0 0 #d8d8f0, 4px 0 0 #d8d8f0; }
+[data-theme="arcade"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg) { border: 0; box-shadow: 0 -3px 0 #7a7aa0, 0 3px 0 #7a7aa0, -3px 0 0 #7a7aa0, 3px 0 0 #7a7aa0; }
+[data-theme="arcade"] :is(.btn.primary, .play-btn:not(:disabled), .chip.on) { box-shadow: 0 -3px 0 #fff, 0 3px 0 #fff, -3px 0 0 #fff, 3px 0 0 #fff; }
+[data-theme="arcade"] :is(.field, .select) { border: 2px solid #7a7aa0; }
+[data-theme="arcade"] .side { border-right: 4px solid #3a3a60; }
+[data-theme="arcade"] :is(.top h1, .side-card h4, .set-grp-title, .stat-card h3) { text-transform: uppercase; letter-spacing: .04em; }
+[data-theme="arcade"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: #f8d020; color: #0a0a12; }
+[data-theme="arcade"] .nav.on .i { color: #0a0a12; }
+[data-theme="arcade"] .avatar { background: #f8d020; }
+
+/* Cyberpunk: cut corners, a yellow edge on every panel, cyan for live things, uppercase spaced titles. */
+[data-theme="cyberpunk"] .main { background: var(--backdrop); }
+[data-theme="cyberpunk"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .grid.list) { border: 1px solid #2c2c3a; border-left: 3px solid #fcee0a; box-shadow: none;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px)); }
+[data-theme="cyberpunk"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg, .play-btn) { clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px)); }
+[data-theme="cyberpunk"] :is(.top h1, .side-card h4, .set-grp-title, .stat-card h3, .brand-name) { text-transform: uppercase; letter-spacing: .1em; }
+[data-theme="cyberpunk"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: #fcee0a; color: #0b0b10; }
+[data-theme="cyberpunk"] .nav.on .i { color: #0b0b10; }
+[data-theme="cyberpunk"] .side { border-right: 1px solid #fcee0a; }
+[data-theme="cyberpunk"] .avatar { background: #00e5ff; }
+
+/* Classic Mac: white windows with a black outline and a hard shadow, striped title bars, rounded buttons, black for the chosen. */
+[data-theme="macclassic"] .main { background: var(--backdrop); }
+[data-theme="macclassic"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .grid.list) { border: 1px solid #000; border-radius: 0; box-shadow: 2px 2px 0 #000; }
+[data-theme="macclassic"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg) { border: 1px solid #000; border-radius: 7px; background: #fff; }
+[data-theme="macclassic"] :is(.btn.primary, .play-btn) { background: #fff; color: #000; border: 1px solid #000; border-radius: 8px; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; }
+[data-theme="macclassic"] :is(.field, .select) { border: 1px solid #000; border-radius: 0; }
+[data-theme="macclassic"] .top { margin: 18px 22px 0; padding: 10px 16px 12px; background: #fff; border: 1px solid #000; box-shadow: 2px 2px 0 #000; }
+[data-theme="macclassic"] :is(.brand, .modal-head) { background: repeating-linear-gradient(#000 0 1px, #fff 1px 3px); }
+[data-theme="macclassic"] :is(.brand-name, .brand-sub, .modal-head h3) { background: #fff; padding: 0 6px; }
+[data-theme="macclassic"] .side { border-right: 1px solid #000; }
+[data-theme="macclassic"] :is(.nav.on, .set-nav-item[aria-current="page"], .chip.on, .menu button:hover:not(:disabled)) { background: #000; color: #fff; }
+[data-theme="macclassic"] .nav.on .i { color: #fff; }
+[data-theme="macclassic"] img { filter: grayscale(1) contrast(1.4); }
