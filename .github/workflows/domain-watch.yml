@@ -1,0 +1,48 @@
+# Looks in Certificate Transparency (crt.sh) for new web addresses like Bloxkeep, where a copy of Bloxkeep with
+# malware could be handed out, and posts each new one to Discord once (DomainWatch/watch.py). Every 3 hours; crt.sh
+# often fails, and a search that failed is simply tried again next time. What it saw is kept in domain-status.json on
+# the domain-status branch (made by the first run), apart from roblox-status so the two watches never push over each
+# other. Secret: DOMAIN_WATCH_WEBHOOK, else DISCORD_WEBHOOK (without either, the messages only go to the run's log).
+name: Domain watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */3 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: domain-watch
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: DomainWatch
+      - name: Get what was seen
+        run: |
+          if git fetch -q --depth=1 origin +refs/heads/domain-status:refs/remotes/origin/domain-status; then
+            git worktree add -q -B domain-status status origin/domain-status
+          else
+            git worktree add -q --orphan -b domain-status status
+          fi
+      - name: Search crt.sh
+        env:
+          DOMAIN_WATCH_WEBHOOK: ${{ secrets.DOMAIN_WATCH_WEBHOOK }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: python3 DomainWatch/watch.py --status status/domain-status.json
+      - name: Save what was seen
+        if: success() || failure()
+        working-directory: status
+        run: |
+          [ -f domain-status.json ] || exit 0
+          git add domain-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Domain watch: $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q origin HEAD:domain-status
