@@ -1,0 +1,9 @@
+# Deployed by .github/workflows/roblox-watch-worker.yml (secret WATCH_TOKEN: a GitHub token that may start the
+# "Roblox watch" workflow). No web address: it only runs on its schedule.
+name = "bloxkeep-roblox-watch"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+workers_dev = false
+
+[triggers]
+crons = ["* * * * *"]

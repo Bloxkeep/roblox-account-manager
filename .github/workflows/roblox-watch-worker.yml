@@ -1,0 +1,29 @@
+# Puts the Cloudflare watcher (RobloxWatch/worker) on Cloudflare. Run by hand once the secrets are set, and again
+# after changing the worker. Secrets: CLOUDFLARE_API_TOKEN ("Edit Cloudflare Workers" template),
+# CLOUDFLARE_ACCOUNT_ID, and WATCH_TOKEN (a GitHub token for this repository with Actions: read and write) that the
+# worker uses to start the "Roblox watch" workflow.
+name: Roblox watch (Cloudflare)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: RobloxWatch
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: RobloxWatch/worker
+          secrets: |
+            WATCH_TOKEN
+        env:
+          WATCH_TOKEN: ${{ secrets.WATCH_TOKEN }}

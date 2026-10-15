@@ -1,0 +1,50 @@
+# Checks Roblox for a new Windows build or a changed single-window setting and posts what it found to Discord
+# (RobloxWatch/watch.py). Started within a minute of a Roblox update by the Cloudflare watcher (RobloxWatch/worker),
+# and every 10 minutes by itself in case that one is down. What it saw is kept on the roblox-status branch.
+# Secret: DISCORD_WEBHOOK (without it, the messages only go to the run's log).
+name: Roblox watch
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: What started it (the Cloudflare watcher says what it saw)
+        default: manual
+      force:
+        description: Check the live build again even if it was checked before
+        type: boolean
+        default: false
+  schedule:
+    - cron: '*/10 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: roblox-watch
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: RobloxWatch
+      - uses: actions/checkout@v4
+        with:
+          ref: roblox-status
+          path: status
+      - name: Check Roblox (${{ inputs.reason || 'schedule' }})
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: python3 RobloxWatch/watch.py --status status/multi-status.json ${{ inputs.force && '--force' || '' }}
+      - name: Save what was seen
+        if: success() || failure()
+        working-directory: status
+        run: |
+          git add multi-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Roblox watch: $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q origin HEAD:roblox-status
