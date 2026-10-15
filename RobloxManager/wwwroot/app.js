@@ -634,6 +634,7 @@
     // form being typed in. They keep their old language until closed.
     $('#app').innerHTML = `<div class="shell">
       <aside class="side">
+        <div class="lights"><button class="light l-close" data-act="win-close" title="${t('win.close')}" aria-label="${t('win.close')}"></button><button class="light l-min" data-act="win-min" title="${t('win.min')}" aria-label="${t('win.min')}"></button><button class="light l-zoom" data-act="win-zoom" title="${t('win.zoom')}" aria-label="${t('win.zoom')}"></button></div>
         <div class="brand"><img src="${LOGO}" alt=""><div><div class="brand-name">Bloxkeep</div><div class="brand-sub">${t('brand.sub')}</div></div></div>
         <div class="side-nav">
         <button class="nav" data-act="view" data-view="accounts" title="${t('nav.accounts')}">${icon('users')}<span>${t('nav.accounts')}</span><em id="nav-count">0</em></button>
@@ -1913,7 +1914,7 @@
     basic: ['system', 'light', 'paper', 'gray', 'dim', 'dark', 'midnight', 'black', 'contrast', 'contrastlight'],
     scenery: ['aurora', 'sunset', 'city', 'space', 'moon', 'mist', 'snow', 'desert', 'meadow', 'halong', 'terraces', 'hoian', 'fuji', 'jungle', 'underwater', 'skyislands'],
     color: ['frost', 'ocean', 'teal', 'forest', 'mocha', 'amber', 'grape', 'indigo', 'crimson', 'lava', 'neon', 'candy', 'matcha', 'mint', 'sky', 'lavender', 'peach', 'sakura'],
-    style: ['retro', 'macclassic', 'terminal', 'gameboy', 'arcade', 'blueprint', 'newspaper', 'notebook', 'chalkboard', 'brutal', 'cyberpunk'],
+    style: ['macos', 'macosdark', 'gnome', 'ubuntu', 'kde', 'retro', 'macclassic', 'terminal', 'gameboy', 'arcade', 'blueprint', 'newspaper', 'notebook', 'chalkboard', 'brutal', 'cyberpunk'],
     season: ['lunar', 'valentine', 'spring', 'flametree', 'summer', 'kites', 'rainy', 'school', 'midautumn', 'autumn', 'skylanterns', 'halloween', 'winter', 'christmas', 'newyear'],
   };
   /** One small swatch per theme, one line per group. Each swatch carries data-theme, so it shows that theme's own colours. */
@@ -5396,6 +5397,10 @@
       case 'close-all': return closeAll();
       // A double click would open the window and close it again: the second click is dropped.
       case 'mini': return busy(el, () => call('toggleMini'));
+      // The macOS themes' window buttons (shown only there): the same as the title bar's ✕, ─ and ☐.
+      case 'win-close': return call('window', { action: 'close' });
+      case 'win-min': return call('window', { action: 'minimize' });
+      case 'win-zoom': return call('window', { action: 'zoom' });
       case 'rc-pick': return pickRobloxConfigAccounts();
       case 'pick-launcher': return busy(el, () => call('pickLauncher')); // a double click opens one file window
       case 'cancel-launch': return call('cancelLaunch');

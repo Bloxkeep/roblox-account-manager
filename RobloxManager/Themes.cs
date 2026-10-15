@@ -85,6 +85,11 @@ public static class Themes
         new("arcade", true, Rgb(0x0a0a12), Rgb(0x14142a), Rgb(0xffffff), Rgb(0xd8d8f0), Rgb(0x3a3a60), Rgb(0x38c838), Rgb(0xe83a3a)),
         new("cyberpunk", true, Rgb(0x0b0b10), Rgb(0x15151d), Rgb(0xf2f2f8), Rgb(0xc8c8d6), Rgb(0x3a3a4a), Rgb(0x86efac), Rgb(0xfda4af)),
         new("macclassic", false, Rgb(0x808080), Rgb(0xffffff), Rgb(0x000000), Rgb(0x000000), Rgb(0x000000), Rgb(0x000000), Rgb(0x000000)),
+        new("macos", false, Rgb(0xf5f5f7), Rgb(0xffffff), Rgb(0x1d1d1f), Rgb(0x3c3c43), Rgb(0xd8d8dc), Rgb(0x047857), Rgb(0x9f1239)),
+        new("macosdark", true, Rgb(0x1e1e1e), Rgb(0x2c2c2e), Rgb(0xf5f5f7), Rgb(0xd1d1d6), Rgb(0x48484a), Rgb(0x86efac), Rgb(0xfda4af)),
+        new("gnome", false, Rgb(0xfafafa), Rgb(0xffffff), Rgb(0x2e2e2e), Rgb(0x464646), Rgb(0xdedede), Rgb(0x047857), Rgb(0x9f1239)),
+        new("ubuntu", false, Rgb(0xfafafa), Rgb(0xffffff), Rgb(0x3d3d3d), Rgb(0x4f4f4f), Rgb(0xd6d6d6), Rgb(0x047857), Rgb(0x9f1239)),
+        new("kde", true, Rgb(0x202326), Rgb(0x292c30), Rgb(0xfcfcfc), Rgb(0xd6d8da), Rgb(0x4a4f54), Rgb(0x86efac), Rgb(0xfda4af)),
     ];
 
     /// <summary>Follows the Windows "app mode" (light or dark).</summary>

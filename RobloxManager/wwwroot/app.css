@@ -5,7 +5,7 @@
 /* Dark is the base for every dark theme; each one below changes only what differs. */
 :root, [data-theme="dark"], [data-theme="dim"], [data-theme="black"],
 [data-theme="frost"], [data-theme="ocean"], [data-theme="forest"], [data-theme="mocha"], [data-theme="grape"], [data-theme="terminal"],
-[data-theme="halloween"], [data-theme="lunar"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"],
+[data-theme="halloween"], [data-theme="lunar"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="macosdark"], [data-theme="kde"],
 [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="midnight"], [data-theme="indigo"], [data-theme="crimson"], [data-theme="teal"], [data-theme="amber"], [data-theme="chalkboard"], [data-theme="arcade"], [data-theme="cyberpunk"],
 [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="lava"], [data-theme="neon"], [data-theme="blueprint"], [data-theme="contrast"] {
   --bg: #0a0c11;
@@ -782,7 +782,7 @@
   --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 /* Light is the base for the light themes. */
-[data-theme="light"], [data-theme="paper"], [data-theme="sakura"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"],
+[data-theme="light"], [data-theme="paper"], [data-theme="sakura"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="macos"], [data-theme="gnome"], [data-theme="ubuntu"],
 [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"], [data-theme="gray"], [data-theme="contrastlight"], [data-theme="sky"], [data-theme="lavender"], [data-theme="peach"], [data-theme="mint"], [data-theme="notebook"], [data-theme="brutal"], [data-theme="macclassic"],
 [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="candy"], [data-theme="matcha"], [data-theme="newspaper"], [data-theme="retro"], [data-theme="gameboy"] {
   --backdrop: var(--bg);
@@ -1525,6 +1525,19 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .side-nav > * { flex-shrink: 0; }
 .side-bottom { display: flex; flex-direction: column; gap: 6px; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 18px; }
+/* The macOS themes' red, yellow and green window buttons; their signs show while the pointer is over them. */
+.lights { display: none; }
+:is([data-theme="macos"], [data-theme="macosdark"]) .lights { display: flex; gap: 8px; padding: 0 8px 16px; }
+.light { position: relative; width: 12px; height: 12px; padding: 0; border: 0; border-radius: 50%; cursor: default; }
+.light.l-close { background: #ff5f57; box-shadow: inset 0 0 0 .5px #e0443e; }
+.light.l-min { background: #febc2e; box-shadow: inset 0 0 0 .5px #dea123; }
+.light.l-zoom { background: #28c840; box-shadow: inset 0 0 0 .5px #1aab29; }
+.light::after { position: absolute; inset: 0; display: grid; place-items: center; font: 700 10px/1 system-ui, sans-serif; color: rgba(0, 0, 0, .55); opacity: 0; }
+.light.l-close::after { content: "×"; font-size: 11px; }
+.light.l-min::after { content: "−"; }
+.light.l-zoom::after { content: "+"; }
+.lights:hover .light::after, .light:focus-visible::after { opacity: 1; }
+.light:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .brand img { width: 38px; height: 38px; }
 .brand-name { font: 700 15.5px/1.15 var(--font-display); letter-spacing: -.01em; }
 .brand-sub { font-size: 11.5px; color: var(--muted); }
@@ -3633,6 +3646,172 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="jungle"] { --card: rgba(14, 44, 32, .8); --card-hover: rgba(14, 44, 32, .86); --surface: rgba(14, 44, 32, .82); }
 [data-theme="moon"] { --card: rgba(16, 18, 32, .8); --card-hover: rgba(16, 18, 32, .86); --surface: rgba(16, 18, 32, .82); }
 
+[data-theme="macos"] {
+  /* macOS: a light window, a translucent sidebar and Dock, soft rounded cards, Apple's blue and its green switches. */
+  --blur: blur(22px) saturate(180%);
+  --bg: #f5f5f7;
+  --bg-2: #e8e8ed;
+  --surface: #ffffff;
+  --surface-2: #f2f2f5;
+  --surface-3: #e5e5ea;
+  --raised: #ffffff;
+  --field: #ffffff;
+  --card: #ffffff;
+  --card-hover: #ffffff;
+  --tint: 0, 0, 0;
+  --line: rgba(0, 0, 0, .08);
+  --line-2: rgba(0, 0, 0, .12);
+  --line-3: rgba(0, 0, 0, .22);
+  --text: #1d1d1f;
+  --text-2: #3c3c43;
+  --muted: #6e6e73;
+  --dim: #8e8e93;
+  --inv: #007aff;
+  --inv-hover: #0068da;
+  --inv-ink: #ffffff;
+  --accent: #007aff;
+  --accent-hover: #0068da;
+  --accent-ink: #ffffff;
+  --meter: #007aff;
+  --meter-2: #e5e5ea;
+  --knob: #ffffff;
+  --scrim: rgba(0, 0, 0, .2);
+  --shadow: rgba(0, 0, 0, .16);
+  --font: "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233c3c43' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="macosdark"] {
+  /* macOS, dark: the same shapes in Apple's dark greys. */
+  --blur: blur(22px) saturate(180%);
+  --bg: #1e1e1e;
+  --bg-2: #2a2a2c;
+  --surface: #2c2c2e;
+  --surface-2: #3a3a3c;
+  --surface-3: #48484a;
+  --raised: #2c2c2e;
+  --field: #1c1c1e;
+  --card: #2c2c2e;
+  --card-hover: #323234;
+  --tint: 255, 255, 255;
+  --line: rgba(255, 255, 255, .08);
+  --line-2: rgba(255, 255, 255, .13);
+  --line-3: rgba(255, 255, 255, .24);
+  --text: #f5f5f7;
+  --text-2: #d1d1d6;
+  --muted: #98989d;
+  --dim: #6e6e73;
+  --inv: #0a84ff;
+  --inv-hover: #3395ff;
+  --inv-ink: #ffffff;
+  --accent: #0a84ff;
+  --accent-hover: #3395ff;
+  --accent-ink: #ffffff;
+  --meter: #0a84ff;
+  --meter-2: #3a3a3c;
+  --knob: #ffffff;
+  --scrim: rgba(0, 0, 0, .5);
+  --font: "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+}
+[data-theme="gnome"] {
+  /* GNOME (Adwaita): a grey header bar, flat grey buttons, boxed white lists, GNOME's blue. */
+  --bg: #fafafa;
+  --bg-2: #ebebeb;
+  --surface: #ffffff;
+  --surface-2: #f6f5f4;
+  --surface-3: #e8e8e7;
+  --raised: #ffffff;
+  --field: #ebebeb;
+  --card: #ffffff;
+  --card-hover: #ffffff;
+  --tint: 0, 0, 0;
+  --line: rgba(0, 0, 0, .07);
+  --line-2: rgba(0, 0, 0, .12);
+  --line-3: rgba(0, 0, 0, .2);
+  --text: #2e2e2e;
+  --text-2: #464646;
+  --muted: #5e5e5e;
+  --dim: #8a8a8a;
+  --inv: #3584e4;
+  --inv-hover: #2a76d6;
+  --inv-ink: #ffffff;
+  --accent: #3584e4;
+  --accent-hover: #2a76d6;
+  --accent-ink: #ffffff;
+  --meter: #3584e4;
+  --meter-2: #e0e0e0;
+  --knob: #ffffff;
+  --scrim: rgba(0, 0, 0, .25);
+  --font: Cantarell, "Segoe UI", system-ui, sans-serif;
+  --font-display: Cantarell, "Segoe UI", system-ui, sans-serif;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23464646' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="ubuntu"] {
+  /* Ubuntu (Yaru): light windows, the dark dock as sidebar, Ubuntu orange. */
+  --bg: #fafafa;
+  --bg-2: #f0f0f0;
+  --surface: #ffffff;
+  --surface-2: #f7f7f7;
+  --surface-3: #e8e8e8;
+  --raised: #ffffff;
+  --field: #ffffff;
+  --card: #ffffff;
+  --card-hover: #ffffff;
+  --tint: 0, 0, 0;
+  --line: rgba(0, 0, 0, .1);
+  --line-2: rgba(0, 0, 0, .16);
+  --line-3: rgba(0, 0, 0, .28);
+  --text: #3d3d3d;
+  --text-2: #4f4f4f;
+  --muted: #666666;
+  --dim: #8c8c8c;
+  --inv: #e95420;
+  --inv-hover: #d0461a;
+  --inv-ink: #ffffff;
+  --accent: #e95420;
+  --accent-hover: #d0461a;
+  --accent-ink: #ffffff;
+  --meter: #e95420;
+  --meter-2: #e3e3e3;
+  --knob: #ffffff;
+  --scrim: rgba(0, 0, 0, .3);
+  --font: Ubuntu, "Segoe UI", system-ui, sans-serif;
+  --font-display: Ubuntu, "Segoe UI", system-ui, sans-serif;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f4f4f' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="kde"] {
+  /* KDE Plasma (Breeze dark): charcoal greys, Breeze blue, small corners, outlines that light up. */
+  --bg: #202326;
+  --bg-2: #1b1e20;
+  --surface: #292c30;
+  --surface-2: #31363b;
+  --surface-3: #3b4045;
+  --raised: #31363b;
+  --field: #1b1e20;
+  --card: #292c30;
+  --card-hover: #2e3236;
+  --tint: 252, 252, 252;
+  --line: rgba(252, 252, 252, .1);
+  --line-2: rgba(252, 252, 252, .15);
+  --line-3: rgba(252, 252, 252, .26);
+  --text: #fcfcfc;
+  --text-2: #d6d8da;
+  --muted: #a1a9b1;
+  --dim: #7f8c8d;
+  --inv: #3daee9;
+  --inv-hover: #5cbcee;
+  --inv-ink: #ffffff;
+  --accent: #3daee9;
+  --accent-hover: #5cbcee;
+  --accent-ink: #ffffff;
+  --meter: #3daee9;
+  --meter-2: #3b4045;
+  --scrim: rgba(0, 0, 0, .55);
+  --font: "Noto Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Noto Sans", "Segoe UI", system-ui, sans-serif;
+}
+
 /* ───────── Styles: each one a look of its own, not only other colours ─────────
    All five have square corners (the theme picker's swatches stay round). */
 :is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"], [data-theme="brutal"], [data-theme="arcade"], [data-theme="cyberpunk"]) :not(.swatch, .swatch *),
@@ -3801,3 +3980,67 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="macclassic"] :is(.nav.on, .set-nav-item[aria-current="page"], .chip.on, .menu button:hover:not(:disabled)) { background: #000; color: #fff; }
 [data-theme="macclassic"] .nav.on .i { color: #fff; }
 [data-theme="macclassic"] img { filter: grayscale(1) contrast(1.4); }
+
+/* macOS (light and dark): translucent sidebar and Dock, soft cards, small round buttons, green switches. */
+:is([data-theme="macos"], [data-theme="macosdark"]) :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .grid.list) { border-radius: 12px; }
+[data-theme="macos"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .grid.list) { border: 1px solid rgba(0, 0, 0, .06); box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 3px 10px rgba(0, 0, 0, .04); }
+[data-theme="macosdark"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .grid.list) { border: 1px solid rgba(255, 255, 255, .07); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); }
+:is([data-theme="macos"], [data-theme="macosdark"]) :is(.btn, .chip, .pill-btn, .sort-btn, .field, .select, .seg) { border-radius: 7px; }
+[data-theme="macos"] :is(.btn:not(.primary), .pill-btn, .sort-btn, .chip:not(.on)) { background: #fff; border: 1px solid rgba(0, 0, 0, .12); box-shadow: 0 1px 1px rgba(0, 0, 0, .06); }
+:is([data-theme="macos"], [data-theme="macosdark"]) .play-btn { border-radius: 10px; }
+:is([data-theme="macos"], [data-theme="macosdark"]) .nav { height: 34px; border-radius: 7px; }
+[data-theme="macos"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: rgba(0, 0, 0, .08); color: #1d1d1f; }
+[data-theme="macosdark"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: rgba(255, 255, 255, .1); color: #f5f5f7; }
+[data-theme="macos"] .nav.on .i { color: #007aff; }
+[data-theme="macosdark"] .nav.on .i { color: #0a84ff; }
+[data-theme="macos"] .side { background: rgba(232, 232, 237, .82); border-right: 1px solid rgba(0, 0, 0, .08); }
+[data-theme="macosdark"] .side { background: rgba(42, 42, 44, .82); border-right: 1px solid rgba(0, 0, 0, .5); }
+[data-theme="macos"] .dock { border-radius: 20px; background: rgba(255, 255, 255, .72); border: 1px solid rgba(0, 0, 0, .08); box-shadow: 0 10px 34px rgba(0, 0, 0, .14); }
+[data-theme="macosdark"] .dock { border-radius: 20px; background: rgba(44, 44, 46, .72); border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 10px 34px rgba(0, 0, 0, .5); }
+:is([data-theme="macos"], [data-theme="macosdark"]) :is(.modal, .menu, .picker) { border-radius: 12px; }
+[data-theme="macos"] .switch input:checked + span { background: #34c759; }
+[data-theme="macosdark"] .switch input:checked + span { background: #30d158; }
+:is([data-theme="macos"], [data-theme="macosdark"]) .switch input:checked + span::after { background: #fff; }
+[data-theme="macos"] .field:focus { border-color: #007aff; box-shadow: 0 0 0 3px rgba(0, 122, 255, .3); }
+[data-theme="macosdark"] .field:focus { border-color: #0a84ff; box-shadow: 0 0 0 3px rgba(10, 132, 255, .35); }
+
+/* GNOME (Adwaita): a header bar, flat grey buttons without outlines, boxed lists with a soft edge, blue for the chosen. */
+[data-theme="gnome"] .top { margin-bottom: 10px; padding-bottom: 14px; background: #ebebeb; border-bottom: 1px solid rgba(0, 0, 0, .1); }
+[data-theme="gnome"] .side { background: #ebebeb; border-right: 1px solid rgba(0, 0, 0, .1); }
+[data-theme="gnome"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .grid.list, .dock) { border: 0; border-radius: 12px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .03), 0 1px 3px 1px rgba(0, 0, 0, .07), 0 2px 6px 2px rgba(0, 0, 0, .03); }
+[data-theme="gnome"] :is(.btn:not(.primary), .pill-btn, .sort-btn, .chip:not(.on), .seg) { border: 0; border-radius: 6px; background: rgba(0, 0, 0, .08); }
+[data-theme="gnome"] :is(.btn:not(.primary), .pill-btn, .sort-btn, .chip:not(.on)):hover:not(:disabled) { background: rgba(0, 0, 0, .12); }
+[data-theme="gnome"] :is(.btn.primary, .chip.on) { border-radius: 6px; }
+[data-theme="gnome"] :is(.field, .select) { border: 0; border-radius: 6px; background-color: rgba(0, 0, 0, .06); }
+[data-theme="gnome"] .field:focus { box-shadow: 0 0 0 2px rgba(53, 132, 228, .5); }
+[data-theme="gnome"] .nav { border-radius: 6px; }
+[data-theme="gnome"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: rgba(0, 0, 0, .1); color: #2e2e2e; }
+[data-theme="gnome"] :is(.modal, .menu, .picker) { border: 0; border-radius: 12px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .05), 0 10px 40px rgba(0, 0, 0, .2); }
+[data-theme="gnome"] .play-btn { border-radius: 10px; }
+
+/* Ubuntu (Yaru): the dark dock as sidebar with an orange mark on the chosen item, light rounded windows, orange actions. */
+[data-theme="ubuntu"] .side { background: #2b2b2b; border-right: 0;
+  --text: #ffffff; --text-2: #e6e6e6; --muted: #bdbdbd; --dim: #9a9a9a; --line: rgba(255, 255, 255, .12); --line-2: rgba(255, 255, 255, .18); --line-3: rgba(255, 255, 255, .3);
+  --surface: #3a3a3a; --surface-2: #444444; --surface-3: #505050; --hover: rgba(255, 255, 255, .08); --active: rgba(255, 255, 255, .12);
+  --ok-ink: #8fe0a8; --bad-ink: #ff9a9a; --warn-ink: #ffd27a; --online-ink: #9fc8ff; --studio-ink: #ffb27a; color: var(--text); }
+[data-theme="ubuntu"] .side :is(.side-card, .multi) { background: #353535; border-color: rgba(255, 255, 255, .1); }
+[data-theme="ubuntu"] .nav { border-radius: 6px; }
+[data-theme="ubuntu"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: rgba(255, 255, 255, .12); box-shadow: inset 3px 0 0 #e95420; }
+[data-theme="ubuntu"] .set-nav-item[aria-current="page"] { background: rgba(233, 84, 32, .1); color: #3d3d3d; }
+[data-theme="ubuntu"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .grid.list, .dock) { border: 1px solid #dcdcdc; border-radius: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
+[data-theme="ubuntu"] :is(.btn, .chip, .pill-btn, .sort-btn, .field, .select, .seg) { border-radius: 6px; }
+[data-theme="ubuntu"] :is(.btn:not(.primary), .pill-btn, .sort-btn, .chip:not(.on)):not(.side *) { border: 1px solid #cdc7c2; background: #f7f7f7; }
+[data-theme="ubuntu"] .side .btn:not(.primary) { border: 1px solid rgba(255, 255, 255, .16); background: #404040; }
+[data-theme="ubuntu"] .play-btn { border-radius: 8px; }
+[data-theme="ubuntu"] :is(.modal, .menu, .picker) { border-radius: 8px; }
+
+/* KDE Plasma (Breeze): small corners, outlines everywhere that turn blue on hover and focus. */
+[data-theme="kde"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .grid.list, .dock) { border: 1px solid rgba(252, 252, 252, .12); border-radius: 4px; box-shadow: none; }
+[data-theme="kde"] :is(.btn, .chip, .pill-btn, .sort-btn, .field, .select, .seg, .play-btn) { border-radius: 3px; }
+[data-theme="kde"] :is(.btn:not(.primary), .pill-btn, .sort-btn, .chip:not(.on)) { border: 1px solid rgba(252, 252, 252, .18); background: #31363b; }
+[data-theme="kde"] :is(.btn, .pill-btn, .sort-btn, .chip, .card:not(.row)):hover:not(:disabled) { border-color: #3daee9; }
+[data-theme="kde"] .field:focus { border-color: #3daee9; box-shadow: none; }
+[data-theme="kde"] .nav { border-radius: 3px; }
+[data-theme="kde"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: rgba(61, 174, 233, .22); box-shadow: inset 0 0 0 1px #3daee9; color: #fcfcfc; }
+[data-theme="kde"] :is(.modal, .menu, .picker) { border-radius: 4px; }
+[data-theme="kde"] .side { border-right: 1px solid rgba(0, 0, 0, .4); }

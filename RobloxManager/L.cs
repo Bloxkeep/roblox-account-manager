@@ -377,6 +377,7 @@ public static class L
         ["last 24 hours"] = "24 giờ qua",
         ["Don't ask again"] = "Không hỏi lại",
         ["Unknown question."] = "Câu hỏi không xác định.",
+        ["Unknown window action."] = "Thao tác cửa sổ không xác định.",
         ["Daily summary"] = "Tổng kết hằng ngày",
         ["Weekly summary"] = "Tổng kết hằng tuần",
         ["Daily and weekly summary"] = "Tổng kết ngày và tuần",

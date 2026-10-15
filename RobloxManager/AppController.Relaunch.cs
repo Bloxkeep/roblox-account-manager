@@ -13,6 +13,12 @@ public sealed partial class AppController
     /// <summary>Closes the app for real (the window's Quit), for the update's restart.</summary>
     public Action? QuitForUpdate { get; init; }
 
+    /// <summary>
+    /// The macOS themes' red, yellow and green buttons: "close" (as the title bar's ✕, so to the tray when that is
+    /// on), "minimize", "zoom" (maximise, or back from it).
+    /// </summary>
+    public Action<string>? WindowControl { get; init; }
+
     /// <summary>The window now: hidden (in the tray), minimized or shown, whether it is the one in front, and whether the mini window is up.</summary>
     public Func<(string Window, bool Foreground, bool MiniShown)>? WindowNow { get; init; }
 

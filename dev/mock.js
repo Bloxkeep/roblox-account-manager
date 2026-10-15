@@ -272,6 +272,7 @@
         case 'setDailySignInCheck': dailySignInCheck = a.enabled; push(); return null;
         case 'skipConfirm': if (!skipConfirm.includes(a.key)) skipConfirm.push(a.key); push(); return null;
         case 'toggleMini': miniOpen = !miniOpen; push(); return null;
+        case 'window': console.log('window', a.action); return null;
         case 'setBackup':
           if ('enabled' in a) backup = { ...backup, enabled: a.enabled };
           if (a.folder) backup = { ...backup, folder: a.folder, cloud: true, lastBackup: new Date().toISOString(), error: null, suggested: backup.suggested.filter(s => s.path !== a.folder) };

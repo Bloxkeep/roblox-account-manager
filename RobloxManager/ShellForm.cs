@@ -85,6 +85,18 @@ public sealed class ShellForm : Form
             SetMiniOpen = open => SetMiniOpen(open),
             SetMonitorArea = area => _monitor?.SetArea(area),
             QuitForUpdate = Quit,
+            // After the command's answer has gone back to the page: closing to the tray takes a picture of it first.
+            WindowControl = action => BeginInvoke(() =>
+            {
+                if (IsDisposed)
+                    return;
+                if (action == "close")
+                    Close();
+                else if (action == "minimize")
+                    WindowState = FormWindowState.Minimized;
+                else
+                    WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+            }),
             WindowNow = () => (!Visible ? "hidden" : WindowState == FormWindowState.Minimized ? "minimized" : "shown",
                 Visible && WindowState != FormWindowState.Minimized && InFront, _mini is { Visible: true }),
         };

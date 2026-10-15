@@ -355,6 +355,7 @@ public sealed partial class AppController : IDisposable
         "setDailySignInCheck" => Done(SetDailySignInCheck(Bool(a, "enabled"))),
         "skipConfirm" => Done(SkipConfirm(Str(a, "key"))),
         "toggleMini" => Done(ToggleMini()),
+        "window" => Done(ControlWindow(Str(a, "action"))),
         "setBackup" => Done(SetBackup(a)),
         "pickBackupFolder" => Done(PickBackupFolder()),
         "openBackupFolder" => Done(OpenBackupFolder()),
@@ -832,6 +833,14 @@ public sealed partial class AppController : IDisposable
         Prefs.Save();
         AppearanceChanged?.Invoke();
         PushState();
+        return null;
+    }
+
+    object? ControlWindow(string action)
+    {
+        if (action is not ("close" or "minimize" or "zoom"))
+            throw new UserError(L.T("Unknown window action."));
+        WindowControl?.Invoke(action);
         return null;
     }
 
