@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discord preview</title>
+<!--
+  Shows webhook payloads (what Bloxkeep, the Roblox watch and the feedback Worker post) the way Discord draws them in
+  its dark theme, to look at a message before it goes out. Open with ?src=<json file next to this page or a URL>; the
+  file holds one payload or a list of them, each optionally {"label": "...", "payload": {...}}. Discord's markdown is
+  drawn in part: **bold**, *italic*, `code`, [links](url), -# small lines, > quotes, <t:unix:style> timestamps.
+-->
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #313338; color: #dbdee1; font: 16px/1.375 "gg sans", "Segoe UI", "Noto Sans", sans-serif; }
+  main { max-width: 760px; padding: 16px; }
+  .label { margin: 26px 0 6px 72px; font: 600 12px/1.4 ui-monospace, Consolas, monospace; color: #949ba4; text-transform: uppercase; letter-spacing: .04em; }
+  .msg { display: grid; grid-template-columns: 40px 1fr; gap: 0 16px; padding: 2px 0; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: #5865f2 center/cover; margin-top: 2px; }
+  .head { display: flex; align-items: baseline; gap: 6px; }
+  .name { font-weight: 600; color: #f2f3f5; }
+  .app { font: 600 10px/15px sans-serif; background: #5865f2; color: #fff; border-radius: 3px; padding: 0 4px; }
+  .time { font-size: 12px; color: #949ba4; }
+  .content { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .mention { background: rgba(88, 101, 242, .3); color: #c9cdfb; border-radius: 3px; padding: 0 2px; }
+  .embed { display: grid; grid-template-columns: 1fr auto; max-width: 516px; margin-top: 4px; background: #2b2d31;
+    border-left: 4px solid #1e1f22; border-radius: 4px; padding: 8px 16px 16px 12px; gap: 0 16px; box-sizing: border-box; }
+  .embed > .body { min-width: 0; }
+  .author { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 14px; font-weight: 600; color: #f2f3f5; }
+  .author img { width: 24px; height: 24px; border-radius: 50%; }
+  .title { margin-top: 8px; font-weight: 600; color: #f2f3f5; }
+  .title a { color: #00a8fc; text-decoration: none; }
+  .desc { margin-top: 8px; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .fields { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; margin-top: 8px; }
+  .field { font-size: 14px; min-width: 0; }
+  .field .n { font-weight: 600; color: #f2f3f5; margin-bottom: 2px; }
+  .field .v { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .thumb { width: 80px; height: 80px; margin-top: 8px; border-radius: 4px; object-fit: contain; }
+  .image { grid-column: 1 / -1; max-width: 100%; margin-top: 16px; border-radius: 4px; }
+  .footer { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: #b5bac1; }
+  .footer img { width: 20px; height: 20px; border-radius: 50%; }
+  code { font: 85% ui-monospace, Consolas, monospace; background: #1e1f22; border-radius: 3px; padding: .1em .25em; }
+  a { color: #00a8fc; text-decoration: none; }
+  .small { font-size: 12px; color: #949ba4; display: block; }
+  .quote { display: block; border-left: 4px solid #4e5058; padding-left: 12px; }
+  .ts { background: rgba(255, 255, 255, .06); border-radius: 3px; padding: 0 2px; }
+  .err { color: #f23f43; }
+</style>
+</head>
+<body>
+<main id="out"></main>
+<script>
+  // The repository's own files (the logo) from this checkout, so a picture not pushed yet still shows.
+  const RAW = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/';
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+    .replace(/https:\/\/raw\.githubusercontent\.com\/minhhoang0122\/bloxkeep\/main\//g, '../');
+  // Discord shows <t:unix:style> in the reader's own time zone and language: here the browser's.
+  function stamp(unix, style) {
+    const d = new Date(unix * 1000), lang = navigator.language;
+    const fmt = o => new Intl.DateTimeFormat(lang, o).format(d);
+    switch (style) {
+      case 't': return fmt({ timeStyle: 'short' });
+      case 'T': return fmt({ timeStyle: 'medium' });
+      case 'd': return fmt({ dateStyle: 'short' });
+      case 'D': return fmt({ dateStyle: 'long' });
+      case 'F': return fmt({ dateStyle: 'full', timeStyle: 'short' });
+      case 'R': {
+        const s = Math.round((unix * 1000 - Date.now()) / 1000), rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
+        for (const [u, n] of [['year', 31536000], ['month', 2592000], ['day', 86400], ['hour', 3600], ['minute', 60]])
+          if (Math.abs(s) >= n) return rtf.format(Math.round(s / n), u);
+        return rtf.format(s, 'second');
+      }
+      default: return fmt({ dateStyle: 'long', timeStyle: 'short' });
+    }
+  }
+  // The markdown Discord draws in embeds and messages, the parts these messages use.
+  function md(text) {
+    const lines = esc(text).split('\n').map(line => {
+      if (line.startsWith('-# ')) return `<span class="small">${line.slice(3)}</span>`;
+      if (line.startsWith('&gt; ')) return `<span class="quote">${line.slice(5)}</span>`;
+      return line;
+    });
+    let h = lines.join('\n');
+    h = h.replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>')
+      .replace(/__([^_]+)__/g, '<u>$1</u>')
+      .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/&lt;t:(\d+)(?::([tTdDfFR]))?&gt;/g, (_, u, s) => `<span class="ts">${esc(stamp(+u, s))}</span>`)
+      .replace(/&lt;@&amp;?(\d+)&gt;|@everyone|@here/g, m => `<span class="mention">${m.startsWith('@') ? m : '@someone'}</span>`)
+      .replace(/\\([\\*_~`|>\[\]<@])/g, '$1');
+    return h.replace(/<\/span>\n/g, '</span>');
+  }
+  // Inline fields sit three to a row (two beside a thumbnail); a field that isn't inline takes the whole row.
+  function fieldsHtml(fields, thumb) {
+    const perRow = thumb ? 2 : 3;
+    let html = '', row = [];
+    const flush = () => {
+      const span = 12 / row.length;
+      row.forEach(f => html += `<div class="field" style="grid-column: span ${span}"><div class="n">${md(f.name)}</div><div class="v">${md(f.value)}</div></div>`);
+      row = [];
+    };
+    for (const f of fields) {
+      if (!f.inline) { flush(); row = [f]; flush(); continue; }
+      row.push(f);
+      if (row.length === perRow) flush();
+    }
+    flush();
+    return `<div class="fields">${html}</div>`;
+  }
+  function embedHtml(e, files) {
+    const color = '#' + (e.color ?? 0x1e1f22).toString(16).padStart(6, '0');
+    const url = u => u?.startsWith('attachment://') ? files[u.slice(13)] || '' : u;
+    const footerTime = e.timestamp ? stamp(Date.parse(e.timestamp) / 1000, 'f') : '';
+    return `<div class="embed" style="border-left-color:${color}"><div class="body">
+      ${e.author ? `<div class="author">${e.author.icon_url ? `<img src="${esc(e.author.icon_url)}">` : ''}${e.author.url ? `<a href="${esc(e.author.url)}" style="color:inherit">${esc(e.author.name)}</a>` : esc(e.author.name)}</div>` : ''}
+      ${e.title ? `<div class="title">${e.url ? `<a href="${esc(e.url)}">${md(e.title)}</a>` : md(e.title)}</div>` : ''}
+      ${e.description ? `<div class="desc">${md(e.description)}</div>` : ''}
+      ${e.fields?.length ? fieldsHtml(e.fields, !!e.thumbnail) : ''}
+      </div>
+      ${e.thumbnail ? `<img class="thumb" src="${esc(url(e.thumbnail.url))}">` : '<span></span>'}
+      ${e.image ? `<img class="image" src="${esc(url(e.image.url))}">` : ''}
+      ${e.footer || footerTime ? `<div class="footer">${e.footer?.icon_url ? `<img src="${esc(e.footer.icon_url)}">` : ''}<span>${esc(e.footer?.text || '')}${e.footer?.text && footerTime ? ' • ' : ''}${esc(footerTime)}</span></div>` : ''}
+    </div>`;
+  }
+  function messageHtml(p, files = {}) {
+    const now = new Intl.DateTimeFormat(navigator.language, { timeStyle: 'short' }).format(new Date());
+    return `<div class="msg">
+      <div class="avatar" style="${p.avatar_url ? `background-image:url('${esc(p.avatar_url)}')` : ''}"></div>
+      <div><div class="head"><span class="name">${esc(p.username || 'Webhook')}</span><span class="app">APP</span><span class="time">${esc(now)}</span></div>
+        ${p.content ? `<div class="content">${md(p.content)}</div>` : ''}
+        ${(p.embeds || []).map(e => embedHtml(e, files)).join('')}
+      </div></div>`;
+  }
+  async function main() {
+    const out = document.getElementById('out');
+    const src = new URLSearchParams(location.search).get('src');
+    if (!src) { out.innerHTML = '<p class="err">Add ?src=payloads.json</p>'; return; }
+    try {
+      const data = await (await fetch(src, { cache: 'no-store' })).json();
+      const list = Array.isArray(data) ? data : [data];
+      out.innerHTML = list.map(item => {
+        const p = item.payload || item;
+        return (item.label ? `<div class="label">${esc(item.label)}</div>` : '') + messageHtml(p, item.files || {});
+      }).join('');
+    } catch (err) {
+      out.innerHTML = `<p class="err">${esc(err)}</p>`;
+    }
+  }
+  main();
+</script>
+</body>
+</html>
