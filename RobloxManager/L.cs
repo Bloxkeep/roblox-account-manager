@@ -315,9 +315,9 @@ public static class L
         ["The website can't be opened for Roblox VNG accounts yet."] = "Chưa mở được trang web cho tài khoản Roblox VNG.",
         ["Save to Bloxkeep"] = "Lưu vào Bloxkeep",
         ["Opens signed in next time. Without saving, closing this window signs it out here."] =
-            "Lần sau mở là vào thẳng. Không lưu thì đóng cửa sổ này là mất đăng nhập ở đây.",
+            "Lần sau mở sẽ vào thẳng. Nếu không lưu, đóng cửa sổ này là mất phiên đăng nhập ở đây.",
         ["Signed in."] = "Đã đăng nhập.",
-        ["Signed in as {0}."] = "Đã đăng nhập {0}.",
+        ["Signed in as {0}."] = "Đã đăng nhập bằng {0}.",
         ["Can't reach roblox.com. Check your internet connection, then press Retry."] =
             "Không kết nối được với roblox.com. Hãy kiểm tra mạng rồi bấm Thử lại.",
         ["Microsoft Edge WebView2 isn't installed. Install it from Microsoft's website, then reopen Bloxkeep."] = "Máy chưa có Microsoft Edge WebView2. Hãy cài từ trang web của Microsoft rồi mở lại Bloxkeep.",
