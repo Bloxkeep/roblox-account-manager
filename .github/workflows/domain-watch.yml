@@ -1,6 +1,7 @@
-# Looks in Certificate Transparency (crt.sh) for new web addresses like Bloxkeep, where a copy of Bloxkeep with
-# malware could be handed out, and posts each new one to Discord once (DomainWatch/watch.py). Every 3 hours; crt.sh
-# often fails, and a search that failed is simply tried again next time. What it saw is kept in domain-status.json on
+# Looks for new web addresses like Bloxkeep, where a copy of Bloxkeep with malware could be handed out, and posts each
+# new one to Discord once (DomainWatch/watch.py): in Certificate Transparency (crt.sh) every 3 hours, and once a day in
+# lists of newly registered names, which find Bloxkeep anywhere in a name. crt.sh often fails, and a search that failed
+# is simply tried again next time. Run by hand, it does both. What it saw is kept in domain-status.json on
 # the domain-status branch (made by the first run), apart from roblox-status so the two watches never push over each
 # other. Secret: DOMAIN_WATCH_WEBHOOK, else DISCORD_WEBHOOK (without either, the messages only go to the run's log).
 name: Domain watch
@@ -8,7 +9,8 @@ name: Domain watch
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 */3 * * *'
+    - cron: '17 */3 * * *'           # crt.sh
+    - cron: '47 9 * * *'             # newly registered names: hagezi's list is updated about 6:00-8:00 UTC
 
 permissions:
   contents: write
@@ -31,11 +33,18 @@ jobs:
           else
             git worktree add -q --orphan -b domain-status status
           fi
-      - name: Search crt.sh
+      - name: Search
         env:
           DOMAIN_WATCH_WEBHOOK: ${{ secrets.DOMAIN_WATCH_WEBHOOK }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: python3 DomainWatch/watch.py --status status/domain-status.json
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          case "$SCHEDULE" in
+            '17 */3 * * *') source='--source crtsh' ;;
+            '47 9 * * *') source='--source nrd' ;;
+            *) source='' ;;
+          esac
+          python3 DomainWatch/watch.py --status status/domain-status.json $source
       - name: Save what was seen
         if: success() || failure()
         working-directory: status

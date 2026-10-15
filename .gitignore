@@ -24,3 +24,6 @@ desktop.ini
 
 # Node (if any tooling is added)
 node_modules/
+
+# Python (DomainWatch, RobloxWatch)
+__pycache__/
