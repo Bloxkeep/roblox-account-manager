@@ -343,83 +343,107 @@ If something breaks, tell me from the app: **Settings › Bloxkeep updates › S
 
 ## FAQ
 
-<details>
-<summary>Will my account get banned?</summary>
+Every feature is explained step by step in the [user guide](docs/guide.md).
 
-No one can promise that. Roblox doesn't officially support running several clients, so using Multi-Roblox is at your own risk. Bloxkeep signs in and opens games the same way roblox.com does, and doesn't touch the game's memory. Some games forbid alt accounts; check the rules of the game you play.
-</details>
+### **Q:** Is this a virus? Why do Windows or antivirus apps warn?
 
-<details>
-<summary>Is this a virus? Why do Windows or antivirus apps warn?</summary>
+**A:** No. The files aren't code-signed yet (Bloxkeep is applying for free signing through SignPath Foundation), so SmartScreen and some antivirus apps warn about any new file. You can compare the SHA-256 with `SHA256SUMS.txt`, read the source in this repository, or [build it yourself](#build-from-source).
 
-No. The files aren't code-signed yet, so SmartScreen and some antivirus apps warn about new files. You can compare the SHA-256 with `SHA256SUMS.txt`, read the source in this repository, or [build it yourself](#build-from-source).
-</details>
+### **Q:** My antivirus deleted Bloxkeep. Should I not use it?
 
-<details>
-<summary>I forgot my master password.</summary>
+**A:** Check the download first: its SHA-256 must match `SHA256SUMS.txt` on the release page, and it must come from this repository's [Releases](https://github.com/minhhoang0122/bloxkeep/releases). If it matches, restore it from your antivirus's quarantine and report the file as a false positive (for Windows Defender: [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)). Never use a "Bloxkeep" from anywhere else.
 
-It can't be recovered; it isn't stored anywhere. You can delete `vault.rmv` and `vault.rmv.bak` in `%LOCALAPPDATA%\Bloxkeep` (losing every saved account) and start over, or restore a backup whose password you remember.
-</details>
+### **Q:** How do I turn on Multi-Roblox?
 
-<details>
-<summary>How do I move to a new PC?</summary>
+**A:** Flip the **Multi-Roblox** switch at the bottom of the sidebar (or **Settings › Launching › Multi-Roblox**) and confirm. Open Bloxkeep before Roblox, and keep it open while you play. The light tells you how it's going:
 
-Turn on backups to a OneDrive or Google Drive folder on the old PC. On the new one, install Bloxkeep, click **Restore from a backup** and enter the password the backup was saved with. See [Backup and restore](#backup-and-restore).
-</details>
+| Light | Meaning |
+|---|---|
+| Green | On: you can open several accounts at once |
+| Yellow | Not working yet (a Roblox was already open), or a Roblox update may stop it. Click the card to see what to do |
+| Grey | Off: each new Roblox window closes the one before |
 
-<details>
-<summary>The Multi-Roblox light is yellow.</summary>
+If you press **Play** for two accounts while it's off, Bloxkeep offers **Turn on Multi-Roblox and play**.
 
-A Roblox was open before Bloxkeep. Close every Roblox, including one in the system tray. If Roblox starts with Windows, click **Turn off autostart** in the help dialog. The light turns green. Next time, open Bloxkeep before Roblox.
-</details>
+### **Q:** The Multi-Roblox light is yellow.
 
-<details>
-<summary>Some Roblox windows open fullscreen and some don't.</summary>
+**A:** A Roblox was open before Bloxkeep. Close every Roblox, including one in the system tray. If Roblox starts with Windows, click **Turn off autostart** in the help dialog. The light turns green. Next time, open Bloxkeep before Roblox. If the card says a Roblox update may stop it, keep playing; Bloxkeep tells you if Roblox starts closing windows, and an update of Bloxkeep is the fix.
 
-All Roblox windows share one fullscreen setting, so with several open they easily end up different. Keep **Always open Roblox windowed** on in Multi-Roblox's **Details** (it's on by default): every window opens windowed, and your setting is put back afterwards. To have each one fill the screen, choose **Maximise it** under **When a Roblox window opens**; to lay them out side by side, **Tile them side by side** or **Arranging windows**.
-</details>
+### **Q:** I can't open several accounts: each new window closes the last one.
 
-<details>
-<summary>Do my Bloxstrap / Fishstrap mods still work?</summary>
+**A:** Multi-Roblox is off or not working yet: see the two answers above. If the light is green and windows still close, Roblox has changed how it blocks several windows. Look for a Bloxkeep update (**Settings › Bloxkeep updates › Check now**) and [send feedback](#q-you-should-add-a-feature--i-found-a-bug).
 
-Yes, if you choose **Bloxstrap** or **Fishstrap** in **Open Roblox with**. If the launcher blocks several windows, choose **RobloxPlayerBeta directly (skip launchers)**; Roblox then opens without the launcher.
-</details>
+### **Q:** What do the coloured dots on an account mean?
 
-<details>
-<summary>I left the game but it still says "playing".</summary>
+**A:** The dot on the picture shows where the account is: **green** in a game, **blue** online on the website or app, **amber** in Roblox Studio, **yellow** disconnected while its window is still open, **grey** offline. A **red ring** means it needs to sign in again, or is banned. The **Needs sign-in** and **Banned** filters above the list show just those.
 
-Roblox's status lags, sometimes by a few minutes. For windows on this PC Bloxkeep ignores the stale report; status from other devices can still lag.
-</details>
+### **Q:** Adding an account doesn't work.
 
-<details>
-<summary>Opening a game fails with 403 "An error was encountered during authentication".</summary>
+**A:** Try another way under **Add account**: **Sign in with your phone** (a code or QR, no password or puzzle; best when the account is signed in on your phone), **Sign in with a browser**, **Open roblox.com** (sign in on the site, then **Save to Bloxkeep**), or **Paste a cookie**. If the password sign-in keeps asking for a puzzle, the phone is the easy way round.
 
-Usually a per-app VPN: Roblox goes through it and Bloxkeep doesn't. A join ticket is tied to the IP address that asked for it, so let Bloxkeep take the same route as Roblox.
-</details>
+### **Q:** Copy password says no password is saved.
 
-<details>
-<summary>Can I use it in Vietnam without access to roblox.com?</summary>
+**A:** No way of signing in keeps the password: the phone, browser and cookie methods never see it, and the password sign-in sends it to Roblox and forgets it. To have it there, type it under **Edit (F2) › Roblox password**. The same goes for **Copy 2FA code**: paste the account's authenticator key under **Edit**.
 
-Partly. Password sign-in and phone sign-in go through Roblox's API hosts, not www.roblox.com, and the captcha page is served by the app itself. The browser method needs www.roblox.com. Bloxkeep has no VPN or region bypass. Roblox VNG accounts can be added, but games can't be opened for them yet.
-</details>
+### **Q:** Can I join private (VIP) servers?
 
-<details>
-<summary>Does Bloxkeep send my password or cookies anywhere?</summary>
+**A:** Yes. Paste the private server link into the game box and press **Play**; Bloxkeep opens that server for every account you selected. A **Job ID** puts them in one particular server, and **Join a player** (next to the box) finds the server a player is in.
 
-Only to Roblox. A password you sign in with only goes to Roblox's sign-in server, and each account's cookie is only sent to Roblox's own hosts (Roblox VNG's, for VNG accounts). Update checks to GitHub carry no account data. The full list is under [Data and security](#data-and-security).
-</details>
+### **Q:** Some Roblox windows open fullscreen and some don't.
 
-<details>
-<summary>Can I use Roblox from the Microsoft Store?</summary>
+**A:** All Roblox windows share one fullscreen setting, so with several open they easily end up different. Keep **Always open Roblox windowed** on in Multi-Roblox's **Details** (it's on by default): every window opens windowed, and your setting is put back afterwards. To have each one fill the screen, choose **Maximise it** under **When a Roblox window opens**; to lay them out side by side, **Tile them side by side** or **Arranging windows**.
 
-Yes, while it's being tested: choose **Roblox (Microsoft Store)** under **Settings › Launching › Open Roblox with**. Microsoft's own launcher lets only one Store Roblox run, so Bloxkeep starts the Store's Roblox itself, with each account's own sign-in, in a window of its own. Updates still come from the Microsoft Store. If it doesn't work for you, Roblox from roblox.com works the same way, with Bloxstrap or Fishstrap if you like.
-</details>
+### **Q:** Do my Bloxstrap / Fishstrap mods still work?
 
-<details>
-<summary>How do I remove Bloxkeep completely?</summary>
+**A:** Yes, if you choose **Bloxstrap** or **Fishstrap** in **Open Roblox with**. If the launcher blocks several windows, choose **RobloxPlayerBeta directly (skip launchers)**; Roblox then opens without the launcher.
 
-Uninstall it in Windows **Settings › Apps** and tick **Also delete my accounts and settings**. Backups in your backup folder stay; delete them yourself. For the portable copy, delete the app's folder (with its `data`).
-</details>
+### **Q:** Can I use Roblox from the Microsoft Store?
+
+**A:** Yes, while it's being tested: choose **Roblox (Microsoft Store)** under **Settings › Launching › Open Roblox with**. Microsoft's own launcher lets only one Store Roblox run, so Bloxkeep starts the Store's Roblox itself, with each account's own sign-in, in a window of its own. Updates still come from the Microsoft Store. If it doesn't work for you, Roblox from roblox.com works the same way, with Bloxstrap or Fishstrap if you like.
+
+### **Q:** I left the game but it still says "playing".
+
+**A:** Roblox's status lags, sometimes by a few minutes. For windows on this PC Bloxkeep ignores the stale report; status from other devices can still lag.
+
+### **Q:** Opening a game fails with 403 "An error was encountered during authentication".
+
+**A:** Usually a per-app VPN: Roblox goes through it and Bloxkeep doesn't. A join ticket is tied to the IP address that asked for it, so let Bloxkeep take the same route as Roblox.
+
+### **Q:** Can I use it in Vietnam without access to roblox.com?
+
+**A:** Partly. Password sign-in and phone sign-in go through Roblox's API hosts, not www.roblox.com, and the captcha page is served by the app itself. The browser method needs www.roblox.com. Bloxkeep has no VPN or region bypass. Roblox VNG accounts can be added, but games can't be opened for them yet.
+
+### **Q:** How do I back up my accounts?
+
+**A:** Turn on **Settings › Backup & data › Back up automatically** and pick a folder, ideally one that OneDrive or Google Drive syncs. Each backup is encrypted with your master password. See [Backup and restore](#backup-and-restore).
+
+### **Q:** How do I move to a new PC?
+
+**A:** Turn on backups to a OneDrive or Google Drive folder on the old PC. On the new one, install Bloxkeep, click **Restore from a backup** and enter the password the backup was saved with.
+
+### **Q:** I forgot my master password.
+
+**A:** It can't be recovered; it isn't stored anywhere. You can delete `vault.rmv` and `vault.rmv.bak` in `%LOCALAPPDATA%\Bloxkeep` (losing every saved account) and start over, or restore a backup whose password you remember.
+
+### **Q:** Does Bloxkeep send my password or cookies anywhere?
+
+**A:** Only to Roblox. A password you sign in with only goes to Roblox's sign-in server, and each account's cookie is only sent to Roblox's own hosts (Roblox VNG's, for VNG accounts). Update checks to GitHub carry no account data. The full list is under [Data and security](#data-and-security).
+
+### **Q:** Can I use it on Mac or Linux?
+
+**A:** No. Bloxkeep runs on Windows 10 and 11 (64-bit) only.
+
+### **Q:** Will my account get banned?
+
+**A:** No one can promise that. Roblox doesn't officially support running several clients, so using Multi-Roblox is at your own risk. Bloxkeep signs in and opens games the same way roblox.com does, and doesn't touch the game's memory. Some games forbid alt accounts; check the rules of the game you play.
+
+### **Q:** You should add (a feature) / I found a bug.
+
+**A:** Tell us from the app: **Settings › Bloxkeep updates › Send feedback** (or Ctrl+K). A bug report can include Bloxkeep's error log, with account names, passwords and cookies taken out, and you see exactly what is sent. You can also open an [issue](https://github.com/minhhoang0122/bloxkeep/issues).
+
+### **Q:** How do I remove Bloxkeep completely?
+
+**A:** Uninstall it in Windows **Settings › Apps** and tick **Also delete my accounts and settings**. Backups in your backup folder stay; delete them yourself. For the portable copy, delete the app's folder (with its `data`).
 
 ## Build from source
 

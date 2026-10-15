@@ -158,8 +158,7 @@ static class WebsiteSuite
         var other = all[1];
         var webW = Harness.Get<WebView2>(blank, "_web");
         var webO = Harness.Get<WebView2>(other, "_web");
-        // A tab not shown yet starts its browser when it is first shown.
-        window2.SelectTab(blank);
+        // The first blank tab was hidden at once by the second: its browser starts all the same.
         c.Check("both blank browsers start", await Until(() => webW.CoreWebView2 is not null && webO.CoreWebView2 is not null));
         var coreW = webW.CoreWebView2!;
         var coreO = webO.CoreWebView2!;

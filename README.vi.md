@@ -337,83 +337,107 @@ Nếu gặp lỗi, bạn báo ngay trong app: **Cài đặt › Cập nhật Blo
 
 ## Câu hỏi thường gặp
 
-<details>
-<summary>Tài khoản của tôi có bị ban không?</summary>
+Từng tính năng được giải thích từng bước trong [hướng dẫn sử dụng](docs/guide.vi.md).
 
-Không ai đảm bảo được. Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc, nên dùng Multi-Roblox là bạn tự chịu rủi ro. Bloxkeep đăng nhập và mở game theo cùng cách trang roblox.com làm, và không đụng vào bộ nhớ của game. Một số game cấm dùng tài khoản phụ; hãy đọc luật của game bạn chơi.
-</details>
+### **H:** Đây có phải virus không? Sao Windows hay antivirus cảnh báo?
 
-<details>
-<summary>Đây có phải virus không? Sao Windows hay antivirus cảnh báo?</summary>
+**Đ:** Không. File chưa có chữ ký số (Bloxkeep đang xin ký miễn phí qua SignPath Foundation), nên SmartScreen và một số antivirus cảnh báo với mọi file mới. Bạn có thể đối chiếu SHA-256 với `SHA256SUMS.txt`, đọc mã nguồn trong repo này, hoặc [tự build](#tự-build-từ-mã-nguồn).
 
-Không. File chưa có chữ ký số nên SmartScreen và một số antivirus cảnh báo với file mới. Bạn có thể đối chiếu SHA-256 với `SHA256SUMS.txt`, đọc mã nguồn trong repo này, hoặc [tự build](#tự-build-từ-mã-nguồn).
-</details>
+### **H:** Antivirus xóa mất Bloxkeep. Có nên dùng tiếp không?
 
-<details>
-<summary>Tôi quên mật khẩu chủ.</summary>
+**Đ:** Kiểm tra file trước: SHA-256 phải khớp với `SHA256SUMS.txt` trên trang phát hành, và file phải tải từ [Releases](https://github.com/minhhoang0122/bloxkeep/releases) của repo này. Nếu khớp, khôi phục file từ khu cách ly của antivirus và báo là nhận nhầm (với Windows Defender: [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)). Đừng bao giờ dùng "Bloxkeep" tải từ nơi khác.
 
-Không khôi phục được. Mật khẩu chủ không được lưu ở đâu cả. Bạn có thể xóa `vault.rmv` và `vault.rmv.bak` trong `%LOCALAPPDATA%\Bloxkeep` (mất toàn bộ tài khoản đã lưu) rồi thiết lập lại, hoặc khôi phục một bản sao lưu mà bạn còn nhớ mật khẩu.
-</details>
+### **H:** Bật Multi-Roblox thế nào?
 
-<details>
-<summary>Làm sao chuyển sang máy mới?</summary>
+**Đ:** Gạt công tắc **Multi-Roblox** ở cuối thanh bên (hoặc **Cài đặt › Khởi chạy › Multi-Roblox**) rồi xác nhận. Mở Bloxkeep trước Roblox và để nó mở trong lúc chơi. Màu đèn cho biết tình trạng:
 
-Bật sao lưu vào thư mục OneDrive hoặc Google Drive trên máy cũ. Trên máy mới, cài Bloxkeep, bấm **Khôi phục từ bản sao lưu** và nhập mật khẩu lúc sao lưu. Xem [Sao lưu và khôi phục](#sao-lưu-và-khôi-phục).
-</details>
+| Đèn | Ý nghĩa |
+|---|---|
+| Xanh | Đang bật: mở được nhiều tài khoản cùng lúc |
+| Vàng | Chưa hoạt động (đã có Roblox mở từ trước), hoặc bản Roblox mới có thể chặn. Bấm vào thẻ để xem cách xử lý |
+| Xám | Đang tắt: mỗi lần mở Roblox mới, cửa sổ cũ bị đóng |
 
-<details>
-<summary>Đèn Multi-Roblox màu vàng.</summary>
+Nếu bấm **Vào game** cho hai tài khoản khi Multi-Roblox đang tắt, Bloxkeep sẽ gợi ý **Bật Multi-Roblox rồi chơi**.
 
-Có Roblox đã mở trước Bloxkeep. Đóng hết Roblox, kể cả Roblox ở khay hệ thống. Nếu Roblox tự chạy cùng Windows, bấm **Tắt tự khởi động** trong bảng hướng dẫn. Đèn sẽ chuyển xanh. Lần sau hãy mở Bloxkeep trước Roblox.
-</details>
+### **H:** Đèn Multi-Roblox màu vàng.
 
-<details>
-<summary>Cửa sổ Roblox lúc toàn màn hình, lúc không.</summary>
+**Đ:** Có Roblox đã mở trước Bloxkeep. Đóng hết Roblox, kể cả Roblox ở khay hệ thống. Nếu Roblox tự chạy cùng Windows, bấm **Tắt tự khởi động** trong bảng hướng dẫn. Đèn sẽ chuyển xanh. Lần sau hãy mở Bloxkeep trước Roblox. Nếu thẻ báo bản Roblox mới có thể chặn, bạn cứ chơi bình thường; nếu Roblox bắt đầu đóng cửa sổ, Bloxkeep sẽ báo, và cập nhật Bloxkeep là sửa được.
 
-Các cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cái dễ bị lệch nhau. Bật **Luôn mở Roblox ở chế độ cửa sổ** trong bảng **Chi tiết** của Multi-Roblox (bật sẵn): mọi cửa sổ mở ở chế độ cửa sổ, cài đặt của bạn được trả lại sau đó. Muốn mỗi cửa sổ choán cả màn hình thì chọn **Phóng to** ở **Khi cửa sổ Roblox mở ra**; muốn xếp cạnh nhau thì chọn **Xếp cạnh nhau** hoặc dùng **Kiểu xếp cửa sổ**.
-</details>
+### **H:** Không mở được nhiều tài khoản: cửa sổ mới mở là cửa sổ cũ bị đóng.
 
-<details>
-<summary>Dùng Bloxstrap / Fishstrap thì mod còn không?</summary>
+**Đ:** Multi-Roblox đang tắt hoặc chưa hoạt động: xem hai câu ở trên. Nếu đèn đã xanh mà cửa sổ vẫn bị đóng, tức là Roblox đã đổi cách chặn mở nhiều cửa sổ. Hãy kiểm tra bản cập nhật Bloxkeep (**Cài đặt › Cập nhật Bloxkeep › Kiểm tra ngay**) và [gửi góp ý](#h-bạn-nên-thêm-tính-năng--tôi-gặp-lỗi).
 
-Còn, nếu chọn **Bloxstrap** hoặc **Fishstrap** trong **Mở Roblox bằng**. Nếu launcher chặn nhiều cửa sổ, chọn **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)**; khi đó Roblox mở không qua trình mở.
-</details>
+### **H:** Mấy chấm màu trên tài khoản nghĩa là gì?
 
-<details>
-<summary>Thoát game rồi mà vẫn hiện "đang chơi".</summary>
+**Đ:** Chấm trên ảnh đại diện cho biết tài khoản đang ở đâu: **xanh lá** đang trong game, **xanh dương** online trên web hoặc app, **cam** đang ở Roblox Studio, **vàng** bị ngắt kết nối nhưng cửa sổ vẫn mở, **xám** offline. **Viền đỏ** nghĩa là tài khoản cần đăng nhập lại hoặc đã bị ban. Bộ lọc **Cần đăng nhập lại** và **Bị ban** phía trên danh sách lọc riêng những tài khoản đó.
 
-Trạng thái của Roblox bị trễ, có khi vài phút. Với cửa sổ chạy trên máy này, Bloxkeep tự bỏ qua báo cáo cũ; trạng thái từ thiết bị khác vẫn có thể trễ.
-</details>
+### **H:** Thêm tài khoản không được.
 
-<details>
-<summary>Mở game báo lỗi 403 "An error was encountered during authentication".</summary>
+**Đ:** Thử cách khác trong **Thêm tài khoản**: **Đăng nhập bằng điện thoại** (mã hoặc QR, không cần mật khẩu hay giải câu đố; tốt nhất khi tài khoản đã đăng nhập trên điện thoại), **Đăng nhập bằng trình duyệt**, **Mở roblox.com** (đăng nhập trên web rồi bấm **Lưu vào Bloxkeep**), hoặc **Dán cookie**. Nếu đăng nhập bằng mật khẩu cứ bắt giải câu đố, dùng điện thoại là nhanh nhất.
 
-Thường do VPN chỉ áp cho một số app: Roblox đi qua VPN còn Bloxkeep thì không. Vé vào game gắn với địa chỉ IP đã xin nó, nên hãy cho Bloxkeep đi cùng đường với Roblox.
-</details>
+### **H:** Sao chép mật khẩu báo chưa lưu mật khẩu.
 
-<details>
-<summary>Ở Việt Nam không vào được roblox.com thì có dùng được không?</summary>
+**Đ:** Đăng nhập bằng cách nào thì Bloxkeep cũng không giữ mật khẩu: cách điện thoại, trình duyệt và cookie không hề thấy mật khẩu, còn cách mật khẩu thì gửi thẳng cho Roblox rồi bỏ đi. Muốn sao chép được, hãy gõ mật khẩu ở **Sửa (F2) › Mật khẩu Roblox**. **Sao chép mã 2FA** cũng vậy: dán khóa app xác thực của tài khoản ở mục **Sửa**.
 
-Thêm tài khoản thì được. Đăng nhập bằng tên và mật khẩu không cần vào www.roblox.com, vì chỉ gọi tới máy chủ API và captcha của Roblox. Cách **Đăng nhập bằng trình duyệt** thì cần roblox.com. Bloxkeep không có VPN hay cách vượt chặn theo vùng nào. Tài khoản Roblox VNG thêm được nhưng chưa mở được game.
-</details>
+### **H:** Vào được server riêng (VIP) không?
 
-<details>
-<summary>Bloxkeep có gửi mật khẩu hay cookie đi đâu không?</summary>
+**Đ:** Được. Dán link server riêng vào ô chọn game rồi bấm **Vào game**; Bloxkeep mở đúng server đó cho mọi tài khoản đã chọn. Ô **Job ID** đưa các tài khoản vào một server cụ thể, còn nút **Vào cùng người chơi** (cạnh ô chọn game) tìm server mà một người chơi đang ở.
 
-Chỉ tới Roblox. Mật khẩu chỉ gửi tới máy chủ đăng nhập của Roblox, cookie chỉ dùng để gọi máy chủ Roblox cho chính tài khoản đó. Danh sách đầy đủ ở bảng [Những gì rời khỏi máy](#dữ-liệu-và-bảo-mật).
-</details>
+### **H:** Cửa sổ Roblox lúc toàn màn hình, lúc không.
 
-<details>
-<summary>Dùng Roblox bản Microsoft Store được không?</summary>
+**Đ:** Các cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cái dễ bị lệch nhau. Bật **Luôn mở Roblox ở chế độ cửa sổ** trong bảng **Chi tiết** của Multi-Roblox (bật sẵn): mọi cửa sổ mở ở chế độ cửa sổ, cài đặt của bạn được trả lại sau đó. Muốn mỗi cửa sổ choán cả màn hình thì chọn **Phóng to** ở **Khi cửa sổ Roblox mở ra**; muốn xếp cạnh nhau thì chọn **Xếp cạnh nhau** hoặc dùng **Kiểu xếp cửa sổ**.
 
-Được, trong lúc tính năng này còn thử nghiệm: chọn **Roblox (Microsoft Store)** ở **Cài đặt › Khởi chạy › Mở Roblox bằng**. Trình khởi động của Microsoft chỉ cho chạy một Roblox bản Store, nên Bloxkeep tự mở Roblox của bản Store, mỗi tài khoản với phiên đăng nhập riêng trong một cửa sổ riêng. Bản cập nhật vẫn do Microsoft Store cài. Nếu không chạy được, Roblox tải từ roblox.com cũng dùng y như vậy, kèm Bloxstrap hay Fishstrap tùy bạn.
-</details>
+### **H:** Dùng Bloxstrap / Fishstrap thì mod còn không?
 
-<details>
-<summary>Làm sao xóa sạch Bloxkeep?</summary>
+**Đ:** Còn, nếu chọn **Bloxstrap** hoặc **Fishstrap** trong **Mở Roblox bằng**. Nếu launcher chặn nhiều cửa sổ, chọn **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)**; khi đó Roblox mở không qua launcher.
 
-Gỡ Bloxkeep trong **Settings › Apps** của Windows và đánh dấu **Xóa luôn tài khoản và cài đặt**. Các bản sao lưu trong thư mục sao lưu vẫn còn; muốn thì tự xóa. Với bản portable, xóa thư mục chứa app (gồm cả `data`).
-</details>
+### **H:** Dùng Roblox bản Microsoft Store được không?
+
+**Đ:** Được, trong lúc tính năng này còn thử nghiệm: chọn **Roblox (Microsoft Store)** ở **Cài đặt › Khởi chạy › Mở Roblox bằng**. Trình khởi động của Microsoft chỉ cho chạy một Roblox bản Store, nên Bloxkeep tự mở Roblox của bản Store, mỗi tài khoản với phiên đăng nhập riêng trong một cửa sổ riêng. Bản cập nhật vẫn do Microsoft Store cài. Nếu không chạy được, Roblox tải từ roblox.com cũng dùng y như vậy, kèm Bloxstrap hay Fishstrap tùy bạn.
+
+### **H:** Thoát game rồi mà vẫn hiện "đang chơi".
+
+**Đ:** Trạng thái của Roblox bị trễ, có khi vài phút. Với cửa sổ chạy trên máy này, Bloxkeep tự bỏ qua báo cáo cũ; trạng thái từ thiết bị khác vẫn có thể trễ.
+
+### **H:** Mở game báo lỗi 403 "An error was encountered during authentication".
+
+**Đ:** Thường do VPN chỉ áp cho một số app: Roblox đi qua VPN còn Bloxkeep thì không. Vé vào game gắn với địa chỉ IP đã xin nó, nên hãy cho Bloxkeep đi cùng đường với Roblox.
+
+### **H:** Ở Việt Nam không vào được roblox.com thì có dùng được không?
+
+**Đ:** Thêm tài khoản thì được. Đăng nhập bằng tên và mật khẩu, hay bằng điện thoại, không cần vào www.roblox.com, vì chỉ gọi tới máy chủ API và captcha của Roblox. Cách **Đăng nhập bằng trình duyệt** thì cần roblox.com. Bloxkeep không có VPN hay cách vượt chặn theo vùng nào. Tài khoản Roblox VNG thêm được nhưng chưa mở được game.
+
+### **H:** Sao lưu tài khoản thế nào?
+
+**Đ:** Bật **Cài đặt › Sao lưu & dữ liệu › Tự động sao lưu** và chọn một thư mục, tốt nhất là thư mục được OneDrive hay Google Drive đồng bộ. Mỗi bản sao lưu được mã hóa bằng mật khẩu chủ của bạn. Xem [Sao lưu và khôi phục](#sao-lưu-và-khôi-phục).
+
+### **H:** Làm sao chuyển sang máy mới?
+
+**Đ:** Bật sao lưu vào thư mục OneDrive hoặc Google Drive trên máy cũ. Trên máy mới, cài Bloxkeep, bấm **Khôi phục từ bản sao lưu** và nhập mật khẩu lúc sao lưu.
+
+### **H:** Tôi quên mật khẩu chủ.
+
+**Đ:** Không khôi phục được. Mật khẩu chủ không được lưu ở đâu cả. Bạn có thể xóa `vault.rmv` và `vault.rmv.bak` trong `%LOCALAPPDATA%\Bloxkeep` (mất toàn bộ tài khoản đã lưu) rồi thiết lập lại, hoặc khôi phục một bản sao lưu mà bạn còn nhớ mật khẩu.
+
+### **H:** Bloxkeep có gửi mật khẩu hay cookie đi đâu không?
+
+**Đ:** Chỉ tới Roblox. Mật khẩu chỉ gửi tới máy chủ đăng nhập của Roblox, cookie chỉ dùng để gọi máy chủ Roblox cho chính tài khoản đó. Danh sách đầy đủ ở bảng [Những gì rời khỏi máy](#dữ-liệu-và-bảo-mật).
+
+### **H:** Dùng trên Mac hay Linux được không?
+
+**Đ:** Không. Bloxkeep chỉ chạy trên Windows 10 và 11 (64-bit).
+
+### **H:** Tài khoản của tôi có bị ban không?
+
+**Đ:** Không ai đảm bảo được. Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc, nên dùng Multi-Roblox là bạn tự chịu rủi ro. Bloxkeep đăng nhập và mở game theo cùng cách trang roblox.com làm, và không đụng vào bộ nhớ của game. Một số game cấm dùng tài khoản phụ; hãy đọc luật của game bạn chơi.
+
+### **H:** Bạn nên thêm (tính năng) / Tôi gặp lỗi.
+
+**Đ:** Báo ngay trong app: **Cài đặt › Cập nhật Bloxkeep › Gửi góp ý** (hoặc Ctrl+K). Khi báo lỗi có thể gửi kèm nhật ký lỗi của Bloxkeep (đã xóa tên tài khoản, mật khẩu và cookie), và bạn xem trước đúng những gì được gửi. Bạn cũng có thể mở [issue](https://github.com/minhhoang0122/bloxkeep/issues) trên GitHub.
+
+### **H:** Làm sao xóa sạch Bloxkeep?
+
+**Đ:** Gỡ Bloxkeep trong **Settings › Apps** của Windows và đánh dấu **Xóa luôn tài khoản và cài đặt**. Các bản sao lưu trong thư mục sao lưu vẫn còn; muốn thì tự xóa. Với bản portable, xóa thư mục chứa app (gồm cả `data`).
 
 ## Tự build từ mã nguồn
 

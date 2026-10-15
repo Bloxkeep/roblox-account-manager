@@ -139,7 +139,20 @@ public sealed class WebsiteTab : UserControl
             ShowUnreachable();
         };
         _sync.Tick += async (_, _) => await SyncSessionAsync();
-        Load += async (_, _) => await OpenAsync();
+    }
+
+    /// <summary>
+    /// Starts the tab's browser, shown or not: a tab added and hidden again at once (another one opened right after, as
+    /// on a slow PC) would otherwise wait to be shown first, its Load never coming.
+    /// </summary>
+    public void Start()
+    {
+        if (_hasBrowser || _tornDown)
+            return;
+        // Window handles even while hidden (each needs its parent's, made on the way): the browser draws into them.
+        _ = Handle;
+        _ = _web.Handle;
+        _ = OpenAsync();
     }
 
     /// <summary>

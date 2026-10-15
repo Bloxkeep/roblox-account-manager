@@ -96,6 +96,7 @@ public sealed class WebsiteForm : Form
         _strip.Controls.Add(chip);
         LayoutChips();
         SelectTab(tab);
+        tab.Start();
     }
 
     public void SelectTab(WebsiteTab tab)
