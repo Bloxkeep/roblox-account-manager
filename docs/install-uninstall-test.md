@@ -1,6 +1,7 @@
 # Install / update / uninstall: manual test checklist
 
-For `dist\releases\Bloxkeep-Setup.exe` and `Bloxkeep-Portable.zip` built by `build.bat` (Velopack 1.2.161).
+For `dist\releases\Bloxkeep-Setup-Offline.exe` and `Bloxkeep-Portable.zip` built by `build.bat` (Velopack 1.2.161).
+`Bloxkeep-Setup.exe` (the web installer) installs the newest *published* release, so try it once after publishing (section 8).
 Do this on a PC (or a Windows Sandbox / VM) where you don't mind touching `%LOCALAPPDATA%\Bloxkeep`; on your own PC
 back up that folder first. Quit every dev build of Bloxkeep before you start: dev builds share the single-instance
 mutex and the data folder with the installed copy, so an installed copy started while a dev build runs only brings the
@@ -10,7 +11,7 @@ Tick each line. "150 %" means Settings › System › Display › Scale set to 1
 
 ## 1. Fresh install
 
-- [ ] Double-click `Bloxkeep-Setup.exe`. SmartScreen: "More info › Run anyway" appears (unsigned build, expected).
+- [ ] Double-click `Bloxkeep-Setup-Offline.exe`. SmartScreen: "More info › Run anyway" appears (unsigned build, expected).
 - [ ] PC without WebView2 only (rare; Windows 11 and updated Windows 10 have it): a dialog "Bloxkeep requires Microsoft Edge WebView2 Runtime … install?" appears, then a download progress box. Offline, this fails with an error and no Bloxkeep is installed: expected, note it.
 - [ ] Splash: dark window with the yellow smiley and "Bloxkeep", yellow progress bar along the bottom, no title bar text. At 150 % the window is 720×450 and the text is slightly soft (the image is 480×300 and Velopack scales it); judge whether that's acceptable.
 - [ ] Install takes a few seconds, no other dialog, then Bloxkeep starts by itself showing the master-password setup screen (first run).
@@ -25,7 +26,7 @@ Tick each line. "150 %" means Settings › System › Display › Scale set to 1
 
 ## 2. Install over an existing install
 
-- [ ] With Bloxkeep running (window open), run the same `Bloxkeep-Setup.exe` again. A dialog "Bloxkeep is already installed … Repair?" appears. Choose Repair: the running Bloxkeep is ended without any prompt (Velopack kills every process under `BloxkeepApp`), the splash shows, Bloxkeep starts again, still unlocked with your accounts.
+- [ ] With Bloxkeep running (window open), run the same `Bloxkeep-Setup-Offline.exe` again. A dialog "Bloxkeep is already installed … Repair?" appears. Choose Repair: the running Bloxkeep is ended without any prompt (Velopack kills every process under `BloxkeepApp`), the splash shows, Bloxkeep starts again, still unlocked with your accounts.
 - [ ] Same with close-to-tray on and the window hidden to the tray: after the kill, a dead tray icon may stay until the mouse passes over it. Note whether it does on this Windows build.
 - [ ] Run a Setup built with a higher version (`build.bat 1.0.1`): the dialog offers Update instead; data is kept and What's new shows after the restart. A Setup with a lower version offers a downgrade warning.
 - [ ] Run Setup while a dev build is running: Setup finishes but the dev build's window comes to the front and the installed copy exits (expected, see top). Quit the dev build and start Bloxkeep from the Start menu.
@@ -52,7 +53,7 @@ Needs the next version on GitHub Releases, or a folder with the next version's `
 
 ## 5. Reinstall after uninstall
 
-- [ ] Run `Bloxkeep-Setup.exe` again: no Repair dialog (folder was removed), splash, Bloxkeep starts at the **unlock** screen, your accounts are back after the master password.
+- [ ] Run `Bloxkeep-Setup-Offline.exe` again: no Repair dialog (folder was removed), splash, Bloxkeep starts at the **unlock** screen, your accounts are back after the master password.
 - [ ] Theme, language and close-to-tray settings are as before (prefs.json survived).
 
 ## 6. Portable zip
@@ -65,3 +66,11 @@ Needs the next version on GitHub Releases, or a folder with the next version's `
 ## 7. Remove everything
 
 - [ ] Uninstall, then delete `%LOCALAPPDATA%\Bloxkeep` and the backup files in your backup folder. For the portable build delete the unzipped folder. Nothing else of Bloxkeep's is left on the PC.
+
+## 8. Web installer (after publishing)
+
+- [ ] Download `Bloxkeep-Setup.exe` from the release page in Edge and run it from Edge's downloads. Its SHA-256 is the same as `Installer\Web\Bloxkeep-Setup.exe` in the repo.
+- [ ] Under the title it shows "Version" and the release just published (a second after opening), and the space needed.
+- [ ] Install: "Downloading Bloxkeep x.y.z… n of about 57 MB" with the bar filling, then the usual copying and the done page.
+- [ ] Close the window while it downloads: it stops and closes; nothing is installed and no `Bloxkeep-Setup-*` folder is left in `%TEMP%`.
+- [ ] With the network off: Install ends on "Setup didn't finish" saying it couldn't download from GitHub, without the setup-log link; Try again works once the network is back.

@@ -5,12 +5,14 @@
     "en": [
       "74 themes, up from 32. Scenery and Seasonal themes now have a drawn scene behind glass panels: Ha Long Bay, rice terraces, Hoi An, Mount Fuji, a jungle, under the sea, sky islands, the Moon; Tết, Valentine, spring, flame trees, summer, kites, the rainy season, back to school, Mid-Autumn, autumn, sky lanterns, Halloween, winter, Christmas and New Year's Eve.",
       "Styles change the shapes, not only the colours: Windows 98, Classic Mac, macOS light and dark (its red, yellow and green buttons close, minimise and zoom the window), GNOME, Ubuntu, KDE Plasma, Terminal, Game Boy, Arcade, Blueprint, Newspaper, Notebook, Chalkboard, Neo-brutalism and Cyberpunk.",
-      "New plain themes too: Grey, Midnight, High contrast light, Indigo, Crimson, Teal, Amber, Sky, Lavender, Peach and Mint."
+      "New plain themes too: Grey, Midnight, High contrast light, Indigo, Crimson, Teal, Amber, Sky, Lavender, Peach and Mint.",
+      "Bloxkeep-Setup.exe is now a small installer that downloads the newest version as it installs. It stays the same file from release to release, so Windows SmartScreen can get to know it. Bloxkeep-Setup-Offline.exe has everything inside, for installing without internet."
     ],
     "vi": [
       "74 chủ đề, trước đây là 32. Chủ đề Phong cảnh và Theo mùa giờ có cảnh vẽ phía sau các khung mờ: Vịnh Hạ Long, ruộng bậc thang, phố cổ Hội An, núi Phú Sĩ, rừng nhiệt đới, đáy biển, đảo bay, Mặt trăng; Tết, Valentine, mùa xuân, hoa phượng, mùa hè, mùa diều, mùa mưa, khai giảng, Trung thu, mùa thu, đèn trời, Halloween, mùa đông, Giáng sinh và Giao thừa.",
       "Phong cách đổi cả hình khối chứ không chỉ màu: Windows 98, Mac cổ điển, macOS sáng và tối (3 nút đỏ, vàng, xanh bấm được để đóng, thu nhỏ, phóng to cửa sổ), GNOME, Ubuntu, KDE Plasma, Terminal, Game Boy, Arcade, Blueprint, Newspaper, Vở ô li, Bảng đen, Neo-brutalism và Cyberpunk.",
-      "Thêm các chủ đề màu: Xám, Nửa đêm, Tương phản sáng, Chàm, Đỏ thẫm, Xanh mòng két, Hổ phách, Trời xanh, Oải hương, Đào và Bạc hà."
+      "Thêm các chủ đề màu: Xám, Nửa đêm, Tương phản sáng, Chàm, Đỏ thẫm, Xanh mòng két, Hổ phách, Trời xanh, Oải hương, Đào và Bạc hà.",
+      "Bloxkeep-Setup.exe giờ là bộ cài nhỏ, tải bản mới nhất trong lúc cài. Nó giữ nguyên là một file qua các bản phát hành, nên Windows SmartScreen dần nhận ra nó. Bloxkeep-Setup-Offline.exe có sẵn mọi thứ bên trong, để cài khi không có mạng."
     ]
   },
   {

@@ -40,13 +40,14 @@ Get it from [Releases](../../releases/latest):
 
 | File | Use it when |
 |---|---|
-| `Bloxkeep-Setup.exe` | You want a normal install. You choose the folder, on any drive (pick `D:\` and it goes to `D:\Bloxkeep`). It installs for your Windows user, needs no admin rights, and adds Start menu and Desktop shortcuts. |
+| `Bloxkeep-Setup.exe` | You want a normal install. A small file that downloads the newest Bloxkeep from this page as it installs (about 60 MB). You choose the folder, on any drive (pick `D:\` and it goes to `D:\Bloxkeep`). It installs for your Windows user, needs no admin rights, and adds Start menu and Desktop shortcuts. |
+| `Bloxkeep-Setup-Offline.exe` | The same installer with everything inside (about 60 MB), for a PC without internet or to keep for later. |
 | `Bloxkeep-Portable.zip` | You'd rather not install. Unzip and run `Bloxkeep.exe`; its data goes into a `data` folder next to it. The portable copy updates itself too. |
 
 > [!CAUTION]
 > Only download Bloxkeep from this repository's Releases page. A copy from anywhere else may have been changed to steal accounts.
 
-The files aren't code-signed yet, so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release.
+The files aren't code-signed yet, so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release. `Bloxkeep-Setup.exe` is the same file in every release (only what it downloads changes), so SmartScreen gets to know it over time; the web installer checks its download against `SHA256SUMS.txt` itself.
 
 Setup shows where Bloxkeep will go (`%LOCALAPPDATA%\BloxkeepApp` unless you choose another folder; the program takes about 230 MB), copies it with a progress bar and can open it when it's done. Your accounts and settings stay apart from the program, in `%LOCALAPPDATA%\Bloxkeep` (a few MB). Setup and the uninstaller speak English and Vietnamese.
 
@@ -423,7 +424,7 @@ You need Windows and the **.NET 10 SDK**. The app is a C# core (.NET 10, WinForm
 build.bat 1.0.1
 ```
 
-It runs the checks in `Tests\Bloxkeep.Tests` first and stops if one fails (run them alone with `dotnet run --project Tests\Bloxkeep.Tests`; add `--online` for the ones that ask Roblox's servers). Each runs in its own process with throwaway data, never yours. The output goes to `dist\releases\`: `Bloxkeep-Setup.exe`, `Bloxkeep-Portable.zip`, the update packages and `SHA256SUMS.txt`. A second argument is the GitHub repository the build looks for updates in (this one by default); pass another when you build a fork.
+It runs the checks in `Tests\Bloxkeep.Tests` first and stops if one fails (run them alone with `dotnet run --project Tests\Bloxkeep.Tests`; add `--online` for the ones that ask Roblox's servers). Each runs in its own process with throwaway data, never yours. The output goes to `dist\releases\`: `Bloxkeep-Setup.exe` (the web installer, copied as it is from `Installer\Web`), `Bloxkeep-Setup-Offline.exe`, `Bloxkeep-Portable.zip`, the update packages and `SHA256SUMS.txt`. The web installer is rebuilt only on purpose, with `Installer\Web\make.bat`: a new build is a new file to SmartScreen. A second argument is the GitHub repository the build looks for updates in (this one by default); pass another when you build a fork.
 
 ```bat
 release.bat 1.0.1 https://github.com/minhhoang0122/bloxkeep

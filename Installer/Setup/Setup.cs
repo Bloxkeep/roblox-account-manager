@@ -1,8 +1,10 @@
 // Bloxkeep's installer and uninstaller windows. Velopack still does the work underneath (copying the files, the
 // shortcuts, the Installed apps entry, updates, removing it all), run silently by these windows:
-//   Bloxkeep-Setup.exe       has Velopack's installer embedded: choose a folder (any drive) › progress › done.
-//   BloxkeepUninstall.exe    the same program without it, shipped inside the app (current\) and set as the
-//                            Installed apps uninstall command: confirm, optionally delete the accounts › progress › done.
+//   Bloxkeep-Setup-Offline.exe   has Velopack's installer embedded: choose a folder (any drive) › progress › done.
+//   Bloxkeep-Setup.exe           the same window built with Installer\Web\Web.cs (/define:WEB): downloads the newest
+//                                Bloxkeep-Setup-Offline.exe while installing, so it never changes (see Web.cs).
+//   BloxkeepUninstall.exe        the same program without either, shipped inside the app (current\) and set as the
+//                                Installed apps uninstall command: confirm, optionally delete the accounts › progress › done.
 // Accounts and settings live apart from the program, in %LOCALAPPDATA%\Bloxkeep. build.bat compiles this with the
 // csc.exe that ships with Windows (.NET Framework 4.x, so C# 5): it runs on every Windows 10/11 as it is.
 //
@@ -10,6 +12,7 @@
 // --delete-data. --shot <png> --page <name> [--lang en|vi] saves a page as a picture (for the README).
 // --updating <version> --wait-pid <pid> --app <Bloxkeep.exe> --data <folder> [--quiet]: the watch over an update's
 // restart, started by the app as it quits (the "Updating Bloxkeep" window; none with --quiet).
+// --extract-payload <file>: writes the embedded Velopack installer there and quits (how the web installer gets it).
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -33,6 +36,14 @@ namespace BloxkeepSetup
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            // Asked by the web installer, which downloaded this file: hand over Velopack's installer, nothing else.
+            string payloadTo = Arg(args, "--extract-payload");
+            if (payloadTo != null)
+            {
+                try { return Ops.ExtractPayload(payloadTo) ? 0 : 4; }
+                catch (IOException) { return 6; }
+                catch (UnauthorizedAccessException) { return 6; }
+            }
             T.Vi = PickVietnamese(Arg(args, "--lang"));
             bool silent = Has(args, "--silent");
             string shot = Arg(args, "--shot");
@@ -113,8 +124,17 @@ namespace BloxkeepSetup
                             Message(error);
                         return 2;
                     }
-                    Ops.CloseRunningApp();
-                    return Ops.Install(Ops.Full(target), null);
+                    try
+                    {
+                        return Ops.Install(Ops.Full(target), null, null);
+                    }
+                    catch (IOException ex)
+                    {
+                        // The web installer's download failed.
+                        if (!silent)
+                            Message(ex.Message);
+                        return 5;
+                    }
                 }
                 var form = new SetupWindow(false, null);
                 if (shot != null)
@@ -338,6 +358,13 @@ namespace BloxkeepSetup
 
         public static bool HasData { get { return File.Exists(Path.Combine(DataDir, "vault.rmv")); } }
 
+#if WEB
+        /// <summary>Downloaded while installing (Web.cs).</summary>
+        public static bool HasPayload { get { return true; } }
+
+        /// <summary>The newest release's, once GitHub has said which it is; "" before.</summary>
+        public static string Version { get { return Web.Version ?? ""; } }
+#else
         public static bool HasPayload { get { return Assembly.GetExecutingAssembly().GetManifestResourceInfo("VelopackSetup.exe") != null; } }
 
         public static string Version
@@ -348,12 +375,30 @@ namespace BloxkeepSetup
                 return v != null ? v.InformationalVersion : "";
             }
         }
+#endif
+
+        /// <summary>Writes the embedded Velopack installer to <paramref name="path"/>; false when this program has none.</summary>
+        public static bool ExtractPayload(string path)
+        {
+            using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("VelopackSetup.exe"))
+            {
+                if (s == null)
+                    return false;
+                using (FileStream f = File.Create(path))
+                    s.CopyTo(f);
+            }
+            return true;
+        }
 
         /// <summary>Program files, the package Velopack keeps for updates and room to unpack (build.bat measures them).</summary>
         public static long NeededBytes
         {
             get
             {
+#if WEB
+                if (Web.NeededBytes > 0)
+                    return Web.NeededBytes;
+#endif
                 foreach (AssemblyMetadataAttribute a in Attribute.GetCustomAttributes(Assembly.GetExecutingAssembly(), typeof(AssemblyMetadataAttribute)))
                 {
                     long n;
@@ -585,19 +630,28 @@ namespace BloxkeepSetup
         }
 
         /// <summary>
-        /// Runs the embedded Velopack installer silently into the folder and returns its exit code; <paramref name="progress"/>
-        /// gets 0–99 from how much has been written so far, or -1 while nothing has been yet.
+        /// Closes a running Bloxkeep and runs the embedded Velopack installer silently into the folder; returns its exit
+        /// code. <paramref name="progress"/> gets 0–99 from how much has been written so far, or -1 while nothing has
+        /// been yet. The web installer downloads that installer first (<paramref name="downloaded"/>: bytes so far, total).
         /// </summary>
-        public static int Install(string target, Action<int> progress)
+        public static int Install(string target, Action<int> progress, Action<long, long> downloaded)
         {
             string dir = Path.Combine(Path.GetTempPath(), "Bloxkeep-Setup-" + Guid.NewGuid().ToString("N").Substring(0, 8));
             Directory.CreateDirectory(dir);
             try
             {
                 string exe = Path.Combine(dir, "Bloxkeep-Install.exe");
-                using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("VelopackSetup.exe"))
-                using (FileStream f = File.Create(exe))
-                    s.CopyTo(f);
+#if WEB
+                string offline = Path.Combine(dir, Web.OfflineName);
+                Web.DownloadOffline(offline, downloaded);
+                if (progress != null)
+                    progress(-1);
+                Web.Unpack(offline, exe);
+#else
+                ExtractPayload(exe);
+#endif
+                // Only now: Bloxkeep stays usable while the download runs.
+                CloseRunningApp();
                 var info = new ProcessStartInfo(exe, "--silent --installto \"" + target + "\"");
                 info.UseShellExecute = false;
                 info.WorkingDirectory = dir;
@@ -968,9 +1022,13 @@ namespace BloxkeepSetup
         string _page, _target, _error;
         bool _deleteData, _openApp = true;
         Bar _bar;
-        Label _status;
+        Label _status, _sub;
+        /// <summary>The web installer's Cancel, while it downloads.</summary>
+        Btn _stop;
         TextBox _path;
         Label _space, _problem;
+        /// <summary>Whether the failed page's setup log can say why (not when the step before Velopack failed).</summary>
+        bool _logHelps = true;
 
         /// <summary>Drawn to a picture (--shot): nothing is watched or run.</summary>
         bool _shooting;
@@ -1076,7 +1134,18 @@ namespace BloxkeepSetup
         {
             // Not while Velopack is busy: closing then would leave a half-done install.
             if (_page == "installing" || _page == "removing")
+            {
                 e.Cancel = true;
+#if WEB
+                // While downloading it can stop: the window closes once the download has (Work).
+                if (_page == "installing" && Web.Cancel() && _status != null)
+                {
+                    _status.Text = T.S("Stopping…", "Đang dừng…");
+                    if (_stop != null)
+                        _stop.Enabled = false;
+                }
+#endif
+            }
             else if (_activateWait != null)
                 _activateWait.Unregister(null);
             base.OnFormClosing(e);
@@ -1120,7 +1189,8 @@ namespace BloxkeepSetup
                 c.Dispose();
             _path = null;
             _bar = null;
-            _status = _space = _problem = null;
+            _status = _sub = _space = _problem = null;
+            _stop = null;
             AcceptButton = CancelButton = null;
             switch (page)
             {
@@ -1151,7 +1221,8 @@ namespace BloxkeepSetup
             pic.Image = icon == "logo" ? Logo(S(44)) : Mark(S(44), icon);
             _body.Controls.Add(pic);
             Add(new Label { Text = title, Font = new Font("Segoe UI Semibold", 15f), ForeColor = Theme.Text, AutoSize = true, Location = new Point(S(90), S(30)) });
-            Add(new Label { Text = sub, ForeColor = Theme.Muted, AutoSize = true, Location = new Point(S(92), S(60)) });
+            _sub = new Label { Text = sub, ForeColor = Theme.Muted, AutoSize = true, Location = new Point(S(92), S(60)) };
+            Add(_sub);
             if (!language)
                 return;
             var lang = new LinkLabel { Text = T.Vi ? "English" : "Tiếng Việt", AutoSize = true, LinkBehavior = LinkBehavior.HoverUnderline };
@@ -1232,7 +1303,14 @@ namespace BloxkeepSetup
             return bmp;
         }
 
-        static string VersionLine { get { return T.S("Version ", "Phiên bản ") + Ops.Version; } }
+        static string VersionLine
+        {
+            get
+            {
+                // The web installer's before GitHub has said which version is the newest.
+                return Ops.Version.Length == 0 ? T.S("Newest version", "Phiên bản mới nhất") : T.S("Version ", "Phiên bản ") + Ops.Version;
+            }
+        }
 
         // ---- installer pages -------------------------------------------------------------------------------------
 
@@ -1270,7 +1348,33 @@ namespace BloxkeepSetup
 
             CancelButton = Button(T.S("Cancel", "Hủy"), false, delegate { Close(); });
             Button(again ? T.S("Reinstall", "Cài lại") : T.S("Install", "Cài đặt"), true, delegate { Install(); });
+#if WEB
+            if (Ops.Version.Length == 0 && !_shooting)
+                FindNewest();
+#endif
         }
+
+#if WEB
+        /// <summary>Asks GitHub for the newest version meanwhile, for the line under the title and the space needed.</summary>
+        void FindNewest()
+        {
+            var worker = new Thread(delegate ()
+            {
+                try { Web.Latest(); }
+                catch (IOException) { return; } // installing says why
+                OnWindow(delegate
+                {
+                    if (_page == "choose" && _sub != null)
+                    {
+                        _sub.Text = T.S("Roblox account manager", "Quản lý tài khoản Roblox") + " · " + VersionLine;
+                        ShowSpace();
+                    }
+                });
+            });
+            worker.IsBackground = true;
+            worker.Start();
+        }
+#endif
 
         void ShowSpace()
         {
@@ -1332,8 +1436,8 @@ namespace BloxkeepSetup
             ShowPage("installing");
             Work(delegate
             {
-                Ops.CloseRunningApp();
-                return Ops.Install(target, delegate (int percent) { BeginInvoke((MethodInvoker)delegate { Progress(percent); }); });
+                return Ops.Install(target, delegate (int percent) { OnWindow(delegate { Progress(percent); }); },
+                    delegate (long have, long total) { OnWindow(delegate { Downloaded(have, total); }); });
             }, delegate (int code)
             {
                 if (code == 0)
@@ -1350,17 +1454,46 @@ namespace BloxkeepSetup
         void Installing()
         {
             Header("logo", T.S("Installing Bloxkeep", "Đang cài Bloxkeep"), _target, false);
+#if WEB
+            _status = Para(T.S("Connecting to GitHub…", "Đang kết nối GitHub…"), S(118), Theme.Text);
+#else
             _status = Para(T.S("Getting ready…", "Đang chuẩn bị…"), S(118), Theme.Text);
+#endif
             _bar = new Bar { Bounds = new Rectangle(S(32), S(146), ClientSize.Width - S(64), S(8)), Value = -1 };
             Add(_bar);
+#if WEB
+            Para(T.S("The newest Bloxkeep is downloaded from its GitHub page first (about 60 MB), then installed. Microsoft Edge WebView2 is installed too if this PC lacks it, which takes longer.",
+                "Bản Bloxkeep mới nhất được tải từ trang GitHub của nó trước (khoảng 60 MB) rồi mới cài. Nếu máy chưa có Microsoft Edge WebView2 thì nó cũng được cài, sẽ lâu hơn một chút."), S(172), Theme.Muted);
+            // Only while downloading (Progress hides it): the install itself can't be stopped halfway.
+            _stop = Button(T.S("Cancel", "Hủy"), false, delegate { Close(); });
+            CancelButton = _stop;
+#else
             Para(T.S("This takes a few seconds. Microsoft Edge WebView2 is installed first if this PC lacks it, which takes longer.",
                 "Việc này mất vài giây. Nếu máy chưa có Microsoft Edge WebView2 thì nó được cài trước, sẽ lâu hơn một chút."), S(172), Theme.Muted);
+#endif
+        }
+
+        void Downloaded(long have, long total)
+        {
+            if (_bar == null || _status == null || _status.Text == T.S("Stopping…", "Đang dừng…"))
+                return;
+            _bar.Value = total > 0 ? (int)Math.Min(100, have * 100 / total) : -1;
+            string name = Ops.Version.Length > 0 ? "Bloxkeep " + Ops.Version : "Bloxkeep";
+            string mb = (have / 1048576.0).ToString("0.0", CultureInfo.CurrentCulture);
+            _status.Text = total > 0
+                ? string.Format(T.S("Downloading {0}… {1} of {2} MB", "Đang tải {0}… {1} / {2} MB"), name, mb, (total / 1048576.0).ToString("0.0", CultureInfo.CurrentCulture))
+                : string.Format(T.S("Downloading {0}… {1} MB", "Đang tải {0}… {1} MB"), name, mb);
         }
 
         void Progress(int percent)
         {
             if (_bar == null || _status == null)
                 return;
+            if (_stop != null)
+            {
+                _stop.Visible = false;
+                CancelButton = null;
+            }
             _bar.Value = percent;
             _status.Text = percent < 0 ? T.S("Getting ready…", "Đang chuẩn bị…") : string.Format(T.S("Copying files… {0}%", "Đang chép file… {0}%"), percent);
         }
@@ -1388,19 +1521,22 @@ namespace BloxkeepSetup
         {
             Header("problem", _uninstall ? T.S("Bloxkeep wasn't removed", "Chưa gỡ được Bloxkeep") : T.S("Setup didn't finish", "Cài đặt chưa xong"), _uninstall ? _root : _target, true);
             var text = Para(_error ?? "", S(112), Theme.Text);
-            var log = new LinkLabel { Text = T.S("Open the setup log", "Mở nhật ký cài đặt"), AutoSize = true, LinkBehavior = LinkBehavior.HoverUnderline, Location = new Point(S(32), text.Bottom + S(14)) };
-            log.LinkColor = log.VisitedLinkColor = Theme.Accent;
-            log.ActiveLinkColor = Theme.AccentHover;
-            log.LinkClicked += delegate
+            if (_logHelps)
             {
-                try { Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Ops.VelopackLog + "\"")).Dispose(); }
-                catch (System.ComponentModel.Win32Exception) { }
-            };
-            Add(log);
-            Para(Ops.VelopackLog, log.Bottom + S(6), Theme.Muted);
+                var log = new LinkLabel { Text = T.S("Open the setup log", "Mở nhật ký cài đặt"), AutoSize = true, LinkBehavior = LinkBehavior.HoverUnderline, Location = new Point(S(32), text.Bottom + S(14)) };
+                log.LinkColor = log.VisitedLinkColor = Theme.Accent;
+                log.ActiveLinkColor = Theme.AccentHover;
+                log.LinkClicked += delegate
+                {
+                    try { Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Ops.VelopackLog + "\"")).Dispose(); }
+                    catch (System.ComponentModel.Win32Exception) { }
+                };
+                Add(log);
+                Para(Ops.VelopackLog, log.Bottom + S(6), Theme.Muted);
+            }
             CancelButton = Button(T.S("Close", "Đóng"), _uninstall, delegate { Close(); });
             if (!_uninstall)
-                Button(T.S("Try again", "Thử lại"), true, delegate { _error = null; ShowPage("choose"); });
+                Button(T.S("Try again", "Thử lại"), true, delegate { _error = null; _logHelps = true; ShowPage("choose"); });
         }
 
         // ---- uninstaller pages -----------------------------------------------------------------------------------
@@ -1565,12 +1701,18 @@ namespace BloxkeepSetup
             {
                 int code;
                 try { code = job(); }
-                catch (Exception ex)
+                catch (OperationCanceledException)
                 {
-                    BeginInvoke((MethodInvoker)delegate { _error = ex.Message; ShowPage("failed"); });
+                    // The web installer's download, stopped by closing the window: close it now.
+                    OnWindow(delegate { _page = null; Close(); });
                     return;
                 }
-                BeginInvoke((MethodInvoker)delegate { done(code); });
+                catch (Exception ex)
+                {
+                    OnWindow(delegate { _error = ex.Message; _logHelps = false; ShowPage("failed"); });
+                    return;
+                }
+                OnWindow(delegate { done(code); });
             });
             worker.IsBackground = true;
             worker.Start();
@@ -1585,6 +1727,12 @@ namespace BloxkeepSetup
                 _target = @"D:\Bloxkeep";
                 ShowPage(page);
                 Progress(62);
+            }
+            else if (page == "downloading")
+            {
+                _target = @"D:\Bloxkeep";
+                ShowPage("installing");
+                Downloaded(23 * 1048576L + 400000, 60243968);
             }
             else if (page == "picked")
             {

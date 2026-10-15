@@ -1,7 +1,9 @@
 @echo off
 rem Builds Bloxkeep into dist\releases (needs the .NET 10 SDK; the app is self-contained, users don't need .NET):
 rem   Bloxkeep-Setup.exe            installer for users: they choose the folder (any drive); installs per user without
-rem                                 admin rights, and installs WebView2 if missing
+rem                                 admin rights, and installs WebView2 if missing. A small web installer, the same
+rem                                 file in every release (Installer\Web): it downloads the newest offline one
+rem   Bloxkeep-Setup-Offline.exe    the same installer with everything inside, for installing without internet
 rem   Bloxkeep-Portable.zip         no install; keeps its data in a "data" folder next to it; updates itself too
 rem   *.nupkg + releases.win.json   what installed copies download when they update
 rem Usage: build.bat [version] [github repo url]   e.g. build.bat 1.0.1
@@ -59,14 +61,15 @@ dotnet vpk pack --packId BloxkeepApp --packVersion %VERSION% --packDir artifacts
   --splashImage Installer\splash.png --splashProgressColor #f5c933 --framework webview2 ^
   --releaseNotes artifacts\release-notes.md -o dist\releases || goto :fail
 
-rem Bloxkeep-Setup.exe is our installer window with vpk's installer inside it (vpk's alone installs to %LOCALAPPDATA%
-rem without asking): people choose the folder, on any drive, and it runs vpk's silently with --installto.
+rem Bloxkeep-Setup-Offline.exe is our installer window with vpk's installer inside it (vpk's alone installs to
+rem %LOCALAPPDATA% without asking): people choose the folder, on any drive, and it runs vpk's silently with --installto.
+rem Bloxkeep-Setup.exe, the web installer, downloads it from the release and does the same.
 move /y dist\releases\BloxkeepApp-win-Setup.exe artifacts\VelopackSetup.exe >nul || goto :fail
 powershell -NoProfile -ExecutionPolicy Bypass -File Installer\Setup\info.ps1 %VERSION% || goto :fail
-%CSC% /out:dist\releases\Bloxkeep-Setup.exe /resource:artifacts\VelopackSetup.exe,VelopackSetup.exe Installer\Setup\Setup.cs artifacts\SetupInfo.cs || goto :fail
-rem Plain names for the two files people download; the update packages keep vpk's names.
-move /y dist\releases\BloxkeepApp-win-Portable.zip dist\releases\Bloxkeep-Portable.zip >nul || goto :fail
-powershell -NoProfile -Command "$f = 'dist\releases\assets.win.json'; [IO.File]::WriteAllText($f, [IO.File]::ReadAllText($f).Replace('BloxkeepApp-win-Setup.exe', 'Bloxkeep-Setup.exe').Replace('BloxkeepApp-win-Portable.zip', 'Bloxkeep-Portable.zip'))" || goto :fail
+%CSC% /out:dist\releases\Bloxkeep-Setup-Offline.exe /resource:artifacts\VelopackSetup.exe,VelopackSetup.exe Installer\Setup\Setup.cs artifacts\SetupInfo.cs || goto :fail
+rem Plain names for the files people download, and the web installer and SHA256SUMS.txt in the upload list (the
+rem update packages keep vpk's names).
+powershell -NoProfile -ExecutionPolicy Bypass -File Installer\assets.ps1 || goto :fail
 
 powershell -NoProfile -Command "Get-ChildItem dist\releases -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object { '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } | Set-Content -Encoding ascii dist\releases\SHA256SUMS.txt" || goto :fail
 
