@@ -174,9 +174,9 @@ Multi-Roblox is **off by default**. Roblox doesn't officially support running se
 
 How it works: Roblox uses an object named `ROBLOX_singletonEvent` to allow only one window; since its October 2026 builds, a new window uses it to close the older ones. Bloxkeep takes that name first, while no Roblox is running, so Roblox can't set this up and the windows don't close each other. Bloxkeep injects nothing into Roblox and reads nothing from the Roblox process.
 
-If a newer Roblox build starts closing windows when another opens again, **Settings › Version & graphics** shows a yellow warning. It goes away once two or more accounts are in a game at the same time, when Roblox updates, or when you click **Hide**.
+If a newer Roblox build starts closing windows when another opens again, **Settings › Roblox version & graphics** shows a yellow warning. It goes away once two or more accounts are in a game at the same time, when Roblox updates, or when you click **Hide**.
 
-Bloxkeep's Roblox watch also checks each new Roblox build as soon as Roblox offers it, often before it reaches players: it downloads the build and compares the lock Multi-Roblox relies on with the build before ([how it works](docs/roblox-watch.md)). **Settings › Version & graphics** shows what it found for your Roblox under **Multi-Roblox check**, and the Multi-Roblox card turns yellow when the lock changed. Opening several accounts then asks first, until two windows have played together on that build. When Roblox only renamed its lock, Bloxkeep holds the new name as well, without an update. The check can't prove Multi-Roblox works; two windows playing together can, and Bloxkeep remembers that for each build.
+Bloxkeep's Roblox watch also checks each new Roblox build as soon as Roblox offers it, often before it reaches players: it downloads the build and compares the lock Multi-Roblox relies on with the build before ([how it works](docs/roblox-watch.md)). **Settings › Roblox version & graphics** shows what it found for your Roblox under **Multi-Roblox check**, and the Multi-Roblox card turns yellow when the lock changed. Opening several accounts then asks first, until two windows have played together on that build. When Roblox only renamed its lock, Bloxkeep holds the new name as well, without an update. The check can't prove Multi-Roblox works; two windows playing together can, and Bloxkeep remembers that for each build.
 
 ### Anti-AFK
 
@@ -190,7 +190,7 @@ Bloxkeep doesn't rejoin when you leave the game yourself, when the account signe
 
 ### Roblox settings per account
 
-In **Settings › Version & graphics › Roblox settings**, **Apply to** chooses **Nobody**, **All accounts** or **Chosen accounts** (pick them with **Use Roblox settings** in the ⋯ menu). Set **Graphics quality** from 1 to 10, **Frame rate limit** 30/60/144/240, **Volume** from **Muted** to 100 %, or **Leave as is**.
+In **Settings › Roblox version & graphics › Roblox settings**, **Apply to** chooses **Nobody**, **All accounts** or **Chosen accounts** (pick them with **Use Roblox settings** in the ⋯ menu). Set **Graphics quality** from 1 to 10, **Frame rate limit** 30/60/144/240, **Volume** from **Muted** to 100 %, or **Leave as is**.
 
 Bloxkeep writes these values into Roblox's settings file just before opening the account, and puts your own settings back once Roblox is running.
 

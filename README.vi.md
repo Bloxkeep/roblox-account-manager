@@ -21,7 +21,7 @@ Bloxkeep dành cho người chơi nhiều tài khoản Roblox trên một máy W
 - Chạy nhiều cửa sổ Roblox cùng lúc với Multi-Roblox, mở cửa sổ đồng loạt ở chế độ cửa sổ và tự xếp chúng thành lưới. Tính năng này tắt sẵn, bạn tự bật khi cần.
 - Preset: lưu sẵn tài khoản, game và cách chọn server để chạy bằng một lần bấm, có hẹn giờ chạy và dừng, và tùy chọn riêng (chống AFK, tự vào lại game, chế độ treo máy nhẹ, mở lại Roblox theo giờ).
 - Tự vào lại game khi Roblox bị văng, bị kick hoặc mất kết nối, thử lại giãn dần chứ không bỏ cuộc.
-- Màn hình theo dõi: xem hình trực tiếp của mọi cửa sổ Roblox trong một tab. Thống kê thời gian chơi theo tài khoản và theo game, kèm nhật ký hoạt động.
+- Theo dõi game: xem hình trực tiếp của mọi cửa sổ Roblox trong một tab. Thống kê thời gian chơi theo tài khoản và theo game, kèm nhật ký hoạt động.
 - Mã 2FA ngay trong app, ẩn tên tài khoản khi chụp màn hình hay livestream, kiểm tra đăng nhập mỗi ngày và phát hiện tài khoản bị ban.
 - Gửi tổng kết thời gian chơi, tin trạng thái và cảnh báo lên kênh Discord của bạn.
 - Sao lưu vào thư mục OneDrive hoặc Google Drive. Ngoài ra còn có 74 chủ đề, tìm nhanh bằng `Ctrl+K`, giao diện tiếng Anh và tiếng Việt, chạy ngầm ở khay hệ thống và thông báo Windows.
@@ -93,7 +93,7 @@ Vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (
    - **Đăng nhập bằng điện thoại** (nên dùng): Bloxkeep hiện mã và QR. Trên điện thoại, mở **app Roblox**, vào **Cài đặt › Đăng nhập nhanh**, nhập mã hoặc quét QR rồi xác nhận. Không cần mật khẩu hay giải đố. Thêm xong một tài khoản thì có mã mới cho tài khoản tiếp theo.
    - **Tên đăng nhập** và **Mật khẩu**: mật khẩu chỉ gửi tới máy chủ đăng nhập của Roblox. Đăng nhập bằng mật khẩu không lưu mật khẩu đó. Có **Xác minh 2 bước** (**App xác thực** hoặc **Email**); nếu tài khoản đã có khóa app xác thực trong Bloxkeep thì mã được điền sẵn, bạn chỉ cần bấm xác nhận. Nếu Roblox đòi captcha, bấm **Giải câu đố** và làm trong cửa sổ nhỏ hiện ra.
    - **Cách khác: Đăng nhập bằng trình duyệt**: trang đăng nhập roblox.com chính thức mở trong một cửa sổ tạm. Đăng nhập xong, Bloxkeep lấy phiên đăng nhập rồi xóa cửa sổ tạm đó. Bloxkeep không đọc mật khẩu bạn gõ ở đây.
-   - **Cách khác: Nhập cookie**, hoặc **Nhập từ: File Bloxkeep**: xem [Chuyển tài khoản từ nơi khác](#chuyển-tài-khoản-từ-nơi-khác).
+   - **Cách khác: Dán cookie**, hoặc **Nhập từ: File Bloxkeep**: xem [Chuyển tài khoản từ nơi khác](#chuyển-tài-khoản-từ-nơi-khác).
 
    <img src="docs/screenshots/vi/add-account.png" width="700" alt="Hộp thoại Đăng nhập Roblox với tab Roblox và Roblox VNG, đăng nhập bằng điện thoại, tên đăng nhập và mật khẩu, cùng các cách khác">
 
@@ -108,8 +108,8 @@ Vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (
 ### Danh sách tài khoản
 
 - Lọc theo **Tất cả**, **Đang chơi**, **Online**, **Offline**, **Trên máy này**, **Cần đăng nhập lại**, **Bị ban**, và theo nhóm ở ô **Nhóm**; sắp xếp theo **Tên**, **Trạng thái**, **Chơi gần đây** hoặc **Thứ tự mở**; tìm theo tên, nhóm, ghi chú. Chuyển giữa **Dạng thẻ** và **Dạng danh sách**.
-- Trạng thái tự làm mới mỗi 30 giây. Khi bị văng, thẻ ghi rõ lý do đọc từ log của Roblox: **Bị kick vì AFK**, **Bị game kick**, **Đăng nhập ở thiết bị khác**, **Rớt mạng**, **Không vào được server**.
-- Tài khoản hết phiên được đánh dấu **Cần đăng nhập lại**; bấm **Đăng nhập** để đăng nhập lại. **Kiểm tra đăng nhập** có trong menu ⋯ của từng tài khoản, và **Kiểm tra đăng nhập của tất cả tài khoản** ở menu ⋯ phía trên danh sách. **Kiểm tra đăng nhập mỗi ngày** (bật sẵn, trong **Cài đặt › Hiệu năng**, có ghi lần chạy gần nhất) tự làm việc này một lần mỗi ngày, để bạn biết trước khi bấm **Vào game**: lần lượt từng tài khoản, cách nhau 2 giây, khoảng 45 giây sau khi mở khóa, trong lúc Bloxkeep đang mở khóa.
+- Trạng thái tự làm mới mỗi 30 giây. Khi bị văng, thẻ ghi rõ lý do đọc từ log của Roblox: **Bị kick vì AFK**, **Bị game kick**, **Đã đăng nhập ở thiết bị khác**, **Rớt mạng**, **Không vào được server**.
+- Tài khoản hết phiên được đánh dấu **Cần đăng nhập lại**; bấm **Đăng nhập** để đăng nhập lại. **Kiểm tra đăng nhập** có trong menu ⋯ của từng tài khoản, và **Kiểm tra đăng nhập mọi tài khoản** ở menu ⋯ phía trên danh sách. **Kiểm tra đăng nhập mỗi ngày** (bật sẵn, trong **Cài đặt › Hiệu năng**, có ghi lần chạy gần nhất) tự làm việc này một lần mỗi ngày, để bạn biết trước khi bấm **Vào game**: lần lượt từng tài khoản, cách nhau 2 giây, khoảng 45 giây sau khi mở khóa, trong lúc Bloxkeep đang mở khóa.
 - Lúc kiểm tra, Bloxkeep cũng xem tài khoản có **Bị ban** không (thông tin công khai của Roblox). Tài khoản bị ban có nhãn đỏ, và **Vào game** cũng như preset sẽ bỏ qua tài khoản đó.
 - **Sửa…** (`F2`) để đặt **Tên gợi nhớ**, **Nhóm**, **Ghi chú**. Tại đây bạn có thể tự lưu **Mật khẩu Roblox** nếu muốn (không bắt buộc); mật khẩu nằm trong kho đã mã hóa.
 - **Khóa app xác thực** (trong **Sửa…**): dán khóa 2FA hoặc link `otpauth://` của tài khoản, Bloxkeep hiện mã 6 số đang chạy. **Sao chép mã 2FA** có trong menu ⋯. Ai biết mật khẩu chủ của bạn cũng tạo được mã, nên chỉ lưu khóa khi bạn chấp nhận điều đó.
@@ -137,7 +137,7 @@ Một preset lưu tên, danh sách tài khoản (theo thứ tự), game, cách c
 
 Quản lý preset ở tab **Preset**: **Thêm preset**, sửa, nhân bản, đổi thứ tự, **Chạy**. Khi preset đang có cửa sổ mở, dòng của nó ghi số cửa sổ và nút **Chạy** đổi thành **Đóng**, đóng đúng các cửa sổ đó (không đụng cửa sổ khác). Nút preset ở thanh dưới có **Lưu thành preset…** và chạy nhanh. Lưu được tối đa 50 preset.
 
-Phần **Cho cửa sổ Roblox** của mỗi preset áp dụng cho các cửa sổ mà preset đó mở (kể cả khi chúng tự vào lại game). Bấm **Vào game** bình thường cho cùng tài khoản thì vẫn theo cài đặt chung.
+Phần **Áp dụng cho cửa sổ Roblox** của mỗi preset áp dụng cho các cửa sổ mà preset đó mở (kể cả khi chúng tự vào lại game). Bấm **Vào game** bình thường cho cùng tài khoản thì vẫn theo cài đặt chung.
 
 Thứ tự ưu tiên, tính cho từng cửa sổ Roblox: tùy chọn của preset đặt **Bật** hoặc **Tắt** quyết định cho các cửa sổ preset đó mở, cho tới khi chúng đóng; để **Theo…** thì công tắc riêng của tài khoản quyết định (tự vào lại game), không thì theo **Cài đặt** (chống AFK, xếp cửa sổ, thời gian chờ giữa các tài khoản). Tài khoản nằm trong hai preset thì theo preset đã mở cửa sổ của nó; chạy preset kia sẽ bỏ qua cửa sổ đang mở.
 
@@ -153,14 +153,14 @@ Thứ tự ưu tiên, tính cho từng cửa sổ Roblox: tùy chọn của pres
 
 <img src="docs/screenshots/vi/presets.png" width="800" alt="Tab Preset với ba preset: một preset hẹn giờ đang mở ba cửa sổ, có nút Đóng">
 
-<img src="docs/screenshots/vi/preset-editor.png" width="800" alt="Hộp thoại Sửa preset: phần Cho cửa sổ Roblox với Chống AFK, Tự vào lại game, Hiệu năng, Mở lại Roblox, Xếp cửa sổ, webhook Discord riêng, và phần Hẹn giờ">
+<img src="docs/screenshots/vi/preset-editor.png" width="800" alt="Hộp thoại Sửa preset: phần Áp dụng cho cửa sổ Roblox với Chống AFK, Tự vào lại game, Hiệu năng, Mở lại Roblox, Xếp cửa sổ, webhook Discord riêng, và phần Hẹn giờ">
 
 ### Multi-Roblox
 
 Multi-Roblox **tắt sẵn**. Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc; bạn tự chịu rủi ro khi bật. Bật bằng công tắc Multi-Roblox ở thanh bên hoặc trong **Cài đặt › Khởi chạy**.
 
 - Bloxkeep phải mở **trước** Roblox và để mở trong lúc chơi.
-- Đèn trạng thái: **Đang tắt**, **Đang bật — mở được nhiều cửa sổ**, hoặc **Chưa hoạt động — bấm để xem cách sửa** (đèn vàng). Cách sửa: đóng hết Roblox, kể cả Roblox ở khay hệ thống; nếu Roblox tự chạy cùng Windows, bấm **Tắt tự khởi động** (giống tắt trong Task Manager › Startup apps, bật lại được ở đó). Sau đó đèn chuyển xanh.
+- Đèn trạng thái: **Đang tắt**, **Đang bật, mở được nhiều cửa sổ**, hoặc **Chưa hoạt động, bấm để sửa** (đèn vàng). Cách sửa: đóng hết Roblox, kể cả Roblox ở khay hệ thống; nếu Roblox tự chạy cùng Windows, bấm **Tắt tự khởi động** (giống tắt trong Task Manager › Startup apps, bật lại được ở đó). Sau đó đèn chuyển xanh.
 - Bấm **Chi tiết** cạnh Multi-Roblox để chỉnh thêm:
   - **Luôn mở Roblox ở chế độ cửa sổ** (bật sẵn): các cửa sổ Roblox dùng chung một cài đặt toàn màn hình nên dễ lệch nhau, cái toàn màn hình cái không. Bloxkeep mở mọi cửa sổ ở chế độ cửa sổ, rồi trả lại cài đặt của bạn.
   - **Xếp các cửa sổ cạnh nhau sau khi mở** (tắt sẵn): mở xong các tài khoản thì các cửa sổ Roblox được xếp thành lưới trên màn hình chính.
@@ -168,9 +168,9 @@ Multi-Roblox **tắt sẵn**. Roblox không chính thức hỗ trợ chạy nhi�
 
 Cách hoạt động: Roblox dùng một đối tượng tên `ROBLOX_singletonEvent` để chỉ cho chạy một cửa sổ; từ bản tháng 10/2026, cửa sổ mới dùng nó để đóng các cửa sổ cũ. Bloxkeep giữ trước cái tên đó khi chưa có Roblox nào chạy, nên Roblox không lập được cơ chế này và các cửa sổ không đóng nhau. Bloxkeep không chèn gì vào Roblox và không đọc gì từ tiến trình Roblox.
 
-Nếu một bản Roblox mới lại đóng cửa sổ khi cửa sổ khác mở, **Cài đặt › Phiên bản & đồ họa** hiện cảnh báo vàng. Cảnh báo tự mất khi từ 2 tài khoản trở lên cùng ở trong game, khi Roblox cập nhật bản mới, hoặc khi bạn bấm **Ẩn**.
+Nếu một bản Roblox mới lại đóng cửa sổ khi cửa sổ khác mở, **Cài đặt › Phiên bản & đồ họa Roblox** hiện cảnh báo vàng. Cảnh báo tự mất khi từ 2 tài khoản trở lên cùng ở trong game, khi Roblox cập nhật bản mới, hoặc khi bạn bấm **Ẩn**.
 
-Ngoài ra, máy dò Roblox của Bloxkeep kiểm tra từng bản Roblox mới ngay khi Roblox đưa ra, thường là trước khi bản đó đến tay người chơi: nó tải bản đó về và so khoá mà Multi-Roblox dựa vào với bản trước ([cách hoạt động](docs/roblox-watch.md), tiếng Anh). **Cài đặt › Phiên bản & đồ họa** cho biết kết quả cho bản Roblox của bạn ở dòng **Kiểm tra Multi-Roblox**, và thẻ Multi-Roblox chuyển vàng khi khoá bị đổi. Lúc đó, mở nhiều tài khoản sẽ được hỏi lại trước, cho đến khi đã có hai cửa sổ cùng chơi được trên bản đó. Nếu Roblox chỉ đổi tên khoá, Bloxkeep giữ luôn tên mới mà không cần cập nhật app. Kết quả kiểm tra không chứng minh được Multi-Roblox chạy; chỉ hai cửa sổ cùng chơi được mới chứng minh, và Bloxkeep nhớ điều đó cho từng bản.
+Ngoài ra, máy dò Roblox của Bloxkeep kiểm tra từng bản Roblox mới ngay khi Roblox đưa ra, thường là trước khi bản đó đến tay người chơi: nó tải bản đó về và so khoá mà Multi-Roblox dựa vào với bản trước ([cách hoạt động](docs/roblox-watch.md), tiếng Anh). **Cài đặt › Phiên bản & đồ họa Roblox** cho biết kết quả cho bản Roblox của bạn ở dòng **Kiểm tra Multi-Roblox**, và thẻ Multi-Roblox chuyển vàng khi khoá bị đổi. Lúc đó, mở nhiều tài khoản sẽ được hỏi lại trước, cho đến khi đã có hai cửa sổ cùng chơi được trên bản đó. Nếu Roblox chỉ đổi tên khoá, Bloxkeep giữ luôn tên mới mà không cần cập nhật app. Kết quả kiểm tra không chứng minh được Multi-Roblox chạy; chỉ hai cửa sổ cùng chơi được mới chứng minh, và Bloxkeep nhớ điều đó cho từng bản.
 
 ### Chống AFK
 
@@ -184,7 +184,7 @@ Bloxkeep không vào lại khi bạn tự thoát game, khi tài khoản đăng n
 
 ### Cấu hình Roblox theo tài khoản
 
-Trong **Cài đặt › Phiên bản & đồ họa › Cấu hình Roblox**, mục **Áp dụng cho** chọn **Không áp dụng**, **Mọi tài khoản** hoặc **Tài khoản được chọn** (chọn từng tài khoản bằng **Dùng cấu hình Roblox** trong menu ⋯). Đặt **Đồ họa** từ 1 đến 10, **Giới hạn FPS** 30/60/144/240, **Âm lượng** từ **Tắt tiếng** đến 100 %, hoặc **Giữ nguyên**.
+Trong **Cài đặt › Phiên bản & đồ họa Roblox › Cấu hình Roblox**, mục **Áp dụng cho** chọn **Không áp dụng**, **Mọi tài khoản** hoặc **Tài khoản đã chọn** (chọn từng tài khoản bằng **Dùng cấu hình Roblox** trong menu ⋯). Đặt **Đồ họa** từ 1 đến 10, **Giới hạn FPS** 30/60/144/240, **Âm lượng** từ **Tắt tiếng** đến 100 %, hoặc **Giữ nguyên**.
 
 Bloxkeep ghi các giá trị này vào file cài đặt của Roblox ngay trước khi mở tài khoản, rồi trả lại cài đặt của bạn khi Roblox đã chạy.
 
@@ -198,23 +198,23 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 |---|---|
 | **Mặc định** | Trình đang mở link Roblox trên máy (Roblox, Bloxstrap, Fishstrap…) |
 | **Bloxstrap**, **Fishstrap** | Giữ nguyên mod và FFlag của bạn |
-| Trình mở kiểu Bloxstrap khác | Tự hiện nếu đã cài |
+| Launcher kiểu Bloxstrap khác | Tự hiện nếu đã cài |
 | **Roblox (chính thức)** | Bản cài từ roblox.com |
-| **Chạy thẳng RobloxPlayerBeta (không qua ứng dụng mở Roblox)** | Không qua trình mở nào; thử khi trình mở chặn nhiều cửa sổ |
-| **Chọn ứng dụng mở Roblox khác…** | File exe bạn tự chọn |
+| **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)** | Không qua launcher nào; thử khi launcher chặn nhiều cửa sổ |
+| **Chọn launcher khác…** | File exe bạn tự chọn |
 | **Roblox (Microsoft Store)** | Không hỗ trợ: không mở được tài khoản đã chọn. Hãy cài Roblox từ roblox.com |
 
 ### Cửa sổ, RAM và màn hình theo dõi
 
 - Thẻ **Roblox trên máy này** ở thanh bên hiện số cửa sổ Roblox, RAM chúng dùng, RAM máy còn trống, cùng nút **Cửa sổ nhỏ** và **Đóng tất cả**. Dòng phiên bản cho biết bản Roblox đã cài có phải mới nhất không.
-- **Màn hình theo dõi** (tab ở thanh bên): hình trực tiếp của mọi cửa sổ Roblox, kèm tên tài khoản, game, RAM và PID. Bấm vào một hình để đưa cửa sổ đó lên trước; chuột phải để xem thêm thao tác. Cửa sổ đang thu nhỏ thì không có hình trực tiếp. Hình do chính Windows vẽ (giống ảnh xem trước khi rê chuột lên taskbar), nên gần như không tốn thêm tài nguyên.
+- **Theo dõi game** (tab ở thanh bên): hình trực tiếp của mọi cửa sổ Roblox, kèm tên tài khoản, game, RAM và PID. Bấm vào một hình để đưa cửa sổ đó lên trước; chuột phải để xem thêm thao tác. Cửa sổ đang thu nhỏ thì không có hình trực tiếp. Hình do chính Windows vẽ (giống ảnh xem trước khi rê chuột lên taskbar), nên gần như không tốn thêm tài nguyên.
 - **Cửa sổ nhỏ**: một cửa sổ gọn để theo dõi các tài khoản đang chơi mà không cần mở cửa sổ chính.
-- **Khi mở cửa sổ Roblox** (trong **Cài đặt › Khởi chạy**): **Để Roblox tự chọn**, **Phóng to** (vẫn là cửa sổ nên các cửa sổ không giành nhau công tắc toàn màn hình chung của Roblox), hoặc **Xếp cạnh nhau** (cần Multi-Roblox). Preset có thể tự xếp cửa sổ của nó bất kể lựa chọn này.
-- **Xếp lưới cửa sổ Roblox** (nút ở thanh dưới) và **Kiểu xếp cửa sổ** (trong **Cài đặt › Khởi chạy**): **Lấp đầy màn hình**, hoặc **Ô nhỏ** / **Ô vừa** / **Ô lớn** xếp từ góc trên bên trái và chừa phần màn hình còn lại. Cửa sổ Roblox càng nhỏ thì card đồ họa càng đỡ tải.
+- **Khi cửa sổ Roblox mở ra** (trong **Cài đặt › Khởi chạy**): **Để Roblox tự chọn**, **Phóng to** (vẫn là cửa sổ nên các cửa sổ không giành nhau công tắc toàn màn hình chung của Roblox), hoặc **Xếp cạnh nhau** (cần Multi-Roblox). Preset có thể tự xếp cửa sổ của nó bất kể lựa chọn này.
+- **Xếp cửa sổ Roblox** (nút ở thanh dưới) và **Kiểu xếp cửa sổ** (trong **Cài đặt › Khởi chạy**): **Lấp đầy màn hình**, hoặc **Ô nhỏ** / **Ô vừa** / **Ô lớn** xếp từ góc trên bên trái và chừa phần màn hình còn lại. Cửa sổ Roblox càng nhỏ thì card đồ họa càng đỡ tải.
 - **Báo khi sắp hết RAM** (bật sẵn): cảnh báo trước khi mở nhiều tài khoản hơn RAM trống chịu được, và khi máy dùng quá 92 % RAM.
 - **Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn): khi máy sắp hết RAM, cửa sổ chạy nền nhường RAM cho cửa sổ bạn đang chơi. Roblox có thể không nhả RAM; khi đó Bloxkeep bỏ qua.
 - **Hiện tên tài khoản trên cửa sổ** (bật sẵn): ghi tên tài khoản lên tiêu đề cửa sổ Roblox để dễ phân biệt trên taskbar.
-- **Chờ giữa các tài khoản**: từ 0 đến 60 giây, mặc định 8 giây. Mở quá nhiều tài khoản một lúc dễ bị lỗi.
+- **Chờ giữa các tài khoản**: từ 0 đến 60 giây, mặc định 8 giây. Mở quá nhiều tài khoản cùng lúc dễ bị lỗi.
 
 ### Thống kê và hoạt động
 
@@ -226,7 +226,7 @@ Chuyển sang **Hoạt động** để xem nhật ký: mở tài khoản, vào g
 
 ### Chạy ngầm, thông báo, Discord, giao diện
 
-- **Thu xuống khay khi đóng cửa sổ** (bật sẵn): bấm X thì Bloxkeep thu xuống khay hệ thống, tự vào lại game và Multi-Roblox vẫn chạy. Muốn thoát hẳn, chuột phải biểu tượng ở khay và chọn **Thoát Bloxkeep**. Lần mở sau, cửa sổ Bloxkeep về đúng vị trí, kích thước và trạng thái phóng to như lúc bạn để.
+- **Chạy ẩn dưới khay hệ thống khi đóng** (bật sẵn): bấm X thì Bloxkeep thu xuống khay hệ thống, tự vào lại game và Multi-Roblox vẫn chạy. Muốn thoát hẳn, chuột phải biểu tượng ở khay và chọn **Thoát Bloxkeep**. Lần mở sau, cửa sổ Bloxkeep về đúng vị trí, kích thước và trạng thái phóng to như lúc bạn để.
 - **Thông báo Windows** (bật sẵn): chỉ khi Bloxkeep chạy nền. Bật tắt từng loại trong **Cài đặt › Thông báo**: tài khoản bị văng hoặc tự vào lại, preset hẹn giờ, tài khoản cần đăng nhập lại, sắp hết RAM, lỗi khi mở game.
 - **Discord** (tắt sẵn): dán link webhook của một kênh vào **Cài đặt › Discord** (bật **Gửi lên Discord** khi chưa có link thì app sẽ hỏi link). **Gửi tự động** tổng kết thời gian chơi **Hằng ngày**, **Hằng tuần** hoặc cả hai: ảnh biểu đồ thời gian chơi theo giờ (hoặc ngày) tô màu theo game, mỗi tài khoản một dòng kèm avatar, so với kỳ trước, số lần văng kèm mã lỗi Roblox, lượt chơi dài nhất, số cửa sổ cùng lúc nhiều nhất, game chơi nhiều nhất, và mỗi preset một khung riêng với các tài khoản của nó; một **Tin trạng thái** tự cập nhật; và **Cảnh báo** cho các sự kiện như trên, có **Tag** người hoặc vai trò. Có **Giờ yên lặng**, và **Tùy chỉnh tin nhắn** (tên và ảnh người gửi, ngôn ngữ, kiểu tin, **Ẩn tên tài khoản trong tin nhắn**).
 - **Cài đặt › Giao diện**: 74 **Chủ đề** chia năm nhóm (Cơ bản, Phong cảnh, Màu sắc, Phong cách, Theo mùa) cộng **Theo Windows** (mặc định **Tối**). Chủ đề Phong cảnh và Theo mùa có cảnh vẽ phía sau các khung mờ; Phong cách đổi cả hình khối (Windows 98, macOS với nút cửa sổ bấm được, GNOME, Ubuntu, KDE, Game Boy, Vở ô li…). Còn có **Ngôn ngữ** English / Tiếng Việt, và **Ẩn tên tài khoản**.
@@ -238,7 +238,7 @@ Chuyển sang **Hoạt động** để xem nhật ký: mở tài khoản, vào g
 
 **File dữ liệu Bloxkeep khác** (ví dụ `vault.rmv` hay bản sao lưu từ máy khác): bấm **Nhập từ: File Bloxkeep**, hoặc **Nhập…** trong **Cài đặt › Sao lưu & dữ liệu**. Nhập mật khẩu chủ của chính file đó, chọn các tài khoản muốn lấy, rồi bấm nhập. File gốc không bị sửa; tài khoản nhập vào được khóa lại bằng mật khẩu chủ hiện tại của bạn.
 
-**Cookie**: chọn **Nhập cookie** rồi dán cookie `.ROBLOSECURITY`.
+**Cookie**: chọn **Dán cookie** rồi dán cookie `.ROBLOSECURITY`.
 
 ### Roblox VNG
 
@@ -330,7 +330,7 @@ Bật **Cài đặt › Sao lưu & dữ liệu › Sao lưu vào thư mục**, r
 - Bước cuối của **Đăng nhập bằng điện thoại**, xác minh 2 bước, và captcha xoay hình (Arkose).
 - Chạy trên Windows 10.
 
-Nếu gặp lỗi, bạn báo ngay trong app: **Cài đặt › Cập nhật Bloxkeep › Gửi góp ý** (hoặc `Ctrl+K`, gõ "góp ý"). Có thể gửi kèm nhật ký lỗi của Bloxkeep, đã xoá tên tài khoản, ID, mật khẩu và cookie; bấm **Xem chính xác những gì sẽ được gửi** để xem trước khi gửi ([cách hoạt động](docs/feedback.md), tiếng Anh). Hoặc [mở issue](../../issues) kèm nội dung lỗi.
+Nếu gặp lỗi, bạn báo ngay trong app: **Cài đặt › Cập nhật Bloxkeep › Gửi góp ý** (hoặc `Ctrl+K`, gõ "góp ý"). Có thể gửi kèm nhật ký lỗi của Bloxkeep, đã xoá tên tài khoản, ID, mật khẩu và cookie; bấm **Xem đúng những gì sẽ gửi đi** để xem trước khi gửi ([cách hoạt động](docs/feedback.md), tiếng Anh). Hoặc [mở issue](../../issues) kèm nội dung lỗi.
 
 ## Câu hỏi thường gặp
 
@@ -367,13 +367,13 @@ Có Roblox đã mở trước Bloxkeep. Đóng hết Roblox, kể cả Roblox �
 <details>
 <summary>Cửa sổ Roblox lúc toàn màn hình, lúc không.</summary>
 
-Các cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cái dễ bị lệch nhau. Bật **Luôn mở Roblox ở chế độ cửa sổ** trong bảng **Chi tiết** của Multi-Roblox (bật sẵn): mọi cửa sổ mở ở chế độ cửa sổ, cài đặt của bạn được trả lại sau đó. Muốn mỗi cửa sổ choán cả màn hình thì chọn **Phóng to** ở **Khi mở cửa sổ Roblox**; muốn xếp cạnh nhau thì chọn **Xếp cạnh nhau** hoặc dùng **Kiểu xếp cửa sổ**.
+Các cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cái dễ bị lệch nhau. Bật **Luôn mở Roblox ở chế độ cửa sổ** trong bảng **Chi tiết** của Multi-Roblox (bật sẵn): mọi cửa sổ mở ở chế độ cửa sổ, cài đặt của bạn được trả lại sau đó. Muốn mỗi cửa sổ choán cả màn hình thì chọn **Phóng to** ở **Khi cửa sổ Roblox mở ra**; muốn xếp cạnh nhau thì chọn **Xếp cạnh nhau** hoặc dùng **Kiểu xếp cửa sổ**.
 </details>
 
 <details>
 <summary>Dùng Bloxstrap / Fishstrap thì mod còn không?</summary>
 
-Còn, nếu chọn **Bloxstrap** hoặc **Fishstrap** trong **Mở Roblox bằng**. Nếu trình mở chặn nhiều cửa sổ, chọn **Chạy thẳng RobloxPlayerBeta (không qua ứng dụng mở Roblox)**; khi đó Roblox mở không qua trình mở.
+Còn, nếu chọn **Bloxstrap** hoặc **Fishstrap** trong **Mở Roblox bằng**. Nếu launcher chặn nhiều cửa sổ, chọn **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)**; khi đó Roblox mở không qua trình mở.
 </details>
 
 <details>
@@ -436,11 +436,11 @@ RobloxManager/             mã nguồn C#
   AppController*.cs        nhận lệnh từ giao diện, mở game, theo dõi tiến trình, tự vào lại game, preset,
                            hẹn giờ, Discord, thống kê, sao lưu (mỗi phần một file)
   RobloxApi.cs             gọi API Roblox (đăng nhập, trạng thái, game, server)
-  RobloxLauncher.cs        mở Roblox qua trình mở đã chọn
+  RobloxLauncher.cs        mở Roblox qua launcher đã chọn
   RobloxLogWatcher.cs      đọc log của Roblox để biết vào game / bị kick
   RobloxGameSettings.cs    ghi cấu hình Roblox trước khi mở tài khoản rồi trả lại
   MultiInstance.cs         Multi-Roblox
-  MonitorTab.cs            tab Màn hình theo dõi
+  MonitorTab.cs            tab Theo dõi game
   Vault.cs                 kho mã hóa
   AppUpdater.cs            tự cập nhật (Velopack)
   whatsnew.json            ghi chú từng phiên bản
