@@ -91,9 +91,10 @@
       .replace(/\\([\\*_~`|>\[\]<@])/g, '$1');
     return h.replace(/<\/span>\n/g, '</span>');
   }
-  // Inline fields sit three to a row (two beside a thumbnail); a field that isn't inline takes the whole row.
-  function fieldsHtml(fields, thumb) {
-    const perRow = thumb ? 2 : 3;
+  // Inline fields sit three to a row, beside a thumbnail too (seen in Discord, 2026-10-16); a field that isn't inline
+  // takes the whole row.
+  function fieldsHtml(fields) {
+    const perRow = 3;
     let html = '', row = [];
     const flush = () => {
       const span = 12 / row.length;
@@ -116,7 +117,7 @@
       ${e.author ? `<div class="author">${e.author.icon_url ? `<img src="${esc(e.author.icon_url)}">` : ''}${e.author.url ? `<a href="${esc(e.author.url)}" style="color:inherit">${esc(e.author.name)}</a>` : esc(e.author.name)}</div>` : ''}
       ${e.title ? `<div class="title">${e.url ? `<a href="${esc(e.url)}">${md(e.title)}</a>` : md(e.title)}</div>` : ''}
       ${e.description ? `<div class="desc">${md(e.description)}</div>` : ''}
-      ${e.fields?.length ? fieldsHtml(e.fields, !!e.thumbnail) : ''}
+      ${e.fields?.length ? fieldsHtml(e.fields) : ''}
       </div>
       ${e.thumbnail ? `<img class="thumb" src="${esc(url(e.thumbnail.url))}">` : '<span></span>'}
       ${e.image ? `<img class="image" src="${esc(url(e.image.url))}">` : ''}

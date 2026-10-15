@@ -177,11 +177,12 @@ def build_message(kind, version, build, verdict, added=(), removed=(), hold=None
     title = f'Roblox {version} is coming' if kind == 'beta' else f'Roblox {version} is live'
     small = {'beta': ["Checked on Roblox's test channel"], 'went-live': [f'Checked before release, {checked_at}' if checked_at
              else 'Checked before release'], 'live': []}[kind]
+    small.append(f'Build `{build.removeprefix("version-")}`')
     if notes := release_notes(version):
         small.append(f'[Release notes]({notes})')
     small.append(f'[How the check works]({DOCS})')
+    # Three to a row in Discord, beside the logo too.
     fields = [('Multi-Roblox', f'**{word}**', True), ('Version', f'`{version}`', True),
-              ('Build', f'`{build.removeprefix("version-")}`', True),
               ('Released', 'Not yet' if kind == 'beta' else stamp(style='R'), True)]
     if added or removed:
         fields.append(('What changed', '\n'.join(x for x in (lines(added, '+'), lines(removed, '−')) if x), False))
