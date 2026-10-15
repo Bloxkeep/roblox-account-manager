@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.10",
+    "date": "2026-10-15",
+    "en": [
+      "Switching tabs is faster, most of all with many accounts: coming back to Accounts with hundreds of cards no longer lays them all out again (about 3 times quicker), and an update from the app no longer lays the page out several times over."
+    ],
+    "vi": [
+      "Chuyển tab nhanh hơn, rõ nhất khi có nhiều tài khoản: quay lại tab Tài khoản với hàng trăm thẻ không còn phải sắp xếp lại toàn bộ (nhanh hơn khoảng 3 lần), và mỗi lần app cập nhật không còn sắp xếp lại trang nhiều lần."
+    ]
+  },
+  {
     "version": "1.0.9",
     "date": "2026-10-15",
     "en": [
