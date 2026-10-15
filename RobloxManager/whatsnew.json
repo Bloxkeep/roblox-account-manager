@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.8",
+    "date": "2026-10-15",
+    "en": [
+      "When Bloxkeep restarts (an update, a crash) while Roblox keeps running: anti-AFK looks after a window about to be kicked at once, even while you use the PC; play time is no longer counted twice; an old idle kick isn't announced again (on Discord too); a Roblox window open for many hours is still followed from its log; and a preset's timed restart waits until it knows the window is in its game.",
+      "The Halloween theme has its own night scene behind glass panels: a moon with bats, a crooked house, a dead tree and jack-o'-lanterns."
+    ],
+    "vi": [
+      "Khi Bloxkeep khởi động lại (cập nhật, bị tắt đột ngột) mà Roblox vẫn chạy: chống AFK lo ngay cho cửa sổ sắp bị kick, kể cả khi bạn đang dùng máy; thời gian chơi không còn bị tính hai lần; lần bị kick AFK cũ không bị báo lại (kể cả trên Discord); cửa sổ Roblox mở nhiều giờ vẫn được theo dõi qua log; và việc khởi động lại theo giờ của Preset chờ tới khi biết chắc cửa sổ đang ở trong game.",
+      "Theme Halloween có cảnh đêm riêng phía sau các khung mờ: trăng với đàn dơi, ngôi nhà ma, cây khô và bí ngô."
+    ]
+  },
+  {
     "version": "1.0.7",
     "date": "2026-10-15",
     "en": [
