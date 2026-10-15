@@ -120,8 +120,14 @@ public sealed class AppUpdater
     void Set(string status)
     {
         Status = status;
+        // When the answer came, so "up to date" says as of when (it may be an hour old).
+        if (status is "upToDate" or "ready" or "error")
+            CheckedAt = DateTime.UtcNow;
         Changed?.Invoke();
     }
+
+    /// <summary>When the last check got its answer (or failed); null before the first.</summary>
+    public DateTime? CheckedAt { get; private set; }
 
     /// <summary>Ends this process, installs the downloaded version and starts it.</summary>
     public void RestartToUpdate()
@@ -157,5 +163,6 @@ public sealed class AppUpdater
         progress = Progress,
         error = Error,
         auto = Prefs.CheckUpdates,
+        checkedAt = CheckedAt?.ToString("o"),
     };
 }

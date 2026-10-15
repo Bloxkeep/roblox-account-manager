@@ -1852,11 +1852,16 @@
 
   function syncUpdate() {
     const u = S.app.update || {};
+    // "Up to date" as of the last check, which can be up to an hour old: it says when.
+    const at = u.checkedAt ? new Date(u.checkedAt) : null;
+    const hm = { hour: '2-digit', minute: '2-digit', ...(lang === 'vi' ? { hourCycle: 'h23' } : {}) };
+    const when = at && !isNaN(at) ? (at.toDateString() === new Date().toDateString()
+      ? at.toLocaleTimeString(locale(), hm) : at.toLocaleString(locale(), { day: 'numeric', month: 'short', ...hm })) : '';
     const status = !u.supported ? t('upd.unsupported')
       : u.status === 'checking' ? t('upd.checking')
       : u.status === 'downloading' ? t('upd.downloading', { v: u.version, p: u.progress })
       : u.status === 'ready' ? t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version })
-      : u.status === 'upToDate' ? t('upd.latest')
+      : u.status === 'upToDate' ? t('upd.latest') + (when ? ' · ' + t('upd.checkedAt', { t: when }) : '')
       : u.status === 'error' ? (u.error ? `${t('upd.error')}: ${u.error}` : t('upd.error')) // the reason, when the app gives one
       : t('upd.idle');
     const notes = `<button class="btn sm ghost" data-act="whats-new">${t('wn.link')}</button>`;
