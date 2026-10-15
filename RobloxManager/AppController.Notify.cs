@@ -62,6 +62,26 @@ public sealed partial class AppController
             _notified[key] = now;
     }
 
+    /// <summary>
+    /// The questions that offer "Don't ask again": ones asked often whose yes can be undone (a preset deleted, windows
+    /// closed, a launch despite a warning, Multi-Roblox switched on, a form's typing left). Deleting accounts, restoring
+    /// a backup and removing the Discord link always ask.
+    /// </summary>
+    static readonly string[] SkippableConfirms = ["deletePreset", "closeAll", "killAll", "openAnyway", "multi", "discard"];
+
+    /// <summary>A question answered "Don't ask again": from now on its yes is assumed.</summary>
+    public object? SkipConfirm(string key)
+    {
+        if (!SkippableConfirms.Contains(key))
+            throw new UserError(L.T("Unknown question."));
+        if (Prefs.SkipConfirm.Add(key))
+        {
+            Prefs.Save();
+            PushState();
+        }
+        return null;
+    }
+
     /// <summary>{enabled} for the switch over all of them; {kind, enabled} for one kind.</summary>
     object? SetNotifications(JsonElement a)
     {

@@ -263,7 +263,8 @@ public sealed partial class AppController
             LaunchResult result;
             try
             {
-                result = await StartPresetAsync(preset.Id, force: false);
+                // "Open anyway" answered for good: the warning doesn't stop a scheduled run either.
+                result = await StartPresetAsync(preset.Id, force: Prefs.SkipConfirm.Contains("openAnyway"));
             }
             catch (Exception ex) when (ex is UserError or RobloxApiException || RobloxApi.IsExpectedError(ex))
             {

@@ -1,4 +1,4 @@
-namespace RobloxManager;
+﻿namespace RobloxManager;
 
 /// <summary>
 /// Play-time statistics: one <see cref="PlaySession"/> per stay in a game by a client Bloxkeep opened (or picked up
@@ -265,6 +265,58 @@ public sealed partial class AppController
         return removed > 0;
     }
 
+    /// <summary>When icons were last asked for, by game (universe): one Roblox didn't give isn't asked at every refresh.</summary>
+    readonly Dictionary<long, DateTime> _playIconAsked = new();
+    static readonly TimeSpan PlayIconRetry = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// <see cref="PlayStats"/> for the page. Games played in the period that no other view loaded (nor the
+    /// presets' games) have no icon yet: those are asked for first, in one request per 100 games.
+    /// </summary>
+    async Task<object?> PlayStatsAsync(int days)
+    {
+        var vault = RequireVault();
+        var now = DateTime.UtcNow;
+        // A day more than the period: today's figures start at local midnight, up to a day before now.
+        var since = now.AddDays(-(days is 7 or 30 ? days : 1) - 1);
+        var places = vault.Data.PlaySessions.Where(s => s.EndedAt is not { } ended || ended >= since).Select(s => (s.PlaceId, s.UniverseId))
+            .Concat(vault.Data.Settings.Presets.Select(PresetPlaceId).OfType<long>().Select(place => (PlaceId: place, UniverseId: 0L)))
+            .Where(p => p.PlaceId > 0 && IconOf(p.PlaceId, p.UniverseId) is null)
+            .DistinctBy(p => p.PlaceId)
+            .ToList();
+        if (places.Count == 0)
+            return PlayStats(days);
+        // Places whose game isn't known yet: looked up whole (name and icon).
+        await LoadGamesAsync(places.Where(p => p.UniverseId == 0 && _games.GetValueOrDefault(p.PlaceId) is null).Take(40));
+        if (_playIconAsked.Count > MaxCachedGames)
+            _playIconAsked.Clear();
+        var universes = places.Select(p => p.UniverseId > 0 ? p.UniverseId : _games.GetValueOrDefault(p.PlaceId)?.UniverseId ?? 0)
+            .Where(u => u > 0 && !_iconByUniverse.ContainsKey(u) && !(_playIconAsked.TryGetValue(u, out var at) && now - at < PlayIconRetry))
+            .Distinct()
+            .Take(100)
+            .ToList();
+        if (universes.Count > 0)
+        {
+            foreach (long u in universes)
+                _playIconAsked[u] = now;
+            try
+            {
+                foreach (var (id, url) in await RobloxApi.GetGameIconsAsync(universes))
+                    _iconByUniverse[id] = url;
+            }
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+            {
+                // The rows keep their placeholder until the next try.
+            }
+        }
+        return PlayStats(days);
+    }
+
+    /// <summary>A game's icon from what is known: its place's lookup, or the icon fetched for its universe.</summary>
+    string? IconOf(long placeId, long universeId) =>
+        _games.GetValueOrDefault(placeId)?.IconUrl
+        ?? _iconByUniverse.GetValueOrDefault(universeId > 0 ? universeId : _games.GetValueOrDefault(placeId)?.UniverseId ?? 0);
+
     /// <summary>
     /// The figures for the page: today (by hour) or the last 7 or 30 days (by day), in the PC's local time. A stay is
     /// counted for the part of it inside the period; one still going is counted up to now.
@@ -299,6 +351,10 @@ public sealed partial class AppController
             s.UniverseId > 0 ? s.UniverseId : universeOf.GetValueOrDefault(s.PlaceId) is > 0 and var u ? u : _games.GetValueOrDefault(s.PlaceId)?.UniverseId ?? 0;
         double total = 0;
         int sessions = 0, kicks = 0;
+        // By the preset whose window it was (null: opened otherwise, or before 1.0.5 noted it, or a preset deleted since).
+        var byPreset = new Dictionary<Guid, (double Seconds, int Sessions, int Kicks, HashSet<Guid> Accounts)>();
+        var noPreset = (Seconds: 0.0, Sessions: 0, Kicks: 0, Accounts: new HashSet<Guid>());
+        (double Seconds, PlaySession? Stay) longest = (0, null);
         foreach (var s in vault.Data.PlaySessions)
         {
             if (only is not null && !only.Contains(s.AccountId))
@@ -319,6 +375,19 @@ public sealed partial class AppController
             var acc = byAccount.GetValueOrDefault(s.AccountId);
             // The newest name recorded for it (the list is oldest first), for an account deleted since.
             byAccount[s.AccountId] = (acc.Seconds + seconds, acc.Sessions + 1, acc.Kicks + (kicked ? 1 : 0), s.AccountLabel ?? acc.Label);
+            if (s.PresetId is { } presetId && PresetFor(presetId) is not null)
+            {
+                var p = byPreset.GetValueOrDefault(presetId, (0, 0, 0, new HashSet<Guid>()));
+                p.Accounts.Add(s.AccountId);
+                byPreset[presetId] = (p.Seconds + seconds, p.Sessions + 1, p.Kicks + (kicked ? 1 : 0), p.Accounts);
+            }
+            else
+            {
+                noPreset.Accounts.Add(s.AccountId);
+                noPreset = (noPreset.Seconds + seconds, noPreset.Sessions + 1, noPreset.Kicks + (kicked ? 1 : 0), noPreset.Accounts);
+            }
+            if (seconds > longest.Seconds)
+                longest = (seconds, s);
             // Places of one game count together; a name learned later wins over an empty one.
             long universe = UniverseOf(s);
             string key = universe > 0 ? $"u{universe}" : $"p{s.PlaceId}";
@@ -362,11 +431,30 @@ public sealed partial class AppController
             {
                 g.PlaceId,
                 name = g.Name.Length > 0 ? g.Name : _games.GetValueOrDefault(g.PlaceId)?.Name is { Length: > 0 } cached ? cached : L.F("Place {0}", g.PlaceId),
-                iconUrl = _games.GetValueOrDefault(g.PlaceId)?.IconUrl ?? _iconByUniverse.GetValueOrDefault(g.UniverseId),
+                iconUrl = IconOf(g.PlaceId, g.UniverseId),
                 seconds = (long)g.Seconds,
                 g.Sessions,
             }),
             buckets = starts.Select((start, i) => new { start, seconds = (long)bucketSeconds[i] }),
+            presets = byPreset.OrderByDescending(p => p.Value.Seconds).Select(p =>
+            {
+                var preset = PresetFor(p.Key)!;
+                return new
+                {
+                    id = p.Key, name = preset.Name,
+                    iconUrl = PresetPlaceId(preset) is long place ? IconOf(place, 0) : null,
+                    seconds = (long)p.Value.Seconds, sessions = p.Value.Sessions, kicks = p.Value.Kicks, accounts = p.Value.Accounts.Count,
+                };
+            }).Concat(noPreset.Sessions > 0
+                ? [new { id = Guid.Empty, name = "", iconUrl = (string?)null, seconds = (long)noPreset.Seconds, sessions = noPreset.Sessions, kicks = noPreset.Kicks, accounts = noPreset.Accounts.Count }]
+                : []),
+            longest = longest.Stay is { } stay ? new
+            {
+                seconds = (long)longest.Seconds,
+                account = stay.AccountId,
+                label = FindAccount(stay.AccountId)?.Label ?? stay.AccountLabel,
+                game = stay.GameName.Length > 0 ? stay.GameName : _games.GetValueOrDefault(stay.PlaceId)?.Name,
+            } : null,
         };
     }
 }

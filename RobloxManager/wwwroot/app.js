@@ -373,7 +373,7 @@
       if (asking || closed || held) return;
       if (askClose?.()) {
         asking = true;
-        const leave = await confirmBox(t('common.discardQ'), { title: t('common.discardTitle'), ok: t('common.discard'), danger: true });
+        const leave = await confirmBox(t('common.discardQ'), { title: t('common.discardTitle'), ok: t('common.discard'), danger: true, remember: 'discard' });
         asking = false;
         if (!leave) return;
       }
@@ -414,16 +414,25 @@
   }
   let modalSeq = 0;
 
-  /** @param danger a destructive answer: the focus starts on Cancel, so a stray Enter doesn't delete or restore. */
-  function confirmBox(message, { title = t('common.confirm'), ok = 'OK', danger = false } = {}) {
+  /**
+   * @param danger a destructive answer: the focus starts on Cancel, so a stray Enter doesn't delete or restore.
+   * @param remember the question offers "Don't ask again" (the app's SkippableConfirms): once ticked with a yes, it
+   * isn't asked any more and its yes is assumed.
+   */
+  function confirmBox(message, { title = t('common.confirm'), ok = 'OK', danger = false, remember = null } = {}) {
+    if (remember && S.app?.skipConfirm?.includes(remember)) return Promise.resolve(true);
     return new Promise(resolve => {
       let answer = false;
       const m = modal({
         title,
-        body: `<p class="pre modal-text">${esc(message)}</p>`,
+        body: `<p class="pre modal-text">${esc(message)}</p>${remember ? `<label class="dont-ask"><input type="checkbox" id="dont-ask"><span>${t('common.dontAsk')}</span></label>` : ''}`,
         actions: [
           { text: t('common.cancel'), onClick: ({ close }) => close() },
-          { text: ok, kind: danger ? 'danger' : 'primary', onClick: ({ close }) => { answer = true; close(); } },
+          { text: ok, kind: danger ? 'danger' : 'primary', onClick: ({ el, close }) => {
+            answer = true;
+            if (remember && el.querySelector('#dont-ask')?.checked) call('skipConfirm', { key: remember });
+            close();
+          } },
         ],
         onClose: () => resolve(answer),
       });
@@ -2631,7 +2640,7 @@
   async function launchDone(r, retry) {
     if (!r || S.app.locked) return; // locked meanwhile: nothing to ask or report
     if (r.needsConfirm) {
-      if (await confirmBox(r.message, { title: t('t.confirmTitle'), ok: t('t.openAnyway') })) return retry();
+      if (await confirmBox(r.message, { title: t('t.confirmTitle'), ok: t('t.openAnyway'), remember: 'openAnyway' })) return retry();
       return;
     }
     if (r.errors?.length && !S.app.locked) {
@@ -2793,7 +2802,7 @@
   }
 
   async function deletePreset(p) {
-    if (!await confirmBox(t('ps.deleteQ', { name: p.name }), { title: t('ps.deleteTitle'), ok: t('ps.delete'), danger: true })) return false;
+    if (!await confirmBox(t('ps.deleteQ', { name: p.name }), { title: t('ps.deleteTitle'), ok: t('ps.delete'), danger: true, remember: 'deletePreset' })) return false;
     if (await call('deletePreset', { id: p.id }) === undefined) return false;
     toast(t('ps.deleted'), 'ok');
     return true;
@@ -4031,7 +4040,7 @@
   }
 
   async function closeAll(force = false) {
-    if (!await confirmBox(t(force ? 't.killAllQ' : 't.closeAllQ'), { ok: t(force ? 't.killAllOk' : 't.closeAllOk'), danger: true })) return;
+    if (!await confirmBox(t(force ? 't.killAllQ' : 't.closeAllQ'), { ok: t(force ? 't.killAllOk' : 't.closeAllOk'), danger: true, remember: force ? 'killAll' : 'closeAll' })) return;
     const n = await call('closeAll', { force });
     if (n !== undefined) toast(n ? tn(force ? 't.killing' : 't.closingAll', n) : t('t.noRoblox'), 'ok');
   }
@@ -4055,7 +4064,7 @@
     else if (r) toast(t(r.secret ? 't.copiedSecret' : { username: 't.copiedUser', pid: 't.copiedPid' }[field] || 't.copied'), 'ok');
   }
 
-  const confirmMulti = () => confirmBox(t('set.multiConfirm'), { title: t('set.multiConfirmTitle'), ok: t('set.multiOk') });
+  const confirmMulti = () => confirmBox(t('set.multiConfirm'), { title: t('set.multiConfirmTitle'), ok: t('set.multiOk'), remember: 'multi' });
   /** Turns Multi-Roblox on (after the risk warning) or off; a switch that was flipped goes back if the warning is declined. */
   async function setMulti(on) {
     const box = typeof on === 'object' ? on : null;
@@ -4688,8 +4697,28 @@
       return;
     }
     const top = d.games[0];
-    const tiles = [[t('stats.total'), fmtSecs(d.totalSeconds)], [t('stats.sessions'), fmtNum(d.sessions)], [t('stats.kicks'), fmtNum(d.kicks)], [t('stats.topGame'), top ? esc(top.name) : '—']]
-      .map(([label, value]) => `<div class="stat"><small>${label}</small><b title="${value}">${value}</b></div>`).join('');
+    // Two more on a wide window (see .stat.wide): how many accounts played, and the longest stay (whose, in what).
+    const hideNames = hidingNames();
+    const longName = d.longest ? (hideNames ? byId(d.longest.account)?.label : d.longest.label) || t('stats.deleted') : '';
+    const tiles = [[t('stats.total'), fmtSecs(d.totalSeconds)], [t('stats.sessions'), fmtNum(d.sessions)], [t('stats.kicks'), fmtNum(d.kicks)], [t('stats.topGame'), top ? esc(top.name) : '—'],
+      [t('stats.played'), `${fmtNum(d.accounts.filter(a => a.seconds > 0).length)}<span class="of">/${fmtNum(accounts().length)}</span>`, 'wide', ''],
+      [t('stats.longest'), d.longest ? fmtSecs(d.longest.seconds) : '—', 'wide', d.longest ? esc([longName, d.longest.game].filter(Boolean).join(' · ')) : '']]
+      .map(([label, value, cls = '', sub = '']) => `<div class="stat ${cls}"><small>${label}</small><b title="${sub || value.replace(/<[^>]+>/g, '')}">${value}</b>${sub ? `<span class="stat-sub">${sub}</span>` : ''}</div>`).join('');
+    // By preset: what each preset's windows played (stays are noted with their preset from 1.0.5 on).
+    // Laid out like Top games (a list fits a narrow third column better than a table): icon, name, its accounts and
+    // drops, the time, and a bar against the most played one.
+    const NO_PRESET = '00000000-0000-0000-0000-000000000000';
+    const presetTop = Math.max(1, ...(d.presets || []).map(p => p.seconds));
+    const presetRows = (d.presets || []).map(p => {
+      const own = p.id !== NO_PRESET;
+      const name = own ? p.name : t('stats.noPreset');
+      const detail = [tn('stats.accountsN', p.accounts), p.kicks ? tn('stats.kicksN', p.kicks) : ''].filter(Boolean).join(' · ');
+      return `<div class="sgame">${own && p.iconUrl ? `<img src="${esc(p.iconUrl)}" alt="" loading="lazy">` : `<span class="gph">${icon(own ? 'layers' : 'user')}</span>`}
+        <div class="gtxt"><b title="${esc(own ? name : t('stats.noPresetTip'))}">${esc(name)}</b><small>${esc(detail)}</small><div class="sg-meter"><i style="transform:scaleX(${(p.seconds / presetTop).toFixed(3)})"></i></div></div>
+        <span class="sg-time">${fmtSecs(p.seconds)}</span></div>`;
+    }).join('');
+    const presetCard = presetRows ? `<div class="stat-card"><h3>${t('stats.byPreset')}</h3><div class="sgames">${presetRows}</div>
+        ${(d.presets || []).every(p => p.id === NO_PRESET) ? `<p class="stat-note">${t('stats.presetNote')}</p>` : ''}</div>` : '';
     // Labels: every hour of 6 today, every day of the week, every 5th day of the month counted back from today (so
     // today always has one). The bar holding this moment
     // is marked as now; on Today the hours still to come are drawn fainter.
@@ -4724,7 +4753,8 @@
       <div class="stat-cols">
         <div class="stat-card"><h3>${t('stats.byAccount')}</h3>
           <table class="stat-table"><thead><tr><th>${t('stats.account')}</th><th class="n">${t('stats.total')}</th><th class="n">${t('stats.sessions')}</th><th class="n">${t('stats.kicks')}</th></tr></thead><tbody>${rows}</tbody></table></div>
-        <div class="stat-card"><h3>${t('stats.topGames')}</h3><div class="sgames">${games}</div></div>
+        <div class="stat-side"><div class="stat-card"><h3>${t('stats.topGames')}</h3><div class="sgames">${games}</div></div>
+        ${presetCard}</div>
       </div>`);
   }
 

@@ -97,6 +97,7 @@
   let notifications = !params.has('nonotify'); // ?nonotify=1: the main switch off (the kinds greyed)
   let notifyOff = params.has('nonotify') ? [] : ['ram']; // kinds turned off under it
   let dailySignInCheck = true;
+  const skipConfirm = [];
   const lastSignInCheck = minsAgo(60 * 5);
   let miniOpen = params.has('mini'); // ?mini=1: the mini window counts as open
   // ?backup=1 shows a chosen folder with a recent backup; ?bkerr=1 a failed one; ?weak=1 the weak-password line.
@@ -197,7 +198,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked,
+    language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false },
     // Settings › Roblox updates, newest first: a new build under the same version, an update, the first build seen.
@@ -269,6 +270,7 @@
           push();
           return null;
         case 'setDailySignInCheck': dailySignInCheck = a.enabled; push(); return null;
+        case 'skipConfirm': if (!skipConfirm.includes(a.key)) skipConfirm.push(a.key); push(); return null;
         case 'toggleMini': miniOpen = !miniOpen; push(); return null;
         case 'setBackup':
           if ('enabled' in a) backup = { ...backup, enabled: a.enabled };
@@ -653,7 +655,11 @@
           return { days, hourly, since: start.toISOString(), recorded: !params.has('nostats'), totalSeconds: total, sessions: count, kicks: Math.round(total / 20000),
             accounts: [[1, .45, 1], [2, .33, 2], [4, .2, 0], [9, .02, 0]].map(([n, p, k]) => { const acc = accounts.find(x => x.id === id(n)); return { id: id(n), label: acc?.label, username: acc?.username, avatarUrl: acc?.avatarUrl, seconds: share(p), sessions: Math.max(1, Math.round(count * p)), kicks: k }; }),
             games: [[2753915549, .55], [920587237, .3], [4924922222, .15]].map(([p, s]) => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl, seconds: share(s), sessions: Math.max(1, Math.round(count * s)) })),
-            buckets };
+            buckets,
+            presets: [{ id: 'p1', name: 'Farm Blox Fruits', iconUrl: games[2753915549].iconUrl, seconds: share(.62), sessions: Math.max(1, Math.round(count * .6)), kicks: 1, accounts: 3 },
+              { id: 'p2', name: 'Adopt Me trade', iconUrl: games[920587237].iconUrl, seconds: share(.25), sessions: 3, kicks: 0, accounts: 1 },
+              { id: '00000000-0000-0000-0000-000000000000', name: '', iconUrl: null, seconds: share(.13), sessions: 2, kicks: 0, accounts: 2 }],
+            longest: total ? { seconds: Math.round(total * .3), account: id(1), label: accounts.find(x => x.id === id(1))?.label, game: games[2753915549].name } : null };
         }
         default: return null;
       }

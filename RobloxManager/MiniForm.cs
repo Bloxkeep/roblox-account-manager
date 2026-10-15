@@ -349,10 +349,16 @@ sealed class MiniForm : Form
 
     void CloseAllClicked()
     {
-        // The same question the page asks.
-        if (!Ui.Modal(() => Dialog.Confirm(this, L.T("Close ALL Roblox running on this PC (including Roblox in the system tray)?"),
-                L.T("Close all"), L.T("Cancel"), danger: true)))
-            return;
+        // The same question the page asks, with its "Don't ask again".
+        if (!Prefs.SkipConfirm.Contains("closeAll"))
+        {
+            var (yes, remember) = Ui.Modal(() => Dialog.ConfirmRemember(this, L.T("Close ALL Roblox running on this PC (including Roblox in the system tray)?"),
+                L.T("Close all"), L.T("Cancel"), danger: true));
+            if (!yes)
+                return;
+            if (remember)
+                _app.SkipConfirm("closeAll");
+        }
         _app.CloseAllClients();
         RefreshRows();
     }

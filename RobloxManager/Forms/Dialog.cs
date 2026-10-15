@@ -19,7 +19,11 @@ sealed class Dialog : Form
     readonly int _cancel;
     readonly float _k;
 
-    Dialog(string text, string? heading, Kind kind, IReadOnlyList<Choice> choices, int defaultIndex, int cancelIndex, string? footnote, bool owned)
+    /// <summary>"Don't ask again", when the question offers it.</summary>
+    readonly DialogCheck? _remember;
+
+    Dialog(string text, string? heading, Kind kind, IReadOnlyList<Choice> choices, int defaultIndex, int cancelIndex, string? footnote, bool owned,
+        string? remember = null)
     {
         var theme = Themes.Current;
         _cancel = cancelIndex;
@@ -50,6 +54,13 @@ sealed class Dialog : Form
             y += S(6);
         var body = Label(text, Font, heading is null ? theme.Text : theme.Text2, textLeft, y, textWidth);
         y = Math.Max(body.Bottom, mark.Bottom) + S(20);
+        if (remember is not null)
+        {
+            _remember = new DialogCheck(theme, remember, Font, S(16), S(7)) { TabIndex = choices.Count };
+            _remember.Location = new Point(textLeft, y - S(8));
+            Controls.Add(_remember);
+            y = _remember.Bottom + S(14);
+        }
 
         bool listed = choices.Any(c => c.Detail is not null);
         // Filled: a destructive button (red), else the first one; which one Enter presses is defaultIndex's to say.
@@ -147,6 +158,18 @@ sealed class Dialog : Form
 
     public static void Error(IWin32Window? owner, string text) =>
         Show(owner, text, null, Kind.Error, [new Choice(L.T("OK"))]);
+
+    /// <summary>
+    /// <see cref="Confirm"/> with a "Don't ask again" box: Remember is whether it was ticked, and only with a yes.
+    /// </summary>
+    public static (bool Yes, bool Remember) ConfirmRemember(IWin32Window? owner, string text, string yes, string no, bool danger = false)
+    {
+        using var dialog = new Dialog(text, null, danger ? Kind.Warning : Kind.Info, [new Choice(yes, Danger: danger), new Choice(no)],
+            danger ? 1 : 0, 1, null, owner is not null, L.T("Don't ask again"));
+        dialog.ShowDialog(owner);
+        bool picked = dialog._picked == 0;
+        return (picked, picked && dialog._remember?.Checked == true);
+    }
 
     /// <summary>Yes or no; with <paramref name="danger"/> the "yes" is red and Enter means "no".</summary>
     public static bool Confirm(IWin32Window? owner, string text, string yes, string no, bool danger = false) =>
@@ -255,11 +278,6 @@ sealed class Dialog : Form
         protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
         protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
 
-        static Color Mix(Color a, Color b, float t) =>
-            Color.FromArgb((int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
-
-        static Color InkOn(Color fill) => fill.GetBrightness() > .55f ? Color.FromArgb(10, 22, 14) : Color.White;
-
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
@@ -297,17 +315,84 @@ sealed class Dialog : Form
                 TextRenderer.DrawText(g, detail, _detailFont, under, _theme.Text2, fill, DetailFlags);
             }
         }
+    }
 
-        static GraphicsPath Round(RectangleF r, float radius)
+    /// <summary>A check box in the theme's colours: Windows' own keeps a pale box on a dark theme.</summary>
+    sealed class DialogCheck : CheckBox
+    {
+        readonly Themes.Theme _theme;
+        readonly int _box, _gap;
+        bool _hover;
+
+        public DialogCheck(Themes.Theme theme, string text, Font font, int box, int gap)
         {
-            var p = new GraphicsPath();
-            float d = radius * 2;
-            p.AddArc(r.X, r.Y, d, d, 180, 90);
-            p.AddArc(r.Right - d, r.Y, d, d, 270, 90);
-            p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-            p.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
-            p.CloseFigure();
-            return p;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            _theme = theme;
+            _box = box;
+            _gap = gap;
+            Text = text;
+            Font = font;
+            Cursor = Cursors.Hand;
+            AutoSize = false;
+            var size = TextRenderer.MeasureText(text, font);
+            Size = new Size(box + gap + size.Width + 2, Math.Max(box, size.Height) + 4);
         }
+
+        protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { _hover = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(_theme.Background);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var box = new RectangleF(1.5f, (Height - _box) / 2f + .5f, _box - 2, _box - 2);
+            Color fill = Checked ? _theme.Good : _theme.Surface;
+            if (_hover)
+                fill = Mix(fill, Checked ? Color.White : _theme.Text, .08f);
+            using (var path = Round(box, _box / 4.5f))
+            {
+                using (var brush = new SolidBrush(fill))
+                    g.FillPath(brush, path);
+                if (!Checked)
+                    using (var line = new Pen(_hover ? _theme.Text2 : _theme.Line))
+                        g.DrawPath(line, path);
+                if (Focused && ShowFocusCues)
+                    using (var ring = new Pen(Mix(_theme.Text, _theme.Background, .35f), 1.5f))
+                    using (var outer = Round(RectangleF.Inflate(box, 2.5f, 2.5f), _box / 3.5f))
+                        g.DrawPath(ring, outer);
+            }
+            if (Checked)
+            {
+                using var tick = new Pen(InkOn(fill), Math.Max(1.5f, _box / 8f)) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                g.DrawLines(tick, [
+                    new PointF(box.X + box.Width * .24f, box.Y + box.Height * .52f),
+                    new PointF(box.X + box.Width * .43f, box.Y + box.Height * .71f),
+                    new PointF(box.X + box.Width * .77f, box.Y + box.Height * .31f),
+                ]);
+            }
+            var text = new Rectangle(_box + _gap, 0, Width - _box - _gap, Height);
+            TextRenderer.DrawText(g, Text, Font, text, _theme.Text2, _theme.Background,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+        }
+    }
+
+    static Color Mix(Color a, Color b, float t) =>
+        Color.FromArgb((int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
+
+    static Color InkOn(Color fill) => fill.GetBrightness() > .55f ? Color.FromArgb(10, 22, 14) : Color.White;
+
+    static GraphicsPath Round(RectangleF r, float radius)
+    {
+        var p = new GraphicsPath();
+        float d = radius * 2;
+        p.AddArc(r.X, r.Y, d, d, 180, 90);
+        p.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+        p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+        p.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+        p.CloseFigure();
+        return p;
     }
 }

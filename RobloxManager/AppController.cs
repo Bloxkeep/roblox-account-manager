@@ -101,6 +101,14 @@ public sealed partial class AppController : IDisposable
     static readonly TimeSpan NudgeRetry = TimeSpan.FromMinutes(1), MaxNudgeRetry = TimeSpan.FromMinutes(15);
     /// <summary>Nudges in a row each window missed: the wait before the next one doubles.</summary>
     readonly Dictionary<int, int> _nudgeMisses = new();
+
+    enum AfkHeld { InUse, Locked, Refused }
+
+    /// <summary>
+    /// Why anti-AFK last held back from a window that was due, since a nudge last reached it: said if Roblox kicks
+    /// that window for idling anyway.
+    /// </summary>
+    readonly Dictionary<int, AfkHeld> _afkHeld = new();
     /// <summary>Roblox windows currently set to a low memory priority (they are in the background).</summary>
     readonly HashSet<int> _lowMemoryPriority = new();
     /// <summary>The Roblox settings file holds values Bloxkeep wrote; the person's own come back when Roblox is closed.</summary>
@@ -342,6 +350,7 @@ public sealed partial class AppController : IDisposable
         "monitorArea" => Done(MonitorAreaCommand(a)),
         "setNotifications" => Done(SetNotifications(a)),
         "setDailySignInCheck" => Done(SetDailySignInCheck(Bool(a, "enabled"))),
+        "skipConfirm" => Done(SkipConfirm(Str(a, "key"))),
         "toggleMini" => Done(ToggleMini()),
         "setBackup" => Done(SetBackup(a)),
         "pickBackupFolder" => Done(PickBackupFolder()),
@@ -350,7 +359,7 @@ public sealed partial class AppController : IDisposable
         "backupNow" => BackupNowAsync(),
         "restoreBackup" => Done(RestoreBackup()),
         "pickLauncher" => Done(PickLauncher()),
-        "playStats" => Done(PlayStats((int)Long(a, "days"))),
+        "playStats" => PlayStatsAsync((int)Long(a, "days")),
         "activity" => Done(ActivityList(a)),
         "exportActivity" => Done(ExportActivity(a)),
         "findPlayer" => FindPlayerAsync(a),
@@ -465,6 +474,7 @@ public sealed partial class AppController : IDisposable
         notifications = Prefs.Notifications,
         notifyOff = Prefs.NotifyOff.Where(NotifyKinds.Contains).Order().ToArray(),
         dailySignInCheck = Prefs.DailySignInCheck,
+        skipConfirm = Prefs.SkipConfirm.Order(StringComparer.Ordinal).ToArray(),
         lastSignInCheck = Prefs.LastSignInCheck, // shown next to the switch, like the update check's time
         miniOpen = Prefs.MiniOpen,
         backup = BackupDto(),
@@ -1957,7 +1967,9 @@ public sealed partial class AppController : IDisposable
             foreach (var (placeId, universeId) in universeOf)
             {
                 // A missing answer (a request failed) keeps what was known before instead of forgetting the name.
-                _games[placeId] = games.TryGetValue(universeId, out var info) ? info with { PlaceId = placeId } : _games.GetValueOrDefault(placeId);
+                _games[placeId] = games.TryGetValue(universeId, out var info)
+                    ? info with { PlaceId = placeId, IconUrl = info.IconUrl ?? _games.GetValueOrDefault(placeId)?.IconUrl }
+                    : _games.GetValueOrDefault(placeId);
                 if (_games[placeId] is null)
                     _gameMisses[placeId] = _gameMisses.GetValueOrDefault(placeId) + 1;
                 else
@@ -3429,6 +3441,8 @@ public sealed partial class AppController : IDisposable
             _nudgeRetryAt.Remove(gone);
         foreach (int gone in _nudgeMisses.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
             _nudgeMisses.Remove(gone);
+        foreach (int gone in _afkHeld.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
+            _afkHeld.Remove(gone);
         _idleKickReported.RemoveWhere(pid => !windows.ContainsKey(pid));
         if (_vault is null || windows.Count == 0)
             return;
@@ -3442,21 +3456,35 @@ public sealed partial class AppController : IDisposable
         if (_nudging)
             return;
 
+        bool Due(int pid) => windows[pid].Count > 0 && _logs.StateOf(pid)?.Status is null or "ingame" && now - LastInput(pid) >= AntiAfk.Interval;
+        // Locked: no window can come to the front, so none is tried (a minimised one would be restored and minimised
+        // again for nothing).
+        if (AntiAfk.Locked())
+        {
+            foreach (int pid in on.Where(Due))
+                _afkHeld[pid] = AfkHeld.Locked;
+            return;
+        }
         bool personHere = AntiAfk.PersonActive();
         int foreground = RobloxProcesses.ForegroundPid();
         if (personHere && windows.ContainsKey(foreground))
+        {
             _lastInput[foreground] = now;
+            _afkHeld.Remove(foreground);
+        }
         if (personHere)
         {
-            // Someone is at the PC (it isn't locked): the next idle spell tries every window again from the start.
+            // Someone is using the PC: the windows due wait for a minute without input (taking the screen from them
+            // would put their typing into Roblox). The next idle spell tries every window again from the start.
+            foreach (int pid in on.Where(Due))
+                _afkHeld[pid] = AfkHeld.InUse;
             _nudgeMisses.Clear();
             _nudgeRetryAt.Clear();
             return;
         }
 
         var due = windows
-            .Where(w => on.Contains(w.Key) && w.Value.Count > 0 && _logs.StateOf(w.Key)?.Status is null or "ingame" && now - LastInput(w.Key) >= AntiAfk.Interval
-                        && !(_nudgeRetryAt.TryGetValue(w.Key, out var retry) && now < retry))
+            .Where(w => on.Contains(w.Key) && Due(w.Key) && !(_nudgeRetryAt.TryGetValue(w.Key, out var retry) && now < retry))
             .Select(w => (Pid: w.Key, Window: w.Value[0]))
             .ToList();
         if (due.Count > 0)
@@ -3484,9 +3512,12 @@ public sealed partial class AppController : IDisposable
                     _lastInput[pid] = DateTime.UtcNow;
                     _nudgeRetryAt.Remove(pid);
                     _nudgeMisses.Remove(pid);
+                    _afkHeld.Remove(pid);
                 }
                 else
                 {
+                    // Not reached: the person came back meanwhile, or Windows kept it in the background.
+                    _afkHeld[pid] = AntiAfk.PersonActive() ? AfkHeld.InUse : AntiAfk.Locked() ? AfkHeld.Locked : AfkHeld.Refused;
                     // Focus refused or the PC is locked: not every tick, and less often while it lasts (a locked PC
                     // all night would otherwise restore and minimise a minimised window every minute), 15 min at most.
                     int misses = _nudgeMisses[pid] = _nudgeMisses.GetValueOrDefault(pid) + 1;
@@ -3500,14 +3531,27 @@ public sealed partial class AppController : IDisposable
         }
     }
 
-    /// <summary>Says so when an account is kicked for idling although anti-AFK is on for its window (<paramref name="on"/>).</summary>
+    /// <summary>
+    /// Says so, and why anti-AFK didn't reach it, when an account is kicked for idling although anti-AFK is on for its
+    /// window (<paramref name="on"/>). error.log gets the same (no account data), to look into later.
+    /// </summary>
     void ReportIdleKicks(HashSet<int> on)
     {
         foreach (var (id, info) in _running)
         {
-            if (on.Contains(info.Pid) && _logs.StateOf(info.Pid) is { Status: "disconnected", Reason: IdleKick } && _idleKickReported.Add(info.Pid)
-                && FindAccount(id) is { } account)
-                Notify(L.F("{0} was kicked for being AFK. Anti-AFK doesn't work while the PC is locked.", Name(account)), "warn", "afk", account.Id);
+            if (!on.Contains(info.Pid) || _logs.StateOf(info.Pid) is not { Status: "disconnected", Reason: IdleKick } || !_idleKickReported.Add(info.Pid)
+                || FindAccount(id) is not { } account)
+                continue;
+            AfkHeld? held = _afkHeld.TryGetValue(info.Pid, out var why) ? why : null;
+            Log.Note($"Idle kick with anti-AFK on: Roblox pid {info.Pid}, last input {(_lastInput.TryGetValue(info.Pid, out var last) ? last.ToLocalTime().ToString("HH:mm:ss") : "unknown")}, "
+                     + $"held back by: {held?.ToString() ?? "nothing noted"}.");
+            Notify(held switch
+            {
+                AfkHeld.InUse => L.F("{0} was kicked for being AFK: the PC was in use, and anti-AFK waits for a minute without mouse or keyboard.", Name(account)),
+                AfkHeld.Locked => L.F("{0} was kicked for being AFK: the PC was locked, and anti-AFK can't reach Roblox then.", Name(account)),
+                AfkHeld.Refused => L.F("{0} was kicked for being AFK: Windows didn't let Bloxkeep bring its window to the front.", Name(account)),
+                _ => L.F("{0} was kicked for being AFK.", Name(account)),
+            }, "warn", "afk", account.Id);
         }
     }
 

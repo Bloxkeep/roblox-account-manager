@@ -42,6 +42,9 @@ public static class Prefs
     /// </summary>
     public static HashSet<string> NotifyOff { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>Questions answered with "Don't ask again" (see AppController.SkippableConfirms): their yes is assumed.</summary>
+    public static HashSet<string> SkipConfirm { get; } = new(StringComparer.Ordinal);
+
     /// <summary>Where copies of the vault go (see <see cref="Backup"/>); null until chosen. Kept here so restoring works before unlocking.</summary>
     public static string? BackupFolder { get; set; }
 
@@ -91,7 +94,7 @@ public static class Prefs
     [
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
-        "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified",
+        "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -136,6 +139,14 @@ public static class Prefs
                 {
                     if (kind.ValueKind == JsonValueKind.String && kind.GetString() is { Length: > 0 and <= 40 } name)
                         NotifyOff.Add(name);
+                }
+            }
+            if (root.TryGetProperty("skipConfirm", out var skip) && skip.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var question in skip.EnumerateArray())
+                {
+                    if (question.ValueKind == JsonValueKind.String && question.GetString() is { Length: > 0 and <= 40 } name)
+                        SkipConfirm.Add(name);
                 }
             }
             if (root.TryGetProperty("backupFolder", out var folder) && folder.ValueKind == JsonValueKind.String)
@@ -201,6 +212,7 @@ public static class Prefs
                 ["mainWindow"] = MainWindow, ["mainMaximized"] = MainMaximized,
                 ["robloxHistory"] = RobloxHistory.Select(h => new { at = h.At, version = h.Version, folder = h.Folder, source = h.Source, first = h.First }).ToArray(),
                 ["robloxClosedAt"] = RobloxClosedAt, ["robloxClosedCount"] = RobloxClosedCount, ["robloxClosedNotified"] = RobloxClosedNotified,
+                ["skipConfirm"] = SkipConfirm.Order(StringComparer.Ordinal).ToArray(),
             };
             // Never over a known key: a pref missing from Known would otherwise revert to its loaded value every restart.
             foreach (var (key, value) in _extra)

@@ -70,6 +70,29 @@ static class AntiAfk
     [DllImport("user32.dll")] static extern bool AttachThreadInput(uint attach, uint attachTo, bool on);
     [DllImport("user32.dll", SetLastError = true)] static extern uint SendInput(uint count, INPUT[] inputs, int size);
     [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+    [DllImport("wtsapi32.dll", EntryPoint = "WTSQuerySessionInformationW")]
+    static extern bool WTSQuerySessionInformation(IntPtr server, int sessionId, int infoClass, out IntPtr buffer, out int bytes);
+    [DllImport("wtsapi32.dll")] static extern void WTSFreeMemory(IntPtr memory);
+
+    const int WTS_CURRENT_SESSION = -1, WTSSessionInfoEx = 25, WTS_SESSIONSTATE_LOCK = 0;
+
+    /// <summary>
+    /// The PC is locked (the sign-in screen is up): no window can come to the front then. Read from WTSINFOEX level 1,
+    /// whose session flags follow the level (padded to 8 bytes), the session id and its state.
+    /// </summary>
+    public static bool Locked()
+    {
+        if (!WTSQuerySessionInformation(IntPtr.Zero, WTS_CURRENT_SESSION, WTSSessionInfoEx, out var buffer, out int bytes) || buffer == IntPtr.Zero)
+            return false;
+        try
+        {
+            return bytes >= 20 && Marshal.ReadInt32(buffer) == 1 && Marshal.ReadInt32(buffer, 16) == WTS_SESSIONSTATE_LOCK;
+        }
+        finally
+        {
+            WTSFreeMemory(buffer);
+        }
+    }
 
     static uint LastInputTick()
     {

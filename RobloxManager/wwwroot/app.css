@@ -1834,6 +1834,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .ps-opts-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .ps-opts-note { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); white-space: pre-line; }
 .ps-opts-note[hidden] { display: none; }
+/* "Don't ask again" under a question. */
+.dont-ask { display: inline-flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: var(--text-2); cursor: pointer; user-select: none; }
+.dont-ask input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .ps-dc-mode { display: grid; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
 .ps-dc-own { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .ps-dc-own[hidden] { display: none; }
@@ -1979,6 +1982,20 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .sg-meter i { display: block; height: 100%; background: var(--meter); transform-origin: left; }
 .sg-time { flex: none; font-size: 13px; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (max-width: 1180px) { .stats { padding: 4px 22px 26px; } }
+/* A wide window: the page takes the room (up to 1700 px) with two more figures and the preset table as a third column. */
+.stat.wide { display: none; }
+.stat b .of { font-size: 15px; font-weight: 600; color: var(--muted); }
+.stat-sub { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-note { margin: 10px 2px 0; font-size: 12px; color: var(--muted); }
+/* Top games and By preset stacked in the right column; on a wide window each is a column of its own. */
+.stat-side { display: grid; gap: 16px; align-content: start; min-width: 0; }
+@media (min-width: 1500px) {
+  .stats, #view-stats .top { max-width: 1700px; }
+  .stat.wide { display: block; }
+  .stat-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .stat-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 4fr); }
+  .stat-side { display: contents; }
+}
 @media (max-width: 1080px) { .stat-cols { grid-template-columns: minmax(0, 1fr); } .stat-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* The figures above the activity list; their "nothing yet" needs less room with the list under it. */
 .stats-in { display: grid; gap: 16px; min-width: 0; }
