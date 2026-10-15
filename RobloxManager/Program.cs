@@ -11,16 +11,28 @@ static class Program
     static void Main()
     {
         // The installer and updater run the app with special arguments for install/update/uninstall steps; those
-        // are handled here (and exit) before anything else starts. Uninstalling keeps the user's accounts: it removes
-        // only the program folder, the shortcuts and the interface caches, never %LOCALAPPDATA%\Bloxkeep.
+        // are handled here (and exit) before anything else starts. Uninstalling removes the program folder, the
+        // shortcuts and the interface caches; the accounts and settings in %LOCALAPPDATA%\Bloxkeep go only when the
+        // person chooses so.
         VelopackApp.Build()
             .OnBeforeUninstallFastCallback(_ =>
             {
+                var deadline = DateTime.UtcNow.AddSeconds(50);
                 CloseRunningApp();
                 Vault.DeleteCaches();
                 // Sign-in and captcha browser profiles in %TEMP%, normally removed at the next start that never comes.
                 BrowserLoginForm.CleanupLeftoverProfiles();
                 CaptchaForm.CleanupLeftoverProfiles();
+                // Bloxkeep's uninstaller window has already asked and says so here; when Velopack's uninstall runs on
+                // its own (an entry an update reset), ask now.
+                bool delete = Environment.GetEnvironmentVariable("BLOXKEEP_UNINSTALL_DATA") switch
+                {
+                    "delete" => true,
+                    "keep" => false,
+                    _ => AskToDeleteData(deadline),
+                };
+                if (delete)
+                    Vault.DeleteAllData();
             })
             .Run();
 
@@ -54,6 +66,7 @@ static class Program
         Prefs.Load();
         BrowserLoginForm.CleanupLeftoverProfiles();
         CaptchaForm.CleanupLeftoverProfiles();
+        UseOurUninstaller();
         ShellForm shell;
         try
         {
@@ -132,6 +145,68 @@ static class Program
         }
         // Its browser processes end right after it.
         Thread.Sleep(1500);
+    }
+
+    /// <summary>
+    /// Velopack's uninstall run directly, without Bloxkeep's uninstaller window: asks whether the accounts go too. Kept
+    /// when there is no answer by <paramref name="deadline"/>, before Velopack's minute for this step runs out.
+    /// </summary>
+    static bool AskToDeleteData(DateTime deadline)
+    {
+        if (!File.Exists(Vault.VaultPath))
+            return false;
+        Prefs.Load();
+        ApplicationConfiguration.Initialize();
+        var keep = new TaskDialogCommandLinkButton(L.T("Keep my accounts and settings"), L.T("Installing Bloxkeep again picks up where you left off."));
+        var delete = new TaskDialogCommandLinkButton(L.T("Delete my accounts and settings"),
+            L.F("Deletes the vault with your saved accounts, your settings and logs in {0}. This can't be undone.", Vault.DataDir));
+        var page = new TaskDialogPage
+        {
+            Caption = L.T("Uninstall Bloxkeep"),
+            Heading = L.T("Delete your accounts too?"),
+            Text = L.T("Bloxkeep is being removed from this PC. Your accounts and settings stay unless you delete them."),
+            Buttons = { keep, delete },
+            DefaultButton = keep,
+            Footnote = new TaskDialogFootnote(L.T("Kept if you don't choose within a minute.")),
+            AllowCancel = true,
+        };
+        using var timer = new System.Windows.Forms.Timer { Interval = (int)Math.Clamp((deadline - DateTime.UtcNow).TotalMilliseconds, 5000, 50000) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            page.BoundDialog?.Close();
+        };
+        page.Created += (_, _) => timer.Start();
+        return TaskDialog.ShowDialog(page) == delete;
+    }
+
+    /// <summary>
+    /// Installed apps › Uninstall opens Bloxkeep's uninstaller window (BloxkeepUninstall.exe, shipped with the app)
+    /// rather than Velopack's bare one. Bloxkeep's installer sets this; doing it at every start keeps it after an update
+    /// rewrites the entry. Nothing to do for the portable copy or a development build (no entry, no uninstaller).
+    /// </summary>
+    static void UseOurUninstaller()
+    {
+        try
+        {
+            string appDir = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
+            string uninstaller = Path.Combine(appDir, "BloxkeepUninstall.exe");
+            if (Path.GetDirectoryName(appDir) is not { } root || !File.Exists(uninstaller) || !File.Exists(Path.Combine(root, "Update.exe")))
+                return;
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\BloxkeepApp", writable: true);
+            if (key?.GetValue("InstallLocation") is not string at
+                || !string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(at)), root, StringComparison.OrdinalIgnoreCase))
+                return;
+            string command = $"\"{uninstaller}\"";
+            if (key.GetValue("UninstallString") as string == command)
+                return;
+            key.SetValue("UninstallString", command);
+            key.SetValue("QuietUninstallString", command + " --silent");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Log.Write(ex);
+        }
     }
 
     /// <summary>Logs the error; shows it at most every few seconds so a repeating failure can't flood the screen.</summary>

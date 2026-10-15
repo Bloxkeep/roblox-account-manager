@@ -455,6 +455,16 @@ public static class L
         ["Updated every {0} min"] = "Cập nhật mỗi {0} phút",
         ["({0} older message couldn't be sent while offline and was dropped.)"] = "({0} tin cũ không gửi được lúc mất mạng nên đã bỏ.)",
         ["({0} older messages couldn't be sent while offline and were dropped.)"] = "({0} tin cũ không gửi được lúc mất mạng nên đã bỏ.)",
+        ["Uninstall Bloxkeep"] = "Gỡ cài đặt Bloxkeep",
+        ["Delete your accounts too?"] = "Xóa luôn tài khoản?",
+        ["Bloxkeep is being removed from this PC. Your accounts and settings stay unless you delete them."] =
+            "Bloxkeep đang được gỡ khỏi máy. Tài khoản và cài đặt vẫn được giữ, trừ khi bạn chọn xóa.",
+        ["Keep my accounts and settings"] = "Giữ tài khoản và cài đặt",
+        ["Installing Bloxkeep again picks up where you left off."] = "Cài lại Bloxkeep là dùng tiếp như cũ.",
+        ["Delete my accounts and settings"] = "Xóa tài khoản và cài đặt",
+        ["Deletes the vault with your saved accounts, your settings and logs in {0}. This can't be undone."] =
+            "Xóa vault chứa các tài khoản đã lưu, cài đặt và nhật ký trong {0}. Không khôi phục lại được.",
+        ["Kept if you don't choose within a minute."] = "Không chọn trong vòng một phút thì sẽ giữ lại.",
         ["Test message"] = "Tin nhắn thử",
         ["Bloxkeep can post to this channel. Choose what it sends under Settings › Discord."] =
             "Bloxkeep gửi được vào kênh này. Chọn những gì sẽ gửi trong Cài đặt › Discord.",

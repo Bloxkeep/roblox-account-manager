@@ -40,7 +40,7 @@ Get it from [Releases](../../releases/latest):
 
 | File | Use it when |
 |---|---|
-| `Bloxkeep-Setup.exe` | You want a normal install. It installs for your Windows user, needs no admin rights, and adds Start menu and Desktop shortcuts. |
+| `Bloxkeep-Setup.exe` | You want a normal install. You choose the folder, on any drive (pick `D:\` and it goes to `D:\Bloxkeep`). It installs for your Windows user, needs no admin rights, and adds Start menu and Desktop shortcuts. |
 | `Bloxkeep-Portable.zip` | You'd rather not install. Unzip and run `Bloxkeep.exe`; its data goes into a `data` folder next to it. The portable copy updates itself too. |
 
 > [!CAUTION]
@@ -48,7 +48,9 @@ Get it from [Releases](../../releases/latest):
 
 The files aren't code-signed yet, so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release.
 
-<img src="docs/screenshots/1-install.png" width="480" alt="The Bloxkeep installer at work">
+Setup shows where Bloxkeep will go (`%LOCALAPPDATA%\BloxkeepApp` unless you choose another folder; the program takes about 230 MB), copies it with a progress bar and can open it when it's done. Your accounts and settings stay apart from the program, in `%LOCALAPPDATA%\Bloxkeep` (a few MB). Setup and the uninstaller speak English and Vietnamese.
+
+<img src="docs/screenshots/setup-folder.png" width="420" alt="Bloxkeep Setup: choosing the install folder, here D:\Bloxkeep"> <img src="docs/screenshots/setup-progress.png" width="420" alt="Bloxkeep Setup copying the files"> <img src="docs/screenshots/setup-done.png" width="420" alt="Bloxkeep Setup done, with Open Bloxkeep now ticked">
 
 ### Updates
 
@@ -58,21 +60,22 @@ Updating itself only works while the GitHub repository is public.
 
 To turn automatic updates off, untick **Settings › Bloxkeep updates › Update automatically**. **Check now** still works.
 
-Running a newer `Bloxkeep-Setup.exe` over an installed copy works too: the installer offers to update (or repair, for the same version) and keeps your data.
+Running a newer `Bloxkeep-Setup.exe` over an installed copy works too: it installs into the same folder, closes a running Bloxkeep first, and keeps your data. To move Bloxkeep to another drive, uninstall it, then install it again in the new folder.
 
 ### Uninstall
 
-If Bloxkeep is running, quit it first (right-click the tray icon › **Quit Bloxkeep**): the uninstaller closes it without asking, and the icon of an app closed that way can stay in the tray until you move the mouse over it. Then open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publisher `minhhoang0122`) and choose **Uninstall**. The installer and uninstaller dialogs are in English only.
+Open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publisher `minhhoang0122`) and choose **Uninstall**. Bloxkeep's uninstaller asks whether to **Also delete my accounts and settings**: leave it unticked to keep them for a later reinstall, or tick it to remove them for good. It closes Bloxkeep first if it's running.
 
-| Removed | Kept |
-|---|---|
-| The program in `%LOCALAPPDATA%\BloxkeepApp`, the Start menu and Desktop shortcuts (including ones you pinned to Start or the taskbar), the interface cache, and the Installed apps entry. Bloxkeep adds nothing else to Windows: no startup entry, no service, and it doesn't take over the `roblox-player:` protocol. | Your accounts and settings in `%LOCALAPPDATA%\Bloxkeep` (`vault.rmv`, `prefs.json`, `error.log`), so a reinstall picks up where you left off; and the backup files in your backup folder. Delete that folder and the backups yourself to remove those too. |
+<img src="docs/screenshots/uninstall.png" width="420" alt="Uninstall Bloxkeep, with Also delete my accounts and settings ticked">
+
+| Always removed | Removed only when you tick **Also delete my accounts and settings** | Never touched |
+|---|---|---|
+| The program folder (`%LOCALAPPDATA%\BloxkeepApp` unless you chose another one), the Start menu and Desktop shortcuts (including ones you pinned to Start or the taskbar), the interface cache, and the Installed apps entry. Bloxkeep adds nothing else to Windows: no startup entry, no service, and it doesn't take over the `roblox-player:` protocol. | Your accounts and settings in `%LOCALAPPDATA%\Bloxkeep`: the vault (`vault.rmv` and its spare copies), `prefs.json` and `error.log`. | The backup files in your backup folder, and any other file you put in `%LOCALAPPDATA%\Bloxkeep`. |
 
 <details>
-<summary>Pictures: updating and uninstalling</summary>
+<summary>Pictures: updating</summary>
 
 <img src="docs/screenshots/2-restart-to-update.png" width="800" alt="Restart to update in the sidebar"> <img src="docs/screenshots/6-whats-new.png" width="800" alt="What's new after an update"> <img src="docs/screenshots/3-settings-updates.png" width="800" alt="The Bloxkeep updates page in Settings">
-<img src="docs/screenshots/4-uninstall-progress.png" width="480" alt="Uninstalling Bloxkeep"> <img src="docs/screenshots/5-uninstall-done.png" width="480" alt="Uninstall finished, account data kept">
 </details>
 
 ## Getting started
@@ -250,7 +253,7 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone or wi
 | `roblox-settings.json` | Your graphics, FPS, volume and fullscreen settings, to put back after opening an account |
 | `error.log` | Errors and short sign-in notes, with no account details |
 | `webview\`, `webview-safe\` | The interface cache, removed on uninstall |
-| `%LOCALAPPDATA%\BloxkeepApp\` | The installed program (removed on uninstall) |
+| `%LOCALAPPDATA%\BloxkeepApp\`, or the folder you chose in Setup | The installed program (removed on uninstall) |
 
 **How it's protected.** The vault is encrypted with AES-256-GCM. The key comes from your master password through PBKDF2-HMAC-SHA256 with 600,000 iterations and a random salt. The file header is authenticated too, so a wrong password or a tampered file is detected. The master password is never stored. Every save is written in full before it replaces the old file, and the previous save is kept in `vault.rmv.bak`. When you lock the app, Bloxkeep drops all the decrypted data it was holding (cookies, passwords, authenticator keys).
 
@@ -393,7 +396,7 @@ The Store version can't open the account you choose, so Bloxkeep can't use it. I
 <details>
 <summary>How do I remove Bloxkeep completely?</summary>
 
-Uninstall it in Windows **Settings › Apps**, then delete the `%LOCALAPPDATA%\Bloxkeep` folder. For the portable copy, delete the app's folder (with its `data`).
+Uninstall it in Windows **Settings › Apps** and tick **Also delete my accounts and settings**. Backups in your backup folder stay; delete them yourself. For the portable copy, delete the app's folder (with its `data`).
 </details>
 
 ## Build from source
@@ -428,7 +431,7 @@ RobloxManager/             C# source
   Vault.cs                 the encrypted vault
   AppUpdater.cs            self-update (Velopack)
   whatsnew.json            notes for each version
-Installer/                 the installer's splash image
+Installer/                 the installer's splash image; Setup/ the installer and uninstaller windows
 dev/                       interface preview with made-up data (not packaged)
 docs/screenshots/          screenshots (vi/: the Vietnamese ones)
 ```

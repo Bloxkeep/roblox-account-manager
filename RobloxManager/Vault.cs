@@ -46,6 +46,38 @@ public sealed class Vault : IDisposable
             }
         }
     }
+    /// <summary>
+    /// For an uninstall the person asked to take everything: the vault with its spare copies, settings, logs and caches.
+    /// Only Bloxkeep's own files go (DataDir may be a folder BLOXKEEP_DATA points at); the folder too once empty.
+    /// Backups in the backup folder stay.
+    /// </summary>
+    public static void DeleteAllData()
+    {
+        if (!Directory.Exists(DataDir))
+            return;
+        DeleteCaches();
+        foreach (string pattern in new[] { "vault.rmv*", "vault-before-restore-*.rmv", "prefs.json*", "error.log*", "roblox-settings.json*", "starting.flag" })
+            foreach (string file in Directory.EnumerateFiles(DataDir, pattern))
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Left behind; the folder then stays too.
+                }
+            }
+        try
+        {
+            if (!Directory.EnumerateFileSystemEntries(DataDir).Any())
+                Directory.Delete(DataDir);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
     public static string VaultPath => Path.Combine(DataDir, "vault.rmv");
     static string BackupPath => Path.Combine(DataDir, "vault.rmv.bak");
     static string TempPath => Path.Combine(DataDir, "vault.rmv.tmp");

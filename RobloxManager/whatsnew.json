@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.1",
+    "date": "2026-10-15",
+    "en": [
+      "A new installer: choose where Bloxkeep goes, on any drive, and watch it install; your accounts and settings stay apart from the program.",
+      "A new uninstaller (Windows Settings › Apps › Uninstall) that asks whether to delete your accounts and settings too, or keep them for a reinstall.",
+      "Setup closes a running Bloxkeep before installing, and a second copy of Setup can't start over the first one."
+    ],
+    "vi": [
+      "Bộ cài mới: chọn nơi cài Bloxkeep, ở ổ nào cũng được, và xem tiến trình cài; tài khoản và cài đặt vẫn lưu riêng với chương trình.",
+      "Bộ gỡ cài đặt mới (Cài đặt Windows › Ứng dụng › Gỡ cài đặt) hỏi có xóa luôn tài khoản và cài đặt không, hay giữ lại để cài lại sau.",
+      "Bộ cài đóng Bloxkeep đang chạy trước khi cài, và không mở được hai bộ cài cùng lúc."
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-10-15",
     "en": [

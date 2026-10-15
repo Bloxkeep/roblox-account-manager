@@ -36,7 +36,7 @@ Tải ở trang [Releases](../../releases/latest):
 
 | File | Dùng khi |
 |---|---|
-| `Bloxkeep-Setup.exe` | Cài bình thường. Cài cho người dùng Windows hiện tại, không cần quyền admin, tạo shortcut ở Start Menu và Desktop. |
+| `Bloxkeep-Setup.exe` | Cài bình thường. Bạn chọn thư mục cài, ở ổ nào cũng được (chọn `D:\` thì cài vào `D:\Bloxkeep`). Cài cho người dùng Windows hiện tại, không cần quyền admin, tạo shortcut ở Start Menu và Desktop. |
 | `Bloxkeep-Portable.zip` | Không muốn cài. Giải nén rồi chạy `Bloxkeep.exe`; dữ liệu nằm trong thư mục `data` bên cạnh. Bản portable cũng tự cập nhật. |
 
 > [!CAUTION]
@@ -44,7 +44,9 @@ Tải ở trang [Releases](../../releases/latest):
 
 File chưa có chữ ký số, nên lần đầu chạy Windows SmartScreen sẽ cảnh báo. Bấm **More info** rồi **Run anyway** (trên Windows tiếng Việt, hai nút này mang tên tiếng Việt tương ứng). Bạn có thể đối chiếu mã SHA-256 của file với `SHA256SUMS.txt` trong cùng bản phát hành.
 
-<img src="docs/screenshots/1-install.png" width="480" alt="Bộ cài Bloxkeep đang cài đặt">
+Bộ cài cho bạn chọn nơi cài (mặc định là `%LOCALAPPDATA%\BloxkeepApp`; chương trình chiếm khoảng 230 MB), chép file kèm thanh tiến trình và có thể mở Bloxkeep khi xong. Tài khoản và cài đặt được lưu riêng với chương trình, trong `%LOCALAPPDATA%\Bloxkeep` (vài MB). Bộ cài và bộ gỡ có tiếng Việt và tiếng Anh.
+
+<img src="docs/screenshots/vi/setup-folder.png" width="420" alt="Bộ cài Bloxkeep: chọn thư mục cài, ở đây là D:\Bloxkeep"> <img src="docs/screenshots/vi/setup-progress.png" width="420" alt="Bộ cài Bloxkeep đang chép file"> <img src="docs/screenshots/vi/setup-done.png" width="420" alt="Cài xong, có ô Mở Bloxkeep ngay">
 
 ### Cập nhật
 
@@ -54,21 +56,22 @@ Tự cập nhật chỉ hoạt động khi repo trên GitHub ở chế độ cô
 
 Muốn tắt tự cập nhật: bỏ chọn **Cài đặt › Cập nhật Bloxkeep › Tự động cập nhật**. Nút **Kiểm tra ngay** vẫn dùng được.
 
-Chạy `Bloxkeep-Setup.exe` bản mới hơn đè lên bản đã cài cũng được: bộ cài hỏi cập nhật (hoặc sửa lại nếu cùng phiên bản) và giữ nguyên dữ liệu.
+Chạy `Bloxkeep-Setup.exe` bản mới hơn đè lên bản đã cài cũng được: bộ cài cài vào đúng thư mục cũ, đóng Bloxkeep đang chạy trước và giữ nguyên dữ liệu. Muốn chuyển Bloxkeep sang ổ khác thì gỡ cài đặt rồi cài lại vào thư mục mới.
 
 ### Gỡ cài đặt
 
-Nếu Bloxkeep đang chạy, hãy thoát trước (chuột phải biểu tượng ở khay › **Thoát Bloxkeep**): trình gỡ sẽ tắt app ngay mà không hỏi, và biểu tượng của app vừa bị tắt có thể còn nằm ở khay cho đến khi bạn rê chuột qua. Sau đó vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (publisher `minhhoang0122`) và chọn **Uninstall**. Hộp thoại của bộ cài và trình gỡ chỉ có tiếng Anh.
+Vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (publisher `minhhoang0122`) và chọn **Uninstall**. Bộ gỡ của Bloxkeep hỏi có **Xóa luôn tài khoản và cài đặt** không: để trống thì dữ liệu được giữ cho lần cài sau, đánh dấu thì xóa hẳn. Nếu Bloxkeep đang chạy, bộ gỡ đóng nó trước.
 
-| Bị xóa | Được giữ |
-|---|---|
-| Chương trình trong `%LOCALAPPDATA%\BloxkeepApp`, shortcut ở Start menu và Desktop (kể cả shortcut bạn đã ghim vào Start hay thanh tác vụ), bộ nhớ đệm của giao diện, và mục Bloxkeep trong Installed apps. Bloxkeep không thêm gì khác vào Windows: không có mục khởi động cùng Windows, không có service, không chiếm giao thức `roblox-player:`. | Tài khoản và cài đặt trong `%LOCALAPPDATA%\Bloxkeep` (`vault.rmv`, `prefs.json`, `error.log`), nên cài lại là dùng tiếp; và các file sao lưu trong thư mục sao lưu. Muốn xóa cả những thứ này thì tự xóa thư mục đó và các file sao lưu. |
+<img src="docs/screenshots/vi/uninstall.png" width="420" alt="Gỡ cài đặt Bloxkeep, đã đánh dấu Xóa luôn tài khoản và cài đặt">
+
+| Luôn bị xóa | Chỉ xóa khi đánh dấu **Xóa luôn tài khoản và cài đặt** | Không bao giờ đụng tới |
+|---|---|---|
+| Thư mục chương trình (mặc định là `%LOCALAPPDATA%\BloxkeepApp`, hoặc thư mục bạn đã chọn), shortcut ở Start menu và Desktop (kể cả shortcut bạn đã ghim vào Start hay thanh tác vụ), bộ nhớ đệm của giao diện, và mục Bloxkeep trong Installed apps. Bloxkeep không thêm gì khác vào Windows: không có mục khởi động cùng Windows, không có service, không chiếm giao thức `roblox-player:`. | Tài khoản và cài đặt trong `%LOCALAPPDATA%\Bloxkeep`: vault (`vault.rmv` và các bản dự phòng của nó), `prefs.json` và `error.log`. | Các file sao lưu trong thư mục sao lưu, và file nào khác bạn tự để trong `%LOCALAPPDATA%\Bloxkeep`. |
 
 <details>
-<summary>Ảnh: cập nhật và gỡ cài đặt</summary>
+<summary>Ảnh: cập nhật</summary>
 
 <img src="docs/screenshots/vi/2-restart-to-update.png" width="800" alt="Nút Khởi động lại để cập nhật ở thanh bên"> <img src="docs/screenshots/vi/6-whats-new.png" width="800" alt="Bảng Có gì mới sau khi cập nhật"> <img src="docs/screenshots/vi/3-settings-updates.png" width="800" alt="Trang Cập nhật Bloxkeep trong Cài đặt">
-<img src="docs/screenshots/4-uninstall-progress.png" width="480" alt="Đang gỡ Bloxkeep"> <img src="docs/screenshots/5-uninstall-done.png" width="480" alt="Gỡ xong, dữ liệu tài khoản được giữ lại">
 </details>
 
 ## Bắt đầu
@@ -244,7 +247,7 @@ Thêm được tài khoản Roblox VNG bằng tab **Roblox VNG** (đăng nhập 
 | `roblox-settings.json` | Cài đặt đồ họa, FPS, âm lượng, toàn màn hình của bạn, để trả lại sau khi mở tài khoản |
 | `error.log` | Lỗi và ghi chú ngắn khi đăng nhập, không chứa thông tin tài khoản |
 | `webview\`, `webview-safe\` | Bộ nhớ đệm của giao diện, bị xóa khi gỡ app |
-| `%LOCALAPPDATA%\BloxkeepApp\` | Chương trình đã cài (bị xóa khi gỡ) |
+| `%LOCALAPPDATA%\BloxkeepApp\`, hoặc thư mục bạn chọn khi cài | Chương trình đã cài (bị xóa khi gỡ) |
 
 **Bảo vệ thế nào.** Kho được mã hóa bằng AES-256-GCM. Khóa sinh từ mật khẩu chủ qua PBKDF2-HMAC-SHA256 với 600.000 vòng và salt ngẫu nhiên. Phần đầu file cũng được xác thực, nên sai mật khẩu hoặc file bị sửa đều bị phát hiện. Mật khẩu chủ không bao giờ được lưu. Mỗi lần lưu được ghi trọn vẹn rồi mới thay file cũ, và lần lưu trước được giữ trong `vault.rmv.bak`. Khi bạn khóa app, Bloxkeep bỏ hết dữ liệu đã giải mã mà nó đang giữ (cookie, mật khẩu, khóa app xác thực).
 
@@ -387,7 +390,7 @@ Bản Microsoft Store không mở được tài khoản bạn chọn, nên Bloxk
 <details>
 <summary>Làm sao xóa sạch Bloxkeep?</summary>
 
-Gỡ Bloxkeep trong **Settings › Apps** của Windows, rồi xóa thư mục `%LOCALAPPDATA%\Bloxkeep`. Với bản portable, xóa thư mục chứa app (gồm cả `data`).
+Gỡ Bloxkeep trong **Settings › Apps** của Windows và đánh dấu **Xóa luôn tài khoản và cài đặt**. Các bản sao lưu trong thư mục sao lưu vẫn còn; muốn thì tự xóa. Với bản portable, xóa thư mục chứa app (gồm cả `data`).
 </details>
 
 ## Tự build từ mã nguồn
@@ -422,7 +425,7 @@ RobloxManager/             mã nguồn C#
   Vault.cs                 kho mã hóa
   AppUpdater.cs            tự cập nhật (Velopack)
   whatsnew.json            ghi chú từng phiên bản
-Installer/                 ảnh màn hình chờ của bộ cài
+Installer/                 ảnh màn hình chờ của bộ cài; Setup/ là cửa sổ cài và gỡ cài đặt
 dev/                       xem thử giao diện với dữ liệu giả (không đóng gói)
 docs/screenshots/          ảnh chụp màn hình (vi/: ảnh giao diện tiếng Việt)
 ```

@@ -1,6 +1,7 @@
 @echo off
 rem Builds Bloxkeep into dist\releases (needs the .NET 10 SDK; the app is self-contained, users don't need .NET):
-rem   Bloxkeep-Setup.exe            one-click installer for users (installs per user, installs WebView2 if missing)
+rem   Bloxkeep-Setup.exe            installer for users: they choose the folder (any drive); installs per user without
+rem                                 admin rights, and installs WebView2 if missing
 rem   Bloxkeep-Portable.zip         no install; keeps its data in a "data" folder next to it; updates itself too
 rem   *.nupkg + releases.win.json   what installed copies download when they update
 rem Usage: build.bat [version] [github repo url]   e.g. build.bat 1.0.1
@@ -23,6 +24,12 @@ dotnet tool restore >nul || goto :fail
 
 echo [2/4] App files...
 dotnet publish RobloxManager\RobloxManager.csproj -c Release -r win-x64 --self-contained true -p:Version=%VERSION% -p:UpdateRepo=%REPO% -p:DebugType=none -p:AllowedReferenceRelatedFileExtensions=none -o artifacts\app || goto :fail
+rem Bloxkeep's own installer and uninstaller windows (Installer\Setup\Setup.cs), compiled with the C# compiler that
+rem ships with Windows (.NET Framework 4.x), so they need nothing installed. Velopack does the work underneath them.
+rem The uninstaller travels inside the app; the app points Installed apps > Uninstall at it.
+set CSC="%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /codepage:65001 /target:winexe /optimize+ /win32icon:RobloxManager\app.ico /win32manifest:Installer\Setup\app.manifest /resource:RobloxManager\app.ico,app.ico /r:System.Windows.Forms.dll /r:System.Drawing.dll
+powershell -NoProfile -ExecutionPolicy Bypass -File Installer\Setup\info.ps1 %VERSION% || goto :fail
+%CSC% /out:artifacts\app\BloxkeepUninstall.exe Installer\Setup\Setup.cs artifacts\SetupInfo.cs || goto :fail
 
 if not "%REPO%"=="" (
   echo [3/4] Previous release, so updates only download what changed...
@@ -48,8 +55,12 @@ dotnet vpk pack --packId BloxkeepApp --packVersion %VERSION% --packDir artifacts
   --splashImage Installer\splash.png --splashProgressColor #f5c933 --framework webview2 ^
   --releaseNotes artifacts\release-notes.md -o dist\releases || goto :fail
 
+rem Bloxkeep-Setup.exe is our installer window with vpk's installer inside it (vpk's alone installs to %LOCALAPPDATA%
+rem without asking): people choose the folder, on any drive, and it runs vpk's silently with --installto.
+move /y dist\releases\BloxkeepApp-win-Setup.exe artifacts\VelopackSetup.exe >nul || goto :fail
+powershell -NoProfile -ExecutionPolicy Bypass -File Installer\Setup\info.ps1 %VERSION% || goto :fail
+%CSC% /out:dist\releases\Bloxkeep-Setup.exe /resource:artifacts\VelopackSetup.exe,VelopackSetup.exe Installer\Setup\Setup.cs artifacts\SetupInfo.cs || goto :fail
 rem Plain names for the two files people download; the update packages keep vpk's names.
-move /y dist\releases\BloxkeepApp-win-Setup.exe dist\releases\Bloxkeep-Setup.exe >nul || goto :fail
 move /y dist\releases\BloxkeepApp-win-Portable.zip dist\releases\Bloxkeep-Portable.zip >nul || goto :fail
 powershell -NoProfile -Command "$f = 'dist\releases\assets.win.json'; [IO.File]::WriteAllText($f, [IO.File]::ReadAllText($f).Replace('BloxkeepApp-win-Setup.exe', 'Bloxkeep-Setup.exe').Replace('BloxkeepApp-win-Portable.zip', 'Bloxkeep-Portable.zip'))" || goto :fail
 
