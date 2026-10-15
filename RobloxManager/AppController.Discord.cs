@@ -9,7 +9,8 @@ namespace RobloxManager;
 /// notifications. Opt-in and off by default; the link lives in the vault. Messages wait in a short in-memory queue
 /// (events within 10 s go out as one), which follows Discord's rate limits and retries with a growing delay while
 /// offline. Nothing is sent, or kept waiting, while Bloxkeep is locked. Only account names, game names, times,
-/// counts, process ids and RAM ever go out; never cookies, passwords or the link itself.
+/// counts, process ids and RAM ever go out, with Roblox's own picture links of the games and of the accounts (not
+/// while names are hidden); never cookies, passwords or the link itself. How they look: docs/discord-style.md.
 /// </summary>
 public sealed partial class AppController
 {
@@ -31,8 +32,8 @@ public sealed partial class AppController
     static readonly TimeSpan DiscordLate = TimeSpan.FromMinutes(10);
 
     readonly List<DiscordItem> _discordQueue = new();
-    /// <summary>Events waiting to be sent together: their kind, text, ping, and the preset whose webhook they go to (null: Settings' one).</summary>
-    readonly List<(string Kind, string Text, DiscordPing Ping, Guid? Route)> _discordEvents = new();
+    /// <summary>Events waiting to be sent together: their kind, alert, ping, and the preset whose webhook they go to (null: Settings' one).</summary>
+    readonly List<(string Kind, DiscordAlert Alert, DiscordPing Ping, Guid? Route)> _discordEvents = new();
     /// <summary>When each event type was last queued per account (like the Windows notifications: a rejoin loop can't spam).</summary>
     readonly Dictionary<string, DateTime> _discordNotified = new();
     /// <summary>The vault the queue belongs to: after a lock (or another vault) whatever waited is dropped.</summary>
@@ -269,9 +270,13 @@ public sealed partial class AppController
 
     // ───────────────────────────── what goes out ─────────────────────────────
 
-    /// <summary>From <see cref="Notify"/>: an event of a kind left on under Discord joins the next message.</summary>
+    /// <summary>
+    /// From <see cref="Notify"/>, right after the L.F that made <paramref name="text"/>: an event of a kind left on
+    /// under Discord joins the next message, made again from the same sentence and values (see AppController.DiscordAlerts.cs).
+    /// </summary>
     void NotifyDiscord(string text, string type, Guid account)
     {
+        var made = L.Made(text);
         if (_disposed || _vault is not { Data.Discord: { Enabled: true, WebhookUrl.Length: > 0 } d } vault)
             return;
         var now = DateTime.UtcNow;
@@ -296,7 +301,7 @@ public sealed partial class AppController
         if (_discordEvents.Count == 0)
             _discordBatchDue = now + DiscordBatch;
         // A ban goes with the sign-in events (their switch and ping) under a title of its own.
-        _discordEvents.Add((type == "banned" ? type : kind, text, PingFor(d, kind), RouteFor(preset)));
+        _discordEvents.Add((type == "banned" ? type : kind, AlertFor(type, account, made, DiscordText(text), now), PingFor(d, kind), RouteFor(preset)));
     }
 
     /// <summary>The preset whose window the account's is: opened by it, being opened, or waiting to rejoin for it.</summary>
@@ -343,15 +348,6 @@ public sealed partial class AppController
         _ => DT("Launch problem"),
     };
 
-    DiscordMessage EventsMessage(List<(string Kind, string Text, DiscordPing Ping)> events)
-    {
-        int color = events.Any(e => e.Kind is "drop" or "launch" or "ram" or "banned") ? DiscordWebhook.Amber : DiscordWebhook.Blue;
-        if (events.Count == 1)
-            return new DiscordMessage(EventTitle(events[0].Kind), DiscordWebhook.Escape(events[0].Text), [], Color: color, Timestamp: DateTime.UtcNow);
-        string text = string.Join("\n", events.Select(e => $"**{EventTitle(e.Kind)}** · {DiscordWebhook.Escape(e.Text)}"));
-        return new DiscordMessage(DF("{0} events", events.Count), text, [], Color: color, Timestamp: DateTime.UtcNow);
-    }
-
     string Duration(long seconds)
     {
         long minutes = seconds / 60;
@@ -388,35 +384,87 @@ public sealed partial class AppController
         return string.CompareOrdinal(day, last) > 0 && !_discordQueue.Any(i => queuedDay(i) == day) ? at : null;
     }
 
+    /// <summary>An account on the status board: its name as Discord shows it, game, connection, time playing, PID and RAM.</summary>
+    /// <param name="Status">"ingame", "joining", "menu", "disconnected" or "signedout" (see <see cref="Connection"/>).</param>
+    sealed record BoardRow(string Name, long? PlaceId, string? Game, string Status, long Seconds, int Pid, long Ram);
+
     /// <summary>The status message: every account with a Roblox window open here, its game, time playing, PID and RAM.</summary>
     DiscordMessage BoardMessage(DiscordSettings d, List<RobloxProcesses.PlayerProcess> players)
     {
         var ram = players.ToDictionary(p => p.Pid, p => p.WorkingSet);
         var now = DateTime.UtcNow;
-        var running = _running.Select(r => (Account: FindAccount(r.Key), r.Key, r.Value.Pid, r.Value.Launch))
-            .Where(r => r.Account is not null).OrderBy(r => r.Account!.Label, StringComparer.CurrentCultureIgnoreCase).ToList();
-        var fields = running.Take(MaxBoardAccounts).Select(r =>
-        {
-            long? placeId = _logs.StateOf(r.Pid)?.PlaceId ?? r.Launch.Target?.PlaceId;
-            string game = placeId is long id ? _games.GetValueOrDefault(id)?.Name is { Length: > 0 } name ? name : string.Format(DT("Place {0}"), id) : DT("No game");
-            string status = Connection(r.Account!, r.Pid, r.Launch) switch
+        var rows = _running.Select(r => (Account: FindAccount(r.Key), r.Key, r.Value.Pid, r.Value.Launch))
+            .Where(r => r.Account is not null).OrderBy(r => r.Account!.Label, StringComparer.CurrentCultureIgnoreCase)
+            .Select(r =>
             {
-                "ingame" => DT("In game"),
-                "joining" => DT("Joining"),
-                "menu" => DT("In the menu"),
-                _ => DT("Disconnected"),
-            };
-            var since = _playing.GetValueOrDefault(r.Key)?.StartedAt ?? r.Launch.StartedAt;
-            string ramText = ram.GetValueOrDefault(r.Pid) is > 0 and var bytes ? $" · {bytes / MB} MB" : "";
-            return new DiscordField(DiscordWebhook.Escape(DiscordName(r.Account!)),
-                $"{DiscordWebhook.Escape(game)}\n{status} · {Duration((long)Math.Max(0, (now - since).TotalSeconds))}\nPID {r.Pid}{ramText}", true);
-        }).ToList();
-        if (running.Count > MaxBoardAccounts)
-            fields.Add(new("…", DF("and {0} more", running.Count - MaxBoardAccounts), true));
-        string text = running.Count == 0 ? DT("No Roblox window is open.") : DF(running.Count == 1 ? "{0} account open." : "{0} accounts open.", running.Count);
-        return new DiscordMessage(DT("Bloxkeep status"), text, fields, DF("Updated every {0} min", d.BoardMinutes),
-            running.Count == 0 ? DiscordWebhook.Grey : DiscordWebhook.Blue, now);
+                long? placeId = _logs.StateOf(r.Pid)?.PlaceId ?? r.Launch.Target?.PlaceId;
+                var since = _playing.GetValueOrDefault(r.Key)?.StartedAt ?? r.Launch.StartedAt;
+                return new BoardRow(DiscordName(r.Account!), placeId, placeId is long id ? GameName(id, null) : null, Connection(r.Account!, r.Pid, r.Launch),
+                    (long)Math.Max(0, (now - since).TotalSeconds), r.Pid, ram.GetValueOrDefault(r.Pid));
+            }).ToList();
+        return BoardMessage(d.BoardMinutes, rows, now);
     }
+
+    /// <summary>
+    /// The status message from its rows: how many are in a game in the title (green when all are, yellow when one is
+    /// cut off), the others' state and Roblox's RAM below it, a field per account.
+    /// </summary>
+    DiscordMessage BoardMessage(int minutes, List<BoardRow> rows, DateTime now)
+    {
+        string footer = DF("Bloxkeep · Board · updates every {0} min", minutes);
+        if (rows.Count == 0)
+            return new DiscordMessage(DT("Nobody is playing"), DT("No Roblox window is open."), [], footer, DiscordWebhook.Grey, now) { Thumbnail = DiscordWebhook.Logo };
+        string Status(string status, bool start) => (status, start) switch
+        {
+            ("ingame", true) => DT("In game"), ("ingame", false) => DT("in game"),
+            ("joining", true) => DT("Joining"), ("joining", false) => DT("joining"),
+            ("menu", true) => DT("In the menu"), ("menu", false) => DT("in the menu"),
+            ("signedout", true) => DT("Signed out"), ("signedout", false) => DT("signed out"),
+            (_, true) => DT("Disconnected"), _ => DT("disconnected"),
+        };
+        var fields = rows.Take(MaxBoardAccounts).Select(r => new DiscordField(DiscordWebhook.Escape(r.Name),
+            (r.PlaceId is long id ? DiscordWebhook.GameLink(r.Game ?? DF("Place {0}", id), id) : DT("No game"))
+            + $"\n{Status(r.Status, true)} · {Duration(r.Seconds)}\nPID `{r.Pid}`" + (r.Ram > 0 ? $" · {r.Ram / MB} MB" : ""), true)).ToList();
+        if (rows.Count > MaxBoardAccounts)
+            fields.Add(new("…", DF("and {0} more", rows.Count - MaxBoardAccounts), true));
+        int inGame = rows.Count(r => r.Status == "ingame");
+        bool cutOff = rows.Any(r => r.Status is "disconnected" or "signedout");
+        string title = inGame == rows.Count ? DF(rows.Count == 1 ? "{0} account in game" : "{0} accounts in game", rows.Count)
+            : DF("{0} of {1} accounts in game", inGame, rows.Count);
+        // The ones not in a game, by state ("1 joining · 1 disconnected"), and what Roblox uses of the RAM.
+        var lines = new List<string>();
+        var others = rows.Where(r => r.Status != "ingame").GroupBy(r => r.Status)
+            .OrderBy(g => g.Key switch { "joining" => 2, "menu" => 3, "signedout" => 1, _ => 0 })
+            .Select(g => $"**{g.Count()}** {Status(g.Key, false)}").ToList();
+        if (others.Count > 0)
+            lines.Add(string.Join(" · ", others));
+        long ram = rows.Sum(r => r.Ram);
+        if (ram > 0)
+            lines.Add("-# " + DF("Roblox is using {0} of RAM", ram >= 1024 * MB ? (ram / (1024.0 * MB)).ToString("0.0", Inv) + " GB" : $"{ram / MB} MB"));
+        // No logo beside the accounts: their three columns get the whole width.
+        return new DiscordMessage(title, string.Join("\n", lines), fields, footer,
+            cutOff ? DiscordWebhook.Yellow : inGame == rows.Count ? DiscordWebhook.Green : DiscordWebhook.Blue, now);
+    }
+
+    /// <summary>The status message's last words when Bloxkeep locks or closes: it would say "3 in game" for good otherwise.</summary>
+    DiscordMessage FinalBoardMessage(bool closing) =>
+        new(closing ? DT("Bloxkeep was closed") : DT("Bloxkeep is locked"),
+            closing ? DT("This board updates again when you open Bloxkeep and unlock it.") : DT("This board updates again when you unlock Bloxkeep."),
+            [], DT("Bloxkeep · Board"), DiscordWebhook.Grey, DateTime.UtcNow)
+        {
+            Thumbnail = DiscordWebhook.Logo,
+        };
+
+    /// <summary>"Send test": Bloxkeep can post here; a preset's says its messages come here.</summary>
+    DiscordMessage TestMessage(LaunchPreset? preset, bool forPreset) =>
+        new(DT("Bloxkeep is connected"),
+            forPreset ? DT("Bloxkeep can post to this channel. This preset's messages will come here.")
+                : DT("Bloxkeep can post to this channel. Choose what it sends under Settings › Discord."),
+            [], DT("Bloxkeep · Test"), DiscordWebhook.Green, DateTime.UtcNow)
+        {
+            Author = preset?.Name is { Length: > 0 } name ? name : null,
+            Thumbnail = DiscordWebhook.Logo,
+        };
 
     void EnqueueDiscord(DiscordItem item)
     {
@@ -457,9 +505,8 @@ public sealed partial class AppController
             // One message per channel: Settings' webhook and each preset's own.
             foreach (var group in _discordEvents.GroupBy(e => e.Route).ToList())
             {
-                var events = group.Select(e => (e.Kind, e.Text, e.Ping)).ToList();
-                var ping = events.Aggregate(DiscordPing.None, (all, e) => all.Merge(e.Ping));
-                EnqueueDiscord(new DiscordItem("events", EventsMessage(events), ping, Route: group.Key));
+                var ping = group.Aggregate(DiscordPing.None, (all, e) => all.Merge(e.Ping));
+                EnqueueDiscord(new DiscordItem("events", EventsMessage(group.Select(e => e.Alert).ToList()), ping, Route: group.Key));
             }
             _discordEvents.Clear();
         }
@@ -563,7 +610,7 @@ public sealed partial class AppController
         var message = item.Message;
         int dropped = item.Kind == "board" ? 0 : _discordDropped;
         if (dropped > 0)
-            message = message with { Text = (DF(dropped == 1 ? "({0} older message couldn't be sent while offline and was dropped.)" : "({0} older messages couldn't be sent while offline and were dropped.)", dropped) + "\n" + message.Text).Trim() };
+            message = WithDropped(message, dropped);
         bool board = item.Kind == "board";
         string? edit = board && d.BoardMessageId.Length > 0 ? d.BoardMessageId : null;
         string url = UrlFor(d, item.Route);
@@ -660,6 +707,13 @@ public sealed partial class AppController
         PushState();
     }
 
+    /// <summary>Messages dropped while offline, said in a small line at the end of the next one.</summary>
+    DiscordMessage WithDropped(DiscordMessage message, int dropped) => message with
+    {
+        Text = ((message.Text.Length > 0 ? message.Text + "\n" : "") + "-# " + DF(dropped == 1
+            ? "{0} older message couldn't be sent while offline and was dropped." : "{0} older messages couldn't be sent while offline and were dropped.", dropped)),
+    };
+
     /// <summary>A daily or weekly summary went out: its day is noted, never an older one over a newer.</summary>
     void NoteSummarySent(DiscordSettings d, DiscordItem item) => NoteSummarySent(d, item.DailyDay, item.WeeklyDay);
 
@@ -689,9 +743,7 @@ public sealed partial class AppController
     {
         if (_vault?.Data.Discord is not { Enabled: true, Board: true, WebhookUrl.Length: > 0, BoardMessageId.Length: > 0 } d)
             return null;
-        var message = new DiscordMessage(DT("Bloxkeep status"), closing ? DT("Bloxkeep was closed.") : DT("Bloxkeep is locked."), [],
-            Color: DiscordWebhook.Grey, Timestamp: DateTime.UtcNow);
-        var payload = DiscordWebhook.Build(message, DiscordPing.None, d.Style != "plain", d.Username, d.AvatarUrl);
+        var payload = DiscordWebhook.Build(FinalBoardMessage(closing), DiscordPing.None, d.Style != "plain", d.Username, d.AvatarUrl);
         string url = d.WebhookUrl, id = d.BoardMessageId;
         // On a worker: the exit waits for it, which must not need the UI thread to finish.
         return Task.Run(async () =>
@@ -730,7 +782,7 @@ public sealed partial class AppController
                 : throw new UserError(L.T("That isn't a Discord webhook link. It looks like https://discord.com/api/webhooks/… (Channel settings › Integrations › Webhooks › Copy Webhook URL)."));
         else
             url = PresetFor(presetId)?.DiscordWebhook is { Length: > 0 } saved ? saved : throw new UserError(L.T("Paste a webhook link first."));
-        var message = new DiscordMessage(DT("Test message"), DT("Bloxkeep can post to this channel. This preset's messages will come here."), [], "Bloxkeep", DiscordWebhook.Blue, DateTime.UtcNow);
+        var message = TestMessage(PresetFor(presetId), forPreset: true);
         var result = await DiscordWebhook.SendAsync(url, DiscordWebhook.Build(message, DiscordPing.None, d.Style != "plain", d.Username, d.AvatarUrl), null, wait: true);
         if (_vault != vault)
             throw new UserError(L.T("Bloxkeep was locked."));
@@ -767,8 +819,7 @@ public sealed partial class AppController
         var d = vault.Data.Discord;
         if (d.WebhookUrl.Length == 0)
             throw new UserError(L.T("Paste a webhook link first."));
-        var message = summary ? SummaryMessage(d, d.SummaryDays)
-            : new DiscordMessage(DT("Test message"), DT("Bloxkeep can post to this channel. Choose what it sends under Settings › Discord."), [], "Bloxkeep", DiscordWebhook.Blue, DateTime.UtcNow);
+        var message = summary ? SummaryMessage(d, d.SummaryDays) : TestMessage(null, forPreset: false);
         var picture = await SummaryPictureAsync(message);
         var result = await DiscordWebhook.SendAsync(d.WebhookUrl, DiscordWebhook.Build(message, summary ? PingFor(d, "summary") : DiscordPing.None, d.Style != "plain", d.Username, d.AvatarUrl, picture?.Name),
             null, wait: true, file: picture);

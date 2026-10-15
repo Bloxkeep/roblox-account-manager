@@ -24,3 +24,7 @@ desktop.ini
 
 # Node (if any tooling is added)
 node_modules/
+
+# Discord message samples the discord test suite writes for dev/discord-preview.html
+dev/discord-samples*.json
+dev/discord-samples/

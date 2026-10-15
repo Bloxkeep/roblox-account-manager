@@ -41,7 +41,7 @@ public sealed partial class AppController
         NoteNotified(text, kind, type, account);
         // First, while the L.F that made the text is still the last one (Discord may want it in another language, or
         // with account names shown or hidden by its own switch).
-        NotifyDiscord(DiscordText(text), type, account);
+        NotifyDiscord(text, type, account);
         if (toast)
             Toast(text, kind);
         if (_disposed || !Prefs.Notifications || ShowNotification is null)

@@ -6,13 +6,20 @@ using System.Text.RegularExpressions;
 
 namespace RobloxManager;
 
-/// <summary>What a message says, before it is shaped: the same content goes out as an embed or as plain text.</summary>
-/// <param name="Timestamp">Shown by Discord under an embed, in each reader's own time zone.</param>
+/// <summary>
+/// What a message says, before it is shaped: the same content goes out as an embed or as plain text. Shaped the way
+/// docs/discord-style.md says: a short title, colour by meaning, facts in short fields, "Bloxkeep · …" in the footer.
+/// </summary>
+/// <param name="Title">The news in a few words (markdown: names in it are escaped).</param>
+/// <param name="Footer">"Bloxkeep · Alerts" and the like; shown with the logo beside it.</param>
+/// <param name="Timestamp">When it happened: shown by Discord under an embed, in each reader's own time zone.</param>
 public sealed record DiscordMessage(string Title, string Text, IReadOnlyList<DiscordField> Fields, string? Footer = null, int Color = DiscordWebhook.Blue, DateTime? Timestamp = null)
 {
-    /// <summary>A small line above the title.</summary>
+    /// <summary>A small line above the title: the account (or preset) the message is about. Plain text, not escaped.</summary>
     public string? Author { get; init; }
-    /// <summary>A picture in the top-right corner (a game's icon from Roblox's servers).</summary>
+    /// <summary>The author's picture: the account's avatar from Roblox's image servers (https only).</summary>
+    public string? AuthorIcon { get; init; }
+    /// <summary>A picture in the top-right corner: the game's icon from Roblox's servers, or the logo.</summary>
     public string? Thumbnail { get; init; }
     /// <summary>More embeds after this one, in the same message (a summary's presets).</summary>
     public IReadOnlyList<DiscordMessage> More { get; init; } = [];
@@ -65,7 +72,10 @@ public static partial class DiscordWebhook
     // Discord's limits (docs.discord.com, Resources › Message / Webhook).
     public const int MaxEmbeds = 10, MaxContent = 2000, MaxTitle = 256, MaxDescription = 4096, MaxFields = 25, MaxFieldName = 256,
         MaxFieldValue = 1024, MaxFooter = 2048, MaxEmbedTotal = 6000, MaxUsername = 80;
-    public const int Blue = 0x5865F2, Green = 0x2EA043, Amber = 0xD29922, Red = 0xD1453B, Grey = 0x6E7681;
+    /// <summary>Discord's own colours, by what a message means: news, good or done, needs a look, broken or blocked, nothing to do.</summary>
+    public const int Blue = 0x5865F2, Green = 0x57F287, Yellow = 0xFEE75C, Red = 0xED4245, Grey = 0x4E5058;
+    /// <summary>The sender's name and picture when the person set none, and the picture beside every footer.</summary>
+    public const string DefaultName = "Bloxkeep", Logo = "https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png";
 
     static readonly HttpClient Http = new(new SocketsHttpHandler
     {
@@ -112,6 +122,15 @@ public static partial class DiscordWebhook
     public static string Escape(string? text) =>
         Regex.Replace(text ?? "", @"[\\*_~`|>\[\]<@]", @"\$0");
 
+    /// <summary>A game's name (escaped) linking to its page on Roblox; plain text shows the name only.</summary>
+    public static string GameLink(string name, long? placeId) =>
+        placeId is > 0 ? $"[{Escape(name)}](https://www.roblox.com/games/{placeId})" : Escape(name);
+
+    /// <summary>A picture from Roblox's image servers (an avatar, a game's icon): the only kind a message shows besides the logo.</summary>
+    public static bool IsRobloxPicture(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
+        && uri.Host.EndsWith(".rbxcdn.com", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Cut to at most <paramref name="max"/> UTF-16 units (Discord counts no fewer), ending with "…" when cut.</summary>
     public static string Cut(string? text, int max)
     {
@@ -137,11 +156,12 @@ public static partial class DiscordWebhook
         if (ping.Everyone)
             mentions.Add("@everyone");
         string pings = string.Join(' ', mentions);
-        var payload = new JsonObject();
-        if (!string.IsNullOrWhiteSpace(username))
-            payload["username"] = Cut(username.Trim(), MaxUsername);
-        if (!string.IsNullOrWhiteSpace(avatarUrl))
-            payload["avatar_url"] = avatarUrl.Trim();
+        // The person's own name and picture (Settings › Discord), else Bloxkeep's.
+        var payload = new JsonObject
+        {
+            ["username"] = Cut(string.IsNullOrWhiteSpace(username) ? DefaultName : username.Trim(), MaxUsername),
+            ["avatar_url"] = string.IsNullOrWhiteSpace(avatarUrl) ? Logo : avatarUrl.Trim(),
+        };
         if (embed)
         {
             if (pings.Length > 0)
@@ -193,9 +213,14 @@ public static partial class DiscordWebhook
             description = Cut(description, Math.Max(0, MaxEmbedTotal - (Total() - description.Length)));
         var embed = new JsonObject { ["title"] = title, ["color"] = m.Color };
         if (!string.IsNullOrEmpty(m.Author))
-            embed["author"] = new JsonObject { ["name"] = Cut(m.Author, MaxTitle) };
-        if (m.Thumbnail is { Length: > 0 } thumbnail && Uri.TryCreate(thumbnail, UriKind.Absolute, out var thumb) && thumb.Scheme == Uri.UriSchemeHttps)
-            embed["thumbnail"] = new JsonObject { ["url"] = thumbnail };
+        {
+            var author = new JsonObject { ["name"] = Cut(m.Author, MaxTitle) };
+            if (Https(m.AuthorIcon))
+                author["icon_url"] = m.AuthorIcon;
+            embed["author"] = author;
+        }
+        if (Https(m.Thumbnail))
+            embed["thumbnail"] = new JsonObject { ["url"] = m.Thumbnail };
         if (picture is not null)
             embed["image"] = new JsonObject { ["url"] = "attachment://" + picture };
         if (description.Length > 0)
@@ -203,7 +228,7 @@ public static partial class DiscordWebhook
         if (fields.Count > 0)
             embed["fields"] = new JsonArray(fields.Select(f => (JsonNode)new JsonObject { ["name"] = f.Name, ["value"] = f.Value, ["inline"] = f.Inline }).ToArray());
         if (footer.Length > 0)
-            embed["footer"] = new JsonObject { ["text"] = footer };
+            embed["footer"] = new JsonObject { ["text"] = footer, ["icon_url"] = Logo };
         if (m.Timestamp is { } at)
             embed["timestamp"] = at.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
         return embed;
@@ -212,17 +237,35 @@ public static partial class DiscordWebhook
     /// <summary>Discord refuses an empty field name or value.</summary>
     static string Blank(string text) => string.IsNullOrWhiteSpace(text) ? "​" : text;
 
+    static bool Https(string? url) =>
+        url is { Length: > 0 and <= 2048 } && Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;
+
+    // [text](https://…) → text: a link in plain text would make Discord add a preview of the page under the message.
+    [GeneratedRegex(@"\[((?:\\.|[^\]\\])*)\]\(https://[^)\s]+\)")]
+    private static partial Regex LinkPattern();
+
+    /// <summary>
+    /// The embed as plain text: the account and the title in bold, the description, a line per short fact
+    /// ("**Game:** …", a fact of several lines joined with " · "), a list under its name, the footer in small text.
+    /// </summary>
     static string PlainText(DiscordMessage m)
     {
-        var sb = new StringBuilder();
-        sb.Append("**").Append(m.Title).Append("**");
+        var sb = new StringBuilder("**");
+        if (!string.IsNullOrEmpty(m.Author))
+            sb.Append(Escape(m.Author)).Append(" · ");
+        sb.Append(m.Title).Append("**");
         if (m.Text.Length > 0)
             sb.Append('\n').Append(m.Text);
         foreach (var f in m.Fields)
-            sb.Append('\n').Append("**").Append(f.Name).Append("**").Append(f.Value.Contains('\n') ? "\n" : ": ").Append(f.Value);
+        {
+            if (f.Inline || !f.Value.Contains('\n'))
+                sb.Append("\n**").Append(f.Name).Append(":** ").Append(string.Join(" · ", f.Value.Split('\n', StringSplitOptions.RemoveEmptyEntries)));
+            else
+                sb.Append("\n**").Append(f.Name).Append("**\n").Append(f.Value);
+        }
         if (!string.IsNullOrEmpty(m.Footer))
             sb.Append("\n-# ").Append(m.Footer);
-        return sb.ToString();
+        return LinkPattern().Replace(sb.ToString(), "$1");
     }
 
     /// <summary>

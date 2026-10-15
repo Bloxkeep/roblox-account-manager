@@ -10,8 +10,6 @@ namespace RobloxManager;
 /// </summary>
 public sealed partial class AppController
 {
-    /// <summary>Each preset's embed colour, by its place in the list.</summary>
-    static readonly int[] PresetColors = [0x5865F2, 0xEB459E, 0xF0B232, 0x00A8E8, 0x9B59B6, 0x1ABC9C, 0xE67E22];
     const int MaxPresetEmbeds = 6, MaxCardAccounts = 12, MaxBlockAccounts = 15;
     const string SummaryPicture = "bloxkeep-summary.png";
 
@@ -26,7 +24,7 @@ public sealed partial class AppController
     /// <param name="local">Now, for telling whether it is late.</param>
     /// <param name="today">One day is today so far (after a scheduled preset), not the 24 hours before.</param>
     /// <param name="preset">After that scheduled preset's stop: only its play, under its name.</param>
-    /// <param name="kind">"daily", "weekly", "both", "preset" or "now": the line above the title.</param>
+    /// <param name="kind">"daily", "weekly", "both", "preset" or "now": which summary the footer says it is.</param>
     DiscordMessage SummaryMessage(DiscordSettings d, int days, DateTime? dueAt = null, DateTime? local = null, bool today = false,
         LaunchPreset? preset = null, string kind = "now")
     {
@@ -54,9 +52,8 @@ public sealed partial class AppController
             .OrderByDescending(g => g.Seconds).ToList();
         bool showGames = parts2.Contains("games");
         var colour = games.Select((g, i) => (g.Key, i)).ToDictionary(x => x.Key, x => !showGames ? 0 : x.i < SummaryCard.GameColors.Length ? x.i : -1);
-        string GameName(PlaySession s) => s.GameName.Length > 0 ? s.GameName
-            : _games.GetValueOrDefault(s.PlaceId)?.Name is { Length: > 0 } known ? known : DF("Place {0}", s.PlaceId);
-        string? GameIcon(PlaySession s) => _games.GetValueOrDefault(s.PlaceId)?.IconUrl ?? (s.UniverseId > 0 ? _iconByUniverse.GetValueOrDefault(s.UniverseId) : null);
+        string StayGame(PlaySession s) => s.GameName.Length > 0 ? s.GameName : GameName(s.PlaceId, null);
+        string? StayIcon(PlaySession s) => GameIcon(s.PlaceId, s.UniverseId);
 
         var accounts = parts.GroupBy(p => p.Session.AccountId).Select(g => new
         {
@@ -70,20 +67,21 @@ public sealed partial class AppController
         string NameOf(Guid id, string? label) => FindAccount(id) is { } account ? DiscordName(account)
             : !d.HideNames && label is { Length: > 0 } ? label : DT("Deleted account");
 
-        // Title, and the line above it.
-        string period = days switch
+        // The title says the period ("in the last 24 hours" only when it is that: a late one says how long); the footer
+        // says which summary it is; a summary after a scheduled preset has the preset above the title.
+        string title = days switch
         {
-            7 => DT("last 7 days"), 30 => DT("last 30 days"),
-            _ => today ? DT("today") : late ? DF("24 hours to {0}", dueAt!.Value.ToString("yyyy-MM-dd HH:mm", Inv)) : DT("last 24 hours"),
+            7 => DT(late ? "Play time for 7 days" : "Play time in the last 7 days"),
+            30 => DT(late ? "Play time for 30 days" : "Play time in the last 30 days"),
+            _ => DT(today ? "Play time today" : late ? "Play time for one day" : "Play time in the last 24 hours"),
         };
-        string title = preset is null ? DF("Play time — {0}", period) : DF("Play time — {0} · {1}", period, DiscordWebhook.Escape(preset.Name));
-        string author = kind switch
+        string footer = kind switch
         {
-            "daily" => DT("Daily summary"), "weekly" => DT("Weekly summary"), "both" => DT("Daily and weekly summary"),
-            "preset" => DT("After a scheduled preset"), _ => DT("Summary"),
+            "daily" => DT("Bloxkeep · Daily summary"), "weekly" => DT("Bloxkeep · Weekly summary"),
+            "both" => DT("Bloxkeep · Daily and weekly summary"), _ => DT("Bloxkeep · Summary"),
         };
 
-        var lines = new List<string> { $"<t:{Unix(from)}:f> → <t:{Unix(to)}:f>" };
+        var lines = new List<string>();
         var fields = new List<DiscordField>();
         var presetGroups = preset is null
             ? parts.GroupBy(p => p.Session.PresetId is { } id && PresetFor(id) is not null ? id : (Guid?)null).ToList()
@@ -104,39 +102,42 @@ public sealed partial class AppController
                 summaryLine.Add($"**{presetsPlayed}** " + DT(presetsPlayed == 1 ? "preset" : "presets"));
             lines.Add(string.Join(" · ", summaryLine));
 
+            // Six short facts, three to a row: the totals first, then the records.
             if (parts2.Contains("total"))
-                fields.Add(new("⏱️ " + DT("Play time"), $"**{Duration((long)total)}**\n{Compared(total, before)}", true));
+                fields.Add(new(DT("Play time"), $"**{Duration((long)total)}**\n{Compared(total, before)}", true));
             int stays = parts.Select(p => p.Session).Distinct().Count();
             if (parts2.Contains("sessions"))
-                fields.Add(new("🎮 " + DT("Sessions"), $"**{stays}**\n" + DF("about {0} each", Duration((long)(total / Math.Max(1, stays)))), true));
+                fields.Add(new(DT("Sessions"), $"**{stays}**\n" + DF("about {0} each", Duration((long)(total / Math.Max(1, stays)))), true));
             if (parts2.Contains("kicks"))
             {
                 string codes = string.Join(" · ", drops.Where(s => s.ReasonCode is not null).GroupBy(s => s.ReasonCode!.Value)
-                    .OrderByDescending(g => g.Count()).Take(3).Select(g => $"{g.Key} ×{g.Count()}"));
-                fields.Add(new("⚠️ " + DT("Disconnects"), $"**{drops.Count}**" + (codes.Length > 0 ? $"\n{DT("Roblox codes")}: {codes}" : drops.Count == 0 ? $"\n{DT("None")}" : ""), true));
+                    .OrderByDescending(g => g.Count()).Take(3).Select(g => $"`{g.Key}` ×{g.Count()}"));
+                fields.Add(new(DT("Disconnects"), $"**{drops.Count}**" + (codes.Length > 0 ? $"\n{DT("Roblox codes")}: {codes}" : ""), true));
             }
-            var longest = parts.OrderByDescending(p => p.Seconds).First();
-            fields.Add(new("🏆 " + DT("Longest stay"),
-                $"**{Duration((long)longest.Seconds)}**\n{DiscordWebhook.Escape(NameOf(longest.Session.AccountId, longest.Session.AccountLabel))} · {DiscordWebhook.Escape(GameName(longest.Session))}", true));
-            fields.Add(new("🪟 " + DT("Most at once"), $"**{peak}** " + DT(peak == 1 ? "window" : "windows") + $"\n<t:{Unix(peakAt)}:t>", true));
             int of = (preset?.AccountIds ?? (IEnumerable<Guid>?)only)?.Count(id => FindAccount(id) is not null) ?? vault.Data.Accounts.Count;
-            fields.Add(new("👥 " + DT("Accounts"), $"**{accounts.Count}**/{of}\n"
-                + DT(preset is not null ? "of the preset's played" : only is null ? "played" : "of the chosen ones played"), true));
+            fields.Add(new(DT("Accounts"), $"**{accounts.Count}**/{of} " + DT("played"), true));
+            var longest = parts.OrderByDescending(p => p.Seconds).First();
+            fields.Add(new(DT("Longest stay"),
+                $"**{Duration((long)longest.Seconds)}**\n{DiscordWebhook.Escape(NameOf(longest.Session.AccountId, longest.Session.AccountLabel))} · {DiscordWebhook.Escape(StayGame(longest.Session))}", true));
+            fields.Add(new(DT("Most at once"), $"**{peak}** " + DT(peak == 1 ? "window" : "windows") + $"\n<t:{Unix(peakAt)}:t>", true));
             if (showGames)
             {
                 var top = games.Take(5).Select((g, i) =>
-                    $"**{i + 1}.** {DiscordWebhook.Escape(GameName(g.Stay))} — {Duration((long)g.Seconds)} · {g.Seconds / total:0%}");
-                fields.Add(new("🎯 " + DT("Top games"), string.Join("\n", top)));
+                    $"**{i + 1}.** {DiscordWebhook.GameLink(StayGame(g.Stay), g.Stay.PlaceId)} · {Duration((long)g.Seconds)} · {g.Seconds / total:0%}");
+                fields.Add(new(DT("Top games"), string.Join("\n", top)));
             }
             // Without a preset embed below, the accounts are listed here (the picture shows them too).
             if (parts2.Contains("accounts") && (preset is not null || presetsPlayed == 0))
-                fields.Add(new("👥 " + DF(accounts.Count == 1 ? "{0} account" : "{0} accounts", accounts.Count),
+                fields.Add(new(DF(accounts.Count == 1 ? "{0} account" : "{0} accounts", accounts.Count),
                     AccountBlock(accounts.Select(a => (NameOf(a.Id, a.Label), a.Seconds)).ToList())));
         }
         else
             lines.Add(DT("Nothing played in this period."));
-        if (only is not null)
-            lines.Add(DF(only.Count == 1 ? "{0} chosen account." : "{0} chosen accounts.", only.Count));
+        // The period in each reader's own time, the accounts it covers, and why it comes late, in small text.
+        lines.Add($"-# <t:{Unix(from)}:f> → <t:{Unix(to)}:f>" + (only is not null ? " · " + DF(only.Count == 1 ? "{0} chosen account" : "{0} chosen accounts", only.Count) : ""));
+        if (late)
+            lines.Add("-# " + DF("Sent late: it was due {0}.", $"<t:{Unix(dueAt!.Value.ToUniversalTime())}:f>"));
+        var (shown, text) = Threes(fields, string.Join("\n", lines));
 
         var card = total <= 0 ? null : new SummaryCardData
         {
@@ -158,7 +159,7 @@ public sealed partial class AppController
                 };
             }).ToList(),
             MoreAccounts = parts2.Contains("accounts") && accounts.Count > MaxCardAccounts ? DF("+{0} more accounts", accounts.Count - MaxCardAccounts) : null,
-            Games = showGames ? games.Select(g => GameName(g.Stay)).ToList() : new(),
+            Games = showGames ? games.Select(g => StayGame(g.Stay)).ToList() : new(),
             OtherGames = DT("Other games"),
         };
 
@@ -183,25 +184,27 @@ public sealed partial class AppController
                 embedFields.Add(new(DT("Disconnects"), $"**{groupDrops}**", true));
             if (parts2.Contains("accounts"))
                 embedFields.Add(new(DF(groupAccounts.Count == 1 ? "{0} account" : "{0} accounts", groupAccounts.Count), AccountBlock(groupAccounts)));
+            long? presetPlace = own is not null ? PresetPlaceId(own) : null;
             string about = own is null ? DT("Opened by hand, or before Bloxkeep 1.0.5 noted presets.")
                 : string.Join(" · ", new[]
                 {
-                    own.PlaceInput.Length > 0 ? DiscordWebhook.Escape(own.GameName.Length > 0 ? own.GameName : GameName(topGame)) : DT("Roblox home"),
+                    own.PlaceInput.Length > 0
+                        ? DiscordWebhook.GameLink(own.GameName.Length > 0 ? own.GameName : StayGame(topGame), presetPlace ?? topGame.PlaceId)
+                        : DT("Roblox home"),
                     own.Schedule is { Enabled: true } schedule ? DF("Scheduled at {0}", schedule.Time) : DT("Run by hand"),
                 });
-            more.Add(new DiscordMessage(own is null ? DT("Not from a preset") : DiscordWebhook.Escape(own.Name), about, embedFields,
-                Color: own is null ? DiscordWebhook.Grey : PresetColors[Math.Max(0, vault.Data.Settings.Presets.IndexOf(own)) % PresetColors.Length])
+            var (presetFields, presetText) = Threes(embedFields, about);
+            more.Add(new DiscordMessage(own is null ? DT("Not from a preset") : DiscordWebhook.Escape(own.Name), presetText ?? "", presetFields,
+                Color: own is null ? DiscordWebhook.Grey : DiscordWebhook.Blue)
             {
-                Author = own is null ? null : DT("Preset"),
-                Thumbnail = (own is not null && PresetPlaceId(own) is long place ? _games.GetValueOrDefault(place)?.IconUrl : null) ?? GameIcon(topGame),
+                Thumbnail = (presetPlace is long place ? GameIcon(place, 0) : null) ?? StayIcon(topGame),
             });
         }
 
-        string footer = "Bloxkeep" + (late ? " · " + DT("sent late") : "");
-        return new DiscordMessage(late ? DF("{0} (late)", title) : title, string.Join("\n", lines), fields, footer, DiscordWebhook.Green, DateTime.UtcNow)
+        return new DiscordMessage(title, text ?? "", shown, footer, DiscordWebhook.Blue, to)
         {
-            Author = author,
-            Thumbnail = games.Count > 0 ? GameIcon(games[0].Stay) : null,
+            Author = preset?.Name,
+            Thumbnail = (games.Count > 0 ? StayIcon(games[0].Stay) : null) ?? DiscordWebhook.Logo,
             Card = card,
             More = more,
         };
@@ -252,15 +255,15 @@ public sealed partial class AppController
         return buckets;
     }
 
-    /// <summary>"▲ 35 min more than the period before", and the like.</summary>
+    /// <summary>"▲ 35 min more than before" (the period as long before this one), and the like.</summary>
     string Compared(double now, double before)
     {
         if (before <= 0)
             return DT("Nothing the period before");
         long diff = (long)Math.Abs(now - before);
         if (diff < 60)
-            return DT("Same as the period before");
-        return now > before ? "▲ " + DF("{0} more than the period before", Duration(diff)) : "▼ " + DF("{0} less than the period before", Duration(diff));
+            return DT("Same as before");
+        return now > before ? "▲ " + DF("{0} more than before", Duration(diff)) : "▼ " + DF("{0} less than before", Duration(diff));
     }
 
     /// <summary>Accounts as a table in a code block: name, h:mm, and a bar against the most played one.</summary>
