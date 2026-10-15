@@ -47,6 +47,10 @@ Bloxkeep is maintained by one person, who holds every role:
 
 Everyone with one of these roles signs in to GitHub and SignPath with multi-factor authentication.
 
+Much of Bloxkeep's code is written with Claude, Anthropic's AI coding assistant, so many commits list Claude as their
+author or co-author. Claude has no access of its own to the repository, GitHub or SignPath: every change goes in through
+the maintainer, who reviews and commits it, and only the maintainer approves signing requests.
+
 ## Privacy
 
 This program will not transfer any information to other networked systems unless specifically requested by the user or
