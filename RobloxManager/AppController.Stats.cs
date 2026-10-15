@@ -76,10 +76,14 @@ public sealed partial class AppController
             DateTime SinceWake(DateTime at) => at < _resumedAt ? _resumedAt : at;
             if (log is null)
             {
-                // No log (yet): after a while, taken as playing what it was opened with, since the launch.
-                if (open is null && now - run.Launch.StartedAt >= NoLogGrace && run.Launch.Target is { PlaceId: > 0 } target)
+                // No log (yet): after a while, taken as playing what it was opened with, since the launch. A client
+                // already open when Bloxkeep started has its log looked for first: a stay it had then is open again
+                // already, and one that had ended must not be counted a second time from the launch.
+                bool before = run.Launch.StartedAt < _started;
+                if (open is null && (before ? now - _started >= RobloxLogWatcher.SearchLimit : now - run.Launch.StartedAt >= NoLogGrace)
+                    && run.Launch.Target is { PlaceId: > 0 } target)
                 {
-                    StartPlay(vault, id, run.Pid, target.PlaceId, SinceWake(run.Launch.StartedAt), now);
+                    StartPlay(vault, id, run.Pid, target.PlaceId, SinceWake(before ? _started : run.Launch.StartedAt), now);
                     changed = true;
                 }
                 continue;

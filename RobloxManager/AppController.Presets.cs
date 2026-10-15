@@ -493,6 +493,9 @@ public sealed partial class AppController
                 || now - run.Launch.StartedAt < TimeSpan.FromHours(preset.RestartHours) || _closingForRejoin.Contains(run.Pid)
                 || _logs.StateOf(run.Pid) is { Status: not "ingame" } || FindAccount(id) is not { } account)
                 continue;
+            // Open before Bloxkeep started and its log not found yet: it may be on an error screen, auto-rejoin's.
+            if (_logs.StateOf(run.Pid) is null && run.Launch.StartedAt < _started && now - _started < RobloxLogWatcher.SearchLimit)
+                continue;
             if ((foreground ??= RobloxProcesses.ForegroundPid()) == run.Pid && AntiAfk.PersonActive())
                 continue;
             // Auto-rejoin's path would refuse to open it again (see RejoinAsync): it would stay closed.

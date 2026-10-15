@@ -77,6 +77,9 @@ public sealed class RobloxLogWatcher
     readonly Dictionary<int, (DateTime FirstSeen, DateTime NextTry, TimeSpan Wait)> _unmatched = new();
     static readonly TimeSpan FirstWait = TimeSpan.FromSeconds(3), MaxWait = TimeSpan.FromSeconds(30), GiveUp = TimeSpan.FromMinutes(2);
 
+    /// <summary>How long a client's log is looked for before it is taken as one that writes none.</summary>
+    public static TimeSpan SearchLimit => GiveUp;
+
     public ClientState? StateOf(int pid) => _tails.GetValueOrDefault(pid)?.State;
 
     /// <summary>
@@ -123,10 +126,10 @@ public sealed class RobloxLogWatcher
         return changed;
     }
 
-    /// <param name="Found">Logs held open by a client looked for: the log, its length then, the client.</param>
+    /// <param name="Found">Logs held open by a client looked for, already read up to their end then.</param>
     /// <param name="Foreign">Old logs no client looked for holds: not asked about again.</param>
     /// <param name="Listed">The recent logs the search went through.</param>
-    sealed record LogSearch(List<(string Path, long Length, int Pid)> Found, List<string> Foreign, List<string> Listed);
+    sealed record LogSearch(List<Tail> Found, List<string> Foreign, List<string> Listed);
 
     /// <summary>
     /// A search for the logs of clients without one, on a worker: asking Windows who holds a file open takes 15-50 ms
@@ -159,10 +162,10 @@ public sealed class RobloxLogWatcher
         if (result.Listed.Count > 0)
             _foreign.IntersectWith(result.Listed);
         _foreign.UnionWith(result.Foreign);
-        foreach (var (path, length, pid) in result.Found)
+        foreach (var tail in result.Found)
         {
-            if (pids.Contains(pid) && !_tails.ContainsKey(pid) && !_tails.Values.Any(t => string.Equals(t.Path, path, StringComparison.OrdinalIgnoreCase)))
-                _tails[pid] = new Tail(path, pid) { Offset = Math.Max(0, length - MaxRead) };
+            if (pids.Contains(tail.Pid) && !_tails.ContainsKey(tail.Pid) && !_tails.Values.Any(t => string.Equals(t.Path, tail.Path, StringComparison.OrdinalIgnoreCase)))
+                _tails[tail.Pid] = tail;
         }
     }
 
@@ -194,7 +197,13 @@ public sealed class RobloxLogWatcher
             if (owner is int pid)
             {
                 found.Add(pid);
-                result.Found.Add((log.FullName, log.Length, pid));
+                // From the start, a few MB at a time: the client's state is wherever its last join, leave or
+                // disconnect is, hours back for one that has run long (at about 0.4 MB of log an hour).
+                var tail = new Tail(log.FullName, pid);
+                while (tail.Offset < log.Length && ReadMore(tail))
+                {
+                }
+                result.Found.Add(tail);
             }
             else if (log.LastWriteTimeUtc < DateTime.UtcNow.AddMinutes(-2))
                 result.Foreign.Add(log.FullName); // an old log, or another program's client: don't ask again
@@ -204,7 +213,15 @@ public sealed class RobloxLogWatcher
         return result;
     }
 
-    bool Read(Tail tail)
+    /// <summary>Like <see cref="Read"/>, for a tail read up to an offset: true while something was read.</summary>
+    static bool ReadMore(Tail tail)
+    {
+        long before = tail.Offset;
+        Read(tail);
+        return tail.Offset > before;
+    }
+
+    static bool Read(Tail tail)
     {
         string text;
         try

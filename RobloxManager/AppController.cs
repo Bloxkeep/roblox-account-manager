@@ -3456,9 +3456,10 @@ public sealed partial class AppController : IDisposable
         ReportIdleKicks(on);
         // A window opened while Bloxkeep runs has been idle at least since it joined its server (or since now). One
         // already open when Bloxkeep started (an update, a restart) may have had no input for nearly 20 minutes —
-        // Bloxkeep can't know — so it is due at once: counting from the start had Roblox kick it first.
+        // Bloxkeep can't know — so it is due at once, even for a nudge while the PC is in use: counting from the
+        // start had Roblox kick it first.
         foreach (int pid in on)
-            _lastInput.TryAdd(pid, _logs.StateOf(pid) is { Status: "ingame" } joined ? joined.At : _afkAdopted ? now : now - AntiAfk.Interval);
+            _lastInput.TryAdd(pid, _logs.StateOf(pid) is { Status: "ingame" } joined ? joined.At : _afkAdopted ? now : now - AntiAfk.LastChance);
         _afkAdopted = true;
         if (_nudging)
             return;
@@ -3574,8 +3575,11 @@ public sealed partial class AppController : IDisposable
     {
         foreach (var (id, info) in _running)
         {
-            if (!on.Contains(info.Pid) || _logs.StateOf(info.Pid) is not { Status: "disconnected", Reason: IdleKick } || !_idleKickReported.Add(info.Pid)
+            if (!on.Contains(info.Pid) || _logs.StateOf(info.Pid) is not { Status: "disconnected", Reason: IdleKick } kick || !_idleKickReported.Add(info.Pid)
                 || FindAccount(id) is not { } account)
+                continue;
+            // Kicked before this run (Bloxkeep restarted while the window stayed on Roblox's message): said back then.
+            if (kick.At < _started)
                 continue;
             AfkHeld? held = _afkHeld.TryGetValue(info.Pid, out var why) ? why : null;
             Log.Note($"Idle kick with anti-AFK on: Roblox pid {info.Pid}, last input {(_lastInput.TryGetValue(info.Pid, out var last) ? last.ToLocalTime().ToString("HH:mm:ss") : "unknown")}, "
