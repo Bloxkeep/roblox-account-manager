@@ -619,13 +619,15 @@
     $('#app').innerHTML = `<div class="shell">
       <aside class="side">
         <div class="brand"><img src="${LOGO}" alt=""><div><div class="brand-name">Bloxkeep</div><div class="brand-sub">${t('brand.sub')}</div></div></div>
+        <div class="side-nav">
         <button class="nav" data-act="view" data-view="accounts" title="${t('nav.accounts')}">${icon('users')}<span>${t('nav.accounts')}</span><em id="nav-count">0</em></button>
         <button class="nav" data-act="view" data-view="presets" title="${t('nav.presets')}">${icon('layers')}<span>${t('nav.presets')}</span></button>
         <button class="nav" data-act="view" data-view="monitor" title="${t('nav.monitor')}">${icon('screens')}<span>${t('nav.monitor')}</span></button>
         <button class="nav" data-act="view" data-view="stats" title="${t('nav.stats')}">${icon('clock')}<span>${t('nav.stats')}</span></button>
         <button class="nav" data-act="view" data-view="settings" title="${t('nav.settings')}">${icon('sliders')}<span>${t('nav.settings')}</span></button>
         <button class="nav nav-mini" data-act="mini" title="${t('sys.mini')}" aria-pressed="false">${icon('monitor')}<span>${t('sys.mini')}</span></button>
-        <div class="side-fill"></div>
+        </div>
+        <div class="side-bottom">
         <div id="side-warn"></div>
         <div class="side-card" id="sys-card">
           <h4>${t('sys.title')}</h4>
@@ -640,6 +642,7 @@
         <div class="side-foot">
           <div id="update-slot"></div>
           <button class="btn ghost w" data-act="lock" title="${t('side.lockTip')}">${icon('lock')}<span>${t('side.lock')}</span></button>
+        </div>
         </div>
       </aside>
       <main class="main">

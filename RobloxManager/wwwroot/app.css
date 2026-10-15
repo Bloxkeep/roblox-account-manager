@@ -1299,7 +1299,12 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* ───────── shell ───────── */
 .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; }
 .side { display: flex; flex-direction: column; gap: 6px; padding: 18px 14px 14px; background: var(--bg-2); border-right: 1px solid var(--line); min-height: 0; overflow-y: auto; scrollbar-width: thin; }
-.side > :not(.side-fill) { flex-shrink: 0; }
+.side > * { flex-shrink: 0; }
+/* The tabs take the room that's left and scroll when it runs out, so the cards, the update button and Lock below are
+   always on screen, however many tabs there are and however short the window. */
+.side > .side-nav { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; scrollbar-width: thin; margin: -2px -4px; padding: 2px 4px; }
+.side-nav > * { flex-shrink: 0; }
+.side-bottom { display: flex; flex-direction: column; gap: 6px; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 18px; }
 .brand img { width: 38px; height: 38px; }
 .brand-name { font: 700 15.5px/1.15 var(--font-display); letter-spacing: -.01em; }
@@ -1310,7 +1315,6 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .nav.on .i { color: var(--text); }
 .nav span { flex: 1; }
 .nav em { font-style: normal; font-size: 12px; color: var(--muted); background: var(--hover); padding: 1px 8px; border-radius: 20px; }
-.side-fill { flex: 1 1 0; min-height: 0; }
 
 .side-card { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 12px; contain: layout paint style; }
 .side-card h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
@@ -2313,14 +2317,12 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="terminal"] .activity .k, [data-theme="gameboy"] .activity .k { font-size: 10.5px; }
 [data-theme="terminal"] .activity .v, [data-theme="gameboy"] .activity .v,
 [data-theme="terminal"] .chip, [data-theme="gameboy"] .chip { font-size: 12px; }
-/* Short windows with the wide sidebar: the Roblox card drops its RAM bar and version lines, and Lock (with the
-   update button) stays pinned at the bottom instead of falling below the fold. */
+/* Short windows with the wide sidebar: the Roblox card drops its RAM bar and version lines. */
 @media (max-height: 760px) and (min-width: 1181px) {
   .side { gap: 4px; padding-top: 14px; }
   .nav { height: 36px; }
   #sys-card .meter, #sys-card .sys-foot, #sys-card .sys-ver { display: none; }
   .side-card { padding: 10px 12px; }
-  .side-foot { position: sticky; bottom: -14px; margin: 4px -14px -14px; padding: 8px 14px 14px; background: var(--bg-2); }
 }
 /* The sign-in window in a short window: tighter, so the other ways and the privacy note are within reach. */
 @media (max-height: 700px) {
