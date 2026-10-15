@@ -33,8 +33,11 @@
       "version": "0.743.0.7431134",
       "hash": "version-11f155f3450f4c8e",
       "channel": "beta",
-      "seenAt": "2026-10-15T19:24:59Z",
+      "seenAt": "2026-10-15T19:51:12Z",
       "verdict": "same",
+      "hold": [
+        "ROBLOX_singletonEvent"
+      ],
       "locks": [
         "ROBLOX_MAINTENANCE",
         "ROBLOX_singletonEvent",
@@ -60,8 +63,11 @@
       "version": "0.743.0.7431129",
       "hash": "version-7a0c6d10fcb34a2c",
       "channel": "live",
-      "seenAt": "2026-10-15T19:25:05Z",
+      "seenAt": "2026-10-15T19:51:17Z",
       "verdict": "same",
+      "hold": [
+        "ROBLOX_singletonEvent"
+      ],
       "locks": [
         "ROBLOX_MAINTENANCE",
         "ROBLOX_singletonEvent",
@@ -82,7 +88,7 @@
       ],
       "added": [],
       "removed": [],
-      "liveAt": "2026-10-15T19:25:05Z"
+      "liveAt": "2026-10-15T19:51:17Z"
     }
   ],
   "live": {
@@ -98,7 +104,7 @@
     "DFIntWindowsAppReloadTrackingThrottleHundredthsPercent": "50",
     "FFlagRemoveSingleInstanceSempahore": "True"
   },
-  "changedAt": "2026-10-15T19:25:05Z",
+  "changedAt": "2026-10-15T19:51:17Z",
   "beta": {
     "version": "0.743.0.7431134",
     "hash": "version-11f155f3450f4c8e"
