@@ -195,11 +195,23 @@ public static class L
         ["Multi-Roblox is off, so each new Roblox window closes the previous one."] =
             "Multi-Roblox đang tắt nên mỗi lần mở Roblox mới, cửa sổ cũ sẽ bị đóng.",
         ["Bloxkeep's Roblox watch found that Roblox {0} changed its single-window code, so Multi-Roblox may not work. If Roblox closes a window when the next one opens, Bloxkeep will say so."] =
-            "Bloxkeep phát hiện Roblox {0} đã đổi phần mã chặn mở nhiều cửa sổ, nên Multi-Roblox có thể không chạy. Nếu Roblox đóng một cửa sổ khi cửa sổ tiếp theo mở ra, Bloxkeep sẽ báo.",
+            "Roblox {0} đã thay đổi phần chặn mở nhiều cửa sổ, nên Multi-Roblox có thể không còn chạy. Nếu Roblox đóng cửa sổ cũ khi mở cửa sổ mới, Bloxkeep sẽ báo cho bạn.",
         ["Roblox {0} renamed its single-window lock. Bloxkeep holds the new name as well, but that isn't proven yet. If Roblox closes a window when the next one opens, Bloxkeep will say so."] =
-            "Roblox {0} đã đổi tên khoá chặn mở nhiều cửa sổ. Bloxkeep đã giữ cả tên mới, nhưng chưa chắc chắn có tác dụng. Nếu Roblox đóng một cửa sổ khi cửa sổ tiếp theo mở ra, Bloxkeep sẽ báo.",
+            "Roblox {0} đã đổi tên khoá chặn mở nhiều cửa sổ. Bloxkeep đã giữ luôn tên mới, nhưng chưa chắc như vậy là đủ. Nếu Roblox đóng cửa sổ cũ khi mở cửa sổ mới, Bloxkeep sẽ báo cho bạn.",
+        ["Unlock Bloxkeep to add the error log: account names are taken out of it first."] =
+            "Hãy mở khoá Bloxkeep để kèm nhật ký lỗi: tên tài khoản cần được xoá khỏi nhật ký trước.",
+        ["Bug report"] = "Báo lỗi",
+        ["Idea"] = "Góp ý",
+        ["Contact: {0}"] = "Liên hệ: {0}",
+        ["(no error log)"] = "(không kèm nhật ký lỗi)",
+        ["Write a few words first."] = "Hãy viết vài chữ trước đã.",
+        ["Feedback was just sent. Wait a minute before sending more."] = "Vừa gửi xong. Đợi một phút rồi hãy gửi tiếp.",
+        ["Couldn't reach the feedback service. Check the internet connection and try again."] =
+            "Không kết nối được tới dịch vụ nhận góp ý. Kiểm tra mạng rồi thử lại.",
+        ["A lot of feedback is arriving right now. Try again in a minute."] = "Đang có nhiều góp ý gửi tới cùng lúc. Thử lại sau một phút.",
+        ["Couldn't send it: the feedback service answered {0}. Try again later."] = "Chưa gửi được: dịch vụ nhận góp ý trả về mã {0}. Thử lại sau.",
         ["Roblox {0} no longer has the single-window lock Multi-Roblox holds, so Roblox will probably close each window when the next one opens."] =
-            "Roblox {0} không còn khoá mà Multi-Roblox giữ, nên nhiều khả năng Roblox sẽ đóng từng cửa sổ khi cửa sổ tiếp theo mở ra.",
+            "Roblox {0} không còn dùng khoá mà Multi-Roblox giữ, nên nhiều khả năng mỗi lần mở cửa sổ mới, Roblox sẽ đóng cửa sổ cũ.",
         ["Only {0} of RAM is free, and {1} more Roblox window needs about {2}. The PC may slow down or Roblox may crash."] =
             "Máy chỉ còn trống {0} RAM, trong khi mở thêm {1} cửa sổ Roblox cần khoảng {2}. Máy có thể bị lag hoặc Roblox bị văng.",
         ["Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash."] =

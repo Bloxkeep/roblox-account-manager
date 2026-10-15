@@ -1,8 +1,12 @@
-# Puts the Cloudflare watcher (RobloxWatch/worker) on Cloudflare. Run by hand once the secrets are set, and again
-# after changing the worker. Secrets: CLOUDFLARE_API_TOKEN ("Edit Cloudflare Workers" template),
-# CLOUDFLARE_ACCOUNT_ID, and WATCH_TOKEN (a GitHub token for this repository with Actions: read and write) that the
-# worker uses to start the "Roblox watch" workflow.
-name: Roblox watch (Cloudflare)
+# Puts Bloxkeep's two Cloudflare Workers on Cloudflare. Run by hand once the secrets are set, and again after changing
+# either worker:
+#   RobloxWatch/worker   asks Roblox every minute for a new build and starts the "Roblox watch" workflow
+#   Feedback/worker      takes "Send feedback" from the app and posts it to Discord
+# Secrets: CLOUDFLARE_API_TOKEN ("Edit Cloudflare Workers" template), CLOUDFLARE_ACCOUNT_ID, WATCH_TOKEN (a GitHub token
+# for this repository with Actions: read and write), and FEEDBACK_WEBHOOK (the Discord webhook feedback goes to;
+# DISCORD_WEBHOOK's channel when it isn't set). The account needs its workers.dev subdomain chosen once (Workers &
+# Pages in the Cloudflare dashboard) for the feedback worker's address.
+name: Cloudflare workers
 
 on:
   workflow_dispatch:
@@ -17,8 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: RobloxWatch
-      - uses: cloudflare/wrangler-action@v3
+          sparse-checkout: |
+            RobloxWatch
+            Feedback
+      - name: Roblox watch
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -27,3 +34,16 @@ jobs:
             WATCH_TOKEN
         env:
           WATCH_TOKEN: ${{ secrets.WATCH_TOKEN }}
+      - name: Feedback
+        id: feedback
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: Feedback/worker
+          secrets: |
+            FEEDBACK_WEBHOOK
+        env:
+          FEEDBACK_WEBHOOK: ${{ secrets.FEEDBACK_WEBHOOK || secrets.DISCORD_WEBHOOK }}
+      - name: Feedback address
+        run: echo "Feedback goes to ${{ steps.feedback.outputs.deployment-url }}/feedback" | tee -a "$GITHUB_STEP_SUMMARY"

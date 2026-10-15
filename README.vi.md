@@ -330,7 +330,7 @@ Bật **Cài đặt › Sao lưu & dữ liệu › Sao lưu vào thư mục**, r
 - Bước cuối của **Đăng nhập bằng điện thoại**, xác minh 2 bước, và captcha xoay hình (Arkose).
 - Chạy trên Windows 10.
 
-Nếu gặp lỗi, hãy [mở issue](../../issues) kèm nội dung lỗi.
+Nếu gặp lỗi, bạn báo ngay trong app: **Cài đặt › Cập nhật Bloxkeep › Gửi góp ý** (hoặc `Ctrl+K`, gõ "góp ý"). Có thể gửi kèm nhật ký lỗi của Bloxkeep, đã xoá tên tài khoản, ID, mật khẩu và cookie; bấm **Xem chính xác những gì sẽ được gửi** để xem trước khi gửi ([cách hoạt động](docs/feedback.md), tiếng Anh). Hoặc [mở issue](../../issues) kèm nội dung lỗi.
 
 ## Câu hỏi thường gặp
 

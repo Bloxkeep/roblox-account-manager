@@ -336,7 +336,7 @@ Tried with real accounts on Windows 11 (Roblox 0.742 and 0.743, October 2026): p
 - The last step of **Sign in with your phone**, 2-step verification, and the rotating-picture captcha (Arkose).
 - Windows 10.
 
-If something breaks, please [open an issue](../../issues) with the error.
+If something breaks, tell me from the app: **Settings › Bloxkeep updates › Send feedback** (or `Ctrl+K`, "feedback"). It can add Bloxkeep's error log, with account names, ids, passwords and cookies taken out, and **See exactly what will be sent** shows it before it goes ([how it works](docs/feedback.md)). Or [open an issue](../../issues) with the error.
 
 ## FAQ
 

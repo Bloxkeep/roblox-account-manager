@@ -2065,6 +2065,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .ps-opts-note { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); white-space: pre-line; }
 .ps-opts-note[hidden] { display: none; }
 /* "Don't ask again" under a question. */
+.fb-look { margin-top: 10px; font-size: 13px; }
+.fb-preview { margin: 10px 0 0; max-height: 220px; overflow: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--hover); color: var(--text-2); font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dont-ask { display: inline-flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: var(--text-2); cursor: pointer; user-select: none; }
 .dont-ask input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .ps-dc-mode { display: grid; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-2); }

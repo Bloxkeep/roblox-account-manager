@@ -39,8 +39,9 @@ never into a file or a chat.
 3. **Cloudflare.** A free account at dash.cloudflare.com. Account ID: Workers & Pages › Overview, right side; secret
    `CLOUDFLARE_ACCOUNT_ID`. API token: My Profile › API Tokens › Create Token › template **Edit Cloudflare Workers**,
    your account, Create; secret `CLOUDFLARE_API_TOKEN`.
-4. Actions › **Roblox watch (Cloudflare)** › Run workflow. It puts the Worker on Cloudflare; from then on an update is
-   noticed within a minute. Run it again after changing `RobloxWatch/worker`.
+4. Actions › **Cloudflare workers** › Run workflow. It puts the Worker on Cloudflare (with the feedback one,
+   [docs/feedback.md](feedback.md)); from then on an update is noticed within a minute. Run it again after changing
+   `RobloxWatch/worker`.
 
 When the GitHub token expires, the Worker can't start the check any more and the 10-minute schedule carries on alone:
 make a new one and replace `WATCH_TOKEN`, then run step 4 again.

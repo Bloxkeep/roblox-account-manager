@@ -1,0 +1,18 @@
+# Deployed by .github/workflows/cloudflare.yml (secret FEEDBACK_WEBHOOK: the Discord webhook feedback goes to).
+# Its address, https://bloxkeep-feedback.<your workers.dev subdomain>/feedback, is FeedbackUrl in
+# RobloxManager/AppController.Feedback.cs.
+name = "bloxkeep-feedback"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+# A few sends a minute from one address, a few dozen from everyone.
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1101"
+simple = { limit = 3, period = 60 }
+
+[[ratelimits]]
+name = "LIMITER_ALL"
+namespace_id = "1102"
+simple = { limit = 30, period = 60 }

@@ -377,6 +377,8 @@ public sealed partial class AppController : IDisposable
         "openReleaseNotes" => Done(OpenReleaseNotes(Str(a, "version"))),
         "hideRobloxClosed" => Done(HideRobloxClosed()),
         "openRobloxWatch" => Done(OpenUrl(RobloxWatch.DocsUrl)),
+        "feedbackPreview" => Done(FeedbackPreview(a)),
+        "sendFeedback" => SendFeedbackAsync(a),
         _ => throw new UserError(L.F("Unknown command: {0}", cmd)),
     };
 

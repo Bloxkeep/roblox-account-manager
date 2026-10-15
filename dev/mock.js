@@ -300,6 +300,12 @@
         case 'openBackupFolder': return null;
         case 'openReleaseNotes': return null; // the app opens Roblox's page in the default browser
         case 'openRobloxWatch': return null; // likewise, docs/roblox-watch.md on GitHub
+        // Send feedback; ?fbfail=1: the service can't be reached.
+        case 'feedbackPreview': return { preview: [language === 'vi' ? (a.kind === 'bug' ? 'Báo lỗi' : 'Góp ý') : (a.kind === 'bug' ? 'Bug report' : 'Idea'),
+          `Bloxkeep 1.0.11 · Windows 11 (10.0.26300) · ${language === 'vi' ? 'Tiếng Việt' : 'English'}`, ...(a.contact.trim() ? [`${language === 'vi' ? 'Liên hệ' : 'Contact'}: ${a.contact.trim()}`] : []),
+          '', a.text.trim() || '…', '', a.log ? '── error-log.txt ──\n[2026-10-16 02:10:44] System.Net.Http.HttpRequestException: No such host is known. (presence.roblox.com:443)\n   at RobloxManager.RobloxApi.GetPresenceAsync([account id]) in C:\\Users\\[user]\\Bloxkeep\\RobloxApi.cs:line 512'
+            : (language === 'vi' ? '(không kèm nhật ký lỗi)' : '(no error log)')].join('\n') };
+        case 'sendFeedback': await wait(700); if (params.has('fbfail')) throw new Error(language === 'vi' ? 'Không kết nối được tới dịch vụ nhận góp ý. Kiểm tra mạng rồi thử lại.' : 'Couldn’t reach the feedback service. Check the internet connection and try again.'); return { sent: true };
         case 'hideRobloxClosed': rbxClosedHidden = true; push(); return null;
         // Like the app: only the fields sent change; a ping is { kind, value }, an alert switch { kind, enabled }.
         case 'setDiscord': {

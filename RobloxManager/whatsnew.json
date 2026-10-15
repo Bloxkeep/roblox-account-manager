@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.12",
+    "date": "2026-10-16",
+    "en": [
+      "Send feedback: Settings › Bloxkeep updates › Send feedback (or Ctrl+K) sends an idea or a bug report straight to Bloxkeep's developer. A bug report can include Bloxkeep's error log, with account names, ids, passwords and cookies taken out, and you can see exactly what will be sent before it goes.",
+      "Clearer Vietnamese in Settings › Version & graphics."
+    ],
+    "vi": [
+      "Gửi góp ý: vào Cài đặt › Cập nhật Bloxkeep › Gửi góp ý (hoặc Ctrl+K) để gửi ý tưởng hay báo lỗi thẳng tới người làm Bloxkeep. Khi báo lỗi có thể gửi kèm nhật ký lỗi của Bloxkeep, đã xoá tên tài khoản, ID, mật khẩu và cookie, và bạn xem được chính xác những gì sẽ gửi trước khi gửi.",
+      "Câu chữ tiếng Việt ở Cài đặt › Phiên bản & đồ họa tự nhiên hơn."
+    ]
+  },
+  {
     "version": "1.0.11",
     "date": "2026-10-16",
     "en": [
@@ -7,8 +19,8 @@
       "If Roblox only renames that lock, Bloxkeep holds the new name by itself, with no need to wait for a Bloxkeep update."
     ],
     "vi": [
-      "Kiểm tra Multi-Roblox: từng bản Roblox mới được kiểm tra ngay khi Roblox đưa ra, thường là trước khi bản đó đến máy bạn, xem khoá mà Multi-Roblox dựa vào có bị đổi không. Cài đặt › Phiên bản & đồ họa cho biết kết quả cho bản Roblox của bạn, và thẻ Multi-Roblox chuyển vàng khi khoá bị đổi; lúc đó mở nhiều tài khoản sẽ được hỏi lại trước, cho đến khi hai cửa sổ đã cùng chơi được trên bản đó.",
-      "Nếu Roblox chỉ đổi tên khoá đó, Bloxkeep tự giữ tên mới, không cần chờ bản cập nhật Bloxkeep."
+      "Kiểm tra Multi-Roblox: mỗi khi Roblox có bản mới, Bloxkeep kiểm tra xem khoá mà Multi-Roblox cần có bị thay đổi không, thường là trước khi bản đó về máy bạn. Kết quả hiện ở Cài đặt › Phiên bản & đồ họa. Nếu khoá bị đổi, thẻ Multi-Roblox chuyển vàng và Bloxkeep sẽ hỏi lại trước khi mở nhiều tài khoản, cho đến khi đã có hai cửa sổ cùng chơi được trên bản đó.",
+      "Nếu Roblox chỉ đổi tên khoá, Bloxkeep tự giữ luôn tên mới, không cần chờ bản cập nhật."
     ]
   },
   {

@@ -1497,7 +1497,8 @@
             ${row(t('set.dataPath'), '<span class="path" id="s-path"></span>', `<button class="btn sm" data-act="open-data">${icon('folder')}${t('set.openFolder')}</button>`)}`)}`)}
         ${page('updates', setGroup('updates', '', `
           <div id="s-update"></div>
-          ${row(t('upd.auto'), '', sw('s-autoupd'))}`))}
+          ${row(t('upd.auto'), '', sw('s-autoupd'))}`) + setGroup('feedback', t('fb.group'), `
+          ${row(t('fb.title'), t('fb.rowDesc'), `<button class="btn sm" data-act="feedback">${icon('message')}${t('fb.open')}</button>`)}`))}
         <p class="set-empty" id="set-empty" hidden>${t('set.noMatch')}</p>
       </div></div>
       </div>`;
@@ -2146,11 +2147,9 @@
    * What Bloxkeep's Roblox watch found in a build, as [tone, words]: two windows having played together on it here
    * outweighs that; null when the watch hasn't checked it.
    */
-  function watchWord(check, worked) {
-    return worked ? ['ok', t('rw.worked')]
-      : check === 'same' || check === 'first' ? ['ok', t('rw.same')]
-      : check === 'changed' ? ['warn', t('rw.changed')] : check === 'renamed' ? ['warn', t('rw.renamed')]
-      : check === 'gone' ? ['warn', t('rw.gone')] : null;
+  function watchWord(check, worked, where = 'rw') {
+    const key = worked ? 'worked' : check === 'same' || check === 'first' ? 'same' : ['changed', 'renamed', 'gone'].includes(check) ? check : null;
+    return key && [key === 'worked' || key === 'same' ? 'ok' : 'warn', t(`${where}.${key}`)];
   }
   /** The watch found the lock changed in the build Multi-Roblox meets next, and it hasn't worked on it here since. */
   function watchWarns() {
@@ -2179,9 +2178,9 @@
     const items = hist.map((h, i) => {
       const older = hist[i + 1];
       const note = h.first ? t('ru.first') : older && older.version === h.version ? t('ru.sameVersion') : '';
-      const check = watchWord(h.check, h.worked);
+      const check = watchWord(h.check, h.worked, 'rw.h');
       return `<li class="ru-item"><div class="ru-text"><div class="ru-main"><b>${esc(h.version)}</b>${note ? `<span class="ru-note">${note}</span>` : ''}${check
-        ? `<span class="ru-note ${check[0]}">${esc(t('rw.h', { s: check[1] }))}</span>` : ''}</div>
+        ? `<span class="ru-note ${check[0]}">${esc(check[1])}</span>` : ''}</div>
         <div class="ru-sub">${esc(fmtWhen(h.at))} · <span title="${esc(h.build)}">${t('ru.build', { b: esc(shortBuild(h.build)) })}</span>${h.source ? ` · ${esc(h.source)}` : ''}</div></div>
         <button type="button" class="link ru-link" data-act="ru-notes" data-v="${esc(h.version)}" title="${esc(`${t('ru.notes')} — ${t('ru.notesHint')}`)}" aria-label="${esc(`${t('ru.notes')} ${h.version}`)}">${t('ru.notesShort')}</button></li>`;
     }).join('');
@@ -4417,6 +4416,74 @@
     box.innerHTML = multiHelpBody(m);
     if (had) o.el.querySelector('.modal-foot .btn.primary')?.focus();
   }
+  /**
+   * Send feedback: an idea or a bug report for Bloxkeep's developer. Preview shows exactly what goes, the error log
+   * with account names already taken out by the app.
+   */
+  function feedbackModal() {
+    let form = null;
+    const args = () => ({ kind: form.querySelector('[name=kind]').value, text: form.querySelector('[name=text]').value,
+      contact: form.querySelector('[name=contact]').value, log: form.querySelector('[name=log]').checked });
+    const locked = !!S.app.locked;
+    modal({
+      title: t('fb.title'),
+      dismissable: false,
+      busy: true,
+      askClose: () => !!form && (form.querySelector('[name=text]').value.trim() !== '' || form.querySelector('[name=contact]').value.trim() !== ''),
+      body: `<div class="form">
+          <label>${t('fb.kind')}<select class="select" name="kind"><option value="bug">${t('fb.bug')}</option><option value="idea">${t('fb.idea')}</option></select></label>
+          <label>${t('fb.text')}<textarea class="field" name="text" maxlength="2000" rows="6" placeholder="${esc(t('fb.textPh'))}"></textarea></label>
+          <label><span>${t('fb.contact')} <span class="muted">${t('fb.optional')}</span></span><input class="field" name="contact" maxlength="100" autocomplete="off" spellcheck="false" placeholder="${esc(t('fb.contactPh'))}"></label>
+        </div>
+        <label class="dont-ask"><input type="checkbox" name="log" ${locked ? 'disabled' : 'checked'}><span>${t(locked ? 'fb.logLocked' : 'fb.log')}</span></label>
+        <div class="fb-look"><button type="button" class="link" data-fb="preview" aria-expanded="false">${t('fb.preview')}</button></div>
+        <pre class="fb-preview" tabindex="0" aria-label="${esc(t('fb.preview'))}" hidden></pre>
+        <p class="fine">${icon('shield')}<span>${t('fb.fine')}</span></p>
+        <div class="form-error" role="alert" hidden></div>`,
+      onMount: ({ el }) => {
+        form = el;
+        const log = el.querySelector('[name=log]'), pre = el.querySelector('.fb-preview'), look = el.querySelector('[data-fb=preview]');
+        // An idea rarely needs the log; a bug report usually does.
+        el.querySelector('[name=kind]').addEventListener('change', e => { if (!log.disabled) log.checked = e.target.value === 'bug'; });
+        // What goes changes with what's typed: an open preview is shut again rather than left out of date.
+        el.addEventListener('input', () => { pre.hidden = true; look.setAttribute('aria-expanded', 'false'); });
+        look.addEventListener('click', async () => {
+          if (!pre.hidden) { pre.hidden = true; look.setAttribute('aria-expanded', 'false'); return; }
+          const r = await call('feedbackPreview', args());
+          if (!r || !el.isConnected) return;
+          pre.textContent = r.preview;
+          pre.hidden = false;
+          look.setAttribute('aria-expanded', 'true');
+        });
+        el.querySelector('[name=text]').focus();
+      },
+      actions: [
+        { text: t('common.cancel'), onClick: ({ close }) => close() },
+        {
+          text: t('fb.send'), kind: 'primary', onClick: async ({ el, close, btn }) => {
+            const err = el.querySelector('.form-error');
+            err.hidden = true;
+            if (args().text.trim().length < 3) {
+              err.textContent = t('fb.needText');
+              err.hidden = false;
+              el.querySelector('[name=text]').focus();
+              return;
+            }
+            if (btn.disabled) return;
+            try {
+              await busy(btn, () => bridge.call('sendFeedback', args()));
+              close();
+              toast(t('fb.sent'), 'ok');
+            } catch (ex) {
+              err.textContent = ex.message;
+              err.hidden = false;
+            }
+          },
+        },
+      ],
+    });
+  }
+
   function multiHelp() {
     const m = S.app.multi;
     modal({
@@ -5039,6 +5106,7 @@
       { id: 'backup', icon: 'cloud', text: t('bk.now'), keywords: ['backup'],
         run: () => S.app.backup?.folder ? busy(null, async () => { if (await call('backupNow') !== undefined) toast(t('bk.done'), 'ok'); }) : openSection('backup')() },
       { id: 'updates', icon: 'download', text: t('pal.checkUpdates'), run: () => { openSection('updates')(); $('#sec-updates [data-act="check-updates"]')?.click(); } },
+      { id: 'feedback', icon: 'message', text: t('fb.title'), keywords: ['bug', 'report', 'idea', 'feedback', 'góp ý', 'báo lỗi'], run: () => feedbackModal() },
       { id: 'export', icon: 'history', text: t('pal.exportActivity'), keywords: ['csv', 'log'], run: () => { setView('stats'); toActivity(); exportActivity(null); } }, // the list may not be loaded yet: the app knows
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
       { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => call('lock') },
@@ -5461,6 +5529,7 @@
       case 'ru-hide': return call('hideRobloxClosed');
       case 'ru-open': return openSettings('rbxupd');
       case 'rw-how': return call('openRobloxWatch');
+      case 'feedback': return feedbackModal();
       case 'select-all': return selectAllVisible();
       case 'clear-search':
         S.query = '';
