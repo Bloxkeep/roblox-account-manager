@@ -97,6 +97,7 @@
   let notifications = !params.has('nonotify'); // ?nonotify=1: the main switch off (the kinds greyed)
   let notifyOff = params.has('nonotify') ? [] : ['ram']; // kinds turned off under it
   let dailySignInCheck = true;
+  const lastSignInCheck = minsAgo(60 * 5);
   let miniOpen = params.has('mini'); // ?mini=1: the mini window counts as open
   // ?backup=1 shows a chosen folder with a recent backup; ?bkerr=1 a failed one; ?weak=1 the weak-password line.
   let backup = {
@@ -132,7 +133,7 @@
       // the light AFK setup and a restart every 4 hours (options left out follow the usual settings).
       { id: 'p1', name: 'Farm Blox Fruits', accountIds: [id(2), id(3), id(4), id(9)], placeInput: 'https://www.roblox.com/games/2753915549/Blox-Fruits', gameName: games[2753915549].name, server: 'ping', jobId: '', delaySeconds: 12,
         schedule: { enabled: true, time: '20:00', days: [1, 2, 3, 4, 5], date: '', stop: 'after', stopHours: 3, stopTime: '' },
-        antiAfk: true, profile: 'afk', restartHours: 4 },
+        antiAfk: true, profile: 'afk', restartHours: 4, arrange: true, discord: 'discord.com/api/webhooks/…5678/••••••', running: params.has('nopresetrun') ? 0 : 3 },
       { id: 'p2', name: 'Adopt Me trade', accountIds: [id(6)], placeInput: '920587237', gameName: games[920587237].name, server: 'any', jobId: '', delaySeconds: null, schedule: null, lastRun: minsAgo(95),
         autoRejoin: false },
       // p3 opens Roblox without a game; its one-off schedule is switched off.
@@ -145,7 +146,7 @@
           placeInput: String(place), gameName: games[place].name, server: PRESET_SERVERS[i % 5], jobId: '', delaySeconds: i % 4 ? 5 + i % 9 : null,
           schedule: i % 3 === 0 ? { enabled: i % 2 === 0, time: `${String(6 + i % 16).padStart(2, '0')}:00`, days: i % 4 ? [0, 6] : [0, 1, 2, 3, 4, 5, 6], date: '', stop: 'never', stopHours: 0, stopTime: '' } : null };
       }) : []),
-    ].map(p => ({ antiAfk: null, autoRejoin: null, profile: '', restartHours: 0, ...p, nextRun: nextRun(p.schedule), iconUrl: presetIcon(p.placeInput), lastRun: p.lastRun || null })),
+    ].map(p => ({ antiAfk: null, autoRejoin: null, profile: '', restartHours: 0, arrange: null, discord: null, running: 0, ...p, nextRun: nextRun(p.schedule), iconUrl: presetIcon(p.placeInput), lastRun: p.lastRun || null })),
     // The order Play opens selected accounts in (the ⋯ menu's "Launch order…"); accounts added later go last.
     launchOrder: [id(1), id(2), id(3), id(4), id(5), id(6), id(7)],
     // Names last looked up with "Join a player…" (kept in the vault).
@@ -196,7 +197,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked,
+    language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false },
     // Settings › Roblox updates, newest first: a new build under the same version, an update, the first build seen.
@@ -373,7 +374,10 @@
             schedule: sc, nextRun: nextRun(sc), iconUrl: m && games[m[1]] ? games[m[1]].iconUrl : null, lastRun: null,
             // Like the app: no restart without a game (it would have nothing to open again).
             antiAfk: a.antiAfk ?? null, autoRejoin: a.autoRejoin ?? null, profile: a.profile === 'afk' ? 'afk' : '',
-            restartHours: a.placeInput && [2, 4, 6, 12].includes(a.restartHours) ? a.restartHours : 0 };
+            restartHours: a.placeInput && [2, 4, 6, 12].includes(a.restartHours) ? a.restartHours : 0, arrange: a.arrange ?? null, running: 0,
+            discord: a.discordWebhook === '' ? null : a.discordWebhook ? `discord.com/api/webhooks/…${(a.discordWebhook.match(/webhooks\/(\d+)/) || [, '0000'])[1].slice(-4)}/••••••`
+              : settings.presets.find(x => x.id === a.id)?.discord ?? null };
+          if (a.discordWebhook && !/^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api(?:\/v\d{1,2})?\/webhooks\/\d{17,20}\/[\w-]{50,100}\/?$/.test(a.discordWebhook)) throw new Error("That isn't a Discord webhook link.");
           const list = settings.presets;
           const i = list.findIndex(p => p.id === preset.id);
           if (i < 0 && list.length >= MAX_PRESETS) throw new Error(`You can save up to ${MAX_PRESETS} presets.`);
@@ -426,6 +430,17 @@
           push();
           return null;
         // ?noroom=1: no server has room, so Roblox picks (the app says so in a toast).
+        case 'closePreset': {
+          const p = settings.presets.find(x => x.id === a.id);
+          const n = p?.running || 0;
+          if (p) p.running = 0;
+          push();
+          return n;
+        }
+        case 'presetDiscordTest':
+          await wait(500);
+          if (!a.url && !settings.presets.find(x => x.id === a.id)?.discord) throw new Error('Paste a webhook link first.');
+          return null;
         case 'runPreset': {
           const p = settings.presets.find(x => x.id === a.id);
           if (!p) throw new Error('Preset not found.');

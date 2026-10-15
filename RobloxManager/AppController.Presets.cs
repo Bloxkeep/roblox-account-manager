@@ -41,7 +41,27 @@ public sealed partial class AppController
         p.AutoRejoin,
         p.Profile,
         p.RestartHours,
+        p.Arrange,
+        // The link stays in the app, like Settings' one: the page only gets its masked form.
+        discord = p.DiscordWebhook.Length > 0 ? DiscordWebhook.Mask(p.DiscordWebhook) : null,
+        // Its windows open now (or being opened again by auto-rejoin), for the Presets tab's Close.
+        running = PresetWindows(p.Id).Length,
     };
+
+    /// <summary>The accounts whose window the preset opened and that are still open, opening, or about to rejoin for it.</summary>
+    Guid[] PresetWindows(Guid presetId) =>
+        _running.Where(r => r.Value.Launch.PresetId == presetId).Select(r => r.Key)
+            .Concat(_pending.Where(l => l.PresetId == presetId).Select(l => l.AccountId))
+            .Concat(_rejoinQueue.Where(r => r.PresetId == presetId).Select(r => r.AccountId))
+            .Distinct().ToArray();
+
+    /// <summary>The Presets tab's Close: the windows this preset opened, gracefully and on purpose (no auto-rejoin).</summary>
+    object ClosePresetWindows(Guid presetId)
+    {
+        RequireVault();
+        var ids = PresetWindows(presetId);
+        return ids.Length == 0 ? 0 : CloseAccounts(ids, force: false);
+    }
 
     /// <summary>The game's place id, or null without a game or for a share link (its place is only known when it opens).</summary>
     static long? PresetPlaceId(LaunchPreset p) =>
@@ -71,6 +91,11 @@ public sealed partial class AppController
         // A restart opens the same game again; a preset without one only opens Roblox, so there is nothing to restart.
         int restartHours = place.Length > 0 && RestartChoices.Contains((int)Long(a, "restartHours")) ? (int)Long(a, "restartHours") : 0;
         var schedule = ParseSchedule(a, vault.Data.Settings.Presets.FirstOrDefault(p => p.Id == Id(a))?.Schedule);
+        // Its own Discord channel: absent keeps the one saved, "" goes back to Settings' one, a link replaces it.
+        string? discord = OptStr(a, "discordWebhook")?.Trim();
+        if (discord is { Length: > 0 })
+            discord = DiscordWebhook.TryNormalize(discord, out string normalized) ? normalized
+                : throw new UserError(L.T("That isn't a Discord webhook link. It looks like https://discord.com/api/webhooks/… (Channel settings › Integrations › Webhooks › Copy Webhook URL)."));
 
         // Checked now, so a typo shows while saving rather than when the preset runs.
         string gameName = "";
@@ -104,6 +129,12 @@ public sealed partial class AppController
         preset.AutoRejoin = OptBool(a, "autoRejoin");
         preset.Profile = profile;
         preset.RestartHours = restartHours;
+        preset.Arrange = OptBool(a, "arrange");
+        if (discord is not null && discord != preset.DiscordWebhook)
+        {
+            preset.DiscordWebhook = discord;
+            DiscordRouteChanged(preset.Id); // what waited for the old link isn't sent to it
+        }
         // A schedule changed today (another time, re-enabled) may run today: the "not twice within a day" guard
         // against a clock set back is for the schedule as it was.
         var old = preset.Schedule;
@@ -182,6 +213,8 @@ public sealed partial class AppController
             AutoRejoin = source.AutoRejoin,
             Profile = source.Profile,
             RestartHours = source.RestartHours,
+            Arrange = source.Arrange,
+            DiscordWebhook = source.DiscordWebhook,
             Schedule = s is null ? null : new PresetSchedule
             {
                 Enabled = false,

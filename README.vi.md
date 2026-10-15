@@ -108,7 +108,7 @@ Vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (
 
 - Lọc theo **Tất cả**, **Đang chơi**, **Online**, **Offline**, **Trên máy này**, **Cần đăng nhập lại**, **Bị ban**, và theo nhóm ở ô **Nhóm**; sắp xếp theo **Tên**, **Trạng thái**, **Chơi gần đây** hoặc **Thứ tự mở**; tìm theo tên, nhóm, ghi chú. Chuyển giữa **Dạng thẻ** và **Dạng danh sách**.
 - Trạng thái tự làm mới mỗi 30 giây. Khi bị văng, thẻ ghi rõ lý do đọc từ log của Roblox: **Bị kick vì AFK**, **Bị game kick**, **Đăng nhập ở thiết bị khác**, **Rớt mạng**, **Không vào được server**.
-- Tài khoản hết phiên được đánh dấu **Cần đăng nhập lại**; bấm **Đăng nhập** để đăng nhập lại. **Kiểm tra đăng nhập** có trong menu ⋯ của từng tài khoản, và **Kiểm tra đăng nhập của tất cả tài khoản** ở menu ⋯ phía trên danh sách. **Kiểm tra đăng nhập mỗi ngày** (bật sẵn, trong **Cài đặt › Hiệu năng**) tự làm việc này một lần mỗi ngày, để bạn biết trước khi bấm **Vào game**.
+- Tài khoản hết phiên được đánh dấu **Cần đăng nhập lại**; bấm **Đăng nhập** để đăng nhập lại. **Kiểm tra đăng nhập** có trong menu ⋯ của từng tài khoản, và **Kiểm tra đăng nhập của tất cả tài khoản** ở menu ⋯ phía trên danh sách. **Kiểm tra đăng nhập mỗi ngày** (bật sẵn, trong **Cài đặt › Hiệu năng**, có ghi lần chạy gần nhất) tự làm việc này một lần mỗi ngày, để bạn biết trước khi bấm **Vào game**: lần lượt từng tài khoản, cách nhau 2 giây, khoảng 45 giây sau khi mở khóa, trong lúc Bloxkeep đang mở khóa.
 - Lúc kiểm tra, Bloxkeep cũng xem tài khoản có **Bị ban** không (thông tin công khai của Roblox). Tài khoản bị ban có nhãn đỏ, và **Vào game** cũng như preset sẽ bỏ qua tài khoản đó.
 - **Sửa…** (`F2`) để đặt **Tên gợi nhớ**, **Nhóm**, **Ghi chú**. Tại đây bạn có thể tự lưu **Mật khẩu Roblox** nếu muốn (không bắt buộc); mật khẩu nằm trong kho đã mã hóa.
 - **Khóa app xác thực** (trong **Sửa…**): dán khóa 2FA hoặc link `otpauth://` của tài khoản, Bloxkeep hiện mã 6 số đang chạy. **Sao chép mã 2FA** có trong menu ⋯. Ai biết mật khẩu chủ của bạn cũng tạo được mã, nên chỉ lưu khóa khi bạn chấp nhận điều đó.
@@ -134,20 +134,25 @@ Vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (
 
 Một preset lưu tên, danh sách tài khoản (theo thứ tự), game, cách chọn server và thời gian chờ giữa các tài khoản. Ô **Game** chọn như ở thanh dưới. Để trống thì chỉ mở **Màn hình chính Roblox**. Server có thể là **Bất kỳ (Roblox tự chọn)**, **Đông nhất**, **Vắng nhất**, **Ping thấp nhất**, **Ngẫu nhiên** hoặc **Server cố định (Job ID)**.
 
-Quản lý preset ở tab **Preset**: **Thêm preset**, sửa, nhân bản, đổi thứ tự, **Chạy**. Nút preset ở thanh dưới có **Lưu thành preset…** và chạy nhanh. Lưu được tối đa 50 preset.
+Quản lý preset ở tab **Preset**: **Thêm preset**, sửa, nhân bản, đổi thứ tự, **Chạy**. Khi preset đang có cửa sổ mở, dòng của nó ghi số cửa sổ và nút **Chạy** đổi thành **Đóng**, đóng đúng các cửa sổ đó (không đụng cửa sổ khác). Nút preset ở thanh dưới có **Lưu thành preset…** và chạy nhanh. Lưu được tối đa 50 preset.
 
 Phần **Cho cửa sổ Roblox** của mỗi preset áp dụng cho các cửa sổ mà preset đó mở (kể cả khi chúng tự vào lại game). Bấm **Vào game** bình thường cho cùng tài khoản thì vẫn theo cài đặt chung.
+
+Thứ tự ưu tiên, tính cho từng cửa sổ Roblox: tùy chọn của preset đặt **Bật** hoặc **Tắt** quyết định cho các cửa sổ preset đó mở, cho tới khi chúng đóng; để **Theo…** thì công tắc riêng của tài khoản quyết định (tự vào lại game), không thì theo **Cài đặt** (chống AFK, xếp cửa sổ, thời gian chờ giữa các tài khoản). Tài khoản nằm trong hai preset thì theo preset đã mở cửa sổ của nó; chạy preset kia sẽ bỏ qua cửa sổ đang mở.
 
 - **Chống AFK**: **Theo Cài đặt**, **Bật** hoặc **Tắt**.
 - **Tự vào lại game**: **Theo từng tài khoản**, **Bật** hoặc **Tắt**.
 - **Hiệu năng**: **Treo máy nhẹ** chọn đồ họa thấp nhất, 30 FPS, tắt tiếng, và thu nhỏ cửa sổ khi đã vào game. Cửa sổ mở không có tùy chọn này vẫn giữ cài đặt Roblox của bạn.
 - **Mở lại Roblox**: mỗi 2, 4, 6 hoặc 12 giờ, từng cửa sổ được đóng rồi mở lại vào đúng game, lần lượt từng cái. Cửa sổ bạn đang dùng sẽ được để sau.
+- **Xếp cửa sổ**: **Theo Cài đặt**, **Bật** hoặc **Tắt**: xếp các cửa sổ Roblox sau khi preset mở xong.
+
+**Discord**: preset có thể gửi tin vào **Webhook riêng** thay cho kênh trong Cài đặt: tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng (chỉ tính tài khoản của preset đó), và cảnh báo của các cửa sổ preset đã mở. **Gửi thử** để kiểm tra link trước khi lưu. Các tin khác, cùng công tắc bật/tắt, giờ im lặng và cách nhắc (ping), vẫn nằm ở **Cài đặt › Discord**. Nếu webhook đó bị xóa trên Discord, preset quay về kênh trong Cài đặt.
 
 **Hẹn giờ**: preset tự chạy vào **Giờ bắt đầu**, một lần hoặc lặp lại theo các ngày trong tuần, và có thể **Dừng** sau vài giờ hoặc lúc một giờ nhất định (chỉ đóng các cửa sổ mà lần chạy đó mở). Bloxkeep phải đang chạy và đã mở khóa vào lúc đó.
 
-<img src="docs/screenshots/vi/presets.png" width="800" alt="Tab Preset với ba preset, một preset đang bật hẹn giờ">
+<img src="docs/screenshots/vi/presets.png" width="800" alt="Tab Preset với ba preset: một preset hẹn giờ đang mở ba cửa sổ, có nút Đóng">
 
-<img src="docs/screenshots/vi/preset-editor.png" width="800" alt="Hộp thoại Sửa preset: phần Cho cửa sổ Roblox với Chống AFK, Tự vào lại game, Hiệu năng, Mở lại Roblox, và phần Hẹn giờ">
+<img src="docs/screenshots/vi/preset-editor.png" width="800" alt="Hộp thoại Sửa preset: phần Cho cửa sổ Roblox với Chống AFK, Tự vào lại game, Hiệu năng, Mở lại Roblox, Xếp cửa sổ, webhook Discord riêng, và phần Hẹn giờ">
 
 ### Multi-Roblox
 
@@ -166,7 +171,7 @@ Nếu một bản Roblox mới lại đóng cửa sổ khi cửa sổ khác mở
 
 ### Tự vào lại game
 
-Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game** (preset có thể ghi đè, xem [Preset](#preset)). Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Nếu cứ bị văng liên tục, từ lần thứ ba Bloxkeep chờ 2, 5, 10 rồi 15 phút giữa các lần thử (thẻ tài khoản hiện thời gian chờ và nút **Hủy**); ở lại trong game 10 phút thì đếm lại từ đầu. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
+Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game**, hoặc cho mọi tài khoản cùng lúc ở **Cài đặt › Hiệu năng › Tự vào lại game** (preset có thể ghi đè, xem [Preset](#preset)). Nếu Roblox kết thúc phiên đăng nhập của một tài khoản, tự vào lại game tự tắt cho tài khoản đó, và tự bật lại khi tài khoản được đăng nhập lại. Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Nếu cứ bị văng liên tục, từ lần thứ ba Bloxkeep chờ 2, 5, 10 rồi 15 phút giữa các lần thử (thẻ tài khoản hiện thời gian chờ và nút **Hủy**); ở lại trong game 10 phút thì đếm lại từ đầu. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
 
 Bloxkeep không vào lại khi bạn tự thoát game, khi tài khoản đăng nhập ở thiết bị khác, khi tài khoản bị ban, hoặc khi chính Roblox đóng cửa sổ vì có cửa sổ khác mở. Tự tay đóng cửa sổ Roblox cũng tính là thoát game, nên hãy dùng nút **Đóng** trong app.
 
@@ -215,7 +220,7 @@ Chuyển sang **Hoạt động** để xem nhật ký: mở tài khoản, vào g
 
 - **Thu xuống khay khi đóng cửa sổ** (bật sẵn): bấm X thì Bloxkeep thu xuống khay hệ thống, tự vào lại game và Multi-Roblox vẫn chạy. Muốn thoát hẳn, chuột phải biểu tượng ở khay và chọn **Thoát Bloxkeep**. Lần mở sau, cửa sổ Bloxkeep về đúng vị trí, kích thước và trạng thái phóng to như lúc bạn để.
 - **Thông báo Windows** (bật sẵn): chỉ khi Bloxkeep chạy nền. Bật tắt từng loại trong **Cài đặt › Thông báo**: tài khoản bị văng hoặc tự vào lại, preset hẹn giờ, tài khoản cần đăng nhập lại, sắp hết RAM, lỗi khi mở game.
-- **Discord** (tắt sẵn): dán link webhook của một kênh vào **Cài đặt › Discord**. **Gửi tự động** tổng kết thời gian chơi **Hằng ngày**, **Hằng tuần** hoặc cả hai; một **Tin trạng thái** tự cập nhật; và **Cảnh báo** cho các sự kiện như trên, có **Tag** người hoặc vai trò. Có **Giờ yên lặng**, và **Tùy chỉnh tin nhắn** (tên và ảnh người gửi, ngôn ngữ, kiểu tin, **Ẩn tên tài khoản trong tin nhắn**).
+- **Discord** (tắt sẵn): dán link webhook của một kênh vào **Cài đặt › Discord** (bật **Gửi lên Discord** khi chưa có link thì app sẽ hỏi link). **Gửi tự động** tổng kết thời gian chơi **Hằng ngày**, **Hằng tuần** hoặc cả hai; một **Tin trạng thái** tự cập nhật; và **Cảnh báo** cho các sự kiện như trên, có **Tag** người hoặc vai trò. Có **Giờ yên lặng**, và **Tùy chỉnh tin nhắn** (tên và ảnh người gửi, ngôn ngữ, kiểu tin, **Ẩn tên tài khoản trong tin nhắn**).
 - **Cài đặt › Giao diện**: 32 **Chủ đề** cộng **Theo Windows** (mặc định **Tối**), **Ngôn ngữ** English / Tiếng Việt, và **Ẩn tên tài khoản**.
 - **Tăng tốc phần cứng** (trong **Cài đặt › Hiệu năng**): vẽ giao diện bằng card đồ họa thay vì CPU; tự tắt nếu driver card đồ họa gặp lỗi liên tục.
 

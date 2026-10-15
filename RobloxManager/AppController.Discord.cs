@@ -23,7 +23,8 @@ public sealed partial class AppController
 
     /// <param name="Kind">"events", "summary" or "board" (at most one board update waits; a newer one replaces it).</param>
     /// <param name="DailyDay">The daily (or weekly) summary's due day ("yyyy-MM-dd"), noted as sent only once it went out.</param>
-    sealed record DiscordItem(string Kind, DiscordMessage Message, DiscordPing Ping, string? DailyDay = null, string? WeeklyDay = null);
+    /// <param name="Route">The preset whose own webhook it goes to (<see cref="LaunchPreset.DiscordWebhook"/>); null for Settings' one.</param>
+    sealed record DiscordItem(string Kind, DiscordMessage Message, DiscordPing Ping, string? DailyDay = null, string? WeeklyDay = null, Guid? Route = null);
 
     /// <summary>A summary sent more than this after its time says it is late.</summary>
     static readonly TimeSpan DiscordLate = TimeSpan.FromMinutes(10);
@@ -31,14 +32,16 @@ public sealed partial class AppController
     const int MaxSummaryAccounts = 15;
 
     readonly List<DiscordItem> _discordQueue = new();
-    /// <summary>Events waiting to be sent together: their kind, text and ping.</summary>
-    readonly List<(string Kind, string Text, DiscordPing Ping)> _discordEvents = new();
+    /// <summary>Events waiting to be sent together: their kind, text, ping, and the preset whose webhook they go to (null: Settings' one).</summary>
+    readonly List<(string Kind, string Text, DiscordPing Ping, Guid? Route)> _discordEvents = new();
     /// <summary>When each event type was last queued per account (like the Windows notifications: a rejoin loop can't spam).</summary>
     readonly Dictionary<string, DateTime> _discordNotified = new();
     /// <summary>The vault the queue belongs to: after a lock (or another vault) whatever waited is dropped.</summary>
     Vault? _discordVault;
     DateTime _discordBatchDue, _discordNextTry, _discordNextBoard;
-    DateTime? _discordSummaryDue, _discordLastSent;
+    DateTime? _discordLastSent;
+    /// <summary>Summaries after a scheduled preset's stop, by preset: each one covers that preset's accounts.</summary>
+    readonly Dictionary<Guid, DateTime> _discordSummariesDue = new();
     /// <summary>
     /// A status message whose id came back after the vault locked; handed to the vault at the next unlock. The link is
     /// a secret of the vault: only its hash (<see cref="WebhookKey"/>) stays in memory while locked.
@@ -274,8 +277,11 @@ public sealed partial class AppController
             return;
         var now = DateTime.UtcNow;
         SyncDiscordVault(vault, now);
+        // A schedule's message names its preset (account is the preset's id then); an account's, the preset whose
+        // window it is (opened by it, or about to rejoin for it).
+        Guid? preset = type.StartsWith("schedule", StringComparison.Ordinal) ? account : PresetOfAccount(account);
         if (type == "scheduleStop" && d.SummaryAfterSchedule)
-            _discordSummaryDue = now + DiscordAfterStop;
+            _discordSummariesDue[account] = now + DiscordAfterStop;
         if (NotifyKind(type) is not { } kind || !d.Events.Contains(kind))
             return;
         string key = $"{type}:{account}";
@@ -291,7 +297,26 @@ public sealed partial class AppController
         if (_discordEvents.Count == 0)
             _discordBatchDue = now + DiscordBatch;
         // A ban goes with the sign-in events (their switch and ping) under a title of its own.
-        _discordEvents.Add((type == "banned" ? type : kind, text, PingFor(d, kind)));
+        _discordEvents.Add((type == "banned" ? type : kind, text, PingFor(d, kind), RouteFor(preset)));
+    }
+
+    /// <summary>The preset whose window the account's is: opened by it, being opened, or waiting to rejoin for it.</summary>
+    Guid? PresetOfAccount(Guid account) =>
+        _running.TryGetValue(account, out var run) && run.Launch.PresetId is { } id ? id
+            : _rejoinQueue.FirstOrDefault(r => r.AccountId == account)?.PresetId
+              ?? _pending.FirstOrDefault(l => l.AccountId == account)?.PresetId;
+
+    /// <summary>A preset with a webhook of its own; null (Settings' webhook) for any other.</summary>
+    Guid? RouteFor(Guid? preset) => PresetFor(preset) is { DiscordWebhook.Length: > 0 } p ? p.Id : null;
+
+    /// <summary>Where a message goes: its preset's own webhook, or Settings' one (also once the preset's is removed).</summary>
+    string UrlFor(DiscordSettings d, Guid? route) => PresetFor(route) is { DiscordWebhook.Length: > 0 } p ? p.DiscordWebhook : d.WebhookUrl;
+
+    /// <summary>A preset's own webhook changed: what waited for the old one isn't sent to it.</summary>
+    void DiscordRouteChanged(Guid preset)
+    {
+        _discordQueue.RemoveAll(i => i.Route == preset);
+        _discordEvents.RemoveAll(e => e.Route == preset);
     }
 
     /// <summary>The ping chosen for a kind of message, or none during the quiet hours.</summary>
@@ -369,10 +394,11 @@ public sealed partial class AppController
     /// <param name="dueAt">When a daily or weekly summary was due (local): the figures end there when it goes out late.</param>
     /// <param name="local">Now, for telling whether it is late.</param>
     /// <param name="today">One day is today so far (after a scheduled preset), not the 24 hours before.</param>
-    DiscordMessage SummaryMessage(DiscordSettings d, int days, DateTime? dueAt = null, DateTime? local = null, bool today = false)
+    /// <param name="preset">After that scheduled preset's stop: only its accounts, under its name.</param>
+    DiscordMessage SummaryMessage(DiscordSettings d, int days, DateTime? dueAt = null, DateTime? local = null, bool today = false, LaunchPreset? preset = null)
     {
         var vault = RequireVault();
-        var only = d.SummaryAccounts.Count > 0 ? d.SummaryAccounts.ToHashSet() : null;
+        var only = preset is not null ? preset.AccountIds.ToHashSet() : d.SummaryAccounts.Count > 0 ? d.SummaryAccounts.ToHashSet() : null;
         bool late = dueAt is { } due && local is { } at && at - due > DiscordLate;
         // A day is the 24 hours up to the summary's time: one at midnight covers the day that just ended, and no play
         // falls between two daily summaries. Up to the time it was due, also when it goes out a little after.
@@ -415,12 +441,12 @@ public sealed partial class AppController
             fields.Add(new(DT("Top games"), DiscordWebhook.Cut(string.Join("\n", lines), DiscordWebhook.MaxFieldValue)));
         }
         string text = total > 0 ? "" : DT("Nothing played in this period.");
-        if (only is not null)
+        if (only is not null && preset is null)
         {
             int chosen = only.Count(id => vault.Data.Accounts.Any(x => x.Id == id));
             text = (text + "\n" + DF(chosen == 1 ? "{0} chosen account." : "{0} chosen accounts.", chosen)).Trim();
         }
-        string title = DF("Play time — {0}", period);
+        string title = preset is null ? DF("Play time — {0}", period) : DF("Play time — {0} · {1}", period, DiscordWebhook.Escape(preset.Name));
         return new DiscordMessage(late ? DF("{0} (late)", title) : title, text, fields, "Bloxkeep", DiscordWebhook.Green, DateTime.UtcNow);
     }
 
@@ -472,7 +498,7 @@ public sealed partial class AppController
     {
         _discordQueue.Clear();
         _discordEvents.Clear();
-        _discordSummaryDue = null;
+        _discordSummariesDue.Clear();
         _discordDropped = _discordFailures = 0;
         _discordNextTry = DateTime.MinValue;
     }
@@ -490,8 +516,13 @@ public sealed partial class AppController
             return;
         if (_discordEvents.Count > 0 && now >= _discordBatchDue)
         {
-            var ping = _discordEvents.Aggregate(DiscordPing.None, (all, e) => all.Merge(e.Ping));
-            EnqueueDiscord(new DiscordItem("events", EventsMessage(_discordEvents.ToList()), ping));
+            // One message per channel: Settings' webhook and each preset's own.
+            foreach (var group in _discordEvents.GroupBy(e => e.Route).ToList())
+            {
+                var events = group.Select(e => (e.Kind, e.Text, e.Ping)).ToList();
+                var ping = events.Aggregate(DiscordPing.None, (all, e) => all.Merge(e.Ping));
+                EnqueueDiscord(new DiscordItem("events", EventsMessage(events), ping, Route: group.Key));
+            }
             _discordEvents.Clear();
         }
         // A summary is due from its time on until it went out (noted only then): one missed while locked, asleep, closed
@@ -511,11 +542,13 @@ public sealed partial class AppController
             if (weeklyAt is { } week)
                 EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 7, week, local), PingFor(d, "summary"), WeeklyDay: DayKey(week)));
         }
-        // After a scheduled preset: today so far.
-        if (_discordSummaryDue is { } after && now >= after)
+        // After a scheduled preset: today so far, for its accounts, to its own webhook when it has one.
+        foreach (var (presetId, after) in _discordSummariesDue.Where(x => now >= x.Value).ToList())
         {
-            _discordSummaryDue = null;
-            EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 1, today: true), PingFor(d, "summary")));
+            _discordSummariesDue.Remove(presetId);
+            var preset = PresetFor(presetId);
+            if (preset is not null)
+                EnqueueDiscord(new DiscordItem("summary", SummaryMessage(d, 1, today: true, preset: preset), PingFor(d, "summary"), Route: RouteFor(presetId)));
         }
         if (d.Board && now >= _discordNextBoard)
         {
@@ -562,8 +595,8 @@ public sealed partial class AppController
         _discordBatchDue = MovedBack(_discordBatchDue, back);
         _discordNextTry = MovedBack(_discordNextTry, back);
         _discordNextBoard = MovedBack(_discordNextBoard, back);
-        if (_discordSummaryDue is { } due)
-            _discordSummaryDue = MovedBack(due, back);
+        foreach (var preset in _discordSummariesDue.Keys.ToList())
+            _discordSummariesDue[preset] = MovedBack(_discordSummariesDue[preset], back);
         foreach (string key in _discordNotified.Keys.ToList())
             _discordNotified[key] = MovedBack(_discordNotified[key], back);
     }
@@ -596,7 +629,7 @@ public sealed partial class AppController
         bool board = item.Kind == "board";
         string? edit = board && d.BoardMessageId.Length > 0 ? d.BoardMessageId : null;
         var payload = DiscordWebhook.Build(message, item.Ping, d.Style != "plain", d.Username, d.AvatarUrl);
-        string url = d.WebhookUrl;
+        string url = UrlFor(d, item.Route);
         _discordSending = true;
         DiscordResult result;
         try
@@ -609,7 +642,7 @@ public sealed partial class AppController
         }
         if (_disposed)
             return;
-        if (_vault != vault || d.WebhookUrl != url)
+        if (_vault != vault || UrlFor(d, item.Route) != url)
         {
             // Locked while the first status message or a summary went out: the next unlock edits that message instead
             // of leaving it behind, and doesn't send the summary again.
@@ -665,6 +698,15 @@ public sealed partial class AppController
                 var wait = TimeSpan.FromSeconds(15 * Math.Pow(2, Math.Min(_discordFailures - 1, 6)));
                 _discordNextTry = now + (wait < DiscordMaxBackoff ? wait : DiscordMaxBackoff);
                 _discordError = DiscordOfflineText(result);
+                break;
+            case DiscordOutcome.Gone when item.Route is { } gone && PresetFor(gone) is { } preset:
+                // Only that preset's webhook is gone: it goes, and its messages go to Settings' webhook again.
+                preset.DiscordWebhook = "";
+                DiscordRouteChanged(gone);
+                if (current)
+                    _discordQueue.Remove(item);
+                PersistSoon();
+                _discordError = L.F("Discord says the webhook of preset {0} no longer exists, so it was removed. Its messages go to the channel in Settings again.", preset.Name);
                 break;
             case DiscordOutcome.Gone:
                 StopDiscord(d);
@@ -734,6 +776,34 @@ public sealed partial class AppController
 
     static string DiscordOfflineText(DiscordResult result) =>
         result.Error is { } error ? L.F("Couldn't reach Discord: {0}", error) : L.T("Couldn't reach Discord. Check your internet connection.");
+
+    /// <summary>
+    /// The preset form's "Send test": to the link typed in it, or to the one the preset has. Nothing is saved, and a
+    /// webhook that doesn't exist is only said, not removed.
+    /// </summary>
+    async Task<object?> SendPresetDiscordTestAsync(Guid presetId, string? typed)
+    {
+        var vault = RequireVault();
+        var d = vault.Data.Discord;
+        string url;
+        if (typed is { Length: > 0 })
+            url = DiscordWebhook.TryNormalize(typed, out string normalized) ? normalized
+                : throw new UserError(L.T("That isn't a Discord webhook link. It looks like https://discord.com/api/webhooks/… (Channel settings › Integrations › Webhooks › Copy Webhook URL)."));
+        else
+            url = PresetFor(presetId)?.DiscordWebhook is { Length: > 0 } saved ? saved : throw new UserError(L.T("Paste a webhook link first."));
+        var message = new DiscordMessage(DT("Test message"), DT("Bloxkeep can post to this channel. This preset's messages will come here."), [], "Bloxkeep", DiscordWebhook.Blue, DateTime.UtcNow);
+        var result = await DiscordWebhook.SendAsync(url, DiscordWebhook.Build(message, DiscordPing.None, d.Style != "plain", d.Username, d.AvatarUrl), null, wait: true);
+        if (_vault != vault)
+            throw new UserError(L.T("Bloxkeep was locked."));
+        return result.Outcome switch
+        {
+            DiscordOutcome.Sent => null,
+            DiscordOutcome.Gone or DiscordOutcome.MessageGone => throw new UserError(L.T("Discord says this webhook doesn't exist: it was deleted, or the link is wrong. Paste a new link.")),
+            DiscordOutcome.RateLimited => throw new UserError(L.F("Discord asks to wait {0} s before the next message.", Math.Ceiling(result.Wait.TotalSeconds))),
+            DiscordOutcome.Offline => throw new UserError(DiscordOfflineText(result)),
+            _ => throw new UserError(L.F("Discord refused the message: {0}", result.Error)),
+        };
+    }
 
     /// <summary>"Send test" and "Send summary now": straight out, past the queue, with the answer shown at once.</summary>
     async Task<object?> SendDiscordNowAsync(bool summary)

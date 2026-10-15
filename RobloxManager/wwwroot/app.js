@@ -1424,9 +1424,9 @@
             ${row(t('rc.volume'), '', `<select class="select" id="s-rc-volume"><option value="-1">${t('rc.keep')}</option><option value="0">${t('rc.mute')}</option>${[25, 50, 75, 100].map(n => `<option value="${n}">${n}%</option>`).join('')}</select>`)}`)}`)}
         ${page('perf', `
           ${setGroup('perf', t('set.g.keep'), `
-            ${row(t('set.rejoin'), `<span id="s-rejoin-count"></span> ${t('set.rejoinDesc')}`, '')}
+            ${row(t('set.rejoin'), t('set.rejoinDesc'), `<select class="select" id="s-rejoin" aria-label="${esc(t('set.rejoin'))}"></select>`)}
             ${row(t('set.antiAfk'), t('set.antiAfkDesc'), sw('s-antiafk'))}
-            ${row(t('set.daily'), t('set.dailyDesc'), sw('s-daily'))}`)}
+            ${row(t('set.daily'), `${t('set.dailyDesc')} <span id="s-daily-when"></span>`, sw('s-daily'))}`)}
           ${setGroup('memory', t('set.g.memory'), `
             ${row(t('set.memWarn'), '', sw('s-memwarn'))}
             ${row(t('set.trim'), t('set.trimDesc'), sw('s-trim'))}`)}
@@ -1546,6 +1546,7 @@
     $('#s-notify').addEventListener('change', e => call('setNotifications', { enabled: e.target.checked }));
     for (const kind of NOTIFY_KINDS) $(`#s-notify-${kind}`).addEventListener('change', e => call('setNotifications', { kind, enabled: e.target.checked }));
     $('#s-daily').addEventListener('change', e => call('setDailySignInCheck', { enabled: e.target.checked }));
+    $('#s-rejoin').addEventListener('change', e => setRejoinAll(e.target));
     $('#s-bk-on').addEventListener('change', e => call('setBackup', { enabled: e.target.checked }));
     // Switching reloads the interface, so the reply may never come back; the reloaded page shows the new state.
     $('#s-gpu').addEventListener('change', e => {
@@ -1656,7 +1657,14 @@
       if (!ok) toast(t(key), 'warn');
       return ok;
     };
-    on('#s-dc-on', e => set({ enabled: e.target.checked }));
+    on('#s-dc-on', e => {
+      // No link yet: the switch asks for one, and turns on once it is saved.
+      if (e.target.checked && !S.app.discord?.hasWebhook) {
+        e.target.checked = false;
+        return discordLinkModal(true);
+      }
+      set({ enabled: e.target.checked });
+    });
     // Text boxes are saved when left or on Enter ("change"), not on every key.
     on('#s-dc-name', e => {
       const v = e.target.value.trim();
@@ -1754,12 +1762,15 @@
     });
   }
 
-  function discordLinkModal() {
+  /** @param thenTurnOn opened from the "Send to Discord" switch: sending goes on once the link is saved. */
+  function discordLinkModal(thenTurnOn = false) {
     modal({
       title: t('dc.pasteTitle'),
       body: `<p class="modal-text">${t('dc.pasteText')}</p>
         <input class="field" id="dc-link" type="text" maxlength="300" spellcheck="false" autocomplete="off" placeholder="https://discord.com/api/webhooks/…" aria-label="${esc(t('dc.webhook'))}">
         <p class="dc-err" id="dc-link-err" role="alert"></p>`,
+      // The "not a webhook link" note goes as soon as the box changes.
+      onMount: ({ el }) => el.querySelector('#dc-link').addEventListener('input', () => setText(el.querySelector('#dc-link-err'), '')),
       busy: true,
       enterSubmits: true,
       dismissable: false,
@@ -1771,7 +1782,8 @@
             if (!DC_LINK.test(url)) return setText(el.querySelector('#dc-link-err'), t('dc.badLink'));
             if (await busy(btn, () => call('setDiscordWebhook', { url })) === undefined) return;
             close();
-            toast(t('dc.saved'), 'ok');
+            if (thenTurnOn) await call('setDiscord', { enabled: true });
+            toast(t(thenTurnOn ? 'dc.savedOn' : 'dc.saved'), 'ok');
           },
         },
       ],
@@ -1938,6 +1950,10 @@
       sw.disabled = !notify;
     }
     $('#s-daily').checked = S.app.dailySignInCheck !== false;
+    const checkedAt = S.app.lastSignInCheck ? new Date(S.app.lastSignInCheck) : null;
+    setText($('#s-daily-when'), checkedAt && !isNaN(checkedAt) ? t('set.dailyLast', { t: checkedAt.toDateString() === new Date().toDateString()
+      ? checkedAt.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' })
+      : checkedAt.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : '');
     syncBackup();
     // The swatches are rebuilt on a theme change; the one being used from the keyboard keeps the focus.
     const themesFocused = $('#s-themes').contains(document.activeElement);
@@ -1974,7 +1990,7 @@
     setHtml($('#s-rbxver'), `<div class="set-row"><div><div class="t">${t('rbx.title')}</div><div class="d">${rvText}</div></div><div class="ctl"><span class="state-pill ${rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'}">${esc(rv.installed || '—')}</span></div></div>`);
     syncRobloxUpdates();
     setHtml($('#s-store'), ins.store ? `<div class="set-note">${icon('alert')}<span>${t('launch.store')}</span></div>` : '');
-    setText($('#s-rejoin-count'), t('set.rejoinCount', { n: accounts().filter(a => a.autoRejoin).length }));
+    syncRejoinAll();
     const delay = $('#s-delay');
     if (document.activeElement !== delay) delay.value = st.launchDelaySeconds;
     // Written only when different: every write, even of the same text, made the page re-style itself.
@@ -2137,8 +2153,7 @@
     // The saved value put back in a box drops the red mark a refused value left there.
     const put = (id, value) => { const el = $(id); if (!typing(el)) { el.value = String(value ?? ''); el.classList.remove('bad'); } };
     $('#s-dc-on').checked = d.enabled;
-    $('#s-dc-on').disabled = !d.hasWebhook && !d.enabled; // a link comes first
-    $('#s-dc-on').closest('.switch').title = $('#s-dc-on').disabled ? t('dc.needLink') : '';
+    $('#s-dc-on').closest('.switch').title = d.hasWebhook ? '' : t('dc.needLink');
     const hook = $('#s-dc-hook'), reveal = $('#s-dc-reveal');
     // A shown link goes back to its masked form when hidden, or when another link replaced it.
     if (hideLink || hook.dataset.shown !== d.webhookHint || !d.hasWebhook) {
@@ -2653,6 +2668,7 @@
             `<option value="${k}" ${k === (p.profile || '') ? 'selected' : ''}>${t(key)}</option>`).join('')}</select></label>
           <label>${t('ps.opt.restart')}<select class="select" id="ps-restart">${RESTART_HOURS.map(h =>
             `<option value="${h}" ${h === (p.restartHours || 0) ? 'selected' : ''}>${h ? t('ps.opt.every', { n: h }) : t('ps.opt.never')}</option>`).join('')}</select></label>
+          <label>${t('ps.opt.arrange')}<select class="select" id="ps-arrange">${triOptions(p.arrange, t('ps.opt.followSet', { state: t(S.app.multi?.enabled && S.app.multi?.tile ? 'ps.opt.stOn' : 'ps.opt.stOff') }))}</select></label>
         </div>
         <p class="ps-opts-note" id="ps-opts-note" hidden></p>
       </div>`;
@@ -2664,8 +2680,35 @@
       autoRejoin: tri(el.querySelector('#ps-rejoin').value),
       profile: el.querySelector('#ps-profile').value,
       restartHours: +el.querySelector('#ps-restart').value || 0,
+      arrange: tri(el.querySelector('#ps-arrange').value),
     };
   };
+
+  /* A preset's own Discord channel: its schedule messages, its summary after a scheduled stop and the alerts of the
+     windows it opened go there. The page never holds a saved link, only its masked form. */
+  function presetDiscordHtml(p) {
+    const on = !!S.app.discord?.enabled;
+    return `<div class="ps-opts" role="group" aria-labelledby="ps-dc-title">
+        <div class="ps-opts-head"><b id="ps-dc-title">Discord</b></div>
+        <label class="ps-dc-mode">${t('ps.dc.where')}<select class="select" id="ps-dc-mode">
+          <option value="" ${p.discord ? '' : 'selected'}>${t('ps.dc.main')}</option>
+          <option value="own" ${p.discord ? 'selected' : ''}>${t('ps.dc.own')}</option></select></label>
+        <div class="ps-dc-own" id="ps-dc-own" ${p.discord ? '' : 'hidden'}>
+          <input class="field" id="ps-dc-link" type="text" maxlength="300" spellcheck="false" autocomplete="off"
+            placeholder="${esc(p.discord || 'https://discord.com/api/webhooks/…')}" aria-label="${esc(t('ps.dc.link'))}">
+          <button type="button" class="btn" id="ps-dc-test">${t('dc.test')}</button>
+        </div>
+        <p class="ps-opts-note">${p.discord ? `${t('ps.dc.saved')}\n` : ''}${t('ps.dc.note')}${on ? '' : `\n${t('ps.dc.off')}`}</p>
+      </div>`;
+  }
+  /** What the form sends: undefined keeps the saved link, '' goes back to Settings' channel, a link replaces it. */
+  function presetDiscordValue(el, p) {
+    const own = el.querySelector('#ps-dc-mode').value === 'own', typed = el.querySelector('#ps-dc-link').value.trim();
+    if (!own) return p?.discord ? '' : undefined;
+    if (typed) return typed;
+    if (p?.discord) return undefined;
+    throw new Error(t('ps.dc.needLink'));
+  }
   /** One short note under the options, only for a choice that needs explaining. */
   function syncPresetOptions(el) {
     const note = el.querySelector('#ps-opts-note');
@@ -2682,6 +2725,8 @@
     p.autoRejoin === true ? t('pv.optRejoinOn') : p.autoRejoin === false ? t('pv.optRejoinOff') : '',
     p.profile === 'afk' ? t('pv.optLight') : '',
     p.restartHours > 0 && p.placeInput ? t('pv.optRestart', { n: p.restartHours }) : '',
+    p.arrange === true ? t('pv.optArrangeOn') : p.arrange === false ? t('pv.optArrangeOff') : '',
+    p.discord ? t('pv.optDiscord') : '',
   ].filter(Boolean).join(' · ');
 
   /** "Next: Today 20:00" for a scheduled preset (the app works out the time); empty otherwise. */
@@ -2764,7 +2809,7 @@
       delaySeconds: null,
       schedule: null,
       // Options for the windows it opens: null follows the usual settings.
-      antiAfk: null, autoRejoin: null, profile: '', restartHours: 0,
+      antiAfk: null, autoRejoin: null, profile: '', restartHours: 0, arrange: null, discord: null,
     };
     // The preset's accounts first, in its launch order; the rest in the global order.
     const chosen = base.accountIds.map(byId).filter(Boolean);
@@ -2805,6 +2850,7 @@
         ${orderListHtml([...chosen, ...rest], { check: a => chosen.includes(a) })}
         <div class="form preset-form">
           ${presetOptionsHtml(base)}
+          ${presetDiscordHtml(base)}
           <div class="ps-sched">
             <div class="ps-sched-head">
               <label class="switch"><input type="checkbox" id="ps-sch-on" ${sc.enabled ? 'checked' : ''} aria-label="${t('ps.sch')}"><span></span></label>
@@ -2853,6 +2899,9 @@
             if (el.querySelector('#ps-sch-on').checked && val('#ps-sch-stop') === 'after' && !(hours >= 0.5 && hours <= 168 && Number.isInteger(hours * 2))) {
               return fail(t('ps.schHoursBad'), el.querySelector('#ps-sch-hours'));
             }
+            // Its own Discord channel: chosen but no link pasted is said here, next to the box.
+            let discordLink;
+            try { discordLink = presetDiscordValue(el, p); } catch (e) { return fail(e.message, el.querySelector('#ps-dc-link')); }
             let refused = null;
             await busy(btn, () => hold(() => bridge.call('savePreset', {
               id: p?.id || '',
@@ -2864,6 +2913,7 @@
               ids: [...el.querySelectorAll('.ord-item input:checked')].map(b => b.value),
               delaySeconds: delay === '' ? null : Math.min(120, Math.max(0, Math.round(+delay) || 0)),
               ...presetOptionsValue(el),
+              discordWebhook: discordLink,
               // A schedule never set up (off, no start time) is saved as none: no "Schedule off" row, no switch that
               // couldn't be turned on.
               schedule: !el.querySelector('#ps-sch-on').checked && !val('#ps-sch-time') ? null : {
@@ -2905,6 +2955,13 @@
           syncPresetOptions(el);
         };
         el.addEventListener('change', sync);
+        el.querySelector('#ps-dc-mode').addEventListener('change', e => {
+          el.querySelector('#ps-dc-own').hidden = e.target.value !== 'own';
+          if (e.target.value === 'own' && !p?.discord) el.querySelector('#ps-dc-link').focus();
+        });
+        el.querySelector('#ps-dc-test').addEventListener('click', e => busy(e.currentTarget, async () => {
+          if (await call('presetDiscordTest', { id: p?.id || '', url: el.querySelector('#ps-dc-link').value.trim() }) !== undefined) toast(t('dc.testOk'), 'ok');
+        }));
         // The options' note depends on the game box too, which the game list also fills (no change event then).
         el.querySelector('#ps-place').addEventListener('input', () => syncPresetOptions(el));
         new MutationObserver(() => syncPresetOptions(el)).observe(el.querySelector('#ps-game'), { childList: true });
@@ -3202,6 +3259,7 @@
     ].filter(Boolean).join(' · ');
     // Then, quieter: when it runs next (a one-off's date is already above) and when it ran last (kept current by patchTimes).
     const next = [
+      p.running ? `<span class="pv-live">${esc(tn('pv.running', p.running))}</span>` : '',
       sc?.enabled && p.nextRun && !sc.date ? esc(nextRunText(p)) : '',
       p.lastRun ? `<span data-ago="${esc(p.lastRun)}" data-tpl="pv.lastRun">${esc(t('pv.lastRun', { t: ago(p.lastRun) }))}</span>` : '',
     ].filter(Boolean).join(' · ');
@@ -3221,7 +3279,8 @@
         </div>
         ${avatars}
         <div class="pv-sw">${sc?.time ? `<small aria-hidden="true">${t('ps.sch')}</small><label class="switch" title="${t(sc.enabled ? 'pv.schTurnOff' : 'pv.schTurnOn')}"><input type="checkbox" data-pv="sched" ${sc.enabled ? 'checked' : ''} aria-label="${t('ps.sch')}: ${name}"><span></span></label>` : ''}</div>
-        <button class="btn sm pv-run" data-pv="run" aria-label="${t('ps.run')}: ${name}" ${accs.length && !S.app.launching ? '' : 'disabled'}>${icon('play')}<span>${t('ps.run')}</span></button>
+        ${p.running ? `<button class="btn sm pv-run pv-close" data-pv="close" title="${esc(tn('pv.runningTip', p.running))}" aria-label="${t('pv.close')}: ${name}">${icon('power')}<span>${t('pv.close')}</span></button>`
+          : `<button class="btn sm pv-run" data-pv="run" aria-label="${t('ps.run')}: ${name}" ${accs.length && !S.app.launching ? '' : 'disabled'}>${icon('play')}<span>${t('ps.run')}</span></button>`}
         <span class="pv-acts">
           <button class="icon-btn" data-pv="edit" title="${t('ps.edit')}" aria-label="${t('ps.edit')}: ${name}">${icon('edit')}</button>
           <button class="icon-btn" data-pv="dup" title="${t('pv.duplicate')}" aria-label="${t('pv.duplicate')}: ${name}">${icon('copy')}</button>
@@ -3308,6 +3367,10 @@
       if (b.dataset.move) return movePreset(p.id, +b.dataset.move);
       switch (b.dataset.pv) {
         case 'run': return busy(b, () => runPreset(p.id));
+        case 'close': return busy(b, async () => {
+          const n = await call('closePreset', { id: p.id });
+          if (n !== undefined) toast(n ? tn('t.closing', n) : t('t.noneRunning'), n ? 'ok' : 'info');
+        });
         case 'edit': return presetModal(p);
         case 'dup': return duplicatePreset(p, b);
         case 'del': return deletePreset(p);
@@ -4204,6 +4267,24 @@
     if (n !== undefined) toast(tn(enable ? 't.rcOn' : 't.rcOff', n), 'ok');
   }
 
+  /** Settings › Auto-rejoin: on for every account, off for every one, or (shown only) some of them. */
+  function syncRejoinAll() {
+    const sel = $('#s-rejoin');
+    if (!sel || document.activeElement === sel) return;
+    const all = accounts(), on = all.filter(a => a.autoRejoin).length;
+    const state = !all.length ? 'off' : on === all.length ? 'on' : on === 0 ? 'off' : 'some';
+    setHtml(sel, [['on', t('set.rejoinAll')], ['off', t('set.rejoinNone')], ['some', t('set.rejoinSome', { n: on, total: all.length })]]
+      .map(([v, text]) => `<option value="${v}" ${v === 'some' ? 'disabled hidden' : ''} ${v === state ? 'selected' : ''}>${esc(text)}</option>`).join(''));
+    sel.value = state;
+    sel.disabled = !all.length;
+  }
+  async function setRejoinAll(sel) {
+    const enable = sel.value === 'on';
+    const n = await call('setAutoRejoin', { ids: accounts().map(a => a.id), enabled: enable });
+    if (n !== undefined) toast(tn(enable ? 't.rejoinOn' : 't.rejoinOff', n), 'ok');
+    syncRejoinAll();
+  }
+
   async function toggleRejoin(ids) {
     const enable = !ids.every(i => byId(i) && rejoinOn(byId(i))); // the opposite of the tick the menu showed
     const n = await call('setAutoRejoin', { ids, enabled: enable });
@@ -4940,15 +5021,21 @@
   /** The entries for a query, best first (ties keep the registry's order); the text counts most, keywords only whole. */
   function rankPalette(query) {
     const q = fold(query.trim());
-    if (!q) return PAL.all.slice(0, PAL_MAX);
-    return PAL.all.map((e, i) => {
+    if (!q) {
+      PAL.more = Math.max(0, PAL.all.length - PAL_MAX);
+      return PAL.all.slice(0, PAL_MAX);
+    }
+    const hits = PAL.all.map((e, i) => {
       const byText = fuzzyScore(q, fold(e.text));
       const byOther = Math.max(-1, ...[e.hint, ...(e.keywords || [])].filter(Boolean).map(k => {
         const s = fuzzyScore(q, fold(k));
         return s >= 500 ? s - 300 : -1;
       }));
       return { e, i, score: Math.max(byText, byOther) };
-    }).filter(x => x.score > 0).sort((a, b) => b.score - a.score || a.i - b.i).slice(0, PAL_MAX).map(x => x.e);
+    }).filter(x => x.score > 0).sort((a, b) => b.score - a.score || a.i - b.i);
+    // Only the best ones are listed: the rest are counted, so a long list doesn't read as all there is.
+    PAL.more = Math.max(0, hits.length - PAL_MAX);
+    return hits.slice(0, PAL_MAX).map(x => x.e);
   }
   function paletteLead(e) {
     if (e.avatar) return `<span class="avatar sm">${avatarInner(e.avatar)}</span>`;
@@ -4970,7 +5057,7 @@
       // The other actions show on the highlighted row only, with their keys.
       const alts = on && e.alts ? e.alts.map((x, j) => `<button type="button" class="pal-alt" data-alt="${j}" tabindex="-1">${esc(x.text)}<kbd>${PAL_ALT_KEYS[j]}</kbd></button>`).join('') : '';
       return `<div class="pal-row ${on ? 'on' : ''}" role="option" id="pal-${i}" aria-selected="${on}" data-pi="${i}">${paletteLead(e)}<span class="pal-txt"><b>${esc(e.text)}</b>${e.hint ? `<small>${esc(e.hint)}</small>` : ''}</span>${alts}${mixed ? `<em class="pal-cat">${t(`pal.cat.${e.kind}`)}</em>` : ''}</div>`;
-    }).join('');
+    }).join('') + (PAL.more ? `<div class="pal-more">${esc(t('pal.more', { n: PAL.more }))}</div>` : '');
     input.setAttribute('aria-activedescendant', `pal-${PAL.index}`);
     list.querySelector('.pal-row.on')?.scrollIntoView({ block: 'nearest' });
   }

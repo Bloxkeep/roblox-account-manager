@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.0.4",
+    "date": "2026-10-15",
+    "en": [
+      "Presets can send their messages to a Discord channel of their own: their schedule messages, the summary after a scheduled stop (now counting only that preset's accounts) and the alerts about the windows they opened. Edit a preset › Discord.",
+      "The Presets tab shows which presets have windows open, with a Close button for those windows; a preset can also arrange its windows once it has opened them, whatever Settings says.",
+      "Settings › Performance › Auto-rejoin turns it on or off for every account at once, and the daily sign-in check says when it last ran. Auto-rejoin that a dead sign-in switched off comes back on by itself once the account is signed in again.",
+      "The \"Send to Discord\" switch asks for the webhook link when there is none, instead of doing nothing. Deleting an account takes it out of presets too (a preset left empty has its schedule switched off); quick search (Ctrl+K) says how many more results there are; going back to an older Roblox no longer says \"Roblox updated\"."
+    ],
+    "vi": [
+      "Preset có thể gửi tin vào kênh Discord riêng: tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng (giờ chỉ tính tài khoản của preset đó) và cảnh báo của các cửa sổ preset đã mở. Sửa preset › Discord.",
+      "Tab Preset cho biết preset nào đang có cửa sổ mở, kèm nút Đóng các cửa sổ đó; preset cũng có thể tự xếp cửa sổ sau khi mở, bất kể Cài đặt chung.",
+      "Cài đặt › Hiệu năng › Tự vào lại game bật/tắt cho mọi tài khoản cùng lúc, và mục kiểm tra đăng nhập mỗi ngày ghi lần chạy gần nhất. Tự vào lại game bị tắt vì mất đăng nhập sẽ tự bật lại khi tài khoản được đăng nhập lại.",
+      "Công tắc \"Gửi lên Discord\" hỏi link webhook khi chưa có, thay vì không phản ứng gì. Xóa tài khoản thì tài khoản cũng được bỏ khỏi preset (preset không còn tài khoản thì lịch hẹn tự tắt); tìm nhanh (Ctrl+K) báo còn bao nhiêu kết quả; Roblox về bản cũ không còn báo \"Roblox đã cập nhật\"."
+    ]
+  },
+  {
     "version": "1.0.3",
     "date": "2026-10-15",
     "en": [

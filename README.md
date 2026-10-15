@@ -114,7 +114,7 @@ Open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publis
 
 - Filter by **All**, **Playing**, **Online**, **Offline**, **On this PC**, **Needs sign-in**, **Banned**, and by group with the **Group** dropdown; sort by **Name**, **Status**, **Last played** or **Launch order**; search names, groups and notes. Switch between **Cards** and **List**.
 - Status refreshes every 30 seconds. When an account drops, its card says why, read from Roblox's log: **Kicked for being idle**, **Kicked by the game**, **Signed in on another device**, **Connection lost**, **Couldn't join the server**.
-- An account whose session ended is marked **Needs sign-in**; click **Sign in** to renew it. **Check sign-in** is in each account's ⋯ menu, and **Check sign-in of all accounts** is in the ⋯ menu above the list. **Check sign-ins every day** (on by default, in **Settings › Performance**) does this once a day by itself, so you know before you press **Play**.
+- An account whose session ended is marked **Needs sign-in**; click **Sign in** to renew it. **Check sign-in** is in each account's ⋯ menu, and **Check sign-in of all accounts** is in the ⋯ menu above the list. **Check sign-ins every day** (on by default, in **Settings › Performance**, which shows when it last ran) does this once a day by itself, so you know before you press **Play**: one account at a time, 2 seconds apart, about 45 seconds after unlocking, while Bloxkeep is unlocked.
 - While checking, Bloxkeep also looks at whether the account is **Banned** (Roblox's public information). A banned account gets a red tag, and **Play** and presets skip it.
 - **Edit…** (`F2`) sets a **Nickname**, **Group** and **Note**. There you can also store the account's **Roblox password** if you want to (optional); it stays in the encrypted vault.
 - **Authenticator key** (in **Edit…**): paste the account's 2FA key or `otpauth://` link and Bloxkeep shows the running 6-digit code. **Copy 2FA code** is in the ⋯ menu. Anyone with your master password can make codes too, so only store the key if that's fine with you.
@@ -140,20 +140,25 @@ Open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publis
 
 A preset saves a name, a list of accounts (in order), a game, how to pick the server, and the wait between accounts. Leave the game empty to open only the **Roblox home screen**. The server can be **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random** or a **Fixed server (Job ID)**.
 
-Manage them in the **Presets** tab: **New preset**, edit, duplicate, reorder, **Run**. The presets button in the bottom bar has **Save as preset…** and quick runs. Up to 50 presets.
+Manage them in the **Presets** tab: **New preset**, edit, duplicate, reorder, **Run**. While a preset has windows open, its row says how many and **Run** becomes **Close**, which closes those windows (and no others). The presets button in the bottom bar has **Save as preset…** and quick runs. Up to 50 presets.
 
 A preset's **For the Roblox windows** options apply to the windows that preset opens (also when they rejoin). Pressing **Play** for the same accounts the normal way still follows your general settings.
+
+How the levels fit together, for each Roblox window: a preset's option set to **On** or **Off** decides for the windows that preset opened, until they close; left on **Follow…**, the account's own switch decides (auto-rejoin) or else **Settings** (Anti-AFK, arranging windows, the wait between accounts). An account in two presets follows the one that opened its window; running the other preset leaves an open window alone.
 
 - **Anti-AFK**: **Follow Settings**, **On** or **Off**.
 - **Auto-rejoin**: **Follow each account**, **On** or **Off**.
 - **Performance**: **Light AFK** sets the lowest graphics, 30 FPS, no sound, and minimises the window once it's in the game. Windows opened without it keep your Roblox settings.
 - **Restart Roblox**: every 2, 4, 6 or 12 hours, each window is closed and opened again into the same game, one at a time. The window you're using waits.
+- **Arrange windows**: **Follow Settings**, **On** or **Off**: tiles the Roblox windows once the preset has opened them.
+
+**Discord**: a preset can send its messages to **A webhook of its own** instead of the channel in Settings: its schedule messages, its summary after a scheduled stop (that preset's accounts only), and the alerts about the windows it opened. **Send test** checks the link before saving. Everything else, and the on/off switch, quiet hours and pings, stay in **Settings › Discord**. If Discord deletes that webhook, the preset goes back to the channel in Settings.
 
 **Schedule**: a preset runs by itself at its **Start time**, once or on chosen weekdays, and can **Stop** after a few hours or at a set time (closing only the windows that run opened). Bloxkeep has to be running and unlocked at that moment.
 
-<img src="docs/screenshots/presets.png" width="800" alt="The Presets tab with three presets, one with its schedule on">
+<img src="docs/screenshots/presets.png" width="800" alt="The Presets tab with three presets: one scheduled, with three windows open and a Close button">
 
-<img src="docs/screenshots/preset-editor.png" width="800" alt="Edit preset: the For the Roblox windows options (Anti-AFK, Auto-rejoin, Performance, Restart Roblox) and the Schedule">
+<img src="docs/screenshots/preset-editor.png" width="800" alt="Edit preset: the For the Roblox windows options (Anti-AFK, Auto-rejoin, Performance, Restart Roblox, Arrange windows), its own Discord webhook, and the Schedule">
 
 ### Multi-Roblox
 
@@ -172,7 +177,7 @@ If a newer Roblox build starts closing windows when another opens again, **Setti
 
 ### Auto-rejoin
 
-Turn it on per account in the ⋯ menu › **Auto-rejoin** (a preset can override it; see [Presets](#presets)). When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. If it keeps dropping, from the third time Bloxkeep waits 2, 5, 10, then 15 minutes between tries (the card shows the wait with a **Cancel** button); 10 minutes in the game resets the count. Without a network, it retries every 30 seconds, up to 20 times.
+Turn it on per account in the ⋯ menu › **Auto-rejoin**, or for every account at once in **Settings › Performance › Auto-rejoin** (a preset can override it; see [Presets](#presets)). If Roblox ended an account's sign-in, auto-rejoin turns itself off for it, and back on once the account is signed in again. When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. If it keeps dropping, from the third time Bloxkeep waits 2, 5, 10, then 15 minutes between tries (the card shows the wait with a **Cancel** button); 10 minutes in the game resets the count. Without a network, it retries every 30 seconds, up to 20 times.
 
 Bloxkeep doesn't rejoin when you leave the game yourself, when the account signed in on another device, when it's banned, or when Roblox itself closed the window because another one opened. Closing the Roblox window by hand counts as leaving, so use **Close** in the app.
 
@@ -221,7 +226,7 @@ Switch to **Activity** for the log: accounts opened, games joined and left, drop
 
 - **Keep running in the tray when closed** (on by default): the X button hides Bloxkeep to the tray, and auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon and choose **Quit Bloxkeep**. Next time, the Bloxkeep window comes back where you left it, at the same size, maximised or not.
 - **Windows notifications** (on by default): only while Bloxkeep is in the background. Turn each kind on or off in **Settings › Notifications**: account dropped or auto-rejoin, scheduled presets, sign-in needs renewing, low RAM, launch problems.
-- **Discord** (off by default): paste a channel's webhook link in **Settings › Discord**. **Send automatically** a play-time summary every day, every week or both; keep a **Status message** up to date; and send **Alerts** for the events above, with a **Ping** for a person or a role. There are **Quiet hours** and **Customise messages** (sender name and picture, language, message style, **Hide account names in messages**).
+- **Discord** (off by default): paste a channel's webhook link in **Settings › Discord** (switching **Send to Discord** on without one asks for it). **Send automatically** a play-time summary every day, every week or both; keep a **Status message** up to date; and send **Alerts** for the events above, with a **Ping** for a person or a role. There are **Quiet hours** and **Customise messages** (sender name and picture, language, message style, **Hide account names in messages**).
 - **Settings › Appearance**: **Theme** has 32 themes plus **Sync with Windows** (**Dark** by default), **Language** English / Tiếng Việt, and **Hide account names**.
 - **Hardware acceleration** (in **Settings › Performance**): draws the interface with the graphics card instead of the CPU; it turns itself off if the graphics driver keeps failing.
 

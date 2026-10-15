@@ -323,6 +323,8 @@ public sealed partial class AppController : IDisposable
         "savePreset" => SavePresetAsync(a),
         "deletePreset" => Done(DeletePreset(Id(a))),
         "runPreset" => RunPresetAsync(Id(a), Bool(a, "force")),
+        "closePreset" => Done(ClosePresetWindows(Id(a))),
+        "presetDiscordTest" => SendPresetDiscordTestAsync(Id(a), OptStr(a, "url")),
         "duplicatePreset" => Done(DuplicatePreset(Id(a))),
         "setPresetOrder" => Done(SetPresetOrder(Ids(a))),
         "setPresetSchedule" => Done(SetPresetSchedule(Id(a), Bool(a, "enabled"))),
@@ -463,6 +465,7 @@ public sealed partial class AppController : IDisposable
         notifications = Prefs.Notifications,
         notifyOff = Prefs.NotifyOff.Where(NotifyKinds.Contains).Order().ToArray(),
         dailySignInCheck = Prefs.DailySignInCheck,
+        lastSignInCheck = Prefs.LastSignInCheck, // shown next to the switch, like the update check's time
         miniOpen = Prefs.MiniOpen,
         backup = BackupDto(),
         discord = DiscordDto(),
@@ -517,7 +520,7 @@ public sealed partial class AppController : IDisposable
         if (_installs is not null && DateTime.UtcNow - _installsReadAt < InstallCacheLifetime)
             return _installs;
         _installsReadAt = DateTime.UtcNow;
-        string? before = _installs?.Client?.Folder;
+        string? before = _installs?.Client?.Folder, beforeVersion = _installs?.Client?.Version;
         _installs = new InstallsInfo(
             Handler: RobloxInstalls.ProtocolHandlerPath() is { } h ? Path.GetFileNameWithoutExtension(h) : null,
             Bloxstrap: RobloxInstalls.FindBootstrapper("Bloxstrap") is not null,
@@ -527,10 +530,12 @@ public sealed partial class AppController : IDisposable
             Direct: RobloxInstalls.FindAnyClient() is not null,
             Store: RobloxInstalls.StoreEditionInstalled(),
             Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")));
-        // Roblox (or its launcher) put a new build in place since the last look.
+        // Roblox (or its launcher) put a new build in place since the last look — or an older one (a launcher set to a
+        // version, an older copy chosen), which isn't an update.
         if (before is not null && _installs.Client is { } now && now.Folder != before)
         {
-            string updated = L.F("Roblox updated to {0}.", now.Version);
+            bool older = Version.TryParse(now.Version, out var have) && Version.TryParse(beforeVersion, out var had) && have < had;
+            string updated = older ? L.F("Roblox went back to version {0}.", now.Version) : L.F("Roblox updated to {0}.", now.Version);
             Toast(updated, "ok");
             NoteActivity("robloxUpdated", text: updated, tone: "info");
         }
@@ -1515,6 +1520,15 @@ public sealed partial class AppController : IDisposable
 
     sealed record AddResult(Guid Id, string Label, bool Merged);
 
+    /// <summary>Signed in again: auto-rejoin comes back on if a sign-in Roblox ended was what switched it off.</summary>
+    static void SignedInAgain(Account account)
+    {
+        if (!account.RejoinOffBySignOut)
+            return;
+        account.RejoinOffBySignOut = false;
+        account.AutoRejoin = true;
+    }
+
     /// <summary>
     /// Adding an account that is already in the list just refreshes its cookie. Roblox and Roblox VNG count user ids
     /// apart, so the same id in the other realm is another account.
@@ -1532,6 +1546,8 @@ public sealed partial class AppController : IDisposable
             existing.DisplayName = incoming.DisplayName;
             existing.CookieValid = incoming.CookieValid;
             existing.LastChecked = incoming.LastChecked;
+            if (incoming.CookieValid == true)
+                SignedInAgain(existing);
             if (incoming.Password.Length > 0) existing.Password = incoming.Password;
             if (incoming.Alias.Length > 0) existing.Alias = incoming.Alias;
             if (incoming.Group.Length > 0) existing.Group = incoming.Group;
@@ -1606,6 +1622,7 @@ public sealed partial class AppController : IDisposable
             account.DisplayName = user.DisplayName;
             account.CookieValid = true;
             account.LastChecked = DateTime.Now;
+            SignedInAgain(account);
             _ = LoadAvatarsAsync([user.Id]);
         }
         Persist();
@@ -1632,6 +1649,7 @@ public sealed partial class AppController : IDisposable
         foreach (var account in RequireVault().Data.Accounts.Where(a => ids.Contains(a.Id)))
         {
             account.AutoRejoin = enabled;
+            account.RejoinOffBySignOut = false; // the person's own choice from now on
             if (enabled)
                 _rejoinsInARow.Remove(account.Id);
             else // a client whose preset turns auto-rejoin on, and a planned restart, still go ahead
@@ -1656,7 +1674,17 @@ public sealed partial class AppController : IDisposable
     object DeleteAccounts(Guid[] ids)
     {
         var set = ids.ToHashSet();
-        int removed = RequireVault().Data.Accounts.RemoveAll(a => set.Contains(a.Id));
+        var data = RequireVault().Data;
+        int removed = data.Accounts.RemoveAll(a => set.Contains(a.Id));
+        // Gone from the presets too; one left with no account has nothing to run, so its schedule goes off rather than
+        // reporting "no accounts left" every day.
+        foreach (var preset in data.Settings.Presets)
+        {
+            if (preset.AccountIds.RemoveAll(set.Contains) > 0 && preset.AccountIds.Count == 0 && preset.Schedule is { Enabled: true } schedule)
+                schedule.Enabled = false;
+        }
+        data.Settings.LaunchOrder.RemoveAll(set.Contains);
+        data.Discord.SummaryAccounts.RemoveAll(set.Contains);
         foreach (var id in set)
         {
             _running.Remove(id);
@@ -2518,8 +2546,9 @@ public sealed partial class AppController : IDisposable
                 }
                 if (launched > 0)
                     RefreshPresenceSoon(TimeSpan.FromSeconds(20));
-                if (launched > 0 && s.MultiInstance && s.MultiInstanceTile)
-                    _ = TileWhenOpenAsync();
+                // A preset's own choice, else Settings' (Multi-Roblox › arrange the windows once opened).
+                if (launched > 0 && (PresetFor(presetId)?.Arrange ?? (s.MultiInstance && s.MultiInstanceTile)))
+                    _ = TileWhenOpenAsync(presetId);
                 Persist();
             }
             Progress(null);
@@ -2783,16 +2812,21 @@ public sealed partial class AppController : IDisposable
     HashSet<int> AfkClients() =>
         _running.Values.Where(r => PresetFor(r.Launch.PresetId)?.Profile == AfkProfile).Select(r => r.Pid).ToHashSet();
 
-    /// <summary>Multi-Roblox's "tile" option: once the launch's last window is up, two or more windows are tiled on the main screen.</summary>
-    async Task TileWhenOpenAsync()
+    /// <summary>
+    /// Multi-Roblox's "tile" option, or the preset's own Arrange windows: once the launch's last window is up, two or
+    /// more windows are tiled on the main screen.
+    /// </summary>
+    /// <param name="presetId">The preset that launched: its choice decides (asked again at the end, in case it changed).</param>
+    async Task TileWhenOpenAsync(Guid? presetId = null)
     {
         var deadline = DateTime.UtcNow + PendingTimeout;
         while (!_disposed && (_pending.Count > 0 || _launchCts is not null) && DateTime.UtcNow < deadline)
             await Task.Delay(500);
         // Roblox sizes its window again as it finishes starting up.
         await Task.Delay(3000);
-        if (_disposed || _vault is not { Data.Settings: { MultiInstance: true, MultiInstanceTile: true } } || _launchCts is not null)
-            return; // locked, switched off, or another launch started (it tiles when it is done)
+        if (_disposed || _vault is not { } vault || _launchCts is not null
+            || !(PresetFor(presetId)?.Arrange ?? vault.Data.Settings is { MultiInstance: true, MultiInstanceTile: true }))
+            return; // locked, switched off (in Settings or the preset), or another launch started (it tiles when it is done)
         // Two or more windows that get a tile: minimised ones and a light-AFK preset's don't (see ArrangeWindowsAsync),
         // so one window isn't stretched over the whole screen as a grid of one.
         var afk = AfkClients();
@@ -3536,6 +3570,9 @@ public sealed partial class AppController : IDisposable
             if (ex is RobloxApiException { CookieInvalid: true })
             {
                 account.CookieValid = false;
+                // Off until it is signed in again (then back on by itself, see SignedInAgain): rejoining can't work meanwhile.
+                if (account.AutoRejoin)
+                    account.RejoinOffBySignOut = true;
                 account.AutoRejoin = false;
                 Persist();
                 PushState();

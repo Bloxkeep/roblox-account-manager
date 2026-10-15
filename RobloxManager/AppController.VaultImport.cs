@@ -321,6 +321,9 @@ public sealed partial class AppController
                     AutoRejoin = p.AutoRejoin,
                     Profile = p.Profile == AfkProfile ? AfkProfile : "",
                     RestartHours = p.PlaceInput.Length > 0 && RestartChoices.Contains(p.RestartHours) ? p.RestartHours : 0,
+                    Arrange = p.Arrange,
+                    // Its own Discord channel comes along only as a link Bloxkeep would accept from the form.
+                    DiscordWebhook = DiscordWebhook.TryNormalize(p.DiscordWebhook, out string hook) ? hook : "",
                     // Off, so the two PCs don't start the same accounts at the same minute.
                     Schedule = s is null ? null : new PresetSchedule
                     {

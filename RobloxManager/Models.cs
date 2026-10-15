@@ -24,6 +24,8 @@ public sealed class Account
     public DateTime? LastChecked { get; set; }
     public bool? CookieValid { get; set; }
     public bool AutoRejoin { get; set; }
+    /// <summary>Auto-rejoin was switched off because Roblox ended the sign-in: on again once it is signed in again.</summary>
+    public bool RejoinOffBySignOut { get; set; }
     /// <summary>Opened with the shared Roblox settings when those apply to chosen accounts only.</summary>
     public bool UseRobloxConfig { get; set; }
     /// <summary>The authenticator (2-step) key, null when none. A secret like <see cref="Password"/>: only its current code leaves the app.</summary>
@@ -110,6 +112,13 @@ public sealed class LaunchPreset
     public string Profile { get; set; } = "";
     /// <summary>Each of its windows in a game is closed and opened again after this many hours; 0 = never.</summary>
     public int RestartHours { get; set; }
+    /// <summary>Its windows are arranged (Settings' layout) once it has opened them; null follows Settings.</summary>
+    public bool? Arrange { get; set; }
+    /// <summary>
+    /// Its own Discord webhook (see AppController.Discord.cs): its schedule messages, the summary after its scheduled
+    /// stop and the alerts about the windows it opened go there. "" sends them to the one in Settings.
+    /// </summary>
+    public string DiscordWebhook { get; set; } = "";
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
