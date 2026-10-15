@@ -60,7 +60,7 @@ public static class L
     static readonly Dictionary<string, string> Vi = new()
     {
         ["Wrong master password."] = "Sai mật khẩu chủ.",
-        ["The launcher you picked is gone. Choose it again under Settings › Open Roblox with."] =
+        ["The launcher you picked is gone. Choose it again under Settings › Launching › Open Roblox with."] =
             "Không tìm thấy launcher bạn đã chọn. Hãy chọn lại ở Cài đặt › Khởi chạy › Mở Roblox bằng.",
         ["Choose the program that opens Roblox"] = "Chọn launcher để mở Roblox",
         ["Programs"] = "Chương trình",
@@ -94,16 +94,16 @@ public static class L
         ["Couldn't open the private server link (HTTP {0}). Check the link, or try again in a moment."] = "Không mở được link server riêng (HTTP {0}). Hãy kiểm tra lại link, hoặc thử lại sau một lát.",
         ["The private server link is invalid or has expired."] = "Link server riêng không hợp lệ hoặc đã hết hạn.",
         ["Roblox is rate-limiting requests; try again shortly."] = "Roblox đang tạm chặn vì nhận quá nhiều yêu cầu. Chờ một chút rồi thử lại.",
-        ["RobloxPlayerBeta.exe was not found. Pick another option under Settings › Open Roblox with, or reinstall Roblox."] =
-            "Không tìm thấy RobloxPlayerBeta.exe. Hãy chọn cách mở khác ở Cài đặt › Mở Roblox bằng, hoặc cài lại Roblox.",
+        ["RobloxPlayerBeta.exe was not found. Pick another option under Settings › Launching › Open Roblox with, or reinstall Roblox."] =
+            "Không tìm thấy RobloxPlayerBeta.exe. Hãy chọn cách mở khác ở Cài đặt › Khởi chạy › Mở Roblox bằng, hoặc cài lại Roblox.",
         ["{0} is not installed."] = "Máy chưa cài {0}.",
         ["The official Roblox client is not installed."] = "Máy chưa cài Roblox bản chính thức.",
         ["Roblox isn't installed. Install it from roblox.com/download, then try again."] =
             "Máy chưa cài Roblox. Hãy cài từ roblox.com/download rồi thử lại.",
-        ["Only Roblox from the Microsoft Store is installed. Choose it under Settings › Open Roblox with, or install Roblox from roblox.com/download."] =
-            "Máy chỉ có Roblox bản Microsoft Store. Hãy chọn nó ở Cài đặt › Mở Roblox bằng, hoặc cài Roblox từ roblox.com/download.",
-        ["Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Open Roblox with."] =
-            "Máy chưa cài Roblox bản Microsoft Store. Hãy chọn cách mở khác ở Cài đặt › Mở Roblox bằng.",
+        ["Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download."] =
+            "Máy chỉ có Roblox bản Microsoft Store. Hãy chọn nó ở Cài đặt › Khởi chạy › Mở Roblox bằng, hoặc cài Roblox từ roblox.com/download.",
+        ["Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Launching › Open Roblox with."] =
+            "Máy chưa cài Roblox bản Microsoft Store. Hãy chọn cách mở khác ở Cài đặt › Khởi chạy › Mở Roblox bằng.",
         ["Couldn't start Roblox from the Microsoft Store."] = "Không mở được Roblox bản Microsoft Store.",
         ["Enter a Place ID or paste a Roblox game link."] = "Hãy nhập Place ID hoặc dán link game Roblox.",
         ["Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link."] =
@@ -162,8 +162,8 @@ public static class L
         ["Couldn't open the captcha: {0}"] = "Không mở được captcha: {0}",
         ["Roblox asked for a check Bloxkeep can't show yet ({0}). Try again later, or sign in with your phone."] =
             "Roblox yêu cầu một bước xác minh mà Bloxkeep chưa hiển thị được ({0}). Hãy thử lại sau, hoặc đăng nhập bằng điện thoại.",
-        ["Roblox asked for a sign-in check Bloxkeep doesn't support yet. Sign in with your phone or the browser instead. The details were saved in error.log (Settings › Data has its folder)."] =
-            "Roblox yêu cầu một bước xác minh đăng nhập mà Bloxkeep chưa hỗ trợ. Hãy đăng nhập bằng điện thoại hoặc trình duyệt. Chi tiết đã được ghi vào error.log (mở thư mục ở Cài đặt › Dữ liệu).",
+        ["Roblox asked for a sign-in check Bloxkeep doesn't support yet. Sign in with your phone or the browser instead. The details were saved in error.log (Settings › Backup & data › Open folder)."] =
+            "Roblox yêu cầu một bước xác minh đăng nhập mà Bloxkeep chưa hỗ trợ. Hãy đăng nhập bằng điện thoại hoặc trình duyệt. Chi tiết đã được ghi vào error.log (mở thư mục ở Cài đặt › Sao lưu & dữ liệu).",
         ["Roblox wants this account to turn on 2-step verification before it signs in. Sign in on roblox.com or in the Roblox app, turn it on there, then try again, or sign in with your phone."] =
             "Roblox yêu cầu tài khoản này bật xác minh 2 bước rồi mới cho đăng nhập. Hãy đăng nhập trên roblox.com hoặc app Roblox, bật ở đó rồi thử lại, hoặc đăng nhập bằng điện thoại.",
         ["Roblox blocked this sign-in. Sign in with your phone or the browser instead."] =
@@ -355,7 +355,7 @@ public static class L
         ["Choose a folder on this PC or a synced drive."] = "Hãy chọn thư mục trên máy này hoặc trên ổ đồng bộ.",
         ["Pick a folder outside Bloxkeep's own data folder."] = "Hãy chọn thư mục nằm ngoài thư mục dữ liệu của Bloxkeep.",
         ["Choose a folder for backups"] = "Chọn thư mục sao lưu",
-        ["Unlock Bloxkeep first, then restore from Settings › Backup."] = "Hãy mở khóa Bloxkeep trước, rồi khôi phục ở Cài đặt › Sao lưu.",
+        ["Unlock Bloxkeep first, then restore from Settings › Backup & data."] = "Hãy mở khóa Bloxkeep trước, rồi khôi phục ở Cài đặt › Sao lưu & dữ liệu.",
         ["Choose a Bloxkeep backup"] = "Chọn bản sao lưu của Bloxkeep",
         ["Bloxkeep backups"] = "Bản sao lưu Bloxkeep",
         ["Couldn't restore: {0}"] = "Không khôi phục được: {0}",

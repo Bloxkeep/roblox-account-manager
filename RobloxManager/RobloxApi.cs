@@ -530,7 +530,7 @@ public static class RobloxApi
             + $", headers [{string.Join(", ", headers)}]"
             + $", body {(json is { } j ? Shape(j) : "not JSON")}"
             + (codes.Count > 0 ? $", errors [{string.Join(", ", codes)}]" : ""));
-        return L.T("Roblox asked for a sign-in check Bloxkeep doesn't support yet. Sign in with your phone or the browser instead. The details were saved in error.log (Settings › Data has its folder).");
+        return L.T("Roblox asked for a sign-in check Bloxkeep doesn't support yet. Sign in with your phone or the browser instead. The details were saved in error.log (Settings › Backup & data › Open folder).");
     }
 
     /// <summary>A name from Roblox (a check's type, a field) as it may go to the log: short and plain, else "#".</summary>

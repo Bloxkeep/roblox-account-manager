@@ -8,7 +8,14 @@ namespace RobloxManager;
 /// </summary>
 public static class WhatsNew
 {
-    public sealed record Release(string Version, string Date, string[] En, string[] Vi);
+    /// <param name="Highlights">The release's headline features, shown first (none for most releases).</param>
+    public sealed record Release(string Version, string Date, string[] En, string[] Vi, Highlight[]? Highlights = null);
+
+    /// <summary>
+    /// A headline feature: an icon (one of the page's), [title, one or two sentences, button] in each language, and where
+    /// the button leads ("settings:&lt;page or group&gt;", "guide", "web", "feedback"; none = no button).
+    /// </summary>
+    public sealed record Highlight(string Icon, string? Go, string[] En, string[] Vi);
 
     static readonly Lazy<Release[]> Releases = new(() =>
     {

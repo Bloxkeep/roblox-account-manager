@@ -5,7 +5,7 @@
 <p align="center">Quản lý và mở nhiều tài khoản Roblox trên Windows. Tài khoản được mã hóa và chỉ lưu trên máy của bạn.</p>
 <p align="center"><a href="README.md">English</a> | Tiếng Việt</p>
 <p align="center"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 hoặc 11, 64-bit"> <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10"> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="Giấy phép MIT"></a></p>
-<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
+<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
 <p align="center"><img src="docs/screenshots/vi/hero.png" width="860" alt="Cửa sổ chính của Bloxkeep: danh sách tài khoản dạng thẻ với hai tài khoản đang được chọn, thanh chọn game ở dưới và Multi-Roblox đang bật"></p>
 
@@ -113,7 +113,7 @@ Vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (
 - Lúc kiểm tra, Bloxkeep cũng xem tài khoản có **Bị ban** không (thông tin công khai của Roblox). Tài khoản bị ban có nhãn đỏ, và **Vào game** cũng như preset sẽ bỏ qua tài khoản đó.
 - **Sửa…** (`F2`) để đặt **Tên gợi nhớ**, **Nhóm**, **Ghi chú**. Tại đây bạn có thể tự lưu **Mật khẩu Roblox** nếu muốn (không bắt buộc); mật khẩu nằm trong kho đã mã hóa.
 - **Khóa app xác thực** (trong **Sửa…**): dán khóa 2FA hoặc link `otpauth://` của tài khoản, Bloxkeep hiện mã 6 số đang chạy. **Sao chép mã 2FA** có trong menu ⋯. Ai biết mật khẩu chủ của bạn cũng tạo được mã, nên chỉ lưu khóa khi bạn chấp nhận điều đó.
-- **Sao chép mật khẩu**, **Sao chép cookie** và **Sao chép mã 2FA** không vào lịch sử clipboard của Windows và tự xóa sau 30 giây.
+- **Sao chép mật khẩu** và **Sao chép mã 2FA** không vào lịch sử clipboard của Windows và tự xóa sau 30 giây. Hai mục này dùng được khi bạn đã lưu mật khẩu hoặc khóa app xác thực ở mục **Sửa** (đăng nhập bằng cách nào thì Bloxkeep cũng không giữ mật khẩu).
 - **Ẩn tên tài khoản** (trong **Cài đặt › Giao diện**): mọi chỗ hiện **Tài khoản 1**, **Tài khoản 2**… thay cho tên, kể cả tiêu đề cửa sổ Roblox, tiện khi chụp màn hình hay livestream.
 - **Mở trang web** (trong menu ⋯ của mỗi tài khoản): roblox.com đã đăng nhập sẵn tài khoản đó, trong cửa sổ riêng của Bloxkeep. Mở nhiều cửa sổ để dùng nhiều tài khoản cùng lúc. Phiên đăng nhập chỉ nằm trong cửa sổ đó (không vào Chrome hay Edge của bạn) và mất khi đóng cửa sổ. Đăng xuất ở đó cũng sẽ đăng xuất tài khoản khỏi Bloxkeep nên Bloxkeep chặn lại: xem xong chỉ cần đóng cửa sổ.
 - **Mở roblox.com** (trong menu cạnh **Thêm tài khoản**): cửa sổ trống để tự đăng nhập ngay trên trang web, mỗi cửa sổ một tài khoản, mở bao nhiêu cái cạnh nhau cũng được. Đóng cửa sổ là mất đăng nhập, trừ khi bạn bấm **Lưu vào Bloxkeep**; khi đó tài khoản vào danh sách và lần sau mở là vào thẳng.
@@ -176,11 +176,11 @@ Ngoài ra, máy dò Roblox của Bloxkeep kiểm tra từng bản Roblox mới n
 
 ### Chống AFK
 
-Roblox kick tài khoản sau 20 phút không có thao tác. Khi bật **Cài đặt › Hiệu năng › Chống AFK** (preset có thể ghi đè), Bloxkeep đưa từng cửa sổ Roblox đang ở trong game lên trước trong chốc lát, nhích chuột vài pixel rồi trả về, và đưa bạn lại cửa sổ đang dùng. Không bấm phím, không click gì. Chống AFK bắt đầu từ phút thứ 12 kể từ thao tác cuối của cửa sổ, vào phút đầu tiên không ai dùng máy; cửa sổ còn 2 phút là bị kick thì được làm vào lúc bạn ngừng gõ 2 giây, kể cả khi bạn đang dùng máy, nhưng không bao giờ chen ngang ứng dụng toàn màn hình. Không chạy được khi máy đang khóa. Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do.
+Roblox kick tài khoản sau 20 phút không có thao tác. Khi bật **Cài đặt › Treo game › Chống AFK** (preset có thể ghi đè), Bloxkeep đưa từng cửa sổ Roblox đang ở trong game lên trước trong chốc lát, nhích chuột vài pixel rồi trả về, và đưa bạn lại cửa sổ đang dùng. Không bấm phím, không click gì. Chống AFK bắt đầu từ phút thứ 12 kể từ thao tác cuối của cửa sổ, vào phút đầu tiên không ai dùng máy; cửa sổ còn 2 phút là bị kick thì được làm vào lúc bạn ngừng gõ 2 giây, kể cả khi bạn đang dùng máy, nhưng không bao giờ chen ngang ứng dụng toàn màn hình. Không chạy được khi máy đang khóa. Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do.
 
 ### Tự vào lại game
 
-Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game**, hoặc cho mọi tài khoản cùng lúc ở **Cài đặt › Hiệu năng › Tự vào lại game** (preset có thể ghi đè, xem [Preset](#preset)). Nếu Roblox kết thúc phiên đăng nhập của một tài khoản, tự vào lại game tự tắt cho tài khoản đó, và tự bật lại khi tài khoản được đăng nhập lại. Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Nếu cứ bị văng liên tục, từ lần thứ ba Bloxkeep chờ 2, 5, 10 rồi 15 phút giữa các lần thử (thẻ tài khoản hiện thời gian chờ và nút **Hủy**); ở lại trong game 10 phút thì đếm lại từ đầu. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
+Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game**, hoặc cho mọi tài khoản cùng lúc ở **Cài đặt › Treo game › Tự vào lại game** (preset có thể ghi đè, xem [Preset](#preset)). Nếu Roblox kết thúc phiên đăng nhập của một tài khoản, tự vào lại game tự tắt cho tài khoản đó, và tự bật lại khi tài khoản được đăng nhập lại. Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Nếu cứ bị văng liên tục, từ lần thứ ba Bloxkeep chờ 2, 5, 10 rồi 15 phút giữa các lần thử (thẻ tài khoản hiện thời gian chờ và nút **Hủy**); ở lại trong game 10 phút thì đếm lại từ đầu. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
 
 Bloxkeep không vào lại khi bạn tự thoát game, khi tài khoản đăng nhập ở thiết bị khác, khi tài khoản bị ban, hoặc khi chính Roblox đóng cửa sổ vì có cửa sổ khác mở. Tự tay đóng cửa sổ Roblox cũng tính là thoát game, nên hãy dùng nút **Đóng** trong app.
 
@@ -204,7 +204,7 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 | **Roblox (chính thức)** | Bản cài từ roblox.com |
 | **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)** | Không qua launcher nào; thử khi launcher chặn nhiều cửa sổ |
 | **Chọn launcher khác…** | File exe bạn tự chọn |
-| **Roblox (Microsoft Store)** | Không hỗ trợ: không mở được tài khoản đã chọn. Hãy cài Roblox từ roblox.com |
+| **Roblox (Microsoft Store)** | Đang thử nghiệm: mỗi tài khoản mở trong một cửa sổ Roblox Store riêng, bỏ qua trình khởi động của Microsoft. Microsoft Store vẫn tự cập nhật |
 
 ### Cửa sổ, RAM và màn hình theo dõi
 
@@ -232,7 +232,7 @@ Chuyển sang **Hoạt động** để xem nhật ký: mở tài khoản, vào g
 - **Thông báo Windows** (bật sẵn): chỉ khi Bloxkeep chạy nền. Bật tắt từng loại trong **Cài đặt › Thông báo**: tài khoản bị văng hoặc tự vào lại, preset hẹn giờ, tài khoản cần đăng nhập lại, sắp hết RAM, lỗi khi mở game.
 - **Discord** (tắt sẵn): dán link webhook của một kênh vào **Cài đặt › Discord** (bật **Gửi lên Discord** khi chưa có link thì app sẽ hỏi link). **Gửi tự động** tổng kết thời gian chơi **Hằng ngày**, **Hằng tuần** hoặc cả hai: ảnh biểu đồ thời gian chơi theo giờ (hoặc ngày) tô màu theo game, mỗi tài khoản một dòng kèm avatar, so với kỳ trước, số lần văng kèm mã lỗi Roblox, lượt chơi dài nhất, số cửa sổ cùng lúc nhiều nhất, game chơi nhiều nhất, và mỗi preset một khung riêng với các tài khoản của nó; một **Tin trạng thái** tự cập nhật; và **Cảnh báo** cho các sự kiện như trên, có **Tag** người hoặc vai trò. Có **Giờ yên lặng**, và **Tùy chỉnh tin nhắn** (tên và ảnh người gửi, ngôn ngữ, kiểu tin, **Ẩn tên tài khoản trong tin nhắn**).
 - **Cài đặt › Giao diện**: 74 **Chủ đề** chia năm nhóm (Cơ bản, Phong cảnh, Màu sắc, Phong cách, Theo mùa) cộng **Theo Windows** (mặc định **Tối**). Chủ đề Phong cảnh và Theo mùa có cảnh vẽ phía sau các khung mờ; Phong cách đổi cả hình khối (Windows 98, macOS với nút cửa sổ bấm được, GNOME, Ubuntu, KDE, Game Boy, Vở ô li…). Còn có **Ngôn ngữ** English / Tiếng Việt, và **Ẩn tên tài khoản**.
-- **Tăng tốc phần cứng** (trong **Cài đặt › Hiệu năng**): vẽ giao diện bằng card đồ họa thay vì CPU; tự tắt nếu driver card đồ họa gặp lỗi liên tục.
+- **Tăng tốc phần cứng** (trong **Cài đặt › Treo game**): vẽ giao diện bằng card đồ họa thay vì CPU; tự tắt nếu driver card đồ họa gặp lỗi liên tục.
 
 <img src="docs/screenshots/vi/discord.png" width="800" alt="Trang Discord trong Cài đặt: gửi lên Discord, link webhook, tổng kết thời gian chơi">
 
@@ -314,7 +314,7 @@ Bật **Cài đặt › Sao lưu & dữ liệu › Sao lưu vào thư mục**, r
 ## Giới hạn và tình trạng thử nghiệm
 
 - Trạng thái online của Roblox bị trễ: thoát game rồi mà Roblox vẫn có thể báo "đang chơi" thêm vài phút.
-- Không dùng được Roblox bản Microsoft Store.
+- Roblox bản Microsoft Store vẫn đang thử nghiệm (**Cài đặt › Khởi chạy › Mở Roblox bằng**). Các cài đặt cửa sổ và đồ họa Roblox của Bloxkeep chưa áp dụng cho bản này.
 - Roblox VNG: thêm được tài khoản, chưa mở được game.
 - Multi-Roblox: Bloxkeep phải mở trước Roblox và để mở trong lúc chơi. Nếu Roblox (kể cả bản ở khay hệ thống) mở trước, đèn sẽ vàng đến khi đóng hết Roblox. Roblox không chính thức hỗ trợ nhiều client, và một bản Roblox sau này có thể đổi cách chặn.
 - VPN chỉ áp cho một số app: nếu Roblox đi qua VPN mà Bloxkeep thì không, mở game có thể báo lỗi 403. Xem [câu hỏi thường gặp](#câu-hỏi-thường-gặp).
@@ -404,9 +404,9 @@ Chỉ tới Roblox. Mật khẩu chỉ gửi tới máy chủ đăng nhập củ
 </details>
 
 <details>
-<summary>Sao không hỗ trợ Roblox bản Microsoft Store?</summary>
+<summary>Dùng Roblox bản Microsoft Store được không?</summary>
 
-Bản Microsoft Store không mở được tài khoản bạn chọn, nên Bloxkeep không dùng được nó. Hãy cài Roblox từ roblox.com (có thể dùng kèm Bloxstrap hoặc Fishstrap).
+Được, trong lúc tính năng này còn thử nghiệm: chọn **Roblox (Microsoft Store)** ở **Cài đặt › Khởi chạy › Mở Roblox bằng**. Trình khởi động của Microsoft chỉ cho chạy một Roblox bản Store, nên Bloxkeep tự mở Roblox của bản Store, mỗi tài khoản với phiên đăng nhập riêng trong một cửa sổ riêng. Bản cập nhật vẫn do Microsoft Store cài. Nếu không chạy được, Roblox tải từ roblox.com cũng dùng y như vậy, kèm Bloxstrap hay Fishstrap tùy bạn.
 </details>
 
 <details>

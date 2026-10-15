@@ -381,6 +381,8 @@ public sealed partial class AppController : IDisposable
         "openReleaseNotes" => Done(OpenReleaseNotes(Str(a, "version"))),
         "hideRobloxClosed" => Done(HideRobloxClosed()),
         "openRobloxWatch" => Done(OpenUrl(RobloxWatch.DocsUrl)),
+        // The user guide on GitHub, in the app's language (docs/guide.md, docs/guide.vi.md).
+        "openGuide" => Done(OpenUrl($"https://github.com/minhhoang0122/bloxkeep/blob/main/docs/guide{(L.Language == "vi" ? ".vi" : "")}.md")),
         "feedbackPreview" => Done(FeedbackPreview(a)),
         "sendFeedback" => SendFeedbackAsync(a),
         _ => throw new UserError(L.F("Unknown command: {0}", cmd)),

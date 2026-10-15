@@ -73,7 +73,7 @@ public static class RobloxLauncher
         {
             case "custom":
                 if (!File.Exists(customLauncher))
-                    throw new FileNotFoundException(L.T("The launcher you picked is gone. Choose it again under Settings › Open Roblox with."));
+                    throw new FileNotFoundException(L.T("The launcher you picked is gone. Choose it again under Settings › Launching › Open Roblox with."));
                 Start(customLauncher, uri);
                 break;
             case "bloxstrap":
@@ -86,17 +86,17 @@ public static class RobloxLauncher
                 break;
             case "direct":
                 Start(RobloxInstalls.FindAnyClient()
-                      ?? throw new FileNotFoundException(L.T("RobloxPlayerBeta.exe was not found. Pick another option under Settings › Open Roblox with, or reinstall Roblox.")), uri);
+                      ?? throw new FileNotFoundException(L.T("RobloxPlayerBeta.exe was not found. Pick another option under Settings › Launching › Open Roblox with, or reinstall Roblox.")), uri);
                 break;
             case "store":
                 StartInStorePackage(RobloxInstalls.FindStoreClient()
-                                    ?? throw new FileNotFoundException(L.T("Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Open Roblox with.")), uri);
+                                    ?? throw new FileNotFoundException(L.T("Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Launching › Open Roblox with.")), uri);
                 break;
             default:
                 // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
                 if (!IsProtocolRegistered())
                     throw new FileNotFoundException(RobloxInstalls.StoreEditionInstalled()
-                        ? L.T("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Open Roblox with, or install Roblox from roblox.com/download.")
+                        ? L.T("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
                         : L.T("Roblox isn't installed. Install it from roblox.com/download, then try again."));
                 // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
                 Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true, WorkingDirectory = Path.GetTempPath() })?.Dispose();

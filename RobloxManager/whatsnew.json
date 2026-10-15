@@ -1,14 +1,85 @@
 [
   {
-    "version": "1.0.12",
+    "version": "1.1.0",
     "date": "2026-10-16",
+    "highlights": [
+      {
+        "icon": "gamepad",
+        "go": "settings:client",
+        "en": [
+          "Microsoft Store Roblox, one window per account",
+          "Got Roblox from the Microsoft Store? Bloxkeep now opens your accounts with it, side by side. It’s brand new, so tell us how it goes.",
+          "Choose it"
+        ],
+        "vi": [
+          "Roblox bản Microsoft Store, mỗi tài khoản một cửa sổ",
+          "Cài Roblox từ Microsoft Store? Giờ Bloxkeep mở được các tài khoản bằng bản đó, chạy song song với nhau. Tính năng còn mới tinh, dùng thấy sao thì báo nhé.",
+          "Chọn ngay"
+        ]
+      },
+      {
+        "icon": "globe",
+        "go": "web",
+        "en": [
+          "roblox.com, signed in, a tab per account",
+          "Open the website as any account from its ⋯ menu. Each account gets its own tab, and your own browser never sees any of them.",
+          "Open roblox.com"
+        ],
+        "vi": [
+          "roblox.com đăng nhập sẵn, mỗi tài khoản một tab",
+          "Mở trang web bằng bất kỳ tài khoản nào từ menu ⋯ của nó. Mỗi tài khoản một tab riêng, trình duyệt của bạn không dính dáng gì.",
+          "Mở roblox.com"
+        ]
+      },
+      {
+        "icon": "layers",
+        "go": "settings:asks",
+        "en": [
+          "Fewer questions, better ones",
+          "Multi-Roblox off? Turn it on and play in one click. Mute just the warnings you don’t need, and bring them back any time.",
+          "See your questions"
+        ],
+        "vi": [
+          "Hỏi ít hơn, hỏi đúng lúc",
+          "Multi-Roblox đang tắt? Một cú bấm là vừa bật vừa vào game. Tắt đúng những cảnh báo bạn không cần, muốn thì bật lại lúc nào cũng được.",
+          "Xem các câu hỏi"
+        ]
+      },
+      {
+        "icon": "book",
+        "go": "guide",
+        "en": [
+          "A guide to everything",
+          "Every button and setting explained, from adding your first account to scheduling presets overnight.",
+          "Open the guide"
+        ],
+        "vi": [
+          "Hướng dẫn cho mọi thứ",
+          "Từng nút, từng cài đặt đều được giải thích, từ thêm tài khoản đầu tiên tới hẹn giờ preset chạy qua đêm.",
+          "Mở hướng dẫn"
+        ]
+      }
+    ],
     "en": [
-      "Send feedback: Settings › Bloxkeep updates › Send feedback (or Ctrl+K) sends an idea or a bug report straight to Bloxkeep's developer. A bug report can include Bloxkeep's error log, with account names, ids, passwords and cookies taken out, and you can see exactly what will be sent before it goes.",
-      "Clearer Vietnamese in Settings › Roblox version & graphics."
+      "Discord alerts got a makeover: the account’s avatar, the game’s icon and a clear title.",
+      "Send feedback from inside the app, and see exactly what gets sent before it goes.",
+      "Locking Bloxkeep tells you what pauses, and asks first if something is running.",
+      "The Multi-Roblox card explains Roblox updates in plain words, with what to do next.",
+      "The Needs sign-in and Banned filters come first, and the game box is wider.",
+      "Copy password and Copy 2FA code tell you why when nothing is saved yet.",
+      "Settings › Performance is now called Staying in game.",
+      "Downloads are built by GitHub from the public source code, so anyone can check them."
     ],
     "vi": [
-      "Gửi góp ý: vào Cài đặt › Cập nhật Bloxkeep › Gửi góp ý (hoặc Ctrl+K) để gửi ý tưởng hay báo lỗi thẳng tới người làm Bloxkeep. Khi báo lỗi, bạn có thể gửi kèm nhật ký lỗi của Bloxkeep (đã xóa tên tài khoản, ID, mật khẩu và cookie) và xem trước chính xác những gì sẽ được gửi đi.",
-      "Tiếng Việt ở Cài đặt › Phiên bản & đồ họa Roblox dễ hiểu hơn."
+      "Thông báo Discord được làm mới: có ảnh đại diện tài khoản, biểu tượng game và tiêu đề rõ ràng.",
+      "Gửi góp ý ngay trong app, xem trước đúng những gì sẽ được gửi đi.",
+      "Khóa Bloxkeep giờ nói rõ cái gì sẽ tạm dừng, và hỏi trước nếu đang có cái chạy.",
+      "Thẻ Multi-Roblox giải thích các bản cập nhật Roblox bằng lời dễ hiểu, kèm việc nên làm.",
+      "Bộ lọc Cần đăng nhập lại và Bị ban lên đầu, ô chọn game rộng hơn.",
+      "Sao chép mật khẩu và Sao chép mã 2FA giờ nói rõ lý do khi chưa lưu gì.",
+      "Trang Cài đặt › Hiệu năng đổi tên thành Treo game.",
+      "Toàn bộ tiếng Việt trong app được viết lại cho tự nhiên.",
+      "Bản tải về do GitHub build từ mã nguồn công khai, ai cũng kiểm tra được."
     ]
   },
   {

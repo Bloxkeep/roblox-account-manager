@@ -459,7 +459,7 @@ public sealed partial class AppController
     object? RestoreBackup()
     {
         if (_vault is null && Vault.Exists)
-            throw new UserError(L.T("Unlock Bloxkeep first, then restore from Settings › Backup."));
+            throw new UserError(L.T("Unlock Bloxkeep first, then restore from Settings › Backup & data."));
         if (_launchCts is not null)
             throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
         using var dialog = new OpenFileDialog

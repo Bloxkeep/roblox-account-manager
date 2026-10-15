@@ -1469,6 +1469,40 @@ b, strong { font-weight: 650; }
 .update-btn { height: auto; min-height: 46px; padding: 7px 14px; justify-content: flex-start; text-align: left; }
 .update-btn span { display: grid; gap: 1px; line-height: 1.25; }
 .update-btn small { font-size: 11.5px; font-weight: 500; } /* not faded: small text on the Play colour needs all its contrast */
+/* What's new: the newest release as features, each with an icon on a tint of the theme's accent; older ones folded. */
+.modal:has(.wn-list) { width: min(600px, 100%); }
+.wn-title { display: flex; align-items: center; gap: 12px; }
+.wn-title img { width: 40px; height: 40px; border-radius: 11px; flex: none; }
+.wn-title > span { display: grid; gap: 1px; }
+.wn-title small { font: 500 12.5px var(--font); color: var(--muted); letter-spacing: 0; }
+.wn-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.wn-item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 11px 12px; border-radius: 14px; background: var(--well); border: 1px solid var(--line); }
+.wn-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.wn-ic .i { width: 18px; height: 18px; }
+.wn-item b { display: block; margin: 1px 0 3px; font-size: 14px; font-weight: 650; color: var(--text); }
+.wn-item p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+/* A release with headline features: two cards to a row, each with a button to try it, then "Also new" as a short list. */
+.modal:has(.wn-cards) { width: min(680px, 100%); }
+.wn-cards { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wn-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 15px 13px; border-radius: 16px; background: var(--well); border: 1px solid var(--line); }
+.wn-card .wn-ic { margin-bottom: 4px; }
+.wn-card b { font: 650 14.5px/1.3 var(--font-display); color: var(--text); }
+.wn-card p { flex: 1; margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.wn-go { align-self: flex-start; display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; padding: 5px 10px 5px 12px; border: 1px solid var(--line-2); border-radius: 9px; background: var(--surface); color: var(--text); font: 600 12.5px var(--font); cursor: pointer; transition: border-color .15s, background .15s; }
+.wn-go:hover { border-color: var(--line-3); background: var(--hover); }
+.wn-go .i { width: 14px; height: 14px; color: var(--muted); }
+.wn-sub { margin: 20px 0 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.wn-also { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.wn-also li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.wn-also .i { width: 15px; height: 15px; margin-top: 2px; color: var(--ok); }
+@media (max-width: 720px) { .wn-cards { grid-template-columns: 1fr; } }
+.wn-older { margin-top: 14px; }
+.wn-older summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; color: var(--muted); border-radius: 8px; }
+.wn-older summary::-webkit-details-marker { display: none; }
+.wn-older summary .i { width: 15px; height: 15px; transition: transform .15s; }
+.wn-older[open] summary .i { transform: rotate(90deg); }
+.wn-older summary:hover { color: var(--text-2); }
+.wn-older .wn { margin-top: 12px; }
 .wn + .wn { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .wn-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .wn-head b { font-size: 14px; }

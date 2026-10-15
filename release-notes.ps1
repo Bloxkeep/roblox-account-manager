@@ -10,5 +10,11 @@ if (-not $release) {
 }
 # Built from char codes: Windows PowerShell reads a script without a BOM as ANSI, which would garble the accents.
 $vietnamese = 'Ti' + [char]0x1EBF + 'ng Vi' + [char]0x1EC7 + 't'
-$lines = @($release.en | ForEach-Object { "- $_" }) + '' + "**$vietnamese**" + '' + @($release.vi | ForEach-Object { "- $_" })
+# "Title: what it does" gets its title in bold, as the app's What's new shows it (app.js, splitNote). Headline features
+# (highlights: [title, text, button]) come first, the same way.
+function Note([string]$n) { '- ' + ($n -replace '^([^.:]{1,60}): ', '**$1**: ') }
+function Part([string]$lang) {
+    @($release.highlights | Where-Object { $_ } | ForEach-Object { $w = $_.$lang; "- **$($w[0])**: $($w[1])" }) + @($release.$lang | ForEach-Object { Note $_ })
+}
+$lines = @(Part 'en') + '' + "**$vietnamese**" + '' + @(Part 'vi')
 [IO.File]::WriteAllText($Out, ($lines -join "`n"))

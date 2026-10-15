@@ -26,6 +26,7 @@
     shieldCheck: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
     alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
     info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+    book: '<path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/>',
     layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>',
     external: '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     chevronDown: '<path d="m6 9 6 6 6-6"/>',
@@ -1506,6 +1507,7 @@
         ${page('updates', setGroup('updates', '', `
           <div id="s-update"></div>
           ${row(t('upd.auto'), '', sw('s-autoupd'))}`) + setGroup('feedback', t('fb.group'), `
+          ${row(t('help.title'), t('help.desc'), `<button class="btn sm" data-act="open-guide">${icon('book')}${t('help.open')}</button>`)}
           ${row(t('fb.title'), t('fb.rowDesc'), `<button class="btn sm" data-act="feedback">${icon('message')}${t('fb.open')}</button>`)}`))}
         <p class="set-empty" id="set-empty" hidden>${t('set.noMatch')}</p>
       </div></div>
@@ -1903,18 +1905,66 @@
     });
   }
 
-  /** Release notes, newest first: shown once after an update, and any time from Settings › Updates. */
+  /** A release note's icon, from the words in it (either language); the first match wins. */
+  const WN_ICONS = [
+    [/microsoft store/i, 'gamepad'], [/website|roblox\.com|trang web/i, 'globe'], [/discord/i, 'message'],
+    [/guide|hướng dẫn/i, 'book'], [/feedback|góp ý/i, 'message'], [/lock app|khóa app/i, 'lock'],
+    [/before you open|question|câu hỏi|lưu ý/i, 'alert'], [/multi-roblox/i, 'layers'], [/theme|giao diện/i, 'palette'],
+    [/faster|nhanh hơn/i, 'gauge'], [/vietnamese|tiếng việt/i, 'languages'], [/github|download|tải về/i, 'shield'],
+    [/preset|schedule|hẹn giờ/i, 'calendar'], [/password|mật khẩu/i, 'key'],
+  ];
+  /** "Title: what it does" as [title, text]; a note without a short title before its first ": " is all text. */
+  function splitNote(note) {
+    const i = note.indexOf(': ');
+    if (!(i > 0 && i <= 60 && !note.slice(0, i).includes('.'))) return ['', note];
+    const text = note.slice(i + 2); // under its own title it starts a sentence: "choose it…" reads "Choose it…"
+    return [note.slice(0, i), text.charAt(0).toLocaleUpperCase(locale()) + text.slice(1)];
+  }
+  /**
+   * Release notes: shown once after an update, and any time from Settings › Updates. The newest release is laid out as
+   * features (an icon, the title before the note's colon, then the rest); older ones it skipped over are folded below.
+   */
   function showWhatsNew(releases, onClose) {
     if (!releases?.length) return;
     const day = d => {
       const date = new Date(`${d}T00:00:00`);
       return isNaN(date) ? '' : date.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
     };
+    const notes = r => (lang === 'vi' && r.vi?.length ? r.vi : r.en) || [];
+    const feature = note => {
+      const [title, text] = splitNote(note);
+      const ic = WN_ICONS.find(([re]) => re.test(title || text))?.[1] || 'check';
+      return `<li class="wn-item"><span class="wn-ic">${icon(ic)}</span><div>${title ? `<b>${esc(title)}</b>` : ''}<p>${esc(text)}</p></div></li>`;
+    };
+    const [latest, ...older] = releases;
+    // A release with headline features: those as cards with a button to try each, its other lines under "Also new".
+    const highlights = latest.highlights || [];
+    const words = h => (lang === 'vi' && h.vi?.length ? h.vi : h.en) || [];
+    const card = (h, i) => {
+      const [title, text, button] = words(h);
+      return `<li class="wn-card"><span class="wn-ic">${icon(h.icon || 'check')}</span><b>${esc(title)}</b><p>${esc(text)}</p>${h.go && button
+        ? `<button type="button" class="wn-go" data-go="${i}">${esc(button)}${icon('chevronRight')}</button>` : ''}</li>`;
+    };
+    const main = highlights.length
+      ? `<ul class="wn-cards">${highlights.map(card).join('')}</ul>${notes(latest).length
+        ? `<h4 class="wn-sub">${t('wn.also')}</h4><ul class="wn-also">${notes(latest).map(n => `<li>${icon('check')}<span>${esc(n)}</span></li>`).join('')}</ul>` : ''}`
+      : `<ul class="wn-list">${notes(latest).map(feature).join('')}</ul>`;
     modal({
-      title: t('wn.title', { v: esc(releases[0].version) }),
-      body: releases.map(r => `<section class="wn"><div class="wn-head"><b>${esc(r.version)}</b><span>${day(r.date)}</span></div>
-        <ul>${((lang === 'vi' && r.vi?.length ? r.vi : r.en) || []).map(n => `<li>${esc(n)}</li>`).join('')}</ul></section>`).join(''),
+      title: `<span class="wn-title"><img src="${LOGO}" alt=""><span>${t('wn.heading')}<small>${esc(`Bloxkeep ${latest.version}`)}${latest.date ? ` · ${esc(day(latest.date))}` : ''}</small></span></span>`,
+      body: `${main}
+        ${older.length ? `<details class="wn-older"><summary>${icon('chevronRight')}${tn('wn.older', older.length)}</summary>
+          ${older.map(r => `<section class="wn"><div class="wn-head"><b>${esc(r.version)}</b><span>${day(r.date)}</span></div>
+            <ul>${notes(r).map(n => `<li>${esc(n)}</li>`).join('')}</ul></section>`).join('')}</details>` : ''}`,
       actions: [{ text: t('wn.ok'), kind: 'primary', onClick: ({ close }) => close() }],
+      onMount: ({ el, close }) => el.addEventListener('click', e => {
+        const go = highlights[+e.target.closest('[data-go]')?.dataset.go]?.go;
+        if (!go) return;
+        close();
+        if (go.startsWith('settings:')) openSettings(go.slice(9));
+        else if (go === 'guide') call('openGuide');
+        else if (go === 'web') call('openWebsiteBlank');
+        else if (go === 'feedback') feedbackModal();
+      }),
       onClose,
     });
   }
@@ -5185,6 +5235,7 @@
         run: () => S.app.backup?.folder ? busy(null, async () => { if (await call('backupNow') !== undefined) toast(t('bk.done'), 'ok'); }) : openSection('backup')() },
       { id: 'updates', icon: 'download', text: t('pal.checkUpdates'), run: () => { openSection('updates')(); $('#sec-updates [data-act="check-updates"]')?.click(); } },
       { id: 'feedback', icon: 'message', text: t('fb.title'), keywords: ['bug', 'report', 'idea', 'feedback', 'góp ý', 'báo lỗi'], run: () => feedbackModal() },
+      { id: 'guide', icon: 'book', text: t('help.title'), keywords: ['help', 'guide', 'manual', 'how', 'hướng dẫn', 'trợ giúp'], run: () => call('openGuide') },
       { id: 'export', icon: 'history', text: t('pal.exportActivity'), keywords: ['csv', 'log'], run: () => { setView('stats'); toActivity(); exportActivity(null); } }, // the list may not be loaded yet: the app knows
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
       { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => lockApp() },
@@ -5548,6 +5599,8 @@
           '-',
           { icon: 'power', text: t('m.closeAll'), danger: true, run: () => closeAll() },
           { icon: 'x', text: t('m.killAll'), danger: true, run: () => closeAll(true) },
+          '-',
+          { icon: 'book', text: t('help.title'), run: () => call('openGuide') },
         ], 280);
       case 'layout':
         S.layout = el.dataset.l === 'list' ? 'list' : 'cards';
@@ -5612,6 +5665,7 @@
       case 'ru-hide': return call('hideRobloxClosed');
       case 'ru-open': return openSettings('rbxupd');
       case 'rw-how': return call('openRobloxWatch');
+      case 'open-guide': return call('openGuide');
       case 'feedback': return feedbackModal();
       case 'select-all': return selectAllVisible();
       case 'clear-search':

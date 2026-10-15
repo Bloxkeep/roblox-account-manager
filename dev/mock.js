@@ -270,7 +270,8 @@
         case 'keepView': case 'pageBusy': return null;
         case 'servers': await wait(400); return { servers: Array.from({ length: 12 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 15 - i, maxPlayers: 15, ping: 140 - i * 9, fps: 50 + (i * 7) % 11 })), next: a?.cursor ? null : 'more' };
         case 'seenWhatsNew': return null;
-        case 'whatsNew': return [{ version: '1.0.0', date: '2026-10-12', en: ['First release.'], vi: ['Bản đầu tiên.'] }];
+        // The real notes, newest first: the newest three, as after an update over two versions (?wn=1: only the newest).
+        case 'whatsNew': return (await fetch('/RobloxManager/whatsnew.json').then(r => r.json())).slice(0, +(params.get('wn') || 3));
         case 'unlock': case 'createVault':
           await wait(500);
           if (a.password === 'sai') throw new Error('Sai mật khẩu chủ.');

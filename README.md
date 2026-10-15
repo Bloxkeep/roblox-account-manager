@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/.NET-10-512BD4" alt="Built with .NET 10">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
 </p>
-<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 <p align="center"><img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards with two accounts chosen, the game bar at the bottom, and Multi-Roblox turned on"></p>
 
@@ -119,7 +119,7 @@ Open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publis
 - While checking, Bloxkeep also looks at whether the account is **Banned** (Roblox's public information). A banned account gets a red tag, and **Play** and presets skip it.
 - **Edit…** (`F2`) sets a **Nickname**, **Group** and **Note**. There you can also store the account's **Roblox password** if you want to (optional); it stays in the encrypted vault.
 - **Authenticator key** (in **Edit…**): paste the account's 2FA key or `otpauth://` link and Bloxkeep shows the running 6-digit code. **Copy 2FA code** is in the ⋯ menu. Anyone with your master password can make codes too, so only store the key if that's fine with you.
-- **Copy password**, **Copy cookie** and **Copy 2FA code** stay out of Windows clipboard history and are wiped after 30 seconds.
+- **Copy password** and **Copy 2FA code** stay out of Windows clipboard history and are wiped after 30 seconds. They work once you have saved the password or the authenticator key under **Edit** (no way of signing in keeps the password).
 - **Hide account names** (in **Settings › Appearance**): every place shows **Account 1**, **Account 2**… instead, Roblox window titles included, for screenshots and streams.
 - **Open website** (in each account's ⋯ menu): roblox.com signed in as that account, in a window of Bloxkeep's own. Open several to use different accounts side by side. The sign-in stays in that window only (never in your Chrome or Edge) and is gone when it closes. Signing out there would also sign the account out of Bloxkeep, so Bloxkeep stops it: just close the window.
 - **Open roblox.com** (in the menu next to **Add account**): a blank window to sign in on the site itself, one account per window, as many side by side as you like. Its sign-in is gone when the window closes, unless you press **Save to Bloxkeep**; the account is then in your list and opens signed in next time.
@@ -182,11 +182,11 @@ Bloxkeep's Roblox watch also checks each new Roblox build as soon as Roblox offe
 
 ### Anti-AFK
 
-Roblox kicks an account after 20 minutes without input. With **Settings › Performance › Anti-AFK** on (a preset can override it), Bloxkeep brings each Roblox window that is in a game to the front for a moment, moves the mouse a few pixels over it and back, and returns you to the window you were in. No key is pressed and nothing is clicked. It steps in from 12 minutes after a window's last input, at the first minute nobody uses the PC; a window two minutes from its kick goes in a 2-second pause even while you use the PC, but never over a full-screen app. It can't work while the PC is locked. If an account is kicked anyway, Bloxkeep says why.
+Roblox kicks an account after 20 minutes without input. With **Settings › Staying in game › Anti-AFK** on (a preset can override it), Bloxkeep brings each Roblox window that is in a game to the front for a moment, moves the mouse a few pixels over it and back, and returns you to the window you were in. No key is pressed and nothing is clicked. It steps in from 12 minutes after a window's last input, at the first minute nobody uses the PC; a window two minutes from its kick goes in a 2-second pause even while you use the PC, but never over a full-screen app. It can't work while the PC is locked. If an account is kicked anyway, Bloxkeep says why.
 
 ### Auto-rejoin
 
-Turn it on per account in the ⋯ menu › **Auto-rejoin**, or for every account at once in **Settings › Performance › Auto-rejoin** (a preset can override it; see [Presets](#presets)). If Roblox ended an account's sign-in, auto-rejoin turns itself off for it, and back on once the account is signed in again. When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. If it keeps dropping, from the third time Bloxkeep waits 2, 5, 10, then 15 minutes between tries (the card shows the wait with a **Cancel** button); 10 minutes in the game resets the count. Without a network, it retries every 30 seconds, up to 20 times.
+Turn it on per account in the ⋯ menu › **Auto-rejoin**, or for every account at once in **Settings › Staying in game › Auto-rejoin** (a preset can override it; see [Presets](#presets)). If Roblox ended an account's sign-in, auto-rejoin turns itself off for it, and back on once the account is signed in again. When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. If it keeps dropping, from the third time Bloxkeep waits 2, 5, 10, then 15 minutes between tries (the card shows the wait with a **Cancel** button); 10 minutes in the game resets the count. Without a network, it retries every 30 seconds, up to 20 times.
 
 Bloxkeep doesn't rejoin when you leave the game yourself, when the account signed in on another device, when it's banned, or when Roblox itself closed the window because another one opened. Closing the Roblox window by hand counts as leaving, so use **Close** in the app.
 
@@ -210,7 +210,7 @@ Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's
 | **Roblox (official)** | The client from roblox.com |
 | **RobloxPlayerBeta directly (skip launchers)** | No launcher at all; try it when a launcher blocks several windows |
 | **Choose another launcher…** | An exe you pick |
-| **Roblox (Microsoft Store)** | Not supported: it can't open the account you chose. Install Roblox from roblox.com |
+| **Roblox (Microsoft Store)** | Being tested: each account opens in a Store Roblox window of its own, skipping Microsoft's launcher. The Microsoft Store keeps it updated |
 
 ### Windows, RAM and the game monitor
 
@@ -238,7 +238,7 @@ Switch to **Activity** for the log: accounts opened, games joined and left, drop
 - **Windows notifications** (on by default): only while Bloxkeep is in the background. Turn each kind on or off in **Settings › Notifications**: account dropped or auto-rejoin, scheduled presets, sign-in needs renewing, low RAM, launch problems.
 - **Discord** (off by default): paste a channel's webhook link in **Settings › Discord** (switching **Send to Discord** on without one asks for it). **Send automatically** a play-time summary every day, every week or both: a picture of play time by hour (or day) coloured by game with a row per account and its avatar, the totals against the period before, drops with Roblox's codes, the longest stay, the most windows at once, the top games, and a block per preset with its accounts; keep a **Status message** up to date; and send **Alerts** for the events above, with a **Ping** for a person or a role. There are **Quiet hours** and **Customise messages** (sender name and picture, language, message style, **Hide account names in messages**).
 - **Settings › Appearance**: **Theme** has 74 themes in five groups (Basic, Scenery, Colourful, Styles, Seasonal) plus **Sync with Windows** (**Dark** by default). Scenery and Seasonal themes have a drawn scene behind glass panels; Styles change the shapes too (Windows 98, macOS with working window buttons, GNOME, Ubuntu, KDE, Game Boy, Notebook…). Also **Language** English / Tiếng Việt, and **Hide account names**.
-- **Hardware acceleration** (in **Settings › Performance**): draws the interface with the graphics card instead of the CPU; it turns itself off if the graphics driver keeps failing.
+- **Hardware acceleration** (in **Settings › Staying in game**): draws the interface with the graphics card instead of the CPU; it turns itself off if the graphics driver keeps failing.
 
 <img src="docs/screenshots/discord.png" width="800" alt="The Discord page in Settings: send to Discord, webhook link, play-time summary">
 
@@ -320,7 +320,7 @@ Turn on **Settings › Backup & data › Back up to a folder**, then click **Cho
 ## Known limits and testing status
 
 - Roblox's online status lags: after you leave a game, Roblox can still report "playing" for a few minutes.
-- The Microsoft Store version of Roblox can't be used.
+- Roblox from the Microsoft Store is still being tested (**Settings › Launching › Open Roblox with**). Bloxkeep's Roblox settings for the windows (windowed, graphics) aren't applied to it yet.
 - Roblox VNG accounts can be added, but games can't be opened for them yet.
 - Multi-Roblox: Bloxkeep has to be open before Roblox and stay open while you play. If Roblox (including one in the tray) opened first, the light stays yellow until every Roblox is closed. Roblox doesn't officially support several clients, and a later Roblox build may change how it blocks them.
 - Per-app VPNs: if Roblox goes through a VPN and Bloxkeep doesn't, opening a game can fail with error 403. See the [FAQ](#faq).
@@ -410,9 +410,9 @@ Only to Roblox. A password you sign in with only goes to Roblox's sign-in server
 </details>
 
 <details>
-<summary>Why isn't the Microsoft Store version of Roblox supported?</summary>
+<summary>Can I use Roblox from the Microsoft Store?</summary>
 
-The Store version can't open the account you choose, so Bloxkeep can't use it. Install Roblox from roblox.com (Bloxstrap or Fishstrap on top is fine).
+Yes, while it's being tested: choose **Roblox (Microsoft Store)** under **Settings › Launching › Open Roblox with**. Microsoft's own launcher lets only one Store Roblox run, so Bloxkeep starts the Store's Roblox itself, with each account's own sign-in, in a window of its own. Updates still come from the Microsoft Store. If it doesn't work for you, Roblox from roblox.com works the same way, with Bloxstrap or Fishstrap if you like.
 </details>
 
 <details>
