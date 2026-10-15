@@ -4391,6 +4391,9 @@
       ...(S.app.settings?.robloxConfig?.mode === 'marked'
         ? [{ icon: 'sliders', text: t('m.robloxConfig'), checked: ids.every(i => byId(i)?.useRobloxConfig), run: () => toggleRobloxConfig(ids) }] : []),
       { icon: 'external', text: t('m.profile'), disabled: many || !a.userId, run: () => call('openProfile', { userId: a.userId }) },
+      // roblox.com signed in as this account, in a window of Bloxkeep's own (one per account, several side by side).
+      { icon: 'globe', text: t('m.website'), disabled: many || a.realm === 'vng', title: a.realm === 'vng' ? esc(t('card.vngNoPlay')) : '',
+        run: () => call('openWebsite', { id }) },
       '-',
       { icon: 'copy', text: t('m.copyUser'), disabled: many, run: () => copy(id, 'username') },
       { icon: 'key', text: t('m.copyPw'), disabled: many || !a.hasPassword, run: () => copy(id, 'password') },

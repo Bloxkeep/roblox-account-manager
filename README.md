@@ -121,6 +121,7 @@ Open Windows **Settings › Apps › Installed apps**, find **Bloxkeep** (publis
 - **Authenticator key** (in **Edit…**): paste the account's 2FA key or `otpauth://` link and Bloxkeep shows the running 6-digit code. **Copy 2FA code** is in the ⋯ menu. Anyone with your master password can make codes too, so only store the key if that's fine with you.
 - **Copy password**, **Copy cookie** and **Copy 2FA code** stay out of Windows clipboard history and are wiped after 30 seconds.
 - **Hide account names** (in **Settings › Appearance**): every place shows **Account 1**, **Account 2**… instead, Roblox window titles included, for screenshots and streams.
+- **Open website** (in each account's ⋯ menu): roblox.com signed in as that account, in a window of Bloxkeep's own. Open several to use different accounts side by side. The sign-in stays in that window only (never in your Chrome or Edge) and is gone when it closes. Signing out there would also sign the account out of Bloxkeep, so Bloxkeep stops it: just close the window.
 
 <img src="docs/screenshots/accounts-list.png" width="800" alt="The account list in list view with each account's status">
 

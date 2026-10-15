@@ -1,0 +1,437 @@
+using System.Runtime.InteropServices;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
+
+namespace RobloxManager;
+
+/// <summary>
+/// www.roblox.com signed in as one saved account, in a browser of Bloxkeep's own. Every window is an InPrivate profile
+/// of its own, so several accounts can be open side by side: the account's session cookie is placed only in that
+/// profile, kept in memory and never written to disk, and it never reaches the person's Chrome or Edge. All windows
+/// share one browser (one temporary folder in %TEMP%), deleted when the last window closes.
+/// Signing out on the site would end the saved session too, so it is stopped and explained instead.
+/// </summary>
+public sealed class WebsiteForm : Form
+{
+    const string FolderPrefix = "Bloxkeep-web-";
+    const string HomeUrl = "https://www.roblox.com/home";
+    const string CookieName = ".ROBLOSECURITY";
+    /// <summary>A blocked connection hangs instead of failing, so don't wait for the browser to give up.</summary>
+    static readonly TimeSpan SlowAfter = TimeSpan.FromSeconds(12);
+
+    // The browser all website windows share, and its folder; a new one (new folder) once the last window has closed.
+    static Task<CoreWebView2Environment>? _env;
+    static string? _envDir;
+    static int _windows;
+
+    readonly Themes.Theme _theme = Themes.Current;
+    readonly Func<string, Task<bool>> _onSessionChanged;
+    readonly ToolTip _tips = new();
+    readonly System.Windows.Forms.Timer _slow = new() { Interval = (int)SlowAfter.TotalMilliseconds };
+    // Roblox may hand the site a new session cookie (after "Log out of all other sessions", for one); read back now and
+    // then, so the saved account keeps a session that works.
+    readonly System.Windows.Forms.Timer _sync = new() { Interval = 15000 };
+    readonly Label _message;
+    readonly Button _retry, _back, _forward;
+    readonly WebView2 _web;
+    string _cookie;
+    bool _closing, _synced, _syncing, _askingLogout, _hasWindow;
+    /// <summary>Asks whether to close the window after a sign-out was stopped; replaced by the checks.</summary>
+    Func<WebsiteForm, bool> _askCloseOnLogout = AskCloseOnLogout;
+
+    public Guid AccountId { get; }
+
+    /// <param name="onSessionChanged">
+    /// Gets a session cookie the site holds that differs from the one this window was given, to check and save it;
+    /// false = couldn't tell yet (no internet), ask again at the next read.
+    /// </param>
+    public WebsiteForm(Guid accountId, string name, string cookie, Func<string, Task<bool>> onSessionChanged)
+    {
+        AccountId = accountId;
+        _cookie = cookie;
+        _onSessionChanged = onSessionChanged;
+        SetName(name);
+        Icon = Ui.AppIcon;
+        BackColor = _theme.Background;
+        StartPosition = FormStartPosition.Manual;
+        MinimumSize = new Size(LogicalToDeviceUnits(480), LogicalToDeviceUnits(360));
+
+        _back = NavButton("", L.T("Back"), core => core.GoBack());
+        _forward = NavButton("", L.T("Forward"), core => core.GoForward());
+        var reload = NavButton("", L.T("Reload"), core => core.Reload());
+        _back.Enabled = _forward.Enabled = false;
+        _message = new Label
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleLeft,
+            ForeColor = _theme.Text2,
+            Padding = new Padding(LogicalToDeviceUnits(8), 0, 0, 0),
+        };
+        _retry = new Button
+        {
+            Text = L.T("Retry"),
+            Dock = DockStyle.Right,
+            Width = LogicalToDeviceUnits(96),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = _theme.Surface,
+            ForeColor = _theme.Text,
+            Cursor = Cursors.Hand,
+            Visible = false,
+        };
+        _retry.FlatAppearance.BorderColor = _theme.Line;
+        _retry.Click += (_, _) => OpenHome();
+        var bar = new Panel { Dock = DockStyle.Top, Height = LogicalToDeviceUnits(40), Padding = new Padding(6, 4, 8, 4), BackColor = _theme.Surface };
+        bar.Controls.Add(_message);
+        bar.Controls.Add(_retry);
+        bar.Controls.Add(reload);
+        bar.Controls.Add(_forward);
+        bar.Controls.Add(_back);
+        _web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = _theme.Background };
+        Controls.Add(_web);
+        Controls.Add(bar);
+
+        _slow.Tick += (_, _) =>
+        {
+            _slow.Stop();
+            ShowUnreachable();
+        };
+        _sync.Tick += async (_, _) => await SyncSessionAsync();
+        Load += async (_, _) => await OpenAsync();
+    }
+
+    /// <summary>The title: which account this window is signed in as (follows Settings › Hide account names).</summary>
+    public void SetName(string name) => Text = L.F("{0} — Roblox", name);
+
+    /// <summary>Opens beside the main window, each further window a little lower and to the right.</summary>
+    public void PlaceNear(Form owner, int index)
+    {
+        var area = Screen.FromControl(owner).WorkingArea;
+        var size = new Size(Math.Min(LogicalToDeviceUnits(1280), area.Width), Math.Min(LogicalToDeviceUnits(860), area.Height));
+        int step = LogicalToDeviceUnits(32) * (index % 6);
+        Bounds = new Rectangle(
+            Math.Clamp(area.Left + (area.Width - size.Width) / 2 + step, area.Left, area.Right - size.Width),
+            Math.Clamp(area.Top + (area.Height - size.Height) / 2 + step, area.Top, area.Bottom - size.Height),
+            size.Width, size.Height);
+    }
+
+    Button NavButton(string glyph, string tip, Action<CoreWebView2> go)
+    {
+        var button = new Button
+        {
+            Text = glyph,
+            Font = new Font(IconFont, 10f),
+            Dock = DockStyle.Left,
+            Width = LogicalToDeviceUnits(36),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = _theme.Surface,
+            ForeColor = _theme.Text,
+            Cursor = Cursors.Hand,
+            TabStop = false,
+        };
+        button.FlatAppearance.BorderSize = 0;
+        _tips.SetToolTip(button, tip);
+        button.AccessibleName = tip;
+        button.Click += (_, _) =>
+        {
+            if (_web.CoreWebView2 is { } core)
+                go(core);
+        };
+        return button;
+    }
+
+    /// <summary>Windows 11's icon font, or Windows 10's.</summary>
+    static readonly string IconFont = FontFamily.Families.Any(f => f.Name == "Segoe Fluent Icons") ? "Segoe Fluent Icons" : "Segoe MDL2 Assets";
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        Ui.UseThemedTitleBar(this, _theme);
+    }
+
+    static Task<CoreWebView2Environment> SharedBrowser()
+    {
+        if (_env is null || _env.IsFaulted || _env.IsCanceled)
+        {
+            _envDir = Path.Combine(Path.GetTempPath(), FolderPrefix + Guid.NewGuid().ToString("N"));
+            _env = CoreWebView2Environment.CreateAsync(null, _envDir, WebView2Setup.EnvironmentOptions());
+        }
+        return _env;
+    }
+
+    async Task OpenAsync()
+    {
+        _windows++;
+        _hasWindow = true;
+        try
+        {
+            var env = await SharedBrowser();
+            var options = env.CreateCoreWebView2ControllerOptions();
+            // A profile of its own per window, kept in memory only: nothing of the session reaches the disk.
+            options.ProfileName = "w" + Guid.NewGuid().ToString("N");
+            options.IsInPrivateModeEnabled = true;
+            await _web.EnsureCoreWebView2Async(env, options);
+            if (_closing || _web.IsDisposed)
+                return;
+            var core = _web.CoreWebView2;
+            core.Settings.IsPasswordAutosaveEnabled = false;
+            core.Settings.IsGeneralAutofillEnabled = false;
+            // DevTools would show the session cookie, which is how cookie thieves talk people into sharing it.
+            core.Settings.AreDevToolsEnabled = false;
+            if (_cookie.Length > 0)
+            {
+                // Only in this window's profile, as a cookie for this browser session only.
+                var session = core.CookieManager.CreateCookie(CookieName, _cookie, ".roblox.com", "/");
+                session.IsSecure = true;
+                session.IsHttpOnly = true;
+                core.CookieManager.AddOrUpdateCookie(session);
+            }
+            GuardSignOut(core, env);
+
+            core.NewWindowRequested += (_, e) =>
+            {
+                // Roblox pages stay in this window (the account's); anything else opens in the person's own browser,
+                // which has no reason to know this account.
+                e.Handled = true;
+                if (IsRoblox(e.Uri))
+                    core.Navigate(e.Uri);
+                else if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http")
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })?.Dispose();
+            };
+            core.HistoryChanged += (_, _) =>
+            {
+                _back.Enabled = core.CanGoBack;
+                _forward.Enabled = core.CanGoForward;
+            };
+            core.NavigationStarting += (_, e) =>
+            {
+                _slow.Stop();
+                if (e.Cancel)
+                    return;
+                _slow.Start();
+            };
+            core.ContentLoading += (_, e) =>
+            {
+                if (e.IsErrorPage || _closing)
+                    return;
+                _slow.Stop();
+                _retry.Visible = false;
+                Say("", _theme.Text2);
+            };
+            core.NavigationCompleted += (_, e) =>
+            {
+                _slow.Stop();
+                // Canceled = superseded by another navigation (redirects); a status code = Roblox answered (a 404 page).
+                if (e.IsSuccess || e.HttpStatusCode > 0 || e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled || _closing)
+                    return;
+                ShowUnreachable();
+            };
+            OpenHome();
+            _sync.Start();
+        }
+        catch (WebView2RuntimeNotFoundException)
+        {
+            Ui.Error(this, L.T("Microsoft Edge WebView2 isn't installed. Install it from Microsoft's website, then reopen Bloxkeep."));
+            Close();
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or UnauthorizedAccessException or ObjectDisposedException)
+        {
+            if (!_closing)
+            {
+                Ui.Error(this, L.F("Couldn't open the Roblox website: {0}", ex.Message));
+                Close();
+            }
+        }
+    }
+
+    static bool IsRoblox(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https"
+        && (uri.Host.Equals("roblox.com", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".roblox.com", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The site's sign-out: it would end this session on Roblox's side, and with it the account saved in Bloxkeep.</summary>
+    static bool IsSignOut(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && IsRoblox(url)
+        && (uri.Host.Equals("auth.roblox.com", StringComparison.OrdinalIgnoreCase)
+                ? uri.AbsolutePath.TrimEnd('/') is var path && (path.Equals("/v1/logout", StringComparison.OrdinalIgnoreCase) || path.Equals("/v2/logout", StringComparison.OrdinalIgnoreCase))
+                : uri.AbsolutePath.StartsWith("/logout", StringComparison.OrdinalIgnoreCase));
+
+    void GuardSignOut(CoreWebView2 core, CoreWebView2Environment env)
+    {
+        const string Filter = "https://auth.roblox.com/v*/logout*";
+        try
+        {
+            // Also requests from workers and frames, on runtimes that can say so.
+            core.AddWebResourceRequestedFilter(Filter, CoreWebView2WebResourceContext.All, CoreWebView2WebResourceRequestSourceKinds.All);
+        }
+        catch (Exception ex) when (ex is NotImplementedException or InvalidCastException or COMException)
+        {
+            core.AddWebResourceRequestedFilter(Filter, CoreWebView2WebResourceContext.All);
+        }
+        core.WebResourceRequested += (_, e) =>
+        {
+            // "Log out of all other sessions" (logoutfromallsessionsandreauthenticate) goes through: this session gets a
+            // new cookie, which SyncSessionAsync saves.
+            if (!IsSignOut(e.Request.Uri) || !e.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
+                return;
+            e.Response = env.CreateWebResourceResponse(null, 403, "Forbidden", "Content-Type: application/json");
+            BeginInvoke(SignOutStopped);
+        };
+        core.NavigationStarting += (_, e) =>
+        {
+            if (!IsSignOut(e.Uri))
+                return;
+            e.Cancel = true;
+            BeginInvoke(SignOutStopped);
+        };
+    }
+
+    void SignOutStopped()
+    {
+        if (_askingLogout || _closing || IsDisposed)
+            return;
+        _askingLogout = true;
+        bool close;
+        try
+        {
+            close = _askCloseOnLogout(this);
+        }
+        finally
+        {
+            _askingLogout = false;
+        }
+        if (close && !IsDisposed)
+            Close();
+    }
+
+    static bool AskCloseOnLogout(WebsiteForm form) =>
+        Ui.Modal(() => Dialog.Show(form,
+            L.T("Signing out here would also sign this account out of Bloxkeep, and you'd have to add it again. When you're done, just close this window."),
+            L.T("Sign-out stopped"), Dialog.Kind.Info, [new Dialog.Choice(L.T("Close window")), new Dialog.Choice(L.T("Keep browsing"))])) == 0;
+
+    void OpenHome()
+    {
+        if (_web.CoreWebView2 is not { } core)
+            return;
+        _retry.Visible = false;
+        Say(L.T("Opening roblox.com…"), _theme.Text2);
+        core.Navigate(HomeUrl);
+    }
+
+    void ShowUnreachable()
+    {
+        if (_closing)
+            return;
+        Say(L.T("Can't reach roblox.com. Check your internet connection, then press Retry."), _theme.Bad);
+        _retry.Visible = true;
+    }
+
+    void Say(string text, Color color)
+    {
+        _message.Text = text;
+        _message.ForeColor = color;
+    }
+
+    /// <summary>Reads the session the site holds; a different one (Roblox renewed it) goes to the app to check and save.</summary>
+    async Task SyncSessionAsync()
+    {
+        if (_syncing || _web.CoreWebView2 is not { } core)
+            return;
+        _syncing = true;
+        try
+        {
+            var cookies = await core.CookieManager.GetCookiesAsync("https://www.roblox.com");
+            string? now = cookies.FirstOrDefault(c => c.Name == CookieName && !string.IsNullOrEmpty(c.Value))?.Value;
+            // None: signed out some other way, or not yet; the saved session is left as it is.
+            if (now is null || now == _cookie)
+                return;
+            if (await _onSessionChanged(now))
+                _cookie = now;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
+        {
+            // The page is navigating or the window is closing; the next read tries again.
+        }
+        finally
+        {
+            _syncing = false;
+        }
+    }
+
+    /// <summary>Closes without the last read of the session (the vault is locking, or the app quitting).</summary>
+    public void CloseNow()
+    {
+        _synced = true;
+        Close();
+    }
+
+    protected override async void OnFormClosing(FormClosingEventArgs e)
+    {
+        base.OnFormClosing(e);
+        if (e.Cancel || _synced || _web.CoreWebView2 is null)
+            return;
+        // One last read of the session before the window goes, a moment at most.
+        e.Cancel = true;
+        _synced = true;
+        Hide();
+        try
+        {
+            await Task.WhenAny(SyncSessionAsync(), Task.Delay(3000));
+        }
+        finally
+        {
+            if (!IsDisposed)
+                Close();
+        }
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        _closing = true;
+        _slow.Dispose();
+        _sync.Dispose();
+        _tips.Dispose();
+        Controls.Remove(_web);
+        _web.Dispose();
+        if (_hasWindow && --_windows == 0 && _envDir is { } dir)
+        {
+            // The last window: the shared browser exits a moment after, and its folder goes with it.
+            _env = null;
+            _envDir = null;
+            _ = Task.Run(() => DeleteFolderAsync(dir));
+        }
+        base.OnFormClosed(e);
+    }
+
+    /// <summary>The browser process exits a moment after the control is disposed, so deletion is retried.</summary>
+    static async Task DeleteFolderAsync(string dir)
+    {
+        for (int i = 0; i < 30 && Directory.Exists(dir); i++)
+        {
+            try
+            {
+                Directory.Delete(dir, recursive: true);
+                return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                await Task.Delay(500);
+            }
+        }
+    }
+
+    /// <summary>Removes folders left behind if the app was closed before deletion finished.</summary>
+    public static void CleanupLeftovers()
+    {
+        try
+        {
+            foreach (var dir in Directory.EnumerateDirectories(Path.GetTempPath(), FolderPrefix + "*"))
+            {
+                try { Directory.Delete(dir, recursive: true); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+}

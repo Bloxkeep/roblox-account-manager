@@ -115,6 +115,7 @@ Vào **Settings › Apps › Installed apps** của Windows, tìm **Bloxkeep** (
 - **Khóa app xác thực** (trong **Sửa…**): dán khóa 2FA hoặc link `otpauth://` của tài khoản, Bloxkeep hiện mã 6 số đang chạy. **Sao chép mã 2FA** có trong menu ⋯. Ai biết mật khẩu chủ của bạn cũng tạo được mã, nên chỉ lưu khóa khi bạn chấp nhận điều đó.
 - **Sao chép mật khẩu**, **Sao chép cookie** và **Sao chép mã 2FA** không vào lịch sử clipboard của Windows và tự xóa sau 30 giây.
 - **Ẩn tên tài khoản** (trong **Cài đặt › Giao diện**): mọi chỗ hiện **Tài khoản 1**, **Tài khoản 2**… thay cho tên, kể cả tiêu đề cửa sổ Roblox, tiện khi chụp màn hình hay livestream.
+- **Mở trang web** (trong menu ⋯ của mỗi tài khoản): roblox.com đã đăng nhập sẵn tài khoản đó, trong cửa sổ riêng của Bloxkeep. Mở nhiều cửa sổ để dùng nhiều tài khoản cùng lúc. Phiên đăng nhập chỉ nằm trong cửa sổ đó (không vào Chrome hay Edge của bạn) và mất khi đóng cửa sổ. Đăng xuất ở đó cũng sẽ đăng xuất tài khoản khỏi Bloxkeep nên Bloxkeep chặn lại: xem xong chỉ cần đóng cửa sổ.
 
 <img src="docs/screenshots/vi/accounts-list.png" width="800" alt="Danh sách tài khoản dạng danh sách với trạng thái từng tài khoản">
 

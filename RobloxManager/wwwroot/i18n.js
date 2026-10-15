@@ -269,7 +269,7 @@ window.I18N = {
     't.refreshed': 'Status refreshed.', 't.refreshBusy': 'Already refreshing — one moment.', 't.saved': 'Saved.',
 
     'm.play': 'Play', 'm.playN': 'Play ({n} accounts)', 'm.openApp': 'Open Roblox (no game)', 'm.close': 'Close Roblox',
-    'm.edit': 'Edit…', 'm.check': 'Check sign-in', 'm.profile': 'Roblox profile',
+    'm.edit': 'Edit…', 'm.check': 'Check sign-in', 'm.profile': 'Roblox profile', 'm.website': 'Open website',
     'm.copyUser': 'Copy username', 'm.copyPw': 'Copy password', 'm.copyCookie': 'Copy cookie',
     'm.delete': 'Delete', 'm.deleteN': 'Delete {n} accounts',
     'm.addCode': 'Sign in with your phone', 'm.addBrowser': 'Sign in with a browser', 'm.addCookie': 'Paste a cookie',
@@ -706,7 +706,7 @@ window.I18N = {
     't.refreshed': 'Đã làm mới trạng thái.', 't.refreshBusy': 'Đang làm mới rồi, chờ một chút.', 't.saved': 'Đã lưu.',
 
     'm.play': 'Vào game', 'm.playN': 'Vào game ({n} tài khoản)', 'm.openApp': 'Mở Roblox (không vào game)', 'm.close': 'Đóng Roblox',
-    'm.edit': 'Sửa…', 'm.check': 'Kiểm tra đăng nhập', 'm.profile': 'Trang cá nhân Roblox',
+    'm.edit': 'Sửa…', 'm.check': 'Kiểm tra đăng nhập', 'm.profile': 'Trang cá nhân Roblox', 'm.website': 'Mở trang web',
     'm.copyUser': 'Sao chép tên đăng nhập', 'm.copyPw': 'Sao chép mật khẩu', 'm.copyCookie': 'Sao chép cookie',
     'm.delete': 'Xóa', 'm.deleteN': 'Xóa {n} tài khoản',
     'm.addCode': 'Đăng nhập bằng điện thoại', 'm.addBrowser': 'Đăng nhập bằng trình duyệt', 'm.addCookie': 'Dán cookie',
