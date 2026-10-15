@@ -1837,7 +1837,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .recent .rm { width: 24px; height: 24px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--muted); }
 .recent .rm:hover { background: var(--active); color: var(--text); }
 .recent .rm .i { width: 11px; height: 11px; }
-.dock-actions { display: flex; align-items: center; gap: 8px; }
+/* On one line with the inputs (as high as they are, the taller buttons centred on them), not centred on the inputs
+   and the line under them: else the join button by the Job ID box sat higher than the buttons beside it. */
+.dock-actions { display: flex; align-items: center; gap: 8px; align-self: start; height: 40px; }
 .dock-actions .btn.ghost { width: 44px; height: 52px; padding: 0; border-radius: 14px; }
 .play-btn {
   display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px 0 18px; border: 0; border-radius: 15px;
@@ -2546,6 +2548,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 /* Too narrow for one row: the game inputs on top, the buttons under them. */
 @media (max-width: 900px) {
   .dock { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .dock-actions { align-self: auto; height: auto; }
   .dock-actions .play-btn { flex: 1; justify-content: center; }
   .inwrap.job { flex-basis: 150px; }
 }

@@ -75,6 +75,15 @@
       hasPassword: false, cookieValid: null, lastUsed: null, avatarUrl: null, state: 'launching',
       presence: { type: 'offline' }, session: { pid: 0, since: minsAgo(0), game: g(4924922222) } },
   ];
+  // ?accounts=300: that many accounts (copies of the ones above), for timing the page with a big list.
+  if (params.has('accounts')) {
+    const want = Math.min(1000, Number(params.get('accounts')) || 0), base = accounts.slice();
+    for (let i = accounts.length; i < want; i++) {
+      const b = base[i % base.length];
+      accounts.push({ ...b, id: '00000000-0000-4000-8000-' + String(1000 + i).padStart(12, '0'), userId: 5140100000 + i, label: `${b.label} ${i}`, alias: `${b.alias} ${i}`, username: `${b.username}_${i}`,
+        session: b.session && { ...b.session, pid: 20000 + i } });
+    }
+  }
   if (LONG) {
     const longs = [['Sunny_The_Builder_Of_Many_Worlds_2010', 'SunnyTheBuilderOfManyWorlds2010', 'Main accounts and everything else'],
       ['pixelfarmer01_with_a_very_long_alias', 'pixelfarmer01_very_long_username', 'Farm farm farm farm farm farm farm'],
