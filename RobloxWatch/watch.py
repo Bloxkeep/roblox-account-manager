@@ -28,7 +28,12 @@ FLAG = re.compile(r'SingleInstance|AppReload|WndProcessCheck|Singleton(?:Event|M
 SINGLETON = re.compile(r'(?i)singleton')
 FUTURE_LINE = re.compile(r'New WindowsPlayer (\S+) at (.+?), file version: (\d+), (\d+), (\d+), (\d+)')
 MAX_BUILDS = 40
-COLORS = {'same': 0x2E9E5B, 'first': 0x2E9E5B, 'changed': 0xE0A030, 'renamed': 0xE0A030, 'gone': 0xD9453D, 'future': 0x5B7FD9, 'flags': 0xE0A030}
+# How the messages look: docs/discord-style.md (sender, Discord's colours, short title, facts in inline fields).
+LOGO = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png'
+DOCS = 'https://github.com/minhhoang0122/bloxkeep/blob/main/docs/roblox-watch.md'
+GREEN, YELLOW, RED, BLURPLE = 0x57F287, 0xFEE75C, 0xED4245, 0x5865F2
+# DeployHistory.txt's times are Roblox's (US Pacific).
+ROBLOX_TIME = 'America/Los_Angeles'
 
 
 def get(url, headers=None):
@@ -113,36 +118,104 @@ def judge(fp, before):
     return ('changed' if added or removed else 'same'), hold, added, removed
 
 
-VERDICT_TEXT = {
-    'first': 'Watching starts with this build. Nothing to compare yet.',
-    'same': "No change to Roblox's single-window lock or its code names. Multi-Roblox should keep working "
-            '(proven only once two windows play together).',
-    'changed': "Roblox changed its single-window code in this build. Multi-Roblox may be blocked: try two windows.",
-    'renamed': 'Roblox renamed its single-window lock in this build. Bloxkeep holds the new name by itself (it reads '
-               "this watch's findings), but that isn't proven yet: try two windows.",
-    'gone': f'The lock Bloxkeep holds ({HELD}) is gone from this build, with nothing to put in its place. '
-            'Multi-Roblox is likely blocked.',
+# What a verdict means to someone using Multi-Roblox: (the word for it, the colour, one plain sentence).
+VERDICTS = {
+    'first': ('Watching', BLURPLE, 'This is the first build the watch has seen, so there is nothing to compare it with yet.'),
+    'same': ('No change', GREEN, 'Nothing changed in the lock Multi-Roblox uses, so it should keep working.'),
+    'changed': ('May be blocked', YELLOW, 'Roblox changed the code that keeps it to one window. Try two windows before '
+                'counting on Multi-Roblox.'),
+    'renamed': ('Lock renamed', YELLOW, 'Roblox renamed the lock Multi-Roblox uses. Bloxkeep now holds the new name by '
+                'itself; try two windows to be sure.'),
+    'gone': ('Likely blocked', RED, 'The lock Multi-Roblox uses is gone from this build, so Roblox will probably close '
+             'each window when the next one opens.'),
 }
 
 
-def listing(names, limit=12):
-    shown = ', '.join(f'`{n}`' for n in names[:limit])
-    return shown + (f' and {len(names) - limit} more' if len(names) > limit else '')
+def stamp(when=None, style='f'):
+    """A Discord timestamp: each reader sees it in their own time zone and language."""
+    when = when or datetime.datetime.now(datetime.timezone.utc)
+    return f'<t:{int(when.timestamp())}:{style}>'
+
+
+def roblox_time(text):
+    """A DeployHistory.txt time ("10/15/2026 11:43:03 AM", Roblox's), as a Discord timestamp; as written if unreadable."""
+    try:
+        from zoneinfo import ZoneInfo
+        at = datetime.datetime.strptime(text, '%m/%d/%Y %I:%M:%S %p').replace(tzinfo=ZoneInfo(ROBLOX_TIME))
+        return stamp(at, 'f')
+    except Exception:
+        return f'{text} (Roblox time)'
+
+
+def release_notes(version):
+    """Roblox's release notes for a version ("0.743.0.7431134" is release 743)."""
+    m = re.match(r'0\.(\d+)\.', version)
+    return f'https://create.roblox.com/docs/release-notes/release-notes-{m.group(1)}' if m else None
+
+
+def lines(names, sign, limit=6):
+    shown = [f'{sign} `{n}`' for n in names[:limit]]
+    return '\n'.join(shown + ([f'and {len(names) - limit} more'] if len(names) > limit else []))
+
+
+def message(title, color, description, fields=()):
+    """A webhook post in Bloxkeep's style: one embed, the logo, short fields side by side."""
+    embed = {'title': title, 'color': color, 'description': description,
+             'fields': [{'name': n, 'value': v[:1024], 'inline': inline} for n, v, inline in fields],
+             'thumbnail': {'url': LOGO},
+             'footer': {'text': 'Bloxkeep · Roblox watch', 'icon_url': LOGO},
+             'timestamp': now()}
+    return {'username': 'Bloxkeep', 'avatar_url': LOGO, 'embeds': [embed], 'allowed_mentions': {'parse': []}}
+
+
+def build_message(kind, version, build, verdict, added=(), removed=(), hold=None, checked_at=None):
+    """A build's check. kind: 'beta' (before release), 'live' (checked as it went live), 'went-live' (checked before)."""
+    word, color, sentence = VERDICTS[verdict]
+    if verdict == 'renamed' and hold:
+        sentence = (f'Roblox renamed the lock Multi-Roblox uses. Bloxkeep now holds the new one, `{hold[0]}`, by itself; '
+                    'try two windows to be sure.')
+    title = f'Roblox {version} is coming' if kind == 'beta' else f'Roblox {version} is live'
+    small = {'beta': ["Checked on Roblox's test channel"], 'went-live': [f'Checked before release, {checked_at}' if checked_at
+             else 'Checked before release'], 'live': []}[kind]
+    if notes := release_notes(version):
+        small.append(f'[Release notes]({notes})')
+    small.append(f'[How the check works]({DOCS})')
+    fields = [('Multi-Roblox', f'**{word}**', True), ('Version', f'`{version}`', True),
+              ('Build', f'`{build.removeprefix("version-")}`', True),
+              ('Released', 'Not yet' if kind == 'beta' else stamp(style='R'), True)]
+    if added or removed:
+        fields.append(('What changed', '\n'.join(x for x in (lines(added, '+'), lines(removed, '−')) if x), False))
+    return message(title, color, f'{sentence}\n-# {" · ".join(small)}', fields)
+
+
+def upload_message(version, uploaded):
+    return message(f'Roblox {version} is on its way', BLURPLE,
+                   "Roblox uploaded it but hasn't released it, and its download is still hidden. "
+                   'Bloxkeep checks it as soon as Roblox offers it.',
+                   [('Version', f'`{version}`', True), ('Uploaded', roblox_time(uploaded), True)])
+
+
+def flags_message(changes):
+    """changes: (setting, before, after), None for missing."""
+    return message('Roblox changed a one-window setting', YELLOW,
+                   'Roblox can turn its one-window check on or off from its servers, without a new build. '
+                   'Try two windows to be sure Multi-Roblox still works.',
+                   [(name, f'`{old if old is not None else "none"}` → `{new if new is not None else "removed"}`', False)
+                    for name, old, new in changes[:8]])
 
 
 failed_posts = 0
 
 
-def post(webhook, title, text, color, fields=()):
+def post(webhook, payload):
     """A post that fails (a deleted webhook, Discord down) doesn't stop the status being saved; the run fails after."""
     global failed_posts
+    embed = payload['embeds'][0]
     if not webhook:
-        print(f'[discord] {title}: {text}', *(f'  {n}: {v}' for n, v in fields), sep='\n')
+        print(f'[discord] {embed["title"]}: {embed.get("description", "")}',
+              *(f'  {f["name"]}: {f["value"]}' for f in embed.get('fields', [])), sep='\n')
         return
-    embed = {'title': title, 'description': text, 'color': color,
-             'fields': [{'name': n, 'value': v[:1024], 'inline': False} for n, v in fields],
-             'footer': {'text': 'Bloxkeep Roblox watch'}, 'timestamp': now()}
-    body = json.dumps({'embeds': [embed], 'allowed_mentions': {'parse': []}}).encode()
+    body = json.dumps(payload).encode()
     req = urllib.request.Request(webhook, data=body, method='POST',
                                  headers={'User-Agent': UA, 'Content-Type': 'application/json'})
     try:
@@ -153,7 +226,7 @@ def post(webhook, title, text, color, fields=()):
 
 
 def inspect(status, version, build, channel):
-    """Downloads a build, compares it with the build seen before it and adds it to the status: the post's fields."""
+    """Downloads a build, compares it with the build seen before it and adds it to the status: its message, by kind."""
     fp = fingerprint(download_player(build))
     before = next((b for b in reversed(status['builds']) if b['hash'] != build), None)
     verdict, hold, added, removed = judge(fp, before)
@@ -162,14 +235,7 @@ def inspect(status, version, build, channel):
     if channel == 'live':
         entry['liveAt'] = entry['seenAt']
     status['builds'] = ([b for b in status['builds'] if b['hash'] != build] + [entry])[-MAX_BUILDS:]
-    fields = [('Version', f'`{version}`'), ('Hash', f'`{build}`'), ('Lock names', listing(fp['locks']))]
-    if hold != [HELD]:
-        fields.append(('Bloxkeep holds', listing(hold) if hold else '(nothing found to hold)'))
-    if added:
-        fields.append(('New in this build', listing(added)))
-    if removed:
-        fields.append(('Gone in this build', listing(removed)))
-    return verdict, fields
+    return lambda kind: build_message(kind, version, build, verdict, added, removed, hold)
 
 
 def check(path, dry, force):
@@ -189,22 +255,20 @@ def check(path, dry, force):
 
     # The next build, before release: when it goes live it isn't downloaded again.
     if beta and (seen(beta['clientVersionUpload']) is None or force):
-        verdict, fields = inspect(status, beta['version'], beta['clientVersionUpload'], 'beta')
-        post(webhook, 'Upcoming Roblox update: Multi-Roblox check',
-             "Not live yet: checked on Roblox's beta channel before release. " + VERDICT_TEXT[verdict], COLORS[verdict], fields)
+        post(webhook, inspect(status, beta['version'], beta['clientVersionUpload'], 'beta')('beta'))
         changed = True
     if beta:
         status['beta'] = {'version': beta['version'], 'hash': beta['clientVersionUpload']}
 
     entry = seen(build)
     if entry is None or force:
-        verdict, fields = inspect(status, version, build, 'live')
-        post(webhook, 'Live Roblox update: Multi-Roblox check', VERDICT_TEXT[verdict], COLORS[verdict], fields)
+        post(webhook, inspect(status, version, build, 'live')('live'))
         changed = True
     elif 'liveAt' not in entry:
         entry['liveAt'] = now()
-        post(webhook, 'Roblox update is live', 'Checked before release: ' + VERDICT_TEXT[entry['verdict']],
-             COLORS[entry['verdict']], [('Version', f'`{version}`'), ('Hash', f'`{build}`')])
+        seen_at = datetime.datetime.strptime(entry['seenAt'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+        post(webhook, build_message('went-live', version, build, entry['verdict'], entry.get('added', []),
+                                    entry.get('removed', []), entry.get('hold'), stamp(seen_at, 'R')))
         changed = True
     if status.get('live') != {'version': version, 'hash': build}:
         status['live'] = {'version': version, 'hash': build}
@@ -215,20 +279,15 @@ def check(path, dry, force):
     if upload and version_key(upload[0]) > version_key(version) and (status.get('future') or {}).get('version') != upload[0]:
         status['future'] = {'version': upload[0], 'uploadedAt': upload[1]}
         if not any(b['version'] == upload[0] for b in status['builds']):
-            post(webhook, 'Future Roblox update uploaded', "Roblox uploaded a Windows build that isn't live yet. Its "
-                 'download is still hidden: it is checked as soon as Roblox offers it.', COLORS['future'],
-                 [('Version', f'`{upload[0]}`'), ('Uploaded', f'{upload[1]} (Roblox time)')])
+            post(webhook, upload_message(upload[0], upload[1]))
         changed = True
 
     flags = single_window_flags()
     before = status.get('flags')
     if flags != before:
         if before is not None:
-            lines = [f'`{k}`: {before.get(k, "(none)")} → {flags.get(k, "(removed)")}'
-                     for k in sorted(set(flags) | set(before)) if flags.get(k) != before.get(k)]
-            post(webhook, 'Roblox changed a single-window setting', 'Roblox can switch its single-window check from its '
-                 'servers, without a new build. Multi-Roblox may be affected: try two windows.', COLORS['flags'],
-                 [('Changed', '\n'.join(lines))])
+            post(webhook, flags_message([(k, before.get(k), flags.get(k)) for k in sorted(set(flags) | set(before))
+                                         if flags.get(k) != before.get(k)]))
         status['flags'] = flags
         changed = True
 

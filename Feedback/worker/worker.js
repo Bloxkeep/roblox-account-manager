@@ -6,7 +6,9 @@ const MAX_BODY = 40_000;
 const MAX_TEXT = 2000;
 const MAX_CONTACT = 100;
 const MAX_LOG = 16_000;
-const COLORS = { bug: 0xD9453D, idea: 0x5B7FD9 };
+// How it looks: docs/discord-style.md.
+const LOGO = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png';
+const COLORS = { bug: 0xED4245, idea: 0x5865F2 };
 
 export default {
   async fetch(request, env) {
@@ -44,19 +46,24 @@ export default {
     const log = short(body.log, MAX_LOG);
 
     const fields = [
-      { name: 'Bloxkeep', value: app, inline: true },
-      { name: 'Windows', value: windows, inline: true },
+      { name: 'Bloxkeep', value: app === '?' ? '?' : `\`${app}\``, inline: true },
+      { name: 'Windows', value: windows.replace(/^Windows /, ''), inline: true },
       { name: 'Language', value: language, inline: true },
     ];
     if (contact)
-      fields.push({ name: 'Contact', value: contact, inline: false });
+      fields.push({ name: 'Reply to', value: contact, inline: true });
+    if (log)
+      fields.push({ name: 'Error log', value: 'Attached', inline: true });
     const payload = {
+      username: 'Bloxkeep',
+      avatar_url: LOGO,
       embeds: [{
         title: kind === 'bug' ? 'Bug report' : 'Idea',
         description: text,
         color: COLORS[kind],
         fields,
-        footer: { text: log ? 'Bloxkeep feedback · error log attached' : 'Bloxkeep feedback' },
+        thumbnail: { url: LOGO },
+        footer: { text: 'Bloxkeep · Feedback', icon_url: LOGO },
         timestamp: new Date().toISOString(),
       }],
       allowed_mentions: { parse: [] },
