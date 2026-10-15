@@ -4,9 +4,9 @@
    The app's background per theme is repeated in Themes.cs (window and title bar). */
 /* Dark is the base for every dark theme; each one below changes only what differs. */
 :root, [data-theme="dark"], [data-theme="dim"], [data-theme="black"],
-[data-theme="frost"], [data-theme="ocean"], [data-theme="forest"], [data-theme="mocha"], [data-theme="grape"], [data-theme="retro"], [data-theme="terminal"],
+[data-theme="frost"], [data-theme="ocean"], [data-theme="forest"], [data-theme="mocha"], [data-theme="grape"], [data-theme="terminal"],
 [data-theme="halloween"], [data-theme="lunar"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"],
-[data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="lava"], [data-theme="neon"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="contrast"] {
+[data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="lava"], [data-theme="neon"], [data-theme="blueprint"], [data-theme="contrast"] {
   --bg: #0a0c11;
   --bg-2: #0d1017;
   --surface: #11151e;
@@ -268,46 +268,7 @@
   --scrim: rgba(8, 6, 14, .7);
   --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c4bbdb' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
-[data-theme="retro"] {
-  --bg: #282828;
-  --bg-2: #1d2021;
-  --surface: #32302f;
-  --surface-2: #3c3836;
-  --surface-3: #504945;
-  --raised: #3c3836;
-  --field: #1d2021;
-  --card: #2f2d2c;
-  --card-hover: #353230;
-  --tint: 235, 219, 178;
-  --line: rgba(var(--tint), .08);
-  --line-2: rgba(var(--tint), .13);
-  --line-3: rgba(var(--tint), .22);
-  --text: #ebdbb2;
-  --text-2: #d5c4a1;
-  --muted: #bbac93;
-  --dim: #a69882;
-  --inv: #fabd2f;
-  --inv-hover: #fcca52;
-  --inv-ink: #282828;
-  --accent: #b8bb26;
-  --accent-hover: #c7ca3a;
-  --accent-ink: #282828;
-  --ok: #b8bb26;
-  --online: #83a598;
-  --studio: #fe8019;
-  --warn: #fabd2f;
-  --bad: #fb4934;
-  --ok-ink: #d5d77a;
-  --online-ink: #b0c8bd;
-  --warn-ink: #fcd77f;
-  --studio-ink: #fea65a;
-  --bad-ink: #fc9a8f;
-  --meter: #d5c4a1;
-  --meter-2: #665c54;
-  --well: rgba(0, 0, 0, .14);
-  --scrim: rgba(15, 14, 13, .65);
-  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d5c4a1' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-}
+
 /* Terminal: green-on-black and a monospace font everywhere. */
 [data-theme="terminal"] {
   --bg: #030603;
@@ -746,48 +707,7 @@
   --scrim: rgba(5, 3, 15, .72);
   --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c7b8f0' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
-[data-theme="gameboy"] {
-  --bg: #0f380f;
-  --bg-2: #0b2e0b;
-  --surface: #1a4a1a;
-  --surface-2: #245524;
-  --surface-3: #306230;
-  --raised: #1d4f1d;
-  --field: #0b2e0b;
-  --card: #164216;
-  --card-hover: #1a4a1a;
-  --tint: 155, 188, 15;
-  --line: rgba(var(--tint), .14);
-  --line-2: rgba(var(--tint), .22);
-  --line-3: rgba(var(--tint), .36);
-  --text: #c6e05a;
-  --text-2: #b7d434;
-  --muted: #a9c63f;
-  --dim: #8fae3c;
-  --inv: #9bbc0f;
-  --inv-hover: #b2d22a;
-  --inv-ink: #0f380f;
-  --accent: #9bbc0f;
-  --accent-hover: #b2d22a;
-  --accent-ink: #0f380f;
-  --ok: #c6e05a;
-  --online: #b8e0c8;
-  --studio: #e0c25a;
-  --warn: #f0d860;
-  --bad: #f08060;
-  --ok-ink: #dff09a;
-  --online-ink: #d8f0e2;
-  --warn-ink: #f8eaa8;
-  --studio-ink: #f0dc9a;
-  --bad-ink: #f8b8a8;
-  --meter: #9bbc0f;
-  --meter-2: #3a6a2a;
-  --knob: #9bbc0f;
-  --scrim: rgba(5, 20, 5, .72);
-  --font: "Cascadia Mono", Consolas, ui-monospace, monospace;
-  --font-display: "Cascadia Mono", Consolas, ui-monospace, monospace;
-  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239bbc0f' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-}
+
 [data-theme="blueprint"] {
   --backdrop: repeating-linear-gradient(0deg, rgba(255, 255, 255, .07) 0 1px, transparent 1px 28px), repeating-linear-gradient(90deg, rgba(255, 255, 255, .07) 0 1px, transparent 1px 28px), #0f3a68;
   --bg: transparent;
@@ -862,7 +782,7 @@
 }
 /* Light is the base for the light themes. */
 [data-theme="light"], [data-theme="paper"], [data-theme="sakura"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"],
-[data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="candy"], [data-theme="matcha"], [data-theme="newspaper"] {
+[data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="candy"], [data-theme="matcha"], [data-theme="newspaper"], [data-theme="retro"], [data-theme="gameboy"] {
   --backdrop: var(--bg);
   --blur: none;
   --bg: #f3f4f7;
@@ -1284,6 +1204,106 @@
   --font: Cambria, "Times New Roman", serif;
   --font-display: Cambria, "Times New Roman", serif;
   --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333333' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="retro"] {
+  /* Retro: a Windows 98 desktop. Grey raised panels on teal, navy for what is chosen. */
+  --backdrop: #008080;
+  --bg: #008080;
+  --bg-2: #c0c0c0;
+  --surface: #c0c0c0;
+  --surface-2: #c0c0c0;
+  --surface-3: #d4d0c8;
+  --raised: #c0c0c0;
+  --field: #ffffff;
+  --card: #c0c0c0;
+  --card-hover: #c0c0c0;
+  --tint: 0, 0, 0;
+  --line: #808080;
+  --line-2: #808080;
+  --line-3: #404040;
+  --line-field: #808080;
+  --text: #000000;
+  --text-2: #1a1a1a;
+  --muted: #3c3c3c;
+  --dim: #6b6b6b;
+  --inv: #000080;
+  --inv-hover: #1010a0;
+  --inv-ink: #ffffff;
+  --accent: #000080;
+  --accent-hover: #1010a0;
+  --accent-ink: #ffffff;
+  --ok: #007a00;
+  --online: #0000c8;
+  --studio: #a04f00;
+  --warn: #8a6d00;
+  --bad: #c00000;
+  --ok-ink: #006000;
+  --online-ink: #00009a;
+  --warn-ink: #6b5400;
+  --studio-ink: #7a3c00;
+  --bad-ink: #a00000;
+  --meter: #000080;
+  --meter-2: #ffffff;
+  --well: #d4d0c8;
+  --knob: #c0c0c0;
+  --hover: rgba(0, 0, 128, .1);
+  --active: rgba(0, 0, 128, .16);
+  --scrim: rgba(0, 0, 0, .3);
+  --shadow: rgba(0, 0, 0, .35);
+  --font: Tahoma, "Segoe UI", sans-serif;
+  --font-display: Tahoma, "Segoe UI", sans-serif;
+  --bevel-out: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --bevel-in: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="gameboy"] {
+  /* Game Boy: the four greens of its screen, thick dark borders and hard shadows. */
+  --backdrop: repeating-linear-gradient(0deg, rgba(15, 56, 15, .07) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(15, 56, 15, .07) 0 1px, transparent 1px 3px), #9bbc0f;
+  --bg: #9bbc0f;
+  --bg-2: #8bac0f;
+  --surface: #8bac0f;
+  --surface-2: #9bbc0f;
+  --surface-3: #7d9c0d;
+  --raised: #8bac0f;
+  --field: #a9c934;
+  --card: #8bac0f;
+  --card-hover: #91b20f;
+  --tint: 15, 56, 15;
+  --line: #306230;
+  --line-2: #306230;
+  --line-3: #0f380f;
+  --line-field: #0f380f;
+  --text: #0f380f;
+  --text-2: #1d4a1d;
+  --muted: #306230;
+  --dim: #46702a;
+  --inv: #0f380f;
+  --inv-hover: #306230;
+  --inv-ink: #9bbc0f;
+  --accent: #306230;
+  --accent-hover: #0f380f;
+  --accent-ink: #c4dd5a;
+  --ok: #0f380f;
+  --online: #18406a;
+  --studio: #6a4a00;
+  --warn: #6a5a00;
+  --bad: #8a2a10;
+  --ok-ink: #0f380f;
+  --online-ink: #18406a;
+  --warn-ink: #5a4a00;
+  --studio-ink: #5a3a00;
+  --bad-ink: #7a1f0a;
+  --meter: #0f380f;
+  --meter-2: #9bbc0f;
+  --well: rgba(15, 56, 15, .08);
+  --knob: #9bbc0f;
+  --hover: rgba(15, 56, 15, .1);
+  --active: rgba(15, 56, 15, .16);
+  --scrim: rgba(15, 56, 15, .45);
+  --shadow: rgba(15, 56, 15, .5);
+  --font: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --font-display: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f380f' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 :root, [data-theme] {
   --hover: rgba(var(--tint), .06);
@@ -2584,3 +2604,104 @@ body:has(.lock) #toasts { bottom: 24px; }
   .spin, .btn.busy::after, .icon-btn.busy .i { animation: still-busy 1.6s ease-in-out infinite !important; border-top-color: var(--line-3); }
 }
 @keyframes still-busy { 50% { opacity: .35; } }
+
+/* ───────── Styles: each one a look of its own, not only other colours ─────────
+   All five have square corners (the theme picker's swatches stay round). */
+:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"]) :not(.swatch, .swatch *),
+:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"]) .switch span::after { border-radius: 0 !important; }
+:is([data-theme="retro"], [data-theme="terminal"], [data-theme="gameboy"], [data-theme="blueprint"], [data-theme="newspaper"]) .card:hover { transform: none; }
+
+/* Retro (Windows 98): raised grey panels and buttons, sunken white fields, navy title bars and selection. */
+[data-theme="retro"] * { scrollbar-color: #c0c0c0 #dfdfdf; }
+[data-theme="retro"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg, .card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .game-thumb, .grid.list) {
+  border: 0; background-color: #c0c0c0; box-shadow: var(--bevel-out); }
+[data-theme="retro"] :is(.btn, .chip, .pill-btn, .sort-btn):active:not(:disabled) { box-shadow: var(--bevel-in); }
+[data-theme="retro"] :is(.btn, .chip, .pill-btn, .sort-btn):hover:not(:disabled) { background-color: #c0c0c0; }
+[data-theme="retro"] .chip.on { background-color: #000080; color: #fff; box-shadow: var(--bevel-in); }
+[data-theme="retro"] :is(.btn.primary, .play-btn) { background: #c0c0c0; color: #000; font-weight: 700; box-shadow: 0 0 0 1px #000, var(--bevel-out); }
+[data-theme="retro"] :is(.btn.primary, .play-btn):hover:not(:disabled) { background: #c0c0c0; }
+[data-theme="retro"] :is(.btn.primary, .play-btn):active:not(:disabled) { box-shadow: 0 0 0 1px #000, var(--bevel-in); }
+[data-theme="retro"] :is(.btn, .play-btn):disabled { color: #808080; text-shadow: 1px 1px #fff; opacity: 1; }
+[data-theme="retro"] :is(.field, .select) { border: 0; background-color: #fff; box-shadow: var(--bevel-in); }
+[data-theme="retro"] .field:focus { box-shadow: var(--bevel-in); outline: 1px dotted #000; outline-offset: -5px; }
+[data-theme="retro"] .main { background: #008080; }
+/* Text straight on the teal is white; the grey panels keep black text. */
+[data-theme="retro"] :is(.top, .set-nav-item, .set-page-title, .set-grp-title, .empty) { --text: #fff; --text-2: #f2f2f2; --muted: #d4eeee; --dim: #a9d6d6; color: var(--text-2); }
+[data-theme="retro"] :is(.top, .empty) :is(.search, .inwrap, .field, .select, .btn, .chip, .pill-btn, .sort-btn, .seg, .icon-btn, input) { --text: #000; --text-2: #1a1a1a; --muted: #3c3c3c; --dim: #6b6b6b; }
+[data-theme="retro"] .set-nav-item:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+[data-theme="retro"] .top h1, [data-theme="retro"] .top p b { color: #fff; }
+[data-theme="retro"] .top p, [data-theme="retro"] .top p .sep { color: #d8f0f0; }
+[data-theme="retro"] .top p a, [data-theme="retro"] .top p button { color: #fff; }
+[data-theme="retro"] .side { border: 0; background: #c0c0c0; box-shadow: var(--bevel-out); }
+[data-theme="retro"] .brand { margin: -14px -10px 12px; padding: 10px 12px; background: #000080; color: #fff; }
+[data-theme="retro"] .brand-sub { color: #c8c8ff; }
+[data-theme="retro"] .nav:hover { background: #d4d0c8; color: #000; }
+[data-theme="retro"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: #000080; color: #fff; }
+[data-theme="retro"] .nav.on .i { color: #fff; }
+[data-theme="retro"] .modal-head { margin: 3px 3px 0; padding: 8px 8px 8px 12px; background: #000080; color: #fff; }
+[data-theme="retro"] .modal-head h3 { font-size: 15px; }
+[data-theme="retro"] .modal-head .icon-btn { width: 24px; height: 22px; background: #c0c0c0; color: #000; box-shadow: var(--bevel-out); }
+[data-theme="retro"] .menu button:hover:not(:disabled) { background: #000080; color: #fff; }
+[data-theme="retro"] .switch span { border: 0; background: #fff; box-shadow: var(--bevel-in); }
+[data-theme="retro"] .switch span::after { background: #c0c0c0; box-shadow: var(--bevel-out); }
+[data-theme="retro"] .switch input:checked + span { background: #000080; }
+[data-theme="retro"] .switch input:checked + span::after { background: #c0c0c0; }
+[data-theme="retro"] .avatar { background: #808080; }
+
+/* Terminal: lines instead of boxes, the chosen thing in inverse like a cursor, faint scan lines. */
+[data-theme="terminal"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker) { border: 1px solid var(--line-3); box-shadow: none; }
+[data-theme="terminal"] .side { border-right: 1px solid var(--line-3); }
+[data-theme="terminal"] :is(.nav.on, .set-nav-item[aria-current="page"], .chip.on) { background: var(--text); color: var(--bg); }
+[data-theme="terminal"] .nav.on .i { color: var(--bg); }
+[data-theme="terminal"] .nav:hover:not(.on) { background: transparent; color: var(--text); text-decoration: underline; }
+[data-theme="terminal"] :is(.btn, .pill-btn, .sort-btn, .chip):hover:not(:disabled):not(.on) { background: var(--text); color: var(--bg); border-color: var(--text); }
+[data-theme="terminal"] .top h1 { text-transform: uppercase; letter-spacing: .02em; }
+[data-theme="terminal"] .top h1::before { content: "> "; color: var(--muted); }
+[data-theme="terminal"] .badge::before { content: "["; }
+[data-theme="terminal"] .badge::after { content: "]"; }
+[data-theme="terminal"] .avatar { background: var(--line-3); }
+[data-theme="terminal"] body::after { content: ""; position: fixed; inset: 0; z-index: 1000; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .18) 0 1px, transparent 1px 3px); }
+
+/* Game Boy: thick dark outlines, hard shadows that a press pushes away, pictures in the screen's greens. */
+[data-theme="gameboy"] .main { background: var(--backdrop); }
+[data-theme="gameboy"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .grid.list) { border: 3px solid #0f380f; box-shadow: 4px 4px 0 #306230; }
+[data-theme="gameboy"] :is(.btn, .chip, .pill-btn, .sort-btn, .seg) { border: 2px solid #0f380f; box-shadow: 2px 2px 0 #0f380f; }
+[data-theme="gameboy"] :is(.btn, .chip, .pill-btn, .sort-btn):active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+[data-theme="gameboy"] .play-btn { border: 3px solid #0f380f; box-shadow: 3px 3px 0 #0f380f; }
+[data-theme="gameboy"] .play-btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
+[data-theme="gameboy"] :is(.field, .select) { border: 2px solid #0f380f; }
+[data-theme="gameboy"] .side { border-right: 3px solid #0f380f; }
+[data-theme="gameboy"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: #0f380f; color: #9bbc0f; }
+[data-theme="gameboy"] .nav.on .i { color: #9bbc0f; }
+[data-theme="gameboy"] :is(.top h1, .side-card h4) { text-transform: uppercase; letter-spacing: .03em; }
+[data-theme="gameboy"] .avatar { background: #0f380f; }
+[data-theme="gameboy"] img { filter: grayscale(1) sepia(1) hue-rotate(38deg) saturate(1.7) brightness(.82) contrast(1.15); }
+
+/* Blueprint: white lines on drafting blue, corner marks on every panel, dashed outlines for the lesser buttons. */
+[data-theme="blueprint"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .lock-card) {
+  border: 1px solid rgba(255, 255, 255, .5); box-shadow: none;
+  background-image: linear-gradient(#fff, #fff), linear-gradient(#fff, #fff), linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
+    linear-gradient(#fff, #fff), linear-gradient(#fff, #fff), linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+  background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px;
+  background-position: left top, left top, right top, right top, left bottom, left bottom, right bottom, right bottom;
+  background-repeat: no-repeat; }
+[data-theme="blueprint"] :is(.modal, .menu, .toast, .picker) { border: 1px solid rgba(255, 255, 255, .7); box-shadow: none; }
+[data-theme="blueprint"] :is(.btn:not(.primary), .chip:not(.on), .pill-btn, .sort-btn, .seg) { border: 1px dashed rgba(255, 255, 255, .6); background-color: transparent; }
+[data-theme="blueprint"] :is(.btn.primary, .play-btn:not(:disabled), .chip.on) { background: #f4f9ff; color: #0f3a68; border: 0; }
+[data-theme="blueprint"] .side { background: rgba(8, 36, 70, .55); border-right: 1px solid rgba(255, 255, 255, .5); }
+[data-theme="blueprint"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: transparent; box-shadow: inset 0 0 0 1px #fff; color: #fff; }
+[data-theme="blueprint"] :is(.top h1, .side-card h4, .brand-name) { text-transform: uppercase; letter-spacing: .08em; }
+[data-theme="blueprint"] .top h1 { padding-bottom: 4px; border-bottom: 1px solid rgba(255, 255, 255, .75); }
+[data-theme="blueprint"] .avatar { background: rgba(255, 255, 255, .7); }
+
+/* Newspaper: black ink rules, a double rule under the headline, section tabs in inverse, pictures in grey. */
+[data-theme="newspaper"] :is(.card:not(.row), .side-card, .multi, .set-card, .stat-card, .pv-item, .dock, .modal, .menu, .toast, .lock-card, .picker, .grid.list) { border: 1px solid #111; box-shadow: none; }
+[data-theme="newspaper"] .side { border-right: 4px double #111; }
+[data-theme="newspaper"] .top h1 { font-size: 34px; font-weight: 800; letter-spacing: -.02em; padding-bottom: 6px; border-bottom: 4px double #111; }
+[data-theme="newspaper"] :is(.chip, .badge, .side-card h4, .state-pill, .sort-btn) { font-variant: small-caps; letter-spacing: .03em; }
+[data-theme="newspaper"] :is(.btn, .pill-btn, .chip, .sort-btn, .seg) { border: 1px solid #111; background-color: transparent; }
+[data-theme="newspaper"] :is(.btn.primary, .play-btn:not(:disabled), .chip.on, .nav.on, .set-nav-item[aria-current="page"]) { background: #111; color: #f4f1ea; }
+[data-theme="newspaper"] .nav.on .i { color: #f4f1ea; }
+[data-theme="newspaper"] .avatar { background: #111; }
+[data-theme="newspaper"] img { filter: grayscale(1) contrast(1.06); }

@@ -25,7 +25,7 @@ public static class Themes
         new("forest", true, Rgb(0x0d1410), Rgb(0x142019), Rgb(0xe4efe6), Rgb(0xb3c7b8), Rgb(0x2e4435), Rgb(0xa7f3d0), Rgb(0xfecdd3)),
         new("mocha", true, Rgb(0x1b1512), Rgb(0x241c18), Rgb(0xf2e8df), Rgb(0xcdbcae), Rgb(0x4a3d34), Rgb(0xbfe3bb), Rgb(0xf4b4b4)),
         new("grape", true, Rgb(0x17141f), Rgb(0x201c2b), Rgb(0xefeaf9), Rgb(0xc4bbdb), Rgb(0x403856), Rgb(0xb0f5cf), Rgb(0xffb8c6)),
-        new("retro", true, Rgb(0x282828), Rgb(0x32302f), Rgb(0xebdbb2), Rgb(0xd5c4a1), Rgb(0x665c54), Rgb(0xd5d77a), Rgb(0xfc9a8f)),
+        new("retro", false, Rgb(0x008080), Rgb(0xc0c0c0), Rgb(0x000000), Rgb(0x1a1a1a), Rgb(0x808080), Rgb(0x007a00), Rgb(0xc00000)),
         new("terminal", true, Rgb(0x030603), Rgb(0x081008), Rgb(0xb9f7c3), Rgb(0x86d996), Rgb(0x1f4a27), Rgb(0x9dfab0), Rgb(0xffb0b0)),
         // Text2 must differ from Text: it is what a disabled menu item is drawn in.
         new("contrast", true, Rgb(0x000000), Rgb(0x000000), Rgb(0xffffff), Rgb(0xc4c4c4), Rgb(0x8a8a8a), Rgb(0x4dff88), Rgb(0xff8a8a)),
@@ -39,7 +39,7 @@ public static class Themes
         new("meadow", false, Rgb(0x89c9f0), Rgb(0xeaf6fc), Rgb(0x13240f), Rgb(0x344b2e), Rgb(0xbcd8c4), Rgb(0x047857), Rgb(0x9f1239)),
         new("lava", true, Rgb(0x140806), Rgb(0x1f0e0a), Rgb(0xfbe9e1), Rgb(0xe0b9a8), Rgb(0x4d2a1f), Rgb(0xcdf0b8), Rgb(0xffb3b3)),
         new("neon", true, Rgb(0x0b0820), Rgb(0x151033), Rgb(0xf3eaff), Rgb(0xc7b8f0), Rgb(0x3a2f6e), Rgb(0xa9f8d3), Rgb(0xffb3c1)),
-        new("gameboy", true, Rgb(0x0f380f), Rgb(0x1a4a1a), Rgb(0xc6e05a), Rgb(0xb7d434), Rgb(0x3a6a2a), Rgb(0xdff09a), Rgb(0xf8b8a8)),
+        new("gameboy", false, Rgb(0x9bbc0f), Rgb(0x8bac0f), Rgb(0x0f380f), Rgb(0x1d4a1d), Rgb(0x306230), Rgb(0x0f380f), Rgb(0x8a2a10)),
         new("blueprint", true, Rgb(0x0f3a68), Rgb(0x134577), Rgb(0xeef6ff), Rgb(0xc0dbf5), Rgb(0x3b77ad), Rgb(0xa7f3d0), Rgb(0xfecdd3)),
         new("candy", false, Rgb(0xfdf4fb), Rgb(0xfffafe), Rgb(0x3b2340), Rgb(0x6b4a73), Rgb(0xecd3e6), Rgb(0x047857), Rgb(0x9f1239)),
         new("matcha", false, Rgb(0xf1f3e6), Rgb(0xfafbf3), Rgb(0x263018), Rgb(0x4b5636), Rgb(0xd6dcbf), Rgb(0x047857), Rgb(0x9f1239)),
