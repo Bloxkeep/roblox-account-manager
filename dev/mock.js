@@ -286,7 +286,8 @@
         case 'whatsNew': return (await fetch('/RobloxManager/whatsnew.json').then(r => r.json())).slice(0, +(params.get('wn') || 3));
         case 'unlock': case 'createVault':
           await wait(500);
-          if (a.password === 'sai') throw new Error('Sai mật khẩu chủ.');
+          // "sai" or anything starting "wrong" is the wrong master password (the app's own words for it).
+          if (a.password === 'sai' || a.password.startsWith('wrong')) throw new Error(language === 'vi' ? 'Sai mật khẩu chủ.' : 'Wrong master password.');
           locked = false;
           unlockedAt = Date.now();
           setTimeout(push, 1450);

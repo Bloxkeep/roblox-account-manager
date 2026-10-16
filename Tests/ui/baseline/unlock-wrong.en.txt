@@ -7,7 +7,7 @@ html [data-theme="dark" lang="en"]
       div.lang [role="group" aria-label="Language"]
         button.on [title="English" aria-pressed="true"] "EN"
         button [title="Tiếng Việt" aria-pressed="false"] "VI"
-    form.lock-card [id="lock-form" autocomplete="off"]
+    form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Welcome back"
       p "Enter your master password to unlock."
@@ -16,7 +16,7 @@ html [data-theme="dark" lang="en"]
           input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value="•••" FOCUSED]
           button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
             svg.i #1pcfgz
-      div.lock-error [id="lock-error" role="alert"]
+      div.lock-error [id="lock-error" role="alert"] "Wrong master password."
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Unlock"
 #layer
 #toasts
@@ -24,3 +24,4 @@ html [data-theme="dark" lang="en"]
   getState {}
   monitorArea {"hidden":true}
   pageShown {}
+  unlock {"password":"wrong-one"}

@@ -460,7 +460,7 @@ html [data-theme="dark" lang="vi"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "Một người…"
                             option [value="role"] "Một vai trò…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID" value="123" FOCUSED]
+                          input.bad.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID" value="123" FOCUSED]
                     div.set-row
                       div
                         div.t "Gửi ngay"
@@ -529,6 +529,9 @@ html [data-theme="dark" lang="vi"]
                         svg.i #u1ag9u
 #layer
 #toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "ID người dùng gồm 17 đến 20 chữ số. Bật Chế độ nhà phát triển rồi bấm chuột phải vào người đó › Sao chép ID người dùng."
 -- commands
   (none)
 == saved
@@ -793,8 +796,11 @@ html [data-theme="dark" lang="vi"]
                         svg.i #u1ag9u
 #layer
 #toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "ID người dùng gồm 17 đến 20 chữ số. Bật Chế độ nhà phát triển rồi bấm chuột phải vào người đó › Sao chép ID người dùng."
 -- commands
-  (none)
+  setDiscord {"ping":{"kind":"summary","value":"user:123456789012345678"}}
 == left empty
 html [data-theme="dark" lang="vi"]
 #app
@@ -1057,8 +1063,11 @@ html [data-theme="dark" lang="vi"]
                         svg.i #u1ag9u
 #layer
 #toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "ID người dùng gồm 17 đến 20 chữ số. Bật Chế độ nhà phát triển rồi bấm chuột phải vào người đó › Sao chép ID người dùng."
 -- commands
-  setDiscord {"ping":{"kind":"summary","value":"user:123456789012345678"}}
+  (none)
 == end
 html [data-theme="dark" lang="vi"]
 #app
@@ -1321,6 +1330,9 @@ html [data-theme="dark" lang="vi"]
                         svg.i #u1ag9u
 #layer
 #toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "ID người dùng gồm 17 đến 20 chữ số. Bật Chế độ nhà phát triển rồi bấm chuột phải vào người đó › Sao chép ID người dùng."
 -- commands
   setDiscord {"ping":{"kind":"drop","value":"here"}}
   setDiscord {"ping":{"kind":"launch","value":"here"}}

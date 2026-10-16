@@ -262,7 +262,7 @@ html [data-theme="dark" lang="vi"]
                           div.t "Tên người gửi"
                           div.d "Hiện làm tên người gửi của mỗi tin."
                         div.ctl
-                          input.field.sm [id="s-dc-name" autocomplete="off" maxlength="80" aria-label="Tên người gửi" value="Discord farm" FOCUSED]
+                          input.bad.field.sm [id="s-dc-name" autocomplete="off" maxlength="80" aria-label="Tên người gửi" value="Discord farm" FOCUSED]
                       div.set-row
                         div
                           div.t "Ảnh người gửi"
@@ -566,7 +566,7 @@ html [data-theme="dark" lang="vi"]
                           div.t "Tên người gửi"
                           div.d "Hiện làm tên người gửi của mỗi tin."
                         div.ctl
-                          input.field.sm [id="s-dc-name" autocomplete="off" maxlength="80" aria-label="Tên người gửi" value="  " FOCUSED]
+                          input.field.sm [id="s-dc-name" autocomplete="off" maxlength="80" aria-label="Tên người gửi" value="Bloxkeep" FOCUSED]
                       div.set-row
                         div
                           div.t "Ảnh người gửi"
@@ -600,7 +600,7 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
-  (none)
+  setDiscord {"username":""}
 == bad avatar
 html [data-theme="dark" lang="vi"]
 #app
@@ -871,7 +871,7 @@ html [data-theme="dark" lang="vi"]
                           div.t "Ảnh người gửi"
                           div.d "Link ảnh (https), không bắt buộc. Để trống thì dùng logo Bloxkeep."
                         div.ctl
-                          input.field.sm [id="s-dc-avatar" placeholder="https://…" autocomplete="off" maxlength="2048" aria-label="Ảnh người gửi" value="http://example.com/a.png" FOCUSED]
+                          input.bad.field.sm [id="s-dc-avatar" placeholder="https://…" autocomplete="off" maxlength="2048" aria-label="Ảnh người gửi" value="http://example.com/a.png" FOCUSED]
                       div.set-row
                         div
                           div.t "Ngôn ngữ"
@@ -899,7 +899,7 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
-  setDiscord {"username":""}
+  (none)
 == end
 html [data-theme="dark" lang="vi"]
 #app

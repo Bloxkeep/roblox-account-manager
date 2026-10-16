@@ -88,7 +88,8 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
       const mod = modifiers.reduce((m, k) => m | bits[k], 0);
       const named = { Escape: 27, Enter: 13, Tab: 9, ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37, ArrowRight: 39, Backspace: 8, Delete: 46, Home: 36, End: 35, ' ': 32 };
       const code = named[key] ?? key.toUpperCase().charCodeAt(0);
-      const text = key.length === 1 && !(mod & 2) ? key : undefined;
+      // Enter types "\r" as a keyboard does: without it, Edge neither submits a form nor ends a text box's change.
+      const text = key === 'Enter' ? '\r' : key.length === 1 && !(mod & 2) ? key : undefined;
       const base = { key, code: key.length === 1 ? `Key${key.toUpperCase()}` : key, windowsVirtualKeyCode: code, modifiers: mod };
       await send('Input.dispatchKeyEvent', { type: text ? 'keyDown' : 'rawKeyDown', ...base, text });
       await send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });

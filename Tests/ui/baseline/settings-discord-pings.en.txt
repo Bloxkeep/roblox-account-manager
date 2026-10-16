@@ -460,7 +460,7 @@ html [data-theme="dark" lang="en"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "A person…"
                             option [value="role"] "A role…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123" FOCUSED]
+                          input.bad.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123" FOCUSED]
                     div.set-row
                       div
                         div.t "Send one now"
@@ -529,6 +529,9 @@ html [data-theme="dark" lang="en"]
                         svg.i #u1ag9u
 #layer
 #toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "A user ID is 17 to 20 digits. Copy it with Developer Mode on: right-click the person › Copy User ID."
 -- commands
   (none)
 == saved
@@ -793,8 +796,11 @@ html [data-theme="dark" lang="en"]
                         svg.i #u1ag9u
 #layer
 #toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "A user ID is 17 to 20 digits. Copy it with Developer Mode on: right-click the person › Copy User ID."
 -- commands
-  (none)
+  setDiscord {"ping":{"kind":"summary","value":"user:123456789012345678"}}
 == left empty
 html [data-theme="dark" lang="en"]
 #app
@@ -1057,8 +1063,11 @@ html [data-theme="dark" lang="en"]
                         svg.i #u1ag9u
 #layer
 #toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "A user ID is 17 to 20 digits. Copy it with Developer Mode on: right-click the person › Copy User ID."
 -- commands
-  setDiscord {"ping":{"kind":"summary","value":"user:123456789012345678"}}
+  (none)
 == end
 html [data-theme="dark" lang="en"]
 #app
@@ -1321,6 +1330,9 @@ html [data-theme="dark" lang="en"]
                         svg.i #u1ag9u
 #layer
 #toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "A user ID is 17 to 20 digits. Copy it with Developer Mode on: right-click the person › Copy User ID."
 -- commands
   setDiscord {"ping":{"kind":"drop","value":"here"}}
   setDiscord {"ping":{"kind":"launch","value":"here"}}

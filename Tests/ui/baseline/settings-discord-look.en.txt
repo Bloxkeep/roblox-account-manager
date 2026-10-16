@@ -262,7 +262,7 @@ html [data-theme="dark" lang="en"]
                           div.t "Sender name"
                           div.d "Shown as the author of each message."
                         div.ctl
-                          input.field.sm [id="s-dc-name" autocomplete="off" maxlength="80" aria-label="Sender name" value="Discord farm" FOCUSED]
+                          input.bad.field.sm [id="s-dc-name" autocomplete="off" maxlength="80" aria-label="Sender name" value="Discord farm" FOCUSED]
                       div.set-row
                         div
                           div.t "Sender picture"
@@ -566,7 +566,7 @@ html [data-theme="dark" lang="en"]
                           div.t "Sender name"
                           div.d "Shown as the author of each message."
                         div.ctl
-                          input.field.sm [id="s-dc-name" autocomplete="off" maxlength="80" aria-label="Sender name" value="  " FOCUSED]
+                          input.field.sm [id="s-dc-name" autocomplete="off" maxlength="80" aria-label="Sender name" value="Bloxkeep" FOCUSED]
                       div.set-row
                         div
                           div.t "Sender picture"
@@ -600,7 +600,7 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
-  (none)
+  setDiscord {"username":""}
 == bad avatar
 html [data-theme="dark" lang="en"]
 #app
@@ -871,7 +871,7 @@ html [data-theme="dark" lang="en"]
                           div.t "Sender picture"
                           div.d "Optional link to a picture (https). Empty uses Bloxkeep’s logo."
                         div.ctl
-                          input.field.sm [id="s-dc-avatar" placeholder="https://…" autocomplete="off" maxlength="2048" aria-label="Sender picture" value="http://example.com/a.png" FOCUSED]
+                          input.bad.field.sm [id="s-dc-avatar" placeholder="https://…" autocomplete="off" maxlength="2048" aria-label="Sender picture" value="http://example.com/a.png" FOCUSED]
                       div.set-row
                         div
                           div.t "Language"
@@ -899,7 +899,7 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
-  setDiscord {"username":""}
+  (none)
 == end
 html [data-theme="dark" lang="en"]
 #app
