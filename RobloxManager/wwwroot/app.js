@@ -1950,177 +1950,30 @@
     scheduleSaveInputs();
   }
 
-  /** The game's public servers (like the Servers tab on its Roblox page): pick one to join it. */
   /**
-   * The game's public servers (like the Servers tab on its Roblox page): pick one to join it. Roblox sorts by player
-   * count itself; ping and FPS are sorted here over the servers loaded so far. "ping" is the average ping of the
-   * players already in that server (what Roblox reports), not the ping from this PC.
+   * The game's servers, to pick one to join: the selected accounts' friends in it, then its public servers (like the
+   * Servers tab on its Roblox page). Drawn by React (ui/src/Servers.tsx); a pick goes in the dock's Job ID box.
    */
   function openServers() {
     const g = S.game;
     if (!g?.placeId) return;
-    const party = S.selected.size;
-    // left: how many more lists Roblox gives this minute (-1 unknown); waitUntil / moreUntil: when Roblox takes the
-    // next one after saying to wait (the list, or the next page).
-    const st = { sort: 'most', room: party > 1, items: [], view: [], next: null, loading: false, busy: false, waitUntil: 0, moreUntil: 0, left: -1, seq: 0, friends: null };
-    const SORTS = ['most', 'fewest', 'ping', 'fps'];
-    const local = () => st.sort === 'ping' || st.sort === 'fps';
-    let api;
-    const visibleServers = () => {
-      const list = st.room ? st.items.filter(s => s.maxPlayers - s.playing >= party) : st.items.slice();
-      if (st.sort === 'ping') list.sort((a, b) => (a.ping || 1e9) - (b.ping || 1e9));
-      if (st.sort === 'fps') list.sort((a, b) => (b.fps || 0) - (a.fps || 0));
-      // Full servers can't be joined: they go last (the sort keeps the rest in order).
-      return list.sort((a, b) => isFull(a) - isFull(b));
-    };
-    const isFull = s => s.maxPlayers > 0 && s.playing >= s.maxPlayers;
-    const rows = () => st.view.map((s, i) => `<div class="srv-row ${isFull(s) ? 'full' : ''}">
-        <div class="srv-fill" title="${t('srv.players', { n: s.playing, max: s.maxPlayers })}"><i style="transform:scaleX(${s.maxPlayers ? (s.playing / s.maxPlayers).toFixed(3) : 0})"></i></div>
-        <b>${t('srv.players', { n: s.playing, max: s.maxPlayers })}${friendsIn(s.jobId) ? ` <span class="srv-friend-tag" title="${t('srv.friendsHere')}">${icon('users')}${friendsIn(s.jobId)}</span>` : ''}</b>
-        <span class="srv-ping" title="${t('srv.pingTip')}">${s.ping ? t('srv.ping', { ms: s.ping }) : ''}</span>
-        <span class="srv-ping">${s.fps ? t('srv.fpsVal', { fps: Math.round(s.fps) }) : ''}</span>
-        <button class="btn sm" data-srv="${i}" ${isFull(s) ? `disabled title="${t('srv.full')}"` : `title="${t('srv.pickTip')}"`}>${t('srv.pick')}</button></div>`).join('');
-    const friendsIn = jobId => st.friends ? st.friends.filter(f => f.jobId === jobId).length : 0;
-    const renderFriends = () => {
-      const box = api.el.querySelector('#srv-friends');
-      if (!box) return;
-      const list = st.friends;
-      box.classList.toggle('list', !!list?.length);
-      setHtml(box, list === null ? `<div class="srv-friends-note"><span class="spin"></span>${t('srv.friendsLooking')}</div>`
-        : !list.length ? `<div class="srv-friends-note">${t(st.friendsFailed ? 'srv.friendsError' : st.friendsAsked ? 'srv.friendsNone' : 'srv.friendsNoAccount')}</div>`
-        : list.map((f, i) => `<div class="srv-friend">
-            ${f.avatarUrl ? `<img src="${esc(f.avatarUrl)}" alt="">` : '<span class="ph"></span>'}
-            <div class="gtxt"><b title="${esc(f.displayName || f.name || `#${f.userId}`)}">${esc(f.displayName || f.name || `#${f.userId}`)}</b><small>${f.name ? `@${esc(f.name)} · ` : ''}${t('srv.friendOf', { acc: esc(f.via) })}</small></div>
-            <button class="btn sm" data-friend="${i}" title="${t('srv.pickTip')}">${t('srv.joinFriend')}</button></div>`).join(''));
-    };
-    const loadFriends = async () => {
-      const r = await call('friendServers', { placeId: g.placeId, ids: [...S.selected] }, { silent: true });
-      if (!api.el.isConnected) return;
-      st.friends = r?.friends || [];
-      st.friendsAsked = !!r?.asked;
-      st.friendsFailed = !r;
-      renderFriends();
-      render();
-    };
-    const secondsTo = at => Math.max(1, Math.ceil((at - Date.now()) / 1000));
-    const moreLabel = () => (st.moreUntil > Date.now() ? t('srv.moreIn', { n: secondsTo(st.moreUntil) }) : t('srv.more'));
-    // Roblox said to wait: the seconds count down in place until the window asks again by itself.
-    let tick = 0;
-    const countDown = () => {
-      if (!api.el.isConnected) { clearInterval(tick); tick = 0; return; }
-      if (st.busy) api.el.querySelector('#srv-list .picker-empty')?.replaceChildren(t('srv.wait', { n: secondsTo(st.waitUntil) }));
-      const more = api.el.querySelector('[data-more]');
-      if (more) {
-        more.textContent = moreLabel();
-        more.disabled = st.loading || st.moreUntil > Date.now();
-      }
-      if (!st.busy && st.moreUntil <= Date.now()) { clearInterval(tick); tick = 0; }
-    };
-    const render = () => {
-      st.view = visibleServers();
-      const list = api.el.querySelector('#srv-list');
-      const more = st.next ? `<button class="btn ghost w" data-more ${st.loading || st.moreUntil > Date.now() ? 'disabled' : ''}>${moreLabel()}</button>` : '';
-      // The list keeps its height whatever it shows (app.css), and while another order loads the rows so far stay,
-      // dimmed: the window doesn't shrink to a spinner and grow back.
-      const rowsShown = !st.busy && st.view.length > 0;
-      list.classList.toggle('stale', rowsShown && st.loading);
-      list.classList.toggle('note', !rowsShown);
-      list.innerHTML = st.busy ? `<div class="picker-empty">${t('srv.wait', { n: secondsTo(st.waitUntil) })}</div>`
-        : rowsShown ? rows() + more
-        : st.loading ? '<div class="picker-empty"><span class="spin"></span></div>'
-        : st.items.length ? `<div class="picker-empty">${t('srv.noneRoom', { n: party })}</div>${more}`
-        : `<div class="picker-empty">${t('srv.none')}</div>`;
-      api.el.querySelectorAll('[data-sort]').forEach(b => {
-        b.classList.toggle('on', b.dataset.sort === st.sort);
-        b.setAttribute('aria-pressed', String(b.dataset.sort === st.sort));
-      });
-      const room = api.el.querySelector('[data-room]');
-      if (room) {
-        room.classList.toggle('on', st.room);
-        room.setAttribute('aria-pressed', String(!!st.room));
-      }
-      api.el.querySelector('[data-random]').disabled = !st.view.some(s => !isFull(s));
-    };
-    // Roblox gives only a few lists a minute: a second page for ping/FPS only while that leaves one for the next click.
-    const spare = () => st.left < 0 || st.left >= 2;
-    const load = async more => {
-      const seq = ++st.seq;
-      st.loading = true;
-      if (!more) st.busy = false;
-      render();
-      // Ping and FPS are sorted here, so start from the fullest servers (the ones people actually play on).
-      const r = await call('servers', { placeId: g.placeId, fewest: st.sort === 'fewest', cursor: more ? st.next : null });
-      if (seq !== st.seq || !api.el.isConnected) return;
-      st.loading = false;
-      st.left = r?.left ?? -1;
-      if (r?.busy) {
-        // Roblox said how long: ask again by itself then (the rows loaded so far stay for a next page).
-        const until = Date.now() + (r.retryIn || 20) * 1000;
-        if (more) st.moreUntil = until; else { st.busy = true; st.waitUntil = until; }
-        tick ||= setInterval(countDown, 1000);
-        setTimeout(() => api.el.isConnected && seq === st.seq && load(more), until - Date.now() + 400);
-      } else if (r) {
-        // A server can move between pages while players come and go; keep one row per server.
-        const seen = new Set(more ? st.items.map(s => s.jobId) : []);
-        st.items = (more ? st.items : []).concat(r.servers.filter(s => !seen.has(s.jobId) && seen.add(s.jobId)));
-        st.next = r.next;
-        st.moreUntil = 0;
-      }
-      render();
-      // A second page gives sorting by ping or FPS more to choose from.
-      if (!more && local() && r?.next && !r.busy && spare()) load(true);
-    };
-    const choose = s => {
-      useServer(g.placeId, s.jobId);
-      api.close();
-      toast(t('srv.chosen'), 'ok');
-    };
-    api = modal({
+    let unmount = null;
+    const api = modal({
       title: t('srv.title', { game: esc(g.name || `Place ${g.placeId}`) }),
       top: true,
-      body: `<div class="srv-head">${t('srv.friendsTitle')}</div><div class="srv-friends" id="srv-friends"></div>
-        <div class="srv-head">${t('srv.publicTitle')}</div>
-        <div class="srv-sort">${SORTS.map(k => `<button class="chip ${k === st.sort ? 'on' : ''}" data-sort="${k}" aria-pressed="${k === st.sort}">${t(`srv.sort.${k}`)}</button>`).join('')}</div>
-        <div class="srv-tools">${party > 1 ? `<button class="chip ${st.room ? 'on' : ''}" data-room aria-pressed="${!!st.room}">${icon('users')}${t('srv.room', { n: party })}</button>` : ''}
-          <button class="btn sm" data-random disabled>${icon('repeat')}${t('srv.random')}</button></div>
-        <div class="srv-list" id="srv-list"></div>`,
+      body: '',
       actions: [{ text: t('common.close'), onClick: ({ close }) => close() }],
-      onMount: ({ el }) => el.addEventListener('click', e => {
-        const sort = e.target.closest('[data-sort]');
-        if (sort) {
-          const was = st.sort;
-          st.sort = sort.dataset.sort;
-          // Most/fewest come from Roblox in that order; ping/FPS just re-sort what is loaded (plus a page if needed).
-          if (st.sort === 'fewest' || was === 'fewest' || !st.items.length) load(false);
-          else if (local() && st.items.length < 150 && st.next && spare() && !st.loading) { render(); load(true); }
-          else render();
-          return;
-        }
-        if (e.target.closest('[data-room]')) { st.room = !st.room; render(); return; }
-        if (e.target.closest('[data-random]')) {
-          const open = st.view.filter(s => !isFull(s));
-          if (open.length) choose(open[Math.floor(Math.random() * open.length)]);
-          return;
-        }
-        if (e.target.closest('[data-more]')) { load(true); return; }
-        const friend = e.target.closest('[data-friend]');
-        if (friend) {
-          const f = st.friends[+friend.dataset.friend];
-          useServer(f.placeId || g.placeId, f.jobId);
-          api.close();
-          toast(t('srv.chosen'), 'ok');
-          return;
-        }
-        const pick = e.target.closest('[data-srv]');
-        if (pick) choose(st.view[+pick.dataset.srv]);
-      }),
+      onRemoved: () => unmount?.(),
     });
     // Its layout (only the list scrolls) hangs on this class: a :has() rule did it, which re-styled the whole page on
     // every change anywhere in it.
-    api.el.querySelector('.modal-body').classList.add('srv-body');
-    renderFriends();
-    loadFriends();
-    load(false);
+    const body = api.el.querySelector('.modal-body');
+    body.classList.add('srv-body');
+    unmount = window.BloxkeepUI.servers(body, uiHost(), g.placeId, [...S.selected], (placeId, jobId) => {
+      useServer(placeId, jobId);
+      api.close();
+      toast(t('srv.chosen'), 'ok');
+    });
   }
 
   async function pinGame(g) {

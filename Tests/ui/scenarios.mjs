@@ -216,6 +216,21 @@ export default [
     await s.wait(600);
     await s.click({ key: 'srv.pick', within: '.overlay' });
   }),
+  S('servers-room', 'select=1', async s => {
+    await s.click(key('srv.button'));
+    await s.wait(800);
+    await s.snap('room for 2');
+    await s.click({ css: '.overlay [data-room]' });
+    await s.snap('all');
+    await s.click({ css: '.overlay [data-random]' });
+  }),
+  S('servers-friend', 'select=1', async s => {
+    await s.click(key('srv.button'));
+    await s.wait(800);
+    await s.click({ css: '.overlay [data-friend]' });
+  }),
+  S('servers-no-friends', 'select=1&nofriends=1', async s => { await s.click(key('srv.button')); await s.wait(800); }),
+  S('servers-friends-fail', 'select=1&friendsfail=1', async s => { await s.click(key('srv.button')); await s.wait(800); }),
   S('join-player', 'select=1', async s => {
     await s.click({ key: 'jp.button' });
     await s.snap('dialog');

@@ -13,6 +13,7 @@ import { Palette, type PaletteEntry } from './Palette';
 import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
 import { PresetsView } from './PresetsView';
+import { Servers } from './Servers';
 import { StatsView, type StatsApi } from './StatsView';
 import { AppearancePage } from './settings/AppearancePage';
 import { BackupPage } from './settings/BackupPage';
@@ -108,6 +109,10 @@ const BloxkeepUI = {
     const form = createRef<PresetFormApi>();
     const unmount = mount(el, host, <PresetForm {...opts} api={form} />);
     return { unmount, form: form.current! };
+  },
+  /** A game's servers (and the selected accounts' friends in it) into the Servers dialog's body; chosen picks one. */
+  servers(el: HTMLElement, host: Host, placeId: number, ids: string[], chosen: (placeId: number, jobId: string) => void) {
+    return mount(el, host, <Servers placeId={placeId} ids={ids} chosen={chosen} />);
   },
   /** The Statistics tab into its section; api opens Activity and exports it (Ctrl+K). */
   statsView(el: HTMLElement, host: Host) {
