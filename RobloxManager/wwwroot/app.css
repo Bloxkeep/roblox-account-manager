@@ -1647,9 +1647,10 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
    touch) and the edge with more chips behind it fades out. */
 #chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; scroll-padding-inline: 24px; }
 #chips::-webkit-scrollbar { display: none; }
-#chips.fade-r { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
-#chips.fade-l { mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
-#chips.fade-l.fade-r { mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
+/* Wide enough that a chip half past the edge fades out whole: a narrow fade left its coloured dot standing alone. */
+#chips.fade-r { mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent); }
+#chips.fade-l { mask-image: linear-gradient(to left, #000 calc(100% - 72px), transparent); }
+#chips.fade-l.fade-r { mask-image: linear-gradient(to right, transparent, #000 72px, #000 calc(100% - 72px), transparent); }
 .sort-btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; flex: none; border-radius: 20px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .sort-btn:hover { border-color: var(--line-3); color: var(--text); }
 .sort-btn .i { width: 15px; height: 15px; flex: none; }
