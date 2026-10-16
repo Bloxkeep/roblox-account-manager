@@ -1508,7 +1508,8 @@
           <div id="s-update"></div>
           ${row(t('upd.auto'), '', sw('s-autoupd'))}`) + setGroup('feedback', t('fb.group'), `
           ${row(t('help.title'), t('help.desc'), `<button class="btn sm" data-act="open-guide">${icon('book')}${t('help.open')}</button>`)}
-          ${row(t('fb.title'), t('fb.rowDesc'), `<button class="btn sm" data-act="feedback">${icon('message')}${t('fb.open')}</button>`)}`))}
+          ${row(t('fb.title'), t('fb.rowDesc'), `<button class="btn sm" data-act="feedback">${icon('message')}${t('fb.open')}</button>`)}
+          ${row(t('star.title'), t('star.desc'), `<button class="btn sm" data-act="open-github">${icon('star')}${t('star.open')}</button>`)}`))}
         <p class="set-empty" id="set-empty" hidden>${t('set.noMatch')}</p>
       </div></div>
       </div>`;
@@ -1954,9 +1955,11 @@
       body: `${main}
         ${older.length ? `<details class="wn-older"><summary>${icon('chevronRight')}${tn('wn.older', older.length)}</summary>
           ${older.map(r => `<section class="wn"><div class="wn-head"><b>${esc(r.version)}</b><span>${day(r.date)}</span></div>
-            <ul>${notes(r).map(n => `<li>${esc(n)}</li>`).join('')}</ul></section>`).join('')}</details>` : ''}`,
+            <ul>${notes(r).map(n => `<li>${esc(n)}</li>`).join('')}</ul></section>`).join('')}</details>` : ''}
+        <p class="wn-star">${icon('star')}<span>${t('wn.star')}</span><button type="button" class="wn-go" data-star>${t('star.open')}${icon('chevronRight')}</button></p>`,
       actions: [{ text: t('wn.ok'), kind: 'primary', onClick: ({ close }) => close() }],
       onMount: ({ el, close }) => el.addEventListener('click', e => {
+        if (e.target.closest('[data-star]')) return call('openGitHub');
         const go = highlights[+e.target.closest('[data-go]')?.dataset.go]?.go;
         if (!go) return;
         close();
@@ -5236,6 +5239,7 @@
       { id: 'updates', icon: 'download', text: t('pal.checkUpdates'), run: () => { openSection('updates')(); $('#sec-updates [data-act="check-updates"]')?.click(); } },
       { id: 'feedback', icon: 'message', text: t('fb.title'), keywords: ['bug', 'report', 'idea', 'feedback', 'góp ý', 'báo lỗi'], run: () => feedbackModal() },
       { id: 'guide', icon: 'book', text: t('help.title'), keywords: ['help', 'guide', 'manual', 'how', 'hướng dẫn', 'trợ giúp'], run: () => call('openGuide') },
+      { id: 'star', icon: 'star', text: t('star.title'), keywords: ['github', 'star', 'sao', 'open source', 'mã nguồn'], run: () => call('openGitHub') },
       { id: 'export', icon: 'history', text: t('pal.exportActivity'), keywords: ['csv', 'log'], run: () => { setView('stats'); toActivity(); exportActivity(null); } }, // the list may not be loaded yet: the app knows
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
       { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => lockApp() },
@@ -5666,6 +5670,7 @@
       case 'ru-open': return openSettings('rbxupd');
       case 'rw-how': return call('openRobloxWatch');
       case 'open-guide': return call('openGuide');
+      case 'open-github': return call('openGitHub');
       case 'feedback': return feedbackModal();
       case 'select-all': return selectAllVisible();
       case 'clear-search':

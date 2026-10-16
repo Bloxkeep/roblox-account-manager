@@ -1497,6 +1497,11 @@ b, strong { font-weight: 650; }
 .wn-also .i { width: 15px; height: 15px; margin-top: 2px; color: var(--ok); }
 @media (max-width: 720px) { .wn-cards { grid-template-columns: 1fr; } }
 .wn-older { margin-top: 14px; }
+/* The last line of What's new: a quiet ask for a GitHub star, under everything else. */
+.wn-star { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.45; color: var(--muted); }
+.wn-star > .i { flex: none; width: 16px; height: 16px; color: var(--muted); }
+.wn-star span { flex: 1; min-width: 0; }
+.wn-star .wn-go { flex: none; margin: 0; }
 .wn-older summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; color: var(--muted); border-radius: 8px; }
 .wn-older summary::-webkit-details-marker { display: none; }
 .wn-older summary .i { width: 15px; height: 15px; transition: transform .15s; }
