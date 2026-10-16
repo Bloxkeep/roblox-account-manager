@@ -70,6 +70,43 @@ export default [
   S('feedback', 'settings=updates', async s => { await s.click(key('fb.open')); }),
   S('import-vault', 'vimport=pick'),
   S('import-vault-preview', 'vimport=preview', async s => { await s.wait(1500); }),
+  S('import-vault-same', 'vimport=pick&ivsame=1', async s => { await s.click({ css: '.overlay .modal-foot .btn.primary' }); await s.wait(500); }),
+  S('import-vault-wrong', 'vimport=wrong', async s => { await s.wait(2000); }),
+  S('import-vault-checks', 'vimport=password', async s => {
+    await s.wait(700);
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.snap('no password');
+    await s.type('secret', { css: '#iv-pw' });
+    await s.click({ css: '#iv-eye' });
+    await s.snap('shown');
+    await s.click({ css: '#iv-eye' });
+  }),
+  S('import-vault-lockout', 'vimport=password', async s => {
+    await s.wait(700);
+    for (let i = 0; i < 3; i++) {
+      await s.fill({ css: '#iv-pw' }, 'nope');
+      await s.click({ css: '.overlay .modal-foot .btn.primary' });
+      await s.wait(900);
+    }
+    await s.snap('waiting');
+    await s.wait(1200);
+  }, { langs: ['en'] }),
+  S('import-vault-pick', 'vimport=preview', async s => {
+    await s.wait(1500);
+    await s.click({ key: 'iv.none', within: '.overlay' });
+    await s.snap('none');
+    await s.click({ css: '#iv-presets' });
+    await s.snap('presets only');
+    await s.click({ key: 'iv.all', within: '.overlay' });
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(500);
+  }),
+  S('import-vault-other', 'vimport=preview', async s => {
+    await s.wait(1500);
+    await s.click({ css: '#iv-other' });
+    await s.wait(500);
+  }),
+  S('import-vault-hidden', 'vimport=preview&hide=1', async s => { await s.wait(1500); }, { langs: ['en'] }),
 
   // ── Themes ──
   S('theme-light', 'theme=light'),

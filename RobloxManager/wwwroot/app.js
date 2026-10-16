@@ -3000,142 +3000,25 @@
    * never cookies or passwords. Closing the dialog (or locking) makes the app forget it.
    */
   function importVault() {
-    let step = 'pick', file = null, preview = null, done = false, waitTimer = 0;
+    let done = false, ui = null;
     const m = modal({
       title: t('iv.title'),
       top: true,
       dismissable: false,
       busy: true,
       enterSubmits: true,
-      body: '<div id="iv-body"></div>',
+      body: '',
       actions: [
         { text: t('common.cancel'), onClick: ({ close }) => close() },
-        { text: t('iv.choose'), kind: 'primary', onClick: ({ btn }) => (step === 'pick' ? pick(btn) : step === 'password' ? open(btn) : apply(btn)) },
+        { text: t('iv.choose'), kind: 'primary', onClick: ({ btn }) => ui?.api.next(btn) },
       ],
       onClose: () => {
-        clearInterval(waitTimer);
         if (!done) call('vaultImportCancel', {}, { silent: true });
       },
+      onRemoved: () => ui?.unmount(),
     });
-    const q = sel => m.el.querySelector(sel);
-    const primary = () => q('.modal-foot .btn.primary');
-    const err = msg => { const e = q('#iv-err'); if (e) { e.textContent = msg || ''; e.hidden = !msg; } };
-    const fileLine = () => `<div class="iv-file">${icon('folder')}<b title="${esc(file.name)}">${esc(file.name)}</b><button type="button" class="link" id="iv-other">${t('iv.otherFile')}</button></div>`;
-    const signIn = a => a.cookieValid === true ? `<span class="iv-ck ok">${t('iv.ckOk')}</span>`
-      : a.cookieValid === false ? `<span class="iv-ck bad">${t('iv.ckBad')}</span>` : `<span class="iv-ck">${t('iv.ckUnknown')}</span>`;
-    // Names hidden: the file's accounts too, numbered by their place in the file.
-    const row = x => {
-      const a = hidingNames() ? { ...x, label: t('hide.account', { n: x.key + 1 }), username: '' } : x;
-      return `<label class="rc-item iv-item">
-        <input type="checkbox" value="${a.key}" ${a.exists ? '' : 'checked'}>
-        <div class="avatar sm">${avatarInner(a)}</div>
-        <span class="iv-name"><b title="${esc(a.label)}">${esc(a.label)}</b>
-          <small>${[atName(a), a.group ? esc(a.group) : '', signIn(a), a.hasPassword ? t('iv.pwSaved') : ''].filter(Boolean).join(' · ')}</small></span>
-        ${vngTag(a)}<span class="state-pill ${a.exists ? 'off' : 'ok'}">${t(a.exists ? 'iv.exists' : 'iv.new')}</span></label>`;
-    };
-
-    function render() {
-      clearInterval(waitTimer);
-      const body = q('#iv-body');
-      // The list step greys the button with nothing ticked; another file starts over with it usable.
-      if (step !== 'preview') primary().disabled = false;
-      if (step === 'pick') {
-        body.innerHTML = `<p class="modal-text">${t('iv.intro')}</p>
-          <p class="fine">${icon('shield')}<span>${t('iv.safe')}</span></p>
-          <div class="form-error" id="iv-err" role="alert" hidden></div>`;
-        primary().textContent = t('iv.choose');
-      } else if (step === 'password') {
-        body.innerHTML = `${fileLine()}
-          <div class="form"><label>${t('iv.pw')}
-            <span class="pw"><input class="field" type="password" id="iv-pw" maxlength="256" autocomplete="off" spellcheck="false">
-            <button type="button" class="icon-btn" id="iv-eye" title="${t('lock.showPw')}" aria-label="${t('lock.showPw')}" aria-pressed="false">${icon('eye')}</button></span></label></div>
-          <p class="fine">${icon('shield')}<span>${t('iv.safe')}</span></p>
-          <div class="form-error" id="iv-err" role="alert" hidden></div>`;
-        primary().textContent = t('iv.open');
-        eyeToggle(q('#iv-eye'), [q('#iv-pw')]);
-        setTimeout(() => q('#iv-pw')?.focus(), 30);
-      } else {
-        const list = preview.accounts;
-        body.innerHTML = `${fileLine()}
-          ${list.length ? `<div class="iv-bar"><span id="iv-count"></span><button type="button" class="link" id="iv-all">${t('iv.all')}</button><button type="button" class="link" id="iv-none">${t('iv.none')}</button></div>
-          <div class="rc-list iv-list">${list.map(row).join('')}</div>` : `<p class="modal-text">${t('iv.empty')}</p>`}
-          ${preview.presets ? `<label class="iv-presets"><input type="checkbox" id="iv-presets"><span><b>${t('iv.presets', { n: preview.presets })}</b><small>${t('iv.presetsSub')}</small></span></label>` : ''}
-          ${list.some(a => a.exists) ? `<p class="fine">${icon('info')}<span>${t('iv.existsNote')}</span></p>` : ''}
-          <div class="form-error" id="iv-err" role="alert" hidden></div>`;
-        primary().textContent = t('iv.importBtn');
-        const boxes = () => [...m.el.querySelectorAll('.iv-item input')];
-        const sync = () => {
-          const n = boxes().filter(b => b.checked).length;
-          const count = q('#iv-count');
-          if (count) count.textContent = t('iv.count', { n, total: list.length });
-          primary().disabled = !n && !q('#iv-presets')?.checked;
-        };
-        m.el.querySelectorAll('.iv-item input, #iv-presets').forEach(b => b.addEventListener('change', sync));
-        const all = on => () => { boxes().forEach(b => { b.checked = on; }); sync(); };
-        q('#iv-all')?.addEventListener('click', all(true));
-        q('#iv-none')?.addEventListener('click', all(false));
-        sync();
-        // The password box that had the focus is gone: Import takes it (the first account when nothing is ticked).
-        if (!m.el.contains(document.activeElement)) (primary().disabled ? q('.iv-item input, #iv-presets') : primary())?.focus();
-      }
-      q('#iv-other')?.addEventListener('click', e => pick(e.currentTarget));
-    }
-
-    /** After three wrong passwords the app makes each try wait: Open counts down meanwhile. */
-    function countdown(seconds) {
-      clearInterval(waitTimer);
-      const until = Date.now() + seconds * 1000;
-      const tick = () => {
-        const btn = primary(), left = Math.ceil((until - Date.now()) / 1000);
-        if (!btn || step !== 'password') return clearInterval(waitTimer);
-        btn.disabled = left > 0;
-        btn.textContent = left > 0 ? t('iv.wait', { n: left }) : t('iv.open');
-        if (left <= 0) clearInterval(waitTimer);
-      };
-      tick();
-      waitTimer = setInterval(tick, 500);
-    }
-
-    async function pick(btn) {
-      err('');
-      let r;
-      try { r = await busy(btn, () => bridge.call('vaultImportPick')); }
-      catch (e) { return err(e.message); }
-      if (!r) return; // the file dialog was cancelled: things stay as they were
-      file = r;
-      preview = null;
-      step = 'password';
-      render();
-      if (r.wait) countdown(r.wait);
-    }
-
-    async function open(btn) {
-      const pw = q('#iv-pw').value;
-      if (!pw) return err(t('iv.needPw'));
-      err('');
-      let r;
-      try { r = await busy(btn, () => bridge.call('vaultImportOpen', { password: pw })); }
-      catch (e) { return err(e.message); }
-      if (!r) return;
-      if (r.status !== 'ok') {
-        err(r.error);
-        const box = q('#iv-pw');
-        box.select();
-        box.focus();
-        if (r.wait) countdown(r.wait);
-        return;
-      }
-      preview = r;
-      step = 'preview';
-      render();
-    }
-
-    async function apply(btn) {
-      err('');
-      const keys = [...m.el.querySelectorAll('.iv-item input')].filter(b => b.checked).map(b => +b.value);
-      let r;
-      try { r = await busy(btn, () => bridge.call('vaultImportApply', { token: preview.token, keys, presets: !!q('#iv-presets')?.checked })); }
-      catch (e) { return err(e.message); }
+    // The steps are React's (ui/src/ImportVault.tsx); it sets the main button's words and state for each.
+    ui = window.BloxkeepUI.importVault(m.el.querySelector('.modal-body'), uiHost(), () => m.el.querySelector('.modal-foot .btn.primary'), r => {
       done = true;
       m.close();
       const parts = r.added && r.updated ? t('iv.doneBoth', { n: r.added, u: r.updated })
@@ -3148,9 +3031,7 @@
         S.anchor = r.ids[r.ids.length - 1];
         renderSelection();
       }
-    }
-
-    render();
+    });
   }
 
   /** The server an account is in: from its window's log here, or from Roblox's status when visible. */

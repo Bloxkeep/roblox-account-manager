@@ -1,0 +1,652 @@
+== none
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
+                h2.set-page-title [id="set-page-backup-h"] "Backup & data"
+                div.set-grp [id="sec-backup"]
+                  h3.set-grp-title "Backup"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Back up to a folder"
+                        div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Folder"
+                        div.d
+                          span.path [id="s-bk-path"] "No folder chosen"
+                          div.bk-suggest [id="s-bk-suggest"]
+                            button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
+                            button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
+                      div.ctl
+                        button.btn.sm "Choose…"
+                    div [id="s-bk-note"]
+                    div [id="s-bk-status"]
+                      div.set-row
+                        div
+                          div.t "No backups yet"
+                        div.ctl
+                          button.btn.sm [disabled] "Back up now"
+                div.set-grp [id="sec-restore"]
+                  h3.set-grp-title "Restore & import"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Restore"
+                        div.d "Older backups open with the password they were saved with."
+                      div.ctl
+                        button.btn.sm "Restore…"
+                    div.set-row
+                      div
+                        div.t "Import accounts from a vault file"
+                        div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
+                      div.ctl
+                        button.btn.sm "Import…"
+                div.set-grp [id="sec-data"]
+                  h3.set-grp-title "Data"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Data location"
+                        div.d
+                          span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Import from a vault file"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div [id="iv-body"]
+          div.iv-file
+            svg.i #3wh3ok
+            b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
+            button.link [id="iv-other" type="button"] "Choose another file"
+          div.iv-bar
+            span [id="iv-count"] "0 of 5 selected"
+            button.link [id="iv-all" type="button"] "All"
+            button.link [id="iv-none" type="button" FOCUSED] "None"
+          div.iv-list.rc-list
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:245" src=#1oebnc6]
+              span.iv-name
+                b [title="Farm 3"] "Farm 3"
+                small "@pixelfarmer03 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:302"] "ST"
+              span.iv-name
+                b [title="Storage"] "Storage"
+                small "@khodo_vng ·"
+                  span.iv-ck "not checked"
+              span.tag.vng [title="Roblox VNG account (Vietnam)"] "VNG"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:244" src=#n0d7cr]
+              span.iv-name
+                b [title="Farm 2"] "Farm 2"
+                small "@pixelfarmer02 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.off.state-pill "Already here"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:204" src=#1qk25wb]
+              span.iv-name
+                b [title="Main"] "Main"
+                small "@sunny_builds · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.off.state-pill "Already here"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:253" src=#ym4i8b]
+              span.iv-name
+                b [title="Event runner"] "Event runner"
+                small "@event_runner_2026 · Event ·"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+          label.iv-presets
+            input [id="iv-presets" type="checkbox" checked=false]
+            span
+              b "Also import presets (2)"
+              small "Their schedules come over switched off. Accounts that aren’t here are left out of them."
+          p.fine
+            svg.i #v9c4u6
+            span "For accounts already here, only a sign-in that no longer works is replaced. Names, groups and notes you set here stay as they are."
+      div.modal-foot
+        button.btn "Cancel"
+        button.btn.primary [disabled] "Import"
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  vaultImportOpen {"password":"demo"}
+  vaultImportPick {}
+== presets only
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
+                h2.set-page-title [id="set-page-backup-h"] "Backup & data"
+                div.set-grp [id="sec-backup"]
+                  h3.set-grp-title "Backup"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Back up to a folder"
+                        div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Folder"
+                        div.d
+                          span.path [id="s-bk-path"] "No folder chosen"
+                          div.bk-suggest [id="s-bk-suggest"]
+                            button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
+                            button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
+                      div.ctl
+                        button.btn.sm "Choose…"
+                    div [id="s-bk-note"]
+                    div [id="s-bk-status"]
+                      div.set-row
+                        div
+                          div.t "No backups yet"
+                        div.ctl
+                          button.btn.sm [disabled] "Back up now"
+                div.set-grp [id="sec-restore"]
+                  h3.set-grp-title "Restore & import"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Restore"
+                        div.d "Older backups open with the password they were saved with."
+                      div.ctl
+                        button.btn.sm "Restore…"
+                    div.set-row
+                      div
+                        div.t "Import accounts from a vault file"
+                        div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
+                      div.ctl
+                        button.btn.sm "Import…"
+                div.set-grp [id="sec-data"]
+                  h3.set-grp-title "Data"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Data location"
+                        div.d
+                          span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Import from a vault file"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div [id="iv-body"]
+          div.iv-file
+            svg.i #3wh3ok
+            b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
+            button.link [id="iv-other" type="button"] "Choose another file"
+          div.iv-bar
+            span [id="iv-count"] "0 of 5 selected"
+            button.link [id="iv-all" type="button"] "All"
+            button.link [id="iv-none" type="button"] "None"
+          div.iv-list.rc-list
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:245" src=#1oebnc6]
+              span.iv-name
+                b [title="Farm 3"] "Farm 3"
+                small "@pixelfarmer03 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:302"] "ST"
+              span.iv-name
+                b [title="Storage"] "Storage"
+                small "@khodo_vng ·"
+                  span.iv-ck "not checked"
+              span.tag.vng [title="Roblox VNG account (Vietnam)"] "VNG"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:244" src=#n0d7cr]
+              span.iv-name
+                b [title="Farm 2"] "Farm 2"
+                small "@pixelfarmer02 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.off.state-pill "Already here"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:204" src=#1qk25wb]
+              span.iv-name
+                b [title="Main"] "Main"
+                small "@sunny_builds · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.off.state-pill "Already here"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:253" src=#ym4i8b]
+              span.iv-name
+                b [title="Event runner"] "Event runner"
+                small "@event_runner_2026 · Event ·"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+          label.iv-presets
+            input [id="iv-presets" type="checkbox" checked=true FOCUSED]
+            span
+              b "Also import presets (2)"
+              small "Their schedules come over switched off. Accounts that aren’t here are left out of them."
+          p.fine
+            svg.i #v9c4u6
+            span "For accounts already here, only a sign-in that no longer works is replaced. Names, groups and notes you set here stay as they are."
+      div.modal-foot
+        button.btn "Cancel"
+        button.btn.primary "Import"
+#toasts
+-- commands
+  (none)
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "10"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
+                h2.set-page-title [id="set-page-backup-h"] "Backup & data"
+                div.set-grp [id="sec-backup"]
+                  h3.set-grp-title "Backup"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Back up to a folder"
+                        div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Folder"
+                        div.d
+                          span.path [id="s-bk-path"] "No folder chosen"
+                          div.bk-suggest [id="s-bk-suggest"]
+                            button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
+                            button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
+                      div.ctl
+                        button.btn.sm "Choose…"
+                    div [id="s-bk-note"]
+                    div [id="s-bk-status"]
+                      div.set-row
+                        div
+                          div.t "No backups yet"
+                        div.ctl
+                          button.btn.sm [disabled] "Back up now"
+                div.set-grp [id="sec-restore"]
+                  h3.set-grp-title "Restore & import"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Restore"
+                        div.d "Older backups open with the password they were saved with."
+                      div.ctl
+                        button.btn.sm "Restore…"
+                    div.set-row
+                      div
+                        div.t "Import accounts from a vault file"
+                        div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
+                      div.ctl
+                        button.btn.sm "Import…"
+                div.set-grp [id="sec-data"]
+                  h3.set-grp-title "Data"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Data location"
+                        div.d
+                          span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+#layer
+#toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "Imported 3 new, 1 updated. Added 2 presets."
+-- commands
+  pageBusy {"busy":false}
+  vaultImportApply {"keys":[0,1,2,3,4],"presets":true,"token":"t1792126800000"}

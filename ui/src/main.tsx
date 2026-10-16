@@ -6,6 +6,7 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { Feedback, type FeedbackApi } from './Feedback';
 import { HostContext, type Host } from './host';
+import { ImportVault, type ImportResult, type ImportVaultApi } from './ImportVault';
 import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
 import { MultiHelp } from './MultiHelp';
 import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
@@ -123,6 +124,12 @@ const BloxkeepUI = {
   /** Quick search's box and list into its dialog's body; close closes the dialog. */
   palette(el: HTMLElement, host: Host, entries: PaletteEntry[], close: () => void) {
     return mount(el, host, <Palette entries={entries} close={close} />);
+  },
+  /** Importing from a vault file into its dialog's body: the main button calls api.next (primary() is that button). */
+  importVault(el: HTMLElement, host: Host, primary: () => HTMLButtonElement | null, finished: (r: ImportResult) => void) {
+    const api = createRef<ImportVaultApi>();
+    const unmount = mount(el, host, <ImportVault api={api} primary={primary} finished={finished} />);
+    return { unmount, api: api.current! };
   },
   /** The Presets tab into its section. */
   presetsView(el: HTMLElement, host: Host) {
