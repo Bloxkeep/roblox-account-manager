@@ -12,6 +12,7 @@ import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
 import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
 import { PresetsView } from './PresetsView';
+import { StatsView, type StatsApi } from './StatsView';
 import { AppearancePage } from './settings/AppearancePage';
 import { BackupPage } from './settings/BackupPage';
 import { DiscordPage } from './settings/DiscordPage';
@@ -35,9 +36,11 @@ function mount(el: HTMLElement, host: Host, node: ReactNode): () => void {
 
 /**
  * A control with the focus that React draws away (a list redrawn without it, a row moved to its new place: Edge drops
- * the focus of a moved element too) hands the focus back: to itself when it is still there, else to the same control
- * drawn anew or the one now in its place, as app.js's setHtml does. Focus the person moved away (a click elsewhere)
- * stays where they put it: only a loss the redraw itself caused is undone.
+ * the focus of a moved element too) hands the focus back: to itself when it is still there, else, within the part it
+ * was taken out of, to the same control drawn anew or the one now in its place, as app.js's setHtml does within what it
+ * redraws ("Use OneDrive" after "Use Google Drive" went; the next row's Edit after a row was deleted; nothing once
+ * Show more is gone with all shown). Focus the person moved away (a click elsewhere) stays where they put it: only a
+ * loss the redraw itself caused is undone.
  */
 function keepFocus(el: HTMLElement, host: Host): () => void {
   let last: Element | null = null, key: unknown = null, lost: Element | null = null;
@@ -50,12 +53,13 @@ function keepFocus(el: HTMLElement, host: Host): () => void {
   };
   const watch = new MutationObserver(records => {
     const was = lost;
-    if (!was || !records.some(r => [...r.removedNodes].some(n => n === was || n.contains(was)))) return;
+    const from = was && records.find(r => [...r.removedNodes].some(n => n === was || n.contains(was)));
+    if (!was || !from) return;
     lost = null;
     const active = document.activeElement;
     if (active && active !== document.body) return;
-    if (was.isConnected && !(was as HTMLButtonElement).disabled) (was as HTMLElement).focus({ preventScroll: true });
-    else host.refocus(el, key);
+    if (was.isConnected && !(was as HTMLButtonElement).disabled) return (was as HTMLElement).focus({ preventScroll: true });
+    host.refocus(from.target.isConnected ? from.target as Element : el, key);
   });
   el.addEventListener('focusin', focused);
   el.addEventListener('focusout', left);
@@ -103,6 +107,12 @@ const BloxkeepUI = {
     const form = createRef<PresetFormApi>();
     const unmount = mount(el, host, <PresetForm {...opts} api={form} />);
     return { unmount, form: form.current! };
+  },
+  /** The Statistics tab into its section; api opens Activity and exports it (Ctrl+K). */
+  statsView(el: HTMLElement, host: Host) {
+    const api = createRef<StatsApi>();
+    const unmount = mount(el, host, <StatsView api={api} />);
+    return { unmount, api: api.current! };
   },
   /** The Presets tab into its section. */
   presetsView(el: HTMLElement, host: Host) {

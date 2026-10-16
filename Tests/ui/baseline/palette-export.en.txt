@@ -1,0 +1,209 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav.on [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-stats"]
+        header.top
+          div.top-title
+            h1 "Statistics"
+            p [id="stats-sub"] "What Bloxkeep saw happen, newest first. The last 1,000 events are kept."
+          div.top-tools
+            div.seg [id="stats-tabs" role="tablist" aria-label="Statistics"]
+              button [role="tab" type="button" aria-selected="false"] "Statistics"
+              button.on [role="tab" type="button" aria-selected="true"] "Activity"
+        div.scroll
+          div.stats
+            section.alog.stat-card [id="alog-sec" aria-labelledby="alog-h"]
+              div.alog-head
+                h3 [id="alog-h"] "Activity"
+                div.alog-tools
+                  select.select.sm [id="alog-account" aria-label="Account" value=""]
+                    option [value=""] "All accounts"
+                    option [value="00000000-0000-4000-8000-000000000001"] "Main"
+                    option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
+                    option [value="00000000-0000-4000-8000-000000000004"] "Night Owl"
+                    option [value="00000000-0000-4000-8000-000000000006"] "Trade"
+                  select.select.sm [id="alog-group" aria-label="Kind of event" value=""]
+                    option [value=""] "All events"
+                    option [value="play"] "Games"
+                    option [value="drops"] "Disconnects and problems"
+                    option [value="schedule"] "Schedules"
+                    option [value="signin"] "Sign-in"
+                    option [value="updates"] "Updates"
+                  button.btn.sm
+                    svg.i #1uvtx1
+                    span "Export CSV"
+              div [id="alog-body"]
+                h4.alog-day "Today"
+                ol.alog-list
+                  li.alog-row.ok
+                    i.dot [aria-hidden="true"]
+                    time [title="Friday, October 16, 2026 at 11:56:00 AM"] "4 min ago"
+                    span.alog-acc [title="Main"]
+                      span.avatar.sm
+                        img [alt="" style="--h:204" src=#1qk25wb]
+                      b "Main"
+                    span.alog-text "Joined Blox Fruits."
+                  li.alog-row.ok
+                    i.dot [aria-hidden="true"]
+                    time [title="Friday, October 16, 2026 at 11:55:00 AM"] "5 min ago"
+                    span.alog-acc [title="Main"]
+                      span.avatar.sm
+                        img [alt="" style="--h:204" src=#1qk25wb]
+                      b "Main"
+                    span.alog-text "Opened Roblox to play Blox Fruits."
+                  li.alog-row.ok
+                    i.dot [aria-hidden="true"]
+                    time [title="Friday, October 16, 2026 at 11:49:00 AM"] "11 min ago"
+                    span.alog-acc [title="Farm 1"]
+                      span.avatar.sm
+                        img [alt="" style="--h:243" src=#uinvo6]
+                      b "Farm 1"
+                    span.alog-text "Joined Blox Fruits."
+                  li.alog-row.ok
+                    i.dot [aria-hidden="true"]
+                    time [title="Friday, October 16, 2026 at 11:48:00 AM"] "12 min ago"
+                    span.alog-acc [title="Farm 1"]
+                      span.avatar.sm
+                        img [alt="" style="--h:243" src=#uinvo6]
+                      b "Farm 1"
+                    span.alog-text "Auto-rejoin opened Roblox again to play Blox Fruits."
+                  li.alog-row.info
+                    i.dot [aria-hidden="true"]
+                    time [title="Friday, October 16, 2026 at 11:47:30 AM"] "12 min ago"
+                    span.alog-acc [title="Farm 1"]
+                      span.avatar.sm
+                        img [alt="" style="--h:243" src=#uinvo6]
+                      b "Farm 1"
+                    span.alog-text "Roblox window closed."
+                  li.alog-row.warn
+                    i.dot [aria-hidden="true"]
+                    time [title="Friday, October 16, 2026 at 11:47:00 AM"] "13 min ago"
+                    span.alog-acc [title="Farm 1"]
+                      span.avatar.sm
+                        img [alt="" style="--h:243" src=#uinvo6]
+                      b "Farm 1"
+                    span.alog-text "Disconnected from Blox Fruits: kicked for being idle."
+                  li.alog-row.ok
+                    i.dot [aria-hidden="true"]
+                    time [title="Friday, October 16, 2026 at 10:45:00 AM"] "1 h ago"
+                    span.alog-acc.none [aria-hidden="true"] "—"
+                    span.alog-text "Scheduled preset Farm Blox Fruits started: 3 accounts opened."
+                  li.alog-row.info
+                    i.dot [aria-hidden="true"]
+                    time [title="Friday, October 16, 2026 at 9:40:00 AM"] "2 h ago"
+                    span.alog-acc [title="Night Owl"]
+                      span.avatar.sm
+                        img [alt="" style="--h:297" src=#1u67et1]
+                      b "Night Owl"
+                    span.alog-text "Left [🎃] Adopt Me!."
+                h4.alog-day "Yesterday"
+                ol.alog-list
+                  li.alog-row.warn
+                    i.dot [aria-hidden="true"]
+                    time [title="Thursday, October 15, 2026 at 11:30:00 AM"] "11:30 AM"
+                    span.alog-acc.none [aria-hidden="true"] "—"
+                    span.alog-text "1 account needs signing in again: Farm 2"
+                  li.alog-row.warn
+                    i.dot [aria-hidden="true"]
+                    time [title="Thursday, October 15, 2026 at 10:25:00 AM"] "10:25 AM"
+                    span.alog-acc [title="Trade"]
+                      span.avatar.sm
+                        img [alt="" style="--h:218" src=#kgijcs]
+                      b "Trade"
+                    span.alog-text "Roblox closed this window when another one opened."
+                  li.alog-row.info
+                    i.dot [aria-hidden="true"]
+                    time [title="Thursday, October 15, 2026 at 9:00:00 AM"] "9:00 AM"
+                    span.alog-acc.none [aria-hidden="true"] "—"
+                    span.alog-text "Roblox updated to 0.742.0.7421053."
+                h4.alog-day "Tuesday, October 13"
+                ol.alog-list
+                  li.alog-row.info
+                    i.dot [aria-hidden="true"]
+                    time [title="Tuesday, October 13, 2026 at 12:00:00 PM"] "12:00 PM"
+                    span.alog-acc.none [aria-hidden="true"] "—"
+                    span.alog-text "Scheduled preset Farm Blox Fruits finished: closing 3 accounts."
+                  li.alog-row.warn
+                    i.dot [aria-hidden="true"]
+                    time [title="Tuesday, October 13, 2026 at 11:50:00 AM"] "11:50 AM"
+                    span.alog-acc [title="Night Owl"]
+                      span.avatar.sm
+                        img [alt="" style="--h:297" src=#1u67et1]
+                      b "Night Owl"
+                    span.alog-text "Disconnected from Brookhaven 🏡RP: signed in on another device."
+#layer
+#toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "Saved 13 events to the CSV file."
+-- commands
+  activity {"account":null,"group":null,"limit":100}
+  exportActivity {"account":null,"group":null}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  playStats {"days":7}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

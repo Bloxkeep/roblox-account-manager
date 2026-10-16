@@ -420,6 +420,44 @@ export default [
 
   // ── Statistics ──
   S('stats-period', 'stats=1', async s => { await s.click(key('stats.period.7')); await s.snap('7 days'); await s.click(key('stats.period.30')); }),
+  S('stats-fail', 'stats=1&statsfail=1', async s => { await s.wait(300); await s.click(key('srv.retry')); await s.wait(300); }),
+  S('stats-today', 'stats=1', async s => { await s.click(key('stats.period.1')); await s.wait(300); }),
+  S('stats-hidden-names', 'stats=1&hide=1', null, { langs: ['en'] }),
+  S('stats-activity-filter', 'stats=1', async s => {
+    await s.click(key('alog.title'));
+    await s.wait(300);
+    await s.choose({ css: '#alog-group' }, 'drops');
+    await s.wait(300);
+    await s.snap('drops');
+    await s.choose({ css: '#alog-account' }, '00000000-0000-4000-8000-000000000001');
+    await s.wait(300);
+    await s.snap('nothing');
+    await s.choose({ css: '#alog-group' }, '');
+    await s.wait(300);
+  }),
+  S('stats-activity-more', 'stats=1&manyactivity=1', async s => {
+    await s.click(key('alog.title'));
+    await s.wait(300);
+    await s.click(key('alog.more'));
+    await s.wait(300);
+  }, { langs: ['en'] }),
+  S('stats-activity-none', 'stats=1&noactivity=1', async s => { await s.click(key('alog.title')); await s.wait(300); }),
+  S('stats-activity-fail', 'stats=1&activityfail=1', async s => { await s.click(key('alog.title')); await s.wait(300); await s.click(key('srv.retry')); await s.wait(300); }),
+  S('stats-names-flip', 'stats=1', async s => {
+    await s.click(key('alog.title'));
+    await s.wait(300);
+    await s.click({ css: '.nav[data-view=settings]' });
+    await s.click({ css: '#view-settings [data-set-page=appearance]' });
+    await s.click({ css: 'label:has(#s-hidenames)' });
+    await s.click({ css: '.nav[data-view=stats]' });
+    await s.wait(400);
+  }, { langs: ['en'] }),
+  S('palette-export', '', async s => {
+    await s.key('k', ['ctrl']);
+    await s.type('export');
+    await s.key('Enter');
+    await s.wait(500);
+  }),
   S('stats-activity', 'stats=1', async s => { await s.click(key('alog.title')); await s.wait(400); await s.snap('activity'); await s.click(key('alog.export')); }),
 
   // ── Settings: what each control does ──

@@ -44,9 +44,10 @@ export interface Host {
   /**
    * fn runs each time app.js gives the signal: "hideDiscordLink" (a shown webhook link goes: Settings or its page left,
    * the window left), "clearPassword" (typed passwords go: Settings left), "presetQuery" (the Presets search was put
-   * back: presetQuery), "presetsShown" (the Presets tab was opened). Returns how to stop.
+   * back: presetQuery), "presetsShown" (the Presets tab was opened), "statsShown" / "statsHidden" (the Statistics tab
+   * came on screen or went). Returns how to stop.
    */
-  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown', fn: () => void): () => void;
+  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden', fn: () => void): () => void;
   /** The Presets tab's search, as app.js keeps it (a page restarted comes back with it), and a new one typed. */
   presetQuery(): string;
   setPresetQuery(q: string): void;
@@ -64,6 +65,8 @@ export interface Host {
   deletePreset(preset: object): Promise<unknown>;
   /** The preset editor for a preset (app.js presetModal). */
   editPreset(preset: object): void;
+  /** The browser's own storage for this page's small choices (app.js store; never fails: the fallback instead). */
+  store: { get(key: string, fallback: string): string; set(key: string, value: string): void };
   /** Short weekday names from the browser's own calendar (0 = Sunday, like the app; app.js weekdayName). */
   weekdayName(day: number): string;
   /** A number as the interface writes it (thousands separated; app.js fmtNum). */
@@ -78,7 +81,7 @@ export interface Host {
   rememberSearch(query: string, rows: unknown[]): void;
   /** Where a control is (app.js focusKey: what it does, its row, its place), to find it, or one in its place, again. */
   focusKey(node: Element, root: Element): unknown;
-  /** Focuses that control again, or the one now in its place (app.js refocus). */
+  /** Focuses that control again within root, or the one now in its place (app.js refocus). */
   refocus(root: Element, key: unknown): void;
   /** Somewhere a button leads: "settings:<page or group>", "guide", "web" (roblox.com), "feedback", "github". */
   go(target: string): void;

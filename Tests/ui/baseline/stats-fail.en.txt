@@ -1,0 +1,97 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav.on [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-stats"]
+        header.top
+          div.top-title
+            h1 "Statistics"
+            p [id="stats-sub"] "Only games opened with Bloxkeep are counted."
+          div.top-tools
+            div.seg [id="stats-tabs" role="tablist" aria-label="Statistics"]
+              button.on [role="tab" type="button" aria-selected="true"] "Statistics"
+              button [role="tab" type="button" aria-selected="false"] "Activity"
+            div.chips [id="stats-period" role="group" aria-label="Statistics"]
+              button.chip [aria-pressed="false"] "Today"
+              button.chip.on [aria-pressed="true"] "7 days"
+              button.chip [aria-pressed="false"] "30 days"
+        div.scroll
+          div.stats
+            div.stats-in [id="stats-body"]
+              div.empty
+                h2 "Couldn’t load the statistics."
+                div.row
+                  button.btn [FOCUSED] "Try again"
+                    svg.i #e464bo
+#layer
+#toasts
+-- commands
+  activity {"account":null,"group":null,"limit":100}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  playStats {"days":7}
+  playStats {"days":7}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

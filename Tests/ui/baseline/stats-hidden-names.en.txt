@@ -1,0 +1,239 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav.on [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Account 1 · PID 1111\nAccount 2 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-stats"]
+        header.top
+          div.top-title
+            h1 "Statistics"
+            p [id="stats-sub"] "Only games opened with Bloxkeep are counted."
+          div.top-tools
+            div.seg [id="stats-tabs" role="tablist" aria-label="Statistics"]
+              button.on [role="tab" type="button" aria-selected="true"] "Statistics"
+              button [role="tab" type="button" aria-selected="false"] "Activity"
+            div.chips [id="stats-period" role="group" aria-label="Statistics"]
+              button.chip [aria-pressed="false"] "Today"
+              button.chip.on [aria-pressed="true"] "7 days"
+              button.chip [aria-pressed="false"] "30 days"
+        div.scroll
+          div.stats
+            div.stats-in [id="stats-body"]
+              div.stat-tiles
+                div.stat
+                  small "Play time"
+                  b [title="16 h 24 min"] "16 h 24 min"
+                div.stat
+                  small "Sessions"
+                  b [title="24"] "24"
+                div.stat
+                  small "Disconnects"
+                  b [title="3"] "3"
+                div.stat
+                  small "Most played"
+                  b [title="Blox Fruits"] "Blox Fruits"
+              div.stat-card
+                h3 "Play time by day"
+                div.sbars [style="--bar-h:140px"]
+                  div.sbar [title="Sat, Oct 10 · 1 h 20 min"]
+                    i [style="height:49px"]
+                    span "Sat"
+                  div.sbar [title="Sun, Oct 11 · 4 min"]
+                    i [style="height:3px"]
+                    span "Sun"
+                  div.sbar [title="Mon, Oct 12 · 3 h 8 min"]
+                    i [style="height:114px"]
+                    span "Mon"
+                  div.sbar [title="Tue, Oct 13 · 3 h 52 min"]
+                    i [style="height:140px"]
+                    span "Tue"
+                  div.sbar [title="Wed, Oct 14 · 2 h 35 min"]
+                    i [style="height:94px"]
+                    span "Wed"
+                  div.sbar [title="Thu, Oct 15 · 2 h 19 min"]
+                    i [style="height:84px"]
+                    span "Thu"
+                  div.now.sbar [title="Fri, Oct 16 · 3 h 3 min"]
+                    i [style="height:111px"]
+                    span "Fri"
+              div.stat-cols
+                div.stat-card
+                  h3 "By account"
+                  table.stat-table
+                    thead
+                      tr
+                        th "Account"
+                        th.n "Play time"
+                        th.n "Sessions"
+                        th.n "Disconnects"
+                    tbody
+                      tr
+                        td
+                          div.sacc
+                            span.avatar.sm
+                              img [alt="" style="--h:140" src=#1qk25wb]
+                            b [title="Account 1"] "Account 1"
+                        td.n "7 h 22 min"
+                        td.n "11"
+                        td.n "1"
+                      tr
+                        td
+                          div.sacc
+                            span.avatar.sm
+                              img [alt="" style="--h:141" src=#uinvo6]
+                            b [title="Account 2"] "Account 2"
+                        td.n "5 h 24 min"
+                        td.n "8"
+                        td.n "2"
+                      tr
+                        td
+                          div.sacc
+                            span.avatar.sm
+                              img [alt="" style="--h:143" src=#1u67et1]
+                            b [title="Account 4"] "Account 4"
+                        td.n "3 h 16 min"
+                        td.n "5"
+                        td.n "0"
+                      tr
+                        td
+                          div.sacc
+                            span.avatar.sm
+                              span.initials [style="--h:148"] "DE"
+                            b [title="Deleted account"] "Deleted account"
+                        td.n "19 min"
+                        td.n "1"
+                        td.n "0"
+                div.stat-side
+                  div.stat-card
+                    h3 "Top games"
+                    div.sgames
+                      div.sgame
+                        em "1"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Blox Fruits"] "Blox Fruits"
+                          small "13 sessions"
+                          div.sg-meter
+                            i [style="transform:scaleX(1)"]
+                        span.sg-time "9 h 1 min"
+                      div.sgame
+                        em "2"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                          small "7 sessions"
+                          div.sg-meter
+                            i [style="transform:scaleX(0.545)"]
+                        span.sg-time "4 h 55 min"
+                      div.sgame
+                        em "3"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                          small "4 sessions"
+                          div.sg-meter
+                            i [style="transform:scaleX(0.273)"]
+                        span.sg-time "2 h 27 min"
+                  div.stat-card
+                    h3 "By preset"
+                    div.sgames
+                      div.sgame
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                          small "3 accounts · 1 disconnect"
+                          div.sg-meter
+                            i [style="transform:scaleX(1)"]
+                        span.sg-time "10 h 10 min"
+                      div.sgame
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Adopt Me trade"] "Adopt Me trade"
+                          small "1 account"
+                          div.sg-meter
+                            i [style="transform:scaleX(0.403)"]
+                        span.sg-time "4 h 6 min"
+                      div.sgame
+                        span.gph
+                          svg.i #45lggc
+                        div.gtxt
+                          b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
+                          small "2 accounts"
+                          div.sg-meter
+                            i [style="transform:scaleX(0.21)"]
+                        span.sg-time "2 h 7 min"
+#layer
+#toasts
+-- commands
+  activity {"account":null,"group":null,"limit":100}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  playStats {"days":7}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

@@ -646,6 +646,8 @@
     const ui = window.BloxkeepUI, host = uiHost();
     for (const [id] of SET_PAGES) uiParts.push(ui.settingsPage($(`#set-page-${id}`), host, id, setPageTitle(id)));
     uiParts.push(ui.presetsView($('#view-presets'), host));
+    statsUi = ui.statsView($('#view-stats'), host);
+    uiParts.push(statsUi.unmount);
   }
   function buildShell() {
     S.shell = true;
@@ -715,7 +717,7 @@
           </div>
         </section>
         <section class="view" id="view-presets" hidden></section>
-        <section class="view" id="view-stats" hidden>${statsHtml()}</section>
+        <section class="view" id="view-stats" hidden></section>
         <section class="view" id="view-monitor" hidden>${monitorHtml()}</section>
         <section class="view" id="view-settings" hidden>${settingsHtml()}</section>
       </main>
@@ -780,7 +782,6 @@
     renderDock();
     syncSettings();
     syncMultiHelp();
-    if (S.view === 'stats') renderStats(); // names shown or hidden follow at once (unchanged figures cost nothing)
   }
 
   /** Typed passwords don't stay in the page once Settings is left (Settings › Security, React, empties its boxes). */
@@ -827,7 +828,7 @@
     $('#view-stats').hidden = view !== 'stats';
     $('#view-monitor').hidden = view !== 'monitor';
     $(`#view-${view}`)?.classList.add('seen'); // keeps its layout once it's left (app.css: .view.seen[hidden])
-    watchStats(view === 'stats');
+    uiSignal(view === 'stats' ? 'statsShown' : 'statsHidden');
     watchMonitor();
     // Synced folders to offer under Backup are looked for when Settings opens, not with every state.
     if (view === 'settings' && !S.app.locked) call('backupSuggestions', {}, { silent: true });
@@ -1628,7 +1629,7 @@
     focusKey, refocus,
     presetQuery: () => PV.query, setPresetQuery: q => { PV.query = q; },
     scheduleText, nextRunText, presetOptionsText, avatarHtml: avatarInner, runPreset, deletePreset, editPreset: presetModal,
-    weekdayName, fmtNum, looksLikeTarget,
+    weekdayName, fmtNum, looksLikeTarget, store,
     gameListsCached: () => P.lists,
     async loadGameLists() {
       const r = await call('gameLists', {}, { silent: true });
@@ -3658,257 +3659,8 @@
   const editAccount = id => { const a = byId(id); if (a) accountModal(a); };
 
   /* ───────────────────────── statistics ─────────────────────────
-     Play time per account and game. The figures are asked for when the view opens and every 30 s while it is on
-     screen; they are not part of the state the app pushes. The chart is plain divs, sized from the busiest bucket. */
-  const STATS_PERIODS = [1, 7, 30];
-  const ST = { days: [1, 7, 30].includes(+store.get('rm.statsDays')) ? +store.get('rm.statsDays') : 7, data: null, timer: 0, seq: 0,
-    tab: store.get('rm.statsTab') === 'activity' ? 'activity' : 'stats' };
-  const BAR_HEIGHT = 140;
-  /** Two things on one tab, one at a time: Statistics (with its period chips) | Activity (with its own filters). */
-  function statsHtml() {
-    const onStats = ST.tab === 'stats';
-    return `<header class="top"><div class="top-title"><h1>${t('stats.title')}</h1><p id="stats-sub">${t(onStats ? 'stats.note' : 'alog.note')}</p></div>
-      <div class="top-tools"><div class="seg" id="stats-tabs" role="tablist" aria-label="${t('stats.title')}">${[['stats', 'stats.title'], ['activity', 'alog.title']].map(([id, key]) =>
-        `<button type="button" role="tab" class="${ST.tab === id ? 'on' : ''}" data-act="stats-tab" data-tab="${id}" aria-selected="${ST.tab === id}">${t(key)}</button>`).join('')}</div>
-        <div class="chips" id="stats-period" role="group" aria-label="${t('stats.title')}" ${onStats ? '' : 'hidden'}>${STATS_PERIODS.map(d =>
-        `<button class="chip ${d === ST.days ? 'on' : ''}" data-act="stats-period" data-days="${d}" aria-pressed="${d === ST.days}">${t(`stats.period.${d}`)}</button>`).join('')}</div></div></header>
-      <div class="scroll"><div class="stats"><div class="stats-in" id="stats-body" ${onStats ? '' : 'hidden'}></div>${actLogHtml()}</div></div>`;
-  }
-  function setStatsTab(tab) {
-    ST.tab = tab === 'activity' ? 'activity' : 'stats';
-    store.set('rm.statsTab', ST.tab);
-    const onStats = ST.tab === 'stats';
-    document.querySelectorAll('#stats-tabs [data-tab]').forEach(b => {
-      b.classList.toggle('on', b.dataset.tab === ST.tab);
-      b.setAttribute('aria-selected', String(b.dataset.tab === ST.tab));
-    });
-    $('#stats-period').hidden = !onStats;
-    $('#stats-body').hidden = !onStats;
-    $('#alog-sec').hidden = onStats;
-    setText($('#stats-sub'), t(onStats ? 'stats.note' : 'alog.note'));
-    $('#view-stats .scroll').scrollTop = 0;
-  }
-  function setStatsPeriod(days) {
-    if (!STATS_PERIODS.includes(days) || days === ST.days) return;
-    ST.days = days;
-    store.set('rm.statsDays', String(days));
-    document.querySelectorAll('#stats-period .chip').forEach(c => {
-      c.classList.toggle('on', +c.dataset.days === days);
-      c.setAttribute('aria-pressed', +c.dataset.days === days);
-    });
-    // The old period's figures never show under the new period's chip: loading until the new ones are in.
-    ST.data = null;
-    ST.failed = false;
-    renderStats();
-    loadStats();
-  }
-  /** Asks the app for the chosen period; a reply to an older request (or for another period) is dropped. */
-  async function loadStats() {
-    if (!S.shell || !S.app || S.app.locked) return;
-    const seq = ++ST.seq;
-    const data = await call('playStats', { days: ST.days }, { silent: true });
-    if (seq !== ST.seq || !$('#stats-body')) return;
-    // A failed refresh keeps figures already shown for this period; with none, it says so.
-    ST.failed = !data;
-    if (data) ST.data = data;
-    renderStats();
-  }
-  /** Refreshes while the view is on screen (a stay still going grows), not while the window is hidden. */
-  function watchStats(on) {
-    clearInterval(ST.timer);
-    ST.timer = on ? setInterval(() => { if (!document.hidden) { loadStats(); loadActivity(); } }, 30_000) : 0;
-    if (!on) return;
-    renderStats(); // last figures at once (a shell rebuilt in the other language), fresh ones a moment later
-    loadStats();
-    renderActivity();
-    loadActivity();
-  }
-  // Fresh figures as soon as the window comes back, not up to 30 s later.
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.shell && S.view === 'stats') { loadStats(); loadActivity(); } });
-  /** "2 h", "2 h 5 min", "1,234 h": hours grouped like other numbers, no "0 min". */
-  const fmtSecs = s => {
-    const m = Math.floor((s || 0) / 60), h = Math.floor(m / 60);
-    return m < 60 ? t('dur.min', { m }) : m % 60 ? t('dur.hour', { h: fmtNum(h), m: m % 60 }) : t('dur.hours', { h: fmtNum(h) });
-  };
-  const sessionsText = n => (n === 1 ? t('stats.session1') : t('stats.sessionsN', { n: fmtNum(n) }));
-  function renderStats() {
-    const d = ST.data, host = $('#stats-body');
-    if (!host) return;
-    if (!d) {
-      setHtml(host, ST.failed
-        ? `<div class="empty"><h2>${t('stats.error')}</h2><div class="row"><button class="btn" data-act="stats-retry">${icon('refresh')}${t('srv.retry')}</button></div></div>`
-        : '<div class="empty"><span class="spin"></span></div>');
-      return;
-    }
-    if (!d.sessions) {
-      // The same empty state as the other tabs: the tab's icon, a title, one line.
-      setHtml(host, `<div class="empty"><span class="pv-empty-icon">${icon('clock')}</span>${d.recorded ? `<h2>${t('stats.emptyPeriod')}</h2>` : `<h2>${t('stats.emptyTitle')}</h2><p>${t('stats.emptyText')}</p>`}</div>`);
-      return;
-    }
-    const top = d.games[0];
-    // Two more on a wide window (see .stat.wide): how many accounts played, and the longest stay (whose, in what).
-    const hideNames = hidingNames();
-    const longName = d.longest ? (hideNames ? byId(d.longest.account)?.label : d.longest.label) || t('stats.deleted') : '';
-    const tiles = [[t('stats.total'), fmtSecs(d.totalSeconds)], [t('stats.sessions'), fmtNum(d.sessions)], [t('stats.kicks'), fmtNum(d.kicks)], [t('stats.topGame'), top ? esc(top.name) : '—'],
-      [t('stats.played'), `${fmtNum(d.accounts.filter(a => a.seconds > 0).length)}<span class="of">/${fmtNum(accounts().length)}</span>`, 'wide', ''],
-      [t('stats.longest'), d.longest ? fmtSecs(d.longest.seconds) : '—', 'wide', d.longest ? esc([longName, d.longest.game].filter(Boolean).join(' · ')) : '']]
-      .map(([label, value, cls = '', sub = '']) => `<div class="stat ${cls}"><small>${label}</small><b title="${sub || value.replace(/<[^>]+>/g, '')}">${value}</b>${sub ? `<span class="stat-sub">${sub}</span>` : ''}</div>`).join('');
-    // By preset: what each preset's windows played (stays are noted with their preset from 1.0.5 on).
-    // Laid out like Top games (a list fits a narrow third column better than a table): icon, name, its accounts and
-    // drops, the time, and a bar against the most played one.
-    const NO_PRESET = '00000000-0000-0000-0000-000000000000';
-    const presetTop = Math.max(1, ...(d.presets || []).map(p => p.seconds));
-    const presetRows = (d.presets || []).map(p => {
-      const own = p.id !== NO_PRESET;
-      const name = own ? p.name : t('stats.noPreset');
-      const detail = [tn('stats.accountsN', p.accounts), p.kicks ? tn('stats.kicksN', p.kicks) : ''].filter(Boolean).join(' · ');
-      return `<div class="sgame">${own && p.iconUrl ? `<img src="${esc(p.iconUrl)}" alt="" loading="lazy">` : `<span class="gph">${icon(own ? 'layers' : 'user')}</span>`}
-        <div class="gtxt"><b title="${esc(own ? name : t('stats.noPresetTip'))}">${esc(name)}</b><small>${esc(detail)}</small><div class="sg-meter"><i style="transform:scaleX(${(p.seconds / presetTop).toFixed(3)})"></i></div></div>
-        <span class="sg-time">${fmtSecs(p.seconds)}</span></div>`;
-    }).join('');
-    const presetCard = presetRows ? `<div class="stat-card"><h3>${t('stats.byPreset')}</h3><div class="sgames">${presetRows}</div>
-        ${(d.presets || []).every(p => p.id === NO_PRESET) ? `<p class="stat-note">${t('stats.presetNote')}</p>` : ''}</div>` : '';
-    // Labels: every hour of 6 today, every day of the week, every 5th day of the month counted back from today (so
-    // today always has one). The bar holding this moment
-    // is marked as now; on Today the hours still to come are drawn fainter.
-    const max = Math.max(1, ...d.buckets.map(b => b.seconds));
-    const every = d.hourly ? 6 : d.buckets.length > 10 ? 5 : 1;
-    const nowMs = Date.now();
-    const nowIndex = d.buckets.findLastIndex(b => new Date(b.start).getTime() <= nowMs);
-    const bars = d.buckets.map((b, i) => {
-      const at = new Date(b.start);
-      // Hours as people say them: "6 AM" in English, "06:00" (24-hour) in Vietnamese.
-      const label = d.hourly ? at.toLocaleTimeString(locale(), lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' })
-        : every > 1 ? at.toLocaleDateString(locale(), { day: 'numeric', month: 'numeric' }) : at.toLocaleDateString(locale(), { weekday: 'short' });
-      const when = d.hourly ? label : at.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
-      const h = b.seconds ? Math.max(3, Math.round(b.seconds / max * BAR_HEIGHT)) : 2;
-      const state = i === nowIndex ? 'now' : i > nowIndex ? 'future' : '';
-      return `<div class="sbar ${state} ${b.seconds ? '' : 'zero'}" title="${esc(`${when} · ${fmtSecs(b.seconds)}`)}"><i style="height:${h}px"></i><span>${(d.hourly ? i : d.buckets.length - 1 - i) % every === 0 ? label : ''}</span></div>`;
-    }).join('');
-    const rows = d.accounts.map(a => {
-      // A deleted account keeps the name it had when it played (older records have none). Names hidden: the list's
-      // "Account N", and a deleted one is just that.
-      const hide = hidingNames();
-      const label = hide ? byId(a.id)?.label || t('stats.deleted') : a.label || t('stats.deleted');
-      const gone = a.deleted && a.label && !hide ? ` <small class="muted">· ${t('stats.deletedTag')}</small>` : '';
-      return `<tr><td><div class="sacc"><span class="avatar sm">${avatarInner({ avatarUrl: a.avatarUrl, username: hide ? a.id : a.username || a.id, label })}</span><b title="${esc(label)}">${esc(label)}${gone}</b></div></td>
-        <td class="n">${fmtSecs(a.seconds)}</td><td class="n">${fmtNum(a.sessions)}</td><td class="n">${fmtNum(a.kicks)}</td></tr>`;
-    }).join('');
-    const games = d.games.map((g, i) => `<div class="sgame"><em>${i + 1}</em>${g.iconUrl ? `<img src="${esc(g.iconUrl)}" alt="" loading="lazy">` : `<span class="gph">${icon('gamepad')}</span>`}
-        <div class="gtxt"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${sessionsText(g.sessions)}</small><div class="sg-meter"><i style="transform:scaleX(${(g.seconds / Math.max(1, top.seconds)).toFixed(3)})"></i></div></div>
-        <span class="sg-time">${fmtSecs(g.seconds)}</span></div>`).join('');
-    setHtml(host, `<div class="stat-tiles">${tiles}</div>
-      <div class="stat-card"><h3>${t(d.hourly ? 'stats.byHour' : 'stats.byDay')}</h3><div class="sbars" style="--bar-h:${BAR_HEIGHT}px">${bars}</div></div>
-      <div class="stat-cols">
-        <div class="stat-card"><h3>${t('stats.byAccount')}</h3>
-          <table class="stat-table"><thead><tr><th>${t('stats.account')}</th><th class="n">${t('stats.total')}</th><th class="n">${t('stats.sessions')}</th><th class="n">${t('stats.kicks')}</th></tr></thead><tbody>${rows}</tbody></table></div>
-        <div class="stat-side"><div class="stat-card"><h3>${t('stats.topGames')}</h3><div class="sgames">${games}</div></div>
-        ${presetCard}</div>
-      </div>`);
-  }
-
-  /* ───────────────────────── activity log ─────────────────────────
-     Statistics › Activity: what the app saw happen, newest first, a page at a time. The app words each line in the
-     page's language (and hides account names when Settings does); the page groups them by day and shows today's
-     times as "5 min ago", older ones as clock times. Asked for with the figures above, and with them every 30 s. */
-  const AL_GROUPS = ['play', 'drops', 'schedule', 'signin', 'updates'];
-  const AL_PAGE = 100;
-  const AL = { account: '', group: '', limit: AL_PAGE, data: null, failed: false, seq: 0 };
-  function actLogHtml() {
-    return `<section class="stat-card alog" id="alog-sec" aria-labelledby="alog-h" ${ST.tab === 'activity' ? '' : 'hidden'}>
-        <div class="alog-head"><h3 id="alog-h">${t('alog.title')}</h3>
-          <div class="alog-tools">
-            <select class="select sm" id="alog-account" aria-label="${t('alog.filterAccount')}"><option value="">${t('alog.allAccounts')}</option></select>
-            <select class="select sm" id="alog-group" aria-label="${t('alog.filterKind')}"><option value="">${t('alog.allKinds')}</option>${AL_GROUPS.map(g => `<option value="${g}">${t(`alog.g.${g}`)}</option>`).join('')}</select>
-            <button class="btn sm" data-act="alog-export">${icon('download')}<span>${t('alog.export')}</span></button>
-          </div>
-        </div>
-        <div id="alog-body"></div>
-      </section>`;
-  }
-  /** Asks the app for the list as filtered; a reply to an older request is dropped. */
-  async function loadActivity() {
-    if (!S.shell || !S.app || S.app.locked) return;
-    const seq = ++AL.seq;
-    const data = await call('activity', { account: AL.account || null, group: AL.group || null, limit: AL.limit }, { silent: true });
-    if (seq !== AL.seq || !$('#alog-body')) return;
-    AL.failed = !data;
-    if (data) AL.data = data;
-    renderActivity();
-  }
-  /** The filters as chosen (they outlive the shell rebuilt in another language), the accounts as the log names them. */
-  function syncActFilters() {
-    const acc = $('#alog-account'), grp = $('#alog-group');
-    if (!acc || !grp) return;
-    const options = `<option value="">${t('alog.allAccounts')}</option>${(AL.data?.accounts || []).map(a => `<option value="${esc(a.id)}">${esc(a.label)}</option>`).join('')}`;
-    // Not while its list may be open: the options would change under the pointer.
-    if (acc._html !== options && document.activeElement !== acc) {
-      acc.innerHTML = options;
-      acc._html = options;
-    }
-    if (acc.value !== AL.account) acc.value = AL.account;
-    if (grp.value !== AL.group) grp.value = AL.group;
-  }
-  const clockOf = d => d.toLocaleTimeString(locale(), lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric', minute: '2-digit' });
-  function renderActivity() {
-    const host = $('#alog-body');
-    if (!host) return;
-    syncActFilters();
-    const d = AL.data;
-    const exportBtn = $('#alog-sec [data-act="alog-export"]');
-    if (exportBtn && !exportBtn.classList.contains('busy')) exportBtn.disabled = !d?.total;
-    if (!d) {
-      setHtml(host, AL.failed
-        ? `<p class="alog-empty">${t('alog.error')} <button type="button" class="link" data-act="alog-retry">${t('srv.retry')}</button></p>`
-        : '<div class="alog-empty"><span class="spin"></span></div>');
-      return;
-    }
-    if (!d.entries.length) {
-      setHtml(host, `<p class="alog-empty">${t(AL.account || AL.group ? 'alog.emptyFilter' : 'alog.empty')}</p>`);
-      return;
-    }
-    const now = new Date(), today = now.toDateString();
-    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toDateString();
-    let day = '', html = '';
-    for (const e of d.entries) {
-      const at = new Date(e.at), key = at.toDateString();
-      if (key !== day) {
-        if (day) html += '</ol>';
-        day = key;
-        const name = key === today ? t('alog.today') : key === yesterday ? t('alog.yesterday')
-          : at.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', ...(at.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
-        html += `<h4 class="alog-day">${esc(name)}</h4><ol class="alog-list">`;
-      }
-      const full = esc(at.toLocaleString(locale(), { dateStyle: 'full', timeStyle: 'medium' }));
-      // Today's as "5 min ago" (kept current by patchTimes), the exact time on hover; older ones as the clock time.
-      const when = key === today ? `<time datetime="${esc(e.at)}" data-ago="${esc(e.at)}" title="${full}">${ago(e.at)}</time>`
-        : `<time datetime="${esc(e.at)}" title="${full}">${clockOf(at)}</time>`;
-      const a = e.accountId ? byId(e.accountId) : null;
-      const who = e.account
-        ? `<span class="alog-acc" title="${esc(e.account)}">${a ? `<span class="avatar sm">${avatarInner(a)}</span>` : ''}<b>${esc(e.account)}</b></span>`
-        : '<span class="alog-acc none" aria-hidden="true">—</span>';
-      html += `<li class="alog-row ${esc(e.tone)}"><i class="dot" aria-hidden="true"></i>${when}${who}<span class="alog-text">${esc(e.text)}</span></li>`;
-    }
-    html += '</ol>';
-    if (d.total > d.entries.length) {
-      html += `<div class="alog-more"><button class="btn sm" data-act="alog-more">${t('alog.more')}</button><small>${t('alog.shown', { n: fmtNum(d.entries.length), total: fmtNum(d.total) })}</small></div>`;
-    }
-    setHtml(host, html);
-  }
-  document.addEventListener('change', e => {
-    if (e.target.id !== 'alog-account' && e.target.id !== 'alog-group') return;
-    AL.account = $('#alog-account').value;
-    AL.group = $('#alog-group').value;
-    AL.limit = AL_PAGE;
-    loadActivity();
-  });
-  /** Saves what the filters show as a CSV file (the app asks where, with Windows' own Save dialog). */
-  function exportActivity(btn) {
-    return busy(btn, async () => {
-      const n = await call('exportActivity', { account: AL.account || null, group: AL.group || null });
-      if (n) toast(tn('alog.exported', n, { n: fmtNum(n) }), 'ok');
-    });
-  }
+     Drawn by React (ui/src/StatsView.tsx): play time per account, game and preset, and the activity log. */
+  let statsUi = null;
 
   /* ───────────────────────── game monitor ─────────────────────────
      A page can't show other programs' windows: the live pictures of the Roblox windows are the app's, laid over this
@@ -4021,7 +3773,6 @@
     const st = S.app.settings || {};
     const go = (view, then) => () => { setView(view); then?.(); };
     const openSection = id => () => openSettings(id);
-    const toActivity = () => setStatsTab('activity');
     // The app's own actions, as its menus and buttons have them; "off" ones (nothing to act on) aren't offered.
     const actions = [
       { id: 'join', icon: 'userGo', text: t('jp.button'), keywords: ['follow', 'player', 'username', 'server'], run: () => joinPlayerModal() },
@@ -4040,13 +3791,13 @@
       { id: 'feedback', icon: 'message', text: t('fb.title'), keywords: ['bug', 'report', 'idea', 'feedback', 'góp ý', 'báo lỗi'], run: () => feedbackModal() },
       { id: 'guide', icon: 'book', text: t('help.title'), keywords: ['help', 'guide', 'manual', 'how', 'hướng dẫn', 'trợ giúp'], run: () => call('openGuide') },
       { id: 'star', icon: 'star', text: t('star.title'), keywords: ['github', 'star', 'sao', 'open source', 'mã nguồn'], run: () => call('openGitHub') },
-      { id: 'export', icon: 'history', text: t('pal.exportActivity'), keywords: ['csv', 'log'], run: () => { setView('stats'); toActivity(); exportActivity(null); } }, // the list may not be loaded yet: the app knows
+      { id: 'export', icon: 'history', text: t('pal.exportActivity'), keywords: ['csv', 'log'], run: () => { setView('stats'); statsUi?.api.showActivity(); statsUi?.api.exportActivity(); } }, // the list may not be loaded yet: the app knows
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
       { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => lockApp() },
     ].filter(x => !x.off).map(x => ({ ...x, kind: 'action' }));
     const tabs = [['accounts', 'users'], ['presets', 'layers'], ['monitor', 'screens'], ['stats', 'clock'], ['settings', 'sliders']]
       .map(([view, ic]) => ({ id: `tab:${view}`, kind: 'tab', icon: ic, text: t(`nav.${view}`), run: go(view) }));
-    tabs.push({ id: 'tab:activity', kind: 'tab', icon: 'history', text: t('alog.title'), keywords: ['log', 'history', 'events'], run: go('stats', toActivity) });
+    tabs.push({ id: 'tab:activity', kind: 'tab', icon: 'history', text: t('alog.title'), keywords: ['log', 'history', 'events'], run: go('stats', () => statsUi?.api.showActivity()) });
     const presetList = presets().filter(p => presetAccounts(p).length).map(p => ({
       id: `ps:${p.id}`, kind: 'preset', icon: 'layers', text: p.name, hint: presetSub(p), keywords: [p.gameName], run: () => runPreset(p.id),
     }));
@@ -4337,8 +4088,6 @@
         return;
       case 'lang': return el.dataset.lang !== lang && call('setLanguage', { language: el.dataset.lang });
       case 'view': return setView(el.dataset.view);
-      case 'stats-period': return setStatsPeriod(+el.dataset.days);
-      case 'stats-tab': return setStatsTab(el.dataset.tab);
       case 'lock': return lockApp();
       case 'reset-asks': return call('resetSkipConfirm').then(n => n !== undefined && toast(t('set.asksDone'), 'ok'));
       case 'add-choose': return addChooser();
@@ -4447,12 +4196,6 @@
         renderChips();
         renderGrid();
         return $('#q').focus();
-      case 'stats-retry': return busy(el, loadStats);
-      case 'alog-retry': return busy(el, loadActivity);
-      case 'alog-more':
-        AL.limit += AL_PAGE;
-        return busy(el, loadActivity);
-      case 'alog-export': return exportActivity(el);
       case 'join-player': return joinPlayerModal();
       case 'clear-sel':
         S.selected.clear();
@@ -4643,15 +4386,7 @@
         });
       }
     }
-    // The activity list's sentences name accounts as the app wrote them: once names are hidden or shown again, the kept
-    // list goes (it isn't drawn again with the old names) and a fresh one is asked for.
-    const namesFlipped = !!S.app && !!S.app.hideNames !== !!st.hideNames;
     S.app = st;
-    if (namesFlipped) {
-      Object.assign(AL, { data: null, failed: false });
-      AL.seq++;
-      if (S.shell && S.view === 'stats' && !st.locked) { renderActivity(); loadActivity(); }
-    }
     maskNames(st); // before anything renders a name
     uiListeners.forEach(f => f()); // the React parts (useAppState) draw again with it
     if (st.themeApplied && !S.themePending) document.documentElement.dataset.theme = st.themeApplied;
@@ -4663,13 +4398,6 @@
       stopBoot();
       S.selected.clear();
       S.metrics = { accounts: [], robloxCount: 0, totalMb: 0, systemMb: 0 };
-      // Play figures name accounts: they go with the lock, and a reply still on its way is dropped.
-      ST.data = null;
-      ST.failed = false;
-      ST.seq++;
-      // So does the activity list (and its account filter: the next vault has other accounts).
-      Object.assign(AL, { data: null, failed: false, account: '', limit: AL_PAGE });
-      AL.seq++;
       renderLock();
       return;
     }

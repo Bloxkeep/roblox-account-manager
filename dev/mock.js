@@ -200,7 +200,8 @@
   let rbxClosedHidden = false;
   const rw = ['changed', 'renamed', 'gone', 'worked', 'none'].includes(params.get('rw')) ? params.get('rw') : 'same';
   // Statistics › Activity: made-up events, the same on every call (minutes back from now). ?noactivity=1: none yet;
-  // ?activityfail=1: the list can't be loaded. Like the app, each line comes in the page's language.
+  // ?activityfail=1: the list can't be loaded; ?manyactivity=1: more than a page. Like the app, each line comes in the
+  // page's language.
   const ACTIVITY = params.has('noactivity') ? [] : [
     [4, 'joined', 1, 'ok', 'Joined Blox Fruits.', 'Đã vào Blox Fruits.'],
     [5, 'opened', 1, 'ok', 'Opened Roblox to play Blox Fruits.', 'Đã mở Roblox để chơi Blox Fruits.'],
@@ -682,7 +683,9 @@
           await wait(150);
           if (params.has('activityfail')) throw new Error('Couldn’t load the activity.');
           const labelOf = n => { const acc = accounts.find(x => x.id === id(n)); return acc ? acc.label : 'Deleted account'; };
-          const all = ACTIVITY.map(([mins, kind, n, tone, en, vi]) => ({ at: minsAgo(mins), kind, group: activityGroup(kind), tone,
+          // ?manyactivity=1: 130 lines, more than a page (100), to show "Show more".
+          const rows = params.has('manyactivity') ? Array.from({ length: 130 }, (_, i) => [i * 9 + 1, ...ACTIVITY[i % ACTIVITY.length].slice(1)]) : ACTIVITY;
+          const all = rows.map(([mins, kind, n, tone, en, vi]) => ({ at: minsAgo(mins), kind, group: activityGroup(kind), tone,
             accountId: n ? id(n) : null, account: n ? labelOf(n) : null, text: language === 'vi' ? vi : en }));
           const shown = all.filter(e => (!a.account || e.accountId === a.account) && (!a.group || e.group === a.group));
           const named = new Map(all.filter(e => e.accountId).map(e => [e.accountId, e.account]));
