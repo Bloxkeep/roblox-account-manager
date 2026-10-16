@@ -1,5 +1,45 @@
 [
   {
+    "version": "1.1.1",
+    "date": "2026-10-16",
+    "new": {
+      "en": [
+        "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it.",
+        "What’s new lists what’s new, what works better and what’s fixed separately."
+      ],
+      "vi": [
+        "Cho Bloxkeep một sao trên GitHub từ Cài đặt › Cập nhật Bloxkeep, Ctrl+K hoặc cuối bảng Có gì mới. Mỗi sao giúp thêm người chơi tìm thấy Bloxkeep.",
+        "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Servers keeps its size while a list loads, and the servers you had stay on screen until the new ones are in, instead of jumping to a spinner and back.",
+        "Roblox gives each PC only a few server lists a minute. When it says to wait, Servers shows how long and loads again by itself, and sorting by ping or FPS no longer spends a list on its own.",
+        "Windows whose content changes while open (signing in, importing a vault file, Join a player, a preset’s settings, Send feedback) stay put instead of jumping.",
+        "The game list above the game box keeps its height while it loads.",
+        "A filter chip cut off at the edge of the row fades out whole."
+      ],
+      "vi": [
+        "Cửa sổ Server giữ nguyên kích thước khi đang tải, các server đang có vẫn hiện tới khi có danh sách mới, không còn nhảy sang vòng xoay rồi nhảy lại.",
+        "Roblox chỉ cho mỗi máy tải vài danh sách server mỗi phút. Khi Roblox bảo chờ, cửa sổ Server ghi rõ còn bao lâu rồi tự tải lại; sắp xếp theo ping hay FPS không còn tự tốn thêm một lượt.",
+        "Các cửa sổ có nội dung thay đổi khi đang mở (đăng nhập, nhập file dữ liệu, Vào cùng người chơi, cài đặt preset, Gửi góp ý) đứng yên một chỗ, không nhảy theo nữa.",
+        "Danh sách game phía trên ô game giữ nguyên chiều cao khi đang tải.",
+        "Thẻ bộ lọc bị cắt ở mép hàng giờ mờ dần cả thẻ."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Discord play-time summaries are sent again (every one had failed).",
+        "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed."
+      ],
+      "vi": [
+        "Bản tóm tắt giờ chơi gửi lên Discord đã gửi được trở lại (trước đó lần nào cũng lỗi).",
+        "Cửa sổ Server không còn kẹt ở “Roblox vẫn đang bận” sau vài lần bấm: trước đây nó hỏi lại Roblox quá sớm và hỏi nhiều hơn cần."
+      ]
+    }
+  },
+  {
     "version": "1.1.0",
     "date": "2026-10-16",
     "highlights": [

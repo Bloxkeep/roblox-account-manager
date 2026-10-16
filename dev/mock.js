@@ -249,6 +249,7 @@
   });
   const push = () => emit('state', state());
   let loginUser = '';
+  const srvAsked = []; // when each server list was given, for Roblox's few-a-minute limit
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const metrics = () => ({
     accounts: accounts.filter(a => a.state === 'running').map((a, i) => ({ id: a.id, ramMb: 780 + i * 140 + Math.round(Math.random() * 30) })),
@@ -270,7 +271,16 @@
         case 'getState': return { resume: false, view: null, state: state() };
         case 'debugToast': emit('toast', a); return null; // for the dev tests: __mockBridge.call('debugToast', { text, kind })
         case 'keepView': case 'pageBusy': return null;
-        case 'servers': await wait(400); return { servers: Array.from({ length: 12 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 15 - i, maxPlayers: 15, ping: 140 - i * 9, fps: 50 + (i * 7) % 11 })), next: a?.cursor ? null : 'more' };
+        // Like Roblox: three lists a minute, then "wait" with the seconds left (?srvbusy=1: waiting from the start).
+        case 'servers': {
+          await wait(400);
+          const now = Date.now();
+          while (srvAsked.length && now - srvAsked[0] >= 60000) srvAsked.shift();
+          if (params.has('srvbusy') || srvAsked.length >= 3)
+            return { servers: [], next: null, busy: true, retryIn: params.has('srvbusy') ? 23 : Math.ceil((60000 - (now - srvAsked[0])) / 1000), left: 0 };
+          srvAsked.push(now);
+          return { servers: Array.from({ length: 12 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 15 - i, maxPlayers: 15, ping: 140 - i * 9, fps: 50 + (i * 7) % 11 })), next: a?.cursor ? null : 'more', busy: false, left: 3 - srvAsked.length };
+        }
         case 'seenWhatsNew': return null;
         // The real notes, newest first: the newest three, as after an update over two versions (?wn=1: only the newest).
         case 'whatsNew': return (await fetch('/RobloxManager/whatsnew.json').then(r => r.json())).slice(0, +(params.get('wn') || 3));
@@ -743,10 +753,12 @@
     // ?order=1 opens the launch-order dialog; ?view=presets (or ?presets=1) the Presets tab, through the dock menu's
     // "Edit presets…"; ?preset=1 the form of the scheduled preset (p1) from that tab.
     const menuItem = text => [...document.querySelectorAll('.menu button')].find(b => b.textContent.includes(text))?.click();
-    if (params.has('order')) { click('[data-act=tools-menu]'); menuItem('order'); menuItem('Thứ tự'); }
+    // The item by its words in the page's language (i18n.js), so a reworded label doesn't stop the view opening.
+    const words = key => (window.I18N?.[language]?.[key] || window.I18N?.en?.[key] || key).replace(/…$/, '');
+    if (params.has('order')) { click('[data-act=tools-menu]'); menuItem(words('m.launchOrder')); }
     if (params.get('view') === 'presets' || params.has('presets') || params.has('preset')) {
       click('[data-act=preset-menu]');
-      menuItem('Edit presets'); menuItem('Sửa bộ');
+      menuItem(words('ps.manage'));
       if (params.has('preset')) setTimeout(() => click('.pv-item[data-id="p1"] [data-pv=edit]'), 100);
     }
   }, 600));

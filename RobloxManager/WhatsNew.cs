@@ -8,8 +8,15 @@ namespace RobloxManager;
 /// </summary>
 public static class WhatsNew
 {
+    /// <param name="En">Notes in no group (releases before 1.1.1 have only these), and <paramref name="Vi"/> the same.</param>
     /// <param name="Highlights">The release's headline features, shown first (none for most releases).</param>
-    public sealed record Release(string Version, string Date, string[] En, string[] Vi, Highlight[]? Highlights = null);
+    /// <param name="New">What is new, <paramref name="Improved"/> what works better, <paramref name="Fixed"/> what was
+    /// wrong and is fixed: each shown under its own heading.</param>
+    public sealed record Release(string Version, string Date, string[]? En = null, string[]? Vi = null, Highlight[]? Highlights = null,
+        Notes? New = null, Notes? Improved = null, Notes? Fixed = null);
+
+    /// <summary>A group of notes, in each language.</summary>
+    public sealed record Notes(string[] En, string[] Vi);
 
     /// <summary>
     /// A headline feature: an icon (one of the page's), [title, one or two sentences, button] in each language, and where

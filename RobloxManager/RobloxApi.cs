@@ -53,6 +53,9 @@ public sealed class RobloxApiException(string message, bool cookieInvalid = fals
     /// <summary>Roblox answered 429: wait a little and try again.</summary>
     public bool RateLimited { get; } = rateLimited;
 
+    /// <summary>With <see cref="RateLimited"/>: how long until Roblox takes requests again, when it said.</summary>
+    public TimeSpan? RetryAfter { get; init; }
+
     /// <summary>Roblox answered 5xx (down or busy): worth trying again later, unlike a refusal (400, 403).</summary>
     public bool ServerError { get; } = serverError;
 }
@@ -1312,18 +1315,55 @@ public static class RobloxApi
         return placeId > 0 && name.Length > 0 ? new GameSummary(placeId, Num(universeField), name, Num("playerCount")) : null;
     }
 
+    // Roblox lets one internet connection load server lists only a few times a minute (its answers say
+    // "x-ratelimit-limit: 3, 3;w=60", October 2026), whatever the game or order. What it said is kept, so a request
+    // that would be refused isn't sent: it would only be refused, and the wait reads from Roblox's own clock.
+    static readonly object ServerListGate = new();
+    static int _serverListLeft = -1;
+    static DateTime _serverListReset;
+
+    /// <summary>How many more server lists Roblox takes before its minute is up (-1: not known yet).</summary>
+    public static int ServerListLeft
+    {
+        get { lock (ServerListGate) return DateTime.UtcNow >= _serverListReset ? -1 : _serverListLeft; }
+    }
+
     /// <summary>
     /// A page of a game's public servers (the "Servers" tab of the game's page), busiest or emptiest first, without
     /// full ones. <paramref name="cursor"/> continues a previous page.
     /// </summary>
     public static async Task<(List<ServerInfo> Servers, string? Next)> GetServersAsync(long placeId, bool fewestFirst, string? cursor, CancellationToken ct = default)
     {
+        lock (ServerListGate)
+        {
+            var wait = _serverListReset - DateTime.UtcNow;
+            if (_serverListLeft == 0 && wait > TimeSpan.Zero)
+                throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true) { RetryAfter = wait };
+        }
         string url = $"https://games.roblox.com/v1/games/{placeId}/servers/Public?sortOrder={(fewestFirst ? "Asc" : "Desc")}&limit=50&excludeFullGames=true"
                      + (string.IsNullOrEmpty(cursor) ? "" : "&cursor=" + Uri.EscapeDataString(cursor));
         using var req = Request(HttpMethod.Get, url, null);
         using var res = await Http.SendAsync(req, ct);
+        int? left = FirstNumber(res, "x-ratelimit-remaining");
+        int? reset = FirstNumber(res, "x-ratelimit-reset") ?? (int?)res.Headers.RetryAfter?.Delta?.TotalSeconds;
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+        {
+            var wait = TimeSpan.FromSeconds(Math.Clamp(reset ?? 20, 1, 120));
+            lock (ServerListGate)
+            {
+                _serverListLeft = 0;
+                _serverListReset = DateTime.UtcNow + wait;
+            }
+            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true) { RetryAfter = wait };
+        }
+        if (left is int n && reset is int r)
+        {
+            lock (ServerListGate)
+            {
+                _serverListLeft = n;
+                _serverListReset = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Clamp(r, 0, 120));
+            }
+        }
         var servers = new List<ServerInfo>();
         if (!res.IsSuccessStatusCode)
             return (servers, null);
@@ -1341,6 +1381,11 @@ public static class RobloxApi
         string? next = doc.RootElement.TryGetProperty("nextPageCursor", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null;
         return (servers, next);
     }
+
+    /// <summary>The first number of a rate-limit header ("2" of "2", "3" of "3, 3;w=60"), or null.</summary>
+    static int? FirstNumber(HttpResponseMessage res, string header) =>
+        res.Headers.TryGetValues(header, out var values) && values.FirstOrDefault() is { } v
+        && int.TryParse(v.Split(',')[0].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int n) ? n : null;
 
     /// <summary>Square game icons for many games at once.</summary>
     public static async Task<Dictionary<long, string>> GetGameIconsAsync(IEnumerable<long> universeIds, CancellationToken ct = default)

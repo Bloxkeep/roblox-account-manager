@@ -2020,12 +2020,15 @@ public sealed partial class AppController : IDisposable
         return _games.GetValueOrDefault(placeId);
     }
 
-    static readonly TimeSpan ServerListLifetime = TimeSpan.FromSeconds(30);
-    readonly Dictionary<(long, bool, string), (object Result, DateTime At)> _serverPages = new();
+    // A minute: Roblox gives a few server lists a minute (RobloxApi.ServerListLeft), so switching the order back and
+    // forth within it shows what was already loaded instead of spending another.
+    static readonly TimeSpan ServerListLifetime = TimeSpan.FromSeconds(60);
+    readonly Dictionary<(long, bool, string), (List<ServerInfo> Servers, string? Next, DateTime At)> _serverPages = new();
 
     /// <summary>
-    /// A page of a game's public servers. Pages are kept for 30 seconds (switching the order back and forth doesn't ask
-    /// Roblox again), and when Roblox asks to slow down the page says so (busy) so the window can retry by itself.
+    /// A page of a game's public servers. Pages are kept for a minute; left says how many more Roblox would give now
+    /// (-1: unknown), so the window spends them only on what was asked for. When Roblox says to wait, the page says so
+    /// (busy) with the seconds Roblox gave (retryIn), and the window tries again by itself then.
     /// </summary>
     async Task<object?> ServersAsync(long placeId, bool fewestFirst, string? cursor)
     {
@@ -2033,19 +2036,19 @@ public sealed partial class AppController : IDisposable
             throw new UserError(L.T("Invalid Place ID."));
         var key = (placeId, fewestFirst, cursor ?? "");
         if (_serverPages.TryGetValue(key, out var kept) && DateTime.UtcNow - kept.At < ServerListLifetime)
-            return kept.Result;
+            return new { servers = kept.Servers, next = kept.Next, busy = false, left = RobloxApi.ServerListLeft };
         try
         {
             var (servers, next) = await RobloxApi.GetServersAsync(placeId, fewestFirst, cursor);
-            object result = new { servers, next, busy = false };
             if (_serverPages.Count > 40)
                 _serverPages.Clear();
-            _serverPages[key] = (result, DateTime.UtcNow);
-            return result;
+            _serverPages[key] = (servers, next, DateTime.UtcNow);
+            return new { servers, next, busy = false, left = RobloxApi.ServerListLeft };
         }
         catch (RobloxApiException ex) when (ex.RateLimited)
         {
-            return new { servers = Array.Empty<ServerInfo>(), next = (string?)null, busy = true };
+            int retryIn = (int)Math.Ceiling((ex.RetryAfter ?? TimeSpan.FromSeconds(20)).TotalSeconds);
+            return new { servers = Array.Empty<ServerInfo>(), next = (string?)null, busy = true, retryIn, left = 0 };
         }
     }
 

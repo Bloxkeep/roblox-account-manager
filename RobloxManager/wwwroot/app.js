@@ -67,6 +67,7 @@
     screens: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 3v14M2 10h20M8 21h8M12 17v4"/>',
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
     message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
   };
   const icon = (name, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
   const LOGO = 'logo.svg';
@@ -300,7 +301,7 @@
    * @param enterSubmits true for a form: Enter in a field presses the primary button (not in a textarea or a box with its list open).
    * @param askClose returns true when Esc or the X would throw away something typed: the user is asked first.
    */
-  function modal({ title, body, actions = [], onMount, onClose, dismissable = true, busy: keepsPage = false, enterSubmits = false, askClose = null }) {
+  function modal({ title, body, actions = [], onMount, onClose, dismissable = true, busy: keepsPage = false, enterSubmits = false, askClose = null, top = false }) {
     closeMenu();
     // Gets the focus back on close. Opened from a busy button (What's new, Run's "Open anyway?"), which lost the focus
     // when it was turned off: that button.
@@ -310,7 +311,9 @@
     const openerCard = opener?.closest('.card')?.dataset.id, openerAct = opener?.dataset.act;
     const openerHost = opener?.parentElement?.closest('[id]:not(#app, main, .view, #layer)'), openerCls = opener?.classList[0];
     const el = document.createElement('div');
-    el.className = 'overlay';
+    // top: a box whose content changes height after it opens (steps, lists that load) sits near the top instead of
+    // in the middle, so a change moves only its bottom edge, not what is being read.
+    el.className = top ? 'overlay at-top' : 'overlay';
     const titleId = `mdl-${++modalSeq}`;
     el.innerHTML = `<div class="modal" role="dialog" aria-modal="true" ${title ? `aria-labelledby="${titleId}"` : ''}>
       <div class="modal-head"><h3 id="${titleId}">${title}</h3><button class="icon-btn" data-x title="${t('common.close')}">${icon('x')}</button></div>
@@ -1946,16 +1949,24 @@
       return `<li class="wn-card"><span class="wn-ic">${icon(h.icon || 'check')}</span><b>${esc(title)}</b><p>${esc(text)}</p>${h.go && button
         ? `<button type="button" class="wn-go" data-go="${i}">${esc(button)}${icon('chevronRight')}</button>` : ''}</li>`;
     };
-    const main = highlights.length
+    // New, Improved, Fixed (whatsnew.json "new", "improved", "fixed"): each under its own heading, so what was put
+    // right is as easy to find as what was added.
+    const KINDS = [['new', 'plus'], ['improved', 'gauge'], ['fixed', 'wrench']];
+    const groups = r => KINDS.map(([k, ic]) => {
+      const list = (lang === 'vi' && r[k]?.vi?.length ? r[k].vi : r[k]?.en) || [];
+      return list.length ? `<h4 class="wn-sub wn-kind ${k}">${icon(ic)}${t(`wn.kind.${k}`)}</h4>
+        <ul class="wn-also ${k}">${list.map(n => `<li>${icon(ic)}<span>${esc(n)}</span></li>`).join('')}</ul>` : '';
+    }).join('');
+    const main = (highlights.length
       ? `<ul class="wn-cards">${highlights.map(card).join('')}</ul>${notes(latest).length
         ? `<h4 class="wn-sub">${t('wn.also')}</h4><ul class="wn-also">${notes(latest).map(n => `<li>${icon('check')}<span>${esc(n)}</span></li>`).join('')}</ul>` : ''}`
-      : `<ul class="wn-list">${notes(latest).map(feature).join('')}</ul>`;
+      : notes(latest).length ? `<ul class="wn-list">${notes(latest).map(feature).join('')}</ul>` : '') + groups(latest);
     modal({
       title: `<span class="wn-title"><img src="${LOGO}" alt=""><span>${t('wn.heading')}<small>${esc(`Bloxkeep ${latest.version}`)}${latest.date ? ` · ${esc(day(latest.date))}` : ''}</small></span></span>`,
       body: `${main}
         ${older.length ? `<details class="wn-older"><summary>${icon('chevronRight')}${tn('wn.older', older.length)}</summary>
           ${older.map(r => `<section class="wn"><div class="wn-head"><b>${esc(r.version)}</b><span>${day(r.date)}</span></div>
-            <ul>${notes(r).map(n => `<li>${esc(n)}</li>`).join('')}</ul></section>`).join('')}</details>` : ''}
+            ${notes(r).length ? `<ul>${notes(r).map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}${groups(r)}</section>`).join('')}</details>` : ''}
         <p class="wn-star">${icon('star')}<span>${t('wn.star')}</span><button type="button" class="wn-go" data-star>${t('star.open')}${icon('chevronRight')}</button></p>`,
       actions: [{ text: t('wn.ok'), kind: 'primary', onClick: ({ close }) => close() }],
       onMount: ({ el, close }) => el.addEventListener('click', e => {
@@ -2523,7 +2534,9 @@
     const g = S.game;
     if (!g?.placeId) return;
     const party = S.selected.size;
-    const st = { sort: 'most', room: party > 1, items: [], view: [], next: null, loading: false, busy: false, seq: 0, friends: null };
+    // left: how many more lists Roblox gives this minute (-1 unknown); waitUntil / moreUntil: when Roblox takes the
+    // next one after saying to wait (the list, or the next page).
+    const st = { sort: 'most', room: party > 1, items: [], view: [], next: null, loading: false, busy: false, waitUntil: 0, moreUntil: 0, left: -1, seq: 0, friends: null };
     const SORTS = ['most', 'fewest', 'ping', 'fps'];
     const local = () => st.sort === 'ping' || st.sort === 'fps';
     let api;
@@ -2546,6 +2559,7 @@
       const box = api.el.querySelector('#srv-friends');
       if (!box) return;
       const list = st.friends;
+      box.classList.toggle('list', !!list?.length);
       setHtml(box, list === null ? `<div class="srv-friends-note"><span class="spin"></span>${t('srv.friendsLooking')}</div>`
         : !list.length ? `<div class="srv-friends-note">${t(st.friendsFailed ? 'srv.friendsError' : st.friendsAsked ? 'srv.friendsNone' : 'srv.friendsNoAccount')}</div>`
         : list.map((f, i) => `<div class="srv-friend">
@@ -2562,13 +2576,32 @@
       renderFriends();
       render();
     };
+    const secondsTo = at => Math.max(1, Math.ceil((at - Date.now()) / 1000));
+    const moreLabel = () => (st.moreUntil > Date.now() ? t('srv.moreIn', { n: secondsTo(st.moreUntil) }) : t('srv.more'));
+    // Roblox said to wait: the seconds count down in place until the window asks again by itself.
+    let tick = 0;
+    const countDown = () => {
+      if (!api.el.isConnected) { clearInterval(tick); tick = 0; return; }
+      if (st.busy) api.el.querySelector('#srv-list .picker-empty')?.replaceChildren(t('srv.wait', { n: secondsTo(st.waitUntil) }));
+      const more = api.el.querySelector('[data-more]');
+      if (more) {
+        more.textContent = moreLabel();
+        more.disabled = st.loading || st.moreUntil > Date.now();
+      }
+      if (!st.busy && st.moreUntil <= Date.now()) { clearInterval(tick); tick = 0; }
+    };
     const render = () => {
       st.view = visibleServers();
       const list = api.el.querySelector('#srv-list');
-      const more = st.next ? `<button class="btn ghost w" data-more ${st.loading ? 'disabled' : ''}>${t('srv.more')}</button>` : '';
-      list.innerHTML = st.view.length ? rows() + more
+      const more = st.next ? `<button class="btn ghost w" data-more ${st.loading || st.moreUntil > Date.now() ? 'disabled' : ''}>${moreLabel()}</button>` : '';
+      // The list keeps its height whatever it shows (app.css), and while another order loads the rows so far stay,
+      // dimmed: the window doesn't shrink to a spinner and grow back.
+      const rowsShown = !st.busy && st.view.length > 0;
+      list.classList.toggle('stale', rowsShown && st.loading);
+      list.classList.toggle('note', !rowsShown);
+      list.innerHTML = st.busy ? `<div class="picker-empty">${t('srv.wait', { n: secondsTo(st.waitUntil) })}</div>`
+        : rowsShown ? rows() + more
         : st.loading ? '<div class="picker-empty"><span class="spin"></span></div>'
-        : st.busy ? `<div class="picker-empty">${t(st.retried ? 'srv.busyStop' : 'srv.busy')} <button class="btn sm" data-retry>${t('srv.retry')}</button></div>`
         : st.items.length ? `<div class="picker-empty">${t('srv.noneRoom', { n: party })}</div>${more}`
         : `<div class="picker-empty">${t('srv.none')}</div>`;
       api.el.querySelectorAll('[data-sort]').forEach(b => {
@@ -2582,27 +2615,34 @@
       }
       api.el.querySelector('[data-random]').disabled = !st.view.some(s => !isFull(s));
     };
+    // Roblox gives only a few lists a minute: a second page for ping/FPS only while that leaves one for the next click.
+    const spare = () => st.left < 0 || st.left >= 2;
     const load = async more => {
       const seq = ++st.seq;
       st.loading = true;
-      if (!more) { st.items = []; st.next = null; }
+      if (!more) st.busy = false;
       render();
       // Ping and FPS are sorted here, so start from the fullest servers (the ones people actually play on).
       const r = await call('servers', { placeId: g.placeId, fewest: st.sort === 'fewest', cursor: more ? st.next : null });
       if (seq !== st.seq || !api.el.isConnected) return;
       st.loading = false;
-      st.busy = !!r?.busy && !st.items.length;
-      if (r && !r.busy) {
+      st.left = r?.left ?? -1;
+      if (r?.busy) {
+        // Roblox said how long: ask again by itself then (the rows loaded so far stay for a next page).
+        const until = Date.now() + (r.retryIn || 20) * 1000;
+        if (more) st.moreUntil = until; else { st.busy = true; st.waitUntil = until; }
+        tick ||= setInterval(countDown, 1000);
+        setTimeout(() => api.el.isConnected && seq === st.seq && load(more), until - Date.now() + 400);
+      } else if (r) {
         // A server can move between pages while players come and go; keep one row per server.
         const seen = new Set(more ? st.items.map(s => s.jobId) : []);
         st.items = (more ? st.items : []).concat(r.servers.filter(s => !seen.has(s.jobId) && seen.add(s.jobId)));
         st.next = r.next;
+        st.moreUntil = 0;
       }
       render();
       // A second page gives sorting by ping or FPS more to choose from.
-      if (!more && local() && r?.next && !r.busy) load(true);
-      // Roblox asked to slow down: try once more by itself a few seconds later.
-      if (r?.busy && !st.retried) { st.retried = true; setTimeout(() => api.el.isConnected && seq === st.seq && load(more), 5000); }
+      if (!more && local() && r?.next && !r.busy && spare()) load(true);
     };
     const choose = s => {
       useServer(g.placeId, s.jobId);
@@ -2611,6 +2651,7 @@
     };
     api = modal({
       title: t('srv.title', { game: esc(g.name || `Place ${g.placeId}`) }),
+      top: true,
       body: `<div class="srv-head">${t('srv.friendsTitle')}</div><div class="srv-friends" id="srv-friends"></div>
         <div class="srv-head">${t('srv.publicTitle')}</div>
         <div class="srv-sort">${SORTS.map(k => `<button class="chip ${k === st.sort ? 'on' : ''}" data-sort="${k}" aria-pressed="${k === st.sort}">${t(`srv.sort.${k}`)}</button>`).join('')}</div>
@@ -2625,7 +2666,7 @@
           st.sort = sort.dataset.sort;
           // Most/fewest come from Roblox in that order; ping/FPS just re-sort what is loaded (plus a page if needed).
           if (st.sort === 'fewest' || was === 'fewest' || !st.items.length) load(false);
-          else if (local() && st.items.length < 150 && st.next) { render(); load(true); }
+          else if (local() && st.items.length < 150 && st.next && spare() && !st.loading) { render(); load(true); }
           else render();
           return;
         }
@@ -2636,7 +2677,6 @@
           return;
         }
         if (e.target.closest('[data-more]')) { load(true); return; }
-        if (e.target.closest('[data-retry]')) { st.retried = false; load(false); return; }
         const friend = e.target.closest('[data-friend]');
         if (friend) {
           const f = st.friends[+friend.dataset.friend];
@@ -3015,6 +3055,7 @@
     ]);
     modal({
       title: t(isNew ? 'ps.newTitle' : 'ps.editTitle'),
+      top: true,
       dismissable: false,
       busy: true,
       enterSubmits: true,
@@ -3693,6 +3734,7 @@
     }
     const m = modal({
       title: '',
+      top: true,
       busy: true,
       dismissable: false, // a stray click beside it mustn't end a sign-in half way
       // Esc or the X asks first when that would throw away what was typed, or a sign-in half way (a code already sent).
@@ -4051,6 +4093,7 @@
     let realm = forRealm ?? (store.get('rm.qlRealm', '') === 'vng' ? 'vng' : '');
     const m = modal({
       title: t('ql.title'),
+      top: true,
       busy: true,
       body: `${forName ? `<p class="ql-for">${t('ql.for', { name: `<b>${esc(forName)}</b>` })}</p>` : ''}<div class="ql-realm" role="tablist">
           <button role="tab" data-realm="">Roblox</button><button role="tab" data-realm="vng">Roblox VNG</button>
@@ -4259,6 +4302,7 @@
     let step = 'pick', file = null, preview = null, done = false, waitTimer = 0;
     const m = modal({
       title: t('iv.title'),
+      top: true,
       dismissable: false,
       busy: true,
       enterSubmits: true,
@@ -4557,6 +4601,7 @@
     const locked = !!S.app.locked;
     modal({
       title: t('fb.title'),
+      top: true,
       dismissable: false,
       busy: true,
       askClose: () => !!form && (form.querySelector('[name=text]').value.trim() !== '' || form.querySelector('[name=contact]').value.trim() !== ''),
@@ -4740,6 +4785,7 @@
     }
     modal({
       title: t(isNew ? 'am.addTitle' : 'am.editTitle'),
+      top: true,
       dismissable: false,
       busy: true,
       enterSubmits: true,
@@ -5478,6 +5524,7 @@
     };
     modal({
       title: t('jp.title'),
+      top: true,
       busy: true,
       enterSubmits: true,
       body: `<div class="form jp">
