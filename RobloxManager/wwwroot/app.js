@@ -1628,6 +1628,18 @@
     focusKey, refocus,
     presetQuery: () => PV.query, setPresetQuery: q => { PV.query = q; },
     scheduleText, nextRunText, presetOptionsText, avatarHtml: avatarInner, runPreset, deletePreset, editPreset: presetModal,
+    weekdayName, fmtNum, looksLikeTarget,
+    gameListsCached: () => P.lists,
+    async loadGameLists() {
+      const r = await call('gameLists', {}, { silent: true });
+      if (r) P.lists = r; // shared with the dock's picker
+      return r;
+    },
+    searchCached(q) {
+      const c = searchCache.get(q);
+      return c && Date.now() - c.at < SEARCH_TTL ? c.rows : null;
+    },
+    rememberSearch,
     settingsDrawn() {
       const q = $('#set-q');
       if (q?.value) searchSettings(q.value);
@@ -2283,7 +2295,6 @@
 
   /* ───────────────────────── launch presets ─────────────────────────
      Saved accounts + game + kind of server. The app picks the server when a preset runs (a schedule can run them too). */
-  const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'job'];
   const presets = () => S.app.settings?.presets || [];
   /** The preset's accounts that still exist (deleted ones are skipped when it runs). */
   const presetAccounts = p => p.accountIds.map(byId).filter(Boolean);
@@ -2291,73 +2302,6 @@
   const presetSub = p => [p.gameName || p.placeInput || t('ps.noGame'), accCount(presetAccounts(p).length),
     p.server !== 'any' && p.placeInput ? t(`ps.srv.${p.server}`) : '', nextRunText(p)].filter(Boolean).join(' · ');
 
-  /* Options for the windows a preset opens, as four small dropdowns; null / '' / 0 follow the usual settings. */
-  const RESTART_HOURS = [0, 2, 4, 6, 12]; // the app's own choices (RestartChoices)
-  const triValue = v => v === true ? 'on' : v === false ? 'off' : '';
-  const triOptions = (v, follow) => [['', follow], ['on', t('ps.opt.on')], ['off', t('ps.opt.off')]]
-    .map(([k, text]) => `<option value="${k}" ${k === triValue(v) ? 'selected' : ''}>${esc(text)}</option>`).join('');
-  function presetOptionsHtml(p) {
-    const afkNow = t(S.app.settings?.antiAfk ? 'ps.opt.stOn' : 'ps.opt.stOff');
-    return `<div class="ps-opts" role="group" aria-labelledby="ps-opts-title">
-        <div class="ps-opts-head"><b id="ps-opts-title">${t('ps.opts')}</b></div>
-        <div class="ps-opts-grid">
-          <label>${t('ps.opt.afk')}<select class="select" id="ps-afk">${triOptions(p.antiAfk, t('ps.opt.followSet', { state: afkNow }))}</select></label>
-          <label>${t('ps.opt.rejoin')}<select class="select" id="ps-rejoin">${triOptions(p.autoRejoin, t('ps.opt.followAcc'))}</select></label>
-          <label>${t('ps.opt.profile')}<select class="select" id="ps-profile">${[['', 'ps.opt.normal'], ['afk', 'ps.opt.light']].map(([k, key]) =>
-            `<option value="${k}" ${k === (p.profile || '') ? 'selected' : ''}>${t(key)}</option>`).join('')}</select></label>
-          <label>${t('ps.opt.restart')}<select class="select" id="ps-restart">${RESTART_HOURS.map(h =>
-            `<option value="${h}" ${h === (p.restartHours || 0) ? 'selected' : ''}>${h ? t('ps.opt.every', { n: h }) : t('ps.opt.never')}</option>`).join('')}</select></label>
-          <label>${t('ps.opt.arrange')}<select class="select" id="ps-arrange">${triOptions(p.arrange, t('ps.opt.followSet', { state: t(S.app.multi?.enabled && S.app.multi?.tile ? 'ps.opt.stOn' : 'ps.opt.stOff') }))}</select></label>
-        </div>
-        <p class="ps-opts-note" id="ps-opts-note" hidden></p>
-      </div>`;
-  }
-  const presetOptionsValue = el => {
-    const tri = v => v === 'on' ? true : v === 'off' ? false : null;
-    return {
-      antiAfk: tri(el.querySelector('#ps-afk').value),
-      autoRejoin: tri(el.querySelector('#ps-rejoin').value),
-      profile: el.querySelector('#ps-profile').value,
-      restartHours: +el.querySelector('#ps-restart').value || 0,
-      arrange: tri(el.querySelector('#ps-arrange').value),
-    };
-  };
-
-  /* A preset's own Discord channel: its schedule messages, its summary after a scheduled stop and the alerts of the
-     windows it opened go there. The page never holds a saved link, only its masked form. */
-  function presetDiscordHtml(p) {
-    const on = !!S.app.discord?.enabled;
-    return `<div class="ps-opts" role="group" aria-labelledby="ps-dc-title">
-        <div class="ps-opts-head"><b id="ps-dc-title">Discord</b></div>
-        <label class="ps-dc-mode">${t('ps.dc.where')}<select class="select" id="ps-dc-mode">
-          <option value="" ${p.discord ? '' : 'selected'}>${t('ps.dc.main')}</option>
-          <option value="own" ${p.discord ? 'selected' : ''}>${t('ps.dc.own')}</option></select></label>
-        <div class="ps-dc-own" id="ps-dc-own" ${p.discord ? '' : 'hidden'}>
-          <input class="field" id="ps-dc-link" type="text" maxlength="300" spellcheck="false" autocomplete="off"
-            placeholder="${esc(p.discord || 'https://discord.com/api/webhooks/…')}" aria-label="${esc(t('ps.dc.link'))}">
-          <button type="button" class="btn" id="ps-dc-test">${t('dc.test')}</button>
-        </div>
-        <p class="ps-opts-note">${p.discord ? `${t('ps.dc.saved')}\n` : ''}${t('ps.dc.note')}${on ? '' : `\n${t('ps.dc.off')}`}</p>
-      </div>`;
-  }
-  /** What the form sends: undefined keeps the saved link, '' goes back to Settings' channel, a link replaces it. */
-  function presetDiscordValue(el, p) {
-    const own = el.querySelector('#ps-dc-mode').value === 'own', typed = el.querySelector('#ps-dc-link').value.trim();
-    if (!own) return p?.discord ? '' : undefined;
-    if (typed) return typed;
-    if (p?.discord) return undefined;
-    throw new Error(t('ps.dc.needLink'));
-  }
-  /** One short note under the options, only for a choice that needs explaining. */
-  function syncPresetOptions(el) {
-    const note = el.querySelector('#ps-opts-note');
-    if (!note) return;
-    const text = [el.querySelector('#ps-profile').value === 'afk' ? t('ps.opt.lightNote') : '',
-      +el.querySelector('#ps-restart').value ? t(el.querySelector('#ps-place').value.trim() ? 'ps.opt.restartNote' : 'ps.opt.restartNoGame') : '']
-      .filter(Boolean).join('\n'); // one line per option picked
-    note.hidden = !text;
-    if (note.textContent !== text) note.textContent = text;
-  }
   /** The options a preset sets differently from the usual settings, for its row in the Presets tab. */
   const presetOptionsText = p => [
     p.antiAfk === true ? t('pv.optAfkOn') : p.antiAfk === false ? t('pv.optAfkOff') : '',
@@ -2456,74 +2400,22 @@
     const gone = base.accountIds.length - chosen.length;
     const rest = accounts().filter(a => !chosen.includes(a)).sort((x, y) => (rank.get(x.id) ?? 1e9) - (rank.get(y.id) ?? 1e9));
     if (!chosen.length && !rest.length) return toast(t('rc.noAccounts'), 'info');
-    const globalDelay = S.app.settings?.launchDelaySeconds ?? 8;
-    const sc = base.schedule || {};
-    const stopHours = sc.stopHours > 0 ? sc.stopHours : 2;
-    // What the form holds (boxes, ticks, the accounts' order, the days): Esc or the X asks before throwing a change away.
-    let formEl = null, initial = '';
-    const snapshot = () => !formEl ? '' : JSON.stringify([
-      ...[...formEl.querySelectorAll('.modal-body input, .modal-body select')].map(x => (x.type === 'checkbox' ? x.checked : x.value)),
-      ...[...formEl.querySelectorAll('.ord-item')].map(x => x.dataset.id),
-      ...[...formEl.querySelectorAll('#ps-sch-days .chip.on')].map(x => x.dataset.day),
-    ]);
+    let ui = null;
     modal({
       title: t(isNew ? 'ps.newTitle' : 'ps.editTitle'),
       top: true,
       dismissable: false,
       busy: true,
       enterSubmits: true,
-      askClose: () => snapshot() !== initial,
-      body: `<div class="form preset-form">
-          <label>${t('ps.name')}<input class="field" id="ps-name" maxlength="60" placeholder="${esc(t('ps.namePh'))}" value="${esc(base.name)}" data-auto="${isNew ? esc(base.name) : ''}"></label>
-          <label>${t('ps.game')}<input class="field" id="ps-place" maxlength="500" spellcheck="false" autocomplete="off" placeholder="${esc(t('dock.place'))}" value="${esc(base.placeInput)}"></label>
-          <div class="ps-pick" id="ps-pick" hidden></div>
-          <div class="ps-game" id="ps-game"></div>
-          <div class="preset-row">
-            <label>${t('ps.server')}<select class="select" id="ps-server">${PRESET_SERVERS.map(k =>
-              `<option value="${k}" ${k === base.server ? 'selected' : ''}>${t(`ps.srv.${k}`)}</option>`).join('')}</select></label>
-            <label>${t('ps.delay')}<input class="field" id="ps-delay" type="number" min="0" max="120" placeholder="${esc(t('ps.delayPh', { n: globalDelay }))}" value="${base.delaySeconds ?? ''}"></label>
-          </div>
-          <label id="ps-job-row">${t('ps.job')}<input class="field" id="ps-job" maxlength="60" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value="${esc(base.jobId)}"></label>
-          <div class="preset-accs">${t('ps.accounts')} <span class="muted" id="ps-count"></span><small>${t('ps.order')}</small></div>
-          ${gone ? `<p class="ps-gone">${icon('info')}<span>${tn('ps.gone', gone)}</span></p>` : ''}
-        </div>
-        ${orderListHtml([...chosen, ...rest], { check: a => chosen.includes(a) })}
-        <div class="form preset-form">
-          ${presetOptionsHtml(base)}
-          ${presetDiscordHtml(base)}
-          <div class="ps-sched">
-            <div class="ps-sched-head">
-              <label class="switch"><input type="checkbox" id="ps-sch-on" ${sc.enabled ? 'checked' : ''} aria-label="${t('ps.sch')}"><span></span></label>
-              <div><b>${t('ps.sch')}</b><small>${t('ps.schDesc')}</small></div>
-            </div>
-            <div class="ps-sched-body" id="ps-sch-body" hidden>
-              <div class="preset-row">
-                <label>${t('ps.schTime')}<input class="field" id="ps-sch-time" type="time" value="${esc(sc.time || '')}"></label>
-                <label>${t('ps.schRepeat')}<select class="select" id="ps-sch-mode">
-                  <option value="days" ${sc.date ? '' : 'selected'}>${t('ps.schDays')}</option>
-                  <option value="once" ${sc.date ? 'selected' : ''}>${t('ps.schOnce')}</option></select></label>
-              </div>
-              <div class="day-chips" id="ps-sch-days" role="group" aria-label="${t('ps.schDays')}">${[1, 2, 3, 4, 5, 6, 0].map(d =>
-                `<button type="button" class="chip ${(sc.days || []).includes(d) ? 'on' : ''}" data-day="${d}" aria-pressed="${(sc.days || []).includes(d)}">${esc(weekdayName(d))}</button>`).join('')}</div>
-              <label id="ps-sch-date-row" hidden>${t('ps.schDate')}<input class="field" id="ps-sch-date" type="date" value="${esc(sc.date || '')}"></label>
-              <div class="preset-row">
-                <label>${t('ps.schStop')}<select class="select" id="ps-sch-stop">${['never', 'after', 'at'].map(k =>
-                  `<option value="${k}" ${(sc.stop || 'never') === k ? 'selected' : ''}>${t(`ps.schStop.${k}`)}</option>`).join('')}</select></label>
-                <label id="ps-sch-hours-row">${t('ps.schHours')}<input class="field" id="ps-sch-hours" type="number" min="0.5" max="168" step="0.5" value="${stopHours}"></label>
-                <label id="ps-sch-stoptime-row" hidden>${t('ps.schStopTime')}<input class="field" id="ps-sch-stoptime" type="time" value="${esc(sc.stopTime || '')}"></label>
-              </div>
-              <details class="ps-note"><summary>${icon('info')}${t('ps.schNoteTitle')}</summary><p class="ps-sched-note">${t('ps.schNote')}</p></details>
-            </div>
-          </div>
-        </div>`,
+      // Anything changed (boxes, ticks, the accounts' order, the days): Esc or the X asks before throwing it away.
+      askClose: () => !!ui?.form.dirty(),
+      body: '',
       actions: [
         ...(isNew ? [] : [{ text: t('ps.delete'), kind: 'danger push', onClick: async ({ close }) => { if (await deletePreset(p)) close(); } }]),
         { text: t('common.cancel'), onClick: ({ close }) => close() },
         {
           text: t('ps.saveBtn'), kind: 'primary', onClick: async ({ el, close, btn, hold }) => {
             if (btn.disabled) return;
-            const val = sel => el.querySelector(sel).value.trim();
-            const delay = val('#ps-delay');
             // A refused save is said in the form, above its buttons (a toast sits behind the dialog), and the box to fix
             // is brought into view and focused.
             const errBox = el.querySelector('.ps-err');
@@ -2534,324 +2426,57 @@
               box?.scrollIntoView({ block: 'nearest' });
               box?.focus();
             };
-            // Checked here rather than clamped quietly by the app: 1000 hours or a quarter hour would save as something else.
-            const hours = +val('#ps-sch-hours');
-            if (el.querySelector('#ps-sch-on').checked && val('#ps-sch-stop') === 'after' && !(hours >= 0.5 && hours <= 168 && Number.isInteger(hours * 2))) {
-              return fail(t('ps.schHoursBad'), el.querySelector('#ps-sch-hours'));
-            }
-            // Its own Discord channel: chosen but no link pasted is said here, next to the box.
-            let discordLink;
-            try { discordLink = presetDiscordValue(el, p); } catch (e) { return fail(e.message, el.querySelector('#ps-dc-link')); }
+            const r = ui.form.collect();
+            if (r.error) return fail(r.error, r.box);
             let refused = null;
-            await busy(btn, () => hold(() => bridge.call('savePreset', {
-              id: p?.id || '',
-              name: val('#ps-name'),
-              placeInput: val('#ps-place'),
-              server: val('#ps-server'),
-              jobId: val('#ps-job'),
-              // Ticked order = launch order.
-              ids: [...el.querySelectorAll('.ord-item input:checked')].map(b => b.value),
-              delaySeconds: delay === '' ? null : Math.min(120, Math.max(0, Math.round(+delay) || 0)),
-              ...presetOptionsValue(el),
-              discordWebhook: discordLink,
-              // A schedule never set up (off, no start time) is saved as none: no "Schedule off" row, no switch that
-              // couldn't be turned on.
-              schedule: !el.querySelector('#ps-sch-on').checked && !val('#ps-sch-time') ? null : {
-                enabled: el.querySelector('#ps-sch-on').checked,
-                time: val('#ps-sch-time'),
-                days: val('#ps-sch-mode') === 'once' ? [] : [...el.querySelectorAll('#ps-sch-days .chip.on')].map(b => +b.dataset.day),
-                date: val('#ps-sch-mode') === 'once' ? val('#ps-sch-date') : '',
-                stop: val('#ps-sch-stop'),
-                stopHours: +val('#ps-sch-hours') || 0,
-                stopTime: val('#ps-sch-stoptime'),
-              },
-            })).catch(e => { refused = e; }));
-            if (refused) {
-              // The box the app's reason is most likely about, from what the form holds.
-              const on = el.querySelector('#ps-sch-on').checked, sel = s => el.querySelector(s);
-              const box = !val('#ps-name') ? sel('#ps-name')
-                : !el.querySelector('.ord-item input:checked') ? sel('.ord-item input')
-                : val('#ps-server') === 'job' && !val('#ps-job') ? sel('#ps-job')
-                : on && !val('#ps-sch-time') ? sel('#ps-sch-time')
-                : on && val('#ps-sch-mode') !== 'once' && !el.querySelector('#ps-sch-days .chip.on') ? sel('#ps-sch-days .chip')
-                : on && val('#ps-sch-mode') === 'once' && !val('#ps-sch-date') ? sel('#ps-sch-date') : null;
-              return fail(refused.message || t('common.unknownError'), box);
-            }
+            await busy(btn, () => hold(() => bridge.call('savePreset', r.args)).catch(e => { refused = e; }));
+            if (refused) return fail(refused.message || t('common.unknownError'), ui.form.refusedBox());
             close();
             toast(t('ps.saved'), 'ok');
           },
         },
       ],
       onMount: ({ el }) => {
-        const sync = () => {
-          el.querySelector('#ps-job-row').hidden = el.querySelector('#ps-server').value !== 'job';
-          el.querySelector('#ps-count').textContent = `(${el.querySelectorAll('.ord-item input:checked').length})`;
-          el.querySelector('#ps-sch-body').hidden = !el.querySelector('#ps-sch-on').checked;
-          const once = el.querySelector('#ps-sch-mode').value === 'once', stop = el.querySelector('#ps-sch-stop').value;
-          el.querySelector('#ps-sch-days').hidden = once;
-          el.querySelector('#ps-sch-date-row').hidden = !once;
-          el.querySelector('#ps-sch-hours-row').hidden = stop !== 'after';
-          el.querySelector('#ps-sch-stoptime-row').hidden = stop !== 'at';
-          syncPresetOptions(el);
-        };
-        el.addEventListener('change', sync);
-        el.querySelector('#ps-dc-mode').addEventListener('change', e => {
-          el.querySelector('#ps-dc-own').hidden = e.target.value !== 'own';
-          if (e.target.value === 'own' && !p?.discord) el.querySelector('#ps-dc-link').focus();
-        });
-        el.querySelector('#ps-dc-test').addEventListener('click', e => busy(e.currentTarget, async () => {
-          if (await call('presetDiscordTest', { id: p?.id || '', url: el.querySelector('#ps-dc-link').value.trim() }) !== undefined) toast(t('dc.testOk'), 'ok');
-        }));
-        // The options' note depends on the game box too, which the game list also fills (no change event then).
-        el.querySelector('#ps-place').addEventListener('input', () => syncPresetOptions(el));
-        new MutationObserver(() => syncPresetOptions(el)).observe(el.querySelector('#ps-game'), { childList: true });
-        el.querySelector('#ps-sch-days').addEventListener('click', e => {
-          const chip = e.target.closest('[data-day]');
-          if (!chip) return;
-          chip.classList.toggle('on');
-          chip.setAttribute('aria-pressed', chip.classList.contains('on'));
-        });
-        // A date picked for a one-off run: today by default, so the picker opens on the right month.
-        if (!el.querySelector('#ps-sch-date').value) el.querySelector('#ps-sch-date').value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-        sync();
-        wireOrderList(el.querySelector('.ord-list'));
-        presetGameChooser(el);
+        // The form is React's (ui/src/PresetForm.tsx): the preset's accounts first, ticked, then the rest.
+        ui = window.BloxkeepUI.presetForm(el.querySelector('.modal-body'), uiHost(),
+          { base, isNew, accounts: [...chosen, ...rest], ticked: chosen.map(a => a.id), gone });
         // Where a refused save says why (see Save).
         el.querySelector('.modal-foot').insertAdjacentHTML('beforebegin', '<div class="form-error ps-err" role="alert" hidden></div>');
-        formEl = el;
-        initial = snapshot();
         setTimeout(() => el.querySelector('#ps-name')?.focus(), 30);
       },
+      onRemoved: () => ui?.unmount(),
     });
-  }
-
-  /**
-   * The preset form's game box works like the dock's: focusing it offers recent, pinned, favourite and popular games,
-   * typing a name searches Roblox, and a link or Place ID can still be pasted. The chosen game shows below the box.
-   */
-  function presetGameChooser(form) {
-    const place = form.querySelector('#ps-place'), pick = form.querySelector('#ps-pick'), card = form.querySelector('#ps-game');
-    const G = { mode: 'browse', tab: 'recent', results: [], query: '', seq: 0, loading: false, index: -1 };
-    let timer = 0;
-    const rows = () => (G.mode === 'search' ? G.results : P.lists?.[G.tab]) || [];
-    const showCard = g => setHtml(card, g?.name ? `${g.iconUrl ? `<img src="${esc(g.iconUrl)}" alt="">` : `<span class="gph">${icon('gamepad')}</span>`}<b>${esc(g.name)}</b>` : '');
-    // The same keys as the dock's box: arrows walk the list, Enter picks, Esc closes the list (and only the list —
-    // the form's own Esc stands back while aria-expanded says a list is open).
-    place.setAttribute('role', 'combobox');
-    place.setAttribute('aria-haspopup', 'listbox');
-    place.setAttribute('aria-autocomplete', 'list');
-    place.setAttribute('aria-expanded', 'false');
-    const closePick = () => {
-      pick.hidden = true;
-      G.index = -1;
-      place.setAttribute('aria-expanded', 'false');
-      place.removeAttribute('aria-activedescendant');
-    };
-    const paint = () => {
-      if (pick.hidden) return;
-      const list = rows();
-      place.setAttribute('aria-expanded', 'true');
-      if (G.index >= 0) place.setAttribute('aria-activedescendant', `psg-${G.index}`);
-      else place.removeAttribute('aria-activedescendant');
-      const head = G.mode === 'browse'
-        ? `<div class="picker-tabs">${TABS.filter(k => k !== 'popular' || P.lists?.popular?.length).map(k =>
-            // Out of the Tab order: Tab leaves the box for the next field (the list closes when the box loses the focus).
-            `<button type="button" class="ptab ${G.tab === k ? 'on' : ''}" data-gtab="${k}" tabindex="-1">${t(`picker.${k}`)}</button>`).join('')}</div>`
-        : '';
-      const body = G.loading ? '<div class="game-row skel"><span class="gph"></span><div class="gtxt"><b></b><small></small></div></div>'.repeat(3)
-        : !list.length ? `<div class="picker-empty">${t(G.mode === 'search' ? 'picker.noResults' : `picker.empty.${G.tab}`)}</div>`
-        : list.map((g, i) => `<div class="game-row ${i === G.index ? 'on' : ''}" role="option" id="psg-${i}" aria-selected="${i === G.index}" data-g="${i}">
-            ${g.iconUrl ? `<img src="${esc(g.iconUrl)}" alt="">` : `<span class="gph">${icon('gamepad')}</span>`}
-            <div class="gtxt"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : `Place ${g.placeId}`}</small></div></div>`).join('');
-      setHtml(pick, `${head}<div class="ps-pick-list" role="listbox">${body}</div>`);
-      pick.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' });
-    };
-    const open = async mode => {
-      G.mode = mode;
-      G.index = -1;
-      pick.hidden = false;
-      paint();
-      if (mode === 'browse' && !P.lists) {
-        G.loading = true;
-        paint();
-        const r = await call('gameLists', {}, { silent: true });
-        G.loading = false;
-        if (r) {
-          P.lists = r; // shared with the dock's picker
-          if (!r[G.tab]?.length) G.tab = TABS.find(k => r[k]?.length) || 'recent';
-        }
-        paint();
-      }
-    };
-    const choose = g => {
-      place.value = `https://www.roblox.com/games/${g.placeId}`;
-      closePick();
-      showCard(g);
-      // A name that is empty or still the one filled in automatically follows the game; a typed one stays.
-      const name = form.querySelector('#ps-name');
-      if (!name.value.trim() || name.value === name.dataset.auto) {
-        name.value = g.name;
-        name.dataset.auto = g.name;
-      }
-    };
-    // A link or Place ID typed or pasted: show which game it is.
-    const resolve = async () => {
-      const value = place.value.trim();
-      if (!value || !looksLikeTarget(value)) return showCard(null);
-      const r = await call('resolveGame', { input: value }, { silent: true });
-      if (place.value.trim() === value) showCard(r?.ok ? r : null);
-    };
-    place.addEventListener('focus', () => { if (!place.value.trim()) open('browse'); });
-    place.addEventListener('input', () => {
-      const value = place.value.trim();
-      clearTimeout(timer);
-      ++G.seq; // a search still on its way answers an older box
-      // A search that was still pending is over; its placeholders must not stay on.
-      G.loading = false;
-      if (!value) {
-        showCard(null);
-        return open('browse');
-      }
-      if (looksLikeTarget(value)) {
-        closePick();
-        timer = setTimeout(resolve, 400);
-        return;
-      }
-      showCard(null);
-      const cached = searchCache.get(value.toLowerCase());
-      if (cached && Date.now() - cached.at < SEARCH_TTL) {
-        Object.assign(G, { results: cached.rows, loading: false, query: value });
-        return open('search');
-      }
-      Object.assign(G, { loading: true, query: value });
-      open('search');
-      timer = setTimeout(async () => {
-        const seq = G.seq;
-        const r = await call('searchGames', { query: value }, { silent: true });
-        if (seq !== G.seq || !form.isConnected) return;
-        G.results = r || [];
-        G.loading = false;
-        if (r) rememberSearch(value.toLowerCase(), G.results);
-        paint();
-      }, 200);
-    });
-    pick.addEventListener('mousedown', e => e.preventDefault()); // keep the box focused while choosing
-    pick.addEventListener('click', e => {
-      const tab = e.target.closest('[data-gtab]');
-      if (tab) {
-        G.tab = tab.dataset.gtab;
-        G.index = -1;
-        return paint();
-      }
-      const row = e.target.closest('[data-g]');
-      if (row) choose(rows()[+row.dataset.g]);
-    });
-    place.addEventListener('keydown', e => {
-      const list = rows();
-      if (pick.hidden) return;
-      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && list.length) {
-        e.preventDefault();
-        G.index = (G.index + (e.key === 'ArrowDown' ? 1 : list.length - 1) + (G.index < 0 && e.key === 'ArrowUp' ? 1 : 0)) % list.length;
-        paint();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (G.loading) return; // results for what was just typed aren't in yet
-        if (list.length && (G.index >= 0 || G.mode === 'search')) choose(list[Math.max(0, G.index)]);
-      } else if (e.key === 'Escape') {
-        closePick();
-      }
-    });
-    place.addEventListener('blur', () => setTimeout(() => { if (!pick.hidden) closePick(); }, 120));
-    resolve();
   }
 
   /** Short weekday names from the browser's own calendar (0 = Sunday, like the app). 2024-01-07 was a Sunday. */
   const weekdayName = d => intl('d', { weekday: 'short' }).format(new Date(2024, 0, 7 + d));
-
-  /* ───────────────────────── orderable account list ─────────────────────────
-     Rows are dragged by the handle into another order, or moved with the arrow buttons (keyboard); the launch-order
-     dialog numbers them, the preset form ticks them instead. */
-  function orderListHtml(list, { check = null } = {}) {
-    return `<div class="ord-list" role="list">${list.map((a, i) => `<div class="ord-item" role="listitem" draggable="true" data-id="${a.id}">
-        <span class="ord-grip" title="${t('lo.drag')}">${icon('grip')}</span>
-        ${check ? `<input type="checkbox" value="${a.id}" ${check(a) ? 'checked' : ''} aria-label="${esc(a.label)}">` : `<span class="ord-n">${i + 1}</span>`}
-        <div class="avatar sm">${avatarInner(a)}</div>
-        <span class="ord-txt"><b title="${esc(a.label)}">${esc(a.label)}</b><small>${atName(a)}</small></span>
-        <span class="ord-btns"><button type="button" class="icon-btn" data-move="-1" title="${t('lo.up')}" aria-label="${t('lo.up')}">${icon('chevronUp')}</button><button type="button" class="icon-btn" data-move="1" title="${t('lo.down')}" aria-label="${t('lo.down')}">${icon('chevronDown')}</button></span>
-      </div>`).join('')}</div>`;
-  }
-
-  function wireOrderList(list) {
-    if (!list) return;
-    const renumber = () => list.querySelectorAll('.ord-n').forEach((n, i) => { n.textContent = i + 1; });
-    let dragging = null;
-    list.addEventListener('dragstart', e => {
-      dragging = e.target.closest('.ord-item');
-      if (!dragging) return;
-      dragging.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', dragging.dataset.id); // Chromium needs some data for the drag to start
-    });
-    list.addEventListener('dragover', e => {
-      if (!dragging) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      const over = e.target.closest('.ord-item');
-      if (!over || over === dragging) return;
-      const r = over.getBoundingClientRect();
-      over.parentNode.insertBefore(dragging, e.clientY < r.top + r.height / 2 ? over : over.nextSibling);
-    });
-    list.addEventListener('drop', e => e.preventDefault());
-    list.addEventListener('dragend', () => {
-      dragging?.classList.remove('dragging');
-      dragging = null;
-      renumber();
-    });
-    list.addEventListener('click', e => {
-      const btn = e.target.closest('[data-move]');
-      const row = e.target.closest('.ord-item');
-      if (!row) return;
-      if (btn) {
-        const to = +btn.dataset.move < 0 ? row.previousElementSibling : row.nextElementSibling?.nextElementSibling;
-        if (+btn.dataset.move < 0 ? !row.previousElementSibling : !row.nextElementSibling) return;
-        list.insertBefore(row, to);
-        renumber();
-        btn.focus();
-        row.scrollIntoView({ block: 'nearest' });
-        return;
-      }
-      // The row itself ticks its box (the box, the handle and the buttons do their own thing).
-      const box = row.querySelector('input[type=checkbox]');
-      if (box && !e.target.closest('input, .ord-grip, button')) {
-        box.checked = !box.checked;
-        box.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    });
-  }
 
   /** The ⋯ menu's "Launch order…": every account, dragged or moved into the order Play opens them in. */
   function launchOrderModal() {
     const rank = orderRank();
     const list = accounts().slice().sort((x, y) => (rank.get(x.id) ?? 1e9) - (rank.get(y.id) ?? 1e9));
     if (!list.length) return toast(t('rc.noAccounts'), 'info');
+    let ui = null;
     modal({
       title: t('lo.title'),
       dismissable: false,
       enterSubmits: true,
-      body: `<p class="modal-text">${t('lo.text')}</p>${orderListHtml(list)}`,
+      body: '',
       actions: [
         { text: t('common.cancel'), onClick: ({ close }) => close() },
         {
-          text: t('common.done'), kind: 'primary', onClick: async ({ el, close, btn }) => {
+          text: t('common.done'), kind: 'primary', onClick: async ({ close, btn }) => {
             if (btn.disabled) return;
-            const ids = [...el.querySelectorAll('.ord-item')].map(r => r.dataset.id);
+            const ids = ui.list.ids();
             if (await busy(btn, () => call('setLaunchOrder', { ids })) === undefined) return;
             close();
             toast(t('lo.saved'), 'ok');
           },
         },
       ],
-      onMount: ({ el }) => wireOrderList(el.querySelector('.ord-list')),
+      // Its text and the list are React's (ui/src/OrderList.tsx).
+      onMount: ({ el }) => { ui = window.BloxkeepUI.launchOrder(el.querySelector('.modal-body'), uiHost(), list); },
+      onRemoved: () => ui?.unmount(),
     });
   }
 
@@ -4681,7 +4306,7 @@
       img.replaceWith(ini);
       return;
     }
-    if (!img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .activity, .pal-ic')) return;
+    if (!img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .activity, .pal-ic') || img.closest('[data-react]')) return;
     const ph = document.createElement(img.closest('.recent') ? 'i' : 'span');
     ph.className = img.closest('.recent') ? 'ph' : img.matches('.gicon') ? img.className : 'gph';
     if (!img.closest('.recent')) ph.innerHTML = icon('gamepad');

@@ -8,7 +8,9 @@ import { Feedback, type FeedbackApi } from './Feedback';
 import { HostContext, type Host } from './host';
 import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
 import { MultiHelp } from './MultiHelp';
+import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
 import { PickList, type PickItem, type PickListApi } from './PickList';
+import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
 import { PresetsView } from './PresetsView';
 import { AppearancePage } from './settings/AppearancePage';
 import { BackupPage } from './settings/BackupPage';
@@ -23,6 +25,8 @@ import { WhatsNew, type Release } from './WhatsNew';
 
 /** Draws into el now (app.js focuses the first control right after, so the content must be there), until unmount. */
 function mount(el: HTMLElement, host: Host, node: ReactNode): () => void {
+  // Marked as React's: the page-wide fallback for broken game pictures (app.js) leaves its elements alone.
+  el.dataset.react = '';
   const root = createRoot(el);
   flushSync(() => root.render(<StrictMode><HostContext.Provider value={host}>{node}</HostContext.Provider></StrictMode>));
   const stop = keepFocus(el, host);
@@ -87,6 +91,18 @@ const BloxkeepUI = {
       discord: <DiscordPage title={title} />, appearance: <AppearancePage title={title} />, security: <SecurityPage title={title} />, backup: <BackupPage title={title} />, updates: <UpdatesPage title={title} />,
     };
     return mount(el, host, pages[page]);
+  },
+  /** Launch order's text and list into its dialog's body; Done reads list.ids(). */
+  launchOrder(el: HTMLElement, host: Host, accounts: OrderAccount[]) {
+    const list = createRef<OrderListApi>();
+    const unmount = mount(el, host, <LaunchOrder accounts={accounts} api={list} />);
+    return { unmount, list: list.current! };
+  },
+  /** The preset form into its dialog's body; Save, Esc and the X use form (PresetFormApi). */
+  presetForm(el: HTMLElement, host: Host, opts: { base: PresetBase; isNew: boolean; accounts: OrderAccount[]; ticked: string[]; gone: number }) {
+    const form = createRef<PresetFormApi>();
+    const unmount = mount(el, host, <PresetForm {...opts} api={form} />);
+    return { unmount, form: form.current! };
   },
   /** The Presets tab into its section. */
   presetsView(el: HTMLElement, host: Host) {

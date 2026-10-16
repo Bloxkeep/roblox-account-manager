@@ -64,6 +64,18 @@ export interface Host {
   deletePreset(preset: object): Promise<unknown>;
   /** The preset editor for a preset (app.js presetModal). */
   editPreset(preset: object): void;
+  /** Short weekday names from the browser's own calendar (0 = Sunday, like the app; app.js weekdayName). */
+  weekdayName(day: number): string;
+  /** A number as the interface writes it (thousands separated; app.js fmtNum). */
+  fmtNum(n: number): string;
+  /** A link, Place ID or roblox:// address rather than a name to search (app.js looksLikeTarget). */
+  looksLikeTarget(value: string): boolean;
+  /** The game lists (recent, pinned, favourites, popular) the dock's picker already loaded, or null; and loading them. */
+  gameListsCached(): object | null;
+  loadGameLists(): Promise<object | undefined>;
+  /** A search's results from the last few minutes (shared with the dock's box), or null; and keeping new ones. */
+  searchCached(query: string): unknown[] | null;
+  rememberSearch(query: string, rows: unknown[]): void;
   /** Where a control is (app.js focusKey: what it does, its row, its place), to find it, or one in its place, again. */
   focusKey(node: Element, root: Element): unknown;
   /** Focuses that control again, or the one now in its place (app.js refocus). */

@@ -941,4 +941,4 @@ html [data-theme="dark" lang="vi"]
     span "Đã lưu preset."
 -- commands
   pageBusy {"busy":false}
-  savePreset {"antiAfk":null,"arrange":null,"autoRejoin":null,"delaySeconds":null,"id":"","ids":["00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000004"],"jobId":"","name":"Evening farmBlox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"","restartHours":0,"schedule":null,"server":"any"}
+  savePreset {"antiAfk":null,"arrange":null,"autoRejoin":null,"delaySeconds":null,"id":"","ids":["00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000004"],"jobId":"","name":"Blox FruitsEvening farm","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"","restartHours":0,"schedule":null,"server":"any"}

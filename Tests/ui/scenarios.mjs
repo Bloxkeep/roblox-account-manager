@@ -313,6 +313,110 @@ export default [
     await s.wait(400);
   }),
   S('preset-editor-schedule-off', 'preset=1', async s => { await s.wait(300); await s.click({ css: '.overlay #ps-sch-on, .overlay [id^=ps-sch] + .switch, .overlay .switch' }); }),
+  S('preset-editor-accounts', 'preset=1', async s => {
+    await s.wait(300);
+    await s.click({ css: '.overlay .ord-item:nth-child(6) .ord-txt' });
+    await s.click({ css: '.overlay .ord-item:nth-child(6) [data-move="-1"]' });
+    await s.click({ css: '.overlay .ord-item:nth-child(1) input' });
+    await s.snap('changed');
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(400);
+  }),
+  S('preset-editor-drag', 'preset=1', async s => {
+    await s.wait(300);
+    await s.drag({ css: '.overlay .ord-item:nth-child(3) .ord-grip' }, { css: '.overlay .ord-item:nth-child(1)' }, -8);
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(400);
+  }),
+  S('preset-editor-game-search', 'preset=1', async s => {
+    await s.wait(300);
+    await s.fill({ css: '#ps-place' }, 'adopt');
+    await s.wait(500);
+    await s.snap('results');
+    await s.key('ArrowDown');
+    await s.key('Enter');
+    await s.wait(300);
+  }),
+  S('preset-editor-game-browse', 'view=presets', async s => {
+    await s.click(key('ps.new'));
+    await s.wait(300);
+    await s.fill({ css: '#ps-place' }, '');
+    await s.wait(400);
+    await s.snap('lists');
+    await s.click({ css: '#ps-pick [data-gtab=popular], #ps-pick [data-gtab]:last-child' });
+    await s.click({ css: '#ps-pick .game-row' });
+    await s.wait(300);
+  }),
+  S('preset-editor-game-id', 'preset=1', async s => {
+    await s.wait(300);
+    await s.fill({ css: '#ps-place' }, '920587237');
+    await s.wait(700);
+  }),
+  S('preset-editor-job', 'preset=1', async s => {
+    await s.wait(300);
+    await s.choose({ css: '#ps-server' }, 'job');
+    await s.snap('job box');
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(400);
+  }),
+  S('preset-editor-once', 'preset=1', async s => {
+    await s.wait(300);
+    await s.choose({ css: '#ps-sch-mode' }, 'once');
+    await s.choose({ css: '#ps-sch-stop' }, 'at');
+    await s.snap('once');
+    await s.choose({ css: '#ps-sch-mode' }, 'days');
+    await s.click({ css: '#ps-sch-days [data-day="6"]' });
+    await s.choose({ css: '#ps-sch-stop' }, 'after');
+    await s.fill({ css: '#ps-sch-hours' }, '0.3');
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(300);
+  }),
+  S('preset-editor-options', 'preset=1', async s => {
+    await s.wait(300);
+    await s.choose({ css: '#ps-profile' }, 'afk');
+    await s.choose({ css: '#ps-restart' }, '6');
+    await s.choose({ css: '#ps-afk' }, 'off');
+    await s.snap('notes');
+    await s.choose({ css: '#ps-dc-mode' }, '');
+    await s.choose({ css: '#ps-dc-mode' }, 'own');
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(300);
+  }),
+  S('preset-editor-new-discord', 'view=presets', async s => {
+    await s.click(key('ps.new'));
+    await s.wait(300);
+    await s.choose({ css: '#ps-dc-mode' }, 'own');
+    await s.snap('asks link');
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(300);
+  }),
+  S('preset-editor-ask-close', 'preset=1', async s => {
+    await s.wait(300);
+    await s.fill({ css: '.overlay input.field' }, 'Something else');
+    await s.key('Escape');
+    await s.snap('asked');
+    await s.key('Escape');
+  }),
+  S('preset-editor-delete', 'preset=1', async s => {
+    await s.wait(300);
+    await s.click({ css: '.overlay .modal-foot .btn.danger' });
+    await s.snap('asked');
+    await s.click({ css: '.overlay:last-of-type .modal-foot .btn.danger' });
+    await s.wait(300);
+  }),
+  S('launch-order-move', 'order=1', async s => {
+    await s.click({ css: '.overlay .ord-item:nth-child(2) [data-move="1"]' });
+    await s.click({ css: '.overlay .ord-item:nth-child(1) [data-move="-1"]' });
+    await s.snap('moved');
+    await s.click({ key: 'common.done', within: '.overlay' });
+    await s.wait(300);
+  }),
+  S('launch-order-drag', 'order=1', async s => {
+    await s.drag({ css: '.overlay .ord-item:nth-child(4) .ord-grip' }, { css: '.overlay .ord-item:nth-child(1)' }, -8);
+    await s.snap('dragged');
+    await s.click({ key: 'common.done', within: '.overlay' });
+    await s.wait(300);
+  }),
 
   // ── Statistics ──
   S('stats-period', 'stats=1', async s => { await s.click(key('stats.period.7')); await s.snap('7 days'); await s.click(key('stats.period.30')); }),

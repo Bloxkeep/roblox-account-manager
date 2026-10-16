@@ -1,0 +1,614 @@
+== changed
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Preset"
+            p [id="pv-sub"] "preset preset hẹn giờ"
+              b "3"
+              span.sep "·"
+              b "1"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
+            button.btn.primary
+              svg.i #u7ty99
+              span "Thêm preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
+                span.pv-next "· Lần tới: Hôm nay 20:00"
+                  span.pv-live "Đang mở 3 cửa sổ"
+              div.pv-accs [title="3 tài khoản\nFarm 1\nFarm 2\nNight Owl" aria-label="3 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do preset này mở." aria-label="Đóng: Farm Blox Fruits"]
+                svg.i #16z0s1r
+                span "Đóng"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm Blox Fruits"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Adopt Me trade"] "Adopt Me trade"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"
+                span.pv-next
+                  span "Chạy lần cuối 1 giờ trước"
+              div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Adopt Me trade"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Adopt Me trade"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Adopt Me trade"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Adopt Me trade"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Adopt Me trade"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Adopt Me trade"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
+                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
+                span.pv-next
+                  span "Chạy lần cuối 1 ngày trước"
+              div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Morning check-in"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Morning check-in" disabled]
+                  svg.i #u1ag9u
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Sửa preset"
+        button.icon-btn [title="Đóng"]
+          svg.i #1tyq039
+      div.modal-body
+        div.form.preset-form
+          label "Tên"
+            input.field [id="ps-name" placeholder="VD: Farm Blox Fruits" maxlength="60" value="Farm Blox Fruits"]
+          label "Game"
+            input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+          div.ps-game [id="ps-game"]
+            span.gph
+              svg.i #sy1lqp
+            b "Blox Fruits"
+          div.preset-row
+            label "Server"
+              select.select [id="ps-server" value="ping"]
+                option [value="any"] "Bất kỳ (Roblox tự chọn)"
+                option [value="most"] "Đông nhất"
+                option [value="fewest"] "Vắng nhất"
+                option [value="ping"] "Ping thấp nhất"
+                option [value="random"] "Ngẫu nhiên"
+                option [value="job"] "Server cố định (Job ID)"
+            label "Chờ giữa các tài khoản (giây)"
+              input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value="12"]
+          div.preset-accs "Tài khoản"
+            span.muted [id="ps-count"] "(3)"
+            small "Các tài khoản đã đánh dấu sẽ mở theo thứ tự này. Kéo tay nắm hoặc bấm mũi tên để đổi thứ tự."
+          p.ps-gone
+            svg.i #v9c4u6
+            span "1 tài khoản trong preset này đã bị xóa, khi bạn lưu Bloxkeep sẽ bỏ chúng ra."
+        div.ord-list [role="list"]
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Kéo để đổi chỗ"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 1" checked=false FOCUSED]
+            div.avatar.sm
+              img [alt="" style="--h:243" src=#uinvo6]
+            span.ord-txt
+              b [title="Farm 1"] "Farm 1"
+              small "@pixelfarmer01"
+            span.ord-btns
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Kéo để đổi chỗ"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 2" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:244" src=#n0d7cr]
+            span.ord-txt
+              b [title="Farm 2"] "Farm 2"
+              small "@pixelfarmer02"
+            span.ord-btns
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Kéo để đổi chỗ"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Night Owl" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:297" src=#1u67et1]
+            span.ord-txt
+              b [title="Night Owl"] "Night Owl"
+              small "@night_owl_rb"
+            span.ord-btns
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Kéo để đổi chỗ"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Tài khoản chính" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:204" src=#1qk25wb]
+            span.ord-txt
+              b [title="Tài khoản chính"] "Tài khoản chính"
+              small "@sunny_builds"
+            span.ord-btns
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Kéo để đổi chỗ"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Trade" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:218" src=#kgijcs]
+            span.ord-txt
+              b [title="Trade"] "Trade"
+              small "@tradepost_vn"
+            span.ord-btns
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Kéo để đổi chỗ"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Tài khoản phụ" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:83" src=#c108i9]
+            span.ord-txt
+              b [title="Tài khoản phụ"] "Tài khoản phụ"
+              small "@lananh_2010"
+            span.ord-btns
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Kéo để đổi chỗ"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Thử nghiệm" checked=false]
+            div.avatar.sm
+              span.initials [style="--h:217"] "TH"
+            span.ord-txt
+              b [title="Thử nghiệm"] "Thử nghiệm"
+              small "@noavatar_user"
+            span.ord-btns
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+                svg.i #u1ag9u
+        div.form.preset-form
+          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
+            div.ps-opts-head
+              b [id="ps-opts-title"] "Áp dụng cho cửa sổ Roblox"
+            div.ps-opts-grid
+              label "Chống AFK"
+                select.select [id="ps-afk" value="on"]
+                  option [value=""] "Theo Cài đặt (đang tắt)"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
+              label "Tự vào lại game"
+                select.select [id="ps-rejoin" value=""]
+                  option [value=""] "Theo từng tài khoản"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
+              label "Hiệu năng"
+                select.select [id="ps-profile" value="afk"]
+                  option [value=""] "Bình thường"
+                  option [value="afk"] "Treo máy nhẹ"
+              label "Mở lại Roblox"
+                select.select [id="ps-restart" value="4"]
+                  option [value="0"] "Không"
+                  option [value="2"] "Mỗi 2 giờ"
+                  option [value="4"] "Mỗi 4 giờ"
+                  option [value="6"] "Mỗi 6 giờ"
+                  option [value="12"] "Mỗi 12 giờ"
+              label "Xếp cửa sổ"
+                select.select [id="ps-arrange" value="on"]
+                  option [value=""] "Theo Cài đặt (đang tắt)"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
+            p.ps-opts-note [id="ps-opts-note"] "Treo máy nhẹ: đồ họa thấp nhất, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. Mở lại: sau số giờ đó, lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ."
+          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
+            div.ps-opts-head
+              b [id="ps-dc-title"] "Discord"
+            label.ps-dc-mode "Gửi tin của preset này vào"
+              select.select [id="ps-dc-mode" value="own"]
+                option [value=""] "Kênh trong Cài đặt"
+                option [value="own"] "Webhook riêng"
+            div.ps-dc-own [id="ps-dc-own"]
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Link webhook của preset này" value=""]
+              button.btn [id="ps-dc-test" type="button"] "Gửi thử"
+            p.ps-opts-note "Đã có link (ẩn ở đây). Dán link khác để thay. Gồm tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng, và cảnh báo của các cửa sổ do preset mở. Các tin khác vẫn vào kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord, nên chưa có tin nào được gửi cho tới khi bạn bật."
+          div.ps-sched
+            div.ps-sched-head
+              label.switch
+                input [id="ps-sch-on" type="checkbox" aria-label="Hẹn giờ" checked=true]
+                span
+              div
+                b "Hẹn giờ"
+                small "Tự chạy preset này vào giờ đã đặt"
+            div.ps-sched-body [id="ps-sch-body"]
+              div.preset-row
+                label "Giờ bắt đầu"
+                  input.field [id="ps-sch-time" type="time" value="20:00"]
+                label "Lặp lại"
+                  select.select [id="ps-sch-mode" value="days"]
+                    option [value="days"] "Các ngày trong tuần"
+                    option [value="once"] "Một lần, vào ngày"
+              div.day-chips [id="ps-sch-days" role="group" aria-label="Các ngày trong tuần"]
+                button.chip.on [type="button" aria-pressed="true"] "Thứ 2"
+                button.chip.on [type="button" aria-pressed="true"] "Thứ 3"
+                button.chip.on [type="button" aria-pressed="true"] "Thứ 4"
+                button.chip.on [type="button" aria-pressed="true"] "Thứ 5"
+                button.chip.on [type="button" aria-pressed="true"] "Thứ 6"
+                button.chip [type="button" aria-pressed="false"] "Thứ 7"
+                button.chip [type="button" aria-pressed="false"] "CN"
+              div.preset-row
+                label "Dừng"
+                  select.select [id="ps-sch-stop" value="after"]
+                    option [value="never"] "Không dừng (chơi tiếp)"
+                    option [value="after"] "Sau vài giờ"
+                    option [value="at"] "Vào giờ"
+                label [id="ps-sch-hours-row"] "Số giờ"
+                  input.field [id="ps-sch-hours" type="number" min="0.5" max="168" step="0.5" value="3"]
+              details.ps-note
+                summary "Lưu ý"
+                  svg.i #v9c4u6
+      div.modal-foot
+        button.btn.danger.push "Xóa"
+        button.btn "Hủy"
+        button.btn.primary "Lưu"
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Preset"
+            p [id="pv-sub"] "preset preset hẹn giờ"
+              b "3"
+              span.sep "·"
+              b "1"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
+            button.btn.primary
+              svg.i #u7ty99
+              span "Thêm preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
+                span.pv-next "Lần tới: Hôm nay 20:00"
+              div.pv-accs [title="3 tài khoản\nFarm 2\nNight Owl\nTrade" aria-label="3 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm Blox Fruits"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm Blox Fruits"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Adopt Me trade"] "Adopt Me trade"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"
+                span.pv-next
+                  span "Chạy lần cuối 1 giờ trước"
+              div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Adopt Me trade"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Adopt Me trade"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Adopt Me trade"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Adopt Me trade"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Adopt Me trade"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Adopt Me trade"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
+                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
+                span.pv-next
+                  span "Chạy lần cuối 1 ngày trước"
+              div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Morning check-in"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Morning check-in" disabled]
+                  svg.i #u1ag9u
+#layer
+#toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "Đã lưu preset."
+-- commands
+  pageBusy {"busy":false}
+  savePreset {"antiAfk":true,"arrange":true,"autoRejoin":null,"delaySeconds":12,"id":"p1","ids":["00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004","00000000-0000-4000-8000-000000000006"],"jobId":"","name":"Farm Blox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","restartHours":4,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"ping"}
