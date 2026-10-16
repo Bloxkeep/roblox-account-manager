@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
@@ -113,7 +113,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-bk-on" aria-label="Back up to a folder" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
                           span
                     div.set-row
                       div
@@ -160,7 +160,7 @@ html [data-theme="dark" lang="en"]
                           svg.i #3wh3ok
 #layer
   div.at-top.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"] "Import from a vault file"
         button.icon-btn [title="Close"]
@@ -170,11 +170,11 @@ html [data-theme="dark" lang="en"]
           div.iv-file
             svg.i #3wh3ok
             b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
-            button.link [type="button" id="iv-other"] "Choose another file"
+            button.link [id="iv-other" type="button"] "Choose another file"
           div.iv-bar
             span [id="iv-count"] "3 of 5 selected"
-            button.link [type="button" id="iv-all"] "All"
-            button.link [type="button" id="iv-none"] "None"
+            button.link [id="iv-all" type="button"] "All"
+            button.link [id="iv-none" type="button"] "None"
           div.iv-list.rc-list
             label.iv-item.rc-item
               input [type="checkbox" checked=true]
@@ -223,7 +223,7 @@ html [data-theme="dark" lang="en"]
                   span.bad.iv-ck "needs sign-in"
               span.ok.state-pill "New"
           label.iv-presets
-            input [type="checkbox" id="iv-presets" checked=false]
+            input [id="iv-presets" type="checkbox" checked=false]
             span
               b "Also import presets (2)"
               small "Their schedules come over switched off. Accounts that aren’t here are left out of them."
@@ -235,12 +235,12 @@ html [data-theme="dark" lang="en"]
         button.btn.primary [FOCUSED] "Import"
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
-  pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
   pageBusy {"busy":true}
-  vaultImportPick {}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   vaultImportOpen {"password":"demo"}
+  vaultImportPick {}

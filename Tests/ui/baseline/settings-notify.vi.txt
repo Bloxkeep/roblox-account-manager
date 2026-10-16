@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -112,7 +112,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Khi Bloxkeep chạy nền: tài khoản bị văng, preset hẹn giờ, tài khoản cần đăng nhập lại, sắp hết RAM, lỗi khi mở game. Chọn loại thông báo bên dưới."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-notify" aria-label="Thông báo Windows" checked=true]
+                          input [id="s-notify" type="checkbox" aria-label="Thông báo Windows" checked=true]
                           span
                 div.set-grp [id="sec-notify-kinds"]
                   h3.set-grp-title "Loại sự kiện"
@@ -123,35 +123,35 @@ html [data-theme="dark" lang="vi"]
                           div.t "Tài khoản bị văng hoặc tự vào lại"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-drop" aria-label="Tài khoản bị văng hoặc tự vào lại" checked=true]
+                            input [id="s-notify-drop" type="checkbox" aria-label="Tài khoản bị văng hoặc tự vào lại" checked=true]
                             span
                       div.set-row
                         div
                           div.t "Preset hẹn giờ"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-schedule" aria-label="Preset hẹn giờ" checked=true]
+                            input [id="s-notify-schedule" type="checkbox" aria-label="Preset hẹn giờ" checked=true]
                             span
                       div.set-row
                         div
                           div.t "Tài khoản cần đăng nhập lại"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-signin" aria-label="Tài khoản cần đăng nhập lại" checked=true]
+                            input [id="s-notify-signin" type="checkbox" aria-label="Tài khoản cần đăng nhập lại" checked=true]
                             span
                       div.set-row
                         div
                           div.t "Sắp hết RAM"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-ram" aria-label="Sắp hết RAM" checked=false]
+                            input [id="s-notify-ram" type="checkbox" aria-label="Sắp hết RAM" checked=false]
                             span
                       div.set-row
                         div
                           div.t "Lỗi khi mở game"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-launch" aria-label="Lỗi khi mở game" checked=true]
+                            input [id="s-notify-launch" type="checkbox" aria-label="Lỗi khi mở game" checked=true]
                             span
                 div.set-grp [id="sec-asks"]
                   h3.set-grp-title "Câu hỏi xác nhận"
@@ -166,9 +166,9 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

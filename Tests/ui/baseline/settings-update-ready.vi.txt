@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -77,7 +77,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -125,7 +125,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Tự động cập nhật"
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-autoupd" aria-label="Tự động cập nhật" checked=true]
+                          input [id="s-autoupd" type="checkbox" aria-label="Tự động cập nhật" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Hướng dẫn & góp ý"
@@ -154,9 +154,9 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

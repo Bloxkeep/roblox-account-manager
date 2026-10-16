@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -116,7 +116,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #19k0rtd
             button [title="Dạng danh sách" aria-label="Dạng danh sách" aria-pressed="false"]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" aria-haspopup="menu" title=""]
+          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Nhóm: Tất cả"
           button.sort-btn [id="sort-btn" aria-haspopup="menu"]
@@ -124,8 +124,8 @@ html [data-theme="dark" lang="vi"]
             span "Sắp xếp: Tên"
         div.scroll [id="scroll"]
           div [id="grid"]
-            div.grid [role="listbox" aria-multiselectable="true" aria-label="Tài khoản"]
-              article.card.local.sel [role="option" tabindex="-1" aria-selected="true" aria-label="Farm 1"]
+            div.grid [role="listbox" aria-label="Tài khoản" aria-multiselectable="true"]
+              article.card.local.sel [role="option" tabindex="-1" aria-label="Farm 1" aria-selected="true"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -157,9 +157,9 @@ html [data-theme="dark" lang="vi"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Sửa (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.sel [role="option" tabindex="-1" aria-selected="true" aria-label="Farm 2"]
+              article.card.sel [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="true"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -186,9 +186,9 @@ html [data-theme="dark" lang="vi"]
                     svg.i #kqqqno
                   button.icon-btn [title="Sửa (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.sel [role="option" tabindex="-1" aria-selected="true" aria-label="Night Owl"]
+              article.card.sel [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="true"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -213,9 +213,9 @@ html [data-theme="dark" lang="vi"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Sửa (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local.sel [role="option" tabindex="0" aria-selected="true" aria-label="Tài khoản chính" FOCUSED]
+              article.card.local.sel [role="option" tabindex="0" aria-label="Tài khoản chính" aria-selected="true" FOCUSED]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -250,9 +250,9 @@ html [data-theme="dark" lang="vi"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Sửa (F2)" tabindex="0"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu" tabindex="0"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.sel [role="option" tabindex="-1" aria-selected="true" aria-label="Tài khoản phụ"]
+              article.card.sel [role="option" tabindex="-1" aria-label="Tài khoản phụ" aria-selected="true"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -275,9 +275,9 @@ html [data-theme="dark" lang="vi"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Sửa (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.sel [role="option" tabindex="-1" aria-selected="true" aria-label="Thử nghiệm"]
+              article.card.sel [role="option" tabindex="-1" aria-label="Thử nghiệm" aria-selected="true"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -302,9 +302,9 @@ html [data-theme="dark" lang="vi"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Sửa (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.sel [role="option" tabindex="-1" aria-selected="true" aria-label="Trade"]
+              article.card.sel [role="option" tabindex="-1" aria-label="Trade" aria-selected="true"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -330,7 +330,7 @@ html [data-theme="dark" lang="vi"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Sửa (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
         div.dock
           button.game-thumb [id="game-thumb" title="Chọn game"]
@@ -340,7 +340,7 @@ html [data-theme="dark" lang="vi"]
             div.dock-inputs
               label.grow.inwrap [title="Place ID, link game hoặc link server riêng (Ctrl+L)"]
                 svg.i #1u22jvi
-                input [id="place" autocomplete="off" placeholder="Tìm game, hoặc dán link / Place ID…" maxlength="500" aria-label="Tìm game, hoặc dán link / Place ID…" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+                input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
               label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
                 svg.i #ej9lod
                 input [id="job" placeholder="Job ID (tùy chọn)" maxlength="60" aria-label="Job ID (tùy chọn)" value=""]
@@ -366,7 +366,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #1y8kmj1
             button.btn.ghost [title="Đóng Roblox của các tài khoản đã chọn" aria-label="Đóng Roblox của các tài khoản đã chọn"]
               svg.i #16z0s1r
-            button.btn.ghost [title="Preset" aria-label="Preset" aria-haspopup="menu"]
+            button.btn.ghost [title="Preset" aria-haspopup="menu" aria-label="Preset"]
               svg.i #1pvni8o
             button.play-btn
               svg.i #1ewcuky
@@ -376,6 +376,6 @@ html [data-theme="dark" lang="vi"]
 #toasts
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

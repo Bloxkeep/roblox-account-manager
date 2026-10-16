@@ -22,6 +22,12 @@ function findEdge() {
 export async function launch({ width = 1280, height = 800, scale = 1, locale = 'en-US', timezone = 'Asia/Ho_Chi_Minh' } = {}) {
   const port = 9400 + Math.floor(Math.random() * 500);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'bloxkeep-ui-'));
+  // No password manager: where it's on, Edge marks a new-password box aria-autocomplete="list" itself, which isn't
+  // the page's doing and differs from PC to PC (it did between this PC and GitHub's).
+  fs.mkdirSync(path.join(profile, 'Default'));
+  fs.writeFileSync(path.join(profile, 'Default', 'Preferences'), JSON.stringify({
+    credentials_enable_service: false, profile: { password_manager_enabled: false }, autofill: { enabled: false, profile_enabled: false, credit_card_enabled: false },
+  }));
   const proc = spawn(findEdge(), ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
     '--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--font-render-hinting=none',
     '--disable-features=msEdgeSidebarV2,msUndersideButton', '--disable-background-timer-throttling',
@@ -117,5 +123,7 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
   await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await send('Emulation.setLocaleOverride', { locale });
   await send('Emulation.setTimezoneOverride', { timezoneId: timezone });
+  // Windows set to dark, whatever this PC is set to: the "system" theme follows it.
+  await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
   return b;
 }

@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -113,7 +113,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chọn thư mục Google Drive hoặc OneDrive để không mất tài khoản khi máy hỏng."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-bk-on" aria-label="Sao lưu vào thư mục" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=true]
                           span
                     div.set-row
                       div
@@ -162,7 +162,7 @@ html [data-theme="dark" lang="vi"]
                           svg.i #3wh3ok
 #layer
   div.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"] "Khôi phục từ bản sao lưu?"
         button.icon-btn [title="Đóng"]
@@ -174,9 +174,9 @@ html [data-theme="dark" lang="vi"]
         button.btn.danger "Khôi phục…"
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

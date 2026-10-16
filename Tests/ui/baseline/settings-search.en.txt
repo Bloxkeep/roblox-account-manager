@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value="rejoin" FOCUSED]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value="rejoin" FOCUSED]
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #1ewcuky
               span "Launching"
@@ -122,7 +122,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-tray" aria-label="Keep running in the tray when closed" checked=true]
+                          input [id="s-tray" type="checkbox" aria-label="Keep running in the tray when closed" checked=true]
                           span
               section.set-page [id="set-page-notify" aria-labelledby="set-page-notify-h"]
                 h2.set-page-title [id="set-page-notify-h"] "Notifications"
@@ -135,7 +135,7 @@ html [data-theme="dark" lang="en"]
                           div.t "Account dropped or auto-rejoin"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-drop" aria-label="Account dropped or auto-rejoin" checked=true]
+                            input [id="s-notify-drop" type="checkbox" aria-label="Account dropped or auto-rejoin" checked=true]
                             span
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
@@ -152,16 +152,16 @@ html [data-theme="dark" lang="en"]
                           div.ctl
                             div.dc-ping
                               select.select.sm [aria-label="Ping" value="user"]
-                              input.dc-id.field.sm [maxlength="20" autocomplete="off" placeholder="ID (17–20 digits)" aria-label="ID" value="123456789012345678"]
+                              input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678"]
                             label.switch
-                              input [type="checkbox" id="s-dc-ev-drop" aria-label="Account dropped or auto-rejoin" checked=true]
+                              input [id="s-dc-ev-drop" type="checkbox" aria-label="Account dropped or auto-rejoin" checked=true]
                               span
                     p.set-hint "To ping a person or a role you need its ID: in Discord, turn on Settings › Advanced › Developer Mode, then right-click the person or role › Copy ID."
 #layer
 #toasts
 -- commands
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

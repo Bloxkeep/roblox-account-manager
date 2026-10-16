@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -71,8 +71,8 @@ html [data-theme="dark" lang="vi"]
             p [id="stats-sub"] "Những gì Bloxkeep ghi nhận được, mới nhất ở trên cùng. Chỉ giữ 1.000 sự kiện gần nhất."
           div.top-tools
             div.seg [id="stats-tabs" role="tablist" aria-label="Thống kê"]
-              button [type="button" role="tab" aria-selected="false"] "Thống kê"
-              button.on [type="button" role="tab" aria-selected="true" FOCUSED] "Hoạt động"
+              button [role="tab" type="button" aria-selected="false"] "Thống kê"
+              button.on [role="tab" type="button" aria-selected="true" FOCUSED] "Hoạt động"
         div.scroll
           div.stats
             section.alog.stat-card [id="alog-sec" aria-labelledby="alog-h"]
@@ -186,12 +186,12 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
+  activity {"account":null,"group":null,"limit":100}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
   playStats {"days":7}
-  activity {"account":null,"group":null,"limit":100}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
 == end
 html [data-theme="dark" lang="vi"]
 #app
@@ -249,7 +249,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -265,8 +265,8 @@ html [data-theme="dark" lang="vi"]
             p [id="stats-sub"] "Những gì Bloxkeep ghi nhận được, mới nhất ở trên cùng. Chỉ giữ 1.000 sự kiện gần nhất."
           div.top-tools
             div.seg [id="stats-tabs" role="tablist" aria-label="Thống kê"]
-              button [type="button" role="tab" aria-selected="false"] "Thống kê"
-              button.on [type="button" role="tab" aria-selected="true"] "Hoạt động"
+              button [role="tab" type="button" aria-selected="false"] "Thống kê"
+              button.on [role="tab" type="button" aria-selected="true"] "Hoạt động"
         div.scroll
           div.stats
             section.alog.stat-card [id="alog-sec" aria-labelledby="alog-h"]

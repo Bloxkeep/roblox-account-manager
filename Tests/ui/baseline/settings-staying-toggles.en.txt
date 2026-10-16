@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
@@ -119,7 +119,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Stay in game while you’re away or busy in another window. Doesn’t work when the PC is locked."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-antiafk" aria-label="Anti-AFK" checked=true]
+                          input [id="s-antiafk" type="checkbox" aria-label="Anti-AFK" checked=true]
                           span
                     div.set-row
                       div
@@ -128,7 +128,7 @@ html [data-theme="dark" lang="en"]
                           span [id="s-daily-when"] "Last check: 7:00 AM."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-daily" aria-label="Check sign-ins every day" checked=true]
+                          input [id="s-daily" type="checkbox" aria-label="Check sign-ins every day" checked=true]
                           span
                 div.set-grp [id="sec-memory"]
                   h3.set-grp-title "Memory"
@@ -138,7 +138,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Low RAM warning"
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-memwarn" aria-label="Low RAM warning" checked=true]
+                          input [id="s-memwarn" type="checkbox" aria-label="Low RAM warning" checked=true]
                           span
                     div.set-row
                       div
@@ -146,7 +146,7 @@ html [data-theme="dark" lang="en"]
                         div.d "When the PC runs low on RAM, background windows make room for the one you’re playing."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-trim" aria-label="Save RAM on background windows" checked=true]
+                          input [id="s-trim" type="checkbox" aria-label="Save RAM on background windows" checked=true]
                           span
                 div.set-grp [id="sec-app"]
                   h3.set-grp-title "This app"
@@ -157,7 +157,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-tray" aria-label="Keep running in the tray when closed" checked=true]
+                          input [id="s-tray" type="checkbox" aria-label="Keep running in the tray when closed" checked=true]
                           span
                     div.set-row
                       div
@@ -165,7 +165,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Turns off automatically if your graphics driver acts up."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-gpu" aria-label="Hardware acceleration" checked=true]
+                          input [id="s-gpu" type="checkbox" aria-label="Hardware acceleration" checked=true]
                           span
 #layer
 #toasts
@@ -173,12 +173,12 @@ html [data-theme="dark" lang="en"]
     svg.i #14iobj
     span "Auto-rejoin turned on for 7 accounts."
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  setAutoRejoin {"enabled":true,"ids":["00000000-0000-4000-8000-000000000001","00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004","00000000-0000-4000-8000-000000000005","00000000-0000-4000-8000-000000000006","00000000-0000-4000-8000-000000000007"]}
   setSettings {"antiAfk":true}
   setSettings {"trimBackground":true}
-  setAutoRejoin {"enabled":true,"ids":["00000000-0000-4000-8000-000000000001","00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004","00000000-0000-4000-8000-000000000005","00000000-0000-4000-8000-000000000006","00000000-0000-4000-8000-000000000007"]}

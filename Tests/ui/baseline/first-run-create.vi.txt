@@ -5,8 +5,8 @@ html [data-theme="dark" lang="vi"]
     div.dots
     div.lock-lang
       div.lang [role="group" aria-label="Language"]
-        button [aria-pressed="false" title="English"] "EN"
-        button.on [aria-pressed="true" title="Tiếng Việt"] "VI"
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
@@ -14,16 +14,16 @@ html [data-theme="dark" lang="vi"]
         b "không lấy lại được"
       div.stack
         div.pw
-          input.field [type="password" id="pw1" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••" FOCUSED]
-          button.icon-btn [type="button" id="pw-eye" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••" FOCUSED]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
-        input.field [type="password" id="pw2" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value=""]
+        input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value=""]
         div.strength-row
           div.strength
             i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:12%"]
           span.pw-strength.weak [id="pw-strength" aria-live="polite"] "Yếu"
       div.lock-error [id="lock-error" role="alert"]
-      button.big.btn.primary.w [type="submit" id="lock-btn"] "Bắt đầu"
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
 #layer
@@ -39,8 +39,8 @@ html [data-theme="dark" lang="vi"]
     div.dots
     div.lock-lang
       div.lang [role="group" aria-label="Language"]
-        button [aria-pressed="false" title="English"] "EN"
-        button.on [aria-pressed="true" title="Tiếng Việt"] "VI"
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
@@ -48,16 +48,16 @@ html [data-theme="dark" lang="vi"]
         b "không lấy lại được"
       div.stack
         div.pw
-          input.field [type="password" id="pw1" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••"]
-          button.icon-btn [type="button" id="pw-eye" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••"]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
-        input.field [type="password" id="pw2" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value="•••" FOCUSED]
+        input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value="•••" FOCUSED]
         div.strength-row
           div.strength
             i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:60%"]
           span.ok.pw-strength [id="pw-strength" aria-live="polite"] "Tạm được"
       div.lock-error [id="lock-error" role="alert"]
-      button.big.btn.primary.w [type="submit" id="lock-btn"] "Bắt đầu"
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
 #layer
@@ -71,8 +71,8 @@ html [data-theme="dark" lang="vi"]
     div.dots
     div.lock-lang
       div.lang [role="group" aria-label="Language"]
-        button [aria-pressed="false" title="English"] "EN"
-        button.on [aria-pressed="true" title="Tiếng Việt"] "VI"
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
@@ -80,16 +80,16 @@ html [data-theme="dark" lang="vi"]
         b "không lấy lại được"
       div.stack
         div.pw
-          input.field [type="password" id="pw1" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••"]
-          button.icon-btn [type="button" id="pw-eye" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••"]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
-        input.field [type="password" id="pw2" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value="•••" FOCUSED]
+        input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value="•••" FOCUSED]
         div.strength-row
           div.strength
             i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:60%"]
           span.ok.pw-strength [id="pw-strength" aria-live="polite"] "Tạm được"
       div.lock-error [id="lock-error" role="alert"]
-      button.big.btn.primary.w [type="submit" id="lock-btn"] "Bắt đầu"
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
 #layer

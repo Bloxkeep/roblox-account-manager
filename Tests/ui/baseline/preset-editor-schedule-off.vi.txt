@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -192,7 +192,7 @@ html [data-theme="dark" lang="vi"]
                   svg.i #u1ag9u
 #layer
   div.at-top.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"] "Sửa preset"
         button.icon-btn [title="Đóng"]
@@ -200,9 +200,9 @@ html [data-theme="dark" lang="vi"]
       div.modal-body
         div.form.preset-form
           label "Tên"
-            input.field [id="ps-name" maxlength="60" placeholder="VD: Farm Blox Fruits" value="Farm Blox Fruits"]
+            input.field [id="ps-name" placeholder="VD: Farm Blox Fruits" maxlength="60" value="Farm Blox Fruits"]
           label "Game"
-            input.field [id="ps-place" maxlength="500" autocomplete="off" placeholder="Tìm game, hoặc dán link / Place ID…" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded="false" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+            input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
           div.ps-game [id="ps-game"]
             span.gph
               svg.i #sy1lqp
@@ -211,7 +211,7 @@ html [data-theme="dark" lang="vi"]
             label "Server"
               select.select [id="ps-server" value="ping"]
             label "Chờ giữa các tài khoản (giây)"
-              input.field [id="ps-delay" type="number" min="0" max="120" placeholder="Mặc định: 8" value="12"]
+              input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value="12"]
           div.preset-accs "Tài khoản"
             span.muted [id="ps-count"] "(3)"
             small "Các tài khoản đã đánh dấu sẽ mở theo thứ tự này. Kéo tay nắm hoặc bấm mũi tên để đổi thứ tự."
@@ -339,13 +339,13 @@ html [data-theme="dark" lang="vi"]
             label.ps-dc-mode "Gửi tin của preset này vào"
               select.select [id="ps-dc-mode" value="own"]
             div.ps-dc-own [id="ps-dc-own"]
-              input.field [id="ps-dc-link" type="text" maxlength="300" autocomplete="off" placeholder="discord.com/api/webhooks/…5678/••••••" aria-label="Link webhook của preset này" value=""]
-              button.btn [type="button" id="ps-dc-test"] "Gửi thử"
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Link webhook của preset này" value=""]
+              button.btn [id="ps-dc-test" type="button"] "Gửi thử"
             p.ps-opts-note "Đã có link (ẩn ở đây). Dán link khác để thay. Gồm tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng, và cảnh báo của các cửa sổ do preset mở. Các tin khác vẫn vào kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord, nên chưa có tin nào được gửi cho tới khi bạn bật."
           div.ps-sched
             div.ps-sched-head
               label.switch
-                input [type="checkbox" id="ps-sch-on" aria-label="Hẹn giờ" checked=false FOCUSED]
+                input [id="ps-sch-on" type="checkbox" aria-label="Hẹn giờ" checked=false FOCUSED]
                 span
               div
                 b "Hẹn giờ"
@@ -357,8 +357,8 @@ html [data-theme="dark" lang="vi"]
 #toasts
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
-  pageShown {}
   pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -112,7 +112,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Gửi tổng kết thời gian chơi, tin trạng thái trực tiếp và cảnh báo vào kênh của bạn qua webhook. Mặc định tắt, chỉ gửi khi bạn bật."
                       div.ctl
                         label.switch [title=""]
-                          input [type="checkbox" id="s-dc-on" aria-label="Gửi lên Discord" checked=true]
+                          input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
                           span
                     div [id="s-dc-note"]
                     div.set-row
@@ -146,14 +146,14 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Hằng ngày lúc"
                         div.ctl
-                          input.field.sm.time [type="time" id="s-dc-daily-time" aria-label="Hằng ngày lúc" value="22:00"]
+                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
                     div.set-row
                       div
                         div.t "Khi preset hẹn giờ chạy xong"
                         div.d "Gửi khoảng nửa phút sau khi các tài khoản đóng, chỉ tính tài khoản của preset đó (vào kênh riêng nếu preset có)."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-after" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
+                          input [id="s-dc-after" type="checkbox" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
                           span
                     div.set-row
                       div
@@ -194,7 +194,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Tách riêng với thông báo Windows. Các cảnh báo cách nhau dưới 10 giây được gộp thành một tin."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-alerts" aria-label="Gửi cảnh báo" checked=true]
+                          input [id="s-dc-alerts" type="checkbox" aria-label="Gửi cảnh báo" checked=true]
                           span
                     div.set-row
                       div
@@ -215,18 +215,18 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
                         label.switch
-                          input [type="checkbox" id="s-dc-board" aria-label="Luôn cập nhật tin trạng thái" checked=true]
+                          input [id="s-dc-board" type="checkbox" aria-label="Luôn cập nhật tin trạng thái" checked=true]
                           span
                     div.set-row
                       div
                         div.t "Giờ yên lặng"
                         div.d "Tin vẫn được gửi nhưng không tag ai."
                       div.ctl
-                        input.field.sm.time [type="time" id="s-dc-quiet-from" aria-label="Từ" value="23:00"]
+                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
                         span.dc-dash "–"
-                        input.field.sm.time [type="time" id="s-dc-quiet-to" aria-label="Đến" value="07:00"]
+                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
                         label.switch
-                          input [type="checkbox" id="s-dc-quiet" aria-label="Giờ yên lặng" checked=true]
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên lặng" checked=true]
                           span
                 div.set-grp [id="sec-dc-look"]
                   div.set-card
@@ -239,13 +239,13 @@ html [data-theme="dark" lang="vi"]
     svg.i #14iobj
     span "Đã gửi tin thử. Hãy xem trong kênh."
 -- commands
-  getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
-  monitorArea {"hidden":true}
-  pageShown {}
   backupSuggestions {}
   backupSuggestions {}
   discordTest {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
 == remove asked
 html [data-theme="dark" lang="vi"]
 #app
@@ -303,7 +303,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -320,7 +320,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -360,7 +360,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Gửi tổng kết thời gian chơi, tin trạng thái trực tiếp và cảnh báo vào kênh của bạn qua webhook. Mặc định tắt, chỉ gửi khi bạn bật."
                       div.ctl
                         label.switch [title=""]
-                          input [type="checkbox" id="s-dc-on" aria-label="Gửi lên Discord" checked=true]
+                          input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
                           span
                     div [id="s-dc-note"]
                     div.set-row
@@ -394,14 +394,14 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Hằng ngày lúc"
                         div.ctl
-                          input.field.sm.time [type="time" id="s-dc-daily-time" aria-label="Hằng ngày lúc" value="22:00"]
+                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
                     div.set-row
                       div
                         div.t "Khi preset hẹn giờ chạy xong"
                         div.d "Gửi khoảng nửa phút sau khi các tài khoản đóng, chỉ tính tài khoản của preset đó (vào kênh riêng nếu preset có)."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-after" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
+                          input [id="s-dc-after" type="checkbox" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
                           span
                     div.set-row
                       div
@@ -442,7 +442,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Tách riêng với thông báo Windows. Các cảnh báo cách nhau dưới 10 giây được gộp thành một tin."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-alerts" aria-label="Gửi cảnh báo" checked=true]
+                          input [id="s-dc-alerts" type="checkbox" aria-label="Gửi cảnh báo" checked=true]
                           span
                     div.set-row
                       div
@@ -463,18 +463,18 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
                         label.switch
-                          input [type="checkbox" id="s-dc-board" aria-label="Luôn cập nhật tin trạng thái" checked=true]
+                          input [id="s-dc-board" type="checkbox" aria-label="Luôn cập nhật tin trạng thái" checked=true]
                           span
                     div.set-row
                       div
                         div.t "Giờ yên lặng"
                         div.d "Tin vẫn được gửi nhưng không tag ai."
                       div.ctl
-                        input.field.sm.time [type="time" id="s-dc-quiet-from" aria-label="Từ" value="23:00"]
+                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
                         span.dc-dash "–"
-                        input.field.sm.time [type="time" id="s-dc-quiet-to" aria-label="Đến" value="07:00"]
+                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
                         label.switch
-                          input [type="checkbox" id="s-dc-quiet" aria-label="Giờ yên lặng" checked=true]
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên lặng" checked=true]
                           span
                 div.set-grp [id="sec-dc-look"]
                   div.set-card
@@ -483,7 +483,7 @@ html [data-theme="dark" lang="vi"]
                         svg.i #u1ag9u
 #layer
   div.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"] "Gỡ link webhook?"
         button.icon-btn [title="Đóng"]
@@ -556,7 +556,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -573,7 +573,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -613,7 +613,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Gửi tổng kết thời gian chơi, tin trạng thái trực tiếp và cảnh báo vào kênh của bạn qua webhook. Mặc định tắt, chỉ gửi khi bạn bật."
                       div.ctl
                         label.switch [title=""]
-                          input [type="checkbox" id="s-dc-on" aria-label="Gửi lên Discord" checked=true]
+                          input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
                           span
                     div [id="s-dc-note"]
                     div.set-row
@@ -647,14 +647,14 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Hằng ngày lúc"
                         div.ctl
-                          input.field.sm.time [type="time" id="s-dc-daily-time" aria-label="Hằng ngày lúc" value="22:00"]
+                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
                     div.set-row
                       div
                         div.t "Khi preset hẹn giờ chạy xong"
                         div.d "Gửi khoảng nửa phút sau khi các tài khoản đóng, chỉ tính tài khoản của preset đó (vào kênh riêng nếu preset có)."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-after" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
+                          input [id="s-dc-after" type="checkbox" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
                           span
                     div.set-row
                       div
@@ -695,7 +695,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Tách riêng với thông báo Windows. Các cảnh báo cách nhau dưới 10 giây được gộp thành một tin."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-alerts" aria-label="Gửi cảnh báo" checked=true]
+                          input [id="s-dc-alerts" type="checkbox" aria-label="Gửi cảnh báo" checked=true]
                           span
                     div.set-row
                       div
@@ -716,18 +716,18 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
                         label.switch
-                          input [type="checkbox" id="s-dc-board" aria-label="Luôn cập nhật tin trạng thái" checked=true]
+                          input [id="s-dc-board" type="checkbox" aria-label="Luôn cập nhật tin trạng thái" checked=true]
                           span
                     div.set-row
                       div
                         div.t "Giờ yên lặng"
                         div.d "Tin vẫn được gửi nhưng không tag ai."
                       div.ctl
-                        input.field.sm.time [type="time" id="s-dc-quiet-from" aria-label="Từ" value="23:00"]
+                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
                         span.dc-dash "–"
-                        input.field.sm.time [type="time" id="s-dc-quiet-to" aria-label="Đến" value="07:00"]
+                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
                         label.switch
-                          input [type="checkbox" id="s-dc-quiet" aria-label="Giờ yên lặng" checked=true]
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên lặng" checked=true]
                           span
                 div.set-grp [id="sec-dc-look"]
                   div.set-card

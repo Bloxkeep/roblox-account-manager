@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -71,8 +71,8 @@ html [data-theme="dark" lang="vi"]
             p [id="stats-sub"] "Chỉ tính các game mở bằng Bloxkeep."
           div.top-tools
             div.seg [id="stats-tabs" role="tablist" aria-label="Thống kê"]
-              button.on [type="button" role="tab" aria-selected="true"] "Thống kê"
-              button [type="button" role="tab" aria-selected="false"] "Hoạt động"
+              button.on [role="tab" type="button" aria-selected="true"] "Thống kê"
+              button [role="tab" type="button" aria-selected="false"] "Hoạt động"
             div.chips [id="stats-period" role="group" aria-label="Thống kê"]
               button.chip [aria-pressed="false"] "Hôm nay"
               button.chip.on [aria-pressed="true"] "7 ngày"
@@ -231,9 +231,9 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
+  activity {"account":null,"group":null,"limit":100}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
   playStats {"days":7}
-  activity {"account":null,"group":null,"limit":100}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

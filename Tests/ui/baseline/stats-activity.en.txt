@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -71,8 +71,8 @@ html [data-theme="dark" lang="en"]
             p [id="stats-sub"] "What Bloxkeep saw happen, newest first. The last 1,000 events are kept."
           div.top-tools
             div.seg [id="stats-tabs" role="tablist" aria-label="Statistics"]
-              button [type="button" role="tab" aria-selected="false"] "Statistics"
-              button.on [type="button" role="tab" aria-selected="true" FOCUSED] "Activity"
+              button [role="tab" type="button" aria-selected="false"] "Statistics"
+              button.on [role="tab" type="button" aria-selected="true" FOCUSED] "Activity"
         div.scroll
           div.stats
             section.alog.stat-card [id="alog-sec" aria-labelledby="alog-h"]
@@ -186,12 +186,12 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
+  activity {"account":null,"group":null,"limit":100}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
   playStats {"days":7}
-  activity {"account":null,"group":null,"limit":100}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
 == end
 html [data-theme="dark" lang="en"]
 #app
@@ -249,7 +249,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -265,8 +265,8 @@ html [data-theme="dark" lang="en"]
             p [id="stats-sub"] "What Bloxkeep saw happen, newest first. The last 1,000 events are kept."
           div.top-tools
             div.seg [id="stats-tabs" role="tablist" aria-label="Statistics"]
-              button [type="button" role="tab" aria-selected="false"] "Statistics"
-              button.on [type="button" role="tab" aria-selected="true"] "Activity"
+              button [role="tab" type="button" aria-selected="false"] "Statistics"
+              button.on [role="tab" type="button" aria-selected="true"] "Activity"
         div.scroll
           div.stats
             section.alog.stat-card [id="alog-sec" aria-labelledby="alog-h"]

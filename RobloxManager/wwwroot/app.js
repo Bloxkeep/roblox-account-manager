@@ -301,7 +301,7 @@
    * @param enterSubmits true for a form: Enter in a field presses the primary button (not in a textarea or a box with its list open).
    * @param askClose returns true when Esc or the X would throw away something typed: the user is asked first.
    */
-  function modal({ title, body, actions = [], onMount, onClose, dismissable = true, busy: keepsPage = false, enterSubmits = false, askClose = null, top = false }) {
+  function modal({ title, body, actions = [], onMount, onClose, dismissable = true, busy: keepsPage = false, enterSubmits = false, askClose = null, top = false, onRemoved }) {
     closeMenu();
     // Gets the focus back on close. Opened from a busy button (What's new, Run's "Open anyway?"), which lost the focus
     // when it was turned off: that button.
@@ -353,7 +353,7 @@
       if (keepsPage) busyModals--;
       document.removeEventListener('keydown', onKey, true);
       el.classList.add('out');
-      setTimeout(() => el.remove(), 150);
+      setTimeout(() => { el.remove(); onRemoved?.(); }, 150);
       lastOverlayClose = performance.now();
       onClose?.();
       syncBusy();
@@ -562,6 +562,7 @@
     closeAllModals();
     syncMonitor();
     const create = mode === 'create';
+    takeDownUiParts();
     $('#app').innerHTML = `<div class="lock">
       <div class="dots"></div>
       <div class="lock-lang">${langSwitch()}</div>
@@ -634,12 +635,24 @@
   }
 
   /* ───────────────────────── shell ───────────────────────── */
+  /** The parts of the main page React draws (ui/src): mounted once it is built, taken down before it is replaced. */
+  let uiParts = [];
+  function takeDownUiParts() {
+    uiParts.forEach(unmount => unmount());
+    uiParts = [];
+  }
+  function mountUiParts() {
+    takeDownUiParts();
+    const ui = window.BloxkeepUI, host = uiHost();
+    for (const id of ['notify', 'updates']) uiParts.push(ui.settingsPage($(`#set-page-${id}`), host, id, setPageTitle(id)));
+  }
   function buildShell() {
     S.shell = true;
     S.lockMode = null;
     S.lockedInUse = false;
     // Dialogs stay open (the lock screen already closed them): a language change from elsewhere mustn't throw away a
     // form being typed in. They keep their old language until closed.
+    takeDownUiParts();
     $('#app').innerHTML = `<div class="shell">
       <aside class="side">
         <div class="lights"><button class="light l-close" data-act="win-close" title="${t('win.close')}" aria-label="${t('win.close')}"></button><button class="light l-min" data-act="win-min" title="${t('win.min')}" aria-label="${t('win.min')}"></button><button class="light l-zoom" data-act="win-zoom" title="${t('win.zoom')}" aria-label="${t('win.zoom')}"></button></div>
@@ -752,6 +765,7 @@
     });
     $('#job').addEventListener('input', scheduleSaveInputs);
     $('#job').addEventListener('keydown', e => { if (e.key === 'Enter') launch([...S.selected], false); });
+    mountUiParts();
     wireSettings();
     wirePresetsView();
     setView(S.view);
@@ -1440,6 +1454,8 @@
     const sw = (id, label = '') => `<label class="switch"><input type="checkbox" id="${id}" ${label ? `aria-label="${esc(label)}"` : ''}><span></span></label>`;
     const page = (id, body) => `<section class="set-page" data-page="${id}" id="set-page-${id}" aria-labelledby="set-page-${id}-h" ${id === setPage ? '' : 'hidden'}>
       <h2 class="set-page-title" id="set-page-${id}-h">${setPageTitle(id)}</h2>${body}</section>`;
+    // A page React draws (mountUiParts): the section alone, its title and groups come from ui/src/settings.
+    const reactPage = id => `<section class="set-page" data-page="${id}" id="set-page-${id}" aria-labelledby="set-page-${id}-h" ${id === setPage ? '' : 'hidden'}></section>`;
     return `<header class="top"><div class="top-title"><h1>${t('set.title')}</h1></div></header>
       <div class="set-layout">
         <nav class="set-nav" aria-label="${esc(t('set.title'))}">
@@ -1478,10 +1494,7 @@
           ${setGroup('app', t('set.g.app'), `
             ${row(t('set.tray'), t('set.trayDesc'), sw('s-tray'))}
             ${row(t('set.gpu'), t('set.gpuDesc'), sw('s-gpu'))}`)}`)}
-        ${page('notify', `
-          ${setGroup('notify', '', row(t('set.notify'), t('set.notifyDesc'), sw('s-notify')))}
-          ${setGroup('notify-kinds', t('set.notifyKinds'), `<div class="set-sub" id="s-notify-kinds">${NOTIFY_KINDS.map(k => row(t(`set.notify.${k}`), '', sw(`s-notify-${k}`, t(`set.notify.${k}`)))).join('')}</div>`)}
-          ${setGroup('asks', t('set.g.asks'), row(t('set.asks'), '<span id="s-asks-n"></span>', `<button class="btn sm" data-act="reset-asks" id="s-asks-btn">${t('set.asksBtn')}</button>`))}`)}
+        ${reactPage('notify')}
         ${page('discord', discordHtml(row, sw))}
         ${page('appearance', setGroup('appearance', '', `
           ${row(t('set.theme'), '<span id="s-theme-name"></span>', '')}
@@ -1507,12 +1520,7 @@
             ${row(t('iv.setRow'), t('iv.setRowDesc'), `<button class="btn sm" data-act="bk-import">${t('iv.setBtn')}</button>`)}`)}
           ${setGroup('data', t('set.data'), `
             ${row(t('set.dataPath'), '<span class="path" id="s-path"></span>', `<button class="btn sm" data-act="open-data">${icon('folder')}${t('set.openFolder')}</button>`)}`)}`)}
-        ${page('updates', setGroup('updates', '', `
-          <div id="s-update"></div>
-          ${row(t('upd.auto'), '', sw('s-autoupd'))}`) + setGroup('feedback', t('fb.group'), `
-          ${row(t('help.title'), t('help.desc'), `<button class="btn sm" data-act="open-guide">${icon('book')}${t('help.open')}</button>`)}
-          ${row(t('fb.title'), t('fb.rowDesc'), `<button class="btn sm" data-act="feedback">${icon('message')}${t('fb.open')}</button>`)}
-          ${row(t('star.title'), t('star.desc'), `<button class="btn sm" data-act="open-github">${icon('star')}${t('star.open')}</button>`)}`))}
+        ${reactPage('updates')}
         <p class="set-empty" id="set-empty" hidden>${t('set.noMatch')}</p>
       </div></div>
       </div>`;
@@ -1589,11 +1597,8 @@
         call('setSettings', { robloxConfig: { [key]: value } });
       });
     }
-    $('#s-autoupd').addEventListener('change', e => call('setAutoUpdate', { enabled: e.target.checked }));
     $('#s-tray').addEventListener('change', e => call('setCloseToTray', { enabled: e.target.checked }));
     $('#s-hidenames').addEventListener('change', e => call('setHideNames', { enabled: e.target.checked }));
-    $('#s-notify').addEventListener('change', e => call('setNotifications', { enabled: e.target.checked }));
-    for (const kind of NOTIFY_KINDS) $(`#s-notify-${kind}`).addEventListener('change', e => call('setNotifications', { kind, enabled: e.target.checked }));
     $('#s-daily').addEventListener('change', e => call('setDailySignInCheck', { enabled: e.target.checked }));
     $('#s-rejoin').addEventListener('change', e => setRejoinAll(e.target));
     $('#s-bk-on').addEventListener('change', e => call('setBackup', { enabled: e.target.checked }));
@@ -1868,18 +1873,26 @@
     if (await confirmBox(t('dc.removeConfirm'), { title: t('dc.removeTitle'), ok: t('dc.remove'), danger: true })) call('setDiscordWebhook', { url: '' });
   }
 
+  /** A picker's row for an account: its label, @username, and its picture as the cards draw it (PickList.tsx). */
+  const pickAccount = (a, checked) => ({ value: a.id, checked, label: a.label, sub: a.username ? `@${a.username}` : '', avatarHtml: avatarInner(a) });
+
   /** Settings › Discord › Includes: what the summary lists (at least one), as a short list like the accounts picker. */
   function pickDiscordParts() {
     const parts = new Set(S.app.discord?.summary?.parts || []);
+    let ui = null;
     modal({
       title: t('dc.partsTitle'),
-      body: `<p class="modal-text">${t('dc.partsText')}</p><div class="rc-list">${DC_PARTS.map(p => `<label class="rc-item">
-          <input type="checkbox" value="${p}" ${parts.has(p) ? 'checked' : ''}><span><b>${t(`dc.part.${p}`)}</b></span></label>`).join('')}</div>`,
+      body: '',
+      onMount: ({ el }) => {
+        ui = window.BloxkeepUI.pickList(el.querySelector('.modal-body'), uiHost(), t('dc.partsText'),
+          DC_PARTS.map(p => ({ value: p, checked: parts.has(p), label: t(`dc.part.${p}`) })));
+      },
+      onRemoved: () => ui?.unmount(),
       actions: [
         { text: t('common.cancel'), onClick: ({ close }) => close() },
         {
-          text: t('common.done'), kind: 'primary', onClick: async ({ el, close, btn }) => {
-            const list = [...el.querySelectorAll('.rc-item input')].filter(b => b.checked).map(b => b.value);
+          text: t('common.done'), kind: 'primary', onClick: async ({ close, btn }) => {
+            const list = ui.list.values();
             if (!list.length) return toast(t('dc.partsText'), 'warn');
             if (await busy(btn, () => call('setDiscord', { summaryParts: list })) !== undefined) close();
           },
@@ -1892,16 +1905,17 @@
     const list = accounts().slice().sort((x, y) => compareText(x.label, y.label));
     if (!list.length) return toast(t('rc.noAccounts'), 'info');
     const chosen = new Set(S.app.discord?.summary?.accounts || []);
+    let ui = null;
     modal({
       title: t('dc.accTitle'),
-      body: `<p class="modal-text">${t('dc.accText')}</p><div class="rc-list">${list.map(a => `<label class="rc-item">
-          <input type="checkbox" value="${a.id}" ${chosen.has(a.id) ? 'checked' : ''}>
-          <div class="avatar sm">${avatarInner(a)}</div><span><b title="${esc(a.label)}">${esc(a.label)}</b><small>${atName(a)}</small></span></label>`).join('')}</div>`,
+      body: '',
+      onMount: ({ el }) => { ui = window.BloxkeepUI.pickList(el.querySelector('.modal-body'), uiHost(), t('dc.accText'), list.map(a => pickAccount(a, chosen.has(a.id)))); },
+      onRemoved: () => ui?.unmount(),
       actions: [
         { text: t('dc.allAccounts'), onClick: async ({ close }) => { if (await call('setDiscord', { summaryAccounts: [] }) !== undefined) close(); } },
         {
-          text: t('common.done'), kind: 'primary', onClick: async ({ el, close, btn }) => {
-            const ids = [...el.querySelectorAll('.rc-item input')].filter(b => b.checked).map(b => b.value);
+          text: t('common.done'), kind: 'primary', onClick: async ({ close, btn }) => {
+            const ids = ui.list.values();
             if (await busy(btn, () => call('setDiscord', { summaryAccounts: ids })) !== undefined) close();
           },
         },
@@ -1909,101 +1923,43 @@
     });
   }
 
-  /** A release note's icon, from the words in it (either language); the first match wins. */
-  const WN_ICONS = [
-    [/microsoft store/i, 'gamepad'], [/website|roblox\.com|trang web/i, 'globe'], [/discord/i, 'message'],
-    [/guide|hướng dẫn/i, 'book'], [/feedback|góp ý/i, 'message'], [/lock app|khóa app/i, 'lock'],
-    [/before you open|question|câu hỏi|lưu ý/i, 'alert'], [/multi-roblox/i, 'layers'], [/theme|giao diện/i, 'palette'],
-    [/faster|nhanh hơn/i, 'gauge'], [/vietnamese|tiếng việt/i, 'languages'], [/github|download|tải về/i, 'shield'],
-    [/preset|schedule|hẹn giờ/i, 'calendar'], [/password|mật khẩu/i, 'key'],
-  ];
-  /** "Title: what it does" as [title, text]; a note without a short title before its first ": " is all text. */
-  function splitNote(note) {
-    const i = note.indexOf(': ');
-    if (!(i > 0 && i <= 60 && !note.slice(0, i).includes('.'))) return ['', note];
-    const text = note.slice(i + 2); // under its own title it starts a sentence: "choose it…" reads "Choose it…"
-    return [note.slice(0, i), text.charAt(0).toLocaleUpperCase(locale()) + text.slice(1)];
-  }
   /**
-   * Release notes: shown once after an update, and any time from Settings › Updates. The newest release is laid out as
-   * features (an icon, the title before the note's colon, then the rest); older ones it skipped over are folded below.
+   * What the React parts (ui/src, built into ui.js) use of this page: its words, icons and commands, and where their
+   * buttons lead. Made afresh for each part (a language change closes every dialog first).
+   */
+  const uiListeners = new Set();
+  const uiHost = () => ({
+    t, tn, lang, locale: locale(), logo: LOGO, iconPaths: name => ICONS[name] || '', call,
+    busy, toast,
+    state: () => S.app,
+    subscribe: f => { uiListeners.add(f); return () => uiListeners.delete(f); },
+    go(target) {
+      if (target.startsWith('settings:')) openSettings(target.slice(9));
+      else if (target === 'guide') call('openGuide');
+      else if (target === 'web') call('openWebsiteBlank');
+      else if (target === 'feedback') feedbackModal();
+      else if (target === 'github') call('openGitHub');
+    },
+  });
+
+  /**
+   * Release notes: shown once after an update, and any time from Settings › Updates. The dialog is drawn here; what is
+   * in it (headline cards, New / Improved / Fixed, older releases folded) by React (ui/src/WhatsNew.tsx).
    */
   function showWhatsNew(releases, onClose) {
     if (!releases?.length) return;
-    const day = d => {
-      const date = new Date(`${d}T00:00:00`);
-      return isNaN(date) ? '' : date.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
-    };
-    const notes = r => (lang === 'vi' && r.vi?.length ? r.vi : r.en) || [];
-    const feature = note => {
-      const [title, text] = splitNote(note);
-      const ic = WN_ICONS.find(([re]) => re.test(title || text))?.[1] || 'check';
-      return `<li class="wn-item"><span class="wn-ic">${icon(ic)}</span><div>${title ? `<b>${esc(title)}</b>` : ''}<p>${esc(text)}</p></div></li>`;
-    };
-    const [latest, ...older] = releases;
-    // A release with headline features: those as cards with a button to try each, its other lines under "Also new".
-    const highlights = latest.highlights || [];
-    const words = h => (lang === 'vi' && h.vi?.length ? h.vi : h.en) || [];
-    const card = (h, i) => {
-      const [title, text, button] = words(h);
-      return `<li class="wn-card"><span class="wn-ic">${icon(h.icon || 'check')}</span><b>${esc(title)}</b><p>${esc(text)}</p>${h.go && button
-        ? `<button type="button" class="wn-go" data-go="${i}">${esc(button)}${icon('chevronRight')}</button>` : ''}</li>`;
-    };
-    // New, Improved, Fixed (whatsnew.json "new", "improved", "fixed"): each under its own heading, so what was put
-    // right is as easy to find as what was added.
-    const KINDS = [['new', 'plus'], ['improved', 'gauge'], ['fixed', 'wrench']];
-    const groups = r => KINDS.map(([k, ic]) => {
-      const list = (lang === 'vi' && r[k]?.vi?.length ? r[k].vi : r[k]?.en) || [];
-      return list.length ? `<h4 class="wn-sub wn-kind ${k}">${icon(ic)}${t(`wn.kind.${k}`)}</h4>
-        <ul class="wn-also ${k}">${list.map(n => `<li>${icon(ic)}<span>${esc(n)}</span></li>`).join('')}</ul>` : '';
-    }).join('');
-    const main = (highlights.length
-      ? `<ul class="wn-cards">${highlights.map(card).join('')}</ul>${notes(latest).length
-        ? `<h4 class="wn-sub">${t('wn.also')}</h4><ul class="wn-also">${notes(latest).map(n => `<li>${icon('check')}<span>${esc(n)}</span></li>`).join('')}</ul>` : ''}`
-      : notes(latest).length ? `<ul class="wn-list">${notes(latest).map(feature).join('')}</ul>` : '') + groups(latest);
+    const [latest] = releases;
+    const date = new Date(`${latest.date}T00:00:00`);
+    const day = isNaN(date) ? '' : date.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
+    let unmount = null;
     modal({
-      title: `<span class="wn-title"><img src="${LOGO}" alt=""><span>${t('wn.heading')}<small>${esc(`Bloxkeep ${latest.version}`)}${latest.date ? ` · ${esc(day(latest.date))}` : ''}</small></span></span>`,
-      body: `${main}
-        ${older.length ? `<details class="wn-older"><summary>${icon('chevronRight')}${tn('wn.older', older.length)}</summary>
-          ${older.map(r => `<section class="wn"><div class="wn-head"><b>${esc(r.version)}</b><span>${day(r.date)}</span></div>
-            ${notes(r).length ? `<ul>${notes(r).map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}${groups(r)}</section>`).join('')}</details>` : ''}
-        <p class="wn-star">${icon('star')}<span>${t('wn.star')}</span><button type="button" class="wn-go" data-star>${t('star.open')}${icon('chevronRight')}</button></p>`,
+      title: `<span class="wn-title"><img src="${LOGO}" alt=""><span>${t('wn.heading')}<small>${esc(`Bloxkeep ${latest.version}`)}${day ? ` · ${esc(day)}` : ''}</small></span></span>`,
+      body: '',
       actions: [{ text: t('wn.ok'), kind: 'primary', onClick: ({ close }) => close() }],
-      onMount: ({ el, close }) => el.addEventListener('click', e => {
-        if (e.target.closest('[data-star]')) return call('openGitHub');
-        const go = highlights[+e.target.closest('[data-go]')?.dataset.go]?.go;
-        if (!go) return;
-        close();
-        if (go.startsWith('settings:')) openSettings(go.slice(9));
-        else if (go === 'guide') call('openGuide');
-        else if (go === 'web') call('openWebsiteBlank');
-        else if (go === 'feedback') feedbackModal();
-      }),
+      onMount: ({ el, close }) => { unmount = window.BloxkeepUI.whatsNew(el.querySelector('.modal-body'), uiHost(), releases, close); },
       onClose,
+      onRemoved: () => unmount?.(),
     });
-  }
-
-  function syncUpdate() {
-    const u = S.app.update || {};
-    // "Up to date" as of the last check, which can be up to an hour old: it says when.
-    const at = u.checkedAt ? new Date(u.checkedAt) : null;
-    const hm = { hour: '2-digit', minute: '2-digit', ...(lang === 'vi' ? { hourCycle: 'h23' } : {}) };
-    const when = at && !isNaN(at) ? (at.toDateString() === new Date().toDateString()
-      ? at.toLocaleTimeString(locale(), hm) : at.toLocaleString(locale(), { day: 'numeric', month: 'short', ...hm })) : '';
-    const status = !u.supported ? t('upd.unsupported')
-      : u.status === 'checking' ? t('upd.checking')
-      : u.status === 'downloading' ? t('upd.downloading', { v: u.version, p: u.progress })
-      : u.status === 'ready' ? t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version })
-      : u.status === 'upToDate' ? t('upd.latest') + (when ? ' · ' + t('upd.checkedAt', { t: when }) : '')
-      : u.status === 'error' ? (u.error ? `${t('upd.error')}: ${u.error}` : t('upd.error')) // the reason, when the app gives one
-      : u.auto ? t('upd.idle') : t('upd.off');
-    const notes = `<button class="btn sm ghost" data-act="whats-new">${t('wn.link')}</button>`;
-    const action = !u.supported ? ''
-      : u.status === 'ready' ? `<button class="btn sm primary" data-act="apply-update">${icon('refresh')}${t('upd.restart')}</button>`
-      : `<button class="btn sm" data-act="check-updates" ${u.status === 'checking' || u.status === 'downloading' ? 'disabled' : ''}>${icon('refresh')}${t('upd.check')}</button>`;
-    setHtml($('#s-update'), `<div class="set-row"><div><div class="t">Bloxkeep ${esc(u.current || '')}</div><div class="d">${esc(status)}</div></div><div class="ctl">${notes}${action}</div></div>`);
-    $('#s-autoupd').checked = !!u.auto;
-    $('#s-autoupd').disabled = !u.supported;
   }
 
   const THEMES = {
@@ -2034,10 +1990,6 @@
     if (document.activeElement !== $('#s-openas')) $('#s-openas').value = S.app.multi?.tile ? 'tile' : st.maximizeOnOpen ? 'maximize' : 'roblox';
     $('#s-memwarn').checked = st.memoryWarnings;
     $('#s-trim').checked = st.trimBackground;
-    // Questions answered "Don't ask again" (a launch warning, closing all Roblox, locking…): all asked again at once.
-    const skipped = (S.app.skipConfirm || []).length;
-    setText($('#s-asks-n'), skipped ? tn('set.asksN', skipped) : t('set.asksNone'));
-    $('#s-asks-btn').disabled = !skipped;
     $('#s-antiafk').checked = !!st.antiAfk;
     const rc = st.robloxConfig || { mode: 'off', graphics: 0, fps: 0, volume: -1 };
     for (const [key, value] of [['mode', rc.mode], ['graphics', rc.graphics], ['fps', rc.fps], ['volume', rc.volume]]) {
@@ -2055,15 +2007,6 @@
     $('#s-gpu').checked = !S.app.safeRendering;
     $('#s-tray').checked = S.app.closeToTray !== false;
     $('#s-hidenames').checked = hidingNames();
-    const notify = S.app.notifications !== false, off = S.app.notifyOff || [];
-    $('#s-notify').checked = notify;
-    // The per-kind switches only mean something while the main one is on.
-    $('#s-notify-kinds').classList.toggle('off', !notify);
-    for (const kind of NOTIFY_KINDS) {
-      const sw = $(`#s-notify-${kind}`);
-      sw.checked = !off.includes(kind);
-      sw.disabled = !notify;
-    }
     $('#s-daily').checked = S.app.dailySignInCheck !== false;
     const checkedAt = S.app.lastSignInCheck ? new Date(S.app.lastSignInCheck) : null;
     setText($('#s-daily-when'), checkedAt && !isNaN(checkedAt) ? t('set.dailyLast', { t: checkedAt.toDateString() === new Date().toDateString()
@@ -2074,7 +2017,6 @@
     const themesFocused = $('#s-themes').contains(document.activeElement);
     if (setHtml($('#s-themes'), themesHtml()) && themesFocused) $('#s-themes .swatch.on')?.focus();
     setText($('#s-theme-name'), t(`theme.${S.themePending || S.app.theme || 'dark'}`));
-    syncUpdate();
     const ins = S.app.installs || {};
     // [value, label, usable, label when not usable]
     const others = ins.others || [];
@@ -4467,18 +4409,18 @@
   function pickRobloxConfigAccounts() {
     const list = accounts().slice().sort((x, y) => compareText(x.label, y.label));
     if (!list.length) return toast(t('rc.noAccounts'), 'info');
+    let ui = null;
     modal({
       title: t('rc.pickTitle'),
-      body: `<p class="modal-text">${t('rc.pickText')}</p><div class="rc-list">${list.map(a => `<label class="rc-item">
-          <input type="checkbox" value="${a.id}" ${a.useRobloxConfig ? 'checked' : ''}>
-          <div class="avatar sm">${avatarInner(a)}</div><span><b title="${esc(a.label)}">${esc(a.label)}</b><small>${atName(a)}</small></span></label>`).join('')}</div>`,
+      body: '',
+      onMount: ({ el }) => { ui = window.BloxkeepUI.pickList(el.querySelector('.modal-body'), uiHost(), t('rc.pickText'), list.map(a => pickAccount(a, !!a.useRobloxConfig))); },
+      onRemoved: () => ui?.unmount(),
       actions: [
         { text: t('common.cancel'), onClick: ({ close }) => close() },
         {
-          text: t('common.done'), kind: 'primary', onClick: async ({ el, close, btn }) => {
+          text: t('common.done'), kind: 'primary', onClick: async ({ close, btn }) => {
             if (btn.disabled) return;
-            const boxes = [...el.querySelectorAll('.rc-item input')];
-            const on = boxes.filter(b => b.checked).map(b => b.value), off = boxes.filter(b => !b.checked).map(b => b.value);
+            const on = ui.list.values(), off = list.map(a => a.id).filter(id => !on.includes(id));
             let ok = true;
             await busy(btn, async () => {
               if (on.length) ok = await call('setUseRobloxConfig', { ids: on, enabled: true }) !== undefined;
@@ -4576,82 +4518,47 @@
 
   /** The Multi-Roblox dialog while it is open: it follows the state (Roblox closed meanwhile, turned on or off from the tray). */
   let multiHelpOpen = null;
-  const multiHelpKey = m => `${m.enabled}|${m.armed}|${!!m.trayAutostart}`;
+  /** Multi-Roblox turned on or off with its dialog open: opened again, its footer's buttons being different. */
   function syncMultiHelp() {
     const o = multiHelpOpen, m = S.app.multi;
-    if (!o || !m || multiHelpKey(m) === o.key) return;
-    if (m.enabled !== o.enabled) {
-      o.close(); // its buttons change too: opened again as it now is
-      multiHelp();
-      return;
-    }
-    o.key = multiHelpKey(m);
-    const box = o.el.querySelector('.modal-body'), had = box.contains(document.activeElement);
-    box.innerHTML = multiHelpBody(m);
-    if (had) o.el.querySelector('.modal-foot .btn.primary')?.focus();
+    if (!o || !m || m.enabled === o.enabled) return;
+    o.close();
+    multiHelp();
   }
   /**
    * Send feedback: an idea or a bug report for Bloxkeep's developer. Preview shows exactly what goes, the error log
    * with account names already taken out by the app.
    */
   function feedbackModal() {
-    let form = null;
-    const args = () => ({ kind: form.querySelector('[name=kind]').value, text: form.querySelector('[name=text]').value,
-      contact: form.querySelector('[name=contact]').value, log: form.querySelector('[name=log]').checked });
-    const locked = !!S.app.locked;
+    let ui = null;
+    const written = () => { const v = ui?.form.values(); return !!v && (v.text.trim() !== '' || v.contact.trim() !== ''); };
     modal({
       title: t('fb.title'),
       top: true,
       dismissable: false,
       busy: true,
-      askClose: () => !!form && (form.querySelector('[name=text]').value.trim() !== '' || form.querySelector('[name=contact]').value.trim() !== ''),
-      body: `<div class="form">
-          <label>${t('fb.kind')}<select class="select" name="kind"><option value="bug">${t('fb.bug')}</option><option value="idea">${t('fb.idea')}</option></select></label>
-          <label>${t('fb.text')}<textarea class="field" name="text" maxlength="2000" rows="6" placeholder="${esc(t('fb.textPh'))}"></textarea></label>
-          <label><span>${t('fb.contact')} <span class="muted">${t('fb.optional')}</span></span><input class="field" name="contact" maxlength="100" autocomplete="off" spellcheck="false" placeholder="${esc(t('fb.contactPh'))}"></label>
-        </div>
-        <label class="dont-ask"><input type="checkbox" name="log" ${locked ? 'disabled' : 'checked'}><span>${t(locked ? 'fb.logLocked' : 'fb.log')}</span></label>
-        <div class="fb-look"><button type="button" class="link" data-fb="preview" aria-expanded="false">${t('fb.preview')}</button></div>
-        <pre class="fb-preview" tabindex="0" aria-label="${esc(t('fb.preview'))}" hidden></pre>
-        <p class="fine">${icon('shield')}<span>${t('fb.fine')}</span></p>
-        <div class="form-error" role="alert" hidden></div>`,
-      onMount: ({ el }) => {
-        form = el;
-        const log = el.querySelector('[name=log]'), pre = el.querySelector('.fb-preview'), look = el.querySelector('[data-fb=preview]');
-        // An idea rarely needs the log; a bug report usually does.
-        el.querySelector('[name=kind]').addEventListener('change', e => { if (!log.disabled) log.checked = e.target.value === 'bug'; });
-        // What goes changes with what's typed: an open preview is shut again rather than left out of date.
-        el.addEventListener('input', () => { pre.hidden = true; look.setAttribute('aria-expanded', 'false'); });
-        look.addEventListener('click', async () => {
-          if (!pre.hidden) { pre.hidden = true; look.setAttribute('aria-expanded', 'false'); return; }
-          const r = await call('feedbackPreview', args());
-          if (!r || !el.isConnected) return;
-          pre.textContent = r.preview;
-          pre.hidden = false;
-          look.setAttribute('aria-expanded', 'true');
-        });
-        el.querySelector('[name=text]').focus();
-      },
+      askClose: written,
+      body: '',
+      onMount: ({ el }) => { ui = window.BloxkeepUI.feedback(el.querySelector('.modal-body'), uiHost(), !!S.app.locked); },
+      onRemoved: () => ui?.unmount(),
       actions: [
         { text: t('common.cancel'), onClick: ({ close }) => close() },
         {
-          text: t('fb.send'), kind: 'primary', onClick: async ({ el, close, btn }) => {
-            const err = el.querySelector('.form-error');
-            err.hidden = true;
-            if (args().text.trim().length < 3) {
-              err.textContent = t('fb.needText');
-              err.hidden = false;
-              el.querySelector('[name=text]').focus();
+          text: t('fb.send'), kind: 'primary', onClick: async ({ close, btn }) => {
+            const v = ui.form.values();
+            ui.form.showError(null);
+            if (v.text.trim().length < 3) {
+              ui.form.showError(t('fb.needText'));
+              ui.form.focusText();
               return;
             }
             if (btn.disabled) return;
             try {
-              await busy(btn, () => bridge.call('sendFeedback', args()));
+              await busy(btn, () => bridge.call('sendFeedback', v));
               close();
               toast(t('fb.sent'), 'ok');
             } catch (ex) {
-              err.textContent = ex.message;
-              err.hidden = false;
+              ui.form.showError(ex.message);
             }
           },
         },
@@ -4661,61 +4568,21 @@
 
   function multiHelp() {
     const m = S.app.multi;
+    let unmount = null;
     modal({
       title: t('multi.title'),
-      body: multiHelpBody(m),
+      body: '',
       actions: [
         ...(m.enabled ? [{ text: t('mh.disable'), kind: 'danger push', onClick: ({ close }) => { close(); setMulti(false); } }] : []),
         { text: t('common.done'), kind: 'primary', onClick: ({ close }) => close() },
       ],
       onMount: ({ el, close }) => {
-        multiHelpOpen = { el, close, key: multiHelpKey(m), enabled: m.enabled };
-        // On the dialog, not the switches: the body is drawn again when the state changes.
-        el.addEventListener('change', ev => {
-          if (ev.target.id === 'mh-windowed') call('setSettings', { multiWindowed: ev.target.checked });
-          else if (ev.target.id === 'mh-tile') call('setSettings', { multiTile: ev.target.checked });
-        });
-        el.addEventListener('click', async e => {
-          const b = e.target.closest('[data-local]');
-          if (!b) return;
-          if (b.dataset.local === 'enable') {
-            close();
-            setMulti(true);
-          } else if (b.dataset.local === 'close-all') {
-            const n = await busy(b, () => call('closeAll'));
-            if (n !== undefined) toast(n ? tn('t.closingAll', n) : t('t.noRoblox'), 'ok');
-          } else if (b.dataset.local === 'tray') {
-            if ((await busy(b, () => call('disableTrayAutostart'))) !== undefined && b.isConnected) {
-              b.disabled = true;
-              b.textContent = t('mh.s2done');
-            }
-          }
-        });
+        multiHelpOpen = { close, enabled: m.enabled };
+        unmount = window.BloxkeepUI.multiHelp(el.querySelector('.modal-body'), uiHost(), () => { close(); setMulti(true); });
       },
       onClose: () => { multiHelpOpen = null; },
+      onRemoved: () => unmount?.(),
     });
-  }
-  function multiHelpBody(m) {
-    let body;
-    if (!m.enabled) {
-      body = `<p class="modal-text">${t('mh.off')}</p><button class="btn primary" data-local="enable">${icon('layers')}${t('mh.enable')}</button>`;
-    } else if (m.armed) {
-      body = `<div class="hero-ok">${icon('check')}</div><p class="modal-text center">${t('mh.ok1')}</p><p class="muted center">${t('mh.ok2')}</p>`;
-    } else {
-      body = `<p class="modal-text">${t('mh.bad')}</p>
-        <ol class="steps">
-          <li><div>${t('mh.s1')}<br><button class="btn sm" data-local="close-all">${icon('power')}${t('mh.s1btn')}</button></div></li>
-          ${m.trayAutostart ? `<li><div>${t('mh.s2')}<br><button class="btn sm" data-local="tray">${t('mh.s2btn')}</button></div></li>` : ''}
-          <li><div>${t('mh.s3')}</div></li>
-        </ol>`;
-    }
-    if (m.enabled) {
-      // How the windows open.
-      const opt = (id, key, on) => `<label class="mh-flag"><span><b>${t(key)}</b><small>${t(key + 'Desc')}</small></span>
-        <span class="switch"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><span></span></span></label>`;
-      body += opt('mh-windowed', 'mh.windowed', m.windowed) + opt('mh-tile', 'mh.tile', m.tile);
-    }
-    return body;
   }
 
   function accountModal(a) {
@@ -5476,47 +5343,32 @@
   function joinPlayerModal() {
     const ids = [...S.selected];
     if (!ids.length) return toast(t('t.selectFirst'), 'warn');
-    let gone = false;
-    const say = (html, tone = 'info') => {
-      const box = $('#jp-msg');
-      if (!box) return;
-      box.hidden = !html;
-      box.className = `jp-msg ${tone}`;
-      box.innerHTML = html;
-    };
-    const fillRecent = () => {
-      const list = S.app.settings?.recentPlayers || [];
-      const host = $('#jp-recent');
-      if (!host) return;
-      host.hidden = !list.length;
-      host.innerHTML = list.length ? `<small>${t('jp.recent')}</small>${list.map(name => `<span class="jp-chip"><button type="button" class="jp-pick" data-jp="${esc(name)}">${esc(name)}</button><button type="button" class="jp-x" data-jp-x="${esc(name)}" title="${esc(t('jp.forget'))}" aria-label="${esc(t('jp.forgetN', { name }))}">${icon('x')}</button></span>`).join('')}` : '';
-    };
+    let gone = false, ui = null;
     const go = async (btn, close) => {
-      const box = $('#jp-name'), input = box.value.trim();
+      const input = ui.form.name().trim();
       if (!input) {
-        say(t('jp.needName'), 'error');
-        return box.focus();
+        ui.form.say(t('jp.needName'), 'error');
+        return ui.form.focusName();
       }
       // One launch at a time: while one runs, the join wouldn't start (and the lookup would be for nothing).
       const launchBusy = () => inFlight.has('launch') || !!S.app.launching;
-      if (launchBusy()) return say(esc(t('jp.launching')), 'warn');
-      say(`<span class="spin"></span>${t('jp.looking', { name: esc(input) })}`);
+      if (launchBusy()) return ui.form.say(esc(t('jp.launching')), 'warn');
+      ui.form.say(`<span class="spin"></span>${t('jp.looking', { name: esc(input) })}`);
       let r;
       try {
         r = await busy(btn, () => bridge.call('findPlayer', { input, ids }));
       } catch (e) {
-        if (!gone) say(esc(e.message), 'error');
-        return box.isConnected && box.focus();
+        if (!gone) { ui.form.say(esc(e.message), 'error'); ui.form.focusName(); }
+        return;
       }
       if (gone || !r || S.app.locked) return;
       const who = r.displayName && r.displayName !== r.name ? `${r.displayName} (@${r.name})` : r.name || input;
       if (r.status !== 'found') {
-        say(t(`jp.${r.status}`, { name: `<b>${esc(who)}</b>` }), r.status === 'notFound' ? 'error' : 'warn');
-        fillRecent(); // a name Roblox knows is remembered even when it can't be joined now
-        box.focus();
-        return box.select();
+        // A name Roblox knows is remembered even when it can't be joined now: the list shows it with the app's next state.
+        ui.form.say(t(`jp.${r.status}`, { name: `<b>${esc(who)}</b>` }), r.status === 'notFound' ? 'error' : 'warn');
+        return ui.form.focusName(true);
       }
-      if (launchBusy()) return say(esc(t('jp.launching')), 'warn'); // one started meanwhile (a scheduled preset)
+      if (launchBusy()) return ui.form.say(esc(t('jp.launching')), 'warn'); // one started meanwhile (a scheduled preset)
       close();
       // Toasts escape their text themselves.
       toast(tn('jp.found', ids.length, { name: who, game: r.game || `Place ${r.placeId}` }), 'info');
@@ -5527,36 +5379,16 @@
       top: true,
       busy: true,
       enterSubmits: true,
-      body: `<div class="form jp">
-          <p class="modal-text">${tn('jp.note', ids.length)}</p>
-          <label>${t('jp.label')}<input class="field" id="jp-name" maxlength="100" autocomplete="off" spellcheck="false" placeholder="${esc(t('jp.placeholder'))}"></label>
-          <div class="jp-recent" id="jp-recent" role="group" aria-label="${esc(t('jp.recent'))}" hidden></div>
-          <div class="jp-msg" id="jp-msg" role="status" aria-live="polite" hidden></div>
-        </div>
-        <p class="fine">${icon('shield')}<span>${t('jp.privacy')}</span></p>`,
+      body: '',
       actions: [
         { text: t('common.cancel'), onClick: ({ close }) => close() },
         { text: t('jp.go'), kind: 'primary', onClick: ({ btn, close }) => go(btn, close) },
       ],
       onMount: ({ el }) => {
-        const box = el.querySelector('#jp-name');
-        el.querySelector('#jp-recent').addEventListener('click', async e => {
-          const forget = e.target.closest('[data-jp-x]');
-          if (forget) {
-            await call('forgetPlayer', { name: forget.dataset.jpX });
-            fillRecent();
-            return box.focus();
-          }
-          const pick = e.target.closest('[data-jp]');
-          if (!pick) return;
-          box.value = pick.dataset.jp;
-          el.querySelector('.modal-foot .btn.primary').click(); // a name from the list is looked up at once
-        });
-        box.addEventListener('input', () => say(''));
-        fillRecent();
-        setTimeout(() => box.focus(), 30);
+        ui = window.BloxkeepUI.joinPlayer(el.querySelector('.modal-body'), uiHost(), ids.length, () => el.querySelector('.modal-foot .btn.primary').click());
       },
       onClose: () => { gone = true; },
+      onRemoved: () => ui?.unmount(),
     });
   }
   /** Opens the accounts into the server found, through the usual launch: its warnings ask first, as Play's do. */
@@ -5934,6 +5766,7 @@
       if (S.shell && S.view === 'stats' && !st.locked) { renderActivity(); loadActivity(); }
     }
     maskNames(st); // before anything renders a name
+    uiListeners.forEach(f => f()); // the React parts (useAppState) draw again with it
     if (st.themeApplied && !S.themePending) document.documentElement.dataset.theme = st.themeApplied;
     if (st.locked) {
       // Toasts from before the lock may name accounts: they don't stay on the lock screen.

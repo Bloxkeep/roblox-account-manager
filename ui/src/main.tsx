@@ -9,6 +9,8 @@ import { HostContext, type Host } from './host';
 import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
 import { MultiHelp } from './MultiHelp';
 import { PickList, type PickItem, type PickListApi } from './PickList';
+import { NotifyPage } from './settings/NotifyPage';
+import { UpdatesPage } from './settings/UpdatesPage';
 import { WhatsNew, type Release } from './WhatsNew';
 
 /** Draws into el now (app.js focuses the first control right after, so the content must be there), until unmount. */
@@ -38,6 +40,11 @@ const BloxkeepUI = {
   /** Multi-Roblox's help into its dialog's body; enable turns it on (app.js closes the dialog first). */
   multiHelp(el: HTMLElement, host: Host, enable: () => void) {
     return mount(el, host, <MultiHelp enable={enable} />);
+  },
+  /** A Settings page into its section (app.js makes the section; the page's title comes from there too). */
+  settingsPage(el: HTMLElement, host: Host, page: string, title: string) {
+    const pages: Record<string, ReactNode> = { updates: <UpdatesPage title={title} />, notify: <NotifyPage title={title} /> };
+    return mount(el, host, pages[page]);
   },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */
   pickList(el: HTMLElement, host: Host, text: string, items: PickItem[]) {

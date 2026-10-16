@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -196,10 +196,10 @@ html [data-theme="dark" lang="vi"]
     span "Đã lưu preset."
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
-  pageShown {}
+  pageBusy {"busy":false}
   pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   savePreset {"antiAfk":true,"arrange":true,"autoRejoin":null,"delaySeconds":12,"id":"p1","ids":["00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004"],"jobId":"","name":"Farm Blox Fruits 2","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","restartHours":4,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"ping"}
-  pageBusy {"busy":false}

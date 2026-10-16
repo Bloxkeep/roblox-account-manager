@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
@@ -112,7 +112,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Posts play-time summaries, a live status message and alerts to a channel of yours through a webhook. Off until you turn it on."
                       div.ctl
                         label.switch [title=""]
-                          input [type="checkbox" id="s-dc-on" aria-label="Send to Discord" checked=true]
+                          input [id="s-dc-on" type="checkbox" aria-label="Send to Discord" checked=true]
                           span
                     div [id="s-dc-note"]
                     div.set-row
@@ -146,14 +146,14 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "Every day at"
                         div.ctl
-                          input.field.sm.time [type="time" id="s-dc-daily-time" aria-label="Every day at" value="22:00"]
+                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:00"]
                     div.set-row
                       div
                         div.t "When a scheduled preset finishes"
                         div.d "Sent half a minute after its accounts close, counting that preset’s accounts only (to its own channel when it has one)."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-after" aria-label="When a scheduled preset finishes" checked=true]
+                          input [id="s-dc-after" type="checkbox" aria-label="When a scheduled preset finishes" checked=true]
                           span
                     div.set-row
                       div
@@ -194,7 +194,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Separate from the Windows notifications. Alerts within 10 seconds go out as one message."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-alerts" aria-label="Send alerts" checked=true]
+                          input [id="s-dc-alerts" type="checkbox" aria-label="Send alerts" checked=true]
                           span
                     div.set-row
                       div
@@ -215,18 +215,18 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="How often" value="5"]
                         label.switch
-                          input [type="checkbox" id="s-dc-board" aria-label="Keep a status message up to date" checked=true]
+                          input [id="s-dc-board" type="checkbox" aria-label="Keep a status message up to date" checked=true]
                           span
                     div.set-row
                       div
                         div.t "Quiet hours"
                         div.d "Messages still arrive, without pings."
                       div.ctl
-                        input.field.sm.time [type="time" id="s-dc-quiet-from" aria-label="From" value="23:00"]
+                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="From" value="23:00"]
                         span.dc-dash "–"
-                        input.field.sm.time [type="time" id="s-dc-quiet-to" aria-label="To" value="07:00"]
+                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="To" value="07:00"]
                         label.switch
-                          input [type="checkbox" id="s-dc-quiet" aria-label="Quiet hours" checked=true]
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Quiet hours" checked=true]
                           span
                 div.set-grp [id="sec-dc-look"]
                   div.set-card
@@ -239,13 +239,13 @@ html [data-theme="dark" lang="en"]
     svg.i #14iobj
     span "Test message sent. Check the channel."
 -- commands
-  getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
-  monitorArea {"hidden":true}
-  pageShown {}
   backupSuggestions {}
   backupSuggestions {}
   discordTest {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
 == remove asked
 html [data-theme="dark" lang="en"]
 #app
@@ -303,7 +303,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -320,7 +320,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
@@ -360,7 +360,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Posts play-time summaries, a live status message and alerts to a channel of yours through a webhook. Off until you turn it on."
                       div.ctl
                         label.switch [title=""]
-                          input [type="checkbox" id="s-dc-on" aria-label="Send to Discord" checked=true]
+                          input [id="s-dc-on" type="checkbox" aria-label="Send to Discord" checked=true]
                           span
                     div [id="s-dc-note"]
                     div.set-row
@@ -394,14 +394,14 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "Every day at"
                         div.ctl
-                          input.field.sm.time [type="time" id="s-dc-daily-time" aria-label="Every day at" value="22:00"]
+                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:00"]
                     div.set-row
                       div
                         div.t "When a scheduled preset finishes"
                         div.d "Sent half a minute after its accounts close, counting that preset’s accounts only (to its own channel when it has one)."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-after" aria-label="When a scheduled preset finishes" checked=true]
+                          input [id="s-dc-after" type="checkbox" aria-label="When a scheduled preset finishes" checked=true]
                           span
                     div.set-row
                       div
@@ -442,7 +442,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Separate from the Windows notifications. Alerts within 10 seconds go out as one message."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-alerts" aria-label="Send alerts" checked=true]
+                          input [id="s-dc-alerts" type="checkbox" aria-label="Send alerts" checked=true]
                           span
                     div.set-row
                       div
@@ -463,18 +463,18 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="How often" value="5"]
                         label.switch
-                          input [type="checkbox" id="s-dc-board" aria-label="Keep a status message up to date" checked=true]
+                          input [id="s-dc-board" type="checkbox" aria-label="Keep a status message up to date" checked=true]
                           span
                     div.set-row
                       div
                         div.t "Quiet hours"
                         div.d "Messages still arrive, without pings."
                       div.ctl
-                        input.field.sm.time [type="time" id="s-dc-quiet-from" aria-label="From" value="23:00"]
+                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="From" value="23:00"]
                         span.dc-dash "–"
-                        input.field.sm.time [type="time" id="s-dc-quiet-to" aria-label="To" value="07:00"]
+                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="To" value="07:00"]
                         label.switch
-                          input [type="checkbox" id="s-dc-quiet" aria-label="Quiet hours" checked=true]
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Quiet hours" checked=true]
                           span
                 div.set-grp [id="sec-dc-look"]
                   div.set-card
@@ -483,7 +483,7 @@ html [data-theme="dark" lang="en"]
                         svg.i #u1ag9u
 #layer
   div.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"] "Remove the webhook link?"
         button.icon-btn [title="Close"]
@@ -556,7 +556,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -573,7 +573,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
@@ -613,7 +613,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Posts play-time summaries, a live status message and alerts to a channel of yours through a webhook. Off until you turn it on."
                       div.ctl
                         label.switch [title=""]
-                          input [type="checkbox" id="s-dc-on" aria-label="Send to Discord" checked=true]
+                          input [id="s-dc-on" type="checkbox" aria-label="Send to Discord" checked=true]
                           span
                     div [id="s-dc-note"]
                     div.set-row
@@ -647,14 +647,14 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "Every day at"
                         div.ctl
-                          input.field.sm.time [type="time" id="s-dc-daily-time" aria-label="Every day at" value="22:00"]
+                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:00"]
                     div.set-row
                       div
                         div.t "When a scheduled preset finishes"
                         div.d "Sent half a minute after its accounts close, counting that preset’s accounts only (to its own channel when it has one)."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-after" aria-label="When a scheduled preset finishes" checked=true]
+                          input [id="s-dc-after" type="checkbox" aria-label="When a scheduled preset finishes" checked=true]
                           span
                     div.set-row
                       div
@@ -695,7 +695,7 @@ html [data-theme="dark" lang="en"]
                         div.d "Separate from the Windows notifications. Alerts within 10 seconds go out as one message."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-dc-alerts" aria-label="Send alerts" checked=true]
+                          input [id="s-dc-alerts" type="checkbox" aria-label="Send alerts" checked=true]
                           span
                     div.set-row
                       div
@@ -716,18 +716,18 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="How often" value="5"]
                         label.switch
-                          input [type="checkbox" id="s-dc-board" aria-label="Keep a status message up to date" checked=true]
+                          input [id="s-dc-board" type="checkbox" aria-label="Keep a status message up to date" checked=true]
                           span
                     div.set-row
                       div
                         div.t "Quiet hours"
                         div.d "Messages still arrive, without pings."
                       div.ctl
-                        input.field.sm.time [type="time" id="s-dc-quiet-from" aria-label="From" value="23:00"]
+                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="From" value="23:00"]
                         span.dc-dash "–"
-                        input.field.sm.time [type="time" id="s-dc-quiet-to" aria-label="To" value="07:00"]
+                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="To" value="07:00"]
                         label.switch
-                          input [type="checkbox" id="s-dc-quiet" aria-label="Quiet hours" checked=true]
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Quiet hours" checked=true]
                           span
                 div.set-grp [id="sec-dc-look"]
                   div.set-card

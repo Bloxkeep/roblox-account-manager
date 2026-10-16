@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -115,7 +115,7 @@ html [data-theme="dark" lang="vi"]
                           button.link [type="button"] "Chi tiết"
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-multi" aria-label="Multi-Roblox" checked=true]
+                          input [id="s-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
                           span
                     div.set-row
                       div
@@ -123,7 +123,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Dễ phân biệt các cửa sổ Roblox dưới taskbar."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-rename" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
                           span
                     div.set-row
                       div
@@ -153,14 +153,14 @@ html [data-theme="dark" lang="vi"]
                         div.t "Chờ giữa các tài khoản"
                         div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
                       div.ctl
-                        input [type="range" id="s-delay" min="0" max="60" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
+                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
                         b.range-v [id="s-delay-v"] "8 giây"
 #layer
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

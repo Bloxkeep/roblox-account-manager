@@ -5,8 +5,8 @@ html [data-theme="dark" lang="vi"]
     div.dots
     div.lock-lang
       div.lang [role="group" aria-label="Language"]
-        button [aria-pressed="false" title="English"] "EN"
-        button.on [aria-pressed="true" title="Tiếng Việt"] "VI"
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Chào mừng trở lại"
@@ -14,16 +14,16 @@ html [data-theme="dark" lang="vi"]
       p.lock-paused "Các cửa sổ Roblox vẫn đang mở. Tự vào lại game, preset hẹn giờ và Discord sẽ chạy lại khi bạn mở khóa."
       div.stack
         div.pw
-          input.field [type="password" id="pw1" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]
-          button.icon-btn [type="button" id="pw-eye" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
       div.lock-error [id="lock-error" role="alert"]
-      button.big.btn.primary.w [type="submit" id="lock-btn"] "Mở khóa"
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Mở khóa"
 #layer
 #toasts
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  lock {}
   monitorArea {"hidden":true}
   pageShown {}
-  lock {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

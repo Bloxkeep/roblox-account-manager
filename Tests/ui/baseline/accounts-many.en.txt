@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -115,7 +115,7 @@ html [data-theme="dark" lang="en"]
               svg.i #19k0rtd
             button [title="List" aria-label="List" aria-pressed="false"]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" aria-haspopup="menu" title=""]
+          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Group: All"
           button.sort-btn [id="sort-btn" aria-haspopup="menu"]
@@ -123,8 +123,8 @@ html [data-theme="dark" lang="en"]
             span "Sort: Name"
         div.scroll [id="scroll"]
           div [id="grid"]
-            div.grid [role="listbox" aria-multiselectable="true" aria-label="Accounts"]
-              article.card [role="option" tabindex="0" aria-selected="false" aria-label="Alt"]
+            div.grid [role="listbox" aria-label="Accounts" aria-multiselectable="true"]
+              article.card [role="option" tabindex="0" aria-label="Alt" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -147,9 +147,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="0"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="0"]
+                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Alt 11"]
+              article.card [role="option" tabindex="-1" aria-label="Alt 11" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -172,9 +172,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Alt 18"]
+              article.card [role="option" tabindex="-1" aria-label="Alt 18" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -197,9 +197,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Alt 25"]
+              article.card [role="option" tabindex="-1" aria-label="Alt 25" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -222,9 +222,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Alt 32"]
+              article.card [role="option" tabindex="-1" aria-label="Alt 32" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -247,9 +247,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Alt 39"]
+              article.card [role="option" tabindex="-1" aria-label="Alt 39" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -272,9 +272,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 1"]
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -306,9 +306,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 1 8"]
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 8" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -340,9 +340,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 1 15"]
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 15" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -374,9 +374,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 1 22"]
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 22" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -408,9 +408,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 1 29"]
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 29" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -442,9 +442,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 1 36"]
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 36" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -476,9 +476,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 2"]
+              article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -505,9 +505,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #kqqqno
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 2 9"]
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 9" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -534,9 +534,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #kqqqno
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 2 16"]
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 16" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -563,9 +563,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #kqqqno
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 2 23"]
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 23" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -592,9 +592,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #kqqqno
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 2 30"]
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 30" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -621,9 +621,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #kqqqno
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Farm 2 37"]
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 37" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -650,9 +650,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #kqqqno
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Main"]
+              article.card.local [role="option" tabindex="-1" aria-label="Main" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -687,9 +687,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Main 7"]
+              article.card.local [role="option" tabindex="-1" aria-label="Main 7" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -724,9 +724,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Main 14"]
+              article.card.local [role="option" tabindex="-1" aria-label="Main 14" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -761,9 +761,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Main 21"]
+              article.card.local [role="option" tabindex="-1" aria-label="Main 21" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -798,9 +798,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Main 28"]
+              article.card.local [role="option" tabindex="-1" aria-label="Main 28" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -835,9 +835,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Main 35"]
+              article.card.local [role="option" tabindex="-1" aria-label="Main 35" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -872,9 +872,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Night Owl"]
+              article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -899,9 +899,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Night Owl 10"]
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 10" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -926,9 +926,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Night Owl 17"]
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 17" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -953,9 +953,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Night Owl 24"]
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 24" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -980,9 +980,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Night Owl 31"]
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 31" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1007,9 +1007,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Night Owl 38"]
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 38" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1034,9 +1034,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Testing"]
+              article.card [role="option" tabindex="-1" aria-label="Testing" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1061,9 +1061,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Testing 13"]
+              article.card [role="option" tabindex="-1" aria-label="Testing 13" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1088,9 +1088,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Testing 20"]
+              article.card [role="option" tabindex="-1" aria-label="Testing 20" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1115,9 +1115,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Testing 27"]
+              article.card [role="option" tabindex="-1" aria-label="Testing 27" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1142,9 +1142,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Testing 34"]
+              article.card [role="option" tabindex="-1" aria-label="Testing 34" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1169,9 +1169,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Trade"]
+              article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1197,9 +1197,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Trade 12"]
+              article.card [role="option" tabindex="-1" aria-label="Trade 12" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1225,9 +1225,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Trade 19"]
+              article.card [role="option" tabindex="-1" aria-label="Trade 19" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1253,9 +1253,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Trade 26"]
+              article.card [role="option" tabindex="-1" aria-label="Trade 26" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1281,9 +1281,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Trade 33"]
+              article.card [role="option" tabindex="-1" aria-label="Trade 33" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -1309,7 +1309,7 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
         div.dock
           button.game-thumb [id="game-thumb" title="Choose a game"]
@@ -1319,7 +1319,7 @@ html [data-theme="dark" lang="en"]
             div.dock-inputs
               label.grow.inwrap [title="Place ID, game link or private server link (Ctrl+L)"]
                 svg.i #1u22jvi
-                input [id="place" autocomplete="off" placeholder="Search a game, or paste a link / Place ID…" maxlength="500" aria-label="Search a game, or paste a link / Place ID…" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+                input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
               label.inwrap.job [title="Job ID of a specific server, to put several accounts in the same server."]
                 svg.i #ej9lod
                 input [id="job" placeholder="Job ID (optional)" maxlength="60" aria-label="Job ID (optional)" value=""]
@@ -1345,7 +1345,7 @@ html [data-theme="dark" lang="en"]
               svg.i #1y8kmj1
             button.btn.ghost [title="Close Roblox for the selected accounts" aria-label="Close Roblox for the selected accounts" disabled]
               svg.i #16z0s1r
-            button.btn.ghost [title="Presets" aria-label="Presets" aria-haspopup="menu"]
+            button.btn.ghost [title="Presets" aria-haspopup="menu" aria-label="Presets"]
               svg.i #1pvni8o
             button.play-btn [disabled]
               svg.i #1ewcuky
@@ -1354,6 +1354,6 @@ html [data-theme="dark" lang="en"]
 #toasts
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

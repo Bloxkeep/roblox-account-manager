@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -115,7 +115,7 @@ html [data-theme="dark" lang="en"]
               svg.i #19k0rtd
             button [title="List" aria-label="List" aria-pressed="false"]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" aria-haspopup="menu" title=""]
+          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Group: All"
           button.sort-btn [id="sort-btn" aria-haspopup="menu"]
@@ -123,8 +123,8 @@ html [data-theme="dark" lang="en"]
             span "Sort: Name"
         div.scroll [id="scroll"]
           div [id="grid"]
-            div.grid [role="listbox" aria-multiselectable="true" aria-label="Accounts"]
-              article.card [role="option" tabindex="0" aria-selected="false" aria-label="Lan Anh (alt, for trading and buying items)"]
+            div.grid [role="listbox" aria-label="Accounts" aria-multiselectable="true"]
+              article.card [role="option" tabindex="0" aria-label="Lan Anh (alt, for trading and buying items)" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -147,9 +147,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="0"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="0"]
+                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="MegaLongAccountLabelWithoutAnySpaces"]
+              article.card [role="option" tabindex="-1" aria-label="MegaLongAccountLabelWithoutAnySpaces" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -176,9 +176,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #kqqqno
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Night Owl The Night Owl Of The Night Owls"]
+              article.card [role="option" tabindex="-1" aria-label="Night Owl The Night Owl Of The Night Owls" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -204,9 +204,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="pixelfarmer01_with_a_very_long_alias"]
+              article.card.local [role="option" tabindex="-1" aria-label="pixelfarmer01_with_a_very_long_alias" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -239,9 +239,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-selected="false" aria-label="Sunny_The_Builder_Of_Many_Worlds_2010"]
+              article.card.local [role="option" tabindex="-1" aria-label="Sunny_The_Builder_Of_Many_Worlds_2010" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -276,9 +276,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Testing"]
+              article.card [role="option" tabindex="-1" aria-label="Testing" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -304,9 +304,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #16z0s1r
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-selected="false" aria-label="Trade"]
+              article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
                 div.card-top
                   span.check
                     svg.i #14iobj
@@ -332,7 +332,7 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="-1"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" aria-haspopup="menu" tabindex="-1"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
         div.dock
           button.game-thumb [id="game-thumb" title="Choose a game"]
@@ -342,7 +342,7 @@ html [data-theme="dark" lang="en"]
             div.dock-inputs
               label.grow.inwrap [title="Place ID, game link or private server link (Ctrl+L)"]
                 svg.i #1u22jvi
-                input [id="place" autocomplete="off" placeholder="Search a game, or paste a link / Place ID…" maxlength="500" aria-label="Search a game, or paste a link / Place ID…" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+                input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
               label.inwrap.job [title="Job ID of a specific server, to put several accounts in the same server."]
                 svg.i #ej9lod
                 input [id="job" placeholder="Job ID (optional)" maxlength="60" aria-label="Job ID (optional)" value=""]
@@ -361,7 +361,7 @@ html [data-theme="dark" lang="en"]
               svg.i #1y8kmj1
             button.btn.ghost [title="Close Roblox for the selected accounts" aria-label="Close Roblox for the selected accounts" disabled]
               svg.i #16z0s1r
-            button.btn.ghost [title="Presets" aria-label="Presets" aria-haspopup="menu"]
+            button.btn.ghost [title="Presets" aria-haspopup="menu" aria-label="Presets"]
               svg.i #1pvni8o
             button.play-btn [disabled]
               svg.i #1ewcuky
@@ -370,6 +370,6 @@ html [data-theme="dark" lang="en"]
 #toasts
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

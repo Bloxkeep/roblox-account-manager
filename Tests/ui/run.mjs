@@ -65,7 +65,8 @@ for (const sc of list) {
       const settled = await b.eval('__ui.settle()');
       const snap = await b.eval(`__ui.snap(${JSON.stringify({ layout: LAYOUT })})`);
       const calls = await b.eval('__ui.calls');
-      const fresh = calls.slice(callsSeen).map(c => `  ${c.cmd} ${stable(c.args)}`);
+      // Sorted: commands sent together (the page asking for several things as it opens) arrive in any order.
+      const fresh = calls.slice(callsSeen).map(c => `  ${c.cmd} ${stable(c.args)}`).sort();
       callsSeen = calls.length;
       parts.push(`== ${label}${settled ? '' : ' (still changing)'}\n${snap}\n-- commands\n${fresh.join('\n') || '  (none)'}`);
       const name = `${id}${label === 'end' ? '' : '-' + label}.png`;

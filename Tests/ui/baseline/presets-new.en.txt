@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -192,7 +192,7 @@ html [data-theme="dark" lang="en"]
                   svg.i #u1ag9u
 #layer
   div.at-top.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"] "New preset"
         button.icon-btn [title="Close"]
@@ -200,9 +200,9 @@ html [data-theme="dark" lang="en"]
       div.modal-body
         div.form.preset-form
           label "Name"
-            input.field [id="ps-name" maxlength="60" placeholder="e.g. Blox Fruits farm" value="Blox Fruits" FOCUSED]
+            input.field [id="ps-name" placeholder="e.g. Blox Fruits farm" maxlength="60" value="Blox Fruits" FOCUSED]
           label "Game"
-            input.field [id="ps-place" maxlength="500" autocomplete="off" placeholder="Search a game, or paste a link / Place ID…" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded="false" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
           div.ps-game [id="ps-game"]
             span.gph
               svg.i #sy1lqp
@@ -211,7 +211,7 @@ html [data-theme="dark" lang="en"]
             label "Server"
               select.select [id="ps-server" value="any"]
             label "Wait between accounts (s)"
-              input.field [id="ps-delay" type="number" min="0" max="120" placeholder="Default: 8" value=""]
+              input.field [id="ps-delay" type="number" placeholder="Default: 8" min="0" max="120" value=""]
           div.preset-accs "Accounts"
             span.muted [id="ps-count"] "(0)"
             small "Ticked accounts open in this order — drag the handle or use the arrows."
@@ -338,7 +338,7 @@ html [data-theme="dark" lang="en"]
           div.ps-sched
             div.ps-sched-head
               label.switch
-                input [type="checkbox" id="ps-sch-on" aria-label="Schedule" checked=false]
+                input [id="ps-sch-on" type="checkbox" aria-label="Schedule" checked=false]
                 span
               div
                 b "Schedule"
@@ -349,8 +349,8 @@ html [data-theme="dark" lang="en"]
 #toasts
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
-  pageShown {}
   pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -120,7 +120,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Tự động cập nhật"
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-autoupd" aria-label="Tự động cập nhật" checked=true]
+                          input [id="s-autoupd" type="checkbox" aria-label="Tự động cập nhật" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Hướng dẫn & góp ý"
@@ -148,7 +148,7 @@ html [data-theme="dark" lang="vi"]
                           svg.i #19cjsv1
 #layer
   div.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"]
           span.wn-title
@@ -190,6 +190,12 @@ html [data-theme="dark" lang="vi"]
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
+            span "Tự tay đóng cửa sổ Roblox giờ không còn bị tính là văng game: Bloxkeep không vào lại rồi báo “không vào lại được: không có cửa sổ Roblox nào hiện ra” nữa."
+          li
+            svg.i #yqrnd9
+            span "Roblox giờ để lại một bản chạy ngầm ở khay hệ thống mỗi khi đóng cửa sổ, và bản đó nuốt lần mở tiếp theo nên không có cửa sổ nào hiện ra. Bloxkeep tắt nó trước khi mở Roblox, và Close all không còn tắt nhầm Roblox mà chương trình khác (như Bloxstrap) vừa mở."
+          li
+            svg.i #yqrnd9
             span "Bản tóm tắt giờ chơi gửi lên Discord đã gửi được trở lại (trước đó lần nào cũng lỗi)."
           li
             svg.i #yqrnd9
@@ -206,10 +212,10 @@ html [data-theme="dark" lang="vi"]
         button.btn.primary "Đã hiểu"
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   whatsNew {}

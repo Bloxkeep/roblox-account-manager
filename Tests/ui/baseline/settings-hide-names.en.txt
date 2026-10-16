@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
@@ -116,241 +116,241 @@ html [data-theme="dark" lang="en"]
                       div.tg
                         span.tg-label "Basic"
                         div.tg-list
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sync with Windows"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sync with Windows"]
                             span [data-theme="light"]
                             span [data-theme="dark"]
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Light"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Light"]
                             span [data-theme="light"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Paper"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Paper"]
                             span [data-theme="paper"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Grey"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Grey"]
                             span [data-theme="gray"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Dim"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Dim"]
                             span [data-theme="dim"]
                               em
-                          button.on.swatch [role="radio" aria-checked="true" tabindex="0" aria-label="Dark"]
+                          button.on.swatch [role="radio" tabindex="0" aria-checked="true" aria-label="Dark"]
                             span [data-theme="dark"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Midnight"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Midnight"]
                             span [data-theme="midnight"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Black"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Black"]
                             span [data-theme="black"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="High contrast"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="High contrast"]
                             span [data-theme="contrast"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="High contrast light"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="High contrast light"]
                             span [data-theme="contrastlight"]
                               em
                       div.tg
                         span.tg-label "Scenery"
                         div.tg-list
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Aurora"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Aurora"]
                             span [data-theme="aurora"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sunset"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sunset"]
                             span [data-theme="sunset"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Night city"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Night city"]
                             span [data-theme="city"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Deep space"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Deep space"]
                             span [data-theme="space"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="The Moon"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="The Moon"]
                             span [data-theme="moon"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Misty forest"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Misty forest"]
                             span [data-theme="mist"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Snowy peaks"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Snowy peaks"]
                             span [data-theme="snow"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Desert"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Desert"]
                             span [data-theme="desert"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Meadow"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Meadow"]
                             span [data-theme="meadow"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Ha Long Bay"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Ha Long Bay"]
                             span [data-theme="halong"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Rice terraces"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Rice terraces"]
                             span [data-theme="terraces"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Hoi An"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Hoi An"]
                             span [data-theme="hoian"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Mount Fuji"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mount Fuji"]
                             span [data-theme="fuji"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Jungle"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Jungle"]
                             span [data-theme="jungle"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Under the sea"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Under the sea"]
                             span [data-theme="underwater"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sky islands"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sky islands"]
                             span [data-theme="skyislands"]
                               em
                       div.tg
                         span.tg-label "Colourful"
                         div.tg-list
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Frost"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Frost"]
                             span [data-theme="frost"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Deep sea"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Deep sea"]
                             span [data-theme="ocean"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Teal"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Teal"]
                             span [data-theme="teal"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Pine forest"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Pine forest"]
                             span [data-theme="forest"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Mocha"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mocha"]
                             span [data-theme="mocha"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Amber"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Amber"]
                             span [data-theme="amber"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Grape"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Grape"]
                             span [data-theme="grape"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Indigo"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Indigo"]
                             span [data-theme="indigo"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Crimson"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Crimson"]
                             span [data-theme="crimson"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Lava"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Lava"]
                             span [data-theme="lava"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Neon"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Neon"]
                             span [data-theme="neon"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Candy"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Candy"]
                             span [data-theme="candy"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Matcha"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Matcha"]
                             span [data-theme="matcha"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Mint"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mint"]
                             span [data-theme="mint"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sky"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sky"]
                             span [data-theme="sky"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Lavender"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Lavender"]
                             span [data-theme="lavender"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Peach"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Peach"]
                             span [data-theme="peach"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sakura"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sakura"]
                             span [data-theme="sakura"]
                               em
                       div.tg
                         span.tg-label "Styles"
                         div.tg-list
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="macOS"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="macOS"]
                             span [data-theme="macos"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="macOS dark"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="macOS dark"]
                             span [data-theme="macosdark"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="GNOME"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="GNOME"]
                             span [data-theme="gnome"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Ubuntu"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Ubuntu"]
                             span [data-theme="ubuntu"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="KDE Plasma"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="KDE Plasma"]
                             span [data-theme="kde"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Retro"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Retro"]
                             span [data-theme="retro"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Classic Mac"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Classic Mac"]
                             span [data-theme="macclassic"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Terminal"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Terminal"]
                             span [data-theme="terminal"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Pocket console"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Pocket console"]
                             span [data-theme="gameboy"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Arcade"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Arcade"]
                             span [data-theme="arcade"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Blueprint"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Blueprint"]
                             span [data-theme="blueprint"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Newspaper"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Newspaper"]
                             span [data-theme="newspaper"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Notebook"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Notebook"]
                             span [data-theme="notebook"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Chalkboard"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Chalkboard"]
                             span [data-theme="chalkboard"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Neo-brutalism"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Neo-brutalism"]
                             span [data-theme="brutal"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Cyberpunk"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Cyberpunk"]
                             span [data-theme="cyberpunk"]
                               em
                       div.tg
                         span.tg-label "Seasonal"
                         div.tg-list
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Lunar New Year"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Lunar New Year"]
                             span [data-theme="lunar"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Valentine’s Day"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Valentine’s Day"]
                             span [data-theme="valentine"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Spring"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Spring"]
                             span [data-theme="spring"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Flame tree"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Flame tree"]
                             span [data-theme="flametree"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Summer"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Summer"]
                             span [data-theme="summer"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Kite season"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Kite season"]
                             span [data-theme="kites"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Rainy season"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Rainy season"]
                             span [data-theme="rainy"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Back to school"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Back to school"]
                             span [data-theme="school"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Mid-Autumn"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mid-Autumn"]
                             span [data-theme="midautumn"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Autumn"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Autumn"]
                             span [data-theme="autumn"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sky lanterns"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sky lanterns"]
                             span [data-theme="skylanterns"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Halloween"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Halloween"]
                             span [data-theme="halloween"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Winter"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Winter"]
                             span [data-theme="winter"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Christmas"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Christmas"]
                             span [data-theme="christmas"]
                               em
-                          button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="New Year’s Eve"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="New Year’s Eve"]
                             span [data-theme="newyear"]
                               em
                     div.set-row
@@ -358,23 +358,23 @@ html [data-theme="dark" lang="en"]
                         div.t "Language"
                       div.ctl
                         div.lang [role="group" aria-label="Language"]
-                          button.on [aria-pressed="true" title="English"] "EN"
-                          button [aria-pressed="false" title="Tiếng Việt"] "VI"
+                          button.on [title="English" aria-pressed="true"] "EN"
+                          button [title="Tiếng Việt" aria-pressed="false"] "VI"
                     div.set-row
                       div
                         div.t "Hide account names"
                         div.d "Shows “Account 1”, “Account 2”… instead, for screenshots and streams."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-hidenames" aria-label="Hide account names" checked=true FOCUSED]
+                          input [id="s-hidenames" type="checkbox" aria-label="Hide account names" checked=true FOCUSED]
                           span
 #layer
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setHideNames {"enabled":true}

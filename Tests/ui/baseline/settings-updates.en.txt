@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
@@ -120,7 +120,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Update automatically"
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-autoupd" aria-label="Update automatically" checked=true]
+                          input [id="s-autoupd" type="checkbox" aria-label="Update automatically" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Help & feedback"
@@ -149,9 +149,9 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

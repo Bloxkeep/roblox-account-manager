@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="en"]
           nav.set-nav [aria-label="Settings"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
@@ -112,7 +112,7 @@ html [data-theme="dark" lang="en"]
                         div.d "While Bloxkeep is in the background: dropped accounts, scheduled presets, sign-ins to renew, low RAM, launch problems. Pick which below."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-notify" aria-label="Windows notifications" checked=true]
+                          input [id="s-notify" type="checkbox" aria-label="Windows notifications" checked=true]
                           span
                 div.set-grp [id="sec-notify-kinds"]
                   h3.set-grp-title "Which events"
@@ -123,35 +123,35 @@ html [data-theme="dark" lang="en"]
                           div.t "Account dropped or auto-rejoin"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-drop" aria-label="Account dropped or auto-rejoin" checked=true]
+                            input [id="s-notify-drop" type="checkbox" aria-label="Account dropped or auto-rejoin" checked=true]
                             span
                       div.set-row
                         div
                           div.t "Scheduled presets"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-schedule" aria-label="Scheduled presets" checked=true]
+                            input [id="s-notify-schedule" type="checkbox" aria-label="Scheduled presets" checked=true]
                             span
                       div.set-row
                         div
                           div.t "Sign-in needs renewing"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-signin" aria-label="Sign-in needs renewing" checked=true]
+                            input [id="s-notify-signin" type="checkbox" aria-label="Sign-in needs renewing" checked=true]
                             span
                       div.set-row
                         div
                           div.t "Low RAM"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-ram" aria-label="Low RAM" checked=false]
+                            input [id="s-notify-ram" type="checkbox" aria-label="Low RAM" checked=false]
                             span
                       div.set-row
                         div
                           div.t "Launch problems"
                         div.ctl
                           label.switch
-                            input [type="checkbox" id="s-notify-launch" aria-label="Launch problems" checked=true]
+                            input [id="s-notify-launch" type="checkbox" aria-label="Launch problems" checked=true]
                             span
                 div.set-grp [id="sec-asks"]
                   h3.set-grp-title "Questions"
@@ -166,9 +166,9 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

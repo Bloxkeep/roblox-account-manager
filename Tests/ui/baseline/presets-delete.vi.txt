@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -192,7 +192,7 @@ html [data-theme="dark" lang="vi"]
                   svg.i #u1ag9u
 #layer
   div.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"] "Xóa preset"
         button.icon-btn [title="Đóng"]
@@ -200,7 +200,7 @@ html [data-theme="dark" lang="vi"]
       div.modal-body
         p.modal-text.pre "Xóa “Adopt Me trade”?"
         label.dont-ask
-          input [type="checkbox" id="dont-ask" checked=false]
+          input [id="dont-ask" type="checkbox" checked=false]
           span "Không hỏi lại"
       div.modal-foot
         button.btn [FOCUSED] "Hủy"
@@ -208,9 +208,9 @@ html [data-theme="dark" lang="vi"]
 #toasts
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
 == end
 html [data-theme="dark" lang="vi"]
 #app
@@ -268,7 +268,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]

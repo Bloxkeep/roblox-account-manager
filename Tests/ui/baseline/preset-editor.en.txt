@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -192,7 +192,7 @@ html [data-theme="dark" lang="en"]
                   svg.i #u1ag9u
 #layer
   div.at-top.overlay
-    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
         h3 [id="mdl-1"] "Edit preset"
         button.icon-btn [title="Close"]
@@ -200,9 +200,9 @@ html [data-theme="dark" lang="en"]
       div.modal-body
         div.form.preset-form
           label "Name"
-            input.field [id="ps-name" maxlength="60" placeholder="e.g. Blox Fruits farm" value="Farm Blox Fruits" FOCUSED]
+            input.field [id="ps-name" placeholder="e.g. Blox Fruits farm" maxlength="60" value="Farm Blox Fruits" FOCUSED]
           label "Game"
-            input.field [id="ps-place" maxlength="500" autocomplete="off" placeholder="Search a game, or paste a link / Place ID…" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded="false" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
           div.ps-game [id="ps-game"]
             span.gph
               svg.i #sy1lqp
@@ -211,7 +211,7 @@ html [data-theme="dark" lang="en"]
             label "Server"
               select.select [id="ps-server" value="ping"]
             label "Wait between accounts (s)"
-              input.field [id="ps-delay" type="number" min="0" max="120" placeholder="Default: 8" value="12"]
+              input.field [id="ps-delay" type="number" placeholder="Default: 8" min="0" max="120" value="12"]
           div.preset-accs "Accounts"
             span.muted [id="ps-count"] "(3)"
             small "Ticked accounts open in this order — drag the handle or use the arrows."
@@ -339,13 +339,13 @@ html [data-theme="dark" lang="en"]
             label.ps-dc-mode "Send this preset’s messages to"
               select.select [id="ps-dc-mode" value="own"]
             div.ps-dc-own [id="ps-dc-own"]
-              input.field [id="ps-dc-link" type="text" maxlength="300" autocomplete="off" placeholder="discord.com/api/webhooks/…5678/••••••" aria-label="Webhook link for this preset" value=""]
-              button.btn [type="button" id="ps-dc-test"] "Send test"
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Webhook link for this preset" value=""]
+              button.btn [id="ps-dc-test" type="button"] "Send test"
             p.ps-opts-note "A link is saved (hidden here). Paste another one to replace it. That is its schedule messages, its summary after a scheduled stop, and the alerts about the windows it opened. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
           div.ps-sched
             div.ps-sched-head
               label.switch
-                input [type="checkbox" id="ps-sch-on" aria-label="Schedule" checked=true]
+                input [id="ps-sch-on" type="checkbox" aria-label="Schedule" checked=true]
                 span
               div
                 b "Schedule"
@@ -379,8 +379,8 @@ html [data-theme="dark" lang="en"]
 #toasts
 -- commands
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
-  pageShown {}
   pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

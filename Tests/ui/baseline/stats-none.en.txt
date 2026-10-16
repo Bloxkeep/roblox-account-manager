@@ -55,7 +55,7 @@ html [data-theme="dark" lang="en"]
                 b "Multi-Roblox"
                 small "On — several windows allowed"
             label.switch [title="Turn off Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -71,8 +71,8 @@ html [data-theme="dark" lang="en"]
             p [id="stats-sub"] "Only games opened with Bloxkeep are counted."
           div.top-tools
             div.seg [id="stats-tabs" role="tablist" aria-label="Statistics"]
-              button.on [type="button" role="tab" aria-selected="true"] "Statistics"
-              button [type="button" role="tab" aria-selected="false"] "Activity"
+              button.on [role="tab" type="button" aria-selected="true"] "Statistics"
+              button [role="tab" type="button" aria-selected="false"] "Activity"
             div.chips [id="stats-period" role="group" aria-label="Statistics"]
               button.chip [aria-pressed="false"] "Today"
               button.chip.on [aria-pressed="true"] "7 days"
@@ -88,9 +88,9 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
+  activity {"account":null,"group":null,"limit":100}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
   playStats {"days":7}
-  activity {"account":null,"group":null,"limit":100}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

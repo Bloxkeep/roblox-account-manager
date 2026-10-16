@@ -55,7 +55,7 @@ html [data-theme="dark" lang="vi"]
                 b "Multi-Roblox"
                 small "Đang bật, mở được nhiều cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
-              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
@@ -72,7 +72,7 @@ html [data-theme="dark" lang="vi"]
           nav.set-nav [aria-label="Cài đặt"]
             label.search.set-search
               svg.i #1u22jvi
-              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
@@ -119,7 +119,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Treo máy không lo bị kick, kể cả khi bạn đi vắng hay đang dùng cửa sổ khác. Không hoạt động khi máy đang khóa."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-antiafk" aria-label="Chống AFK" checked=false]
+                          input [id="s-antiafk" type="checkbox" aria-label="Chống AFK" checked=false]
                           span
                     div.set-row
                       div
@@ -128,7 +128,7 @@ html [data-theme="dark" lang="vi"]
                           span [id="s-daily-when"] "Lần kiểm tra gần nhất: 7:00."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-daily" aria-label="Kiểm tra đăng nhập mỗi ngày" checked=true]
+                          input [id="s-daily" type="checkbox" aria-label="Kiểm tra đăng nhập mỗi ngày" checked=true]
                           span
                 div.set-grp [id="sec-memory"]
                   h3.set-grp-title "Bộ nhớ (RAM)"
@@ -138,7 +138,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Báo khi sắp hết RAM"
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-memwarn" aria-label="Báo khi sắp hết RAM" checked=true]
+                          input [id="s-memwarn" type="checkbox" aria-label="Báo khi sắp hết RAM" checked=true]
                           span
                     div.set-row
                       div
@@ -146,7 +146,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Khi máy sắp hết RAM, cửa sổ chạy nền nhường RAM cho cửa sổ bạn đang chơi."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-trim" aria-label="Tiết kiệm RAM cho cửa sổ chạy nền" checked=false]
+                          input [id="s-trim" type="checkbox" aria-label="Tiết kiệm RAM cho cửa sổ chạy nền" checked=false]
                           span
                 div.set-grp [id="sec-app"]
                   h3.set-grp-title "Ứng dụng"
@@ -157,7 +157,7 @@ html [data-theme="dark" lang="vi"]
                         div.d "Tự vào lại game và Multi-Roblox vẫn hoạt động. Muốn thoát hẳn, bấm chuột phải vào biểu tượng ở khay hệ thống."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-tray" aria-label="Chạy ẩn dưới khay hệ thống khi đóng" checked=true]
+                          input [id="s-tray" type="checkbox" aria-label="Chạy ẩn dưới khay hệ thống khi đóng" checked=true]
                           span
                     div.set-row
                       div
@@ -165,14 +165,14 @@ html [data-theme="dark" lang="vi"]
                         div.d "Tự tắt nếu driver card đồ họa bị lỗi."
                       div.ctl
                         label.switch
-                          input [type="checkbox" id="s-gpu" aria-label="Tăng tốc phần cứng" checked=true]
+                          input [id="s-gpu" type="checkbox" aria-label="Tăng tốc phần cứng" checked=true]
                           span
 #layer
 #toasts
 -- commands
+  backupSuggestions {}
+  backupSuggestions {}
   getState {}
-  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   monitorArea {"hidden":true}
   pageShown {}
-  backupSuggestions {}
-  backupSuggestions {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

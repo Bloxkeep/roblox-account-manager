@@ -104,6 +104,7 @@
       scan(rules);
     }
     const inline = el => [...el.style].sort().map(p => `${p}:${el.style.getPropertyValue(p)}`).join(';');
+    const rank = name => (KEEP.includes(name) ? KEEP.indexOf(name) : name.startsWith('aria-') ? 100 : 200);
     const html = document.documentElement;
     out.push(`html [${[...html.attributes].filter(a => a.name !== 'style').map(a => `${a.name}=${JSON.stringify(a.value)}`).sort().join(' ')}]${inline(html) ? ` style=${JSON.stringify(inline(html))}` : ''}`);
     const walk = (el, depth) => {
@@ -113,9 +114,10 @@
       const pad = '  '.repeat(depth);
       const cls = [...el.classList].sort().join('.');
       if (tag === 'svg') { out.push(`${pad}svg${cls ? '.' + cls : ''} #${hash(el.innerHTML)}`); return; }
-      const attrs = [];
-      for (const a of el.attributes)
-        if (KEEP.includes(a.name) || a.name.startsWith('aria-') || styled.has(a.name)) attrs.push(`${a.name}=${JSON.stringify(a.value)}`);
+      // In one fixed order, not the order they were set in (React sets them in its own order; it doesn't change the page).
+      const attrs = [...el.attributes].filter(a => KEEP.includes(a.name) || a.name.startsWith('aria-') || styled.has(a.name))
+        .sort((x, y) => rank(x.name) - rank(y.name) || (x.name < y.name ? -1 : x.name > y.name ? 1 : 0))
+        .map(a => `${a.name}=${JSON.stringify(a.value)}`);
       const st = inline(el);
       if (st) attrs.push(`style=${JSON.stringify(st)}`);
       if (tag === 'img') attrs.push(`src=${el.getAttribute('src')?.startsWith('data:') ? '#' + hash(el.getAttribute('src')) : JSON.stringify(el.getAttribute('src'))}`);
