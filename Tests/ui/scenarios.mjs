@@ -739,6 +739,23 @@ export default [
     await s.key('Enter');
     await s.wait(600);
   }),
+  // ── Locking by itself after a while without use (the lock screen, Bloxkeep open behind it) ──
+  S('settings-autolock', 'settings=security', async s => {
+    await s.choose({ css: '#s-autolock' }, '15');
+    await s.snap('15 minutes');
+    await s.choose({ css: '#s-autolock' }, '0');
+  }),
+  S('autolock-screen', 'autolock=15'),
+  S('autolock-hour', 'autolock=60', null, { langs: ['en'] }),
+  S('autolock-language', 'autolock=15', async s => { await s.click({ css: '[data-act=lang][data-lang=vi]' }); }, { langs: ['en'] }),
+  S('autolock-wrong', 'autolock=15', async s => { await s.type('wrong-try', key('lock.pw')); await s.key('Enter'); await s.wait(800); }),
+  S('autolock-while-editing', 'edit=1&autolockin=1500', async s => {
+    await s.wait(2000);
+    await s.snap('locked');
+    await s.type('demo', key('lock.pw'));
+    await s.key('Enter');
+    await s.wait(2600);
+  }),
   S('settings-password-checks', 'settings=security', async s => {
     await s.key('Enter', []);
     await s.snap('nothing typed');

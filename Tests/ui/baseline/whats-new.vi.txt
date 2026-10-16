@@ -166,6 +166,9 @@ html [data-theme="dark" lang="vi"]
             span "Cho Bloxkeep một sao trên GitHub từ Cài đặt › Cập nhật Bloxkeep, Ctrl+K hoặc cuối bảng Có gì mới. Mỗi sao giúp thêm người chơi tìm thấy Bloxkeep."
           li
             svg.i #u7ty99
+            span "Tự khóa (Cài đặt › Bảo mật): khi không ai dùng máy trong khoảng thời gian bạn chọn, Bloxkeep hỏi lại mật khẩu chủ, còn Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy."
+          li
+            svg.i #u7ty99
             span "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
         h4.improved.wn-kind.wn-sub "Cải thiện"
           svg.i #1l5qw3q

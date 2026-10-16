@@ -1,12 +1,21 @@
-// Settings › Security: changing the master password. The boxes keep what is typed themselves (not React's state):
+// Settings › Security: changing the master password, and locking by itself after a while without use (the lock screen
+// comes up with Bloxkeep open behind it: Roblox and the background keep going). The password boxes keep what is typed
+// themselves (not React's state):
 // app.js empties them when Settings is left (the "clearPassword" signal) and, rebuilding the page in another language,
 // puts back what was typed and says so with an input event.
 import { useEffect, useRef, useState } from 'react';
-import { useHost } from '../host';
-import { Group, Page } from './parts';
+import { useAppState, useHost } from '../host';
+import { Group, Page, Row, useLocal } from './parts';
+
+/** Lock automatically's choices, in minutes (the app takes only these); 0 never. */
+const AUTO_LOCK = [0, 5, 10, 15, 30, 60, 120];
 
 export function SecurityPage({ title }: { title: string }) {
-  const { t, ask, busy, toast, strength, on } = useHost();
+  const { t, call, ask, busy, toast, strength, on } = useHost();
+  const app = useAppState();
+  const [autoLock, setAutoLock] = useLocal(String(app.settings?.autoLockMinutes ?? 0));
+  const autoLockWords = (n: number) => !n ? t('set.autoLock.never') : n < 60 ? t('set.autoLock.min', { n })
+    : n === 60 ? t('set.autoLock.hour1') : t('set.autoLock.hours', { n: n / 60 });
   // Problems show under the form, next to the boxes they are about; while the new one is typed, its strength.
   const [msg, setMsg] = useState({ text: '', kind: 'err' });
   const pwMsg = (text = '', kind = 'err') => setMsg({ text, kind });
@@ -59,6 +68,16 @@ export function SecurityPage({ title }: { title: string }) {
         <button className="btn primary" type="submit" id="pw-btn" ref={btn}>{t('set.pwBtn')}</button>
         <p className={`pw-msg ${msg.text ? msg.kind : ''}`} id="pw-msg" role="alert">{msg.text}</p>
       </form>
+    </Group>
+    <Group id="autolock" title={t('set.g.autoLock')}>
+      <Row title={t('set.autoLock')} desc={t('set.autoLockDesc')}>
+        <select className="select" id="s-autolock" aria-label={t('set.autoLock')} value={autoLock} onChange={e => {
+          setAutoLock(e.target.value);
+          call('setSettings', { autoLockMinutes: +e.target.value });
+        }}>
+          {AUTO_LOCK.map(n => <option key={n} value={n}>{autoLockWords(n)}</option>)}
+        </select>
+      </Row>
     </Group>
   </Page>;
 }

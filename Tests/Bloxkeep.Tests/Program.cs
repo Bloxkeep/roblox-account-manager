@@ -19,6 +19,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("discord", false, DiscordSuite.Run),
     ("website", false, WebsiteSuite.Run),
     ("tray", false, TraySuite.Run),
+    ("autolock", false, AutoLockSuite.Run),
     ("stats-icons", true, StatsIconSuite.Run),
     ("watch-online", true, WatchSuite.RunOnline),
 };

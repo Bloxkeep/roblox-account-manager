@@ -236,7 +236,8 @@
   /** @param action optional { label, run } shown as a button; the toast then stays a little longer. */
   function toast(text, kind = 'info', action = null) {
     const box = $('#toasts');
-    if (!box || !text) return;
+    // Not over the lock screen that came up by itself: an answer still on its way could name an account.
+    if (!box || !text || S.app?.screenLock) return;
     // Long messages stay long enough to be read (about 60 ms a character).
     const life = Math.min(Math.max(kind === 'error' ? 6500 : action ? 9000 : 3800, text.length * 60), 15000);
     // The same message again while it still shows (a double click, a repeated event): the one toast stays longer
@@ -548,6 +549,8 @@
   }
 
   /* ───────────────────────── lock screen ───────────────────────── */
+  /** "15 minutes", "1 hour", "2 hours": how long the PC went unused before Bloxkeep locked itself. */
+  const autoLockText = n => n >= 60 ? (n === 60 ? t('lock.autoHour1') : t('lock.autoHours', { n: n / 60 })) : t('lock.autoMin', { n });
   function renderLock() {
     const mode = S.app.vaultExists ? 'unlock' : 'create';
     if (S.lockMode === mode) return; // keep what the user is typing
@@ -570,7 +573,8 @@
         <img class="logo-img" src="${LOGO}" alt="">
         <h2>${t(create ? 'lock.createTitle' : 'lock.unlockTitle')}</h2>
         <p>${t(create ? 'lock.createText' : 'lock.unlockText')}</p>
-        ${!create && S.lockedInUse ? `<p class="lock-paused">${t('lock.paused')}</p>` : ''}
+        ${!create && S.app.screenLock ? `<p class="lock-paused">${t('lock.auto', { t: autoLockText(S.app.screenLock.minutes) })}</p>`
+          : !create && S.lockedInUse ? `<p class="lock-paused">${t('lock.paused')}</p>` : ''}
         <div class="stack">
           <div class="pw"><input class="field" type="password" id="pw1" placeholder="${t('lock.pw')}" maxlength="256" aria-label="${t('lock.pw')}">
             <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}" aria-label="${t('lock.showPw')}" aria-pressed="false">${icon('eye')}</button></div>

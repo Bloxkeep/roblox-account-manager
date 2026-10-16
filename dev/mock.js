@@ -93,7 +93,10 @@
     accounts[4].username = 'lananh_2010_lananh_2010_lananh'; accounts[4].label = accounts[4].alias = tx('Lan Anh (alt, for trading and buying items)', 'Lan Anh (tài khoản phụ, dùng để trade và mua đồ)');
     accounts[6].group = tx('AVeryLongTestingGroupNameWithNoBreaksAtAll', 'Nhóm thử nghiệm với tên rất dài không ngắt'); accounts[6].username = 'noavatar_user_noavatar_user';
   }
-  let locked = params.has('locked') || params.has('new');
+  // ?autolock=15: Bloxkeep behind its lock screen after a while without use (the vault open behind it);
+  // ?autolockin=1500: the same, coming up 1.5 s after the page opens (as if the PC went unused meanwhile).
+  let screenLock = params.has('autolock') ? { minutes: +params.get('autolock') || 15 } : null;
+  let locked = params.has('locked') || params.has('new') || !!screenLock;
   let language = params.get('lang') || 'en';
   let theme = params.get('theme') || 'dark';
   let closeToTray = true;
@@ -134,7 +137,7 @@
   };
   const themeApplied = () => theme !== 'system' ? theme : matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   let settings = {
-    lastPlaceInput: 'https://www.roblox.com/games/2753915549/Blox-Fruits', lastJobId: '', renameWindows: true, launchVia: 'auto', launchDelaySeconds: 8,
+    lastPlaceInput: 'https://www.roblox.com/games/2753915549/Blox-Fruits', lastJobId: '', renameWindows: true, launchVia: 'auto', launchDelaySeconds: 8, autoLockMinutes: 0,
     memoryWarnings: true, trimBackground: false, antiAfk: false, robloxConfig: { mode: params.has('rc') ? 'marked' : 'off', graphics: 1, fps: 30, volume: 0 },
     recentGames: [2753915549, 920587237, 4924922222].map(p => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl })),
     // Launch presets; ?nopresets=1 starts without any. A deleted account (…09) is skipped when it runs.
@@ -222,7 +225,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked,
+    language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store' },
     // Settings › Roblox updates, newest first: a new build under the same version, an update, the first build seen.
@@ -290,11 +293,12 @@
           // "sai" or anything starting "wrong" is the wrong master password (the app's own words for it).
           if (a.password === 'sai' || a.password.startsWith('wrong')) throw new Error(language === 'vi' ? 'Sai mật khẩu chủ.' : 'Wrong master password.');
           locked = false;
+          screenLock = null;
           unlockedAt = Date.now();
           setTimeout(push, 1450);
           setTimeout(push, 2250);
           return state();
-        case 'lock': locked = true; push(); return null;
+        case 'lock': locked = true; screenLock = null; push(); return null;
         case 'setLanguage': language = a.language; push(); return null;
         case 'setTheme': theme = a.theme; push(); return null;
         case 'setCloseToTray': closeToTray = a.enabled; push(); return null;
@@ -749,6 +753,7 @@
       if (stepTo === 'wrong') setTimeout(() => { type('nope'); press(); }, 900);
       if (stepTo === 'preview') setTimeout(() => { type('demo'); press(); }, 900);
     }
+    if (params.has('autolockin')) setTimeout(() => { screenLock = { minutes: settings.autoLockMinutes || 15 }; locked = true; push(); }, +params.get('autolockin') || 1500);
     if (params.has('stats')) click('[data-view=stats]');
     if (params.has('monitor')) click('[data-view=monitor]');
     if (params.has('select') || params.has('menu')) { click('.card[data-id$="2"]'); click('.card[data-id$="4"]'); }

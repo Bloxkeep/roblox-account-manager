@@ -20,6 +20,7 @@ Lần đầu mở, Bloxkeep yêu cầu **Đặt mật khẩu chủ**. Mọi th�
 - Ít nhất 6 ký tự và không được chỉ toàn dấu cách. Thanh **Yếu / Tạm được / Mạnh** chỉ để tham khảo.
 - Mỗi lần khởi động, Bloxkeep hiện **Chào mừng trở lại**: nhập mật khẩu chủ rồi bấm **Mở khóa**. Nếu đang bật Caps Lock, app sẽ nhắc.
 - Muốn đổi mật khẩu: **Cài đặt › Bảo mật**. Các bản sao lưu làm trước khi đổi vẫn chỉ mở được bằng mật khẩu cũ.
+- **Tự khóa** (**Cài đặt › Bảo mật**): khi không ai dùng bàn phím hay chuột của máy trong khoảng thời gian bạn chọn (từ 5 phút tới 2 giờ), Bloxkeep hiện lại màn hình này. Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy phía sau. Còn nút **Khóa** thì khóa hẳn Bloxkeep: các việc đó tạm dừng cho tới khi bạn mở khóa.
 
 > [!WARNING]
 > Mật khẩu chủ không lấy lại được. Bloxkeep không lưu nó ở đâu cả, nên quên là mất hết tài khoản đã lưu. Cách duy nhất để lấy lại là một bản sao lưu mà bạn còn nhớ mật khẩu.

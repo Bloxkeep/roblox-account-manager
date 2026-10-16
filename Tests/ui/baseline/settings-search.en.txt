@@ -165,6 +165,24 @@ html [data-theme="dark" lang="en"]
                               input [id="s-dc-ev-drop" type="checkbox" aria-label="Account dropped or auto-rejoin" checked=true]
                               span
                     p.set-hint "To ping a person or a role you need its ID: in Discord, turn on Settings › Advanced › Developer Mode, then right-click the person or role › Copy ID."
+              section.set-page [id="set-page-security" aria-labelledby="set-page-security-h"]
+                h2.set-page-title [id="set-page-security-h"] "Security"
+                div.set-grp [id="sec-autolock"]
+                  h3.set-grp-title "When you’re away"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Lock automatically"
+                        div.d "When nobody has used the PC’s keyboard or mouse for this long, Bloxkeep asks for the master password again. Roblox, auto-rejoin, scheduled presets and Discord keep running meanwhile."
+                      div.ctl
+                        select.select [id="s-autolock" aria-label="Lock automatically" value="0"]
+                          option [value="0"] "Never"
+                          option [value="5"] "After 5 minutes"
+                          option [value="10"] "After 10 minutes"
+                          option [value="15"] "After 15 minutes"
+                          option [value="30"] "After 30 minutes"
+                          option [value="60"] "After 1 hour"
+                          option [value="120"] "After 2 hours"
 #layer
 #toasts
 -- commands

@@ -112,6 +112,22 @@ html [data-theme="dark" lang="en"]
                       input.field [id="pw-new" type="password" placeholder="New password (6+ characters)" autocomplete="new-password" maxlength="256" aria-label="New password (6+ characters)" value=""]
                       input.field [id="pw-new2" type="password" placeholder="Confirm new password" autocomplete="new-password" maxlength="256" aria-label="Confirm new password" value=""]
                       button.btn.primary [id="pw-btn" type="submit"] "Change password"
+                div.set-grp [id="sec-autolock"]
+                  h3.set-grp-title "When you’re away"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Lock automatically"
+                        div.d "When nobody has used the PC’s keyboard or mouse for this long, Bloxkeep asks for the master password again. Roblox, auto-rejoin, scheduled presets and Discord keep running meanwhile."
+                      div.ctl
+                        select.select [id="s-autolock" aria-label="Lock automatically" value="0"]
+                          option [value="0"] "Never"
+                          option [value="5"] "After 5 minutes"
+                          option [value="10"] "After 10 minutes"
+                          option [value="15"] "After 15 minutes"
+                          option [value="30"] "After 30 minutes"
+                          option [value="60"] "After 1 hour"
+                          option [value="120"] "After 2 hours"
 #layer
 #toasts
 -- commands

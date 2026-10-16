@@ -20,6 +20,7 @@ The first time Bloxkeep opens, it asks you to **Set a master password**. It encr
 - At least 6 characters, and not only spaces. The **Weak / OK / Strong** bar is only a guide.
 - Each start shows **Welcome back**: type the master password and press **Unlock**. A warning shows while Caps Lock is on.
 - To change it: **Settings › Security**. Backups made before the change still open only with the old password.
+- **Lock automatically** (**Settings › Security**): when nobody has used the PC's keyboard or mouse for the time you pick (5 minutes to 2 hours), Bloxkeep shows this screen again. Roblox, auto-rejoin, scheduled presets and Discord keep running behind it. The **Lock** button still closes Bloxkeep completely: those pause until you unlock.
 
 > [!WARNING]
 > The master password can't be recovered. Bloxkeep never stores it, so if you forget it, your saved accounts are gone. The only way back is a backup whose password you remember.

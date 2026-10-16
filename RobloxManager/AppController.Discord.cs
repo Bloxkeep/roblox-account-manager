@@ -61,9 +61,9 @@ public sealed partial class AppController
 
     object? DiscordDto()
     {
-        if (_vault is null)
+        if (Open is not { } vault)
             return null;
-        var d = _vault.Data.Discord;
+        var d = vault.Data.Discord;
         return new
         {
             d.Enabled,

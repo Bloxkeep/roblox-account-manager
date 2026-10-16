@@ -65,6 +65,11 @@ public sealed class AppSettings
     public string Layout { get; set; } = "";
     public string Sort { get; set; } = "";
     public int LaunchDelaySeconds { get; set; } = 8;
+    /// <summary>
+    /// Minutes without a person's keyboard or mouse input (anywhere on the PC) before Bloxkeep shows its lock screen
+    /// again; 0 never. Roblox windows and what runs in the background carry on (see AppController.ScreenLock).
+    /// </summary>
+    public int AutoLockMinutes { get; set; }
     public bool MemoryWarnings { get; set; } = true;
     public bool TrimBackground { get; set; }
     /// <summary>Off until the user opts in: it briefly brings Roblox windows to the front while the PC is idle.</summary>

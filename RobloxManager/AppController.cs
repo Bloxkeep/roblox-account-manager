@@ -202,7 +202,12 @@ public sealed partial class AppController : IDisposable
             _post(json);
     }
 
-    void Emit(string name, object? data) => Post(JsonSerializer.Serialize(new { type = "event", name, data }, Json));
+    /// <summary>An event for the page; none while the screen is locked (a toast could name an account on the lock screen).</summary>
+    void Emit(string name, object? data)
+    {
+        if (!_screenLocked || name == "saveView")
+            Post(JsonSerializer.Serialize(new { type = "event", name, data }, Json));
+    }
     void Toast(string text, string kind = "info") => Emit("toast", new { text, kind });
     void Progress(string? text) => Emit("progress", new { text });
 
@@ -277,7 +282,28 @@ public sealed partial class AppController : IDisposable
         };
     }
 
-    Task<object?> DispatchAsync(string cmd, JsonElement a) => cmd switch
+    /// <summary>
+    /// The lock screen's own commands, the only ones that go through while the screen is locked (see ScreenLock): the
+    /// rest would show or change what is behind it.
+    /// </summary>
+    static readonly HashSet<string> ScreenLockCommands = ["getState", "keepView", "pageBusy", "pageShown", "monitorArea", "setLanguage", "unlock", "lock"];
+
+    /// <summary>A command the lock screen doesn't send, while it is up: refused, and its answer withheld.</summary>
+    bool Withheld(string cmd) => _screenLocked && !ScreenLockCommands.Contains(cmd);
+
+    async Task<object?> DispatchAsync(string cmd, JsonElement a)
+    {
+        if (Withheld(cmd))
+            throw new UserError(L.T("Bloxkeep is locked."));
+        object? result = await DispatchCommandAsync(cmd, a);
+        // The lock screen came up while it ran (a launch, a password being shown): what it did stands, but its answer
+        // (names, a password) doesn't reach the lock screen.
+        if (Withheld(cmd))
+            throw new UserError(L.T("Bloxkeep is locked."));
+        return result;
+    }
+
+    Task<object?> DispatchCommandAsync(string cmd, JsonElement a) => cmd switch
     {
         "getState" => Done(InitialState()),
         "keepView" => Done(KeepView(Str(a, "view"), Bool(a, "restart"))),
@@ -417,7 +443,7 @@ public sealed partial class AppController : IDisposable
         PageAttached = true;
         PageBusy = false; // a fresh page has nothing open yet
         _lastMetrics = _lastState = null; // a new page has nothing yet; send both again
-        string? view = resume && _vault is not null ? _pageView : null;
+        string? view = resume && Open is not null ? _pageView : null;
         _pageView = null;
         return new { resume, view, state = BuildState() };
     }
@@ -497,28 +523,30 @@ public sealed partial class AppController : IDisposable
         update = _updater.Dto(),
         robloxVersion = RobloxVersionDto(),
         robloxUpdates = RobloxUpdatesDto(),
-        whatsNew = _updatedFrom is not null && _vault is not null
+        whatsNew = _updatedFrom is not null && Open is not null
             ? new { from = _updatedFrom, releases = WhatsNew.Between(_updatedFrom, _updater.CurrentVersion) }
             : null,
         vaultExists = Vault.Exists,
-        locked = _vault is null,
+        locked = Open is null,
+        // The lock screen after a while without use: Bloxkeep is open behind it, Roblox and the background carry on.
+        screenLock = _screenLocked ? new { minutes = _vault?.Data.Settings.AutoLockMinutes ?? 0 } : null,
         dataPath = Vault.DataDir,
         robloxInstalled = RegistryInfo().Protocol,
         launching = _launchCts is not null,
         checking = _checking,
-        boot = _vault is null ? null : _boot,
+        boot = Open is null ? null : _boot,
         multi = new
         {
-            enabled = _vault?.Data.Settings.MultiInstance ?? false,
+            enabled = Open?.Data.Settings.MultiInstance ?? false,
             armed = MultiInstance.Armed,
-            windowed = _vault?.Data.Settings.MultiInstanceWindowed ?? true,
-            tile = _vault?.Data.Settings.MultiInstanceTile ?? false,
+            windowed = Open?.Data.Settings.MultiInstanceWindowed ?? true,
+            tile = Open?.Data.Settings.MultiInstanceTile ?? false,
             trayAutostart = RegistryInfo().TrayAutostart,
         },
         installs = Installs(),
         monitors = Screen.AllScreens.Select((s, i) => new { index = i, s.Primary, width = s.Bounds.Width, height = s.Bounds.Height }).ToArray(),
-        settings = _vault is null ? null : SettingsDto(_vault.Data.Settings),
-        accounts = _vault?.Data.Accounts.Select(AccountDto).ToArray() ?? [],
+        settings = Open is null ? null : SettingsDto(Open.Data.Settings),
+        accounts = Open?.Data.Accounts.Select(AccountDto).ToArray() ?? [],
     };
 
     /// <summary>Which Roblox clients and launchers exist, and the version of the client the chosen option starts.</summary>
@@ -736,6 +764,7 @@ public sealed partial class AppController : IDisposable
 
     object SettingsDto(AppSettings s) => new
     {
+        s.AutoLockMinutes,
         s.LastPlaceInput,
         s.LastJobId,
         s.RenameWindows,
@@ -893,8 +922,8 @@ public sealed partial class AppController : IDisposable
 
     async Task<object?> UnlockAsync(string password)
     {
-        if (_vault is not null)
-            return BuildState();
+        if (_vault is { } open)
+            return await UnlockScreenAsync(open, password);
         if (password.Length == 0)
             throw new UserError(L.T("Enter your master password."));
         Vault vault;
@@ -928,6 +957,7 @@ public sealed partial class AppController : IDisposable
     void OnUnlocked(Vault vault)
     {
         _vault = vault;
+        _activeAt = DateTime.UtcNow; // the wait for the lock screen starts now
         var s = vault.Data.Settings;
         if (!RobloxLauncher.IsValidOption(s.LaunchVia))
             s.LaunchVia = s.DirectLaunch ? "direct" : "auto";
@@ -1023,6 +1053,9 @@ public sealed partial class AppController : IDisposable
         _ = FinalDiscordBoard(closing: false);
         _vault?.Dispose();
         _vault = null;
+        // From the lock screen after a while without use too: closed for real now (not before: a lock refused above
+        // leaves that screen up).
+        _screenLocked = false;
         // Nothing of the vault stays reachable while locked: Dispose only wipes the key, so the decrypted accounts,
         // cookies and passwords go only once no field holds the vault (or what was made from it) any more.
         _discordVault = null;
@@ -3219,6 +3252,7 @@ public sealed partial class AppController : IDisposable
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
         if (_vault is null)
             return;
+        Step(() => CheckAutoLock(AntiAfk.IdleTime(), DateTime.UtcNow));
         Step(() => PersistIfDue(now));
         Step(() =>
         {
@@ -3276,7 +3310,7 @@ public sealed partial class AppController : IDisposable
     /// <summary>Live RAM per client and for the PC, sent apart from the state so the page can patch numbers in place.</summary>
     void EmitMetrics(List<RobloxProcesses.PlayerProcess> players, Dictionary<int, List<IntPtr>> windows, MemoryStatus memory)
     {
-        if (!PageAttached)
+        if (!PageAttached || _screenLocked)
             return;
         var workingSets = players.ToDictionary(p => p.Pid, p => p.WorkingSet);
         string json = JsonSerializer.Serialize(new
@@ -4172,6 +4206,12 @@ public sealed partial class AppController : IDisposable
             _trimRefusedShown = false;
         }
         if (Has(a, "launchDelaySeconds", JsonValueKind.Number)) s.LaunchDelaySeconds = (int)Math.Clamp(Long(a, "launchDelaySeconds"), 0, 120);
+        // Only the choices Settings offers; choosing counts as using the PC (the wait starts from now).
+        if (Has(a, "autoLockMinutes", JsonValueKind.Number) && AutoLockChoices.Contains((int)Long(a, "autoLockMinutes")))
+        {
+            s.AutoLockMinutes = (int)Long(a, "autoLockMinutes");
+            _activeAt = DateTime.UtcNow;
+        }
         if (OptBool(a, "multiInstance") is { } multi && multi != s.MultiInstance)
         {
             s.MultiInstance = multi;

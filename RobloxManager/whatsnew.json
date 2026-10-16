@@ -5,11 +5,13 @@
     "new": {
       "en": [
         "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it.",
-        "What’s new lists what’s new, what works better and what’s fixed separately."
+        "Lock automatically (Settings › Security): when nobody has used the PC for the time you pick, Bloxkeep asks for the master password again, while Roblox, auto-rejoin, scheduled presets and Discord keep running.",
+      "What’s new lists what’s new, what works better and what’s fixed separately."
       ],
       "vi": [
         "Cho Bloxkeep một sao trên GitHub từ Cài đặt › Cập nhật Bloxkeep, Ctrl+K hoặc cuối bảng Có gì mới. Mỗi sao giúp thêm người chơi tìm thấy Bloxkeep.",
-        "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
+        "Tự khóa (Cài đặt › Bảo mật): khi không ai dùng máy trong khoảng thời gian bạn chọn, Bloxkeep hỏi lại mật khẩu chủ, còn Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy.",
+      "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
       ]
     },
     "improved": {

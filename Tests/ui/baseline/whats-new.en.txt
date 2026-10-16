@@ -166,6 +166,9 @@ html [data-theme="dark" lang="en"]
             span "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it."
           li
             svg.i #u7ty99
+            span "Lock automatically (Settings › Security): when nobody has used the PC for the time you pick, Bloxkeep asks for the master password again, while Roblox, auto-rejoin, scheduled presets and Discord keep running."
+          li
+            svg.i #u7ty99
             span "What’s new lists what’s new, what works better and what’s fixed separately."
         h4.improved.wn-kind.wn-sub "Improved"
           svg.i #1l5qw3q

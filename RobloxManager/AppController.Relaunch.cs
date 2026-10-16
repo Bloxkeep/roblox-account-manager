@@ -164,7 +164,7 @@ public sealed partial class AppController
         var state = new Relaunch.State
         {
             WrittenAt = DateTime.UtcNow, From = _updater.CurrentVersion, To = _updater.NewVersion, Window = window, Foreground = foreground,
-            View = _vault is not null ? _pageView : null, WeakPassword = _weakPassword,
+            View = Open is not null ? _pageView : null, WeakPassword = _weakPassword, ScreenLocked = _screenLocked,
         };
         if (_vault is { } vault)
         {
@@ -253,6 +253,8 @@ public sealed partial class AppController
                     var vault = Vault.OpenWithKey(Convert.FromBase64String(key), Convert.FromBase64String(salt), state.Iterations);
                     _weakPassword = state.WeakPassword;
                     OnUnlocked(vault);
+                    // Behind the lock screen it was: so it stays, though the key came along for what runs in the background.
+                    _screenLocked = state.ScreenLocked;
                 }
                 catch (IOException ex) when (attempt < 3)
                 {
@@ -267,12 +269,12 @@ public sealed partial class AppController
                 }
             }
         }
-        if (_vault is not null && state.View is { } view)
+        if (Open is not null && state.View is { } view)
         {
             _pageView = view;
             ResumingPage = true;
         }
-        Log.Note($"{(state.From is { } from ? $"Updated from {from}" : "Started again after an update")}; {(_vault is not null ? "unlocked again" : "locked")}, window {state.Window}.");
+        Log.Note($"{(state.From is { } from ? $"Updated from {from}" : "Started again after an update")}; {(_screenLocked ? "behind the lock screen again" : _vault is not null ? "unlocked again" : "locked")}, window {state.Window}.");
     }
 
     /// <summary>

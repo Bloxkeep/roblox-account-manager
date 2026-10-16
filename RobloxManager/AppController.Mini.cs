@@ -21,11 +21,11 @@ public sealed partial class AppController
     /// <summary>Every Roblox client on this PC as of the last process check, Bloxkeep's or not.</summary>
     public int RobloxCount => _clientRam.Count;
 
-    /// <summary>The clients Bloxkeep opened that are still running, in the launch order (as the page and monitor list them); empty while locked.</summary>
+    /// <summary>The clients Bloxkeep opened that are still running, in the launch order (as the page and monitor list them); empty while locked (the screen too).</summary>
     public List<MiniClient> RunningClients()
     {
         var list = new List<MiniClient>();
-        if (_vault is not { } vault)
+        if (Open is not { } vault)
             return list;
         foreach (var (id, info) in _running)
         {

@@ -36,6 +36,8 @@ public static class Relaunch
         public bool Foreground { get; set; }
         /// <summary>What the page had on screen (see AppController.KeepView).</summary>
         public string? View { get; set; }
+        /// <summary>The lock screen was up (a while without use): the next run comes back behind it, not unlocked.</summary>
+        public bool ScreenLocked { get; set; }
     }
 
     /// <summary>Writes <paramref name="state"/> for the next run and returns the arguments it must be started with.</summary>
