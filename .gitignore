@@ -8,25 +8,49 @@ dist/
 *.rmv
 *.rmv.bak
 error.log
+*.log
 prefs.json
 AccountData.json
 
-# Signing material
+# Secrets (never commit): signing material, and the webhook links and tokens a local run of the Cloudflare Workers
+# (Feedback/worker, RobloxWatch/worker: `wrangler dev`) or of the watch scripts reads
 *.pfx
 *.snk
+.dev.vars
+.dev.vars.*
+.env
+.env.*
 
-# IDE / OS
-.vs/
-.idea/
-*.user
-Thumbs.db
-desktop.ini
+# Cloudflare wrangler's local state
+.wrangler/
 
-# Node (if any tooling is added)
-node_modules/
+# Test runs
+TestResults/
+*.trx
 
 # Discord message samples the discord test suite writes for dev/discord-preview.html
 dev/discord-samples*.json
 dev/discord-samples/
+
 # Python (DomainWatch, RobloxWatch)
 __pycache__/
+*.pyc
+.venv/
+
+# Node (if any tooling is added)
+node_modules/
+
+# Claude Code: each person's own settings and worktrees (.claude/launch.json is shared)
+.claude/settings.local.json
+.claude/worktrees/
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.swp
+*.tmp
+Thumbs.db
+desktop.ini
+.DS_Store
