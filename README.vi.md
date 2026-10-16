@@ -181,7 +181,7 @@ Mở bằng nút ⋯ trên thẻ hoặc bấm chuột phải vào tài khoản. 
 
 Menu ⋯ phía trên danh sách có **Kiểm tra đăng nhập mọi tài khoản**, **Chọn tất cả**, **Xếp cửa sổ Roblox**, **Thứ tự mở tài khoản…**, **Đóng tất cả Roblox**, **Buộc tắt tất cả Roblox** (hai mục này có hỏi trước) và **Hướng dẫn sử dụng**.
 
-Xem thêm trong hướng dẫn: [Danh sách tài khoản](docs/guide.vi.md#danh-sách-tài-khoản), [Menu của tài khoản](docs/guide.vi.md#menu-của-tài-khoản).
+Xem thêm trong hướng dẫn: [Danh sách tài khoản](docs/guide/accounts.vi.md), [Menu của tài khoản](docs/guide/accounts.vi.md#menu-của-tài-khoản).
 
 ### Mở trang web
 
@@ -192,7 +192,7 @@ Xem thêm trong hướng dẫn: [Danh sách tài khoản](docs/guide.vi.md#danh-
 - Đăng xuất trong tab của một tài khoản đã lưu cũng sẽ đăng xuất tài khoản đó khỏi Bloxkeep, nên Bloxkeep chặn lại và hỏi: **Đóng tab** hoặc **Xem tiếp**.
 - Đóng cửa sổ là đóng hết các tab, khóa Bloxkeep cũng vậy. Không dùng được cho tài khoản Roblox VNG.
 
-Xem thêm trong hướng dẫn: [Mở trang web](docs/guide.vi.md#mở-trang-web).
+Xem thêm trong hướng dẫn: [Mở trang web](docs/guide/playing.vi.md#mở-trang-web).
 
 ### Chọn game và server
 
@@ -214,7 +214,7 @@ Xem thêm trong hướng dẫn: [Mở trang web](docs/guide.vi.md#mở-trang-web
 - Các tài khoản mở lần lượt, cách nhau một khoảng **Chờ giữa các tài khoản** (mặc định 8 giây; preset có thể đặt riêng). Trong lúc đang mở, nút **Vào game** đổi thành **Dừng**.
 - Tài khoản đang ở đúng game này thì được giữ nguyên. Tài khoản đang ở game khác thì Bloxkeep hỏi trước, rồi đóng và mở lại vào game mới. Tài khoản bị ban và tài khoản Roblox VNG bị bỏ qua, có ghi trong kết quả; tài khoản nào không mở được thì hộp **Một số tài khoản chưa mở được** nói rõ lý do.
 
-Xem thêm trong hướng dẫn: [Vào game](docs/guide.vi.md#vào-game).
+Xem thêm trong hướng dẫn: [Vào game](docs/guide/playing.vi.md).
 
 ### Preset
 
@@ -245,7 +245,7 @@ Thứ tự ưu tiên, tính cho từng cửa sổ Roblox: tùy chọn của pres
 
 <img src="docs/screenshots/vi/preset-editor.png" width="800" alt="Hộp thoại Sửa preset: phần Áp dụng cho cửa sổ Roblox với Chống AFK, Tự vào lại game, Hiệu năng, Mở lại Roblox, Xếp cửa sổ, webhook Discord riêng, và phần Hẹn giờ">
 
-Xem thêm trong hướng dẫn: [Preset và hẹn giờ](docs/guide.vi.md#preset-và-hẹn-giờ).
+Xem thêm trong hướng dẫn: [Preset và hẹn giờ](docs/guide/presets.vi.md).
 
 ### Multi-Roblox
 
@@ -285,7 +285,7 @@ Khi mọi câu hỏi trong hộp thoại đều bỏ qua được, ô **Không h
 
 Cách hoạt động: Roblox dùng một đối tượng tên `ROBLOX_singletonEvent` để chỉ cho chạy một cửa sổ; từ bản tháng 10/2026, cửa sổ mới dùng nó để đóng các cửa sổ cũ. Bloxkeep giữ trước cái tên đó khi chưa có Roblox nào chạy, nên Roblox không lập được cơ chế này và các cửa sổ không đóng nhau. Bloxkeep không chèn gì vào Roblox và không đọc gì từ tiến trình Roblox.
 
-Xem thêm trong hướng dẫn: [Multi-Roblox](docs/guide.vi.md#multi-roblox), [Lưu ý trước khi mở](docs/guide.vi.md#lưu-ý-trước-khi-mở).
+Xem thêm trong hướng dẫn: [Multi-Roblox](docs/guide/multi-roblox.vi.md), [Lưu ý trước khi mở](docs/guide/playing.vi.md#lưu-ý-trước-khi-mở).
 
 ### Cập nhật Roblox
 
@@ -309,7 +309,7 @@ Xem thêm trong hướng dẫn: [Multi-Roblox](docs/guide.vi.md#multi-roblox), [
 - Khi có cảnh báo, cứ chơi bình thường. Nếu Roblox bắt đầu đóng cửa sổ cũ mỗi khi mở cửa sổ mới, Bloxkeep sẽ báo ("Roblox đã đóng N cửa sổ khi mở thêm cửa sổ khác"): bấm **Kiểm tra bản cập nhật Bloxkeep**, và chơi từng tài khoản một cho tới khi có bản sửa. **Ẩn** để tắt dòng báo này; dòng này cũng tự mất khi có từ hai tài khoản cùng ở trong game, hoặc khi Roblox cập nhật.
 - **Lịch sử cập nhật** liệt kê mọi bản Roblox đã thấy trên máy, mỗi bản gắn nhãn kết quả kiểm tra và có link **Ghi chú** phát hành của Roblox.
 
-Xem thêm trong hướng dẫn: [Kiểm tra Multi-Roblox](docs/guide.vi.md#kiểm-tra-multi-roblox).
+Xem thêm trong hướng dẫn: [Kiểm tra Multi-Roblox](docs/guide/multi-roblox.vi.md#kiểm-tra-multi-roblox).
 
 ### Chống AFK
 
@@ -335,7 +335,7 @@ Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game**, cho m
 
 <img src="docs/screenshots/vi/card-rejoin.png" width="800" alt="Các thẻ tài khoản: một thẻ đang chờ vào lại game (Sau 5 phút) với nút Hủy, và một thẻ bị văng khỏi server vì bị kick vì AFK">
 
-Xem thêm trong hướng dẫn: [Giữ tài khoản trong game](docs/guide.vi.md#giữ-tài-khoản-trong-game).
+Xem thêm trong hướng dẫn: [Giữ tài khoản trong game](docs/guide/staying-in-game.vi.md).
 
 ### Cấu hình Roblox theo tài khoản
 
@@ -369,7 +369,7 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 - **Hiện tên tài khoản trên cửa sổ** (bật sẵn): ghi tên tài khoản lên tiêu đề cửa sổ Roblox để dễ phân biệt trên taskbar.
 - **Chờ giữa các tài khoản**: từ 0 đến 60 giây, mặc định 8 giây. Mở quá nhiều tài khoản cùng lúc dễ bị lỗi.
 
-Xem thêm trong hướng dẫn: [Theo dõi game, cửa sổ và thống kê](docs/guide.vi.md#theo-dõi-game-cửa-sổ-và-thống-kê).
+Xem thêm trong hướng dẫn: [Theo dõi game, cửa sổ và thống kê](docs/guide/windows-and-stats.vi.md).
 
 ### Thống kê và hoạt động
 
@@ -411,7 +411,7 @@ Bên trái là tin trạng thái. Bên phải là bản tổng kết thời gian
 - Link webhook được mã hóa và lưu cùng các tài khoản. **Hiện** cho xem link trong 30 giây, **Thay…** để dán link khác, **Gỡ** có hỏi trước. Nếu Discord báo webhook không còn nữa, Bloxkeep ngừng gửi và trang **Discord** có chấm đỏ: hãy dán link mới. Khi Bloxkeep đang khóa thì không gửi gì. Tin không gửi được lúc mất mạng sẽ chờ.
 - Tin có tên tài khoản (hoặc **Tài khoản 1**, **Tài khoản 2**…), tên game, thời gian chơi, số lượt, PID, RAM và link tới ảnh của chính Roblox. Không bao giờ có cookie, mật khẩu hay link webhook. Xem [Dữ liệu và bảo mật](#dữ-liệu-và-bảo-mật).
 
-Xem thêm trong hướng dẫn: [Gửi lên Discord](docs/guide.vi.md#gửi-lên-discord).
+Xem thêm trong hướng dẫn: [Gửi lên Discord](docs/guide/discord.vi.md).
 
 ### Khay hệ thống, khóa app và thông báo
 
@@ -440,7 +440,7 @@ Xem thêm trong hướng dẫn: [Gửi lên Discord](docs/guide.vi.md#gửi-lên
 | `Ctrl+Enter` / `Shift+Enter` | Trong tìm nhanh, với một tài khoản: vào game / sửa |
 | `Ctrl+T`, `Ctrl+W`, `Ctrl+Tab` | Trong cửa sổ trình duyệt của Bloxkeep: mở tab trống, đóng tab, chuyển tab |
 
-Xem thêm trong hướng dẫn: [Phím tắt](docs/guide.vi.md#phím-tắt).
+Xem thêm trong hướng dẫn: [Phím tắt](docs/guide/troubleshooting.vi.md#phím-tắt).
 
 ### Chuyển tài khoản từ nơi khác
 

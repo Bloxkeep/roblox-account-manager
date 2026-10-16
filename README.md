@@ -187,7 +187,7 @@ Open it with an account's ⋯ button or a right-click. If the account isn't sele
 
 The ⋯ menu above the list has **Check sign-in of all accounts**, **Select all**, **Arrange Roblox windows**, **Launch order…**, **Close all Roblox**, **Force close all Roblox** (both ask first) and **User guide**.
 
-More in the user guide: [The account list](docs/guide.md#the-account-list), [The account menu](docs/guide.md#the-account-menu).
+More in the user guide: [The account list](docs/guide/accounts.md), [The account menu](docs/guide/accounts.md#the-account-menu).
 
 ### Open website
 
@@ -198,7 +198,7 @@ More in the user guide: [The account list](docs/guide.md#the-account-list), [The
 - Signing out in a saved account's tab would also sign it out of Bloxkeep, so Bloxkeep stops it and asks: **Close tab** or **Keep browsing**.
 - Closing the window closes every tab, and so does locking Bloxkeep. It isn't available for Roblox VNG accounts.
 
-More in the user guide: [Open website](docs/guide.md#open-website).
+More in the user guide: [Open website](docs/guide/playing.md#open-website).
 
 ### Choosing a game and server
 
@@ -220,7 +220,7 @@ More in the user guide: [Open website](docs/guide.md#open-website).
 - Accounts open one after another, with **Wait between accounts** in between (8 seconds by default; a preset can have its own). While they open, **Play** becomes **Stop**.
 - An account already in this game is left as it is. One in another game is asked about first, then closed and opened again in the new game. Banned and Roblox VNG accounts are skipped, with a line in the result, and **Some accounts didn't open** says why for any that failed.
 
-More in the user guide: [Playing](docs/guide.md#playing).
+More in the user guide: [Playing](docs/guide/playing.md).
 
 ### Presets
 
@@ -251,7 +251,7 @@ How the levels fit together, for each Roblox window: a preset's option set to **
 
 <img src="docs/screenshots/preset-editor.png" width="800" alt="Edit preset: the For the Roblox windows options (Anti-AFK, Auto-rejoin, Performance, Restart Roblox, Arrange windows), its own Discord webhook, and the Schedule">
 
-More in the user guide: [Presets and schedules](docs/guide.md#presets-and-schedules).
+More in the user guide: [Presets and schedules](docs/guide/presets.md).
 
 ### Multi-Roblox
 
@@ -291,7 +291,7 @@ When every question in the dialog can be skipped, a **Don't ask again** box show
 
 How it works: Roblox uses an object named `ROBLOX_singletonEvent` to allow only one window; since its October 2026 builds, a new window uses it to close the older ones. Bloxkeep takes that name first, while no Roblox is running, so Roblox can't set this up and the windows don't close each other. Bloxkeep injects nothing into Roblox and reads nothing from the Roblox process.
 
-More in the user guide: [Multi-Roblox](docs/guide.md#multi-roblox), [The "Before you open" questions](docs/guide.md#the-before-you-open-questions).
+More in the user guide: [Multi-Roblox](docs/guide/multi-roblox.md), [The "Before you open" questions](docs/guide/playing.md#before-you-open).
 
 ### Roblox updates
 
@@ -315,7 +315,7 @@ More in the user guide: [Multi-Roblox](docs/guide.md#multi-roblox), [The "Before
 - When it warns, keep playing as usual. If Roblox starts closing one window when the next opens, Bloxkeep says so ("Roblox closed N windows when another one opened"): press **Check for a Bloxkeep update**, and play one account at a time until an update fixes it. **Hide** removes the note, and it also goes once two or more accounts are in a game at the same time, or when Roblox updates.
 - **Update history** lists every Roblox build seen on this PC, tagged with what the check found (for example "Multi-Roblox worked here"), each with a link to Roblox's release **Notes**.
 
-More in the user guide: [The Multi-Roblox check](docs/guide.md#the-multi-roblox-check).
+More in the user guide: [The Multi-Roblox check](docs/guide/multi-roblox.md#the-multi-roblox-check).
 
 ### Anti-AFK
 
@@ -341,7 +341,7 @@ Turn it on for one account in its ⋯ menu › **Auto-rejoin**, for every accoun
 
 <img src="docs/screenshots/card-rejoin.png" width="800" alt="Account cards: one waiting to rejoin (In 5 min) with a Cancel button, and one disconnected because it was kicked for being idle">
 
-More in the user guide: [Keeping accounts in game](docs/guide.md#keeping-accounts-in-game).
+More in the user guide: [Keeping accounts in game](docs/guide/staying-in-game.md).
 
 ### Roblox settings per account
 
@@ -375,7 +375,7 @@ Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's
 - **Show account names on windows** (on by default): puts the account's name in the Roblox window title, to tell windows apart on the taskbar.
 - **Wait between accounts**: 0 to 60 seconds, 8 by default. Opening too many at once can fail.
 
-More in the user guide: [Game monitor, windows and statistics](docs/guide.md#game-monitor-windows-and-statistics).
+More in the user guide: [Game monitor, windows and statistics](docs/guide/windows-and-stats.md).
 
 ### Statistics and activity
 
@@ -417,7 +417,7 @@ On the left, the status board. On the right, a play-time summary.
 - The link is kept encrypted with your accounts. **Show** displays it for 30 seconds, **Replace…** pastes another and **Remove** asks first. If Discord says the webhook is gone, sending stops and the **Discord** page gets a red dot: paste a new link. Nothing is sent while Bloxkeep is locked. Messages that couldn't go while offline wait.
 - Messages carry account names (or **Account 1**, **Account 2**…), game names, play time, sessions, PID, RAM and links to Roblox's own pictures. Never cookies, passwords or the webhook link. See [Data and security](#data-and-security).
 
-More in the user guide: [Sending to Discord](docs/guide.md#sending-to-discord).
+More in the user guide: [Sending to Discord](docs/guide/discord.md).
 
 ### Tray, lock and notifications
 
@@ -446,7 +446,7 @@ More in the user guide: [Sending to Discord](docs/guide.md#sending-to-discord).
 | `Ctrl+Enter` / `Shift+Enter` | In quick search, on an account: play / edit |
 | `Ctrl+T`, `Ctrl+W`, `Ctrl+Tab` | In Bloxkeep's browser window: new tab, close the tab, switch tabs |
 
-More in the user guide: [Keyboard shortcuts](docs/guide.md#keyboard-shortcuts).
+More in the user guide: [Keyboard shortcuts](docs/guide/troubleshooting.md#keyboard-shortcuts).
 
 ### Bringing accounts over
 
