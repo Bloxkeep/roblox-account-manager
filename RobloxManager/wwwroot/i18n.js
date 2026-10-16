@@ -781,7 +781,7 @@ window.I18N = {
     'am.fine': 'Đừng gửi cookie cho ai. Có cookie là vào được tài khoản của bạn.',
     'am.needCookie': 'Bạn chưa dán cookie .ROBLOSECURITY.', 'am.add': 'Thêm tài khoản', 'am.save': 'Lưu',
 
-    'sys.used': 'RAM máy đã dùng {pct}% · còn trống {free}',
+    'sys.used': 'RAM đã dùng {pct}% · trống {free}',
     'card.rejoinTip': 'Đang bật tự vào lại game',
     'm.autoRejoin': 'Tự vào lại game', 'm.rejoinPreset': 'Cửa sổ này do preset mở nên theo cài đặt của preset cho tới khi đóng.', 'm.arrange': 'Xếp cửa sổ Roblox',
     'm.monitor': 'Màn hình {n} ({w}×{h})', 'm.primary': 'chính',

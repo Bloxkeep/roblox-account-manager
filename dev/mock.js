@@ -50,7 +50,7 @@
   const MAX_PRESETS = 50;
 
   let accounts = params.has('empty') ? [] : [
-    { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', alias: tx('Main', 'Acc chính'), label: tx('Main', 'Acc chính'), group: 'Main', note: tx("My main account, don't farm on it", 'Tài khoản chơi chính, đừng dùng farm'),
+    { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', alias: tx('Main', 'Tài khoản chính'), label: tx('Main', 'Tài khoản chính'), group: 'Main', note: tx("My main account, don't farm on it", 'Tài khoản chơi chính, đừng dùng farm'),
       hasPassword: true, hasAuthenticator: true, cookieValid: true, autoRejoin: true, lastUsed: minsAgo(3), avatarUrl: face('#2b3a55', '#f2c94c', '#3b82f6'), state: 'running',
       presence: { type: 'ingame', game: games[2753915549].name, placeId: 2753915549, iconUrl: games[2753915549].iconUrl },
       session: { pid: 1111, since: minsAgo(47), game: g(2753915549), connection: 'ingame' } },
@@ -63,7 +63,7 @@
     { id: id(4), userId: 5140000004, username: 'night_owl_rb', displayName: 'Night Owl', alias: '', label: 'Night Owl', group: 'Farm', note: '',
       hasPassword: false, cookieValid: true, lastUsed: minsAgo(60 * 5), avatarUrl: face('#262a3a', '#d6d9e0', null), state: 'idle',
       presence: { type: 'ingame', game: games[920587237].name, placeId: 920587237, jobId: 'b6f1c2d4-0000-4c5e-9a7b-123456789abc', iconUrl: games[920587237].iconUrl }, session: null },
-    { id: id(5), userId: 5140000005, username: 'lananh_2010', displayName: 'Lan Anh', alias: tx('Alt', 'Acc phụ'), label: tx('Alt', 'Acc phụ'), group: '', note: '',
+    { id: id(5), userId: 5140000005, username: 'lananh_2010', displayName: 'Lan Anh', alias: tx('Alt', 'Tài khoản phụ'), label: tx('Alt', 'Tài khoản phụ'), group: '', note: '',
       hasPassword: true, cookieValid: true, lastUsed: null, avatarUrl: face('#3a2440', '#f5d0b5', '#ec4899'), state: 'idle',
       presence: { type: 'studio', game: 'Place1' }, session: null },
     { id: id(6), userId: 5140000006, username: 'tradepost_vn', displayName: 'Trade Post', alias: 'Trade', label: 'Trade', group: '', note: tx('Trading only', 'Chỉ dùng trade'),
@@ -90,7 +90,7 @@
       ['MegaLongAccountLabelWithoutAnySpaces', 'MegaLongAccountLabelWithoutAnySp', 'Farm farm farm farm farm farm farm'],
       ['Night Owl The Night Owl Of The Night Owls', 'night_owl_rb_night_owl_rb_nigh', 'Farm farm farm farm farm farm farm']];
     longs.forEach(([label, username, group], i) => Object.assign(accounts[i], { label, alias: label, username, displayName: username, group, note: 'A very long note about this account that goes on and on and on, and on, and on, and on.' }));
-    accounts[4].username = 'lananh_2010_lananh_2010_lananh'; accounts[4].label = accounts[4].alias = tx('Lan Anh (alt, for trading and buying items)', 'Lan Anh (acc phụ, dùng để trade và mua đồ)');
+    accounts[4].username = 'lananh_2010_lananh_2010_lananh'; accounts[4].label = accounts[4].alias = tx('Lan Anh (alt, for trading and buying items)', 'Lan Anh (tài khoản phụ, dùng để trade và mua đồ)');
     accounts[6].group = tx('AVeryLongTestingGroupNameWithNoBreaksAtAll', 'Nhóm thử nghiệm với tên rất dài không ngắt'); accounts[6].username = 'noavatar_user_noavatar_user';
   }
   let locked = params.has('locked') || params.has('new');
@@ -529,7 +529,7 @@
         case 'addViaBrowser': throw new Error('Bản xem thử không mở được trình duyệt đăng nhập.');
         case 'closeAll': return 2;
         case 'friendServers': await wait(600); if (params.has('friendsfail')) throw new Error('HTTP 500'); return { asked: 2, friends: params.has('nofriends') ? [] : [
-          { userId: 5140000101, name: LONG ? 'kiwi_runner_kiwi_runner_kiwi' : 'kiwi_runner', displayName: LONG ? 'Kiwi The Fastest Runner In The World' : 'Kiwi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 1' : LONG ? 'Sunny_The_Builder_Of_Many_Worlds_2010' : tx('Main', 'Acc chính') },
+          { userId: 5140000101, name: LONG ? 'kiwi_runner_kiwi_runner_kiwi' : 'kiwi_runner', displayName: LONG ? 'Kiwi The Fastest Runner In The World' : 'Kiwi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 1' : LONG ? 'Sunny_The_Builder_Of_Many_Worlds_2010' : tx('Main', 'Tài khoản chính') },
           { userId: 5140000102, name: 'mochi_cat', displayName: 'Mochi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 2' : 'Farm 1' }] };
         case 'pickLauncher': settings = { ...settings, customLauncher: 'Froststrap', launchVia: 'custom' }; push(); return null;
         case 'vaultImportPick':
