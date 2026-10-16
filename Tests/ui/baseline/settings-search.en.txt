@@ -1,0 +1,166 @@
+== end
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox
+            i.other
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.searching.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value="rejoin" FOCUSED]
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Staying in game"
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Keeping accounts going"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Auto-rejoin"
+                        div.d "For every account at once; each account’s ⋯ menu turns it on or off for that one. A preset that sets it decides for the windows it opens."
+                      div.ctl
+                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
+                div.set-grp [id="sec-app"]
+                  h3.set-grp-title "This app"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Keep running in the tray when closed"
+                        div.d "Auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon."
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-tray" aria-label="Keep running in the tray when closed" checked=true]
+                          span
+              section.set-page [id="set-page-notify" aria-labelledby="set-page-notify-h"]
+                h2.set-page-title [id="set-page-notify-h"] "Notifications"
+                div.set-grp [id="sec-notify-kinds"]
+                  h3.set-grp-title "Which events"
+                  div.set-card
+                    div.set-sub [id="s-notify-kinds"]
+                      div.set-row
+                        div
+                          div.t "Account dropped or auto-rejoin"
+                        div.ctl
+                          label.switch
+                            input [type="checkbox" id="s-notify-drop" aria-label="Account dropped or auto-rejoin" checked=true]
+                            span
+              section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
+                h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-events"]
+                  h3.set-grp-title "Alerts"
+                  div.set-card
+                    details.set-more [id="s-dc-kinds" open=""]
+                      summary "Choose which alerts"
+                        svg.i #u1ag9u
+                      div.set-sub
+                        div.set-row
+                          div
+                            div.t "Account dropped or auto-rejoin"
+                          div.ctl
+                            div.dc-ping
+                              select.select.sm [aria-label="Ping" value="user"]
+                              input.dc-id.field.sm [maxlength="20" autocomplete="off" placeholder="ID (17–20 digits)" aria-label="ID" value="123456789012345678"]
+                            label.switch
+                              input [type="checkbox" id="s-dc-ev-drop" aria-label="Account dropped or auto-rejoin" checked=true]
+                              span
+                    p.set-hint "To ping a person or a role you need its ID: in Discord, turn on Settings › Advanced › Developer Mode, then right-click the person or role › Copy ID."
+#layer
+#toasts
+-- commands
+  getState {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  monitorArea {"hidden":true}
+  pageShown {}
+  backupSuggestions {}

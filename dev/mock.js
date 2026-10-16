@@ -260,6 +260,8 @@
   window.__mockBridge = {
     attach(fn) {
       emit = fn;
+      // The first right away rather than 1.5 s in, so the panel's numbers are there when the page settles (Tests/ui).
+      setTimeout(() => !locked && emit('metrics', metrics()), 0);
       setInterval(() => !locked && emit('metrics', metrics()), 1500);
     },
     async call(cmd, a) {

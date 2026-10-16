@@ -1,0 +1,2 @@
+# The interface checks' saved copies are compared character for character: LF line ends on every PC and checkout.
+Tests/ui/baseline/*.txt text eol=lf

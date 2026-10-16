@@ -1,0 +1,130 @@
+== end
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav.on [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "0"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title=""]
+              b [id="sys-count"] "0"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox
+            i.other
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.no-accounts.seen.view [id="view-accounts"]
+        header.top
+          div.top-title
+            h1 "Tài khoản"
+            p [id="acc-sub"] "tài khoản đang chơi online"
+              b "0"
+              span.sep "·"
+              b "0"
+              span.sep "·"
+              b "0"
+          div.top-tools
+            label.search
+              svg.i #1u22jvi
+              input [id="q" placeholder="Tìm tài khoản, nhóm, ghi chú…" maxlength="100" aria-label="Tìm tài khoản, nhóm, ghi chú…" value=""]
+            button.icon-btn [title="Làm mới trạng thái online"]
+              svg.i #e464bo
+            button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu"]
+              svg.i #1e3omv2
+            div.split
+              button.btn.primary
+                svg.i #puf41w
+                span "Thêm tài khoản"
+              button.btn.primary [title="Cách thêm khác" aria-haspopup="menu"]
+                svg.i #u1ag9u
+        div.bar
+          div.chips [id="chips"]
+        div.scroll [id="scroll"]
+          div [id="grid"]
+            div.empty
+              img.art [alt="" src="logo.svg"]
+              h2 "Chưa có tài khoản nào"
+              p "Chọn cách đăng nhập. Mỗi tài khoản chỉ cần làm một lần."
+              div.start-opts
+                button.rec.start-opt [type="button"]
+                  svg.i #141u066
+                  span
+                    b "Đăng nhập bằng điện thoại"
+                      em.rec-tag "Nên dùng"
+                    small "Mã hoặc QR · ổn định nhất, không cần mật khẩu hay giải đố"
+                  svg.i #1g7f83q
+                button.start-opt
+                  svg.i #fevui6
+                  span
+                    b "Dùng tên đăng nhập & mật khẩu"
+                    small "Roblox có thể bắt giải đố hoặc nhập mã"
+                  svg.i #1g7f83q
+                button.start-opt
+                  svg.i #1ctn026
+                  span
+                    b "Đăng nhập bằng trình duyệt"
+                    small "Đăng nhập trên trang roblox.com"
+                  svg.i #1g7f83q
+              div.start-more
+                div.ways
+                  span "Cách khác:"
+                  button.btn.ghost.sm "Dán cookie"
+                div.ways
+                  span "Nhập từ:"
+                  button.btn.ghost.sm [title="Lấy tài khoản từ Bloxkeep trên máy khác, hoặc từ bản sao lưu (file .rmv)"] "File Bloxkeep"
+                div.ways
+                  span "Chỉ cần dùng trang web?"
+                  button.btn.ghost.sm [title="Mỗi cửa sổ dùng một tài khoản riêng. Đăng nhập ngay trên trang web, muốn giữ lại thì lưu vào Bloxkeep."] "Mở roblox.com"
+#layer
+#toasts
+-- commands
+  getState {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  monitorArea {"hidden":true}
+  pageShown {}

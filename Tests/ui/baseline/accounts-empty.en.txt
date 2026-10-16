@@ -1,0 +1,130 @@
+== end
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav.on [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "0"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title=""]
+              b [id="sys-count"] "0"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox
+            i.other
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.no-accounts.seen.view [id="view-accounts"]
+        header.top
+          div.top-title
+            h1 "Accounts"
+            p [id="acc-sub"] "accounts playing online"
+              b "0"
+              span.sep "·"
+              b "0"
+              span.sep "·"
+              b "0"
+          div.top-tools
+            label.search
+              svg.i #1u22jvi
+              input [id="q" placeholder="Search accounts, groups, notes…" maxlength="100" aria-label="Search accounts, groups, notes…" value=""]
+            button.icon-btn [title="Refresh online status"]
+              svg.i #e464bo
+            button.icon-btn [title="More" aria-haspopup="menu"]
+              svg.i #1e3omv2
+            div.split
+              button.btn.primary
+                svg.i #puf41w
+                span "Add account"
+              button.btn.primary [title="Other ways to add" aria-haspopup="menu"]
+                svg.i #u1ag9u
+        div.bar
+          div.chips [id="chips"]
+        div.scroll [id="scroll"]
+          div [id="grid"]
+            div.empty
+              img.art [alt="" src="logo.svg"]
+              h2 "No accounts yet"
+              p "Pick how to sign in. You only do this once per account."
+              div.start-opts
+                button.rec.start-opt [type="button"]
+                  svg.i #141u066
+                  span
+                    b "Sign in with your phone"
+                      em.rec-tag "Recommended"
+                    small "Code or QR · most reliable, no password or puzzle"
+                  svg.i #1g7f83q
+                button.start-opt
+                  svg.i #fevui6
+                  span
+                    b "Use username & password"
+                    small "Roblox may ask for a puzzle or a code"
+                  svg.i #1g7f83q
+                button.start-opt
+                  svg.i #1ctn026
+                  span
+                    b "Sign in with a browser"
+                    small "Sign in on roblox.com"
+                  svg.i #1g7f83q
+              div.start-more
+                div.ways
+                  span "Other ways:"
+                  button.btn.ghost.sm "Paste a cookie"
+                div.ways
+                  span "Import from:"
+                  button.btn.ghost.sm [title="Bring accounts over from Bloxkeep on another PC, or from a backup (a .rmv file)"] "Bloxkeep file"
+                div.ways
+                  span "Only need the website?"
+                  button.btn.ghost.sm [title="Each window is a separate account: sign in on the site, save it to Bloxkeep if you like"] "Open roblox.com"
+#layer
+#toasts
+-- commands
+  getState {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  monitorArea {"hidden":true}
+  pageShown {}

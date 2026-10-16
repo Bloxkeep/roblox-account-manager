@@ -1,0 +1,177 @@
+== end
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav.on [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox
+            i.other
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Cài đặt"
+        div.set-layout
+          nav.set-nav [aria-label="Cài đặt"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" maxlength="60" aria-label="Tìm cài đặt" autocomplete="off" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Khởi chạy"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản & đồ họa Roblox"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1l5qw3q
+              span "Treo game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Thông báo"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Giao diện"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Bảo mật"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Sao lưu & dữ liệu"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Cập nhật Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Treo game"
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Giữ tài khoản luôn trong game"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Tự vào lại game"
+                        div.d "Bật/tắt cho mọi tài khoản cùng lúc. Muốn bật/tắt riêng một tài khoản, dùng menu ⋯ của tài khoản đó. Nếu preset có đặt riêng, các cửa sổ do preset mở sẽ theo preset."
+                      div.ctl
+                        select.select [id="s-rejoin" aria-label="Tự vào lại game" value="some"]
+                    div.set-row
+                      div
+                        div.t "Chống AFK"
+                        div.d "Treo máy không lo bị kick, kể cả khi bạn đi vắng hay đang dùng cửa sổ khác. Không hoạt động khi máy đang khóa."
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-antiafk" aria-label="Chống AFK" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Kiểm tra đăng nhập mỗi ngày"
+                        div.d "Phát hiện tài khoản bị Roblox đăng xuất để bạn biết trước khi bấm Vào game."
+                          span [id="s-daily-when"] "Lần kiểm tra gần nhất: 7:00."
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-daily" aria-label="Kiểm tra đăng nhập mỗi ngày" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "Bộ nhớ (RAM)"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Báo khi sắp hết RAM"
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-memwarn" aria-label="Báo khi sắp hết RAM" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Tiết kiệm RAM cho cửa sổ chạy nền"
+                        div.d "Khi máy sắp hết RAM, cửa sổ chạy nền nhường RAM cho cửa sổ bạn đang chơi."
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-trim" aria-label="Tiết kiệm RAM cho cửa sổ chạy nền" checked=false]
+                          span
+                div.set-grp [id="sec-app"]
+                  h3.set-grp-title "Ứng dụng"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Chạy ẩn dưới khay hệ thống khi đóng"
+                        div.d "Tự vào lại game và Multi-Roblox vẫn hoạt động. Muốn thoát hẳn, bấm chuột phải vào biểu tượng ở khay hệ thống."
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-tray" aria-label="Chạy ẩn dưới khay hệ thống khi đóng" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Tăng tốc phần cứng"
+                        div.d "Tự tắt nếu driver card đồ họa bị lỗi."
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-gpu" aria-label="Tăng tốc phần cứng" checked=true]
+                          span
+#layer
+#toasts
+-- commands
+  getState {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  monitorArea {"hidden":true}
+  pageShown {}
+  backupSuggestions {}
+  backupSuggestions {}

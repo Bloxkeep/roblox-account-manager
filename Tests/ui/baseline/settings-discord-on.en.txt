@@ -1,0 +1,243 @@
+== end
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox
+            i.other
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
+                h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-discord"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Send to Discord"
+                        div.d "Posts play-time summaries, a live status message and alerts to a channel of yours through a webhook. Off until you turn it on."
+                      div.ctl
+                        label.switch [title=""]
+                          input [type="checkbox" id="s-dc-on" aria-label="Send to Discord" checked=true]
+                          span
+                    div [id="s-dc-note"]
+                    div.set-row
+                      div
+                        div.t "Webhook link"
+                        div.d
+                          span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
+                          div "In Discord: Channel settings › Integrations › Webhooks › New Webhook › Copy Webhook URL. Kept encrypted with your accounts."
+                      div.ctl
+                        button.btn.sm [id="s-dc-paste"] "Replace…"
+                        button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Show"
+                          svg.i #1pcfgz
+                        button.btn.ghost.sm [id="s-dc-remove"] "Remove"
+                    div [id="s-dc-status"]
+                      div.set-row
+                        div
+                          div.t
+                            span "Last sent: 4 min ago"
+                        div.ctl
+                          button.btn.sm "Send test"
+                div.set-grp [id="sec-dc-summary"]
+                  h3.set-grp-title "Play time summary"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Send automatically"
+                      div.ctl
+                        select.select.sm [id="s-dc-when" aria-label="Send automatically" value="daily"]
+                    div.dc-when [id="s-dc-daily-row"]
+                      div.set-row
+                        div
+                          div.t "Every day at"
+                        div.ctl
+                          input.field.sm.time [type="time" id="s-dc-daily-time" aria-label="Every day at" value="22:00"]
+                    div.set-row
+                      div
+                        div.t "When a scheduled preset finishes"
+                        div.d "Sent half a minute after its accounts close, counting that preset’s accounts only (to its own channel when it has one)."
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-dc-after" aria-label="When a scheduled preset finishes" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Covers"
+                        div.d "For the daily summary and “Send one now”. The weekly one covers 7 days; the one after a schedule, today so far."
+                      div.ctl
+                        select.select.sm [id="s-dc-days" aria-label="Covers" value="1"]
+                    div.set-row
+                      div
+                        div.t "Includes"
+                      div.ctl
+                        button.btn.sm [id="s-dc-parts" aria-haspopup="dialog"] "5 items"
+                    div.set-row
+                      div
+                        div.t "Accounts"
+                        div.d
+                          span [id="s-dc-acc"] "All accounts"
+                      div.ctl
+                        button.btn.sm "Choose…"
+                    div.set-row
+                      div
+                        div.t "Ping"
+                      div.ctl
+                        div.dc-ping
+                          select.select.sm [aria-label="Ping" value="none"]
+                    div.set-row
+                      div
+                        div.t "Send one now"
+                        div.d "With the choices above."
+                      div.ctl
+                        button.btn.sm [id="s-dc-now"] "Send summary"
+                div.set-grp [id="sec-dc-events"]
+                  h3.set-grp-title "Alerts"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Send alerts"
+                        div.d "Separate from the Windows notifications. Alerts within 10 seconds go out as one message."
+                      div.ctl
+                        label.switch
+                          input [type="checkbox" id="s-dc-alerts" aria-label="Send alerts" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Ping"
+                      div.ctl
+                        div.dc-ping
+                          select.select.sm [aria-label="Ping" value="mixed"]
+                    details.set-more [id="s-dc-kinds"]
+                      summary "Choose which alerts"
+                        svg.i #u1ag9u
+                    p.set-hint "To ping a person or a role you need its ID: in Discord, turn on Settings › Advanced › Developer Mode, then right-click the person or role › Copy ID."
+                div.set-grp [id="sec-dc-board"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Keep a status message up to date"
+                        div.d "One message, edited in place: which accounts are open, their game, time playing, PID and RAM. It never pings."
+                      div.ctl
+                        select.select.sm [id="s-dc-minutes" aria-label="How often" value="5"]
+                        label.switch
+                          input [type="checkbox" id="s-dc-board" aria-label="Keep a status message up to date" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Quiet hours"
+                        div.d "Messages still arrive, without pings."
+                      div.ctl
+                        input.field.sm.time [type="time" id="s-dc-quiet-from" aria-label="From" value="23:00"]
+                        span.dc-dash "–"
+                        input.field.sm.time [type="time" id="s-dc-quiet-to" aria-label="To" value="07:00"]
+                        label.switch
+                          input [type="checkbox" id="s-dc-quiet" aria-label="Quiet hours" checked=true]
+                          span
+                div.set-grp [id="sec-dc-look"]
+                  div.set-card
+                    details.set-more [id="s-dc-look"]
+                      summary "Customise messages"
+                        svg.i #u1ag9u
+#layer
+#toasts
+-- commands
+  getState {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  monitorArea {"hidden":true}
+  pageShown {}
+  backupSuggestions {}
+  backupSuggestions {}

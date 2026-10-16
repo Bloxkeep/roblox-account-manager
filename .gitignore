@@ -24,9 +24,10 @@ AccountData.json
 # Cloudflare wrangler's local state
 .wrangler/
 
-# Test runs
+# Test runs (the interface checks write what the page showed, screenshots and this PC's layout copies to Tests/ui/out)
 TestResults/
 *.trx
+Tests/ui/out/
 
 # Discord message samples the discord test suite writes for dev/discord-preview.html
 dev/discord-samples*.json
