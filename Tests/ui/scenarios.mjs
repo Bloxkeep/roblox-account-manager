@@ -290,6 +290,22 @@ export default [
   S('presets-move', 'view=presets', async s => { await s.click({ css: '.pv-item[data-id="p1"] [data-move="1"]' }); }),
   S('presets-search', 'view=presets', async s => { await s.type('adopt', key('pv.search')); }),
   S('presets-new', 'view=presets', async s => { await s.click(key('ps.new')); }),
+  S('presets-schedule', 'view=presets', async s => {
+    await s.click({ css: 'label:has(.pv-item[data-id="p3"] [data-pv=sched]), .pv-item[data-id="p3"] label.switch' });
+    await s.snap('on');
+    await s.click({ css: '.pv-item[data-id="p1"] label.switch' });
+  }),
+  S('presets-close', 'view=presets', async s => { await s.click({ css: '.pv-item[data-id="p1"] [data-pv=close]' }); await s.wait(400); }),
+  S('presets-full', 'view=presets&many=1', async s => { await s.click(key('ps.new')); }),
+  S('presets-icons', 'view=presets&noicons=1', async s => { await s.wait(600); }),
+  S('presets-long', 'view=presets&long=1', null, { langs: ['en'] }),
+  S('presets-search-none', 'view=presets', async s => { await s.type('zzzz', key('pv.search')); await s.wait(300); }),
+  S('presets-move-top', 'view=presets', async s => { await s.click({ css: '.pv-item[data-id="p2"] [data-move="-1"]' }); }),
+  S('presets-drag', 'view=presets', async s => {
+    await s.drag({ css: '.pv-item[data-id="p3"] .pv-grip' }, { css: '.pv-item[data-id="p1"]' }, -12);
+    await s.snap('dragged up');
+    await s.drag({ css: '.pv-item[data-id="p3"] .pv-grip' }, { css: '.pv-item[data-id="p2"]' }, 12);
+  }),
   S('preset-editor-save', 'preset=1', async s => {
     await s.wait(300);
     await s.fill({ css: '.overlay input.field' }, 'Farm Blox Fruits 2');

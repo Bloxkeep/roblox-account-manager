@@ -1,0 +1,1685 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Preset"
+            p [id="pv-sub"] "preset preset hẹn giờđã đạt mức tối đa"
+              b "50"
+              span.sep "·"
+              b "9"
+              span.sep "·"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
+            button.btn.primary [FOCUSED]
+              svg.i #u7ty99
+              span "Thêm preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
+                span.pv-next "· Lần tới: Hôm nay 20:00"
+                  span.pv-live "Đang mở 3 cửa sổ"
+              div.pv-accs [title="3 tài khoản\nFarm 1\nFarm 2\nNight Owl" aria-label="3 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do preset này mở." aria-label="Đóng: Farm Blox Fruits"]
+                svg.i #16z0s1r
+                span "Đóng"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm Blox Fruits"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Adopt Me trade"] "Adopt Me trade"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"
+                span.pv-next
+                  span "Chạy lần cuối 1 giờ trước"
+              div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Adopt Me trade"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Adopt Me trade"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Adopt Me trade"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Adopt Me trade"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Adopt Me trade"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Adopt Me trade"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
+                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
+                span.pv-next
+                  span "Chạy lần cuối 1 ngày trước"
+              div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Morning check-in"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Morning check-in"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 4"] "Farm group 4"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Mỗi ngày 06:00"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Mỗi ngày 06:00"
+                span.pv-next "Lần tới: Ngày mai 06:00"
+              div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 4" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 4"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 4"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 4"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 4"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 4"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 4"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 5"] "Farm group 5"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Đông nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 5"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 5"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 5"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 5"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 5"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 5"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 6"] "Farm group 6"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Vắng nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 6"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 6"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 6"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 6"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 6"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 6"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 7"] "Farm group 7"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ping thấp nhất · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 09:00"] "Ping thấp nhất · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 09:00"
+              div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 7" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 7"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 7"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 7"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 7"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 7"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 7"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 8"] "Farm group 8"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây) · Không hẹn giờ"] "Ngẫu nhiên · Chờ mặc định (8 giây) · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 8"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 8"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 8"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 8"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 8"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 8"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="A preset name that is as long as the app allows, sixty chars"] "A preset name that is as long as the app allows, sixty chars"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: A preset name that is as long as the app allows, sixty chars"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: A preset name that is as long as the app allows, sixty chars"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: A preset name that is as long as the app allows, sixty chars"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: A preset name that is as long as the app allows, sixty chars"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: A preset name that is as long as the app allows, sixty chars"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: A preset name that is as long as the app allows, sixty chars"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 10"] "Farm group 10"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Đông nhất · Chờ 11 giây giữa các tài khoản · Thứ 7, CN 12:00"] "Đông nhất · Chờ 11 giây giữa các tài khoản · Thứ 7, CN 12:00"
+                span.pv-next "Lần tới: Ngày mai 12:00"
+              div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 10" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 10"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 10"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 10"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 10"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 10"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 10"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 11"] "Farm group 11"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Vắng nhất · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 11"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 11"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 11"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 11"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 11"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 11"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 12"] "Farm group 12"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Ping thấp nhất · Chờ mặc định (8 giây) · Không hẹn giờ"] "Ping thấp nhất · Chờ mặc định (8 giây) · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 12"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 12"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 12"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 12"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 12"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 12"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 13"] "Farm group 13"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 15:00"] "Ngẫu nhiên · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 15:00"
+              div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 13" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 13"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 13"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 13"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 13"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 13"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 13"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 14"] "Farm group 14"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 14"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 14"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 14"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 14"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 14"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 14"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 15"] "Farm group 15"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Đông nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 15"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 15"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 15"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 15"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 15"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 15"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 16"] "Farm group 16"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Vắng nhất · Chờ mặc định (8 giây) · Mỗi ngày 18:00"] "Vắng nhất · Chờ mặc định (8 giây) · Mỗi ngày 18:00"
+                span.pv-next "Lần tới: Hôm nay 18:00"
+              div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 16" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 16"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 16"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 16"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 16"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 16"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 16"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 17"] "Farm group 17"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Ping thấp nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"] "Ping thấp nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 17"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 17"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 17"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 17"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 17"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 17"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 18"] "Farm group 18"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"] "Ngẫu nhiên · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 18"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 18"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 18"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 18"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 18"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 18"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 19"] "Farm group 19"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 11 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 21:00"] "Bất kỳ (Roblox tự chọn) · Chờ 11 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 21:00"
+              div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 19" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 19"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 19"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 19"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 19"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 19"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 19"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 20"] "Farm group 20"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Đông nhất · Chờ mặc định (8 giây) · Không hẹn giờ"] "Đông nhất · Chờ mặc định (8 giây) · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 20"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 20"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 20"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 20"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 20"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 20"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 21"] "Farm group 21"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Vắng nhất · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 21"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 21"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 21"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 21"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 21"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 21"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 22"] "Farm group 22"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ping thấp nhất · Chờ 5 giây giữa các tài khoản · Thứ 7, CN 08:00"] "Ping thấp nhất · Chờ 5 giây giữa các tài khoản · Thứ 7, CN 08:00"
+                span.pv-next "Lần tới: Ngày mai 08:00"
+              div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 22" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 22"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 22"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 22"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 22"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 22"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 22"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 23"] "Farm group 23"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Ngẫu nhiên · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 23"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 23"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 23"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 23"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 23"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 23"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 24"] "Farm group 24"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 24"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 24"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 24"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 24"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 24"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 24"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 25"] "Farm group 25"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Đông nhất · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 11:00"] "Đông nhất · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 11:00"
+              div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 25" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 25"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 25"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 25"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 25"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 25"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 25"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 26"] "Farm group 26"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Vắng nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 26"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 26"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 26"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 26"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 26"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 26"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 27"] "Farm group 27"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Ping thấp nhất · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"] "Ping thấp nhất · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 27"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 27"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 27"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 27"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 27"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 27"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 28"] "Farm group 28"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây) · Mỗi ngày 14:00"] "Ngẫu nhiên · Chờ mặc định (8 giây) · Mỗi ngày 14:00"
+                span.pv-next "Lần tới: Hôm nay 14:00"
+              div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 28" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 28"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 28"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 28"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 28"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 28"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 28"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 29"] "Farm group 29"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 29"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 29"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 29"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 29"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 29"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 29"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 30"] "Farm group 30"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Đông nhất · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 30"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 30"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 30"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 30"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 30"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 30"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 31"] "Farm group 31"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Vắng nhất · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 17:00"] "Vắng nhất · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 17:00"
+              div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 31" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 31"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 31"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 31"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 31"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 31"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 31"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 32"] "Farm group 32"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Ping thấp nhất · Chờ mặc định (8 giây) · Không hẹn giờ"] "Ping thấp nhất · Chờ mặc định (8 giây) · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 32"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 32"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 32"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 32"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 32"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 32"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 33"] "Farm group 33"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"] "Ngẫu nhiên · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 33"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 33"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 33"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 33"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 33"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 33"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 34"] "Farm group 34"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 8 giây giữa các tài khoản · Thứ 7, CN 20:00"] "Bất kỳ (Roblox tự chọn) · Chờ 8 giây giữa các tài khoản · Thứ 7, CN 20:00"
+                span.pv-next "Lần tới: Ngày mai 20:00"
+              div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 34" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 34"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 34"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 34"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 34"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 34"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 34"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 35"] "Farm group 35"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Đông nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 35"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 35"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 35"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 35"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 35"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 35"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 36"] "Farm group 36"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Vắng nhất · Chờ mặc định (8 giây) · Không hẹn giờ"] "Vắng nhất · Chờ mặc định (8 giây) · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 36"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 36"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 36"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 36"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 36"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 36"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 37"] "Farm group 37"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ping thấp nhất · Chờ 11 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 07:00"] "Ping thấp nhất · Chờ 11 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 07:00"
+              div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 37" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 37"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 37"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 37"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 37"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 37"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 37"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 38"] "Farm group 38"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"] "Ngẫu nhiên · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 38"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 38"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 38"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 38"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 38"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 38"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 39"] "Farm group 39"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 39"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 39"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 39"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 39"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 39"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 39"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 40"] "Farm group 40"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Đông nhất · Chờ mặc định (8 giây) · Mỗi ngày 10:00"] "Đông nhất · Chờ mặc định (8 giây) · Mỗi ngày 10:00"
+                span.pv-next "Lần tới: Ngày mai 10:00"
+              div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 40" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 40"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 40"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 40"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 40"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 40"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 40"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 41"] "Farm group 41"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Vắng nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 41"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 41"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 41"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 41"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 41"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 41"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 42"] "Farm group 42"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Ping thấp nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"] "Ping thấp nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 42"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 42"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 42"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 42"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 42"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 42"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 43"] "Farm group 43"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 13:00"] "Ngẫu nhiên · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 13:00"
+              div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 43" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 43"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 43"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 43"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 43"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 43"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 43"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 44"] "Farm group 44"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 44"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 44"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 44"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 44"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 44"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 44"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 45"] "Farm group 45"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Đông nhất · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 45"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 45"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 45"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 45"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 45"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 45"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 46"] "Farm group 46"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Vắng nhất · Chờ 11 giây giữa các tài khoản · Thứ 7, CN 16:00"] "Vắng nhất · Chờ 11 giây giữa các tài khoản · Thứ 7, CN 16:00"
+                span.pv-next "Lần tới: Ngày mai 16:00"
+              div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Tắt hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 46" checked=true]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 46"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 46"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 46"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 46"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 46"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 46"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 47"] "Farm group 47"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 47"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 47"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 47"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 47"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 47"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 47"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 48"] "Farm group 48"
+                small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây) · Không hẹn giờ"] "Ngẫu nhiên · Chờ mặc định (8 giây) · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 48"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 48"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 48"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 48"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 48"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 48"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 49"] "Farm group 49"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 19:00"] "Bất kỳ (Roblox tự chọn) · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 19:00"
+              div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+              div.pv-sw
+                small [aria-hidden="true"] "Hẹn giờ"
+                label.switch [title="Bật hẹn giờ"]
+                  input [type="checkbox" aria-label="Hẹn giờ: Farm group 49" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 49"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 49"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 49"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 49"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 49"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 49"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm group 50"] "Farm group 50"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Đông nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+              div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Chạy: Farm group 50"]
+                svg.i #1ewcuky
+                span "Chạy"
+              span.pv-acts
+                button.icon-btn [title="Sửa" aria-label="Sửa: Farm group 50"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Nhân bản" aria-label="Nhân bản: Farm group 50"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" aria-label="Xóa: Farm group 50"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Chuyển lên" aria-label="Chuyển lên: Farm group 50"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Chuyển xuống" aria-label="Chuyển xuống: Farm group 50" disabled]
+                  svg.i #u1ag9u
+#layer
+#toasts
+  div.toast.warn [role="status"]
+    svg.i #42lb9l
+    span "Chỉ lưu được tối đa 50 preset."
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

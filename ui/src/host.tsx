@@ -43,9 +43,27 @@ export interface Host {
   discordLink(thenTurnOn: boolean): void;
   /**
    * fn runs each time app.js gives the signal: "hideDiscordLink" (a shown webhook link goes: Settings or its page left,
-   * the window left), "clearPassword" (typed passwords go: Settings left). Returns how to stop.
+   * the window left), "clearPassword" (typed passwords go: Settings left), "presetQuery" (the Presets search was put
+   * back: presetQuery), "presetsShown" (the Presets tab was opened). Returns how to stop.
    */
-  on(signal: 'hideDiscordLink' | 'clearPassword', fn: () => void): () => void;
+  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown', fn: () => void): () => void;
+  /** The Presets tab's search, as app.js keeps it (a page restarted comes back with it), and a new one typed. */
+  presetQuery(): string;
+  setPresetQuery(q: string): void;
+  /** "Mon–Fri 20:00", "Every day 20:00" or a one-off's date (app.js scheduleText). */
+  scheduleText(schedule: { time: string; date?: string; days?: number[] }): string;
+  /** "Next: Today 20:00" for a scheduled preset, empty otherwise (app.js nextRunText). */
+  nextRunText(preset: { nextRun?: string }): string;
+  /** The options a preset sets differently from the usual settings, in one line (app.js presetOptionsText). */
+  presetOptionsText(preset: object): string;
+  /** An account's picture, or its initials, as the cards draw it (app.js avatarInner: HTML). */
+  avatarHtml(account: object): string;
+  /** Runs a preset (app.js runPreset: one at a time, asking when Roblox is busy). */
+  runPreset(id: string): Promise<unknown>;
+  /** Deletes a preset after asking (app.js deletePreset). */
+  deletePreset(preset: object): Promise<unknown>;
+  /** The preset editor for a preset (app.js presetModal). */
+  editPreset(preset: object): void;
   /** Where a control is (app.js focusKey: what it does, its row, its place), to find it, or one in its place, again. */
   focusKey(node: Element, root: Element): unknown;
   /** Focuses that control again, or the one now in its place (app.js refocus). */

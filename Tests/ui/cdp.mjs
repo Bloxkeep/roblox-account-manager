@@ -106,6 +106,30 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
         for (const type of ['mousePressed', 'mouseReleased'])
           await send('Input.dispatchMouseEvent', { type, x, y, button, clickCount: n, modifiers: mod });
     },
+    /**
+     * A drag with the mouse from (x1, y1) to (x2, y2), as a person makes it: Edge hands the drag to us (no window of
+     * its own to drag in, headless), and we take it over the page and drop it there.
+     */
+    async drag(x1, y1, x2, y2) {
+      await send('Input.setInterceptDrags', { enabled: true });
+      const started = new Promise(res => {
+        const f = m => { if (m.method === 'Input.dragIntercepted') { listeners.splice(listeners.indexOf(f), 1); res(m.params.data); } };
+        listeners.push(f);
+      });
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x1, y: y1 });
+      await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: x1, y: y1, button: 'left', buttons: 1, clickCount: 1 });
+      for (let i = 1; i <= 4; i++) await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x1, y: y1 + 3 * i, button: 'left', buttons: 1 });
+      const data = await Promise.race([started, sleep(2000).then(() => null)]);
+      try {
+        if (!data) throw new Error('the drag did not start');
+        await send('Input.dispatchDragEvent', { type: 'dragEnter', x: x1, y: y1 + 12, data });
+        for (let i = 1; i <= 6; i++) await send('Input.dispatchDragEvent', { type: 'dragOver', x: x1 + (x2 - x1) * i / 6, y: y1 + 12 + (y2 - y1 - 12) * i / 6, data });
+        await send('Input.dispatchDragEvent', { type: 'drop', x: x2, y: y2, data });
+      } finally {
+        await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: x2, y: y2, button: 'left', clickCount: 1 });
+        await send('Input.setInterceptDrags', { enabled: false });
+      }
+    },
     async shot(file) {
       const r = await send('Page.captureScreenshot', { format: 'png' });
       fs.writeFileSync(file, Buffer.from(r.data, 'base64'));

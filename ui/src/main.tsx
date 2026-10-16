@@ -9,6 +9,7 @@ import { HostContext, type Host } from './host';
 import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
 import { MultiHelp } from './MultiHelp';
 import { PickList, type PickItem, type PickListApi } from './PickList';
+import { PresetsView } from './PresetsView';
 import { AppearancePage } from './settings/AppearancePage';
 import { BackupPage } from './settings/BackupPage';
 import { DiscordPage } from './settings/DiscordPage';
@@ -29,21 +30,33 @@ function mount(el: HTMLElement, host: Host, node: ReactNode): () => void {
 }
 
 /**
- * A control with the focus that is drawn away (a list redrawn without it, Play turned into Stop) hands the focus on to
- * the same control drawn anew, or the one now in its place, as app.js's setHtml does: not back to the top of the window.
+ * A control with the focus that React draws away (a list redrawn without it, a row moved to its new place: Edge drops
+ * the focus of a moved element too) hands the focus back: to itself when it is still there, else to the same control
+ * drawn anew or the one now in its place, as app.js's setHtml does. Focus the person moved away (a click elsewhere)
+ * stays where they put it: only a loss the redraw itself caused is undone.
  */
 function keepFocus(el: HTMLElement, host: Host): () => void {
-  let last: Element | null = null, key: unknown = null;
+  let last: Element | null = null, key: unknown = null, lost: Element | null = null;
   const focused = (e: FocusEvent) => { last = e.target as Element; key = host.focusKey(last, el); };
-  const watch = new MutationObserver(() => {
-    if (!last || last.isConnected) return;
+  // A redraw that takes the element out tells the observer in a microtask; a loss nothing redrew is forgotten after.
+  const left = (e: FocusEvent) => {
+    if (e.target !== last || e.relatedTarget) return;
+    lost = last;
+    setTimeout(() => { if (lost === e.target) lost = null; });
+  };
+  const watch = new MutationObserver(records => {
+    const was = lost;
+    if (!was || !records.some(r => [...r.removedNodes].some(n => n === was || n.contains(was)))) return;
+    lost = null;
     const active = document.activeElement;
-    last = null;
-    if (!active || active === document.body) host.refocus(el, key);
+    if (active && active !== document.body) return;
+    if (was.isConnected && !(was as HTMLButtonElement).disabled) (was as HTMLElement).focus({ preventScroll: true });
+    else host.refocus(el, key);
   });
   el.addEventListener('focusin', focused);
+  el.addEventListener('focusout', left);
   watch.observe(el, { childList: true, subtree: true });
-  return () => { el.removeEventListener('focusin', focused); watch.disconnect(); };
+  return () => { el.removeEventListener('focusin', focused); el.removeEventListener('focusout', left); watch.disconnect(); };
 }
 
 const BloxkeepUI = {
@@ -74,6 +87,10 @@ const BloxkeepUI = {
       discord: <DiscordPage title={title} />, appearance: <AppearancePage title={title} />, security: <SecurityPage title={title} />, backup: <BackupPage title={title} />, updates: <UpdatesPage title={title} />,
     };
     return mount(el, host, pages[page]);
+  },
+  /** The Presets tab into its section. */
+  presetsView(el: HTMLElement, host: Host) {
+    return mount(el, host, <PresetsView />);
   },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */
   pickList(el: HTMLElement, host: Host, text: string, items: PickItem[]) {

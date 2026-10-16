@@ -645,6 +645,7 @@
     takeDownUiParts();
     const ui = window.BloxkeepUI, host = uiHost();
     for (const [id] of SET_PAGES) uiParts.push(ui.settingsPage($(`#set-page-${id}`), host, id, setPageTitle(id)));
+    uiParts.push(ui.presetsView($('#view-presets'), host));
   }
   function buildShell() {
     S.shell = true;
@@ -713,7 +714,7 @@
             <div class="dock-actions" id="dock-actions"></div>
           </div>
         </section>
-        <section class="view" id="view-presets" hidden>${presetsViewHtml()}</section>
+        <section class="view" id="view-presets" hidden></section>
         <section class="view" id="view-stats" hidden>${statsHtml()}</section>
         <section class="view" id="view-monitor" hidden>${monitorHtml()}</section>
         <section class="view" id="view-settings" hidden>${settingsHtml()}</section>
@@ -767,7 +768,6 @@
     $('#job').addEventListener('keydown', e => { if (e.key === 'Enter') launch([...S.selected], false); });
     mountUiParts();
     wireSettings();
-    wirePresetsView();
     setView(S.view);
     resolveGame();
   }
@@ -778,7 +778,6 @@
     renderChips();
     renderGrid();
     renderDock();
-    renderPresetsView();
     syncSettings();
     syncMultiHelp();
     if (S.view === 'stats') renderStats(); // names shown or hidden follow at once (unchanged figures cost nothing)
@@ -823,7 +822,7 @@
     document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.view === view));
     $('#view-accounts').hidden = view !== 'accounts';
     $('#view-presets').hidden = view !== 'presets';
-    if (view === 'presets') renderPresetsView(true);
+    if (view === 'presets') uiSignal('presetsShown');
     $('#view-settings').hidden = view !== 'settings';
     $('#view-stats').hidden = view !== 'stats';
     $('#view-monitor').hidden = view !== 'monitor';
@@ -1627,6 +1626,8 @@
     },
     ask: (cmd, args) => bridge.call(cmd, args), strength: strengthLevel,
     focusKey, refocus,
+    presetQuery: () => PV.query, setPresetQuery: q => { PV.query = q; },
+    scheduleText, nextRunText, presetOptionsText, avatarHtml: avatarInner, runPreset, deletePreset, editPreset: presetModal,
     settingsDrawn() {
       const q = $('#set-q');
       if (q?.value) searchSettings(q.value);
@@ -2855,21 +2856,10 @@
   }
 
   /* ───────────────────────── presets tab ─────────────────────────
-     Every preset as a row: run, edit, duplicate, delete, its schedule on or off, and its place in the list (the dock's
-     Presets menu lists them in the same order). A row moves by dragging its handle or with its arrows (keyboard);
-     while a search narrows the list there is no whole order to change, so both are hidden. */
-  const PV = { query: '', iconsAt: 0, dragging: false };
+     Drawn by React (ui/src/PresetsView.tsx): every preset as a row, run, edit, duplicate, delete, its schedule, its
+     place in the list. What it uses of this page comes through uiHost(): scheduleText, nextRunText, runPreset… */
+  const PV = { query: '' }; // the Presets tab's search (PresetsView.tsx), kept with the view
   const MAX_PRESETS = 50; // the app's own limit (MaxPresets); checked here so a full list doesn't open an empty form
-  const AVATARS_SHOWN = 4;
-  function presetsViewHtml() {
-    return `<header class="top"><div class="top-title"><h1>${t('ps.listTitle')}</h1><p id="pv-sub"></p></div>
-      <div class="top-tools" id="pv-tools">
-        <label class="search">${icon('search')}<input id="pv-q" placeholder="${t('pv.search')}" maxlength="100" aria-label="${t('pv.search')}"></label>
-        <button class="btn primary" data-act="pv-new">${icon('plus')}<span>${t('ps.new')}</span></button>
-      </div></header>
-      <div class="scroll"><div class="pv-list" id="pv-list" role="list"></div></div>`;
-  }
-
   /** "Mon, Wed, Fri 20:00", "Every day 20:00", or the date of a one-off. */
   function scheduleText(sc) {
     const time = fmtClock(sc.time);
@@ -2884,189 +2874,9 @@
     return `${text} ${time}`.trim();
   }
 
-  function presetRowHtml(p, i, count, ordered) {
-    const accs = presetAccounts(p);
-    const game = p.placeInput ? p.gameName || p.placeInput : t('ps.noGame');
-    const sc = p.schedule;
-    const delay = p.delaySeconds ?? null;
-    // What it does, in one plain line: server · wait · schedule · options set differently from Settings.
-    const summary = [
-      p.placeInput ? t(`ps.srv.${p.server}`) : '',
-      delay === null ? t('pv.delayDefault', { n: S.app.settings?.launchDelaySeconds ?? 8 }) : delay === 0 ? t('pv.delay0') : t('pv.delayN', { n: delay }),
-      !sc?.time ? t('pv.noSchedule') : !sc.enabled ? `${t('pv.schOff')} · ${scheduleText(sc)}` : scheduleText(sc),
-      presetOptionsText(p),
-    ].filter(Boolean).join(' · ');
-    // Then, quieter: when it runs next (a one-off's date is already above) and when it ran last (kept current by patchTimes).
-    const next = [
-      p.running ? `<span class="pv-live">${esc(tn('pv.running', p.running))}</span>` : '',
-      sc?.enabled && p.nextRun && !sc.date ? esc(nextRunText(p)) : '',
-      p.lastRun ? `<span data-ago="${esc(p.lastRun)}" data-tpl="pv.lastRun">${esc(t('pv.lastRun', { t: ago(p.lastRun) }))}</span>` : '',
-    ].filter(Boolean).join(' · ');
-    const accTitle = [accCount(accs.length), ...accs.map(a => a.label)].join('\n');
-    const avatars = accs.length
-      ? `<div class="pv-accs" title="${esc(accTitle)}" aria-label="${esc(accCount(accs.length))}">${accs.slice(0, AVATARS_SHOWN).map(a => `<span class="avatar sm">${avatarInner(a)}</span>`).join('')}${accs.length > AVATARS_SHOWN ? `<em>+${accs.length - AVATARS_SHOWN}</em>` : ''}</div>`
-      : `<div class="pv-accs none" title="${esc(t('pv.noAccountsTip'))}">${icon('alert')}<small>${t('pv.noAccounts')}</small></div>`;
-    const name = esc(p.name);
-    return `<div class="pv-item" role="listitem" data-id="${esc(p.id)}">
-        ${ordered ? `<span class="ord-grip pv-grip" title="${t('lo.drag')}">${icon('grip')}</span>` : ''}
-        ${p.iconUrl ? `<img class="pv-icon" src="${esc(p.iconUrl)}" alt="" draggable="false" loading="lazy">` : `<span class="pv-icon">${icon(p.placeInput ? 'gamepad' : 'monitor')}</span>`}
-        <div class="pv-main">
-          <b title="${name}">${name}</b>
-          <small title="${esc(game)}">${esc(game)}</small>
-          <span class="pv-sum" title="${esc(summary)}">${esc(summary)}</span>
-          <span class="pv-next">${next}</span>
-        </div>
-        ${avatars}
-        <div class="pv-sw">${sc?.time ? `<small aria-hidden="true">${t('ps.sch')}</small><label class="switch" title="${t(sc.enabled ? 'pv.schTurnOff' : 'pv.schTurnOn')}"><input type="checkbox" data-pv="sched" ${sc.enabled ? 'checked' : ''} aria-label="${t('ps.sch')}: ${name}"><span></span></label>` : ''}</div>
-        ${p.running ? `<button class="btn sm pv-run pv-close" data-pv="close" title="${esc(tn('pv.runningTip', p.running))}" aria-label="${t('pv.close')}: ${name}">${icon('power')}<span>${t('pv.close')}</span></button>`
-          : `<button class="btn sm pv-run" data-pv="run" aria-label="${t('ps.run')}: ${name}" ${accs.length && !S.app.launching ? '' : 'disabled'}>${icon('play')}<span>${t('ps.run')}</span></button>`}
-        <span class="pv-acts">
-          <button class="icon-btn" data-pv="edit" title="${t('ps.edit')}" aria-label="${t('ps.edit')}: ${name}">${icon('edit')}</button>
-          <button class="icon-btn" data-pv="dup" title="${t('pv.duplicate')}" aria-label="${t('pv.duplicate')}: ${name}">${icon('copy')}</button>
-          <button class="icon-btn" data-pv="del" title="${t('ps.delete')}" aria-label="${t('ps.delete')}: ${name}">${icon('trash')}</button>
-        </span>
-        ${ordered ? `<span class="ord-btns"><button class="icon-btn" data-move="-1" title="${t('lo.up')}" aria-label="${t('lo.up')}: ${name}" ${i > 0 ? '' : 'disabled'}>${icon('chevronUp')}</button><button class="icon-btn" data-move="1" title="${t('lo.down')}" aria-label="${t('lo.down')}: ${name}" ${i < count - 1 ? '' : 'disabled'}>${icon('chevronDown')}</button></span>` : ''}
-      </div>`;
-  }
-
-  /** @param opened the tab was just switched to: icons not known yet are asked for (at most every few minutes). */
-  function renderPresetsView(opened = false) {
-    const host = $('#pv-list');
-    if (!host || !S.app?.settings || PV.dragging) return;
-    const all = presets();
-    // Accents folded on both sides, as the accounts search does ("man hinh" finds "Màn hình").
-    const q = fold(PV.query.trim());
-    const shown = q ? all.filter(p => fold(`${p.name}\n${p.placeInput ? p.gameName || p.placeInput : t('ps.noGame')}`).includes(q)) : all;
-    const scheduled = all.filter(p => p.schedule?.enabled).length;
-    setHtml($('#pv-sub'), all.length ? [t(all.length === 1 ? 'pv.count1' : 'pv.countN', { n: all.length }),
-      scheduled ? t('pv.scheduled', { n: scheduled }) : '', all.length >= MAX_PRESETS ? t('pv.atMax') : '']
-      .filter(Boolean).join('<span class="sep">·</span>') : ''); // counts only, like the other tabs; the empty state says what a preset is
-    $('#pv-tools').hidden = !all.length; // the empty state has its own New button
-    setHtml(host, !all.length
-      ? `<div class="empty"><span class="pv-empty-icon">${icon('layers')}</span><h2>${t('pv.emptyTitle')}</h2><p>${t('pv.emptyText')}</p>
-          <div class="row"><button class="btn primary" data-act="pv-new">${icon('plus')}<span>${t('ps.new')}</span></button></div></div>`
-      : !shown.length ? `<div class="empty"><p>${t('pv.noMatch', { q: esc(PV.query.trim()) })}</p></div>`
-      : shown.map((p, i) => presetRowHtml(p, i, shown.length, !q && all.length > 1)).join(''));
-    if (opened && S.view === 'presets' && all.some(p => p.placeInput && !p.iconUrl) && Date.now() - PV.iconsAt > 5 * 60_000) {
-      PV.iconsAt = Date.now();
-      call('presetIcons', {}, { silent: true });
-    }
-  }
-
   function newPreset() {
     if (presets().length >= MAX_PRESETS) return toast(t('pv.full', { n: MAX_PRESETS }), 'warn');
     presetModal(null);
-  }
-
-  // A double click makes one copy: the row is drawn again before the second click lands, on an enabled button.
-  const dupLast = new Map();
-  async function duplicatePreset(p, btn) {
-    if (Date.now() - (dupLast.get(p.id) || 0) < 600) return;
-    dupLast.set(p.id, Date.now());
-    const id = await busy(btn, () => call('duplicatePreset', { id: p.id }));
-    dupLast.set(p.id, Date.now());
-    if (id === undefined) return;
-    toast(t(p.schedule?.enabled ? 'pv.duplicatedOff' : 'pv.duplicated'), 'ok');
-    // The copy is drawn right under the original (or its other copies); the focus stays on the original's Duplicate.
-    presetRow(id)?.scrollIntoView({ block: 'nearest' });
-    if (!document.activeElement || document.activeElement === document.body) presetRow(p.id)?.querySelector('[data-pv="dup"]')?.focus();
-  }
-
-  const presetRow = id => [...document.querySelectorAll('#pv-list .pv-item')].find(r => r.dataset.id === id);
-
-  async function movePreset(id, dir) {
-    const ids = presets().map(p => p.id);
-    const i = ids.indexOf(id), j = i + dir;
-    if (i < 0 || j < 0 || j >= ids.length) return;
-    [ids[i], ids[j]] = [ids[j], ids[i]];
-    if (await call('setPresetOrder', { ids }) === undefined) return;
-    // The list was drawn again: the focus stays on the moved row's arrow; once the row reaches an end (that arrow is
-    // off) on the row itself, not on the other arrow, where the next Enter would move it straight back.
-    const row = [...document.querySelectorAll('#pv-list .pv-item')].find(r => r.dataset.id === id);
-    const same = row?.querySelector(`[data-move="${dir}"]:not(:disabled)`);
-    if (same) same.focus();
-    else if (row) { row.tabIndex = -1; row.focus(); }
-    row?.scrollIntoView({ block: 'nearest' });
-  }
-
-  function wirePresetsView() {
-    const host = $('#pv-list'), q = $('#pv-q');
-    q.value = PV.query;
-    let timer = 0;
-    q.addEventListener('input', () => {
-      PV.query = q.value;
-      clearTimeout(timer);
-      timer = setTimeout(() => renderPresetsView(), 120);
-    });
-    const presetOf = el => presets().find(p => p.id === el.closest('.pv-item')?.dataset.id);
-    host.addEventListener('click', e => {
-      const b = e.target.closest('[data-pv], [data-move]');
-      const p = b && !b.disabled && b.tagName === 'BUTTON' ? presetOf(b) : null;
-      if (!p) return;
-      if (b.dataset.move) return movePreset(p.id, +b.dataset.move);
-      switch (b.dataset.pv) {
-        case 'run': return busy(b, () => runPreset(p.id));
-        case 'close': return busy(b, async () => {
-          const n = await call('closePreset', { id: p.id });
-          if (n !== undefined) toast(n ? tn('t.closing', n) : t('t.noneRunning'), n ? 'ok' : 'info');
-        });
-        case 'edit': return presetModal(p);
-        case 'dup': return duplicatePreset(p, b);
-        case 'del': return deletePreset(p);
-      }
-    });
-    host.addEventListener('change', async e => {
-      const box = e.target.closest('[data-pv="sched"]');
-      const p = box && presetOf(box);
-      if (!p) return;
-      const on = box.checked;
-      box.disabled = true;
-      const r = await call('setPresetSchedule', { id: p.id, enabled: on });
-      box.disabled = false;
-      // A disabled box lost the focus, and the row may have been drawn again meanwhile: the focus goes back to it.
-      if (document.activeElement === document.body || !document.activeElement) presetRow(p.id)?.querySelector('[data-pv="sched"]')?.focus();
-      // Refused (a one-off whose date has passed): the switch goes back; the reason is in the toast.
-      if (r === undefined) box.checked = !on;
-      else toast(t(on ? 't.schOn' : 't.schOff', { name: p.name }), 'ok');
-    });
-    // Only the handle starts a drag, so the row's buttons and switch work as usual.
-    let dragging = null;
-    host.addEventListener('pointerdown', e => {
-      const row = e.target.closest('.pv-grip') && e.target.closest('.pv-item');
-      if (row) row.draggable = true;
-    });
-    host.addEventListener('pointerup', () => host.querySelectorAll('.pv-item[draggable="true"]').forEach(r => { r.draggable = false; }));
-    host.addEventListener('dragstart', e => {
-      dragging = e.target.closest?.('.pv-item[draggable="true"]') || null;
-      if (!dragging) return;
-      PV.dragging = true; // a state push meanwhile must not redraw the rows under the pointer
-      dragging.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', dragging.dataset.id); // Chromium needs some data for the drag to start
-    });
-    host.addEventListener('dragover', e => {
-      if (!dragging) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      const over = e.target.closest('.pv-item');
-      if (!over || over === dragging) return;
-      const r = over.getBoundingClientRect();
-      host.insertBefore(dragging, e.clientY < r.top + r.height / 2 ? over : over.nextSibling);
-    });
-    host.addEventListener('drop', e => e.preventDefault());
-    host.addEventListener('dragend', async e => {
-      if (!dragging) return;
-      // Esc (or a drop outside the list) cancels the drag: the rows go back, nothing is saved.
-      const cancelled = e.dataTransfer?.dropEffect === 'none';
-      dragging.classList.remove('dragging');
-      dragging.draggable = false;
-      dragging = null;
-      PV.dragging = false;
-      const ids = [...host.querySelectorAll('.pv-item')].map(r => r.dataset.id);
-      host._html = null; // the rows were moved by hand: drawn again from the app's order (the old one if it refused)
-      if (!cancelled && ids.join() !== presets().map(p => p.id).join()) await call('setPresetOrder', { ids });
-      renderPresetsView();
-    });
   }
 
   /** The sign-in window can add several accounts in a row; select whatever was added. */
@@ -4871,9 +4681,9 @@
       img.replaceWith(ini);
       return;
     }
-    if (!img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .pv-item, .activity, .pal-ic')) return;
+    if (!img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .activity, .pal-ic')) return;
     const ph = document.createElement(img.closest('.recent') ? 'i' : 'span');
-    ph.className = img.closest('.recent') ? 'ph' : img.matches('.gicon, .pv-icon') ? img.className : 'gph';
+    ph.className = img.closest('.recent') ? 'ph' : img.matches('.gicon') ? img.className : 'gph';
     if (!img.closest('.recent')) ph.innerHTML = icon('gamepad');
     img.replaceWith(ph);
   }, true);
@@ -5389,7 +5199,7 @@
     if (saved && hadShell && S.shell) {
       // The shell was already built from an earlier push: apply the kept view to it.
       $('#q').value = S.query;
-      $('#pv-q').value = PV.query;
+      uiSignal('presetQuery');
       setView(S.view);
       update();
     }

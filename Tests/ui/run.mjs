@@ -95,6 +95,12 @@ for (const sc of list) {
         await b.click(p.x, p.y, opts);
         await b.eval('__ui.settle()');
       },
+      /** Drags one element onto another with the mouse; dy moves the drop point down from the target's centre. */
+      async drag(from, to, dy = 0) {
+        const a = await s.point(from), z = await s.point(to);
+        await b.drag(a.x, a.y, z.x, z.y + dy);
+        await b.eval('__ui.settle()');
+      },
       /** Where the element is, waiting up to 2 s for it to show (a view still being drawn), as a person would. */
       async point(spec) {
         for (let tries = 0; ; tries++) {
