@@ -1,4 +1,4 @@
-== shown (still changing)
+== shown
 html [data-theme="dark" lang="en"]
 #app
   div.shell
@@ -423,7 +423,7 @@ html [data-theme="dark" lang="en"]
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   reveal {"field":"password","id":"00000000-0000-4000-8000-000000000001"}
   totpCode {"id":"00000000-0000-4000-8000-000000000001"}
-== end (still changing)
+== end
 html [data-theme="dark" lang="en"]
 #app
   div.shell
@@ -840,5 +840,8 @@ html [data-theme="dark" lang="en"]
         button.btn "Cancel"
         button.btn.primary "Save"
 #toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "2FA code copied. It changes in 30 s."
 -- commands
   copy {"field":"totp","id":"00000000-0000-4000-8000-000000000001"}

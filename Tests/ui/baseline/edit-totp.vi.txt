@@ -422,7 +422,7 @@ html [data-theme="dark" lang="vi"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   totpCode {"id":"00000000-0000-4000-8000-000000000001"}
-== undone (still changing)
+== undone
 html [data-theme="dark" lang="vi"]
 #app
   div.shell
@@ -1259,7 +1259,7 @@ html [data-theme="dark" lang="vi"]
 #toasts
 -- commands
   totpCheck {"key":"abc1"}
-== good key (still changing)
+== good key
 html [data-theme="dark" lang="vi"]
 #app
   div.shell

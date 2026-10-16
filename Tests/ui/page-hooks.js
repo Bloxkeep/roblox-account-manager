@@ -25,10 +25,22 @@
   // run.mjs --jank sets __uiSlow: waits of the fake app (dev/mock.js answers in 0.1–0.8 s) and the page's short timers
   // take that many times longer, as over a slow connection, so content arriving late is seen arriving late.
   const slow = window.__uiSlow || 1;
+  // A countdown sets its next tick from the tick before, again and again; under the fixed clock it never reaches zero.
+  // A timer set by a timer set by a timer… past CHAIN deep is that, and isn't waited for (it would hold every step up
+  // to settle()'s limit); the first ticks still are.
+  const CHAIN = 3;
+  let chain = 0; // how deep in such a chain the timer running now is (0: none is)
   window.setTimeout = (fn, ms, ...rest) => {
     if (slow > 1 && ms >= 100 && ms <= 3000) ms *= slow;
-    const id = realSetTimeout((...a) => { timers.delete(id); ui.lastChange = performance.now(); return typeof fn === 'function' ? fn(...a) : undefined; }, ms, ...rest);
-    if (!(ms > 3000)) timers.add(id);
+    const depth = chain + 1;
+    const id = realSetTimeout((...a) => {
+      timers.delete(id);
+      ui.lastChange = performance.now();
+      const was = chain;
+      chain = depth;
+      try { return typeof fn === 'function' ? fn(...a) : undefined; } finally { chain = was; }
+    }, ms, ...rest);
+    if (!(ms > 3000) && depth <= CHAIN) timers.add(id);
     return id;
   };
   window.clearTimeout = id => { timers.delete(id); realClearTimeout(id); };
