@@ -214,6 +214,44 @@ export default [
     await s.wait(400);
   }),
   S('edit-escape', 'edit=1', async s => { await s.key('Escape'); }),
+  S('edit-totp', 'edit=1', async s => {
+    await s.wait(300);
+    await s.click({ css: '.overlay [data-totp=remove]' });
+    await s.snap('removed');
+    await s.click({ css: '.overlay [data-totp=undo]' });
+    await s.snap('undone');
+    await s.click({ css: '.overlay [data-totp=remove]' });
+    await s.type('abc1');
+    await s.wait(500);
+    await s.snap('bad key');
+    await s.fill({ css: '.overlay [name=authenticator]' }, 'JBSWY3DPEHPK3PXP');
+    await s.wait(500);
+    await s.snap('good key');
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(400);
+  }),
+  S('edit-reveal', 'edit=1', async s => {
+    await s.wait(300);
+    await s.click({ css: '.overlay [data-reveal=password]' });
+    await s.snap('shown');
+    await s.click({ css: '.overlay [data-reveal=password]' });
+    await s.click({ css: '.overlay [data-totp=copy]' });
+  }),
+  S('edit-ask-close', 'edit=1', async s => {
+    await s.wait(300);
+    await s.fill({ css: '.overlay [name=group]' }, 'Farmers');
+    await s.key('Escape');
+  }),
+  S('edit-hidden-names', 'edit=1&hide=1', async s => { await s.wait(300); }, { langs: ['en'] }),
+  S('add-cookie-empty', '', async s => {
+    await s.click(key('acc.add'));
+    await s.click(key('start.cookie'));
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.snap('needs cookie');
+    await s.click({ css: '.overlay [data-reveal=cookie]' });
+    await s.type('_|WARNING:-x');
+    await s.key('Escape');
+  }),
 
   // ── The game box, the picker, servers ──
   S('game-type-search', '', async s => {

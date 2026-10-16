@@ -59,6 +59,8 @@ export interface Host {
   presetOptionsText(preset: object): string;
   /** An account's picture, or its initials, as the cards draw it (app.js avatarInner: HTML). */
   avatarHtml(account: object): string;
+  /** Copies an account's username, PID or authenticator code (app.js copy: the app copies; a toast says what). */
+  copyField(id: string, field: string): void;
   /** Runs a preset (app.js runPreset: one at a time, asking when Roblox is busy). */
   runPreset(id: string): Promise<unknown>;
   /** Deletes a preset after asking (app.js deletePreset). */

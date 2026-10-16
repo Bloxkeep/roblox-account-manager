@@ -1629,7 +1629,7 @@
     focusKey, refocus,
     presetQuery: () => PV.query, setPresetQuery: q => { PV.query = q; },
     scheduleText, nextRunText, presetOptionsText, avatarHtml: avatarInner, runPreset, deletePreset, editPreset: presetModal,
-    weekdayName, fmtNum, looksLikeTarget, store,
+    weekdayName, fmtNum, looksLikeTarget, store, copyField: copy,
     gameListsCached: () => P.lists,
     async loadGameLists() {
       const r = await call('gameLists', {}, { silent: true });
@@ -3207,124 +3207,28 @@
     });
   }
 
+  /** Adding an account by its cookie (a null), or editing one: the form is React's (ui/src/AccountForm.tsx). */
   function accountModal(a) {
     const isNew = !a;
-    const groups = [...new Set(accounts().map(x => x.group).filter(Boolean))];
-    const dirty = new Set();
-    const head = isNew
-      ? `<div class="callout">${icon('info')}<div>${t('am.callout')}</div></div>`
-      // Names hidden: no @username, and no user ID either (anyone can look an account up by it).
-      : `<div class="acc-head"><div class="avatar">${avatarInner(a)}</div><div><b>${esc(a.label)}</b><div class="muted">${[atName(a), hidingNames() ? '' : `ID ${a.userId}`].filter(Boolean).join(' · ')}</div></div></div>`;
-    const reveal = name => `<button type="button" class="icon-btn" data-reveal="${name}" title="${t('common.show')}">${icon('eye')}</button>`;
-    // While names are hidden the alias can't be shown, so it can't be edited either: it isn't sent, and stays as it is.
-    const aliasHidden = !isNew && hidingNames();
-    // Authenticator key (an account already here): the saved key's code of the moment with Copy and Remove, or a box for
-    // a key. The key itself never comes to the page; one typed here is checked by the app as it is typed, which also
-    // shows the code it makes, to compare with the authenticator app before saving.
-    const hasKey = !isNew && !!a.hasAuthenticator;
-    let removeKey = false;
-    const totpHtml = isNew ? '' : `<div class="totp">
-        <span class="totp-label">${t('am.totp')} <span class="muted">${t('am.totpHint')}</span></span>
-        <div class="totp-live" id="am-totp-live" ${hasKey ? '' : 'hidden'}>
-          <b class="totp-code" id="am-totp-code">··· ···</b><span class="totp-left" id="am-totp-left"></span>
-          <button type="button" class="btn sm" data-totp="copy">${icon('copy')}${t('am.totpCopy')}</button>
-          <button type="button" class="btn sm ghost" data-totp="remove">${t('am.totpRemove')}</button>
-        </div>
-        <div class="pw" id="am-totp-box" ${hasKey ? 'hidden' : ''}><input class="field mono" type="password" name="authenticator" maxlength="512" placeholder="${t('am.totpPh')}" spellcheck="false" autocomplete="off" aria-label="${t('am.totp')}" aria-describedby="am-totp-msg">${reveal('authenticator')}</div>
-        <p class="totp-msg" id="am-totp-msg" aria-live="polite"></p>
-        <p class="totp-note">${t('am.totpNote')}</p>
-      </div>`;
-    // What the boxes held when the form opened: Esc or the X asks before throwing away a pasted cookie or edits.
-    let initial = null, form = null;
-    // A saved password only shown (Show fills it in) isn't an edit: a secret box counts once something was typed in it.
-    const values = () => JSON.stringify([...[...form.querySelectorAll('input[name], textarea[name]')]
-      .map(x => (x.name === 'password' || x.name === 'cookie') && !dirty.has(x.name) ? '' : x.value), removeKey]);
-    // The code on show (the saved key's, or the typed key's preview), counted down and asked for again when it changes.
-    let codeSeq = 0, codeTick = 0, typeWait = 0, codeUntil = 0;
-    const split = c => c.length > 4 ? `${c.slice(0, Math.ceil(c.length / 2))} ${c.slice(Math.ceil(c.length / 2))}` : c;
-    const typedKey = () => form?.querySelector('[name=authenticator]')?.value.trim() || '';
-    function totpMsg(html, kind = '') {
-      const msg = form?.querySelector('#am-totp-msg');
-      if (!msg) return;
-      msg.innerHTML = html;
-      msg.className = `totp-msg ${kind}`;
-    }
-    async function showCode() {
-      clearTimeout(codeTick);
-      const seq = ++codeSeq;
-      const typed = typedKey(), saved = hasKey && !removeKey && !typed;
-      if (!saved && !typed) {
-        totpMsg(removeKey ? `${esc(t('am.totpRemoved'))} <button type="button" class="link" data-totp="undo">${t('am.totpUndo')}</button>` : '');
-        return;
-      }
-      const r = await call(saved ? 'totpCode' : 'totpCheck', saved ? { id: a.id } : { key: typed }, { silent: true });
-      if (seq !== codeSeq || !form?.isConnected || !r) return;
-      if (!r.ok) return totpMsg(esc(r.error), 'err');
-      codeUntil = Date.now() + r.seconds * 1000;
-      if (saved) setText(form.querySelector('#am-totp-code'), split(r.code));
-      else totpMsg(esc(t('am.totpNow', { code: split(r.code) })), 'ok');
-      countDown(seq, saved);
-    }
-    function countDown(seq, saved) {
-      if (seq !== codeSeq || !form?.isConnected) return;
-      const left = Math.ceil((codeUntil - Date.now()) / 1000);
-      if (left <= 0) return showCode();
-      if (saved) setText(form.querySelector('#am-totp-left'), t('am.totpLeft', { s: left }));
-      codeTick = setTimeout(() => countDown(seq, saved), 1000);
-    }
+    let ui = null;
     modal({
       title: t(isNew ? 'am.addTitle' : 'am.editTitle'),
       top: true,
       dismissable: false,
       busy: true,
       enterSubmits: true,
-      askClose: () => !!form && values() !== initial,
-      onClose: () => {
-        codeSeq++;
-        clearTimeout(codeTick);
-        clearTimeout(typeWait);
-      },
-      // A new account: the cookie (the one box it needs) comes first, then the optional ones.
-      body: `${head}
-        <div class="form">
-          ${isNew ? `<label>${t('am.cookie')}
-            <div class="pw"><input class="field mono" type="password" name="cookie" maxlength="4096" placeholder="_|WARNING:-DO-NOT-SHARE-THIS…" spellcheck="false">${reveal('cookie')}</div></label>` : ''}
-          <label>${t('am.alias')}<input class="field" name="alias" maxlength="60" ${aliasHidden ? `disabled placeholder="${t('am.aliasHidden')}"` : `placeholder="${t('am.aliasPh')}" value="${esc(a?.alias)}"`}></label>
-          <label>${t('am.group')}<input class="field" name="group" maxlength="40" list="dl-groups" placeholder="${t('am.groupPh')}" value="${esc(a?.group)}"></label>
-          <datalist id="dl-groups">${groups.map(g => `<option value="${esc(g)}">`).join('')}</datalist>
-          <label><span>${t('am.pw')} <span class="muted">${t('am.pwHint')}</span></span>
-            <div class="pw"><input class="field" type="password" name="password" maxlength="200" placeholder="${!isNew && a.hasPassword ? t('am.pwSaved') : t('am.pwNone')}">${reveal('password')}</div></label>
-          ${totpHtml}
-          <label>${t('am.note')}<textarea class="field" name="note" maxlength="500" rows="2">${esc(a?.note)}</textarea></label>
-        </div>
-        <p class="fine">${icon('shield')}<span>${t('am.fine')}</span></p>
-        <div class="form-error" role="alert" hidden></div>`,
+      // What the boxes held when the form opened: Esc or the X asks before throwing away a pasted cookie or edits.
+      askClose: () => !!ui?.form.dirty(),
+      body: '',
       actions: [
         { text: t('common.cancel'), onClick: ({ close }) => close() },
         {
-          text: t(isNew ? 'am.add' : 'am.save'), kind: 'primary', onClick: async ({ el, close, btn }) => {
-            const val = name => el.querySelector(`[name=${name}]`).value;
-            const err = el.querySelector('.form-error');
-            err.hidden = true;
-            if (isNew && !val('cookie').trim()) {
-              err.textContent = t('am.needCookie');
-              err.hidden = false;
-              err.scrollIntoView({ block: 'nearest' });
-              return;
-            }
-            const args = { group: val('group'), note: val('note') };
-            if (!aliasHidden) args.alias = val('alias');
-            if (isNew) Object.assign(args, { cookie: val('cookie'), password: val('password') });
-            else {
-              args.id = a.id;
-              if (dirty.has('password')) args.password = val('password');
-              // A key typed replaces the saved one (the app checks it); Remove sends none; otherwise it stays.
-              if (typedKey()) args.authenticator = typedKey();
-              else if (removeKey) args.authenticator = '';
-            }
+          text: t(isNew ? 'am.add' : 'am.save'), kind: 'primary', onClick: async ({ close, btn }) => {
+            const r0 = ui.form.collect();
+            if (r0.error) return;
             if (btn.disabled) return; // a second click while the first is still saving
             try {
-              const r = await busy(btn, () => bridge.call(isNew ? 'addViaCookie' : 'updateAccount', args));
+              const r = await busy(btn, () => bridge.call(isNew ? 'addViaCookie' : 'updateAccount', r0.args));
               close();
               if (isNew && r) {
                 toast(t(r.merged ? 't.merged' : 't.added', { name: r.label }), 'ok');
@@ -3333,61 +3237,17 @@
                 toast(t('t.saved'), 'ok');
               }
             } catch (ex) {
-              err.textContent = ex.message;
-              err.hidden = false;
-              err.scrollIntoView({ block: 'nearest' });
+              ui.form.fail(ex.message);
             }
           },
         },
       ],
       onMount: ({ el, close }) => {
-        form = el;
-        initial = values();
-        el.querySelectorAll('input[name=password], input[name=cookie]').forEach(i => i.addEventListener('input', () => dirty.add(i.name)));
-        // A key being typed is checked once the typing rests (the app says what's wrong, or shows its code).
-        el.querySelector('[name=authenticator]')?.addEventListener('input', () => {
-          clearTimeout(typeWait);
-          codeSeq++; // a reply for what was typed before doesn't count any more
-          typeWait = setTimeout(showCode, 300);
-        });
-        if (hasKey) showCode();
-        el.addEventListener('click', async e => {
-          if (e.target.closest('[data-local=browser]')) {
-            close();
-            addBrowser(null);
-            return;
-          }
-          const k = e.target.closest('[data-totp]');
-          if (k) {
-            const live = el.querySelector('#am-totp-live'), box = el.querySelector('#am-totp-box');
-            if (k.dataset.totp === 'copy') return copy(a.id, 'totp');
-            // Remove (or its Undo) only changes the form: the key goes once the form is saved.
-            removeKey = k.dataset.totp === 'remove';
-            live.hidden = removeKey;
-            box.hidden = !removeKey;
-            if (!removeKey) box.querySelector('input').value = '';
-            showCode();
-            (removeKey ? box.querySelector('input') : live.querySelector('[data-totp=copy]')).focus();
-            return;
-          }
-          const b = e.target.closest('[data-reveal]');
-          if (!b) return;
-          const input = b.parentElement.querySelector('input');
-          if (input.type === 'text') {
-            input.type = 'password';
-            b.innerHTML = icon('eye');
-            return;
-          }
-          // Only the saved password can be shown from the app: an authenticator key never comes back to the page.
-          if (!isNew && input.name === 'password' && !dirty.has(input.name) && !input.value) {
-            const v = await call('reveal', { id: a.id, field: input.name });
-            if (typeof v === 'string') input.value = v;
-          }
-          input.type = 'text';
-          b.innerHTML = icon('eyeOff');
-        });
+        ui = window.BloxkeepUI.accountForm(el.querySelector('.modal-body'), uiHost(), a, () => { close(); addBrowser(null); });
+        const aliasHidden = !isNew && hidingNames();
         setTimeout(() => el.querySelector(isNew ? '[name=cookie]' : aliasHidden ? '[name=group]' : '[name=alias]')?.focus(), 40);
       },
+      onRemoved: () => ui?.unmount(),
     });
   }
   const editAccount = id => { const a = byId(id); if (a) accountModal(a); };

@@ -4,6 +4,7 @@
 import { StrictMode, createRef, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
+import { AccountForm, type AccountFormApi } from './AccountForm';
 import { Feedback, type FeedbackApi } from './Feedback';
 import { HostContext, type Host } from './host';
 import { ImportVault, type ImportResult, type ImportVaultApi } from './ImportVault';
@@ -130,6 +131,12 @@ const BloxkeepUI = {
     const api = createRef<ImportVaultApi>();
     const unmount = mount(el, host, <ImportVault api={api} primary={primary} finished={finished} />);
     return { unmount, api: api.current! };
+  },
+  /** Adding (account null) or editing an account, into its dialog's body; Save uses form (AccountFormApi). */
+  accountForm(el: HTMLElement, host: Host, account: object | null, browser: () => void) {
+    const form = createRef<AccountFormApi>();
+    const unmount = mount(el, host, <AccountForm account={account as never} api={form} browser={browser} />);
+    return { unmount, form: form.current! };
   },
   /** The Presets tab into its section. */
   presetsView(el: HTMLElement, host: Host) {
