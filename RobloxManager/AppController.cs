@@ -2748,6 +2748,10 @@ public sealed partial class AppController : IDisposable
         ct.ThrowIfCancellationRequested();
         if (FindAccount(account.Id) is null)
             throw new UserError(L.T("Account not found."));
+        // Roblox's notification-area copy (left when a window was closed, ours or not) would take this launch over and
+        // open no window ("didn't rejoin: no Roblox window appeared"; Bloxstrap: "Roblox failed to launch"): ended first.
+        if (RobloxProcesses.CloseTrayCopies() > 0)
+            await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
         var before = RobloxProcesses.GetPlayerPids().ToHashSet();
         var settings = RequireVault().Data.Settings;
         var config = settings.RobloxConfig;
@@ -2972,15 +2976,20 @@ public sealed partial class AppController : IDisposable
         Dictionary<int, List<int>>? tree = null;
         List<int> ChildrenOf(int parent) => (tree ??= RobloxProcesses.PlayerChildren(scanned)).GetValueOrDefault(parent) ?? [];
         int ParentOf(int child) => (tree ??= RobloxProcesses.PlayerChildren(scanned)).FirstOrDefault(kv => kv.Value.Contains(child)).Key;
-        if (now < _sweepBackgroundUntil)
+        // Roblox's copy in the notification area (RobloxProcesses.IsTrayCopy): not a client. It has no window to wait
+        // for or to claim, isn't a start that closed another window, and doesn't count; once a window of ours has
+        // closed, or after Close all, it is ended, since it would take over the next launch and open nothing.
+        var trays = players.Where(p => !HasWindow(p.Pid) && RobloxProcesses.IsTrayCopy(p.Pid, p.Created)).Select(p => p.Pid).ToHashSet();
+        if (now < _sweepBackgroundUntil || _traySweep.Values.Any(until => now <= until))
         {
-            foreach (int pid in pids.Where(p => !HasWindow(p)).ToList())
+            foreach (int pid in trays)
             {
                 RobloxProcesses.Kill(pid);
-                pids.Remove(pid);
+                ForgetClientStart(pid);
             }
-            players.RemoveAll(p => !pids.Contains(p.Pid));
         }
+        pids.ExceptWith(trays);
+        players.RemoveAll(p => trays.Contains(p.Pid));
         NoteClientStarts(pids, now, ParentOf);
         bool changed = false;
 
@@ -2995,6 +3004,11 @@ public sealed partial class AppController : IDisposable
             var log = _logs.LastStateOf(info.Pid);
             // Roblox closed it because another client opened: not a hand-over, and no auto-rejoin.
             bool closedByRoblox = CheckClosedByRoblox(id, info.Pid, info.Launch.StartedAt, now, ChildrenOf);
+            // Its log not followed (not found in time), but it left its notification-area copy behind: Roblox starts
+            // that when its window is closed (the person's X, or Bloxkeep's own close), never on a drop or a crash.
+            // A window the person closed is a leave by choice, not a drop to rejoin.
+            if (log is null && !closedByRoblox && !_closingForRejoin.Contains(info.Pid) && ChildrenOf(info.Pid).Any(trays.Contains))
+                log = new RobloxLogWatcher.ClientState("left", info.Launch.Target?.PlaceId, info.Launch.Target?.JobId, null, now);
             _endedHere[id] = (log?.JobId ?? info.Launch.Target?.JobId, log?.PlaceId ?? info.Launch.Target?.PlaceId, now);
             EndPlay(id, log, now);
             RefreshPresenceSoon(TimeSpan.FromSeconds(8));

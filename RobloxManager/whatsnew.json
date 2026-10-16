@@ -30,10 +30,14 @@
     },
     "fixed": {
       "en": [
+        "Closing a Roblox window yourself no longer counts as a drop: Bloxkeep doesn't rejoin it and then say it “didn't rejoin: no Roblox window appeared”.",
+        "Roblox now leaves a copy of itself in the notification area when its window closes, and that copy took over the next launch without opening a window. Bloxkeep ends it before opening Roblox, and Close all no longer ends a Roblox that another program (Bloxstrap, for one) is just starting.",
         "Discord play-time summaries are sent again (every one had failed).",
         "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed."
       ],
       "vi": [
+        "Tự tay đóng cửa sổ Roblox giờ không còn bị tính là văng game: Bloxkeep không vào lại rồi báo “không vào lại được: không có cửa sổ Roblox nào hiện ra” nữa.",
+        "Roblox giờ để lại một bản chạy ngầm ở khay hệ thống mỗi khi đóng cửa sổ, và bản đó nuốt lần mở tiếp theo nên không có cửa sổ nào hiện ra. Bloxkeep tắt nó trước khi mở Roblox, và Close all không còn tắt nhầm Roblox mà chương trình khác (như Bloxstrap) vừa mở.",
         "Bản tóm tắt giờ chơi gửi lên Discord đã gửi được trở lại (trước đó lần nào cũng lỗi).",
         "Cửa sổ Server không còn kẹt ở “Roblox vẫn đang bận” sau vài lần bấm: trước đây nó hỏi lại Roblox quá sớm và hỏi nhiều hơn cần."
       ]

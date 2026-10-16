@@ -671,6 +671,83 @@ public static class RobloxProcesses
         return pids.Length;
     }
 
+    [DllImport("ntdll.dll")]
+    static extern int NtQueryInformationProcess(IntPtr process, int infoClass, IntPtr buffer, int length, out int returned);
+
+    const int ProcessCommandLineInformation = 60;
+    const uint ProcessQueryLimitedInformation = 0x1000;
+    /// <summary>Clients already looked at, by pid and start time (a pid Windows gives to a newer process is asked again).</summary>
+    static readonly Dictionary<(int Pid, long Created), bool> _trayCopies = new();
+
+    /// <summary>
+    /// The copy Roblox leaves in the notification area when its window closes (0.743, seen 2026-10-16 with the website
+    /// client, through Bloxstrap and from the Microsoft Store): the closing client logs "Successfully launched new process
+    /// in systray mode" and starts "RobloxPlayerBeta.exe --launch-to-tray", whose log says "AppState/TrayMode". It has
+    /// no window and gets none; a Roblox started while it runs hands its launch to it and quits ("NoReload Detector:
+    /// WebPlay NoReload with Tray only!"), so no window opens. Told by its command line.
+    /// </summary>
+    public static bool IsTrayCopy(int pid, long created)
+    {
+        lock (_trayCopies)
+        {
+            if (_trayCopies.TryGetValue((pid, created), out bool known))
+                return known;
+            if (_trayCopies.Count > 200)
+                _trayCopies.Clear();
+        }
+        bool tray = CommandLineOf(pid)?.Contains("--launch-to-tray", StringComparison.OrdinalIgnoreCase) == true;
+        lock (_trayCopies)
+            _trayCopies[(pid, created)] = tray;
+        return tray;
+    }
+
+    /// <summary>A process's command line (Windows 8.1 and later), or null when it can't be read (gone, not ours).</summary>
+    static string? CommandLineOf(int pid)
+    {
+        IntPtr handle = OpenProcess(ProcessQueryLimitedInformation, false, pid);
+        if (handle == IntPtr.Zero)
+            return null;
+        IntPtr buffer = IntPtr.Zero;
+        try
+        {
+            NtQueryInformationProcess(handle, ProcessCommandLineInformation, IntPtr.Zero, 0, out int size);
+            if (size <= 0 || size > 1 << 16)
+                return null;
+            buffer = Marshal.AllocHGlobal(size);
+            if (NtQueryInformationProcess(handle, ProcessCommandLineInformation, buffer, size, out _) != 0)
+                return null;
+            // A UNICODE_STRING (length in bytes, then a pointer to the text) heads the buffer.
+            int length = Marshal.ReadInt16(buffer) & 0xFFFF;
+            IntPtr text = Marshal.ReadIntPtr(buffer, IntPtr.Size);
+            return length == 0 || text == IntPtr.Zero ? "" : Marshal.PtrToStringUni(text, length / 2);
+        }
+        finally
+        {
+            if (buffer != IntPtr.Zero)
+                Marshal.FreeHGlobal(buffer);
+            CloseHandle(handle);
+        }
+    }
+
+    /// <summary>
+    /// Ends Roblox's notification-area copies (see <see cref="IsTrayCopy"/>) before a launch, which they would
+    /// otherwise take over and open no window for. Returns how many were ended.
+    /// </summary>
+    public static int CloseTrayCopies()
+    {
+        var players = GetPlayers();
+        var windows = VisibleWindows(players.Select(p => p.Pid));
+        int ended = 0;
+        foreach (var p in players)
+        {
+            if (windows.TryGetValue(p.Pid, out var list) && list.Count > 0 || !IsTrayCopy(p.Pid, p.Created))
+                continue;
+            Kill(p.Pid);
+            ended++;
+        }
+        return ended;
+    }
+
     public static void Kill(int pid)
     {
         try
