@@ -68,19 +68,33 @@ export default {
       }],
       allowed_mentions: { parse: [] },
     };
-    const sent = await fetch(env.FEEDBACK_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const json = { 'Content-Type': 'application/json' };
+    const sent = await fetch(`${env.FEEDBACK_WEBHOOK}?wait=true`, { method: 'POST', headers: json, body: JSON.stringify(payload) });
     if (!sent.ok)
       return reply({ error: 'discord' }, 502);
-    // The log in a message of its own, under the report: in the same message Discord shows a file above the embed, so
-    // the report read as an afterthought under a wall of stack trace. Wait for the first one so they arrive in order.
+    // The log in a message of its own, under the report: in the same message Discord shows a file above the embed (a
+    // file can't go inside one), so the report read as an afterthought under a wall of stack trace. The report's
+    // "Error log" field then becomes a link to that message: a jump link, since Discord's file links expire in a day.
+    // The report itself went through: a log that doesn't is not worth an error for the person who sent it.
     if (log) {
-      const form = new FormData();
-      form.append('payload_json', JSON.stringify({
-        username: 'Bloxkeep', avatar_url: LOGO, content: '-# Error log for the report above', allowed_mentions: { parse: [] },
-      }));
-      form.append('files[0]', new Blob([log], { type: 'text/plain' }), 'error-log.txt');
-      // The report itself went through: a log that doesn't is not worth an error for the person who sent it.
-      await fetch(env.FEEDBACK_WEBHOOK, { method: 'POST', body: form });
+      try {
+        const form = new FormData();
+        form.append('payload_json', JSON.stringify({
+          username: 'Bloxkeep', avatar_url: LOGO, content: '-# Error log for the report above', allowed_mentions: { parse: [] },
+        }));
+        form.append('files[0]', new Blob([log], { type: 'text/plain' }), 'error-log.txt');
+        const logged = await fetch(`${env.FEEDBACK_WEBHOOK}?wait=true`, { method: 'POST', body: form });
+        const report = await sent.json(), logMessage = logged.ok ? await logged.json() : null;
+        const hook = logMessage ? await (await fetch(env.FEEDBACK_WEBHOOK)).json() : null;
+        if (logMessage && hook?.guild_id) {
+          const size = `${Math.max(1, Math.round(new TextEncoder().encode(log).length / 1024))} KB`;
+          const link = `https://discord.com/channels/${hook.guild_id}/${logMessage.channel_id}/${logMessage.id}`;
+          payload.embeds[0].fields = fields.map(f => f.name === 'Error log' ? { ...f, value: `[error-log.txt](${link}) · ${size}` } : f);
+          await fetch(`${env.FEEDBACK_WEBHOOK}/messages/${report.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ embeds: payload.embeds }) });
+        }
+      } catch {
+        // The report stays as sent ("In the next message").
+      }
     }
     return reply({ ok: true }, 200);
   },

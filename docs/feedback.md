@@ -19,7 +19,7 @@ The app sends at most one a minute (`RobloxManager/AppController.Feedback.cs`).
 The app posts it as JSON to a Cloudflare Worker (`Feedback/worker`), which posts it to a Discord channel through a
 webhook it keeps to itself: the app holds no webhook, so nobody can write to the channel directly. The Worker takes one
 JSON body of at most 40 KB, at most 3 sends a minute from one address and 30 from everyone, and posts with mentions
-turned off, so `@everyone` in a message pings nobody. The log arrives as a file, `error-log.txt`.
+turned off, so `@everyone` in a message pings nobody. The log arrives as a file, `error-log.txt`, in a message of its own right under the report (in the same message Discord would put the file above it); the report's **Error log** field links to that message.
 
 ## Setting it up
 
