@@ -53,7 +53,7 @@ export default {
     if (contact)
       fields.push({ name: 'Reply to', value: contact, inline: true });
     if (log)
-      fields.push({ name: 'Error log', value: 'Attached', inline: true });
+      fields.push({ name: 'Error log', value: 'In the next message', inline: true });
     const payload = {
       username: 'Bloxkeep',
       avatar_url: LOGO,
@@ -68,18 +68,20 @@ export default {
       }],
       allowed_mentions: { parse: [] },
     };
-    let init;
-    if (log) {
-      const form = new FormData();
-      form.append('payload_json', JSON.stringify(payload));
-      form.append('files[0]', new Blob([log], { type: 'text/plain' }), 'error-log.txt');
-      init = { method: 'POST', body: form };
-    } else {
-      init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
-    }
-    const sent = await fetch(env.FEEDBACK_WEBHOOK, init);
+    const sent = await fetch(env.FEEDBACK_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (!sent.ok)
       return reply({ error: 'discord' }, 502);
+    // The log in a message of its own, under the report: in the same message Discord shows a file above the embed, so
+    // the report read as an afterthought under a wall of stack trace. Wait for the first one so they arrive in order.
+    if (log) {
+      const form = new FormData();
+      form.append('payload_json', JSON.stringify({
+        username: 'Bloxkeep', avatar_url: LOGO, content: '-# Error log for the report above', allowed_mentions: { parse: [] },
+      }));
+      form.append('files[0]', new Blob([log], { type: 'text/plain' }), 'error-log.txt');
+      // The report itself went through: a log that doesn't is not worth an error for the person who sent it.
+      await fetch(env.FEEDBACK_WEBHOOK, { method: 'POST', body: form });
+    }
     return reply({ ok: true }, 200);
   },
 };

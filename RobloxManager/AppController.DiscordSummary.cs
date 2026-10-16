@@ -237,7 +237,9 @@ public sealed partial class AppController
     /// <summary>The picture's columns: whole clock hours over the period (or days), each split by game.</summary>
     List<SummaryCardBucket> Buckets(List<StayPart> parts, DateTime from, DateTime to, bool hourly, Dictionary<string, int> colour)
     {
-        var culture = CultureInfo.GetCultureInfo(DiscordLanguage == "vi" ? "vi-VN" : "en-US");
+        // The app runs in invariant-globalization mode (RobloxManager.csproj): asking for "en-US" or "vi-VN" throws there.
+        // The invariant culture's month names and AM/PM are English, which is what the English labels want.
+        var culture = CultureInfo.InvariantCulture;
         var localFrom = from.ToLocalTime();
         var start = hourly ? new DateTime(localFrom.Year, localFrom.Month, localFrom.Day, localFrom.Hour, 0, 0, DateTimeKind.Local) : localFrom.Date;
         var buckets = new List<SummaryCardBucket>();

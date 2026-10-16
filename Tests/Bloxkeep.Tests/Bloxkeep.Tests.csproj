@@ -9,6 +9,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Bloxkeep.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
+    <!-- As the app runs (RobloxManager.csproj): without it a culture lookup that throws in the app passes here. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
