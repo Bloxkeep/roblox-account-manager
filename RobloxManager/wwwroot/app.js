@@ -3733,13 +3733,10 @@
 
   /* ───────────────────────── quick search (Ctrl+K) ─────────────────────────
      One box for everything on the page: accounts, presets, recent and pinned games, the tabs, Settings sections and
-     the app's own actions, ranked by a small fuzzy match. paletteEntries() is the registry, built from the state each
-     time the box opens; an entry is { id, text, hint, keywords, icon | img | avatar, run, alts }, so a new action is
-     one line in its list. Enter runs the highlighted entry; an account's other actions (Play, Edit) are on
-     Ctrl+Enter and Shift+Enter. */
-  const PAL = { close: null, el: null, all: [], rows: [], index: 0, mx: -1, my: -1 };
-  const PAL_MAX = 60;
-  const PAL_ALT_KEYS = ['Ctrl+Enter', 'Shift+Enter'];
+     the app's own actions. paletteEntries() is the registry, built from the state each time the box opens; an entry
+     is { id, text, hint, keywords, icon | img | avatar, run, alts }, so a new action is one line in its list. The box,
+     the list, the ranking and the keys are React's (ui/src/Palette.tsx). */
+  const PAL = { close: null };
 
   /** Puts a game in the dock's game box (no server), as the recent-game chips do. */
   function putGame(placeId) {
@@ -3826,151 +3823,20 @@
     return [...actions, ...tabs, ...presetList, ...games, ...list, ...sections];
   }
 
-  /**
-   * How well a query matches a text, both folded (fold: no accents, lower case): the start of the text beats the
-   * start of a word, which beats the middle of one, then every word somewhere, then the letters in order (fewer gaps
-   * first). -1 for no match.
-   */
-  const PAL_WORD = /[\s@_\-.·(/:[\]]/;
-  const wordStart = (s, j) => j === 0 || PAL_WORD.test(s[j - 1]);
-  function fuzzyScore(q, s) {
-    if (!s) return -1;
-    const at = s.indexOf(q);
-    if (at === 0) return 1000 - Math.min(s.length, 200);
-    if (at > 0) return (wordStart(s, at) ? 800 : 600) - Math.min(at, 100);
-    const words = q.split(/\s+/).filter(Boolean);
-    if (words.length > 1 && words.every(w => s.includes(w))) return 500;
-    // Letters in order, the first one starting a word: "clall" finds "Close all", "anti" doesn't find "sang tieng".
-    const letters = q.replace(/\s+/g, '');
-    let first = s.indexOf(letters[0]);
-    while (first >= 0 && !wordStart(s, first)) first = s.indexOf(letters[0], first + 1);
-    if (first < 0) return -1;
-    let score = 306, from = first + 1, last = first;
-    for (const c of letters.slice(1)) {
-      const j = s.indexOf(c, from);
-      if (j < 0) return -1;
-      if (j !== last + 1) score -= 5 + Math.min(j - from, 15);
-      if (wordStart(s, j)) score += 6;
-      last = j;
-      from = j + 1;
-    }
-    return Math.max(1, score);
-  }
-  /** The entries for a query, best first (ties keep the registry's order); the text counts most, keywords only whole. */
-  function rankPalette(query) {
-    const q = fold(query.trim());
-    if (!q) {
-      PAL.more = Math.max(0, PAL.all.length - PAL_MAX);
-      return PAL.all.slice(0, PAL_MAX);
-    }
-    const hits = PAL.all.map((e, i) => {
-      const byText = fuzzyScore(q, fold(e.text));
-      const byOther = Math.max(-1, ...[e.hint, ...(e.keywords || [])].filter(Boolean).map(k => {
-        const s = fuzzyScore(q, fold(k));
-        return s >= 500 ? s - 300 : -1;
-      }));
-      return { e, i, score: Math.max(byText, byOther) };
-    }).filter(x => x.score > 0).sort((a, b) => b.score - a.score || a.i - b.i);
-    // Only the best ones are listed: the rest are counted, so a long list doesn't read as all there is.
-    PAL.more = Math.max(0, hits.length - PAL_MAX);
-    return hits.slice(0, PAL_MAX).map(x => x.e);
-  }
-  function paletteLead(e) {
-    if (e.avatar) return `<span class="avatar sm">${avatarInner(e.avatar)}</span>`;
-    if (e.img) return `<span class="pal-ic"><img src="${esc(e.img)}" alt=""></span>`;
-    return `<span class="pal-ic">${e.iconHtml || icon(e.icon || 'search')}</span>`;
-  }
-  function renderPalette() {
-    const list = PAL.el?.querySelector('.pal-list'), input = PAL.el?.querySelector('.pal-input');
-    if (!list || !input) return;
-    if (!PAL.rows.length) {
-      list.innerHTML = `<div class="pal-empty">${t('pal.none', { q: esc(input.value.trim()) })}</div>`;
-      input.removeAttribute('aria-activedescendant');
-      return;
-    }
-    // The kind of each row ("Action", "Account"…) only when the list mixes kinds; a list of one kind needs no label.
-    const mixed = new Set(PAL.rows.map(e => e.kind)).size > 1;
-    list.innerHTML = PAL.rows.map((e, i) => {
-      const on = i === PAL.index;
-      // The other actions show on the highlighted row only, with their keys.
-      const alts = on && e.alts ? e.alts.map((x, j) => `<button type="button" class="pal-alt" data-alt="${j}" tabindex="-1">${esc(x.text)}<kbd>${PAL_ALT_KEYS[j]}</kbd></button>`).join('') : '';
-      return `<div class="pal-row ${on ? 'on' : ''}" role="option" id="pal-${i}" aria-selected="${on}" data-pi="${i}">${paletteLead(e)}<span class="pal-txt"><b>${esc(e.text)}</b>${e.hint ? `<small>${esc(e.hint)}</small>` : ''}</span>${alts}${mixed ? `<em class="pal-cat">${t(`pal.cat.${e.kind}`)}</em>` : ''}</div>`;
-    }).join('') + (PAL.more ? `<div class="pal-more">${esc(t('pal.more', { n: PAL.more }))}</div>` : '');
-    input.setAttribute('aria-activedescendant', `pal-${PAL.index}`);
-    list.querySelector('.pal-row.on')?.scrollIntoView({ block: 'nearest' });
-  }
-  function runPaletteEntry(e, alt = -1) {
-    const run = alt >= 0 ? e?.alts?.[alt]?.run : e?.run;
-    if (!run) return;
-    PAL.close?.(); // first: the focus goes back, then the entry may open a dialog of its own or move it
-    run();
-  }
   function openPalette() {
     if (PAL.close || !S.shell || !S.app || S.app.locked) return;
-    PAL.all = paletteEntries();
-    PAL.rows = rankPalette('');
-    PAL.index = 0;
+    let unmount = null;
     modal({
       title: t('pal.title'),
-      body: `<div class="pal">
-          <label class="inwrap pal-search">${icon('search')}<input class="pal-input" type="text" autocomplete="off" spellcheck="false" maxlength="100"
-            placeholder="${esc(t('pal.placeholder'))}" aria-label="${esc(t('pal.title'))}" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="pal-list"></label>
-          <div class="pal-list" id="pal-list" role="listbox" aria-label="${esc(t('pal.title'))}"></div>
-          <div class="pal-foot" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd>${t('pal.move')}</span><span><kbd>Enter</kbd>${t('pal.open')}</span><span><kbd>Esc</kbd>${t('pal.close')}</span></div>
-        </div>`,
+      body: '',
       onMount: ({ el, close }) => {
-        PAL.el = el;
         PAL.close = close;
         el.querySelector('.modal').classList.add('palette');
-        const input = el.querySelector('.pal-input'), list = el.querySelector('.pal-list');
-        input.addEventListener('input', () => {
-          PAL.rows = rankPalette(input.value);
-          PAL.index = 0;
-          renderPalette();
-        });
-        input.addEventListener('keydown', e => {
-          const n = PAL.rows.length;
-          if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp'].includes(e.key)) {
-            e.preventDefault();
-            if (!n) return;
-            const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : e.key === 'PageDown' ? 8 : -8;
-            PAL.index = e.key.startsWith('Page') ? Math.max(0, Math.min(n - 1, PAL.index + step)) : (PAL.index + step + n) % n;
-            renderPalette();
-          } else if (e.key === 'Enter' && !e.isComposing) {
-            e.preventDefault();
-            runPaletteEntry(PAL.rows[PAL.index], e.ctrlKey ? 0 : e.shiftKey ? 1 : -1);
-          } else if (e.key === 'Tab') {
-            e.preventDefault(); // the box keeps the focus: the arrows walk the list
-          } else if (e.key === 'Escape') {
-            // modal() leaves Esc to a box whose list is open (aria-expanded), as this one's always is: closed here,
-            // and not passed on to the page (where Esc would clear the selection).
-            e.stopPropagation();
-            close();
-          }
-        });
-        // The focus stays in the box whatever is clicked in the list.
-        list.addEventListener('mousedown', e => e.preventDefault());
-        list.addEventListener('mousemove', e => {
-          // Only a real move: rows scrolled under a resting pointer (the arrow keys) don't take the highlight.
-          if (e.clientX === PAL.mx && e.clientY === PAL.my) return;
-          PAL.mx = e.clientX;
-          PAL.my = e.clientY;
-          const row = e.target.closest('.pal-row');
-          if (!row || +row.dataset.pi === PAL.index) return;
-          PAL.index = +row.dataset.pi;
-          renderPalette();
-        });
-        list.addEventListener('click', e => {
-          const row = e.target.closest('.pal-row');
-          if (row) runPaletteEntry(PAL.rows[+row.dataset.pi], e.target.closest('.pal-alt') ? +e.target.closest('.pal-alt').dataset.alt : -1);
-        });
-        renderPalette();
-        input.focus();
+        unmount = window.BloxkeepUI.palette(el.querySelector('.modal-body'), uiHost(), paletteEntries(), close);
+        el.querySelector('.pal-input').focus();
       },
-      onClose: () => {
-        PAL.close = PAL.el = null;
-        PAL.all = PAL.rows = [];
-      },
+      onClose: () => { PAL.close = null; },
+      onRemoved: () => unmount?.(),
     });
   }
 

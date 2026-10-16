@@ -5,6 +5,7 @@ import { Fragment, useEffect, useRef, useState, type DragEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { Ago, Icon, useAppState, useHost } from './host';
 import { richNodes } from './rich';
+import { fold } from './text';
 
 /** The app's own limit (MaxPresets); app.js checks it too, so a full list doesn't open an empty form. */
 const MAX_PRESETS = 50;
@@ -18,8 +19,6 @@ export type Preset = {
 type Account = { id: string; label: string };
 const NONE: Preset[] = [];
 
-/** Accents folded and case ignored, as the accounts search does ("man hinh" finds "Màn hình"). */
-const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
 /** Waits for the page to be drawn with the app's answer (its state comes on its own, around the reply). */
 const drawn = () => new Promise(res => setTimeout(res));
 

@@ -278,6 +278,31 @@ export default [
     await s.key('Enter');
   }),
   S('palette-nothing', '', async s => { await s.key('k', ['ctrl']); await s.type('zzzzqqq'); }),
+  S('palette-keys', '', async s => {
+    await s.key('k', ['ctrl']);
+    await s.key('ArrowUp');
+    await s.snap('wrapped');
+    await s.key('PageUp');
+    await s.key('PageDown');
+    await s.key('Tab');
+    await s.snap('paged');
+    await s.key('ArrowDown');
+  }),
+  S('palette-alt', '', async s => {
+    await s.key('k', ['ctrl']);
+    await s.type('farm 1');
+    await s.snap('alts');
+    await s.key('Enter', ['ctrl']);
+    await s.wait(500);
+  }),
+  S('palette-mouse', '', async s => {
+    await s.key('k', ['ctrl']);
+    await s.hover({ css: '.pal-row:nth-child(3)' });
+    await s.snap('hovered');
+    await s.type('farm 1');
+    await s.click({ css: '.pal-row.on .pal-alt[data-alt="1"]' });
+  }),
+  S('palette-many', 'accounts=40&many=1', async s => { await s.key('k', ['ctrl']); }, { langs: ['en'] }),
 
   // ── Presets ──
   S('presets-run', 'view=presets', async s => { await s.click({ text: 'Run: Adopt Me trade', css2: 'button' }); await s.wait(800); }, { langs: ['en'] }),

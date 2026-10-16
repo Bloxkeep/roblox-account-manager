@@ -1,0 +1,1772 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav.on [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "40"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222\nMain 7 · PID 20007\nFarm 1 8 · PID 20008\nMain 14 · PID 20014\nFarm 1 15 · PID 20015\nMain 21 · PID 20021\nFarm 1 22 · PID 20022\nMain 28 · PID 20028\nFarm 1 29 · PID 20029\nMain 35 · PID 20035\nFarm 1 36 · PID 20036"]
+              b [id="sys-count"] "12"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+        header.top
+          div.top-title
+            h1 "Accounts"
+            p [id="acc-sub"] "accounts playing online"
+              b "40"
+              span.sep "·"
+              b "18"
+              span.sep "·"
+              b "24"
+              span.sep "·"
+              button.link [type="button"] "Select all"
+          div.top-tools
+            label.search
+              svg.i #1u22jvi
+              input [id="q" placeholder="Search accounts, groups, notes…" maxlength="100" aria-label="Search accounts, groups, notes…" value=""]
+            button.icon-btn [title="Refresh online status"]
+              svg.i #e464bo
+            button.icon-btn [title="More" aria-haspopup="menu"]
+              svg.i #1e3omv2
+            div.split
+              button.btn.primary
+                svg.i #puf41w
+                span "Add account"
+              button.btn.primary [title="Other ways to add" aria-haspopup="menu"]
+                svg.i #u1ag9u
+        div.bar
+          div.chips.fade-r [id="chips"]
+            button.chip.on [aria-pressed="true"] "All"
+              em "40"
+            button.chip [aria-pressed="false"] "Needs sign-in"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "6"
+            button.chip [aria-pressed="false"] "Banned"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "5"
+            button.chip [aria-pressed="false"] "Playing"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "18"
+            button.chip [aria-pressed="false"] "Online"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "24"
+            button.chip [aria-pressed="false"] "Offline"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "16"
+            button.chip [aria-pressed="false"] "On this PC"
+              em "12"
+          div.seg [id="layout-seg"]
+            button.on [title="Cards" aria-label="Cards" aria-pressed="true"]
+              svg.i #19k0rtd
+            button [title="List" aria-label="List" aria-pressed="false"]
+              svg.i #uj30io
+          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+            svg.i #1mp3g6t
+            span "Group: All"
+          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+            svg.i #1ui218d
+            span "Sort: Name"
+        div.scroll [id="scroll"]
+          div [id="grid"]
+            div.grid [role="listbox" aria-label="Accounts" aria-multiselectable="true"]
+              article.card [role="option" tabindex="0" aria-label="Alt" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar
+                  img [alt="" style="--h:83" src=#c108i9]
+                  i.pdot.studio
+                div.name [title="Alt"] "Alt"
+                div.sub [title="@lananh_2010 · Lan Anh"] "@lananh_2010 · Lan Anh"
+                div.activity.studio
+                  span.gicon
+                    svg.i #1xt8q53
+                  div.txt
+                    div.k [title="Roblox Studio"] "Roblox Studio"
+                    div.v [title="Place1"] "Place1"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.play [tabindex="0"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="0"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Alt 11" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar
+                  img [alt="" style="--h:116" src=#c108i9]
+                  i.pdot.studio
+                div.name [title="Alt 11"] "Alt 11"
+                div.sub [title="@lananh_2010_11 · Lan Anh"] "@lananh_2010_11 · Lan Anh"
+                div.activity.studio
+                  span.gicon
+                    svg.i #1xt8q53
+                  div.txt
+                    div.k [title="Roblox Studio"] "Roblox Studio"
+                    div.v [title="Place1"] "Place1"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Alt 18" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar
+                  img [alt="" style="--h:123" src=#c108i9]
+                  i.pdot.studio
+                div.name [title="Alt 18"] "Alt 18"
+                div.sub [title="@lananh_2010_18 · Lan Anh"] "@lananh_2010_18 · Lan Anh"
+                div.activity.studio
+                  span.gicon
+                    svg.i #1xt8q53
+                  div.txt
+                    div.k [title="Roblox Studio"] "Roblox Studio"
+                    div.v [title="Place1"] "Place1"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Alt 25" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar
+                  img [alt="" style="--h:151" src=#c108i9]
+                  i.pdot.studio
+                div.name [title="Alt 25"] "Alt 25"
+                div.sub [title="@lananh_2010_25 · Lan Anh"] "@lananh_2010_25 · Lan Anh"
+                div.activity.studio
+                  span.gicon
+                    svg.i #1xt8q53
+                  div.txt
+                    div.k [title="Roblox Studio"] "Roblox Studio"
+                    div.v [title="Place1"] "Place1"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Alt 32" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar
+                  img [alt="" style="--h:179" src=#c108i9]
+                  i.pdot.studio
+                div.name [title="Alt 32"] "Alt 32"
+                div.sub [title="@lananh_2010_32 · Lan Anh"] "@lananh_2010_32 · Lan Anh"
+                div.activity.studio
+                  span.gicon
+                    svg.i #1xt8q53
+                  div.txt
+                    div.k [title="Roblox Studio"] "Roblox Studio"
+                    div.v [title="Place1"] "Place1"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Alt 39" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar
+                  img [alt="" style="--h:186" src=#c108i9]
+                  i.pdot.studio
+                div.name [title="Alt 39"] "Alt 39"
+                div.sub [title="@lananh_2010_39 · Lan Anh"] "@lananh_2010_39 · Lan Anh"
+                div.activity.studio
+                  span.gicon
+                    svg.i #1xt8q53
+                  div.txt
+                    div.k [title="Roblox Studio"] "Roblox Studio"
+                    div.v [title="Place1"] "Place1"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 2222"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:243" src=#uinvo6]
+                  i.ingame.pdot
+                div.name [title="Farm 1"] "Farm 1"
+                div.sub [title="@pixelfarmer01"] "@pixelfarmer01"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Joining"] "Joining"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "935 MB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "1 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 2222"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 8" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20008"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:68" src=#uinvo6]
+                  i.ingame.pdot
+                div.name [title="Farm 1 8"] "Farm 1 8"
+                div.sub [title="@pixelfarmer01_8 · pixelfarmer01"] "@pixelfarmer01_8 · pixelfarmer01"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Joining"] "Joining"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "1.2 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "1 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20008"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 15" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20015"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:16" src=#uinvo6]
+                  i.ingame.pdot
+                div.name [title="Farm 1 15"] "Farm 1 15"
+                div.sub [title="@pixelfarmer01_15 · pixelfarmer01"] "@pixelfarmer01_15 · pixelfarmer01"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Joining"] "Joining"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "1.5 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "1 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20015"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 22" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20022"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:44" src=#uinvo6]
+                  i.ingame.pdot
+                div.name [title="Farm 1 22"] "Farm 1 22"
+                div.sub [title="@pixelfarmer01_22 · pixelfarmer01"] "@pixelfarmer01_22 · pixelfarmer01"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Joining"] "Joining"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "1.7 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "1 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20022"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 29" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20029"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:51" src=#uinvo6]
+                  i.ingame.pdot
+                div.name [title="Farm 1 29"] "Farm 1 29"
+                div.sub [title="@pixelfarmer01_29 · pixelfarmer01"] "@pixelfarmer01_29 · pixelfarmer01"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Joining"] "Joining"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "2 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "1 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20029"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Farm 1 36" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20036"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:79" src=#uinvo6]
+                  i.ingame.pdot
+                div.name [title="Farm 1 36"] "Farm 1 36"
+                div.sub [title="@pixelfarmer01_36 · pixelfarmer01"] "@pixelfarmer01_36 · pixelfarmer01"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Joining"] "Joining"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "2.3 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "1 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20036"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge "Needs sign-in"
+                div.avatar.invalid
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                  i.offline.pdot
+                div.name [title="Farm 2"] "Farm 2"
+                div.sub [title="@pixelfarmer02"] "@pixelfarmer02"
+                div.activity.signedout
+                  span.gicon
+                    svg.i #kqqqno
+                  div.txt
+                    div.k [title="Needs sign-in"] "Needs sign-in"
+                    div.v [title="Sign in again to keep using it"] "Sign in again to keep using it"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 9 days ago"
+                div.note [title="Expired last week"] "Expired last week"
+                div.card-actions
+                  button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
+                    svg.i #kqqqno
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 9" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge "Needs sign-in"
+                div.avatar.invalid
+                  img [alt="" style="--h:310" src=#n0d7cr]
+                  i.offline.pdot
+                div.name [title="Farm 2 9"] "Farm 2 9"
+                div.sub [title="@pixelfarmer02_9 · pixelfarmer02"] "@pixelfarmer02_9 · pixelfarmer02"
+                div.activity.signedout
+                  span.gicon
+                    svg.i #kqqqno
+                  div.txt
+                    div.k [title="Needs sign-in"] "Needs sign-in"
+                    div.v [title="Sign in again to keep using it"] "Sign in again to keep using it"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 9 days ago"
+                div.note [title="Expired last week"] "Expired last week"
+                div.card-actions
+                  button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
+                    svg.i #kqqqno
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 16" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge "Needs sign-in"
+                div.avatar.invalid
+                  img [alt="" style="--h:288" src=#n0d7cr]
+                  i.offline.pdot
+                div.name [title="Farm 2 16"] "Farm 2 16"
+                div.sub [title="@pixelfarmer02_16 · pixelfarmer02"] "@pixelfarmer02_16 · pixelfarmer02"
+                div.activity.signedout
+                  span.gicon
+                    svg.i #kqqqno
+                  div.txt
+                    div.k [title="Needs sign-in"] "Needs sign-in"
+                    div.v [title="Sign in again to keep using it"] "Sign in again to keep using it"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 9 days ago"
+                div.note [title="Expired last week"] "Expired last week"
+                div.card-actions
+                  button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
+                    svg.i #kqqqno
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 23" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge "Needs sign-in"
+                div.avatar.invalid
+                  img [alt="" style="--h:316" src=#n0d7cr]
+                  i.offline.pdot
+                div.name [title="Farm 2 23"] "Farm 2 23"
+                div.sub [title="@pixelfarmer02_23 · pixelfarmer02"] "@pixelfarmer02_23 · pixelfarmer02"
+                div.activity.signedout
+                  span.gicon
+                    svg.i #kqqqno
+                  div.txt
+                    div.k [title="Needs sign-in"] "Needs sign-in"
+                    div.v [title="Sign in again to keep using it"] "Sign in again to keep using it"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 9 days ago"
+                div.note [title="Expired last week"] "Expired last week"
+                div.card-actions
+                  button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
+                    svg.i #kqqqno
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 30" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge "Needs sign-in"
+                div.avatar.invalid
+                  img [alt="" style="--h:344" src=#n0d7cr]
+                  i.offline.pdot
+                div.name [title="Farm 2 30"] "Farm 2 30"
+                div.sub [title="@pixelfarmer02_30 · pixelfarmer02"] "@pixelfarmer02_30 · pixelfarmer02"
+                div.activity.signedout
+                  span.gicon
+                    svg.i #kqqqno
+                  div.txt
+                    div.k [title="Needs sign-in"] "Needs sign-in"
+                    div.v [title="Sign in again to keep using it"] "Sign in again to keep using it"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 9 days ago"
+                div.note [title="Expired last week"] "Expired last week"
+                div.card-actions
+                  button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
+                    svg.i #kqqqno
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Farm 2 37" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge "Needs sign-in"
+                div.avatar.invalid
+                  img [alt="" style="--h:351" src=#n0d7cr]
+                  i.offline.pdot
+                div.name [title="Farm 2 37"] "Farm 2 37"
+                div.sub [title="@pixelfarmer02_37 · pixelfarmer02"] "@pixelfarmer02_37 · pixelfarmer02"
+                div.activity.signedout
+                  span.gicon
+                    svg.i #kqqqno
+                  div.txt
+                    div.k [title="Needs sign-in"] "Needs sign-in"
+                    div.v [title="Sign in again to keep using it"] "Sign in again to keep using it"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 9 days ago"
+                div.note [title="Expired last week"] "Expired last week"
+                div.card-actions
+                  button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
+                    svg.i #kqqqno
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Main" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 1111"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                  i.ingame.pdot
+                div.name [title="Main"] "Main"
+                div.sub [title="@sunny_builds · Sunny"] "@sunny_builds · Sunny"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing"] "Playing"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "795 MB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "47 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 1111"
+                div.meta
+                  span.tag [title="Main"] "Main"
+                  span.rejoin [title="Auto-rejoin is on"]
+                    svg.i #1ap9cll
+                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Main 7" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20007"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:292" src=#1qk25wb]
+                  i.ingame.pdot
+                div.name [title="Main 7"] "Main 7"
+                div.sub [title="@sunny_builds_7 · Sunny"] "@sunny_builds_7 · Sunny"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing"] "Playing"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "1 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "47 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20007"
+                div.meta
+                  span.tag [title="Main"] "Main"
+                  span.rejoin [title="Auto-rejoin is on"]
+                    svg.i #1ap9cll
+                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Main 14" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20014"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:342" src=#1qk25wb]
+                  i.ingame.pdot
+                div.name [title="Main 14"] "Main 14"
+                div.sub [title="@sunny_builds_14 · Sunny"] "@sunny_builds_14 · Sunny"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing"] "Playing"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "1.3 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "47 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20014"
+                div.meta
+                  span.tag [title="Main"] "Main"
+                  span.rejoin [title="Auto-rejoin is on"]
+                    svg.i #1ap9cll
+                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Main 21" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20021"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:10" src=#1qk25wb]
+                  i.ingame.pdot
+                div.name [title="Main 21"] "Main 21"
+                div.sub [title="@sunny_builds_21 · Sunny"] "@sunny_builds_21 · Sunny"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing"] "Playing"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "1.6 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "47 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20021"
+                div.meta
+                  span.tag [title="Main"] "Main"
+                  span.rejoin [title="Auto-rejoin is on"]
+                    svg.i #1ap9cll
+                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Main 28" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20028"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:17" src=#1qk25wb]
+                  i.ingame.pdot
+                div.name [title="Main 28"] "Main 28"
+                div.sub [title="@sunny_builds_28 · Sunny"] "@sunny_builds_28 · Sunny"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing"] "Playing"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "1.9 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "47 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20028"
+                div.meta
+                  span.tag [title="Main"] "Main"
+                  span.rejoin [title="Auto-rejoin is on"]
+                    svg.i #1ap9cll
+                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card.local [role="option" tabindex="-1" aria-label="Main 35" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.run [title="Open on this PC · PID 20035"] "On this PC"
+                    i.pulse
+                div.avatar.ingame
+                  img [alt="" style="--h:45" src=#1qk25wb]
+                  i.ingame.pdot
+                div.name [title="Main 35"] "Main 35"
+                div.sub [title="@sunny_builds_35 · Sunny"] "@sunny_builds_35 · Sunny"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing"] "Playing"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
+                div.live
+                  span [title="RAM in use"]
+                    svg.i #m3noxv
+                    b.ram "2.1 GB"
+                  span [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "47 min"
+                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 20035"
+                div.meta
+                  span.tag [title="Main"] "Main"
+                  span.rejoin [title="Auto-rejoin is on"]
+                    svg.i #1ap9cll
+                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar.ingame
+                  img [alt="" style="--h:297" src=#1u67et1]
+                  i.ingame.pdot
+                div.name [title="Night Owl"] "Night Owl"
+                div.sub [title="@night_owl_rb"] "@night_owl_rb"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing · another device"] "Playing · another device"
+                    div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 5 h ago"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 10" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar.ingame
+                  img [alt="" style="--h:253" src=#1u67et1]
+                  i.ingame.pdot
+                div.name [title="Night Owl 10"] "Night Owl 10"
+                div.sub [title="@night_owl_rb_10 · Night Owl"] "@night_owl_rb_10 · Night Owl"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing · another device"] "Playing · another device"
+                    div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 5 h ago"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 17" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar.ingame
+                  img [alt="" style="--h:260" src=#1u67et1]
+                  i.ingame.pdot
+                div.name [title="Night Owl 17"] "Night Owl 17"
+                div.sub [title="@night_owl_rb_17 · Night Owl"] "@night_owl_rb_17 · Night Owl"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing · another device"] "Playing · another device"
+                    div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 5 h ago"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 24" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar.ingame
+                  img [alt="" style="--h:288" src=#1u67et1]
+                  i.ingame.pdot
+                div.name [title="Night Owl 24"] "Night Owl 24"
+                div.sub [title="@night_owl_rb_24 · Night Owl"] "@night_owl_rb_24 · Night Owl"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing · another device"] "Playing · another device"
+                    div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 5 h ago"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 31" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar.ingame
+                  img [alt="" style="--h:316" src=#1u67et1]
+                  i.ingame.pdot
+                div.name [title="Night Owl 31"] "Night Owl 31"
+                div.sub [title="@night_owl_rb_31 · Night Owl"] "@night_owl_rb_31 · Night Owl"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing · another device"] "Playing · another device"
+                    div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 5 h ago"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Night Owl 38" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                div.avatar.ingame
+                  img [alt="" style="--h:323" src=#1u67et1]
+                  i.ingame.pdot
+                div.name [title="Night Owl 38"] "Night Owl 38"
+                div.sub [title="@night_owl_rb_38 · Night Owl"] "@night_owl_rb_38 · Night Owl"
+                div.activity.ingame
+                  span.gicon
+                    svg.i #sy1lqp
+                  div.txt
+                    div.k [title="Playing · another device"] "Playing · another device"
+                    div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                div.meta
+                  span.tag [title="Farm"] "Farm"
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 5 h ago"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Testing" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.wait "Launching"
+                    span.spin
+                div.avatar
+                  span.initials [style="--h:217"] "TE"
+                  i.offline.pdot
+                div.name [title="Testing"] "Testing"
+                div.sub [title="@noavatar_user · No Avatar"] "@noavatar_user · No Avatar"
+                div.activity.launching
+                  span.gicon
+                    span.spin
+                  div.txt
+                    div.k [title="Opening Roblox…"] "Opening Roblox…"
+                    div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Testing 13" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.wait "Launching"
+                    span.spin
+                div.avatar
+                  span.initials [style="--h:352"] "TE"
+                  i.offline.pdot
+                div.name [title="Testing 13"] "Testing 13"
+                div.sub [title="@noavatar_user_13 · No Avatar"] "@noavatar_user_13 · No Avatar"
+                div.activity.launching
+                  span.gicon
+                    span.spin
+                  div.txt
+                    div.k [title="Opening Roblox…"] "Opening Roblox…"
+                    div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Testing 20" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.wait "Launching"
+                    span.spin
+                div.avatar
+                  span.initials [style="--h:20"] "TE"
+                  i.offline.pdot
+                div.name [title="Testing 20"] "Testing 20"
+                div.sub [title="@noavatar_user_20 · No Avatar"] "@noavatar_user_20 · No Avatar"
+                div.activity.launching
+                  span.gicon
+                    span.spin
+                  div.txt
+                    div.k [title="Opening Roblox…"] "Opening Roblox…"
+                    div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Testing 27" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.wait "Launching"
+                    span.spin
+                div.avatar
+                  span.initials [style="--h:27"] "TE"
+                  i.offline.pdot
+                div.name [title="Testing 27"] "Testing 27"
+                div.sub [title="@noavatar_user_27 · No Avatar"] "@noavatar_user_27 · No Avatar"
+                div.activity.launching
+                  span.gicon
+                    span.spin
+                  div.txt
+                    div.k [title="Opening Roblox…"] "Opening Roblox…"
+                    div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Testing 34" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.badge.wait "Launching"
+                    span.spin
+                div.avatar
+                  span.initials [style="--h:55"] "TE"
+                  i.offline.pdot
+                div.name [title="Testing 34"] "Testing 34"
+                div.sub [title="@noavatar_user_34 · No Avatar"] "@noavatar_user_34 · No Avatar"
+                div.activity.launching
+                  span.gicon
+                    span.spin
+                  div.txt
+                    div.k [title="Opening Roblox…"] "Opening Roblox…"
+                    div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                div.meta
+                  span.ago [title="Last launched from this app"] "Never opened"
+                    svg.i #n87usa
+                div.card-actions
+                  button.pill-btn.stop [tabindex="-1"] "Close"
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
+                div.avatar.invalid
+                  img [alt="" style="--h:218" src=#kgijcs]
+                  i.pdot
+                div.name [title="Trade"] "Trade"
+                div.sub [title="@tradepost_vn · Trade Post"] "@tradepost_vn · Trade Post"
+                div.activity.unknown
+                  span.gicon
+                    svg.i #v9c4u6
+                  div.txt
+                    div.k [title="Status unknown"] "Status unknown"
+                    div.v [title="Updating…"] "Updating…"
+                div.meta
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 2 days ago"
+                div.note [title="Trading only"] "Trading only"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Trade 12" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
+                div.avatar.invalid
+                  img [alt="" style="--h:102" src=#kgijcs]
+                  i.pdot
+                div.name [title="Trade 12"] "Trade 12"
+                div.sub [title="@tradepost_vn_12 · Trade Post"] "@tradepost_vn_12 · Trade Post"
+                div.activity.unknown
+                  span.gicon
+                    svg.i #v9c4u6
+                  div.txt
+                    div.k [title="Status unknown"] "Status unknown"
+                    div.v [title="Updating…"] "Updating…"
+                div.meta
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 2 days ago"
+                div.note [title="Trading only"] "Trading only"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Trade 19" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
+                div.avatar.invalid
+                  img [alt="" style="--h:109" src=#kgijcs]
+                  i.pdot
+                div.name [title="Trade 19"] "Trade 19"
+                div.sub [title="@tradepost_vn_19 · Trade Post"] "@tradepost_vn_19 · Trade Post"
+                div.activity.unknown
+                  span.gicon
+                    svg.i #v9c4u6
+                  div.txt
+                    div.k [title="Status unknown"] "Status unknown"
+                    div.v [title="Updating…"] "Updating…"
+                div.meta
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 2 days ago"
+                div.note [title="Trading only"] "Trading only"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Trade 26" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
+                div.avatar.invalid
+                  img [alt="" style="--h:137" src=#kgijcs]
+                  i.pdot
+                div.name [title="Trade 26"] "Trade 26"
+                div.sub [title="@tradepost_vn_26 · Trade Post"] "@tradepost_vn_26 · Trade Post"
+                div.activity.unknown
+                  span.gicon
+                    svg.i #v9c4u6
+                  div.txt
+                    div.k [title="Status unknown"] "Status unknown"
+                    div.v [title="Updating…"] "Updating…"
+                div.meta
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 2 days ago"
+                div.note [title="Trading only"] "Trading only"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+              article.card [role="option" tabindex="-1" aria-label="Trade 33" aria-selected="false"]
+                div.card-top
+                  span.check
+                    svg.i #14iobj
+                  span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
+                div.avatar.invalid
+                  img [alt="" style="--h:165" src=#kgijcs]
+                  i.pdot
+                div.name [title="Trade 33"] "Trade 33"
+                div.sub [title="@tradepost_vn_33 · Trade Post"] "@tradepost_vn_33 · Trade Post"
+                div.activity.unknown
+                  span.gicon
+                    svg.i #v9c4u6
+                  div.txt
+                    div.k [title="Status unknown"] "Status unknown"
+                    div.v [title="Updating…"] "Updating…"
+                div.meta
+                  span.ago [title="Last launched from this app"]
+                    svg.i #n87usa
+                    span "Opened 2 days ago"
+                div.note [title="Trading only"] "Trading only"
+                div.card-actions
+                  button.pill-btn.play [tabindex="-1"] "Play"
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                    svg.i #1hrhc9o
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                    svg.i #1e3omv2
+        div.dock
+          button.game-thumb [id="game-thumb" title="Choose a game"]
+            span.gph
+              svg.i #sy1lqp
+          div.dock-mid
+            div.dock-inputs
+              label.grow.inwrap [title="Place ID, game link or private server link (Ctrl+L)"]
+                svg.i #1u22jvi
+                input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+              label.inwrap.job [title="Job ID of a specific server, to put several accounts in the same server."]
+                svg.i #ej9lod
+                input [id="job" placeholder="Job ID (optional)" maxlength="60" aria-label="Job ID (optional)" value=""]
+              button.dock-join [title="Join a player: the selected accounts open into the server someone is in" aria-label="Join a player…" disabled]
+                svg.i #145pp0l
+            div.dock-info [id="dock-info" aria-live="polite"]
+              span.gname [title="Blox Fruits"] "Blox Fruits"
+              span.players "412,873 playing"
+              button.srv-open
+                svg.i #ej9lod
+                span "Servers"
+              div.recents
+                div.recent [title="[🎃] Adopt Me!"]
+                  button.recent-pick
+                    i.ph
+                    span "[🎃] Adopt Me!"
+                  button.rm [title="Remove from recent" aria-label="Remove from recent"]
+                    svg.i #1tyq039
+          div.dock-actions [id="dock-actions"]
+            button.btn.ghost [title="Arrange all Roblox windows in a grid" aria-label="Arrange all Roblox windows in a grid"]
+              svg.i #1e3syqr
+            button.btn.ghost [title="Open Roblox without joining a game" aria-label="Open Roblox without joining a game" disabled]
+              svg.i #1y8kmj1
+            button.btn.ghost [title="Close Roblox for the selected accounts" aria-label="Close Roblox for the selected accounts" disabled]
+              svg.i #16z0s1r
+            button.btn.ghost [title="Presets" aria-haspopup="menu" aria-label="Presets"]
+              svg.i #1pvni8o
+            button.play-btn [disabled]
+              svg.i #1ewcuky
+              span "Select accounts"
+#layer
+  div.overlay
+    div.modal.palette [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-body
+        div.pal
+          label.inwrap.pal-search
+            svg.i #1u22jvi
+            input.pal-input [role="combobox" type="text" placeholder="Search accounts, presets, games, settings and actions…" autocomplete="off" maxlength="100" aria-activedescendant="pal-0" aria-autocomplete="list" aria-controls="pal-list" aria-expanded="true" aria-label="Quick search" value="" FOCUSED]
+          div.pal-list [id="pal-list" role="listbox" aria-label="Quick search"]
+            div.on.pal-row [id="pal-0" role="option" aria-selected="true"]
+              span.pal-ic
+                svg.i #145pp0l
+              span.pal-txt
+                b "Join a player…"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-1" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #puf41w
+              span.pal-txt
+                b "Add account"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-2" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1hx0pz5
+              span.pal-txt
+                b "Check sign-in of all accounts"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-3" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #e464bo
+              span.pal-txt
+                b "Refresh online status"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-4" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1e3syqr
+              span.pal-txt
+                b "Arrange Roblox windows"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-5" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #16z0s1r
+              span.pal-txt
+                b "Close all Roblox"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-6" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1y8kmj1
+              span.pal-txt
+                b "Mini window"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-7" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #14iobj
+              span.pal-txt
+                b "Select all"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-8" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1ui218d
+              span.pal-txt
+                b "Launch order…"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-9" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Save as preset…"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-10" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #gsei2o
+              span.pal-txt
+                b "Back up now"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-11" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1uvtx1
+              span.pal-txt
+                b "Check for Bloxkeep updates"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-12" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #13a5dgx
+              span.pal-txt
+                b "Send feedback"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-13" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #4hphjr
+              span.pal-txt
+                b "User guide"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-14" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #19cjsv1
+              span.pal-txt
+                b "Star Bloxkeep on GitHub"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-15" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #n87usa
+              span.pal-txt
+                b "Export the activity log (CSV)"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-16" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #na2zgr
+              span.pal-txt
+                b "Chuyển sang tiếng Việt"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-17" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #21scx0
+              span.pal-txt
+                b "Lock app"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-18" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #v823bm
+              span.pal-txt
+                b "Accounts"
+              em.pal-cat "Go to"
+            div.pal-row [id="pal-19" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Presets"
+              em.pal-cat "Go to"
+            div.pal-row [id="pal-20" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1e3syqr
+              span.pal-txt
+                b "Game monitor"
+              em.pal-cat "Go to"
+            div.pal-row [id="pal-21" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #ktpp14
+              span.pal-txt
+                b "Statistics"
+              em.pal-cat "Go to"
+            div.pal-row [id="pal-22" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #tbghvg
+              span.pal-txt
+                b "Settings"
+              em.pal-cat "Go to"
+            div.pal-row [id="pal-23" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #n87usa
+              span.pal-txt
+                b "Activity"
+              em.pal-cat "Go to"
+            div.pal-row [id="pal-24" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm Blox Fruits"
+                small "Blox Fruits · 3 accounts · Lowest ping · Next: Today 8:00 PM"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-25" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Adopt Me trade"
+                small "[🎃] Adopt Me! · 1 account"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-26" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Morning check-in"
+                small "Roblox home · 6 accounts"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-27" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 4"
+                small "Blox Fruits · 2 accounts · Next: Tomorrow 6:00 AM"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-28" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 5"
+                small "[🎃] Adopt Me! · 2 accounts · Most players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-29" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 6"
+                small "Brookhaven 🏡RP · 2 accounts · Fewest players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-30" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 7"
+                small "Blox Fruits · 2 accounts · Lowest ping"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-31" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 8"
+                small "[🎃] Adopt Me! · 2 accounts · Random"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-32" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "A preset name that is as long as the app allows, sixty chars"
+                small "Brookhaven 🏡RP · 2 accounts"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-33" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 10"
+                small "Blox Fruits · 2 accounts · Most players · Next: Tomorrow 12:00 PM"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-34" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 11"
+                small "[🎃] Adopt Me! · 2 accounts · Fewest players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-35" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 12"
+                small "Brookhaven 🏡RP · 2 accounts · Lowest ping"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-36" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 13"
+                small "Blox Fruits · 2 accounts · Random"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-37" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 14"
+                small "[🎃] Adopt Me! · 2 accounts"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-38" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 15"
+                small "Brookhaven 🏡RP · 2 accounts · Most players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-39" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 16"
+                small "Blox Fruits · 2 accounts · Fewest players · Next: Today 6:00 PM"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-40" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 17"
+                small "[🎃] Adopt Me! · 2 accounts · Lowest ping"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-41" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 18"
+                small "Brookhaven 🏡RP · 2 accounts · Random"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-42" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 19"
+                small "Blox Fruits · 2 accounts"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-43" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 20"
+                small "[🎃] Adopt Me! · 2 accounts · Most players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-44" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 21"
+                small "Brookhaven 🏡RP · 2 accounts · Fewest players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-45" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 22"
+                small "Blox Fruits · 2 accounts · Lowest ping · Next: Tomorrow 8:00 AM"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-46" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 23"
+                small "[🎃] Adopt Me! · 2 accounts · Random"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-47" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 24"
+                small "Brookhaven 🏡RP · 2 accounts"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-48" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 25"
+                small "Blox Fruits · 2 accounts · Most players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-49" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 26"
+                small "[🎃] Adopt Me! · 2 accounts · Fewest players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-50" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 27"
+                small "Brookhaven 🏡RP · 2 accounts · Lowest ping"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-51" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 28"
+                small "Blox Fruits · 2 accounts · Random · Next: Today 2:00 PM"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-52" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 29"
+                small "[🎃] Adopt Me! · 2 accounts"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-53" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 30"
+                small "Brookhaven 🏡RP · 2 accounts · Most players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-54" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 31"
+                small "Blox Fruits · 2 accounts · Fewest players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-55" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 32"
+                small "[🎃] Adopt Me! · 2 accounts · Lowest ping"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-56" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 33"
+                small "Brookhaven 🏡RP · 2 accounts · Random"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-57" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 34"
+                small "Blox Fruits · 2 accounts · Next: Tomorrow 8:00 PM"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-58" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 35"
+                small "[🎃] Adopt Me! · 2 accounts · Most players"
+              em.pal-cat "Preset"
+            div.pal-row [id="pal-59" role="option" aria-selected="false"]
+              span.pal-ic
+                svg.i #1pvni8o
+              span.pal-txt
+                b "Farm group 36"
+                small "Brookhaven 🏡RP · 2 accounts · Fewest players"
+              em.pal-cat "Preset"
+            div.pal-more "66 more match. Type more to narrow the list."
+          div.pal-foot [aria-hidden="true"]
+            span "move"
+              kbd "↑"
+              kbd "↓"
+            span "open"
+              kbd "Enter"
+            span "close"
+              kbd "Esc"
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

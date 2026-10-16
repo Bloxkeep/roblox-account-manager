@@ -9,6 +9,7 @@ import { HostContext, type Host } from './host';
 import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
 import { MultiHelp } from './MultiHelp';
 import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
+import { Palette, type PaletteEntry } from './Palette';
 import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
 import { PresetsView } from './PresetsView';
@@ -113,6 +114,10 @@ const BloxkeepUI = {
     const api = createRef<StatsApi>();
     const unmount = mount(el, host, <StatsView api={api} />);
     return { unmount, api: api.current! };
+  },
+  /** Quick search's box and list into its dialog's body; close closes the dialog. */
+  palette(el: HTMLElement, host: Host, entries: PaletteEntry[], close: () => void) {
+    return mount(el, host, <Palette entries={entries} close={close} />);
   },
   /** The Presets tab into its section. */
   presetsView(el: HTMLElement, host: Host) {
