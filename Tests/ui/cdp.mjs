@@ -90,9 +90,14 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
     async type(text) {
       await send('Input.insertText', { text });
     },
-    async click(x, y) {
-      for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased'])
-        await send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 });
+    /** A mouse click at (x, y): { button: 'right' }, { double: true }, { modifiers: ['shift'] }. */
+    async click(x, y, { button = 'left', double = false, modifiers = [] } = {}) {
+      const bits = { alt: 1, ctrl: 2, meta: 4, shift: 8 };
+      const mod = modifiers.reduce((m, k) => m | bits[k], 0);
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, modifiers: mod });
+      for (let n = 1; n <= (double ? 2 : 1); n++)
+        for (const type of ['mousePressed', 'mouseReleased'])
+          await send('Input.dispatchMouseEvent', { type, x, y, button, clickCount: n, modifiers: mod });
     },
     async shot(file) {
       const r = await send('Page.captureScreenshot', { format: 'png' });

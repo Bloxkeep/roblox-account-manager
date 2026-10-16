@@ -1,4 +1,5 @@
 == end
+html [data-theme="dark" lang="en"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
@@ -93,19 +94,19 @@
             button.chip.on [aria-pressed="true"] "All"
               em "40"
             button.chip [aria-pressed="false"] "Needs sign-in"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "6"
             button.chip [aria-pressed="false"] "Banned"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "5"
             button.chip [aria-pressed="false"] "Playing"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "18"
             button.chip [aria-pressed="false"] "Online"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "24"
             button.chip [aria-pressed="false"] "Offline"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "16"
             button.chip [aria-pressed="false"] "On this PC"
               em "12"
@@ -128,7 +129,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:83" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Alt"] "Alt"
                 div.sub [title="@lananh_2010 · Lan Anh"] "@lananh_2010 · Lan Anh"
@@ -153,7 +154,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:116" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Alt 11"] "Alt 11"
                 div.sub [title="@lananh_2010_11 · Lan Anh"] "@lananh_2010_11 · Lan Anh"
@@ -178,7 +179,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:123" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Alt 18"] "Alt 18"
                 div.sub [title="@lananh_2010_18 · Lan Anh"] "@lananh_2010_18 · Lan Anh"
@@ -203,7 +204,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:151" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Alt 25"] "Alt 25"
                 div.sub [title="@lananh_2010_25 · Lan Anh"] "@lananh_2010_25 · Lan Anh"
@@ -228,7 +229,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:179" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Alt 32"] "Alt 32"
                 div.sub [title="@lananh_2010_32 · Lan Anh"] "@lananh_2010_32 · Lan Anh"
@@ -253,7 +254,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:186" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Alt 39"] "Alt 39"
                 div.sub [title="@lananh_2010_39 · Lan Anh"] "@lananh_2010_39 · Lan Anh"
@@ -280,7 +281,7 @@
                   span.badge.run [title="Open on this PC · PID 2222"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:243" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="Farm 1"] "Farm 1"
                 div.sub [title="@pixelfarmer01"] "@pixelfarmer01"
@@ -314,7 +315,7 @@
                   span.badge.run [title="Open on this PC · PID 20008"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:68" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="Farm 1 8"] "Farm 1 8"
                 div.sub [title="@pixelfarmer01_8 · pixelfarmer01"] "@pixelfarmer01_8 · pixelfarmer01"
@@ -348,7 +349,7 @@
                   span.badge.run [title="Open on this PC · PID 20015"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:16" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="Farm 1 15"] "Farm 1 15"
                 div.sub [title="@pixelfarmer01_15 · pixelfarmer01"] "@pixelfarmer01_15 · pixelfarmer01"
@@ -382,7 +383,7 @@
                   span.badge.run [title="Open on this PC · PID 20022"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:44" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="Farm 1 22"] "Farm 1 22"
                 div.sub [title="@pixelfarmer01_22 · pixelfarmer01"] "@pixelfarmer01_22 · pixelfarmer01"
@@ -416,7 +417,7 @@
                   span.badge.run [title="Open on this PC · PID 20029"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:51" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="Farm 1 29"] "Farm 1 29"
                 div.sub [title="@pixelfarmer01_29 · pixelfarmer01"] "@pixelfarmer01_29 · pixelfarmer01"
@@ -450,7 +451,7 @@
                   span.badge.run [title="Open on this PC · PID 20036"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:79" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="Farm 1 36"] "Farm 1 36"
                 div.sub [title="@pixelfarmer01_36 · pixelfarmer01"] "@pixelfarmer01_36 · pixelfarmer01"
@@ -483,7 +484,7 @@
                     svg.i #14iobj
                   span.bad.badge "Needs sign-in"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:244" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="Farm 2"] "Farm 2"
                 div.sub [title="@pixelfarmer02"] "@pixelfarmer02"
@@ -512,7 +513,7 @@
                     svg.i #14iobj
                   span.bad.badge "Needs sign-in"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:310" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="Farm 2 9"] "Farm 2 9"
                 div.sub [title="@pixelfarmer02_9 · pixelfarmer02"] "@pixelfarmer02_9 · pixelfarmer02"
@@ -541,7 +542,7 @@
                     svg.i #14iobj
                   span.bad.badge "Needs sign-in"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:288" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="Farm 2 16"] "Farm 2 16"
                 div.sub [title="@pixelfarmer02_16 · pixelfarmer02"] "@pixelfarmer02_16 · pixelfarmer02"
@@ -570,7 +571,7 @@
                     svg.i #14iobj
                   span.bad.badge "Needs sign-in"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:316" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="Farm 2 23"] "Farm 2 23"
                 div.sub [title="@pixelfarmer02_23 · pixelfarmer02"] "@pixelfarmer02_23 · pixelfarmer02"
@@ -599,7 +600,7 @@
                     svg.i #14iobj
                   span.bad.badge "Needs sign-in"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:344" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="Farm 2 30"] "Farm 2 30"
                 div.sub [title="@pixelfarmer02_30 · pixelfarmer02"] "@pixelfarmer02_30 · pixelfarmer02"
@@ -628,7 +629,7 @@
                     svg.i #14iobj
                   span.bad.badge "Needs sign-in"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:351" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="Farm 2 37"] "Farm 2 37"
                 div.sub [title="@pixelfarmer02_37 · pixelfarmer02"] "@pixelfarmer02_37 · pixelfarmer02"
@@ -658,7 +659,7 @@
                   span.badge.run [title="Open on this PC · PID 1111"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:204" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Main"] "Main"
                 div.sub [title="@sunny_builds · Sunny"] "@sunny_builds · Sunny"
@@ -695,7 +696,7 @@
                   span.badge.run [title="Open on this PC · PID 20007"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:292" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Main 7"] "Main 7"
                 div.sub [title="@sunny_builds_7 · Sunny"] "@sunny_builds_7 · Sunny"
@@ -732,7 +733,7 @@
                   span.badge.run [title="Open on this PC · PID 20014"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:342" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Main 14"] "Main 14"
                 div.sub [title="@sunny_builds_14 · Sunny"] "@sunny_builds_14 · Sunny"
@@ -769,7 +770,7 @@
                   span.badge.run [title="Open on this PC · PID 20021"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:10" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Main 21"] "Main 21"
                 div.sub [title="@sunny_builds_21 · Sunny"] "@sunny_builds_21 · Sunny"
@@ -806,7 +807,7 @@
                   span.badge.run [title="Open on this PC · PID 20028"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:17" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Main 28"] "Main 28"
                 div.sub [title="@sunny_builds_28 · Sunny"] "@sunny_builds_28 · Sunny"
@@ -843,7 +844,7 @@
                   span.badge.run [title="Open on this PC · PID 20035"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:45" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Main 35"] "Main 35"
                 div.sub [title="@sunny_builds_35 · Sunny"] "@sunny_builds_35 · Sunny"
@@ -878,7 +879,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:297" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl"] "Night Owl"
                 div.sub [title="@night_owl_rb"] "@night_owl_rb"
@@ -905,7 +906,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:253" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl 10"] "Night Owl 10"
                 div.sub [title="@night_owl_rb_10 · Night Owl"] "@night_owl_rb_10 · Night Owl"
@@ -932,7 +933,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:260" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl 17"] "Night Owl 17"
                 div.sub [title="@night_owl_rb_17 · Night Owl"] "@night_owl_rb_17 · Night Owl"
@@ -959,7 +960,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:288" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl 24"] "Night Owl 24"
                 div.sub [title="@night_owl_rb_24 · Night Owl"] "@night_owl_rb_24 · Night Owl"
@@ -986,7 +987,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:316" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl 31"] "Night Owl 31"
                 div.sub [title="@night_owl_rb_31 · Night Owl"] "@night_owl_rb_31 · Night Owl"
@@ -1013,7 +1014,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:323" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl 38"] "Night Owl 38"
                 div.sub [title="@night_owl_rb_38 · Night Owl"] "@night_owl_rb_38 · Night Owl"
@@ -1042,7 +1043,7 @@
                   span.badge.wait "Launching"
                     span.spin
                 div.avatar
-                  span.initials "TE"
+                  span.initials [style="--h:217"] "TE"
                   i.offline.pdot
                 div.name [title="Testing"] "Testing"
                 div.sub [title="@noavatar_user · No Avatar"] "@noavatar_user · No Avatar"
@@ -1069,7 +1070,7 @@
                   span.badge.wait "Launching"
                     span.spin
                 div.avatar
-                  span.initials "TE"
+                  span.initials [style="--h:352"] "TE"
                   i.offline.pdot
                 div.name [title="Testing 13"] "Testing 13"
                 div.sub [title="@noavatar_user_13 · No Avatar"] "@noavatar_user_13 · No Avatar"
@@ -1096,7 +1097,7 @@
                   span.badge.wait "Launching"
                     span.spin
                 div.avatar
-                  span.initials "TE"
+                  span.initials [style="--h:20"] "TE"
                   i.offline.pdot
                 div.name [title="Testing 20"] "Testing 20"
                 div.sub [title="@noavatar_user_20 · No Avatar"] "@noavatar_user_20 · No Avatar"
@@ -1123,7 +1124,7 @@
                   span.badge.wait "Launching"
                     span.spin
                 div.avatar
-                  span.initials "TE"
+                  span.initials [style="--h:27"] "TE"
                   i.offline.pdot
                 div.name [title="Testing 27"] "Testing 27"
                 div.sub [title="@noavatar_user_27 · No Avatar"] "@noavatar_user_27 · No Avatar"
@@ -1150,7 +1151,7 @@
                   span.badge.wait "Launching"
                     span.spin
                 div.avatar
-                  span.initials "TE"
+                  span.initials [style="--h:55"] "TE"
                   i.offline.pdot
                 div.name [title="Testing 34"] "Testing 34"
                 div.sub [title="@noavatar_user_34 · No Avatar"] "@noavatar_user_34 · No Avatar"
@@ -1176,7 +1177,7 @@
                     svg.i #14iobj
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                 div.avatar.invalid
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
                 div.name [title="Trade"] "Trade"
                 div.sub [title="@tradepost_vn · Trade Post"] "@tradepost_vn · Trade Post"
@@ -1204,7 +1205,7 @@
                     svg.i #14iobj
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                 div.avatar.invalid
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:102" src=#kgijcs]
                   i.pdot
                 div.name [title="Trade 12"] "Trade 12"
                 div.sub [title="@tradepost_vn_12 · Trade Post"] "@tradepost_vn_12 · Trade Post"
@@ -1232,7 +1233,7 @@
                     svg.i #14iobj
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                 div.avatar.invalid
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:109" src=#kgijcs]
                   i.pdot
                 div.name [title="Trade 19"] "Trade 19"
                 div.sub [title="@tradepost_vn_19 · Trade Post"] "@tradepost_vn_19 · Trade Post"
@@ -1260,7 +1261,7 @@
                     svg.i #14iobj
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                 div.avatar.invalid
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:137" src=#kgijcs]
                   i.pdot
                 div.name [title="Trade 26"] "Trade 26"
                 div.sub [title="@tradepost_vn_26 · Trade Post"] "@tradepost_vn_26 · Trade Post"
@@ -1288,7 +1289,7 @@
                     svg.i #14iobj
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                 div.avatar.invalid
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:165" src=#kgijcs]
                   i.pdot
                 div.name [title="Trade 33"] "Trade 33"
                 div.sub [title="@tradepost_vn_33 · Trade Post"] "@tradepost_vn_33 · Trade Post"

@@ -1,0 +1,455 @@
+== marked
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
+                h2.set-page-title [id="set-page-roblox-h"] "Roblox version & graphics"
+                div.set-grp [id="sec-rbxupd"]
+                  h3.set-grp-title "Roblox updates"
+                  div.set-card
+                    div [id="s-rbxclosed"]
+                    div [id="s-rbxver"]
+                      div.set-row
+                        div
+                          div.t "Roblox version"
+                          div.d "Up to date"
+                        div.ctl
+                          span.ok.state-pill "0.742.0.7421053"
+                    div [id="s-rbxupd"]
+                      div.set-row
+                        div
+                          div.t "Installed build"
+                          div.d "From Bloxstrap"
+                        div.ctl
+                          span.ru-build [title="version-cec3ad5889b447cf"] "build cec3ad58"
+                      div.set-row
+                        div
+                          div.t "Multi-Roblox check"
+                          div.d "Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC."
+                            button.link [type="button"] "How it works"
+                        div.ctl
+                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "No change found"
+                      div.set-row
+                        div
+                          div.t "Next Roblox build"
+                          div.d "0.743.0.7431134, checked before Roblox releases it"
+                        div.ctl
+                          span.ok.state-pill "No change found"
+                      div.ru-head "Update history"
+                      ul.ru-list
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.742.0.7421053"
+                              span.ru-note "new build, same version"
+                              span.ok.ru-note "Multi-Roblox: no change"
+                            div.ru-sub "Oct 15, 2026, 4:00 PM · · Bloxstrap"
+                              span [title="version-cec3ad5889b447cf"] "build cec3ad58"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.742.0.7421053"
+                              span.ok.ru-note "Multi-Roblox worked here"
+                            div.ru-sub "Oct 14, 2026, 10:00 AM · · Bloxstrap"
+                              span [title="version-5b1e07d2a6c84f13"] "build 5b1e07d2"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.741.0.7410829"
+                              span.ru-note "first seen"
+                            div.ru-sub "Oct 7, 2026, 12:00 PM · · Bloxstrap"
+                              span [title="version-91f0c3ab72d14e6e"] "build 91f0c3ab"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.741.0.7410829"] "Notes"
+                div.set-grp [id="sec-rc"]
+                  h3.set-grp-title "Roblox settings"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Apply to"
+                        div.d
+                          span [id="s-rc-hint"] "0 accounts chosen."
+                            button.link [type="button"] "Choose accounts…"
+                      div.ctl
+                        select.select [id="s-rc-mode" aria-label="Apply to" value="marked" FOCUSED]
+                    div.set-row
+                      div
+                        div.t "Graphics quality"
+                      div.ctl
+                        select.select [id="s-rc-graphics" aria-label="Graphics quality" value="1"]
+                    div.set-row
+                      div
+                        div.t "Frame rate limit"
+                      div.ctl
+                        select.select [id="s-rc-fps" aria-label="Frame rate limit" value="30"]
+                    div.set-row
+                      div
+                        div.t "Volume"
+                      div.ctl
+                        select.select [id="s-rc-volume" aria-label="Volume" value="0"]
+#layer
+#toasts
+-- commands
+  getState {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  monitorArea {"hidden":true}
+  pageShown {}
+  backupSuggestions {}
+  backupSuggestions {}
+  setSettings {"robloxConfig":{"mode":"marked"}}
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" maxlength="60" aria-label="Search settings" autocomplete="off" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
+                h2.set-page-title [id="set-page-roblox-h"] "Roblox version & graphics"
+                div.set-grp [id="sec-rbxupd"]
+                  h3.set-grp-title "Roblox updates"
+                  div.set-card
+                    div [id="s-rbxclosed"]
+                    div [id="s-rbxver"]
+                      div.set-row
+                        div
+                          div.t "Roblox version"
+                          div.d "Up to date"
+                        div.ctl
+                          span.ok.state-pill "0.742.0.7421053"
+                    div [id="s-rbxupd"]
+                      div.set-row
+                        div
+                          div.t "Installed build"
+                          div.d "From Bloxstrap"
+                        div.ctl
+                          span.ru-build [title="version-cec3ad5889b447cf"] "build cec3ad58"
+                      div.set-row
+                        div
+                          div.t "Multi-Roblox check"
+                          div.d "Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC."
+                            button.link [type="button"] "How it works"
+                        div.ctl
+                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "No change found"
+                      div.set-row
+                        div
+                          div.t "Next Roblox build"
+                          div.d "0.743.0.7431134, checked before Roblox releases it"
+                        div.ctl
+                          span.ok.state-pill "No change found"
+                      div.ru-head "Update history"
+                      ul.ru-list
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.742.0.7421053"
+                              span.ru-note "new build, same version"
+                              span.ok.ru-note "Multi-Roblox: no change"
+                            div.ru-sub "Oct 15, 2026, 4:00 PM · · Bloxstrap"
+                              span [title="version-cec3ad5889b447cf"] "build cec3ad58"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.742.0.7421053"
+                              span.ok.ru-note "Multi-Roblox worked here"
+                            div.ru-sub "Oct 14, 2026, 10:00 AM · · Bloxstrap"
+                              span [title="version-5b1e07d2a6c84f13"] "build 5b1e07d2"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.741.0.7410829"
+                              span.ru-note "first seen"
+                            div.ru-sub "Oct 7, 2026, 12:00 PM · · Bloxstrap"
+                              span [title="version-91f0c3ab72d14e6e"] "build 91f0c3ab"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.741.0.7410829"] "Notes"
+                div.set-grp [id="sec-rc"]
+                  h3.set-grp-title "Roblox settings"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Apply to"
+                        div.d
+                          span [id="s-rc-hint"] "0 accounts chosen."
+                            button.link [type="button"] "Choose accounts…"
+                      div.ctl
+                        select.select [id="s-rc-mode" aria-label="Apply to" value="marked"]
+                    div.set-row
+                      div
+                        div.t "Graphics quality"
+                      div.ctl
+                        select.select [id="s-rc-graphics" aria-label="Graphics quality" value="1"]
+                    div.set-row
+                      div
+                        div.t "Frame rate limit"
+                      div.ctl
+                        select.select [id="s-rc-fps" aria-label="Frame rate limit" value="30"]
+                    div.set-row
+                      div
+                        div.t "Volume"
+                      div.ctl
+                        select.select [id="s-rc-volume" aria-label="Volume" value="0"]
+#layer
+  div.overlay
+    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+      div.modal-head
+        h3 [id="mdl-1"] "Accounts that use these settings"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        p.modal-text "Only these accounts open with the graphics, FPS and volume set here."
+        div.rc-list
+          label.rc-item
+            input [type="checkbox" checked=false FOCUSED]
+            div.avatar.sm
+              img [alt="" style="--h:83" src=#c108i9]
+            span
+              b [title="Alt"] "Alt"
+              small "@lananh_2010"
+          label.rc-item
+            input [type="checkbox" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:243" src=#uinvo6]
+            span
+              b [title="Farm 1"] "Farm 1"
+              small "@pixelfarmer01"
+          label.rc-item
+            input [type="checkbox" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:244" src=#n0d7cr]
+            span
+              b [title="Farm 2"] "Farm 2"
+              small "@pixelfarmer02"
+          label.rc-item
+            input [type="checkbox" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:204" src=#1qk25wb]
+            span
+              b [title="Main"] "Main"
+              small "@sunny_builds"
+          label.rc-item
+            input [type="checkbox" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:297" src=#1u67et1]
+            span
+              b [title="Night Owl"] "Night Owl"
+              small "@night_owl_rb"
+          label.rc-item
+            input [type="checkbox" checked=false]
+            div.avatar.sm
+              span.initials [style="--h:217"] "TE"
+            span
+              b [title="Testing"] "Testing"
+              small "@noavatar_user"
+          label.rc-item
+            input [type="checkbox" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:218" src=#kgijcs]
+            span
+              b [title="Trade"] "Trade"
+              small "@tradepost_vn"
+      div.modal-foot
+        button.btn "Cancel"
+        button.btn.primary "Done"
+#toasts
+-- commands
+  (none)

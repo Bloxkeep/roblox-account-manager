@@ -1,4 +1,5 @@
 == end
+html [data-theme="dark" lang="en"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
@@ -116,241 +117,241 @@
                         span.tg-label "Basic"
                         div.tg-list
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sync with Windows"]
-                            span
-                            span
+                            span [data-theme="light"]
+                            span [data-theme="dark"]
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Light"]
-                            span
+                            span [data-theme="light"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Paper"]
-                            span
+                            span [data-theme="paper"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Grey"]
-                            span
+                            span [data-theme="gray"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Dim"]
-                            span
+                            span [data-theme="dim"]
                               em
                           button.on.swatch [role="radio" aria-checked="true" tabindex="0" aria-label="Dark"]
-                            span
+                            span [data-theme="dark"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Midnight"]
-                            span
+                            span [data-theme="midnight"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Black"]
-                            span
+                            span [data-theme="black"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="High contrast"]
-                            span
+                            span [data-theme="contrast"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="High contrast light"]
-                            span
+                            span [data-theme="contrastlight"]
                               em
                       div.tg
                         span.tg-label "Scenery"
                         div.tg-list
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Aurora"]
-                            span
+                            span [data-theme="aurora"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sunset"]
-                            span
+                            span [data-theme="sunset"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Night city"]
-                            span
+                            span [data-theme="city"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Deep space"]
-                            span
+                            span [data-theme="space"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="The Moon"]
-                            span
+                            span [data-theme="moon"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Misty forest"]
-                            span
+                            span [data-theme="mist"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Snowy peaks"]
-                            span
+                            span [data-theme="snow"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Desert"]
-                            span
+                            span [data-theme="desert"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Meadow"]
-                            span
+                            span [data-theme="meadow"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Ha Long Bay"]
-                            span
+                            span [data-theme="halong"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Rice terraces"]
-                            span
+                            span [data-theme="terraces"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Hoi An"]
-                            span
+                            span [data-theme="hoian"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Mount Fuji"]
-                            span
+                            span [data-theme="fuji"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Jungle"]
-                            span
+                            span [data-theme="jungle"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Under the sea"]
-                            span
+                            span [data-theme="underwater"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sky islands"]
-                            span
+                            span [data-theme="skyislands"]
                               em
                       div.tg
                         span.tg-label "Colourful"
                         div.tg-list
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Frost"]
-                            span
+                            span [data-theme="frost"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Deep sea"]
-                            span
+                            span [data-theme="ocean"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Teal"]
-                            span
+                            span [data-theme="teal"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Pine forest"]
-                            span
+                            span [data-theme="forest"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Mocha"]
-                            span
+                            span [data-theme="mocha"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Amber"]
-                            span
+                            span [data-theme="amber"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Grape"]
-                            span
+                            span [data-theme="grape"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Indigo"]
-                            span
+                            span [data-theme="indigo"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Crimson"]
-                            span
+                            span [data-theme="crimson"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Lava"]
-                            span
+                            span [data-theme="lava"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Neon"]
-                            span
+                            span [data-theme="neon"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Candy"]
-                            span
+                            span [data-theme="candy"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Matcha"]
-                            span
+                            span [data-theme="matcha"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Mint"]
-                            span
+                            span [data-theme="mint"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sky"]
-                            span
+                            span [data-theme="sky"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Lavender"]
-                            span
+                            span [data-theme="lavender"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Peach"]
-                            span
+                            span [data-theme="peach"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sakura"]
-                            span
+                            span [data-theme="sakura"]
                               em
                       div.tg
                         span.tg-label "Styles"
                         div.tg-list
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="macOS"]
-                            span
+                            span [data-theme="macos"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="macOS dark"]
-                            span
+                            span [data-theme="macosdark"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="GNOME"]
-                            span
+                            span [data-theme="gnome"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Ubuntu"]
-                            span
+                            span [data-theme="ubuntu"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="KDE Plasma"]
-                            span
+                            span [data-theme="kde"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Retro"]
-                            span
+                            span [data-theme="retro"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Classic Mac"]
-                            span
+                            span [data-theme="macclassic"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Terminal"]
-                            span
+                            span [data-theme="terminal"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Pocket console"]
-                            span
+                            span [data-theme="gameboy"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Arcade"]
-                            span
+                            span [data-theme="arcade"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Blueprint"]
-                            span
+                            span [data-theme="blueprint"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Newspaper"]
-                            span
+                            span [data-theme="newspaper"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Notebook"]
-                            span
+                            span [data-theme="notebook"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Chalkboard"]
-                            span
+                            span [data-theme="chalkboard"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Neo-brutalism"]
-                            span
+                            span [data-theme="brutal"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Cyberpunk"]
-                            span
+                            span [data-theme="cyberpunk"]
                               em
                       div.tg
                         span.tg-label "Seasonal"
                         div.tg-list
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Lunar New Year"]
-                            span
+                            span [data-theme="lunar"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Valentine’s Day"]
-                            span
+                            span [data-theme="valentine"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Spring"]
-                            span
+                            span [data-theme="spring"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Flame tree"]
-                            span
+                            span [data-theme="flametree"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Summer"]
-                            span
+                            span [data-theme="summer"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Kite season"]
-                            span
+                            span [data-theme="kites"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Rainy season"]
-                            span
+                            span [data-theme="rainy"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Back to school"]
-                            span
+                            span [data-theme="school"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Mid-Autumn"]
-                            span
+                            span [data-theme="midautumn"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Autumn"]
-                            span
+                            span [data-theme="autumn"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Sky lanterns"]
-                            span
+                            span [data-theme="skylanterns"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Halloween"]
-                            span
+                            span [data-theme="halloween"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Winter"]
-                            span
+                            span [data-theme="winter"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="Christmas"]
-                            span
+                            span [data-theme="christmas"]
                               em
                           button.swatch [role="radio" aria-checked="false" tabindex="-1" aria-label="New Year’s Eve"]
-                            span
+                            span [data-theme="newyear"]
                               em
                     div.set-row
                       div

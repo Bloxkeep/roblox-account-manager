@@ -1,4 +1,5 @@
 == end
+html [data-theme="dark" lang="en"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
@@ -94,27 +95,27 @@
                   b [title="Blox Fruits"] "Blox Fruits"
               div.stat-card
                 h3 "Play time by day"
-                div.sbars
+                div.sbars [style="--bar-h:140px"]
                   div.sbar [title="Sat, Oct 10 · 1 h 20 min"]
-                    i
+                    i [style="height:49px"]
                     span "Sat"
                   div.sbar [title="Sun, Oct 11 · 4 min"]
-                    i
+                    i [style="height:3px"]
                     span "Sun"
                   div.sbar [title="Mon, Oct 12 · 3 h 8 min"]
-                    i
+                    i [style="height:114px"]
                     span "Mon"
                   div.sbar [title="Tue, Oct 13 · 3 h 52 min"]
-                    i
+                    i [style="height:140px"]
                     span "Tue"
                   div.sbar [title="Wed, Oct 14 · 2 h 35 min"]
-                    i
+                    i [style="height:94px"]
                     span "Wed"
                   div.sbar [title="Thu, Oct 15 · 2 h 19 min"]
-                    i
+                    i [style="height:84px"]
                     span "Thu"
                   div.now.sbar [title="Fri, Oct 16 · 3 h 3 min"]
-                    i
+                    i [style="height:111px"]
                     span "Fri"
               div.stat-cols
                 div.stat-card
@@ -131,7 +132,7 @@
                         td
                           div.sacc
                             span.avatar.sm
-                              img [alt="" src=#1qk25wb]
+                              img [alt="" style="--h:204" src=#1qk25wb]
                             b [title="Main"] "Main"
                         td.n "7 h 22 min"
                         td.n "11"
@@ -140,7 +141,7 @@
                         td
                           div.sacc
                             span.avatar.sm
-                              img [alt="" src=#uinvo6]
+                              img [alt="" style="--h:243" src=#uinvo6]
                             b [title="Farm 1"] "Farm 1"
                         td.n "5 h 24 min"
                         td.n "8"
@@ -149,7 +150,7 @@
                         td
                           div.sacc
                             span.avatar.sm
-                              img [alt="" src=#1u67et1]
+                              img [alt="" style="--h:297" src=#1u67et1]
                             b [title="Night Owl"] "Night Owl"
                         td.n "3 h 16 min"
                         td.n "5"
@@ -158,7 +159,7 @@
                         td
                           div.sacc
                             span.avatar.sm
-                              span.initials "DE"
+                              span.initials [style="--h:148"] "DE"
                             b [title="Deleted account"] "Deleted account"
                         td.n "19 min"
                         td.n "1"
@@ -175,7 +176,7 @@
                           b [title="Blox Fruits"] "Blox Fruits"
                           small "13 sessions"
                           div.sg-meter
-                            i
+                            i [style="transform:scaleX(1)"]
                         span.sg-time "9 h 1 min"
                       div.sgame
                         em "2"
@@ -185,7 +186,7 @@
                           b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                           small "7 sessions"
                           div.sg-meter
-                            i
+                            i [style="transform:scaleX(0.545)"]
                         span.sg-time "4 h 55 min"
                       div.sgame
                         em "3"
@@ -195,7 +196,7 @@
                           b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                           small "4 sessions"
                           div.sg-meter
-                            i
+                            i [style="transform:scaleX(0.273)"]
                         span.sg-time "2 h 27 min"
                   div.stat-card
                     h3 "By preset"
@@ -207,7 +208,7 @@
                           b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                           small "3 accounts · 1 disconnect"
                           div.sg-meter
-                            i
+                            i [style="transform:scaleX(1)"]
                         span.sg-time "10 h 10 min"
                       div.sgame
                         span.gph
@@ -216,7 +217,7 @@
                           b [title="Adopt Me trade"] "Adopt Me trade"
                           small "1 account"
                           div.sg-meter
-                            i
+                            i [style="transform:scaleX(0.403)"]
                         span.sg-time "4 h 6 min"
                       div.sgame
                         span.gph
@@ -225,7 +226,7 @@
                           b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
                           small "2 accounts"
                           div.sg-meter
-                            i
+                            i [style="transform:scaleX(0.21)"]
                         span.sg-time "2 h 7 min"
 #layer
 #toasts

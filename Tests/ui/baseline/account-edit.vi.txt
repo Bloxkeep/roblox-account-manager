@@ -1,4 +1,5 @@
 == end (still changing)
+html [data-theme="dark" lang="vi"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "cửa sổ"
             span [id="sys-ram"] "1,7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
@@ -93,19 +94,19 @@
             button.chip.on [aria-pressed="true"] "Tất cả"
               em "7"
             button.chip [aria-pressed="false"] "Cần đăng nhập lại"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "1"
             button.chip [aria-pressed="false"] "Bị ban"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "1"
             button.chip [aria-pressed="false"] "Đang chơi"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "3"
             button.chip [aria-pressed="false"] "Online"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "4"
             button.chip [aria-pressed="false"] "Offline"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "3"
             button.chip [aria-pressed="false"] "Trên máy này"
               em "2"
@@ -130,7 +131,7 @@
                   span.badge.run [title="Đang mở trên máy này · PID 2222"] "Trên máy này"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:243" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="Farm 1"] "Farm 1"
                 div.sub [title="@pixelfarmer01"] "@pixelfarmer01"
@@ -163,7 +164,7 @@
                     svg.i #14iobj
                   span.bad.badge "Cần đăng nhập lại"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:244" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="Farm 2"] "Farm 2"
                 div.sub [title="@pixelfarmer02"] "@pixelfarmer02"
@@ -191,7 +192,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:297" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl"] "Night Owl"
                 div.sub [title="@night_owl_rb"] "@night_owl_rb"
@@ -220,7 +221,7 @@
                   span.badge.run [title="Đang mở trên máy này · PID 1111"] "Trên máy này"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:204" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Tài khoản chính"] "Tài khoản chính"
                 div.sub [title="@sunny_builds · Sunny"] "@sunny_builds · Sunny"
@@ -255,7 +256,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:83" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Tài khoản phụ"] "Tài khoản phụ"
                 div.sub [title="@lananh_2010 · Lan Anh"] "@lananh_2010 · Lan Anh"
@@ -282,7 +283,7 @@
                   span.badge.wait "Đang mở"
                     span.spin
                 div.avatar
-                  span.initials "TH"
+                  span.initials [style="--h:217"] "TH"
                   i.offline.pdot
                 div.name [title="Thử nghiệm"] "Thử nghiệm"
                 div.sub [title="@noavatar_user · No Avatar"] "@noavatar_user · No Avatar"
@@ -308,7 +309,7 @@
                     svg.i #14iobj
                   span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua tài khoản này."] "Bị ban"
                 div.avatar.invalid
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
                 div.name [title="Trade"] "Trade"
                 div.sub [title="@tradepost_vn · Trade Post"] "@tradepost_vn · Trade Post"
@@ -370,7 +371,7 @@
               svg.i #1ewcuky
               span "Chọn tài khoản"
 #layer
-  div.overlay
+  div.at-top.overlay
     div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
       div.modal-head
         h3 [id="mdl-1"] "Sửa tài khoản"
@@ -379,7 +380,7 @@
       div.modal-body
         div.acc-head
           div.avatar
-            img [alt="" src=#1qk25wb]
+            img [alt="" style="--h:204" src=#1qk25wb]
           div
             b "Tài khoản chính"
             div.muted "@sunny_builds · ID 5140000001"
@@ -400,7 +401,7 @@
               span.muted "(không bắt buộc)"
             div.totp-live [id="am-totp-live"]
               b.totp-code [id="am-totp-code"] "009 468"
-              span.totp-left [id="am-totp-left"] "14 giây"
+              span.totp-left [id="am-totp-left"] "30 giây"
               button.btn.sm [type="button"] "Sao chép"
                 svg.i #2s24cy
               button.btn.ghost.sm [type="button"] "Gỡ"

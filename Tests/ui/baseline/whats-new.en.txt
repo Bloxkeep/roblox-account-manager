@@ -1,4 +1,5 @@
 == end
+html [data-theme="dark" lang="en"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
@@ -153,72 +154,53 @@
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.1.0 · October 16, 2026"
+              small "Bloxkeep 1.1.1 · October 16, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        ul.wn-cards
-          li.wn-card
-            span.wn-ic
-              svg.i #sy1lqp
-            b "Microsoft Store Roblox, one window per account"
-            p "Got Roblox from the Microsoft Store? Bloxkeep now opens your accounts with it, side by side. It’s brand new, so tell us how it goes."
-            button.wn-go [type="button" FOCUSED] "Choose it"
-              svg.i #1g7f83q
-          li.wn-card
-            span.wn-ic
-              svg.i #1ctn026
-            b "roblox.com, signed in, a tab per account"
-            p "Open the website as any account from its ⋯ menu. Each account gets its own tab, and your own browser never sees any of them."
-            button.wn-go [type="button"] "Open roblox.com"
-              svg.i #1g7f83q
-          li.wn-card
-            span.wn-ic
-              svg.i #1pvni8o
-            b "Fewer questions, better ones"
-            p "Multi-Roblox off? Turn it on and play in one click. Mute just the warnings you don’t need, and bring them back any time."
-            button.wn-go [type="button"] "See your questions"
-              svg.i #1g7f83q
-          li.wn-card
-            span.wn-ic
-              svg.i #4hphjr
-            b "A guide to everything"
-            p "Every button and setting explained, from adding your first account to scheduling presets overnight."
-            button.wn-go [type="button"] "Open the guide"
-              svg.i #1g7f83q
-        h4.wn-sub "Also new"
-        ul.wn-also
+        h4.new.wn-kind.wn-sub "New"
+          svg.i #u7ty99
+        ul.new.wn-also
           li
-            svg.i #14iobj
-            span "Discord alerts got a makeover: the account’s avatar, the game’s icon and a clear title."
+            svg.i #u7ty99
+            span "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it."
           li
-            svg.i #14iobj
-            span "Send feedback from inside the app, and see exactly what gets sent before it goes."
+            svg.i #u7ty99
+            span "What’s new lists what’s new, what works better and what’s fixed separately."
+        h4.improved.wn-kind.wn-sub "Improved"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #14iobj
-            span "Locking Bloxkeep tells you what pauses, and asks first if something is running."
+            svg.i #1l5qw3q
+            span "Servers keeps its size while a list loads, and the servers you had stay on screen until the new ones are in, instead of jumping to a spinner and back."
           li
-            svg.i #14iobj
-            span "The Multi-Roblox card explains Roblox updates in plain words, with what to do next."
+            svg.i #1l5qw3q
+            span "Roblox gives each PC only a few server lists a minute. When it says to wait, Servers shows how long and loads again by itself, and sorting by ping or FPS no longer spends a list on its own."
           li
-            svg.i #14iobj
-            span "The Needs sign-in and Banned filters come first, and the game box is wider."
+            svg.i #1l5qw3q
+            span "Windows whose content changes while open (signing in, importing a vault file, Join a player, a preset’s settings, Send feedback) stay put instead of jumping."
           li
-            svg.i #14iobj
-            span "Copy password and Copy 2FA code tell you why when nothing is saved yet."
+            svg.i #1l5qw3q
+            span "The game list above the game box keeps its height while it loads."
           li
-            svg.i #14iobj
-            span "Settings › Performance is now called Staying in game."
+            svg.i #1l5qw3q
+            span "A filter chip cut off at the edge of the row fades out whole."
+        h4.fixed.wn-kind.wn-sub "Fixed"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
           li
-            svg.i #14iobj
-            span "Downloads are built by GitHub from the public source code, so anyone can check them."
+            svg.i #yqrnd9
+            span "Discord play-time summaries are sent again (every one had failed)."
+          li
+            svg.i #yqrnd9
+            span "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
         p.wn-star
           svg.i #19cjsv1
           span "Like Bloxkeep? A star on GitHub helps other players find it."
-          button.wn-go [type="button"] "Open GitHub"
+          button.wn-go [type="button" FOCUSED] "Open GitHub"
             svg.i #1g7f83q
       div.modal-foot
         button.btn.primary "Got it"

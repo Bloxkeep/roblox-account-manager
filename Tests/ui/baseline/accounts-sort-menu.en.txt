@@ -1,4 +1,5 @@
 == end
+html [data-theme="dark" lang="en"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
@@ -93,19 +94,19 @@
             button.chip.on [aria-pressed="true"] "All"
               em "7"
             button.chip [aria-pressed="false"] "Needs sign-in"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "1"
             button.chip [aria-pressed="false"] "Banned"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "1"
             button.chip [aria-pressed="false"] "Playing"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "3"
             button.chip [aria-pressed="false"] "Online"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "4"
             button.chip [aria-pressed="false"] "Offline"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "3"
             button.chip [aria-pressed="false"] "On this PC"
               em "2"
@@ -128,7 +129,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:83" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Alt"] "Alt"
                 div.sub [title="@lananh_2010 · Lan Anh"] "@lananh_2010 · Lan Anh"
@@ -155,7 +156,7 @@
                   span.badge.run [title="Open on this PC · PID 2222"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:243" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="Farm 1"] "Farm 1"
                 div.sub [title="@pixelfarmer01"] "@pixelfarmer01"
@@ -188,7 +189,7 @@
                     svg.i #14iobj
                   span.bad.badge "Needs sign-in"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:244" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="Farm 2"] "Farm 2"
                 div.sub [title="@pixelfarmer02"] "@pixelfarmer02"
@@ -218,7 +219,7 @@
                   span.badge.run [title="Open on this PC · PID 1111"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:204" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Main"] "Main"
                 div.sub [title="@sunny_builds · Sunny"] "@sunny_builds · Sunny"
@@ -253,7 +254,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:297" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl"] "Night Owl"
                 div.sub [title="@night_owl_rb"] "@night_owl_rb"
@@ -282,7 +283,7 @@
                   span.badge.wait "Launching"
                     span.spin
                 div.avatar
-                  span.initials "TE"
+                  span.initials [style="--h:217"] "TE"
                   i.offline.pdot
                 div.name [title="Testing"] "Testing"
                 div.sub [title="@noavatar_user · No Avatar"] "@noavatar_user · No Avatar"
@@ -308,7 +309,7 @@
                     svg.i #14iobj
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                 div.avatar.invalid
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
                 div.name [title="Trade"] "Trade"
                 div.sub [title="@tradepost_vn · Trade Post"] "@tradepost_vn · Trade Post"
@@ -370,7 +371,7 @@
               svg.i #1ewcuky
               span "Select accounts"
 #layer
-  div.menu [role="menu"]
+  div.menu [role="menu" style="left:1042px;top:130.734px"]
     button.checked [role="menuitem"]
       svg.i #14iobj
       span "Name"

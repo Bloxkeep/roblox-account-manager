@@ -1,0 +1,382 @@
+== asked
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Presets"
+            p [id="pv-sub"] "presets scheduled"
+              b "3"
+              span.sep "·"
+              b "1"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Search presets or games" maxlength="100" aria-label="Search presets or games" value=""]
+            button.btn.primary
+              svg.i #u7ty99
+              span "New preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· Next: Today 8:00 PM"
+                  span.pv-live "3 windows open"
+              div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule off"]
+                  input [type="checkbox" aria-label="Schedule: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-close.pv-run.sm [title="Closes the 3 windows this preset opened." aria-label="Close: Farm Blox Fruits"]
+                svg.i #16z0s1r
+                span "Close"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Farm Blox Fruits"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Adopt Me trade"] "Adopt Me trade"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-next
+                  span "Last run 1 h ago"
+              div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Run: Adopt Me trade"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Adopt Me trade"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Adopt Me trade"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Adopt Me trade"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Adopt Me trade"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Adopt Me trade"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Roblox home"] "Roblox home"
+                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
+                span.pv-next
+                  span "Last run 1 day ago"
+              div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule on"]
+                  input [type="checkbox" aria-label="Schedule: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Run: Morning check-in"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Morning check-in" disabled]
+                  svg.i #u1ag9u
+#layer
+  div.overlay
+    div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
+      div.modal-head
+        h3 [id="mdl-1"] "Delete preset"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        p.modal-text.pre "Delete “Adopt Me trade”?"
+        label.dont-ask
+          input [type="checkbox" id="dont-ask" checked=false]
+          span "Don’t ask again"
+      div.modal-foot
+        button.btn [FOCUSED] "Cancel"
+        button.btn.danger "Delete"
+#toasts
+-- commands
+  getState {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  monitorArea {"hidden":true}
+  pageShown {}
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [type="checkbox" id="side-multi" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Presets"
+            p [id="pv-sub"] "presets scheduled"
+              b "2"
+              span.sep "·"
+              b "1"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Search presets or games" maxlength="100" aria-label="Search presets or games" value=""]
+            button.btn.primary
+              svg.i #u7ty99
+              span "New preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· Next: Today 8:00 PM"
+                  span.pv-live "3 windows open"
+              div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule off"]
+                  input [type="checkbox" aria-label="Schedule: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-close.pv-run.sm [title="Closes the 3 windows this preset opened." aria-label="Close: Farm Blox Fruits"]
+                svg.i #16z0s1r
+                span "Close"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Farm Blox Fruits" FOCUSED]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Roblox home"] "Roblox home"
+                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
+                span.pv-next
+                  span "Last run 1 day ago"
+              div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule on"]
+                  input [type="checkbox" aria-label="Schedule: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Run: Morning check-in"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Morning check-in" disabled]
+                  svg.i #u1ag9u
+#layer
+#toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "Preset deleted."
+-- commands
+  deletePreset {"id":"p2"}

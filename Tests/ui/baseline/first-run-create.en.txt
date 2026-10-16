@@ -1,0 +1,98 @@
+== weak
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [aria-pressed="true" title="English"] "EN"
+        button [aria-pressed="false" title="Tiếng Việt"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Set a master password"
+      p "You’ll use it to unlock Bloxkeep. It if you forget it."
+        b "can’t be recovered"
+      div.stack
+        div.pw
+          input.field [type="password" id="pw1" placeholder="Master password" maxlength="256" aria-label="Master password" value="•••" FOCUSED]
+          button.icon-btn [type="button" id="pw-eye" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [type="password" id="pw2" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value=""]
+        div.strength-row
+          div.strength
+            i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:12%"]
+          span.pw-strength.weak [id="pw-strength" aria-live="polite"] "Weak"
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [type="submit" id="lock-btn"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+#layer
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+== strong
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [aria-pressed="true" title="English"] "EN"
+        button [aria-pressed="false" title="Tiếng Việt"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Set a master password"
+      p "You’ll use it to unlock Bloxkeep. It if you forget it."
+        b "can’t be recovered"
+      div.stack
+        div.pw
+          input.field [type="password" id="pw1" placeholder="Master password" maxlength="256" aria-label="Master password" value="•••"]
+          button.icon-btn [type="button" id="pw-eye" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [type="password" id="pw2" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value="•••" FOCUSED]
+        div.strength-row
+          div.strength
+            i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:60%"]
+          span.ok.pw-strength [id="pw-strength" aria-live="polite"] "OK"
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [type="submit" id="lock-btn"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+#layer
+#toasts
+-- commands
+  (none)
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [aria-pressed="true" title="English"] "EN"
+        button [aria-pressed="false" title="Tiếng Việt"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Set a master password"
+      p "You’ll use it to unlock Bloxkeep. It if you forget it."
+        b "can’t be recovered"
+      div.stack
+        div.pw
+          input.field [type="password" id="pw1" placeholder="Master password" maxlength="256" aria-label="Master password" value="•••"]
+          button.icon-btn [type="button" id="pw-eye" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [type="password" id="pw2" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value="•••" FOCUSED]
+        div.strength-row
+          div.strength
+            i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:60%"]
+          span.ok.pw-strength [id="pw-strength" aria-live="polite"] "OK"
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [type="submit" id="lock-btn"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+#layer
+#toasts
+-- commands
+  (none)

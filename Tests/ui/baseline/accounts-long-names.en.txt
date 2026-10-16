@@ -1,4 +1,5 @@
 == end
+html [data-theme="dark" lang="en"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
@@ -93,19 +94,19 @@
             button.chip.on [aria-pressed="true"] "All"
               em "7"
             button.chip [aria-pressed="false"] "Needs sign-in"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "1"
             button.chip [aria-pressed="false"] "Banned"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "1"
             button.chip [aria-pressed="false"] "Playing"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "3"
             button.chip [aria-pressed="false"] "Online"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "4"
             button.chip [aria-pressed="false"] "Offline"
-              i.dot
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "3"
             button.chip [aria-pressed="false"] "On this PC"
               em "2"
@@ -128,7 +129,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:259" src=#c108i9]
                   i.pdot.studio
                 div.name [title="Lan Anh (alt, for trading and buying items)"] "Lan Anh (alt, for trading and buying items)"
                 div.sub [title="@lananh_2010_lananh_2010_lananh · Lan Anh"] "@lananh_2010_lananh_2010_lananh · Lan Anh"
@@ -154,7 +155,7 @@
                     svg.i #14iobj
                   span.bad.badge "Needs sign-in"
                 div.avatar.invalid
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:37" src=#n0d7cr]
                   i.offline.pdot
                 div.name [title="MegaLongAccountLabelWithoutAnySpaces"] "MegaLongAccountLabelWithoutAnySpaces"
                 div.sub [title="@MegaLongAccountLabelWithoutAnySp"] "@MegaLongAccountLabelWithoutAnySp"
@@ -182,7 +183,7 @@
                   span.check
                     svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:51" src=#1u67et1]
                   i.ingame.pdot
                 div.name [title="Night Owl The Night Owl Of The Night Owls"] "Night Owl The Night Owl Of The Night Owls"
                 div.sub [title="@night_owl_rb_night_owl_rb_nigh"] "@night_owl_rb_night_owl_rb_nigh"
@@ -212,7 +213,7 @@
                   span.badge.run [title="Open on this PC · PID 2222"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:20" src=#uinvo6]
                   i.ingame.pdot
                 div.name [title="pixelfarmer01_with_a_very_long_alias"] "pixelfarmer01_with_a_very_long_alias"
                 div.sub [title="@pixelfarmer01_very_long_username"] "@pixelfarmer01_very_long_username"
@@ -247,7 +248,7 @@
                   span.badge.run [title="Open on this PC · PID 1111"] "On this PC"
                     i.pulse
                 div.avatar.ingame
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:334" src=#1qk25wb]
                   i.ingame.pdot
                 div.name [title="Sunny_The_Builder_Of_Many_Worlds_2010"] "Sunny_The_Builder_Of_Many_Worlds_2010"
                 div.sub [title="@SunnyTheBuilderOfManyWorlds2010"] "@SunnyTheBuilderOfManyWorlds2010"
@@ -284,7 +285,7 @@
                   span.badge.wait "Launching"
                     span.spin
                 div.avatar
-                  span.initials "TE"
+                  span.initials [style="--h:10"] "TE"
                   i.offline.pdot
                 div.name [title="Testing"] "Testing"
                 div.sub [title="@noavatar_user_noavatar_user · No Avatar"] "@noavatar_user_noavatar_user · No Avatar"
@@ -311,7 +312,7 @@
                     svg.i #14iobj
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                 div.avatar.invalid
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
                 div.name [title="Trade"] "Trade"
                 div.sub [title="@tradepost_vn · Trade Post"] "@tradepost_vn · Trade Post"

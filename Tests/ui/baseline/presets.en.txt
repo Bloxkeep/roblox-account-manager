@@ -1,4 +1,5 @@
 == end
+html [data-theme="dark" lang="en"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
@@ -93,11 +94,11 @@
                   span.pv-live "3 windows open"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
                 span.avatar.sm
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:243" src=#uinvo6]
                 span.avatar.sm
-                  img [alt="" src=#n0d7cr]
+                  img [alt="" style="--h:244" src=#n0d7cr]
                 span.avatar.sm
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:297" src=#1u67et1]
               div.pv-sw
                 small [aria-hidden="true"] "Schedule"
                 label.switch [title="Turn the schedule off"]
@@ -131,7 +132,7 @@
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
                 span.avatar.sm
-                  img [alt="" src=#kgijcs]
+                  img [alt="" style="--h:218" src=#kgijcs]
               div.pv-sw
               button.btn.pv-run.sm [aria-label="Run: Adopt Me trade"]
                 svg.i #1ewcuky
@@ -161,13 +162,13 @@
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
                 span.avatar.sm
-                  img [alt="" src=#1qk25wb]
+                  img [alt="" style="--h:204" src=#1qk25wb]
                 span.avatar.sm
-                  img [alt="" src=#uinvo6]
+                  img [alt="" style="--h:243" src=#uinvo6]
                 span.avatar.sm
-                  img [alt="" src=#1u67et1]
+                  img [alt="" style="--h:297" src=#1u67et1]
                 span.avatar.sm
-                  img [alt="" src=#c108i9]
+                  img [alt="" style="--h:83" src=#c108i9]
                 em "+2"
               div.pv-sw
                 small [aria-hidden="true"] "Schedule"

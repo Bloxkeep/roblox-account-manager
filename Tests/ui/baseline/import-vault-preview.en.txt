@@ -1,4 +1,5 @@
 == end
+html [data-theme="dark" lang="en"]
 #app
   div.shell
     aside.side
@@ -34,8 +35,8 @@
               span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
-            i.roblox
-            i.other
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
@@ -158,7 +159,7 @@
                         button.btn.sm "Open folder"
                           svg.i #3wh3ok
 #layer
-  div.overlay
+  div.at-top.overlay
     div.modal [role="dialog" aria-modal="true" aria-labelledby="mdl-1"]
       div.modal-head
         h3 [id="mdl-1"] "Import from a vault file"
@@ -178,7 +179,7 @@
             label.iv-item.rc-item
               input [type="checkbox" checked=true]
               div.avatar.sm
-                img [alt="" src=#1oebnc6]
+                img [alt="" style="--h:245" src=#1oebnc6]
               span.iv-name
                 b [title="Farm 3"] "Farm 3"
                 small "@pixelfarmer03 · Farm · · password saved"
@@ -187,7 +188,7 @@
             label.iv-item.rc-item
               input [type="checkbox" checked=true]
               div.avatar.sm
-                span.initials "ST"
+                span.initials [style="--h:302"] "ST"
               span.iv-name
                 b [title="Storage"] "Storage"
                 small "@khodo_vng ·"
@@ -197,7 +198,7 @@
             label.iv-item.rc-item
               input [type="checkbox" checked=false]
               div.avatar.sm
-                img [alt="" src=#n0d7cr]
+                img [alt="" style="--h:244" src=#n0d7cr]
               span.iv-name
                 b [title="Farm 2"] "Farm 2"
                 small "@pixelfarmer02 · Farm · · password saved"
@@ -206,7 +207,7 @@
             label.iv-item.rc-item
               input [type="checkbox" checked=false]
               div.avatar.sm
-                img [alt="" src=#1qk25wb]
+                img [alt="" style="--h:204" src=#1qk25wb]
               span.iv-name
                 b [title="Main"] "Main"
                 small "@sunny_builds · · password saved"
@@ -215,7 +216,7 @@
             label.iv-item.rc-item
               input [type="checkbox" checked=true]
               div.avatar.sm
-                img [alt="" src=#ym4i8b]
+                img [alt="" style="--h:253" src=#ym4i8b]
               span.iv-name
                 b [title="Event runner"] "Event runner"
                 small "@event_runner_2026 · Event ·"

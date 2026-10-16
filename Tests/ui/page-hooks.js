@@ -5,10 +5,11 @@
 //   - snap(): the page as text (what is shown, how it nests, its labels and states) to compare with a saved copy;
 //   - find(): an element by its text in the interface's language (an i18n key), so a step works whatever builds the page.
 (() => {
-  // 16 October 2026, 12:00 in Vietnam (the run sets that timezone); the clock runs from there.
+  // 16 October 2026, 12:00 in Vietnam (the run sets that timezone), and it stays that time: countdowns ("Resend in
+  // 59 s") and "checked at" read the same however long a step takes. Timers (setTimeout) still run.
   const FIXED = Date.UTC(2026, 9, 16, 5, 0, 0);
-  const RealDate = Date, t0 = performance.now();
-  const now = () => Math.floor(FIXED + (performance.now() - t0));
+  const RealDate = Date;
+  const now = () => FIXED;
   class FixedDate extends RealDate {
     constructor(...a) { if (a.length) super(...a); else super(now()); }
     static now() { return now(); }
@@ -21,7 +22,11 @@
   // them too. Longer ones (a minute's refresh) aren't waited for.
   const realSetTimeout = window.setTimeout.bind(window), realClearTimeout = window.clearTimeout.bind(window);
   const timers = new Set();
+  // run.mjs --jank sets __uiSlow: waits of the fake app (dev/mock.js answers in 0.1–0.8 s) and the page's short timers
+  // take that many times longer, as over a slow connection, so content arriving late is seen arriving late.
+  const slow = window.__uiSlow || 1;
   window.setTimeout = (fn, ms, ...rest) => {
+    if (slow > 1 && ms >= 100 && ms <= 3000) ms *= slow;
     const id = realSetTimeout((...a) => { timers.delete(id); ui.lastChange = performance.now(); return typeof fn === 'function' ? fn(...a) : undefined; }, ms, ...rest);
     if (!(ms > 3000)) timers.add(id);
     return id;
@@ -30,13 +35,32 @@
   new MutationObserver(() => { ui.lastChange = performance.now(); })
     .observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
 
+  // Layout shifts (the browser's own measure of things on screen jumping): which element moved, from where to where,
+  // and whether it came right after a click or key (the browser's hadRecentInput: half a second) or later, when
+  // something loaded. The later ones are what reads as the page "jerking".
+  ui.shifts = [];
+  const describe = n => {
+    if (!n || n.nodeType !== 1) return n?.nodeType === 3 ? 'text' : '?';
+    const cls = [...n.classList].slice(0, 3).join('.');
+    return `${n.tagName.toLowerCase()}${n.id ? '#' + n.id : ''}${cls ? '.' + cls : ''}`;
+  };
+  try {
+    new PerformanceObserver(list => {
+      for (const e of list.getEntries())
+        ui.shifts.push({ at: Math.round(e.startTime), value: e.value, recent: e.hadRecentInput,
+          sources: (e.sources || []).map(s => ({ node: describe(s.node), from: [s.previousRect.y, s.previousRect.height].map(Math.round), to: [s.currentRect.y, s.currentRect.height].map(Math.round) })) });
+    }).observe({ type: 'layout-shift', buffered: true });
+  } catch { /* no Layout Instability API */ }
+
   // The fake bridge (dev/mock.js) sets window.__mockBridge: its calls are recorded on the way through.
   let bridge;
   Object.defineProperty(window, '__mockBridge', {
     configurable: true,
     get: () => bridge,
     set(v) {
-      const call = v.call.bind(v);
+      const call = v.call.bind(v), attach = v.attach.bind(v);
+      // The page's own event handler, so a scenario can send it what the app would (__ui.emit('state', …)).
+      v.attach = fn => { ui.emit = (name, data) => fn(name, data); return attach(fn); };
       v.call = async (cmd, args) => {
         ui.calls.push({ cmd, args: args ?? null });
         ui.pending++;
@@ -70,6 +94,18 @@
   ui.snap = ({ layout = false } = {}) => {
     const out = [];
     const KEEP = ['id', 'role', 'type', 'name', 'placeholder', 'title', 'alt', 'href', 'for', 'tabindex', 'autocomplete', 'maxlength', 'min', 'max', 'step', 'open', 'readonly', 'multiple'];
+    // data-* attributes are how the page finds its own elements, so they're left out, except those the stylesheet
+    // selects on (they change how the page looks).
+    const styled = new Set();
+    for (const sheet of document.styleSheets) {
+      let rules;
+      try { rules = sheet.cssRules; } catch { continue; }
+      const scan = list => { for (const r of list) { if (r.selectorText) for (const m of r.selectorText.matchAll(/\[(data-[\w-]+)/g)) styled.add(m[1]); if (r.cssRules) scan(r.cssRules); } };
+      scan(rules);
+    }
+    const inline = el => [...el.style].sort().map(p => `${p}:${el.style.getPropertyValue(p)}`).join(';');
+    const html = document.documentElement;
+    out.push(`html [${[...html.attributes].filter(a => a.name !== 'style').map(a => `${a.name}=${JSON.stringify(a.value)}`).sort().join(' ')}]${inline(html) ? ` style=${JSON.stringify(inline(html))}` : ''}`);
     const walk = (el, depth) => {
       if (el.nodeType !== 1 || !visible(el)) return;
       const tag = el.tagName.toLowerCase();
@@ -79,7 +115,9 @@
       if (tag === 'svg') { out.push(`${pad}svg${cls ? '.' + cls : ''} #${hash(el.innerHTML)}`); return; }
       const attrs = [];
       for (const a of el.attributes)
-        if (KEEP.includes(a.name) || a.name.startsWith('aria-')) attrs.push(`${a.name}=${JSON.stringify(a.value)}`);
+        if (KEEP.includes(a.name) || a.name.startsWith('aria-') || styled.has(a.name)) attrs.push(`${a.name}=${JSON.stringify(a.value)}`);
+      const st = inline(el);
+      if (st) attrs.push(`style=${JSON.stringify(st)}`);
       if (tag === 'img') attrs.push(`src=${el.getAttribute('src')?.startsWith('data:') ? '#' + hash(el.getAttribute('src')) : JSON.stringify(el.getAttribute('src'))}`);
       if (tag === 'input' || tag === 'textarea' || tag === 'select') {
         if (el.type === 'checkbox' || el.type === 'radio') attrs.push(`checked=${el.checked}`);
@@ -116,11 +154,12 @@
     return s;
   };
   // The words, then maybe a count ("Playing 3", "Play 2").
-  const matcher = s => new RegExp('^' + s.split(/\{[^}]+\}/).map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '(\\s*\\d+)?$', 'i');
+  const matcher = (s, partial) => new RegExp('^' + s.split(/\{[^}]+\}/).map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + (partial ? '' : '(\\s*\\d+)?$'), 'i');
 
   /**
    * An element to act on: { css }, or { key } (an i18n key: an element whose text, aria-label or title is those words)
-   * or { text } (the words themselves), optionally { within: css } and { nth } when several match. Throws when none does.
+   * or { text } (the words themselves), optionally { within: css } and { nth } when several match, { partial: true } when
+   * more follows the words (a second line, a key hint). Throws when none does.
    */
   ui.find = spec => {
     const scope = spec.within ? document.querySelector(spec.within) : document;
@@ -128,7 +167,7 @@
     let list;
     if (spec.css) list = [...scope.querySelectorAll(spec.css)].filter(visible);
     else {
-      const re = matcher(spec.key ? words(spec.key) : spec.text);
+      const re = matcher(spec.key ? words(spec.key) : spec.text, spec.partial);
       const sel = spec.css2 || CLICKABLE;
       list = [...scope.querySelectorAll(sel)].filter(el => visible(el) &&
         [el.textContent, el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('placeholder')].some(v => re.test(norm(v))));
