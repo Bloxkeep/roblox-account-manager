@@ -1,0 +1,273 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav.on [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Cài đặt"
+        div.set-layout
+          nav.set-nav [aria-label="Cài đặt"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Khởi chạy"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản & đồ họa Roblox"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Treo game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Thông báo"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Giao diện"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Bảo mật"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Sao lưu & dữ liệu"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Cập nhật Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
+                h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-discord"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Gửi lên Discord"
+                        div.d "Gửi tổng kết thời gian chơi, tin trạng thái trực tiếp và cảnh báo vào kênh của bạn qua webhook. Mặc định tắt, chỉ gửi khi bạn bật."
+                      div.ctl
+                        label.switch [title="Hãy dán link webhook trước."]
+                          input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=false]
+                          span
+                    div [id="s-dc-note"]
+                    div.set-row
+                      div
+                        div.t "Link webhook"
+                        div.d
+                          span.path [id="s-dc-hook"] "Chưa có link"
+                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Link được mã hóa và lưu cùng các tài khoản."
+                      div.ctl
+                        button.btn.sm [id="s-dc-paste"] "Dán link…"
+                    div [id="s-dc-status"]
+                div.set-grp [id="sec-dc-summary"]
+                  h3.set-grp-title "Tổng kết thời gian chơi"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Gửi tự động"
+                      div.ctl
+                        select.select.sm [id="s-dc-when" aria-label="Gửi tự động" value="daily"]
+                          option [value="none"] "Không"
+                          option [value="daily"] "Hằng ngày"
+                          option [value="weekly"] "Hằng tuần"
+                          option [value="both"] "Cả hai"
+                    div.dc-when [id="s-dc-daily-row"]
+                      div.set-row
+                        div
+                          div.t "Hằng ngày lúc"
+                        div.ctl
+                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
+                    div.set-row
+                      div
+                        div.t "Khi preset hẹn giờ chạy xong"
+                        div.d "Gửi khoảng nửa phút sau khi các tài khoản đóng, chỉ tính tài khoản của preset đó (vào kênh riêng nếu preset có)."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-after" type="checkbox" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Khoảng thời gian"
+                        div.d "Áp dụng cho bản tổng kết hằng ngày và “Gửi ngay”. Bản hằng tuần luôn tính 7 ngày, bản gửi sau khi preset hẹn giờ chạy xong tính từ đầu hôm nay."
+                      div.ctl
+                        select.select.sm [id="s-dc-days" aria-label="Khoảng thời gian" value="1"]
+                          option [value="1"] "24 giờ qua"
+                          option [value="7"] "7 ngày qua"
+                          option [value="30"] "30 ngày qua"
+                    div.set-row
+                      div
+                        div.t "Gồm"
+                      div.ctl
+                        button.btn.sm [id="s-dc-parts" aria-haspopup="dialog"] "5 mục"
+                    div.set-row
+                      div
+                        div.t "Tài khoản"
+                        div.d
+                          span [id="s-dc-acc"] "Mọi tài khoản"
+                      div.ctl
+                        button.btn.sm "Chọn…"
+                    div.set-row
+                      div
+                        div.t "Tag"
+                      div.ctl
+                        div.dc-ping
+                          select.select.sm [aria-label="Tag" value="none"]
+                            option [value="none"] "Không ai"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "Một người…"
+                            option [value="role"] "Một vai trò…"
+                    div.set-row
+                      div
+                        div.t "Gửi ngay"
+                        div.d "Theo các lựa chọn ở trên."
+                      div.ctl
+                        button.btn.sm [id="s-dc-now"] "Gửi tổng kết"
+                div.set-grp [id="sec-dc-events"]
+                  h3.set-grp-title "Cảnh báo"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Gửi cảnh báo"
+                        div.d "Tách riêng với thông báo Windows. Các cảnh báo cách nhau dưới 10 giây được gộp thành một tin."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-alerts" type="checkbox" aria-label="Gửi cảnh báo" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Tag"
+                      div.ctl
+                        div.dc-ping
+                          select.select.sm [aria-label="Tag" value="mixed"]
+                            option [value="none"] "Không ai"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "Một người…"
+                            option [value="role"] "Một vai trò…"
+                            option [value="mixed" disabled hidden] "Tùy từng loại"
+                    details.set-more [id="s-dc-kinds"]
+                      summary "Chọn loại cảnh báo"
+                        svg.i #u1ag9u
+                    p.set-hint "Muốn tag một người hay vai trò thì cần ID: trong Discord bật Cài đặt › Nâng cao › Chế độ nhà phát triển, rồi bấm chuột phải vào người hoặc vai trò › Sao chép ID."
+                div.set-grp [id="sec-dc-board"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Luôn cập nhật tin trạng thái"
+                        div.d "Chỉ một tin, được sửa liên tục: tài khoản nào đang mở, game gì, đã chơi bao lâu, PID và RAM. Không bao giờ tag ai."
+                      div.ctl
+                        select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
+                          option [value="2"] "Mỗi 2 phút"
+                          option [value="5"] "Mỗi 5 phút"
+                          option [value="10"] "Mỗi 10 phút"
+                          option [value="15"] "Mỗi 15 phút"
+                          option [value="30"] "Mỗi 30 phút"
+                          option [value="60"] "Mỗi 60 phút"
+                        label.switch
+                          input [id="s-dc-board" type="checkbox" aria-label="Luôn cập nhật tin trạng thái" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Giờ yên lặng"
+                        div.d "Tin vẫn được gửi nhưng không tag ai."
+                      div.ctl
+                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
+                        span.dc-dash "–"
+                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
+                        label.switch
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên lặng" checked=true]
+                          span
+                div.set-grp [id="sec-dc-look"]
+                  div.set-card
+                    details.set-more [id="s-dc-look"]
+                      summary "Tùy chỉnh tin nhắn"
+                        svg.i #u1ag9u
+#layer
+  div.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Link webhook Discord"
+        button.icon-btn [title="Đóng"]
+          svg.i #1tyq039
+      div.modal-body
+        p.modal-text "Dán link mà Discord đã tạo cho bạn. Ai có link này cũng gửi được tin vào kênh đó, nên đừng đưa cho người khác."
+        input.field [id="dc-link" type="text" placeholder="https://discord.com/api/webhooks/…" autocomplete="off" maxlength="300" aria-label="Link webhook" value="" FOCUSED]
+        p.dc-err [id="dc-link-err" role="alert"]
+      div.modal-foot
+        button.btn "Hủy"
+        button.btn.primary "Lưu"
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

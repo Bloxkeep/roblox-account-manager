@@ -79,6 +79,9 @@ html [data-theme="dark" lang="vi"]
                         div.d "Bật/tắt cho mọi tài khoản cùng lúc. Muốn bật/tắt riêng một tài khoản, dùng menu ⋯ của tài khoản đó. Nếu preset có đặt riêng, các cửa sổ do preset mở sẽ theo preset."
                       div.ctl
                         select.select [id="s-rejoin" aria-label="Tự vào lại game" value="some"]
+                          option [value="on"] "Bật cho mọi tài khoản"
+                          option [value="off"] "Tắt cho mọi tài khoản"
+                          option [value="some" disabled hidden] "Bật cho 1/7 tài khoản"
                     div.set-row
                       div
                         div.t "Chống AFK"

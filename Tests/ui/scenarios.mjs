@@ -308,6 +308,57 @@ export default [
     await s.click({ css: 'label:has(#s-trim)' });
     await s.choose({ css: '#s-rejoin' }, 'on');
   }),
+  S('settings-launch-controls', 'settings=launch', async s => {
+    await s.click({ css: 'label:has(#s-rename)' });
+    await s.choose({ css: '#s-openas' }, 'tile');
+    await s.choose({ css: '#s-winlayout' }, 'small');
+    await s.snap('windows');
+    await s.choose({ css: '#s-launch' }, 'direct');
+    await s.choose({ css: '#s-delay' }, '20');
+  }),
+  S('settings-launch-multi', 'settings=launch&multioff=1', async s => {
+    await s.click({ css: 'label:has(#s-multi)' });
+    await s.snap('asked');
+    await s.click({ key: 'common.cancel', within: '.modal' });
+    await s.snap('declined');
+    await s.click({ css: 'label:has(#s-multi)' });
+    await s.click({ key: 'set.multiOk', within: '.modal' });
+  }),
+  S('settings-launch-store', 'settings=launch&store=1&others=1', async s => {
+    await s.choose({ css: '#s-launch' }, 'store');
+    await s.snap('store');
+    await s.choose({ css: '#s-launch' }, 'other:Voidstrap');
+  }),
+  S('settings-launch-long', 'settings=launch&long=1&notready=1'),
+  S('settings-backup-problems', 'settings=backup&backup=1&bkerr=1&weak=1', async s => { await s.click(key('bk.now')); await s.wait(500); }),
+  S('settings-backup-use', 'settings=backup', async s => {
+    await s.click({ css: '#s-bk-suggest button' });
+    await s.snap('used');
+    await s.click({ css: 'label:has(#s-bk-on)' });
+  }),
+  S('settings-backup-pick', 'settings=backup&long=1', async s => { await s.click(key('bk.choose')); }),
+  S('settings-roblox-closed', 'settings=roblox&rbxclosed=1', async s => { await s.snap('warned'); await s.click(key('ru.hide')); }),
+  S('settings-roblox-changed', 'settings=roblox&rw=changed&rbxold=1'),
+  S('settings-roblox-renamed', 'settings=roblox&rw=renamed'),
+  S('settings-roblox-worked', 'settings=roblox&rw=worked', null, { langs: ['en'] }),
+  S('settings-roblox-unread', 'settings=roblox&rw=none', null, { langs: ['en'] }),
+  S('settings-roblox-config', 'settings=roblox', async s => {
+    await s.choose({ css: '#s-rc-mode' }, 'all');
+    await s.choose({ css: '#s-rc-graphics' }, '5');
+    await s.choose({ css: '#s-rc-fps' }, '144');
+    await s.choose({ css: '#s-rc-volume' }, '0');
+    await s.snap('all');
+    await s.choose({ css: '#s-rc-mode' }, 'off');
+  }),
+  S('settings-theme-keys', 'settings=appearance', async s => {
+    await s.click({ css: '#s-themes .swatch.on' });
+    await s.key('End');
+    await s.snap('last');
+    await s.key('Home');
+    await s.key('ArrowLeft');
+    await s.snap('wrapped');
+    await s.click({ css: '#s-themes [data-id=paper]' });
+  }),
   S('settings-theme-pick', 'settings=appearance', async s => {
     await s.click({ css: '#s-themes [role=radio]:nth-child(3)' });
     await s.snap('picked');
@@ -338,6 +389,72 @@ export default [
     await s.key('Escape');
     await s.click({ css: '[data-dc=parts]' });
   }),
+  S('settings-discord-nolink', 'settings=discord', async s => { await s.click({ css: 'label:has(#s-dc-on)' }); }),
+  S('settings-discord-gone', 'settings=discord&dcgone=1'),
+  S('settings-discord-fail', 'settings=discord&discord=1&dcfail=1', async s => { await s.click(key('dc.test')); await s.wait(500); }),
+  S('settings-discord-reveal', 'settings=discord&discord=1', async s => {
+    await s.click({ css: '#s-dc-reveal' });
+    await s.snap('shown');
+    await s.click({ css: '#s-dc-reveal' });
+  }),
+  S('settings-discord-when', 'settings=discord&discord=1', async s => {
+    await s.choose({ css: '#s-dc-when' }, 'both');
+    await s.snap('both');
+    await s.choose({ css: '#s-dc-daily-time' }, '21:30');
+    await s.choose({ css: '#s-dc-weekday' }, '3');
+    await s.choose({ css: '#s-dc-weekly-time' }, '');
+    await s.choose({ css: '#s-dc-days' }, '30');
+    await s.click({ css: 'label:has(#s-dc-after)' });
+    await s.snap('times');
+    await s.choose({ css: '#s-dc-when' }, 'none');
+  }),
+  S('settings-discord-board', 'settings=discord&discord=1', async s => {
+    await s.choose({ css: '#s-dc-minutes' }, '15');
+    await s.click({ css: 'label:has(#s-dc-quiet)' });
+    await s.choose({ css: '#s-dc-quiet-from' }, '07:00');
+    await s.snap('quiet');
+    await s.choose({ css: '#s-dc-quiet-to' }, '07:00');
+    await s.click({ css: 'label:has(#s-dc-board)' });
+  }),
+  S('settings-discord-pings', 'settings=discord&discord=1', async s => {
+    await s.choose({ css: '[data-ping=summary]' }, 'user');
+    await s.snap('asks id');
+    await s.type('123');
+    await s.key('Enter');
+    await s.snap('bad id');
+    await s.fill({ css: '[data-ping-id=summary]' }, '123456789012345678');
+    await s.key('Enter');
+    await s.snap('saved');
+    await s.choose({ css: '[data-ping=alerts]' }, 'role');
+    await s.click(key('dc.sendAuto'));
+    await s.wait(300);
+    await s.snap('left empty');
+    await s.choose({ css: '[data-ping=alerts]' }, 'here');
+  }),
+  S('settings-discord-alerts', 'settings=discord&discord=1', async s => {
+    await s.click({ css: '#s-dc-kinds summary' });
+    await s.click({ css: 'label:has(#s-dc-ev-drop)' });
+    await s.choose({ css: '[data-ping=drop]' }, 'everyone');
+    await s.snap('one kind');
+    await s.click({ css: 'label:has(#s-dc-alerts)' });
+    await s.snap('all off');
+    await s.click({ css: 'label:has(#s-dc-alerts)' });
+  }),
+  S('settings-discord-look', 'settings=discord&discord=1', async s => {
+    await s.click({ css: '#s-dc-look summary' });
+    await s.fill({ css: '#s-dc-name' }, 'Discord farm');
+    await s.key('Enter');
+    await s.snap('bad name');
+    await s.fill({ css: '#s-dc-name' }, '  ');
+    await s.key('Enter');
+    await s.snap('empty name');
+    await s.fill({ css: '#s-dc-avatar' }, 'http://example.com/a.png');
+    await s.key('Enter');
+    await s.snap('bad avatar');
+    await s.choose({ css: '#s-dc-lang' }, 'vi');
+    await s.choose({ css: '#s-dc-style' }, 'plain');
+    await s.click({ css: 'label:has(#s-dc-hidenames)' });
+  }),
   S('settings-password', 'settings=security', async s => {
     await s.type('wrong', key('set.pwCur'));
     await s.type('new master password', key('set.pwNew'));
@@ -349,6 +466,35 @@ export default [
     await s.key('Enter');
     await s.wait(600);
   }),
+  S('settings-password-checks', 'settings=security', async s => {
+    await s.key('Enter', []);
+    await s.snap('nothing typed');
+    await s.type('demo', key('set.pwCur'));
+    await s.type('abc', key('set.pwNew'));
+    await s.snap('weak');
+    await s.key('Enter');
+    await s.snap('short');
+    await s.fill(key('set.pwNew'), '      ');
+    await s.key('Enter');
+    await s.snap('blank');
+    await s.fill(key('set.pwNew'), 'demo');
+    await s.key('Enter');
+    await s.snap('same');
+    await s.fill(key('set.pwNew'), 'Longer pass 12!');
+    await s.type('Longer pass', key('set.pwNew2'));
+    await s.key('Enter');
+    await s.snap('mismatch');
+    await s.type('x');
+  }),
+  S('settings-password-kept', 'settings=security', async s => {
+    await s.type('Longer pass 12!', key('set.pwNew'));
+    await s.click({ css: '#view-settings [data-set-page=appearance]' });
+    await s.click({ css: '[data-act=lang][data-lang=vi]' });
+    await s.click({ css: '#view-settings [data-set-page=security]' });
+    await s.snap('other language');
+    await s.click({ css: '.nav[data-view=accounts]' });
+    await s.click({ css: '.nav[data-view=settings]' });
+  }, { langs: ['en'] }),
   S('settings-backup-now', 'settings=backup&backup=1', async s => { await s.click(key('bk.now')); await s.wait(500); }),
   S('settings-backup-restore', 'settings=backup&backup=1', async s => { await s.click(key('bk.restoreBtn')); }),
   S('settings-check-updates', 'settings=updates', async s => { await s.click({ css: '[data-act=check-updates]' }); await s.wait(800); }),

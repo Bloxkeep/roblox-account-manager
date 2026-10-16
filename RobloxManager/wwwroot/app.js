@@ -644,7 +644,7 @@
   function mountUiParts() {
     takeDownUiParts();
     const ui = window.BloxkeepUI, host = uiHost();
-    for (const id of ['notify', 'updates']) uiParts.push(ui.settingsPage($(`#set-page-${id}`), host, id, setPageTitle(id)));
+    for (const [id] of SET_PAGES) uiParts.push(ui.settingsPage($(`#set-page-${id}`), host, id, setPageTitle(id)));
   }
   function buildShell() {
     S.shell = true;
@@ -784,34 +784,29 @@
     if (S.view === 'stats') renderStats(); // names shown or hidden follow at once (unchanged figures cost nothing)
   }
 
-  /** Typed passwords don't stay in the page once Settings is left. */
-  function clearPwForm() {
-    for (const id of ['#pw-cur', '#pw-new', '#pw-new2']) { const el = $(id); if (el) el.value = ''; }
-    const msg = $('#pw-msg');
-    if (msg) { msg.textContent = ''; msg.className = 'pw-msg'; }
-  }
+  /** Typed passwords don't stay in the page once Settings is left (Settings › Security, React, empties its boxes). */
+  function clearPwForm() { uiSignal('clearPassword'); }
 
   /** A theme picked with the arrow keys shows at once; the app saves it once the keys rest. */
   let themeTimer = 0;
   function previewTheme(id) {
     clearTimeout(themeTimer);
-    S.themePending = id;
+    setThemePending(id);
     if (id !== 'system') document.documentElement.dataset.theme = id;
-    $('#s-themes').querySelectorAll('.swatch').forEach(s => {
-      const on = s.dataset.id === id;
-      s.classList.toggle('on', on);
-      s.setAttribute('aria-checked', String(on));
-      s.tabIndex = on ? 0 : -1;
-    });
-    setText($('#s-theme-name'), t(`theme.${id}`));
     themeTimer = setTimeout(async () => {
       if (id !== S.app.theme) await call('setTheme', { theme: id });
       if (S.themePending !== id) return;
-      S.themePending = null;
+      setThemePending(null);
       // The state that came with the answer was held back while this pick waited ("Sync with Windows" has no
       // preview of its own): the theme the app applied shows now.
       document.documentElement.dataset.theme = S.app.themeApplied || S.app.theme;
     }, 400);
+  }
+
+  /** The theme being previewed, or null: Settings › Appearance (React) marks it as the chosen one. */
+  function setThemePending(id) {
+    S.themePending = id;
+    uiListeners.forEach(f => f());
   }
 
   function setView(view) {
@@ -1428,9 +1423,6 @@
   }
 
   /* ───────────────────────── settings ───────────────────────── */
-  /** The kinds of Windows notification that can be turned off one by one (the app maps each event to one of them). */
-  const NOTIFY_KINDS = ['drop', 'schedule', 'signin', 'ram', 'launch'];
-
   /**
    * Settings is a list of pages on the left (with a search box over all of them) and the chosen page on the right:
    * its title, then groups — a small heading over a card of rows — so a page and a group inside it never look alike.
@@ -1445,17 +1437,9 @@
   ];
   const setPageTitle = id => { const key = SET_PAGES.find(p => p[0] === id)?.[2]; return key ? t(key) : 'Discord'; };
   let setPage = (() => { const id = store.get(SET_PAGE_KEY, 'launch'); return SET_PAGES.some(p => p[0] === id) ? id : 'launch'; })();
-  /** A group on a settings page: a small heading (none for a page's first, untitled group) over a card of rows. */
-  const setGroup = (id, title, body) =>
-    `<div class="set-grp" data-grp="${id}" id="sec-${id}">${title ? `<h3 class="set-grp-title">${title}</h3>` : ''}<div class="set-card">${body}</div></div>`;
-
   function settingsHtml() {
-    const row = (title, desc, ctl, extra = '') => `<div class="set-row"><div><div class="t">${title}${extra}</div>${desc ? `<div class="d">${desc}</div>` : ''}</div><div class="ctl">${ctl}</div></div>`;
-    const sw = (id, label = '') => `<label class="switch"><input type="checkbox" id="${id}" ${label ? `aria-label="${esc(label)}"` : ''}><span></span></label>`;
-    const page = (id, body) => `<section class="set-page" data-page="${id}" id="set-page-${id}" aria-labelledby="set-page-${id}-h" ${id === setPage ? '' : 'hidden'}>
-      <h2 class="set-page-title" id="set-page-${id}-h">${setPageTitle(id)}</h2>${body}</section>`;
-    // A page React draws (mountUiParts): the section alone, its title and groups come from ui/src/settings.
-    const reactPage = id => `<section class="set-page" data-page="${id}" id="set-page-${id}" aria-labelledby="set-page-${id}-h" ${id === setPage ? '' : 'hidden'}></section>`;
+    // A page: the section alone, its title and groups come from ui/src/settings (mountUiParts).
+    const page = id => `<section class="set-page" data-page="${id}" id="set-page-${id}" aria-labelledby="set-page-${id}-h" ${id === setPage ? '' : 'hidden'}></section>`;
     return `<header class="top"><div class="top-title"><h1>${t('set.title')}</h1></div></header>
       <div class="set-layout">
         <nav class="set-nav" aria-label="${esc(t('set.title'))}">
@@ -1463,115 +1447,14 @@
           ${SET_PAGES.map(([id, ic]) => `<button type="button" class="set-nav-item" data-set-page="${id}" ${id === setPage ? 'aria-current="page"' : ''}>${icon(ic)}<span>${setPageTitle(id)}</span><i class="set-nav-dot" title="${esc(t('set.needsLook'))}" hidden></i></button>`).join('')}
         </nav>
         <div class="scroll set-scroll"><div class="settings">
-        ${page('launch', `
-          ${setGroup('launch', t('set.g.windows'), `
-            ${row(t('set.multi'), `${t('set.multiDesc')} <button type="button" class="link" data-act="multi-help">${t('set.details')}</button>`, sw('s-multi'), ' <span class="state-pill" id="s-multi-pill"></span>')}
-            ${row(t('set.rename'), t('set.renameDesc'), sw('s-rename'))}
-            ${row(t('set.openAs'), t('set.openAsDesc'), `<select class="select" id="s-openas" aria-label="${esc(t('set.openAs'))}">${['roblox', 'maximize', 'tile'].map(k => `<option value="${k}">${t(`set.openAs.${k}`)}</option>`).join('')}</select>`)}
-            ${row(t('set.winLayout'), t('set.winLayoutDesc'), `<select class="select" id="s-winlayout" aria-label="${esc(t('set.winLayout'))}">${['fill', 'small', 'medium', 'large'].map(k => `<option value="${k}">${t(`set.winLayout.${k}`)}</option>`).join('')}</select>`)}`)}
-          ${setGroup('client', t('set.g.client'), `
-            ${row(t('set.client'), t('set.clientDesc'), `<select class="select" id="s-launch" aria-label="Roblox client"></select><button class="btn sm" data-act="pick-launcher" title="${t('launch.pick')}">${t('launch.pickBtn')}</button>`)}
-            <div id="s-store"></div>
-            ${row(t('set.delay'), t('set.delayDesc'), '<input type="range" id="s-delay" min="0" max="60" step="1"><b id="s-delay-v" class="range-v"></b>')}`)}`)}
-        ${page('roblox', `
-          ${setGroup('rbxupd', t('ru.title'), `
-            <div id="s-rbxclosed"></div>
-            <div id="s-rbxver"></div>
-            <div id="s-rbxupd"></div>`)}
-          ${setGroup('rc', t('rc.title'), `
-            ${row(t('rc.mode'), '<span id="s-rc-hint"></span>', `<select class="select" id="s-rc-mode">${['off', 'all', 'marked'].map(m => `<option value="${m}">${t(`rc.mode.${m}`)}</option>`).join('')}</select>`)}
-            ${row(t('rc.graphics'), '', `<select class="select" id="s-rc-graphics"><option value="0">${t('rc.keep')}</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<option value="${n}">${n}</option>`).join('')}</select>`)}
-            ${row(t('rc.fps'), '', `<select class="select" id="s-rc-fps"><option value="0">${t('rc.keep')}</option>${[30, 60, 144, 240].map(n => `<option value="${n}">${n} FPS</option>`).join('')}</select>`)}
-            ${row(t('rc.volume'), '', `<select class="select" id="s-rc-volume"><option value="-1">${t('rc.keep')}</option><option value="0">${t('rc.mute')}</option>${[25, 50, 75, 100].map(n => `<option value="${n}">${n}%</option>`).join('')}</select>`)}`)}`)}
-        ${page('perf', `
-          ${setGroup('perf', t('set.g.keep'), `
-            ${row(t('set.rejoin'), t('set.rejoinDesc'), `<select class="select" id="s-rejoin" aria-label="${esc(t('set.rejoin'))}"></select>`)}
-            ${row(t('set.antiAfk'), t('set.antiAfkDesc'), sw('s-antiafk'))}
-            ${row(t('set.daily'), `${t('set.dailyDesc')} <span id="s-daily-when"></span>`, sw('s-daily'))}`)}
-          ${setGroup('memory', t('set.g.memory'), `
-            ${row(t('set.memWarn'), '', sw('s-memwarn'))}
-            ${row(t('set.trim'), t('set.trimDesc'), sw('s-trim'))}`)}
-          ${setGroup('app', t('set.g.app'), `
-            ${row(t('set.tray'), t('set.trayDesc'), sw('s-tray'))}
-            ${row(t('set.gpu'), t('set.gpuDesc'), sw('s-gpu'))}`)}`)}
-        ${reactPage('notify')}
-        ${page('discord', discordHtml(row, sw))}
-        ${page('appearance', setGroup('appearance', '', `
-          ${row(t('set.theme'), '<span id="s-theme-name"></span>', '')}
-          <div class="themes" id="s-themes" role="radiogroup" aria-label="${t('set.theme')}"></div>
-          ${row(t('set.language'), '', langSwitch())}
-          ${row(t('set.hideNames'), t('set.hideNamesDesc'), sw('s-hidenames', t('set.hideNames')))}`))}
-        ${page('security', setGroup('master', t('set.master'), `
-          <form class="pw-form" id="pw-form" autocomplete="off">
-            <input class="field" type="password" id="pw-cur" placeholder="${t('set.pwCur')}" aria-label="${t('set.pwCur')}" maxlength="256" autocomplete="current-password">
-            <input class="field" type="password" id="pw-new" placeholder="${t('set.pwNew')}" aria-label="${t('set.pwNew')}" maxlength="256" autocomplete="new-password">
-            <input class="field" type="password" id="pw-new2" placeholder="${t('set.pwNew2')}" aria-label="${t('set.pwNew2')}" maxlength="256" autocomplete="new-password">
-            <button class="btn primary" type="submit" id="pw-btn">${t('set.pwBtn')}</button>
-            <p class="pw-msg" id="pw-msg" role="alert"></p>
-          </form>`))}
-        ${page('backup', `
-          ${setGroup('backup', t('bk.title'), `
-            ${row(t('bk.on'), t('bk.onDesc'), sw('s-bk-on'))}
-            ${row(t('bk.folder'), '<span class="path" id="s-bk-path"></span><div class="bk-suggest" id="s-bk-suggest"></div>', `<button class="btn sm" data-act="bk-pick">${t('bk.choose')}</button><button class="btn sm" data-act="bk-open" id="s-bk-open">${icon('folder')}${t('set.openFolder')}</button>`)}
-            <div id="s-bk-note"></div>
-            <div id="s-bk-status"></div>`)}
-          ${setGroup('restore', t('set.g.restore'), `
-            ${row(t('bk.restore'), t('bk.restoreDesc'), `<button class="btn sm" data-act="bk-restore">${t('bk.restoreBtn')}</button>`)}
-            ${row(t('iv.setRow'), t('iv.setRowDesc'), `<button class="btn sm" data-act="bk-import">${t('iv.setBtn')}</button>`)}`)}
-          ${setGroup('data', t('set.data'), `
-            ${row(t('set.dataPath'), '<span class="path" id="s-path"></span>', `<button class="btn sm" data-act="open-data">${icon('folder')}${t('set.openFolder')}</button>`)}`)}`)}
-        ${reactPage('updates')}
+        ${SET_PAGES.map(([id]) => page(id)).join('')}
         <p class="set-empty" id="set-empty" hidden>${t('set.noMatch')}</p>
       </div></div>
       </div>`;
   }
 
-  /* Settings › Discord. The link itself never comes to the page unless the person asks to see it (Show). */
+  /* Settings › Discord: what a summary can list. */
   const DC_PARTS = ['total', 'accounts', 'games', 'sessions', 'kicks'];
-  const DC_PING_KINDS = ['summary', ...NOTIFY_KINDS];
-  /** A ping choice: a list (nobody, @here, @everyone, a user, a role) and, for a user or role, the ID box next to it. */
-  // "alerts" is every alert kind at once; when they differ it reads "Varies by alert" (the kinds' own lists say how).
-  const pingCtl = kind => `<div class="dc-ping"><select class="select sm" data-ping="${kind}" aria-label="${esc(t('dc.ping'))}">${['none', 'here', 'everyone', 'user', 'role'].map(v =>
-    `<option value="${v}">${t(`dc.ping.${v}`)}</option>`).join('')}${kind === 'alerts' ? `<option value="mixed" disabled hidden>${t('dc.pingMixed')}</option>` : ''}</select><input class="field sm dc-id" data-ping-id="${kind}" inputmode="numeric" maxlength="20" spellcheck="false" autocomplete="off" placeholder="${esc(t('dc.idPh'))}" aria-label="ID" hidden></div>`;
-
-  function discordHtml(row, sw) {
-    const time = (id, label) => `<input class="field sm time" type="time" id="${id}" aria-label="${esc(label)}">`;
-    const weekdays = [1, 2, 3, 4, 5, 6, 0].map(d => `<option value="${d}">${new Date(2026, 9, 11 + d).toLocaleDateString(locale(), { weekday: 'long' })}</option>`).join('');
-    return `
-      ${setGroup('discord', '', `
-        ${row(t('dc.on'), t('dc.onDesc'), sw('s-dc-on', t('dc.on')))}
-        <div id="s-dc-note"></div>
-        ${row(t('dc.webhook'), `<span class="path" id="s-dc-hook"></span><div>${t('dc.webhookHelp')}</div>`,
-          `<button class="btn sm" data-dc="paste" id="s-dc-paste"></button><button class="btn sm ghost" data-dc="reveal" id="s-dc-reveal">${icon('eye')}${t('dc.show')}</button><button class="btn sm ghost" data-dc="remove" id="s-dc-remove">${t('dc.remove')}</button>`)}
-        <div id="s-dc-status"></div>`)}
-      ${setGroup('dc-summary', t('dc.summary'), `
-        ${row(t('dc.sendAuto'), '', `<select class="select sm" id="s-dc-when" aria-label="${esc(t('dc.sendAuto'))}">${[['none', 'dc.send.none'], ['daily', 'dc.daily'], ['weekly', 'dc.weekly'], ['both', 'dc.send.both']].map(([v, k]) =>
-          `<option value="${v}">${t(k)}</option>`).join('')}</select>`)}
-        <div class="dc-when" id="s-dc-daily-row">${row(t('dc.dailyAt'), '', time('s-dc-daily-time', t('dc.dailyAt')))}</div>
-        <div class="dc-when" id="s-dc-weekly-row">${row(t('dc.weeklyAt'), '', `<select class="select sm" id="s-dc-weekday" aria-label="${esc(t('dc.weekday'))}">${weekdays}</select>${time('s-dc-weekly-time', t('dc.weeklyAt'))}`)}</div>
-        ${row(t('dc.after'), t('dc.afterDesc'), sw('s-dc-after', t('dc.after')))}
-        ${row(t('dc.period'), t('dc.periodDesc'), `<select class="select sm" id="s-dc-days" aria-label="${esc(t('dc.period'))}">${[1, 7, 30].map(d => `<option value="${d}">${t(`dc.days.${d}`)}</option>`).join('')}</select>`)}
-        ${row(t('dc.include'), '', `<button class="btn sm" data-dc="parts" id="s-dc-parts" aria-haspopup="dialog"></button>`)}
-        ${row(t('dc.accounts'), '<span id="s-dc-acc"></span>', `<button class="btn sm" data-dc="accounts">${t('dc.choose')}</button>`)}
-        ${row(t('dc.ping'), '', pingCtl('summary'))}
-        ${row(t('dc.sendNow'), t('dc.sendNowDesc'), `<button class="btn sm" data-dc="summary-now" id="s-dc-now">${t('dc.sendNowBtn')}</button>`)}`)}
-      ${setGroup('dc-events', t('dc.events'), `
-        ${row(t('dc.alertsOn'), t('dc.eventsHint'), sw('s-dc-alerts', t('dc.alertsOn')))}
-        ${row(t('dc.ping'), '', pingCtl('alerts'))}
-        ${setMore('s-dc-kinds', t('dc.kinds'), `<div class="set-sub">${NOTIFY_KINDS.map(k => row(t(`set.notify.${k}`), '', `${pingCtl(k)}${sw(`s-dc-ev-${k}`, t(`set.notify.${k}`))}`)).join('')}</div>`)}
-        <p class="set-hint">${t('dc.idHelp')}</p>`)}
-      ${setGroup('dc-board', '', `
-        ${row(t('dc.boardOn'), t('dc.boardDesc'), `<select class="select sm" id="s-dc-minutes" aria-label="${esc(t('dc.every'))}">${[2, 5, 10, 15, 30, 60].map(m => `<option value="${m}">${t('dc.everyN', { n: m })}</option>`).join('')}</select>${sw('s-dc-board', t('dc.boardOn'))}`)}
-        ${row(t('dc.quietOn'), t('dc.quietDesc'), `${time('s-dc-quiet-from', t('dc.from'))}<span class="dc-dash">–</span>${time('s-dc-quiet-to', t('dc.to'))}${sw('s-dc-quiet', t('dc.quietOn'))}`)}`)}
-      ${setGroup('dc-look', '', setMore('s-dc-look', t('dc.look'), `
-        ${row(t('dc.name'), t('dc.nameDesc'), `<input class="field sm" id="s-dc-name" maxlength="80" spellcheck="false" autocomplete="off" aria-label="${esc(t('dc.name'))}">`)}
-        ${row(t('dc.avatar'), t('dc.avatarDesc'), `<input class="field sm" id="s-dc-avatar" maxlength="2048" spellcheck="false" autocomplete="off" placeholder="https://…" aria-label="${esc(t('dc.avatar'))}">`)}
-        ${row(t('dc.lang'), '', `<select class="select sm" id="s-dc-lang" aria-label="${esc(t('dc.lang'))}"><option value="app">${t('dc.lang.app')}</option><option value="en">English</option><option value="vi">Tiếng Việt</option></select>`)}
-        ${row(t('dc.style'), t('dc.styleDesc'), `<select class="select sm" id="s-dc-style" aria-label="${esc(t('dc.style'))}"><option value="embed">${t('dc.style.embed')}</option><option value="plain">${t('dc.style.plain')}</option></select>`)}
-        ${row(t('dc.hideNames'), t('dc.hideNamesDesc'), sw('s-dc-hidenames', t('dc.hideNames')))}`))}`;
-  }
-  /** A part of a settings card that stays closed until wanted: its line reads like a row title, with a chevron. */
-  const setMore = (id, title, body) => `<details class="set-more" id="${id}"><summary>${title}${icon('chevronDown')}</summary>${body}</details>`;
 
   function wireSettings() {
     // A switch, slider or list with no name of its own is named by its row's title: a screen reader said only "checkbox".
@@ -1585,83 +1468,6 @@
         if (!c.hasAttribute('aria-label') && !c.hasAttribute('aria-labelledby')) c.setAttribute('aria-label', name);
       }
     }
-    const toggle = (id, key) => $(id).addEventListener('change', e => call('setSettings', { [key]: e.target.checked }));
-    $('#s-multi').addEventListener('change', e => setMulti(e.target));
-    toggle('#s-rename', 'renameWindows');
-    toggle('#s-memwarn', 'memoryWarnings');
-    toggle('#s-trim', 'trimBackground');
-    toggle('#s-antiafk', 'antiAfk');
-    for (const key of ['mode', 'graphics', 'fps', 'volume']) {
-      $(`#s-rc-${key}`).addEventListener('change', e => {
-        const value = key === 'mode' ? e.target.value : +e.target.value;
-        call('setSettings', { robloxConfig: { [key]: value } });
-      });
-    }
-    $('#s-tray').addEventListener('change', e => call('setCloseToTray', { enabled: e.target.checked }));
-    $('#s-hidenames').addEventListener('change', e => call('setHideNames', { enabled: e.target.checked }));
-    $('#s-daily').addEventListener('change', e => call('setDailySignInCheck', { enabled: e.target.checked }));
-    $('#s-rejoin').addEventListener('change', e => setRejoinAll(e.target));
-    $('#s-bk-on').addEventListener('change', e => call('setBackup', { enabled: e.target.checked }));
-    // Switching reloads the interface, so the reply may never come back; the reloaded page shows the new state.
-    $('#s-gpu').addEventListener('change', e => {
-      saveView(true);
-      bridge.call('setRendering', { gpu: e.target.checked }).catch(() => {});
-    });
-    $('#s-launch').addEventListener('change', e => call('setSettings', { launchVia: e.target.value }));
-    $('#s-winlayout').addEventListener('change', e => call('setSettings', { windowLayout: e.target.value }));
-    // One of three: as Roblox sizes it, maximised, or tiled (the app keeps the other one off).
-    $('#s-openas').addEventListener('change', e => call('setSettings', e.target.value === 'tile' ? { multiTile: true }
-      : e.target.value === 'maximize' ? { maximizeOnOpen: true } : { multiTile: false, maximizeOnOpen: false }));
-    // Theme swatches: one Tab stop; the arrow keys (Home/End to the ends) move between them and pick as they go, like
-    // radio buttons. The pick shows at once; it is saved once the keys rest, not once per press.
-    $('#s-themes').addEventListener('keydown', e => {
-      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-      const from = e.target.closest('.swatch');
-      if (!from || (!step && e.key !== 'Home' && e.key !== 'End')) return;
-      e.preventDefault();
-      const all = [...$('#s-themes').querySelectorAll('.swatch')];
-      const next = e.key === 'Home' ? all[0] : e.key === 'End' ? all.at(-1) : all[(all.indexOf(from) + step + all.length) % all.length];
-      previewTheme(next.dataset.id);
-      next.focus();
-    });
-    const delay = $('#s-delay');
-    delay.addEventListener('input', () => { $('#s-delay-v').textContent = t('set.seconds', { n: delay.value }); });
-    delay.addEventListener('change', () => call('setSettings', { launchDelaySeconds: +delay.value }));
-    // Checked in the order the boxes are filled; problems show under the form, next to the boxes they are about.
-    const pwMsg = (text, kind = 'err') => {
-      const el = $('#pw-msg');
-      el.textContent = text || '';
-      el.className = `pw-msg ${text ? kind : ''}`;
-    };
-    $('#pw-new').addEventListener('input', e => {
-      pwMsg(e.target.value ? t('set.pwStrength', { s: t(`lock.strength.${strengthLevel(e.target.value)}`) }) : '', 'hint');
-    });
-    for (const id of ['#pw-cur', '#pw-new2']) $(id).addEventListener('input', () => { if ($('#pw-msg').classList.contains('err')) pwMsg(''); });
-    $('#pw-form').addEventListener('submit', async e => {
-      e.preventDefault();
-      const cur = $('#pw-cur'), next = $('#pw-new'), next2 = $('#pw-new2');
-      const fail = (key, box) => { pwMsg(t(key)); box.focus(); };
-      if (!cur.value) return fail('set.pwNeedCur', cur);
-      if (next.value.length < 6) return fail('set.pwShort', next);
-      if (!next.value.trim()) return fail('lock.blank', next);
-      if (next.value === cur.value) return fail('set.pwSame', next);
-      if (next.value !== next2.value) return fail('set.pwMismatch', next2);
-      pwMsg('');
-      let ok = false;
-      await busy($('#pw-btn'), async () => {
-        try {
-          await bridge.call('changePassword', { current: cur.value, next: next.value });
-          ok = true;
-        } catch (ex) {
-          pwMsg(ex.message);
-          cur.select();
-        }
-      });
-      if (ok) {
-        clearPwForm();
-        toast(t('set.pwDone'), 'ok');
-      }
-    });
     // The list of pages: a click shows that page; ↑/↓ move along the list, as in a menu.
     const nav = $('#view-settings .set-nav');
     nav.addEventListener('click', e => {
@@ -1695,121 +1501,14 @@
 
   /** The same check the app makes (it has the last word): a discord.com webhook link, nothing else. */
   const DC_LINK = /^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api(?:\/v\d{1,2})?\/webhooks\/\d{17,20}\/[\w-]{50,100}\/?$/;
-  const DC_ID = /^\d{17,20}$/;
 
+  /** Settings › Discord's buttons that open this page's dialogs (the page itself is React's). */
   function wireDiscord() {
-    const root = $('#view-settings');
-    // Refused by the app (the reason is in a toast): every control shows the saved value again, so nothing looks
-    // saved that wasn't.
-    // Accepted, the box shows what was kept too (an empty name becomes "Bloxkeep"), also while it still has the focus.
-    const set = async args => {
-      const r = await call('setDiscord', args);
-      syncDiscord(false, true);
-      return r;
-    };
-    const on = (id, fn) => $(id).addEventListener('change', fn);
-    // A box that is checked here first (the app's own rules) is marked and not sent.
-    const check = (el, ok, key) => {
-      el.classList.toggle('bad', !ok);
-      if (!ok) toast(t(key), 'warn');
-      return ok;
-    };
-    on('#s-dc-on', e => {
-      // No link yet: the switch asks for one, and turns on once it is saved.
-      if (e.target.checked && !S.app.discord?.hasWebhook) {
-        e.target.checked = false;
-        return discordLinkModal(true);
-      }
-      set({ enabled: e.target.checked });
-    });
-    // Text boxes are saved when left or on Enter ("change"), not on every key.
-    on('#s-dc-name', e => {
-      const v = e.target.value.trim();
-      if (check(e.target, v.length <= 80 && !/discord|clyde/i.test(v), 'dc.badName')) set({ username: v });
-    });
-    on('#s-dc-avatar', e => {
-      const v = e.target.value.trim();
-      if (check(e.target, !v || (/^https:\/\/\S+$/i.test(v) && v.length <= 2048), 'dc.badAvatar')) set({ avatarUrl: v });
-    });
-    on('#s-dc-lang', e => set({ language: e.target.value }));
-    on('#s-dc-style', e => set({ style: e.target.value }));
-    on('#s-dc-hidenames', e => set({ hideNames: e.target.checked }));
-    // One list for the automatic summaries (never, daily, weekly, both); the times show for the ones picked.
-    on('#s-dc-when', e => {
-      const v = e.target.value;
-      syncDiscordWhen(v);
-      set({ summaryDaily: v === 'daily' || v === 'both', summaryWeekly: v === 'weekly' || v === 'both' });
-    });
-    // A time box emptied isn't a time: the saved one comes back.
-    const time = (el, key) => (el.value ? set({ [key]: el.value }) : syncDiscord(false, true));
-    on('#s-dc-daily-time', e => time(e.target, 'summaryDailyTime'));
-    on('#s-dc-weekday', e => set({ summaryWeekday: +e.target.value }));
-    on('#s-dc-weekly-time', e => time(e.target, 'summaryWeeklyTime'));
-    on('#s-dc-after', e => set({ summaryAfterSchedule: e.target.checked }));
-    on('#s-dc-days', e => set({ summaryDays: +e.target.value }));
-    on('#s-dc-board', e => set({ board: e.target.checked }));
-    on('#s-dc-minutes', e => set({ boardMinutes: +e.target.value }));
-    on('#s-dc-quiet', e => set({ quiet: e.target.checked }));
-    // From and To the same never applies: said so when it happens.
-    const quietSame = () => { if ($('#s-dc-quiet-from').value === $('#s-dc-quiet-to').value) toast(t('dc.quietSame'), 'warn'); };
-    on('#s-dc-quiet-from', e => { time(e.target, 'quietFrom'); quietSame(); });
-    on('#s-dc-quiet-to', e => { time(e.target, 'quietTo'); quietSame(); });
-    for (const kind of NOTIFY_KINDS) on(`#s-dc-ev-${kind}`, e => set({ event: { kind, enabled: e.target.checked } }));
-    // Alerts on or off as a whole: every kind follows (the app takes one kind at a time). Picking kinds one by one is
-    // in the closed part under it.
-    on('#s-dc-alerts', async e => {
-      const enabled = e.target.checked, events = S.app.discord?.events || [];
-      e.target.disabled = true;
-      for (const kind of NOTIFY_KINDS) {
-        if (events.includes(kind) !== enabled && await call('setDiscord', { event: { kind, enabled } }) === undefined) break;
-      }
-      e.target.disabled = false;
-      syncDiscord(false, true);
-    });
-    // A ping for "alerts" is the same ping for every kind of alert.
-    const setPing = async (kind, value) => {
-      if (kind !== 'alerts') return set({ ping: { kind, value } });
-      for (const k of NOTIFY_KINDS) if (await call('setDiscord', { ping: { kind: k, value } }) === undefined) break;
-      syncDiscord(false, true);
-    };
-    // Pings: nobody, @here and @everyone are saved at once; a user or a role waits for its ID.
-    root.querySelectorAll('[data-ping]').forEach(sel => sel.addEventListener('change', () => {
-      const kind = sel.dataset.ping, box = root.querySelector(`[data-ping-id="${kind}"]`);
-      const needsId = sel.value === 'user' || sel.value === 'role';
-      box.hidden = !needsId;
-      if (!needsId) {
-        delete sel.dataset.pending;
-        return setPing(kind, sel.value);
-      }
-      // The ID box starts empty: a person's ID kept as a role's (or the other way round) would ping the wrong one.
-      box.value = '';
-      box.classList.remove('bad');
-      sel.dataset.pending = '1'; // until an ID is typed, the next state push mustn't put the old choice back
-      box.focus();
-    }));
-    root.querySelectorAll('[data-ping-id]').forEach(box => box.addEventListener('change', () => {
-      const kind = box.dataset.pingId, sel = root.querySelector(`[data-ping="${kind}"]`), id = box.value.trim();
-      if (!id) return;
-      const ok = DC_ID.test(id);
-      box.classList.toggle('bad', !ok);
-      if (!ok) return toast(t(sel.value === 'role' ? 'dc.badRole' : 'dc.badUser'), 'warn');
-      delete sel.dataset.pending;
-      setPing(kind, `${sel.value}:${id}`);
-    }));
-    // Left without an ID: the choice isn't waiting any more, and the saved one comes back (unless the person went
-    // back to the ping list itself).
-    root.querySelectorAll('[data-ping-id]').forEach(box => box.addEventListener('blur', () => setTimeout(() => {
-      const sel = root.querySelector(`[data-ping="${box.dataset.pingId}"]`);
-      if (!sel.dataset.pending || box.value.trim() || document.activeElement === sel || document.activeElement === box) return;
-      delete sel.dataset.pending;
-      syncDiscord(false, true);
-    })));
-    root.addEventListener('click', e => {
+    $('#view-settings').addEventListener('click', e => {
       const btn = e.target.closest('[data-dc]');
       if (!btn) return;
       switch (btn.dataset.dc) {
         case 'paste': return discordLinkModal();
-        case 'reveal': return revealDiscordLink(btn);
         case 'remove': return removeDiscordLink();
         case 'accounts': return pickDiscordAccounts();
         case 'parts': return pickDiscordParts();
@@ -1847,26 +1546,11 @@
     });
   }
 
-  /** Show: the whole link in place of the masked one, until it is hidden again (or the page re-renders it). */
-  async function revealDiscordLink(btn) {
-    const hook = $('#s-dc-hook');
-    if (hook.dataset.shown) return syncDiscord(true);
-    const url = await busy(btn, () => call('revealDiscordWebhook'));
-    if (!url) return;
-    hook.dataset.shown = S.app.discord.webhookHint;
-    hook.textContent = url;
-    setHtml(btn, `${icon('eyeOff')}${t('dc.hide')}`); // through setHtml, or hiding would think "Show" is still there
-    btn.setAttribute('aria-pressed', 'true');
-    // Not left on screen: hidden again after half a minute, when Settings is left or the window loses focus.
-    clearTimeout(dcHideTimer);
-    dcHideTimer = setTimeout(hideDiscordLink, 30_000);
-  }
-
-  let dcHideTimer = 0;
-  function hideDiscordLink() {
-    clearTimeout(dcHideTimer);
-    if ($('#s-dc-hook')?.dataset.shown) syncDiscord(true);
-  }
+  /**
+   * A shown webhook link (Settings › Discord's Show) goes back to its masked form: when Settings or its page is left, or
+   * the window loses focus.
+   */
+  const hideDiscordLink = () => uiSignal('hideDiscordLink');
   window.addEventListener('blur', () => hideDiscordLink());
 
   async function removeDiscordLink() {
@@ -1928,9 +1612,25 @@
    * buttons lead. Made afresh for each part (a language change closes every dialog first).
    */
   const uiListeners = new Set();
+  /** What app.js tells the React parts by name (host.on): "hideDiscordLink", "clearPassword". */
+  const uiSignals = new Map();
+  const uiSignal = name => uiSignals.get(name)?.forEach(f => f());
   const uiHost = () => ({
-    t, tn, lang, locale: locale(), logo: LOGO, iconPaths: name => ICONS[name] || '', call,
-    busy, toast,
+    t, tn, tIn: (l, key) => DICT[l]?.[key] ?? DICT.en[key] ?? key, lang, locale: locale(), logo: LOGO, iconPaths: name => ICONS[name] || '', call,
+    busy, toast, saveView, setMulti, ago,
+    themes: THEMES, themePending: () => S.themePending ?? null, previewTheme,
+    discordLink: thenTurnOn => discordLinkModal(thenTurnOn),
+    on(name, f) {
+      if (!uiSignals.has(name)) uiSignals.set(name, new Set());
+      uiSignals.get(name).add(f);
+      return () => uiSignals.get(name).delete(f);
+    },
+    ask: (cmd, args) => bridge.call(cmd, args), strength: strengthLevel,
+    focusKey, refocus,
+    settingsDrawn() {
+      const q = $('#set-q');
+      if (q?.value) searchSettings(q.value);
+    },
     state: () => S.app,
     subscribe: f => { uiListeners.add(f); return () => uiListeners.delete(f); },
     go(target) {
@@ -1969,99 +1669,10 @@
     style: ['macos', 'macosdark', 'gnome', 'ubuntu', 'kde', 'retro', 'macclassic', 'terminal', 'gameboy', 'arcade', 'blueprint', 'newspaper', 'notebook', 'chalkboard', 'brutal', 'cyberpunk'],
     season: ['lunar', 'valentine', 'spring', 'flametree', 'summer', 'kites', 'rainy', 'school', 'midautumn', 'autumn', 'skylanterns', 'halloween', 'winter', 'christmas', 'newyear'],
   };
-  /** One small swatch per theme, one line per group. Each swatch carries data-theme, so it shows that theme's own colours. */
-  function themesHtml() {
-    const current = S.themePending || S.app.theme || 'dark';
-    const button = id => {
-      const on = id === current, name = t(`theme.${id}`);
-      const inner = id === 'system' ? '<span data-theme="light"></span><span data-theme="dark"></span>' : `<span data-theme="${id}"><em></em></span>`;
-      return `<button class="swatch ${on ? 'on' : ''}" data-act="theme" data-id="${id}" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" aria-label="${name}" data-name="${name}">${inner}</button>`; // data-name: the name shown on hover and focus
-    };
-    return Object.entries(THEMES).map(([group, ids]) =>
-      `<div class="tg"><span class="tg-label">${t(`theme.group.${group}`)}</span><div class="tg-list">${ids.map(button).join('')}</div></div>`).join('');
-  }
-
   function syncSettings() {
-    const st = S.app.settings, m = S.app.multi;
-    if (!st || !$('#s-multi')) return;
-    $('#s-multi').checked = m.enabled;
-    $('#s-rename').checked = st.renameWindows;
-    $('#s-winlayout').value = st.windowLayout || 'fill';
-    if (document.activeElement !== $('#s-openas')) $('#s-openas').value = S.app.multi?.tile ? 'tile' : st.maximizeOnOpen ? 'maximize' : 'roblox';
-    $('#s-memwarn').checked = st.memoryWarnings;
-    $('#s-trim').checked = st.trimBackground;
-    $('#s-antiafk').checked = !!st.antiAfk;
-    const rc = st.robloxConfig || { mode: 'off', graphics: 0, fps: 0, volume: -1 };
-    for (const [key, value] of [['mode', rc.mode], ['graphics', rc.graphics], ['fps', rc.fps], ['volume', rc.volume]]) {
-      const el = $(`#s-rc-${key}`);
-      if (document.activeElement !== el) {
-        el.value = String(value);
-        // A value the list doesn't offer would leave the box blank: show "leave as is" (or "nobody") instead.
-        if (el.selectedIndex < 0) el.selectedIndex = 0;
-      }
-      if (key !== 'mode') el.disabled = rc.mode === 'off';
-    }
-    const chosen = accounts().filter(a => a.useRobloxConfig).length;
-    setHtml($('#s-rc-hint'), rc.mode === 'off' ? '' : rc.mode === 'all' ? esc(t('rc.hint.all'))
-      : `${esc(tn('rc.hint.chosen', chosen))} <button type="button" class="link" data-act="rc-pick">${t('rc.pick')}</button>`);
-    $('#s-gpu').checked = !S.app.safeRendering;
-    $('#s-tray').checked = S.app.closeToTray !== false;
-    $('#s-hidenames').checked = hidingNames();
-    $('#s-daily').checked = S.app.dailySignInCheck !== false;
-    const checkedAt = S.app.lastSignInCheck ? new Date(S.app.lastSignInCheck) : null;
-    setText($('#s-daily-when'), checkedAt && !isNaN(checkedAt) ? t('set.dailyLast', { t: checkedAt.toDateString() === new Date().toDateString()
-      ? checkedAt.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' })
-      : checkedAt.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : '');
-    syncBackup();
-    // The swatches are rebuilt on a theme change; the one being used from the keyboard keeps the focus.
-    const themesFocused = $('#s-themes').contains(document.activeElement);
-    if (setHtml($('#s-themes'), themesHtml()) && themesFocused) $('#s-themes .swatch.on')?.focus();
-    setText($('#s-theme-name'), t(`theme.${S.themePending || S.app.theme || 'dark'}`));
-    const ins = S.app.installs || {};
-    // [value, label, usable, label when not usable]
-    const others = ins.others || [];
-    const savedOther = (st.launchVia || '').startsWith('other:') ? st.launchVia.slice(6) : null;
-    const options = [
-      ['auto', ins.handler ? t('launch.auto', { name: esc(ins.handler) }) : t('launch.autoNone'), true],
-      ['bloxstrap', 'Bloxstrap', ins.bloxstrap],
-      ['fishstrap', 'Fishstrap', ins.fishstrap],
-      // Other Bloxstrap-style launchers only appear when found on this PC (or still chosen after being removed).
-      ...[...new Set([...others, ...(savedOther ? [savedOther] : [])])].map(n => [`other:${esc(n)}`, esc(n), others.includes(n)]),
-      ['roblox', t('launch.roblox'), ins.roblox],
-      ['direct', t('launch.direct'), ins.direct],
-      ...(ins.store || st.launchVia === 'store' ? [['store', t('launch.storeName'), ins.store]] : []),
-      ...(st.customLauncher ? [['custom', t('launch.custom', { name: esc(st.customLauncher) }), true]] : []),
-    ];
-    const select = $('#s-launch');
-    const rebuilt = setHtml(select, options.map(([value, label, ok, off]) =>
-      `<option value="${value}" ${ok ? '' : 'disabled'}>${ok ? label : off || t('launch.missing', { name: label })}</option>`).join(''));
-    // New options reset the box to the first one, so put the saved choice back even while it has focus.
-    if (rebuilt || document.activeElement !== select) {
-      select.value = st.launchVia || 'auto';
-      if (select.selectedIndex < 0) select.selectedIndex = 0;
-    }
-    const rv = S.app.robloxVersion || {};
-    const rvText = !rv.installed ? t('rbx.notInstalled')
-      : rv.upToDate === false ? t(rv.store ? 'rbx.outdatedStore' : rv.direct ? 'rbx.outdatedDirect' : 'rbx.outdated', { v: esc(rv.latest) })
-      : rv.upToDate ? t('rbx.latest') : t('rbx.unknown');
-    setHtml($('#s-rbxver'), `<div class="set-row"><div><div class="t">${t('rbx.title')}</div><div class="d">${rvText}</div></div><div class="ctl"><span class="state-pill ${rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'}">${esc(rv.installed || '—')}</span></div></div>`);
-    syncRobloxUpdates();
-    // The Store edition is new here: said while it is the one chosen, or when it is the only Roblox on the PC.
-    const storeNote = !ins.store ? '' : st.launchVia === 'store' ? t('launch.storeTest') : !ins.direct ? t('launch.storeOnly') : '';
-    setHtml($('#s-store'), storeNote ? `<div class="set-note">${icon('info')}<span>${storeNote}</span></div>` : '');
-    syncRejoinAll();
-    const delay = $('#s-delay');
-    if (document.activeElement !== delay) delay.value = st.launchDelaySeconds;
-    // Written only when different: every write, even of the same text, made the page re-style itself.
-    setText($('#s-delay-v'), t('set.seconds', { n: delay.value }));
-    const pill = $('#s-multi-pill'), pillCls = `state-pill ${!m.enabled ? 'off' : m.armed ? 'ok' : 'warn'}`;
-    if (pill.className !== pillCls) pill.className = pillCls;
-    setText(pill, t(!m.enabled ? 'pill.off' : m.armed ? 'pill.ready' : 'pill.notReady'));
-    setText($('#s-path'), S.app.dataPath || '');
-    syncDiscord();
+    const st = S.app.settings;
+    if (!st || !$('#set-q')) return;
     syncSettingsNav();
-    // Parts drawn again by this sync (Roblox updates, Discord status) are searched again while the box has text.
-    if ($('#set-q').value) searchSettings($('#set-q').value);
   }
 
   /** Shows a settings page — or the page a group is on, scrolled to that group (links from elsewhere in the app). */
@@ -2157,157 +1768,16 @@
   }
   let lastSetQuery = '';
 
-  /** A date and time in the app's language ("Oct 13, 2026, 8:25 PM"; 24-hour in Vietnamese). */
-  const fmtWhen = iso => new Date(iso).toLocaleString(locale(), lang === 'vi'
-    ? { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23' } : { dateStyle: 'medium', timeStyle: 'short' });
-  /** Roblox's id for a build ("version-cec3ad5889b447cf"), shortened to its first 8 characters. */
-  const shortBuild = b => String(b || '').replace(/^version-/i, '').slice(0, 8);
-
-  /**
-   * What Bloxkeep's Roblox watch found in a build, as [tone, words]: two windows having played together on it here
-   * outweighs that; null when the watch hasn't checked it.
-   */
-  function watchWord(check, worked, where = 'rw') {
-    const key = worked ? 'worked' : check === 'same' || check === 'first' ? 'same' : ['changed', 'renamed', 'gone'].includes(check) ? check : null;
-    return key && [key === 'worked' || key === 'same' ? 'ok' : 'warn', t(`${where}.${key}`)];
-  }
   /** The watch found the lock changed in the build Multi-Roblox meets next, and it hasn't worked on it here since. */
   function watchWarns() {
     const w = S.app.robloxUpdates?.watch;
     return !!w && ['changed', 'renamed', 'gone'].includes(w.check) && !w.worked;
   }
 
-  /**
-   * Settings › Roblox updates: Roblox closing windows (the warning), the installed build and the newest Roblox serves,
-   * what the Roblox watch found in the build Multi-Roblox meets next and in the one Roblox is about to release, and the
-   * builds seen on this PC, newest first, each with a link to Roblox's release notes for its version.
-   */
-  function syncRobloxUpdates() {
-    const ru = S.app.robloxUpdates || {}, rv = S.app.robloxVersion || {};
-    const row = (title, desc, ctl) => `<div class="set-row"><div><div class="t">${title}</div>${desc ? `<div class="d">${desc}</div>` : ''}</div><div class="ctl">${ctl}</div></div>`;
-    const w = ru.watch || {};
-    const word = watchWord(w.check, w.worked) || ['off', t(w.readAt ? 'rw.unchecked' : 'rbx.unknown')];
-    const watchDesc = [w.updatesFirst && w.version ? esc(t('rw.updatesTo', { v: w.version })) : '', t('rw.desc'),
-      w.held?.length ? esc(t('rw.held', { n: w.held.join(', ') })) : ''].filter(Boolean).join(' ');
-    const nextWord = w.next && watchWord(w.next.check);
-    const c = ru.closed;
-    const closedBox = $('#s-rbxclosed'), closedFocused = closedBox.contains(document.activeElement);
-    setHtml(closedBox, c ? `<div class="set-note">${icon('alert')}<span>${tn('ru.closed', c.count, { t: esc(fmtWhen(c.at)) })}${c.updatedAt
-      ? ` ${t('ru.closedUpdate', { t: esc(fmtWhen(c.updatedAt)) })}` : ''} <button type="button" class="link" data-act="ru-hide">${t('ru.hide')}</button></span></div>` : '');
-    const inst = ru.installed, hist = ru.history || [];
-    const items = hist.map((h, i) => {
-      const older = hist[i + 1];
-      const note = h.first ? t('ru.first') : older && older.version === h.version ? t('ru.sameVersion') : '';
-      const check = watchWord(h.check, h.worked, 'rw.h');
-      return `<li class="ru-item"><div class="ru-text"><div class="ru-main"><b>${esc(h.version)}</b>${note ? `<span class="ru-note">${note}</span>` : ''}${check
-        ? `<span class="ru-note ${check[0]}">${esc(check[1])}</span>` : ''}</div>
-        <div class="ru-sub">${esc(fmtWhen(h.at))} · <span title="${esc(h.build)}">${t('ru.build', { b: esc(shortBuild(h.build)) })}</span>${h.source ? ` · ${esc(h.source)}` : ''}</div></div>
-        <button type="button" class="link ru-link" data-act="ru-notes" data-v="${esc(h.version)}" title="${esc(`${t('ru.notes')} — ${t('ru.notesHint')}`)}" aria-label="${esc(`${t('ru.notes')} ${h.version}`)}">${t('ru.notesShort')}</button></li>`;
-    }).join('');
-    // The newest version only when it isn't the one installed (the row above already shows that number).
-    setHtml($('#s-rbxupd'), `
-      ${row(t('ru.installed'), inst?.source ? esc(t('ru.via', { s: inst.source })) : '', inst ? `<span class="ru-build" title="${esc(inst.build)}">${t('ru.build', { b: esc(shortBuild(inst.build)) })}</span>` : '—')}
-      ${rv.latest && rv.latest === rv.installed ? '' : row(t('ru.newest'), '', `<span class="state-pill ${rv.latest ? 'off' : 'warn'}">${esc(rv.latest || t('rbx.unknown'))}</span>`)}
-      ${row(t('rw.title'), `${watchDesc} <button type="button" class="link" data-act="rw-how">${t('rw.how')}</button>`,
-        `<span class="state-pill ${word[0]}"${w.version ? ` title="${esc(`Roblox ${w.version}`)}"` : ''}>${esc(word[1])}</span>`)}
-      ${nextWord ? row(t('rw.next'), esc(t('rw.nextDesc', { v: w.next.version })), `<span class="state-pill ${nextWord[0]}">${esc(nextWord[1])}</span>`) : ''}
-      ${watchWarns() || c ? `<div class="set-note">${icon('info')}<span>${t(c ? 'rw.todoClosed' : 'rw.todo')} <button type="button" class="link" data-act="rw-check">${t('rw.checkBloxkeep')}</button></span></div>` : ''}
-      <div class="ru-head">${t('ru.history')}</div>
-      ${items ? `<ul class="ru-list">${items}</ul>` : `<p class="set-hint">${t('ru.none')}</p>`}`);
-    // The note went (Hide) with the focus in it: on to the page's next control, not back to the top of the window.
-    if (closedFocused && closedBox.closest('.set-page') && !closedBox.contains(document.activeElement) && (document.activeElement === document.body || !document.activeElement)) {
-      const page = closedBox.closest('.set-page');
-      const next = [...page.querySelectorAll('button, input, select, a[href]')]
-        .find(x => closedBox.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING && !x.disabled && x.offsetParent);
-      (next || $(`#view-settings [data-set-page="${page.dataset.page}"]`))?.focus();
-    }
-  }
-
   /** A dot on a page in the list when something there needs a look: Roblox closed windows, Discord stopped sending. */
   function syncSettingsNav() {
     const need = { roblox: !!S.app.robloxUpdates?.closed || !!S.app.multi?.enabled && watchWarns(), discord: !!S.app.discord?.stopped };
     for (const dot of document.querySelectorAll('#view-settings .set-nav-dot')) dot.hidden = !need[dot.closest('[data-set-page]').dataset.setPage];
-  }
-
-  /** Settings › Discord from the state; a box being typed in keeps what is typed. */
-  /** @param force also the box being typed in (a value the app refused, a time box emptied). */
-  function syncDiscord(hideLink = false, force = false) {
-    const d = S.app.discord, root = $('#view-settings');
-    if (!d || !$('#s-dc-on')) return;
-    const typing = el => !force && document.activeElement === el;
-    // The saved value put back in a box drops the red mark a refused value left there.
-    const put = (id, value) => { const el = $(id); if (!typing(el)) { el.value = String(value ?? ''); el.classList.remove('bad'); } };
-    $('#s-dc-on').checked = d.enabled;
-    $('#s-dc-on').closest('.switch').title = d.hasWebhook ? '' : t('dc.needLink');
-    const hook = $('#s-dc-hook'), reveal = $('#s-dc-reveal');
-    // A shown link goes back to its masked form when hidden, or when another link replaced it.
-    if (hideLink || hook.dataset.shown !== d.webhookHint || !d.hasWebhook) {
-      delete hook.dataset.shown;
-      setText(hook, d.hasWebhook ? d.webhookHint : t('dc.noLink'));
-      setHtml(reveal, `${icon('eye')}${t('dc.show')}`);
-      reveal.setAttribute('aria-pressed', 'false');
-    }
-    setText($('#s-dc-paste'), t(d.hasWebhook ? 'dc.replace' : 'dc.paste'));
-    reveal.hidden = $('#s-dc-remove').hidden = !d.hasWebhook;
-    setHtml($('#s-dc-note'), d.stopped ? `<div class="set-note">${icon('alert')}<span>${t('dc.gone')}</span></div>` : '');
-    const last = d.lastSent ? `<span data-ago="${esc(d.lastSent)}" data-tpl="dc.last">${t('dc.last', { t: ago(d.lastSent) })}</span>` : t('dc.never');
-    setHtml($('#s-dc-status'), !d.hasWebhook ? '' : `<div class="set-row"><div><div class="t">${last}</div>${d.error ? `<div class="d err">${esc(d.error)}</div>` : ''}${d.queued ? `<div class="d">${t('dc.queued', { n: d.queued })}</div>` : ''}</div>
-      <div class="ctl"><button class="btn sm" data-dc="test">${t('dc.test')}</button></div></div>`);
-    put('#s-dc-name', d.username);
-    put('#s-dc-avatar', d.avatarUrl);
-    put('#s-dc-lang', d.language);
-    put('#s-dc-style', d.style);
-    $('#s-dc-hidenames').checked = !!d.hideNames;
-    const s = d.summary || {};
-    const when = s.daily && s.weekly ? 'both' : s.daily ? 'daily' : s.weekly ? 'weekly' : 'none';
-    put('#s-dc-when', when);
-    if (!typing($('#s-dc-when'))) syncDiscordWhen(when);
-    put('#s-dc-daily-time', s.dailyTime);
-    put('#s-dc-weekday', s.weekday);
-    put('#s-dc-weekly-time', s.weeklyTime);
-    $('#s-dc-after').checked = !!s.afterSchedule;
-    put('#s-dc-days', s.days);
-    setText($('#s-dc-parts'), tn('dc.partsN', (s.parts || []).length));
-    const picked = (s.accounts || []).length;
-    setText($('#s-dc-acc'), picked ? t('dc.accN', { n: picked }) : t('dc.accAll'));
-    $('#s-dc-board').checked = !!d.board?.enabled;
-    put('#s-dc-minutes', d.board?.minutes);
-    for (const kind of NOTIFY_KINDS) $(`#s-dc-ev-${kind}`).checked = (d.events || []).includes(kind);
-    if (!$('#s-dc-alerts').disabled) $('#s-dc-alerts').checked = NOTIFY_KINDS.some(k => (d.events || []).includes(k));
-    // "alerts" shows the ping every kind shares, or "Varies by alert".
-    const alertPings = NOTIFY_KINDS.map(k => d.pings?.[k] || 'none');
-    for (const kind of [...DC_PING_KINDS, 'alerts']) {
-      const sel = root.querySelector(`[data-ping="${kind}"]`), box = root.querySelector(`[data-ping-id="${kind}"]`);
-      if (sel.dataset.pending || typing(sel) || typing(box)) continue;
-      const value = kind !== 'alerts' ? d.pings?.[kind] || 'none' : alertPings.every(p => p === alertPings[0]) ? alertPings[0] : 'mixed';
-      const [mode, id = ''] = value.split(':');
-      sel.value = mode;
-      box.hidden = !id;
-      box.value = id;
-      box.classList.remove('bad');
-    }
-    $('#s-dc-quiet').checked = !!d.quiet?.enabled;
-    put('#s-dc-quiet-from', d.quiet?.from);
-    put('#s-dc-quiet-to', d.quiet?.to);
-  }
-  /** The time boxes of the automatic summaries picked (daily, weekly, both); none for "Never". */
-  function syncDiscordWhen(when) {
-    $('#s-dc-daily-row').hidden = when !== 'daily' && when !== 'both';
-    $('#s-dc-weekly-row').hidden = when !== 'weekly' && when !== 'both';
-  }
-
-  /** Settings › Backup: folder, suggested synced folders, last backup (kept fresh by patchTimes) and any error. */
-  function syncBackup() {
-    const b = S.app.backup || {};
-    $('#s-bk-on').checked = b.enabled !== false;
-    setText($('#s-bk-path'), b.folder || t('bk.noFolder'));
-    $('#s-bk-open').hidden = !b.folder;
-    setHtml($('#s-bk-suggest'), (b.suggested || []).map(s =>
-      `<button class="btn sm ghost" data-act="bk-use" data-path="${esc(s.path)}" title="${esc(s.path)}">${t('bk.use', { name: esc(s.name) })}</button>`).join(''));
-    setHtml($('#s-bk-note'), b.cloud && b.weakPassword ? `<div class="set-note">${icon('alert')}<span>${t('bk.weak')}</span></div>` : '');
-    const last = b.lastBackup ? `<span data-ago="${esc(b.lastBackup)}" data-tpl="bk.last">${t('bk.last', { t: ago(b.lastBackup) })}</span>` : t('bk.never');
-    setHtml($('#s-bk-status'), `<div class="set-row"><div><div class="t">${last}</div>${b.error ? `<div class="d err">${esc(b.error)}</div>` : ''}</div>
-      <div class="ctl"><button class="btn sm" data-act="bk-now" ${b.folder ? '' : 'disabled'}>${t('bk.now')}</button></div></div>`);
   }
 
   /** Settings › Backup › Restore…: confirm, then the app asks for the file, keeps a copy of the current data and locks. */
@@ -4441,24 +3911,6 @@
     if (n !== undefined) toast(tn(enable ? 't.rcOn' : 't.rcOff', n), 'ok');
   }
 
-  /** Settings › Auto-rejoin: on for every account, off for every one, or (shown only) some of them. */
-  function syncRejoinAll() {
-    const sel = $('#s-rejoin');
-    if (!sel || document.activeElement === sel) return;
-    const all = accounts(), on = all.filter(a => a.autoRejoin).length;
-    const state = !all.length ? 'off' : on === all.length ? 'on' : on === 0 ? 'off' : 'some';
-    setHtml(sel, [['on', t('set.rejoinAll')], ['off', t('set.rejoinNone')], ['some', t('set.rejoinSome', { n: on, total: all.length })]]
-      .map(([v, text]) => `<option value="${v}" ${v === 'some' ? 'disabled hidden' : ''} ${v === state ? 'selected' : ''}>${esc(text)}</option>`).join(''));
-    sel.value = state;
-    sel.disabled = !all.length;
-  }
-  async function setRejoinAll(sel) {
-    const enable = sel.value === 'on';
-    const n = await call('setAutoRejoin', { ids: accounts().map(a => a.id), enabled: enable });
-    if (n !== undefined) toast(tn(enable ? 't.rejoinOn' : 't.rejoinOff', n), 'ok');
-    syncRejoinAll();
-  }
-
   async function toggleRejoin(ids) {
     const enable = !ids.every(i => byId(i) && rejoinOn(byId(i))); // the opposite of the tick the menu showed
     const n = await call('setAutoRejoin', { ids, enabled: enable });
@@ -5444,10 +4896,10 @@
       // The app answers with a state push in the new language.
       case 'theme':
         clearTimeout(themeTimer); // a click wins over a pick still waiting to be saved
-        S.themePending = null;
+        setThemePending(null);
         if (el.dataset.id !== S.app.theme) return call('setTheme', { theme: el.dataset.id });
         document.documentElement.dataset.theme = S.app.themeApplied || S.app.theme; // back from a preview
-        return syncSettings();
+        return;
       case 'lang': return el.dataset.lang !== lang && call('setLanguage', { language: el.dataset.lang });
       case 'view': return setView(el.dataset.view);
       case 'stats-period': return setStatsPeriod(+el.dataset.days);

@@ -9,7 +9,14 @@ import { HostContext, type Host } from './host';
 import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
 import { MultiHelp } from './MultiHelp';
 import { PickList, type PickItem, type PickListApi } from './PickList';
+import { AppearancePage } from './settings/AppearancePage';
+import { BackupPage } from './settings/BackupPage';
+import { DiscordPage } from './settings/DiscordPage';
+import { LaunchPage } from './settings/LaunchPage';
 import { NotifyPage } from './settings/NotifyPage';
+import { PerfPage } from './settings/PerfPage';
+import { RobloxPage } from './settings/RobloxPage';
+import { SecurityPage } from './settings/SecurityPage';
 import { UpdatesPage } from './settings/UpdatesPage';
 import { WhatsNew, type Release } from './WhatsNew';
 
@@ -17,7 +24,26 @@ import { WhatsNew, type Release } from './WhatsNew';
 function mount(el: HTMLElement, host: Host, node: ReactNode): () => void {
   const root = createRoot(el);
   flushSync(() => root.render(<StrictMode><HostContext.Provider value={host}>{node}</HostContext.Provider></StrictMode>));
-  return () => root.unmount();
+  const stop = keepFocus(el, host);
+  return () => { stop(); root.unmount(); };
+}
+
+/**
+ * A control with the focus that is drawn away (a list redrawn without it, Play turned into Stop) hands the focus on to
+ * the same control drawn anew, or the one now in its place, as app.js's setHtml does: not back to the top of the window.
+ */
+function keepFocus(el: HTMLElement, host: Host): () => void {
+  let last: Element | null = null, key: unknown = null;
+  const focused = (e: FocusEvent) => { last = e.target as Element; key = host.focusKey(last, el); };
+  const watch = new MutationObserver(() => {
+    if (!last || last.isConnected) return;
+    const active = document.activeElement;
+    last = null;
+    if (!active || active === document.body) host.refocus(el, key);
+  });
+  el.addEventListener('focusin', focused);
+  watch.observe(el, { childList: true, subtree: true });
+  return () => { el.removeEventListener('focusin', focused); watch.disconnect(); };
 }
 
 const BloxkeepUI = {
@@ -43,7 +69,10 @@ const BloxkeepUI = {
   },
   /** A Settings page into its section (app.js makes the section; the page's title comes from there too). */
   settingsPage(el: HTMLElement, host: Host, page: string, title: string) {
-    const pages: Record<string, ReactNode> = { updates: <UpdatesPage title={title} />, notify: <NotifyPage title={title} /> };
+    const pages: Record<string, ReactNode> = {
+      launch: <LaunchPage title={title} />, roblox: <RobloxPage title={title} />, perf: <PerfPage title={title} />, notify: <NotifyPage title={title} />,
+      discord: <DiscordPage title={title} />, appearance: <AppearancePage title={title} />, security: <SecurityPage title={title} />, backup: <BackupPage title={title} />, updates: <UpdatesPage title={title} />,
+    };
     return mount(el, host, pages[page]);
   },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */

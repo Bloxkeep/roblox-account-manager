@@ -1,0 +1,227 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · 0.743 available"
+              i.dot.warn
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.warn
+            button.multi-open [title="Multi-Roblox: A Roblox update may stop Multi-Roblox working — see Settings › Roblox version & graphics"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "A Roblox update may stop it — click to see"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+            svg.i #21scx0
+            span "Lock app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+              i.set-nav-dot [title="Needs a look"]
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
+                h2.set-page-title [id="set-page-roblox-h"] "Roblox version & graphics"
+                div.set-grp [id="sec-rbxupd"]
+                  h3.set-grp-title "Roblox updates"
+                  div.set-card
+                    div [id="s-rbxclosed"]
+                    div [id="s-rbxver"]
+                      div.set-row
+                        div
+                          div.t "Roblox version"
+                          div.d "Roblox 0.743.0.7430112 is out — it’ll update next time it opens."
+                        div.ctl
+                          span.state-pill.warn "0.742.0.7421053"
+                    div [id="s-rbxupd"]
+                      div.set-row
+                        div
+                          div.t "Installed build"
+                          div.d "From Bloxstrap"
+                        div.ctl
+                          span.ru-build [title="version-cec3ad5889b447cf"] "build cec3ad58"
+                      div.set-row
+                        div
+                          div.t "Newest from Roblox"
+                        div.ctl
+                          span.off.state-pill "0.743.0.7430112"
+                      div.set-row
+                        div
+                          div.t "Multi-Roblox check"
+                          div.d "Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC."
+                            button.link [type="button"] "How it works"
+                        div.ctl
+                          span.state-pill.warn [title="Roblox 0.742.0.7421053"] "Changed — may be blocked"
+                      div.set-note
+                        svg.i #v9c4u6
+                        span "What to do: keep playing as usual. If Roblox starts closing one window when the next one opens, Bloxkeep says so here, and an update of Bloxkeep is the fix."
+                          button.link [type="button"] "Check for a Bloxkeep update"
+                      div.ru-head "Update history"
+                      ul.ru-list
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.742.0.7421053"
+                              span.ru-note "new build, same version"
+                              span.ru-note.warn "Multi-Roblox may be blocked"
+                            div.ru-sub "Oct 15, 2026, 4:00 PM · · Bloxstrap"
+                              span [title="version-cec3ad5889b447cf"] "build cec3ad58"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.742.0.7421053"
+                              span.ok.ru-note "Multi-Roblox worked here"
+                            div.ru-sub "Oct 14, 2026, 10:00 AM · · Bloxstrap"
+                              span [title="version-5b1e07d2a6c84f13"] "build 5b1e07d2"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
+                        li.ru-item
+                          div.ru-text
+                            div.ru-main
+                              b "0.741.0.7410829"
+                              span.ru-note "first seen"
+                            div.ru-sub "Oct 7, 2026, 12:00 PM · · Bloxstrap"
+                              span [title="version-91f0c3ab72d14e6e"] "build 91f0c3ab"
+                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.741.0.7410829"] "Notes"
+                div.set-grp [id="sec-rc"]
+                  h3.set-grp-title "Roblox settings"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Apply to"
+                        div.d
+                          span [id="s-rc-hint"]
+                      div.ctl
+                        select.select [id="s-rc-mode" aria-label="Apply to" value="off"]
+                          option [value="off"] "Nobody"
+                          option [value="all"] "All accounts"
+                          option [value="marked"] "Chosen accounts"
+                    div.set-row
+                      div
+                        div.t "Graphics quality"
+                      div.ctl
+                        select.select [id="s-rc-graphics" aria-label="Graphics quality" value="1" disabled]
+                          option [value="0"] "Leave as is"
+                          option [value="1"] "1"
+                          option [value="2"] "2"
+                          option [value="3"] "3"
+                          option [value="4"] "4"
+                          option [value="5"] "5"
+                          option [value="6"] "6"
+                          option [value="7"] "7"
+                          option [value="8"] "8"
+                          option [value="9"] "9"
+                          option [value="10"] "10"
+                    div.set-row
+                      div
+                        div.t "Frame rate limit"
+                      div.ctl
+                        select.select [id="s-rc-fps" aria-label="Frame rate limit" value="30" disabled]
+                          option [value="0"] "Leave as is"
+                          option [value="30"] "30 FPS"
+                          option [value="60"] "60 FPS"
+                          option [value="144"] "144 FPS"
+                          option [value="240"] "240 FPS"
+                    div.set-row
+                      div
+                        div.t "Volume"
+                      div.ctl
+                        select.select [id="s-rc-volume" aria-label="Volume" value="0" disabled]
+                          option [value="-1"] "Leave as is"
+                          option [value="0"] "Muted"
+                          option [value="25"] "25%"
+                          option [value="50"] "50%"
+                          option [value="75"] "75%"
+                          option [value="100"] "100%"
+#layer
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

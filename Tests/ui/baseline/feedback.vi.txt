@@ -157,6 +157,8 @@ html [data-theme="dark" lang="vi"]
         div.form
           label "Bạn muốn gửi gì?"
             select.select [name="kind" value="bug"]
+              option [value="bug"] "Báo lỗi"
+              option [value="idea"] "Góp ý, ý tưởng"
           label "Nội dung"
             textarea.field [name="text" placeholder="Chuyện gì đã xảy ra, hoặc bạn muốn Bloxkeep làm được gì?" maxlength="2000" value="" FOCUSED]
           label

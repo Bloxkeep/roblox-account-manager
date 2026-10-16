@@ -173,21 +173,46 @@ html [data-theme="dark" lang="vi"]
                             button.link [type="button"] "Chọn tài khoản…"
                       div.ctl
                         select.select [id="s-rc-mode" aria-label="Áp dụng cho" value="marked" FOCUSED]
+                          option [value="off"] "Không áp dụng"
+                          option [value="all"] "Mọi tài khoản"
+                          option [value="marked"] "Tài khoản đã chọn"
                     div.set-row
                       div
                         div.t "Đồ họa"
                       div.ctl
                         select.select [id="s-rc-graphics" aria-label="Đồ họa" value="1"]
+                          option [value="0"] "Giữ nguyên"
+                          option [value="1"] "1"
+                          option [value="2"] "2"
+                          option [value="3"] "3"
+                          option [value="4"] "4"
+                          option [value="5"] "5"
+                          option [value="6"] "6"
+                          option [value="7"] "7"
+                          option [value="8"] "8"
+                          option [value="9"] "9"
+                          option [value="10"] "10"
                     div.set-row
                       div
                         div.t "Giới hạn FPS"
                       div.ctl
                         select.select [id="s-rc-fps" aria-label="Giới hạn FPS" value="30"]
+                          option [value="0"] "Giữ nguyên"
+                          option [value="30"] "30 FPS"
+                          option [value="60"] "60 FPS"
+                          option [value="144"] "144 FPS"
+                          option [value="240"] "240 FPS"
                     div.set-row
                       div
                         div.t "Âm lượng"
                       div.ctl
                         select.select [id="s-rc-volume" aria-label="Âm lượng" value="0"]
+                          option [value="-1"] "Giữ nguyên"
+                          option [value="0"] "Tắt tiếng"
+                          option [value="25"] "25%"
+                          option [value="50"] "50%"
+                          option [value="75"] "75%"
+                          option [value="100"] "100%"
 #layer
 #toasts
 -- commands
@@ -373,21 +398,46 @@ html [data-theme="dark" lang="vi"]
                             button.link [type="button"] "Chọn tài khoản…"
                       div.ctl
                         select.select [id="s-rc-mode" aria-label="Áp dụng cho" value="marked"]
+                          option [value="off"] "Không áp dụng"
+                          option [value="all"] "Mọi tài khoản"
+                          option [value="marked"] "Tài khoản đã chọn"
                     div.set-row
                       div
                         div.t "Đồ họa"
                       div.ctl
                         select.select [id="s-rc-graphics" aria-label="Đồ họa" value="1"]
+                          option [value="0"] "Giữ nguyên"
+                          option [value="1"] "1"
+                          option [value="2"] "2"
+                          option [value="3"] "3"
+                          option [value="4"] "4"
+                          option [value="5"] "5"
+                          option [value="6"] "6"
+                          option [value="7"] "7"
+                          option [value="8"] "8"
+                          option [value="9"] "9"
+                          option [value="10"] "10"
                     div.set-row
                       div
                         div.t "Giới hạn FPS"
                       div.ctl
                         select.select [id="s-rc-fps" aria-label="Giới hạn FPS" value="30"]
+                          option [value="0"] "Giữ nguyên"
+                          option [value="30"] "30 FPS"
+                          option [value="60"] "60 FPS"
+                          option [value="144"] "144 FPS"
+                          option [value="240"] "240 FPS"
                     div.set-row
                       div
                         div.t "Âm lượng"
                       div.ctl
                         select.select [id="s-rc-volume" aria-label="Âm lượng" value="0"]
+                          option [value="-1"] "Giữ nguyên"
+                          option [value="0"] "Tắt tiếng"
+                          option [value="25"] "25%"
+                          option [value="50"] "50%"
+                          option [value="75"] "75%"
+                          option [value="100"] "100%"
 #layer
   div.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]

@@ -210,6 +210,12 @@ html [data-theme="dark" lang="vi"]
           div.preset-row
             label "Server"
               select.select [id="ps-server" value="ping"]
+                option [value="any"] "Bất kỳ (Roblox tự chọn)"
+                option [value="most"] "Đông nhất"
+                option [value="fewest"] "Vắng nhất"
+                option [value="ping"] "Ping thấp nhất"
+                option [value="random"] "Ngẫu nhiên"
+                option [value="job"] "Server cố định (Job ID)"
             label "Chờ giữa các tài khoản (giây)"
               input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value="12"]
           div.preset-accs "Tài khoản"
@@ -324,20 +330,38 @@ html [data-theme="dark" lang="vi"]
             div.ps-opts-grid
               label "Chống AFK"
                 select.select [id="ps-afk" value="on"]
+                  option [value=""] "Theo Cài đặt (đang tắt)"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
               label "Tự vào lại game"
                 select.select [id="ps-rejoin" value=""]
+                  option [value=""] "Theo từng tài khoản"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
               label "Hiệu năng"
                 select.select [id="ps-profile" value="afk"]
+                  option [value=""] "Bình thường"
+                  option [value="afk"] "Treo máy nhẹ"
               label "Mở lại Roblox"
                 select.select [id="ps-restart" value="4"]
+                  option [value="0"] "Không"
+                  option [value="2"] "Mỗi 2 giờ"
+                  option [value="4"] "Mỗi 4 giờ"
+                  option [value="6"] "Mỗi 6 giờ"
+                  option [value="12"] "Mỗi 12 giờ"
               label "Xếp cửa sổ"
                 select.select [id="ps-arrange" value="on"]
+                  option [value=""] "Theo Cài đặt (đang tắt)"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
             p.ps-opts-note [id="ps-opts-note"] "Treo máy nhẹ: đồ họa thấp nhất, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. Mở lại: sau số giờ đó, lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ."
           div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
             div.ps-opts-head
               b [id="ps-dc-title"] "Discord"
             label.ps-dc-mode "Gửi tin của preset này vào"
               select.select [id="ps-dc-mode" value="own"]
+                option [value=""] "Kênh trong Cài đặt"
+                option [value="own"] "Webhook riêng"
             div.ps-dc-own [id="ps-dc-own"]
               input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Link webhook của preset này" value=""]
               button.btn [id="ps-dc-test" type="button"] "Gửi thử"

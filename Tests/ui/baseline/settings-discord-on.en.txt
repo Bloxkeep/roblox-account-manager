@@ -141,6 +141,10 @@ html [data-theme="dark" lang="en"]
                         div.t "Send automatically"
                       div.ctl
                         select.select.sm [id="s-dc-when" aria-label="Send automatically" value="daily"]
+                          option [value="none"] "Never"
+                          option [value="daily"] "Every day"
+                          option [value="weekly"] "Every week"
+                          option [value="both"] "Both"
                     div.dc-when [id="s-dc-daily-row"]
                       div.set-row
                         div
@@ -161,6 +165,9 @@ html [data-theme="dark" lang="en"]
                         div.d "For the daily summary and “Send one now”. The weekly one covers 7 days; the one after a schedule, today so far."
                       div.ctl
                         select.select.sm [id="s-dc-days" aria-label="Covers" value="1"]
+                          option [value="1"] "Last 24 hours"
+                          option [value="7"] "Last 7 days"
+                          option [value="30"] "Last 30 days"
                     div.set-row
                       div
                         div.t "Includes"
@@ -179,6 +186,11 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         div.dc-ping
                           select.select.sm [aria-label="Ping" value="none"]
+                            option [value="none"] "Nobody"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "A person…"
+                            option [value="role"] "A role…"
                     div.set-row
                       div
                         div.t "Send one now"
@@ -202,6 +214,12 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         div.dc-ping
                           select.select.sm [aria-label="Ping" value="mixed"]
+                            option [value="none"] "Nobody"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "A person…"
+                            option [value="role"] "A role…"
+                            option [value="mixed" disabled hidden] "Varies by alert"
                     details.set-more [id="s-dc-kinds"]
                       summary "Choose which alerts"
                         svg.i #u1ag9u
@@ -214,6 +232,12 @@ html [data-theme="dark" lang="en"]
                         div.d "One message, edited in place: which accounts are open, their game, time playing, PID and RAM. It never pings."
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="How often" value="5"]
+                          option [value="2"] "Every 2 min"
+                          option [value="5"] "Every 5 min"
+                          option [value="10"] "Every 10 min"
+                          option [value="15"] "Every 15 min"
+                          option [value="30"] "Every 30 min"
+                          option [value="60"] "Every 60 min"
                         label.switch
                           input [id="s-dc-board" type="checkbox" aria-label="Keep a status message up to date" checked=true]
                           span

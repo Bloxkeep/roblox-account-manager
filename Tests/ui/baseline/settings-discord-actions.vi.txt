@@ -141,6 +141,10 @@ html [data-theme="dark" lang="vi"]
                         div.t "Gửi tự động"
                       div.ctl
                         select.select.sm [id="s-dc-when" aria-label="Gửi tự động" value="daily"]
+                          option [value="none"] "Không"
+                          option [value="daily"] "Hằng ngày"
+                          option [value="weekly"] "Hằng tuần"
+                          option [value="both"] "Cả hai"
                     div.dc-when [id="s-dc-daily-row"]
                       div.set-row
                         div
@@ -161,6 +165,9 @@ html [data-theme="dark" lang="vi"]
                         div.d "Áp dụng cho bản tổng kết hằng ngày và “Gửi ngay”. Bản hằng tuần luôn tính 7 ngày, bản gửi sau khi preset hẹn giờ chạy xong tính từ đầu hôm nay."
                       div.ctl
                         select.select.sm [id="s-dc-days" aria-label="Khoảng thời gian" value="1"]
+                          option [value="1"] "24 giờ qua"
+                          option [value="7"] "7 ngày qua"
+                          option [value="30"] "30 ngày qua"
                     div.set-row
                       div
                         div.t "Gồm"
@@ -179,6 +186,11 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         div.dc-ping
                           select.select.sm [aria-label="Tag" value="none"]
+                            option [value="none"] "Không ai"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "Một người…"
+                            option [value="role"] "Một vai trò…"
                     div.set-row
                       div
                         div.t "Gửi ngay"
@@ -202,6 +214,12 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         div.dc-ping
                           select.select.sm [aria-label="Tag" value="mixed"]
+                            option [value="none"] "Không ai"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "Một người…"
+                            option [value="role"] "Một vai trò…"
+                            option [value="mixed" disabled hidden] "Tùy từng loại"
                     details.set-more [id="s-dc-kinds"]
                       summary "Chọn loại cảnh báo"
                         svg.i #u1ag9u
@@ -214,6 +232,12 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chỉ một tin, được sửa liên tục: tài khoản nào đang mở, game gì, đã chơi bao lâu, PID và RAM. Không bao giờ tag ai."
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
+                          option [value="2"] "Mỗi 2 phút"
+                          option [value="5"] "Mỗi 5 phút"
+                          option [value="10"] "Mỗi 10 phút"
+                          option [value="15"] "Mỗi 15 phút"
+                          option [value="30"] "Mỗi 30 phút"
+                          option [value="60"] "Mỗi 60 phút"
                         label.switch
                           input [id="s-dc-board" type="checkbox" aria-label="Luôn cập nhật tin trạng thái" checked=true]
                           span
@@ -389,6 +413,10 @@ html [data-theme="dark" lang="vi"]
                         div.t "Gửi tự động"
                       div.ctl
                         select.select.sm [id="s-dc-when" aria-label="Gửi tự động" value="daily"]
+                          option [value="none"] "Không"
+                          option [value="daily"] "Hằng ngày"
+                          option [value="weekly"] "Hằng tuần"
+                          option [value="both"] "Cả hai"
                     div.dc-when [id="s-dc-daily-row"]
                       div.set-row
                         div
@@ -409,6 +437,9 @@ html [data-theme="dark" lang="vi"]
                         div.d "Áp dụng cho bản tổng kết hằng ngày và “Gửi ngay”. Bản hằng tuần luôn tính 7 ngày, bản gửi sau khi preset hẹn giờ chạy xong tính từ đầu hôm nay."
                       div.ctl
                         select.select.sm [id="s-dc-days" aria-label="Khoảng thời gian" value="1"]
+                          option [value="1"] "24 giờ qua"
+                          option [value="7"] "7 ngày qua"
+                          option [value="30"] "30 ngày qua"
                     div.set-row
                       div
                         div.t "Gồm"
@@ -427,6 +458,11 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         div.dc-ping
                           select.select.sm [aria-label="Tag" value="none"]
+                            option [value="none"] "Không ai"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "Một người…"
+                            option [value="role"] "Một vai trò…"
                     div.set-row
                       div
                         div.t "Gửi ngay"
@@ -450,6 +486,12 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         div.dc-ping
                           select.select.sm [aria-label="Tag" value="mixed"]
+                            option [value="none"] "Không ai"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "Một người…"
+                            option [value="role"] "Một vai trò…"
+                            option [value="mixed" disabled hidden] "Tùy từng loại"
                     details.set-more [id="s-dc-kinds"]
                       summary "Chọn loại cảnh báo"
                         svg.i #u1ag9u
@@ -462,6 +504,12 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chỉ một tin, được sửa liên tục: tài khoản nào đang mở, game gì, đã chơi bao lâu, PID và RAM. Không bao giờ tag ai."
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
+                          option [value="2"] "Mỗi 2 phút"
+                          option [value="5"] "Mỗi 5 phút"
+                          option [value="10"] "Mỗi 10 phút"
+                          option [value="15"] "Mỗi 15 phút"
+                          option [value="30"] "Mỗi 30 phút"
+                          option [value="60"] "Mỗi 60 phút"
                         label.switch
                           input [id="s-dc-board" type="checkbox" aria-label="Luôn cập nhật tin trạng thái" checked=true]
                           span
@@ -642,6 +690,10 @@ html [data-theme="dark" lang="vi"]
                         div.t "Gửi tự động"
                       div.ctl
                         select.select.sm [id="s-dc-when" aria-label="Gửi tự động" value="daily"]
+                          option [value="none"] "Không"
+                          option [value="daily"] "Hằng ngày"
+                          option [value="weekly"] "Hằng tuần"
+                          option [value="both"] "Cả hai"
                     div.dc-when [id="s-dc-daily-row"]
                       div.set-row
                         div
@@ -662,6 +714,9 @@ html [data-theme="dark" lang="vi"]
                         div.d "Áp dụng cho bản tổng kết hằng ngày và “Gửi ngay”. Bản hằng tuần luôn tính 7 ngày, bản gửi sau khi preset hẹn giờ chạy xong tính từ đầu hôm nay."
                       div.ctl
                         select.select.sm [id="s-dc-days" aria-label="Khoảng thời gian" value="1"]
+                          option [value="1"] "24 giờ qua"
+                          option [value="7"] "7 ngày qua"
+                          option [value="30"] "30 ngày qua"
                     div.set-row
                       div
                         div.t "Gồm"
@@ -680,6 +735,11 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         div.dc-ping
                           select.select.sm [aria-label="Tag" value="none"]
+                            option [value="none"] "Không ai"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "Một người…"
+                            option [value="role"] "Một vai trò…"
                     div.set-row
                       div
                         div.t "Gửi ngay"
@@ -703,6 +763,12 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         div.dc-ping
                           select.select.sm [aria-label="Tag" value="mixed"]
+                            option [value="none"] "Không ai"
+                            option [value="here"] "@here"
+                            option [value="everyone"] "@everyone"
+                            option [value="user"] "Một người…"
+                            option [value="role"] "Một vai trò…"
+                            option [value="mixed" disabled hidden] "Tùy từng loại"
                     details.set-more [id="s-dc-kinds"]
                       summary "Chọn loại cảnh báo"
                         svg.i #u1ag9u
@@ -715,6 +781,12 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chỉ một tin, được sửa liên tục: tài khoản nào đang mở, game gì, đã chơi bao lâu, PID và RAM. Không bao giờ tag ai."
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
+                          option [value="2"] "Mỗi 2 phút"
+                          option [value="5"] "Mỗi 5 phút"
+                          option [value="10"] "Mỗi 10 phút"
+                          option [value="15"] "Mỗi 15 phút"
+                          option [value="30"] "Mỗi 30 phút"
+                          option [value="60"] "Mỗi 60 phút"
                         label.switch
                           input [id="s-dc-board" type="checkbox" aria-label="Luôn cập nhật tin trạng thái" checked=true]
                           span

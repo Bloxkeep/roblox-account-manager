@@ -113,6 +113,9 @@ html [data-theme="dark" lang="en"]
                         div.d "For every account at once; each account’s ⋯ menu turns it on or off for that one. A preset that sets it decides for the windows it opens."
                       div.ctl
                         select.select [id="s-rejoin" aria-label="Auto-rejoin" value="on" FOCUSED]
+                          option [value="on"] "On for all accounts"
+                          option [value="off"] "Off for all accounts"
+                          option [value="some" disabled hidden] "On for 7 of 7"
                     div.set-row
                       div
                         div.t "Anti-AFK"

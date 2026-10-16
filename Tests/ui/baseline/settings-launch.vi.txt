@@ -131,12 +131,19 @@ html [data-theme="dark" lang="vi"]
                         div.d "Cửa sổ phóng to vẫn là cửa sổ thường, nên không dùng chung cài đặt toàn màn hình của Roblox. Xếp cạnh nhau cần bật Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="roblox"]
+                          option [value="roblox"] "Để Roblox tự chọn"
+                          option [value="maximize"] "Phóng to"
+                          option [value="tile"] "Xếp cạnh nhau"
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
                         div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Các ô bắt đầu từ góc trên bên trái, phần còn lại của màn hình để trống."
                       div.ctl
                         select.select [id="s-winlayout" aria-label="Kiểu xếp cửa sổ" value="fill"]
+                          option [value="fill"] "Lấp đầy màn hình"
+                          option [value="small"] "Ô nhỏ"
+                          option [value="medium"] "Ô vừa"
+                          option [value="large"] "Ô lớn"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card
@@ -146,6 +153,11 @@ html [data-theme="dark" lang="vi"]
                         div.d "Dùng Bloxstrap hoặc Fishstrap thì vẫn giữ được mod."
                       div.ctl
                         select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                          option [value="auto"] "Mặc định (Bloxstrap)"
+                          option [value="bloxstrap"] "Bloxstrap"
+                          option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
+                          option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
+                          option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
                         button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
                     div [id="s-store"]
                     div.set-row

@@ -1,6 +1,6 @@
 // What the React parts use of the page around them (RobloxManager/wwwroot/app.js hands it over as uiHost()): its words
 // in the chosen language, its icons, the commands to the app, and where its buttons lead.
-import { createContext, useContext, useSyncExternalStore } from 'react';
+import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 
 /** What the app last pushed (its state event: accounts, settings…), as app.js keeps it in S.app. */
 export type AppState = Record<string, any>;
@@ -10,6 +10,8 @@ export interface Host {
   t(key: string, vars?: Record<string, string | number>): string;
   /** The same, the "1" form when n is 1 (key1). */
   tn(key: string, n: number, vars?: Record<string, string | number>): string;
+  /** The words for a key in a given language, whichever is chosen (each language's own name in the switch). */
+  tIn(lang: 'en' | 'vi', key: string): string;
   lang: 'en' | 'vi';
   /** "en-US" or "vi-VN", for dates and capitals. */
   locale: string;
@@ -18,7 +20,36 @@ export interface Host {
   /** The app's logo (an image path inside the page). */
   logo: string;
   /** A command to the app (the bridge); failures show a toast there and resolve to undefined. */
-  call(cmd: string, args?: Record<string, unknown>): Promise<unknown>;
+  call(cmd: string, args?: Record<string, unknown>, opts?: { silent?: boolean }): Promise<unknown>;
+  /** The same command, its failure left to the caller: rejects with the app's words (no toast). */
+  ask(cmd: string, args?: Record<string, unknown>): Promise<unknown>;
+  /** Keeps the page as it is for the app to bring back (app.js saveView), before something that reloads it. */
+  saveView(restart?: boolean): void;
+  /** Multi-Roblox on (after the risk warning) or off (app.js setMulti); whether it was done. */
+  setMulti(on: boolean): Promise<boolean>;
+  /** A password's strength, only a guide (app.js strengthLevel). */
+  strength(password: string): 'weak' | 'ok' | 'strong';
+  /** How long ago a time was, in words ("5 min ago"; app.js ago). */
+  ago(iso: string): string;
+  /** A Settings page was drawn (again): app.js searches it again if the search box has words in it. */
+  settingsDrawn(): void;
+  /** The themes by group (app.js THEMES): basic, scenery, color, style, season. */
+  themes: Record<string, string[]>;
+  /** The theme picked with the arrow keys and not saved yet (null when none); subscribe tells when it changes. */
+  themePending(): string | null;
+  /** Shows a theme at once and saves it once the keys rest (app.js previewTheme). */
+  previewTheme(id: string): void;
+  /** The dialog asking for a Discord webhook link; thenTurnOn: sending goes on once it is saved. */
+  discordLink(thenTurnOn: boolean): void;
+  /**
+   * fn runs each time app.js gives the signal: "hideDiscordLink" (a shown webhook link goes: Settings or its page left,
+   * the window left), "clearPassword" (typed passwords go: Settings left). Returns how to stop.
+   */
+  on(signal: 'hideDiscordLink' | 'clearPassword', fn: () => void): () => void;
+  /** Where a control is (app.js focusKey: what it does, its row, its place), to find it, or one in its place, again. */
+  focusKey(node: Element, root: Element): unknown;
+  /** Focuses that control again, or the one now in its place (app.js refocus). */
+  refocus(root: Element, key: unknown): void;
   /** Somewhere a button leads: "settings:<page or group>", "guide", "web" (roblox.com), "feedback", "github". */
   go(target: string): void;
   /** Runs fn with the button turned off and its spinner showing (app.js busy), its answer when done. */
@@ -48,4 +79,18 @@ export function useHost(): Host {
 export function Icon({ name, className = '' }: { name: string; className?: string }) {
   const { iconPaths } = useHost();
   return <svg className={`i ${className}`} viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: iconPaths(name) }} />;
+}
+
+/**
+ * How long ago a time was, in words, kept fresh while shown. tpl, if given, places it in a sentence: that key's {t}
+ * ("Last backup: {t}"). Not marked data-ago: app.js's patchTimes would write over React's text.
+ */
+export function Ago({ iso, tpl }: { iso: string; tpl?: string }) {
+  const { t, ago } = useHost();
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => tick(n => n + 1), 30000);
+    return () => clearInterval(timer);
+  }, []);
+  return <span>{tpl ? t(tpl, { t: ago(iso) }) : ago(iso)}</span>;
 }

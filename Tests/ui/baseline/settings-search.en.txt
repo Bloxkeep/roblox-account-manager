@@ -113,6 +113,9 @@ html [data-theme="dark" lang="en"]
                         div.d "For every account at once; each account’s ⋯ menu turns it on or off for that one. A preset that sets it decides for the windows it opens."
                       div.ctl
                         select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
+                          option [value="on"] "On for all accounts"
+                          option [value="off"] "Off for all accounts"
+                          option [value="some" disabled hidden] "On for 1 of 7"
                 div.set-grp [id="sec-app"]
                   h3.set-grp-title "This app"
                   div.set-card
@@ -152,6 +155,11 @@ html [data-theme="dark" lang="en"]
                           div.ctl
                             div.dc-ping
                               select.select.sm [aria-label="Ping" value="user"]
+                                option [value="none"] "Nobody"
+                                option [value="here"] "@here"
+                                option [value="everyone"] "@everyone"
+                                option [value="user"] "A person…"
+                                option [value="role"] "A role…"
                               input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678"]
                             label.switch
                               input [id="s-dc-ev-drop" type="checkbox" aria-label="Account dropped or auto-rejoin" checked=true]

@@ -392,6 +392,12 @@ html [data-theme="dark" lang="en"]
           div.preset-row
             label "Server"
               select.select [id="ps-server" value="any"]
+                option [value="any"] "Any (Roblox picks)"
+                option [value="most"] "Most players"
+                option [value="fewest"] "Fewest players"
+                option [value="ping"] "Lowest ping"
+                option [value="random"] "Random"
+                option [value="job"] "Fixed server (Job ID)"
             label "Wait between accounts (s)"
               input.field [id="ps-delay" type="number" placeholder="Default: 8" min="0" max="120" value=""]
           div.preset-accs "Accounts"
@@ -503,19 +509,37 @@ html [data-theme="dark" lang="en"]
             div.ps-opts-grid
               label "Anti-AFK"
                 select.select [id="ps-afk" value=""]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
               label "Auto-rejoin"
                 select.select [id="ps-rejoin" value=""]
+                  option [value=""] "Follow each account"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
               label "Performance"
                 select.select [id="ps-profile" value=""]
+                  option [value=""] "Normal"
+                  option [value="afk"] "Light AFK"
               label "Restart Roblox"
                 select.select [id="ps-restart" value="0"]
+                  option [value="0"] "Never"
+                  option [value="2"] "Every 2 hours"
+                  option [value="4"] "Every 4 hours"
+                  option [value="6"] "Every 6 hours"
+                  option [value="12"] "Every 12 hours"
               label "Arrange windows"
                 select.select [id="ps-arrange" value=""]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
           div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
             div.ps-opts-head
               b [id="ps-dc-title"] "Discord"
             label.ps-dc-mode "Send this preset’s messages to"
               select.select [id="ps-dc-mode" value=""]
+                option [value=""] "The channel in Settings"
+                option [value="own"] "A webhook of its own"
             p.ps-opts-note "That is its schedule messages, its summary after a scheduled stop, and the alerts about the windows it opened. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
           div.ps-sched
             div.ps-sched-head

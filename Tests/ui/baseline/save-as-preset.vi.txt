@@ -392,6 +392,12 @@ html [data-theme="dark" lang="vi"]
           div.preset-row
             label "Server"
               select.select [id="ps-server" value="any"]
+                option [value="any"] "Bất kỳ (Roblox tự chọn)"
+                option [value="most"] "Đông nhất"
+                option [value="fewest"] "Vắng nhất"
+                option [value="ping"] "Ping thấp nhất"
+                option [value="random"] "Ngẫu nhiên"
+                option [value="job"] "Server cố định (Job ID)"
             label "Chờ giữa các tài khoản (giây)"
               input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value=""]
           div.preset-accs "Tài khoản"
@@ -503,19 +509,37 @@ html [data-theme="dark" lang="vi"]
             div.ps-opts-grid
               label "Chống AFK"
                 select.select [id="ps-afk" value=""]
+                  option [value=""] "Theo Cài đặt (đang tắt)"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
               label "Tự vào lại game"
                 select.select [id="ps-rejoin" value=""]
+                  option [value=""] "Theo từng tài khoản"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
               label "Hiệu năng"
                 select.select [id="ps-profile" value=""]
+                  option [value=""] "Bình thường"
+                  option [value="afk"] "Treo máy nhẹ"
               label "Mở lại Roblox"
                 select.select [id="ps-restart" value="0"]
+                  option [value="0"] "Không"
+                  option [value="2"] "Mỗi 2 giờ"
+                  option [value="4"] "Mỗi 4 giờ"
+                  option [value="6"] "Mỗi 6 giờ"
+                  option [value="12"] "Mỗi 12 giờ"
               label "Xếp cửa sổ"
                 select.select [id="ps-arrange" value=""]
+                  option [value=""] "Theo Cài đặt (đang tắt)"
+                  option [value="on"] "Bật"
+                  option [value="off"] "Tắt"
           div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
             div.ps-opts-head
               b [id="ps-dc-title"] "Discord"
             label.ps-dc-mode "Gửi tin của preset này vào"
               select.select [id="ps-dc-mode" value=""]
+                option [value=""] "Kênh trong Cài đặt"
+                option [value="own"] "Webhook riêng"
             p.ps-opts-note "Gồm tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng, và cảnh báo của các cửa sổ do preset mở. Các tin khác vẫn vào kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord, nên chưa có tin nào được gửi cho tới khi bạn bật."
           div.ps-sched
             div.ps-sched-head

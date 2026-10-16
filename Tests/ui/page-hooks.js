@@ -138,6 +138,14 @@
         if (el.scrollTop) line += ` scroll=${Math.round(el.scrollTop)}`;
       }
       out.push(line);
+      // A list's choices aren't shown until it is opened, but what they say (and which can't be picked) is the page's.
+      if (tag === 'select') {
+        for (const o of el.options) {
+          const flags = [`value=${JSON.stringify(o.value)}`, o.disabled && 'disabled', o.hidden && 'hidden'].filter(Boolean);
+          out.push(`${pad}  option [${flags.join(' ')}] ${JSON.stringify(norm(o.text))}`);
+        }
+        return;
+      }
       for (const c of el.children) walk(c, depth + 1);
     };
     for (const sel of ['#app', '#layer', '#toasts']) {

@@ -1,0 +1,359 @@
+== store
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav.on [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Cài đặt"
+        div.set-layout
+          nav.set-nav [aria-label="Cài đặt"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1ewcuky
+              span "Khởi chạy"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản & đồ họa Roblox"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Treo game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Thông báo"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Giao diện"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Bảo mật"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Sao lưu & dữ liệu"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Cập nhật Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
+                h2.set-page-title [id="set-page-launch-h"] "Khởi chạy"
+                div.set-grp [id="sec-launch"]
+                  h3.set-grp-title "Multi-Roblox & cửa sổ"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Multi-Roblox"
+                          span.ok.state-pill [id="s-multi-pill"] "Sẵn sàng"
+                        div.d "Chơi nhiều tài khoản cùng lúc."
+                          button.link [type="button"] "Chi tiết"
+                      div.ctl
+                        label.switch
+                          input [id="s-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Hiện tên tài khoản trên cửa sổ"
+                        div.d "Dễ phân biệt các cửa sổ Roblox dưới taskbar."
+                      div.ctl
+                        label.switch
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Khi cửa sổ Roblox mở ra"
+                        div.d "Cửa sổ phóng to vẫn là cửa sổ thường, nên không dùng chung cài đặt toàn màn hình của Roblox. Xếp cạnh nhau cần bật Multi-Roblox."
+                      div.ctl
+                        select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="roblox"]
+                          option [value="roblox"] "Để Roblox tự chọn"
+                          option [value="maximize"] "Phóng to"
+                          option [value="tile"] "Xếp cạnh nhau"
+                    div.set-row
+                      div
+                        div.t "Kiểu xếp cửa sổ"
+                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Các ô bắt đầu từ góc trên bên trái, phần còn lại của màn hình để trống."
+                      div.ctl
+                        select.select [id="s-winlayout" aria-label="Kiểu xếp cửa sổ" value="fill"]
+                          option [value="fill"] "Lấp đầy màn hình"
+                          option [value="small"] "Ô nhỏ"
+                          option [value="medium"] "Ô vừa"
+                          option [value="large"] "Ô lớn"
+                div.set-grp [id="sec-client"]
+                  h3.set-grp-title "Launcher & thời gian chờ"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Mở Roblox bằng"
+                        div.d "Dùng Bloxstrap hoặc Fishstrap thì vẫn giữ được mod."
+                      div.ctl
+                        select.select [id="s-launch" aria-label="Roblox client" value="store" FOCUSED]
+                          option [value="auto"] "Mặc định (Bloxstrap)"
+                          option [value="bloxstrap"] "Bloxstrap"
+                          option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
+                          option [value="other:Voidstrap"] "Voidstrap"
+                          option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
+                          option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
+                          option [value="store"] "Roblox (Microsoft Store), đang thử nghiệm"
+                        button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
+                    div [id="s-store"]
+                      div.set-note
+                        svg.i #v9c4u6
+                        span "Bloxkeep mới hỗ trợ Roblox bản Microsoft Store và vẫn đang thử nghiệm: mỗi tài khoản mở trong một cửa sổ riêng. Nếu không chạy được, hãy báo ở Cập nhật Bloxkeep › Gửi góp ý."
+                    div.set-row
+                      div
+                        div.t "Chờ giữa các tài khoản"
+                        div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
+                      div.ctl
+                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
+                        b.range-v [id="s-delay-v"] "8 giây"
+#layer
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  setSettings {"launchVia":"store"}
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav.on [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Cài đặt"
+        div.set-layout
+          nav.set-nav [aria-label="Cài đặt"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1ewcuky
+              span "Khởi chạy"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản & đồ họa Roblox"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Treo game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Thông báo"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Giao diện"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Bảo mật"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Sao lưu & dữ liệu"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Cập nhật Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
+                h2.set-page-title [id="set-page-launch-h"] "Khởi chạy"
+                div.set-grp [id="sec-launch"]
+                  h3.set-grp-title "Multi-Roblox & cửa sổ"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Multi-Roblox"
+                          span.ok.state-pill [id="s-multi-pill"] "Sẵn sàng"
+                        div.d "Chơi nhiều tài khoản cùng lúc."
+                          button.link [type="button"] "Chi tiết"
+                      div.ctl
+                        label.switch
+                          input [id="s-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Hiện tên tài khoản trên cửa sổ"
+                        div.d "Dễ phân biệt các cửa sổ Roblox dưới taskbar."
+                      div.ctl
+                        label.switch
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Khi cửa sổ Roblox mở ra"
+                        div.d "Cửa sổ phóng to vẫn là cửa sổ thường, nên không dùng chung cài đặt toàn màn hình của Roblox. Xếp cạnh nhau cần bật Multi-Roblox."
+                      div.ctl
+                        select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="roblox"]
+                          option [value="roblox"] "Để Roblox tự chọn"
+                          option [value="maximize"] "Phóng to"
+                          option [value="tile"] "Xếp cạnh nhau"
+                    div.set-row
+                      div
+                        div.t "Kiểu xếp cửa sổ"
+                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Các ô bắt đầu từ góc trên bên trái, phần còn lại của màn hình để trống."
+                      div.ctl
+                        select.select [id="s-winlayout" aria-label="Kiểu xếp cửa sổ" value="fill"]
+                          option [value="fill"] "Lấp đầy màn hình"
+                          option [value="small"] "Ô nhỏ"
+                          option [value="medium"] "Ô vừa"
+                          option [value="large"] "Ô lớn"
+                div.set-grp [id="sec-client"]
+                  h3.set-grp-title "Launcher & thời gian chờ"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Mở Roblox bằng"
+                        div.d "Dùng Bloxstrap hoặc Fishstrap thì vẫn giữ được mod."
+                      div.ctl
+                        select.select [id="s-launch" aria-label="Roblox client" value="other:Voidstrap" FOCUSED]
+                          option [value="auto"] "Mặc định (Bloxstrap)"
+                          option [value="bloxstrap"] "Bloxstrap"
+                          option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
+                          option [value="other:Voidstrap"] "Voidstrap"
+                          option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
+                          option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
+                          option [value="store"] "Roblox (Microsoft Store), đang thử nghiệm"
+                        button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
+                    div [id="s-store"]
+                    div.set-row
+                      div
+                        div.t "Chờ giữa các tài khoản"
+                        div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
+                      div.ctl
+                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
+                        b.range-v [id="s-delay-v"] "8 giây"
+#layer
+#toasts
+-- commands
+  setSettings {"launchVia":"other:Voidstrap"}

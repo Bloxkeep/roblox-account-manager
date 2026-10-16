@@ -157,6 +157,8 @@ html [data-theme="dark" lang="en"]
         div.form
           label "What is it?"
             select.select [name="kind" value="bug"]
+              option [value="bug"] "Something doesn’t work"
+              option [value="idea"] "An idea"
           label "Message"
             textarea.field [name="text" placeholder="What happened, or what would you like Bloxkeep to do?" maxlength="2000" value="" FOCUSED]
           label

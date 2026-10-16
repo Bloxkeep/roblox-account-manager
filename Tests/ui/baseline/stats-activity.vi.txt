@@ -80,7 +80,18 @@ html [data-theme="dark" lang="vi"]
                 h3 [id="alog-h"] "Hoạt động"
                 div.alog-tools
                   select.select.sm [id="alog-account" aria-label="Tài khoản" value=""]
+                    option [value=""] "Mọi tài khoản"
+                    option [value="00000000-0000-4000-8000-000000000001"] "Tài khoản chính"
+                    option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
+                    option [value="00000000-0000-4000-8000-000000000004"] "Night Owl"
+                    option [value="00000000-0000-4000-8000-000000000006"] "Trade"
                   select.select.sm [id="alog-group" aria-label="Loại sự kiện" value=""]
+                    option [value=""] "Mọi sự kiện"
+                    option [value="play"] "Vào/ra game"
+                    option [value="drops"] "Văng và lỗi"
+                    option [value="schedule"] "Hẹn giờ"
+                    option [value="signin"] "Đăng nhập"
+                    option [value="updates"] "Cập nhật"
                   button.btn.sm
                     svg.i #1uvtx1
                     span "Xuất CSV"
@@ -274,7 +285,18 @@ html [data-theme="dark" lang="vi"]
                 h3 [id="alog-h"] "Hoạt động"
                 div.alog-tools
                   select.select.sm [id="alog-account" aria-label="Tài khoản" value=""]
+                    option [value=""] "Mọi tài khoản"
+                    option [value="00000000-0000-4000-8000-000000000001"] "Tài khoản chính"
+                    option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
+                    option [value="00000000-0000-4000-8000-000000000004"] "Night Owl"
+                    option [value="00000000-0000-4000-8000-000000000006"] "Trade"
                   select.select.sm [id="alog-group" aria-label="Loại sự kiện" value=""]
+                    option [value=""] "Mọi sự kiện"
+                    option [value="play"] "Vào/ra game"
+                    option [value="drops"] "Văng và lỗi"
+                    option [value="schedule"] "Hẹn giờ"
+                    option [value="signin"] "Đăng nhập"
+                    option [value="updates"] "Cập nhật"
                   button.btn.sm [FOCUSED]
                     svg.i #1uvtx1
                     span "Xuất CSV"

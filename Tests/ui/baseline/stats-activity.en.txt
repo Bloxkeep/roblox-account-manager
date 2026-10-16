@@ -80,7 +80,18 @@ html [data-theme="dark" lang="en"]
                 h3 [id="alog-h"] "Activity"
                 div.alog-tools
                   select.select.sm [id="alog-account" aria-label="Account" value=""]
+                    option [value=""] "All accounts"
+                    option [value="00000000-0000-4000-8000-000000000001"] "Main"
+                    option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
+                    option [value="00000000-0000-4000-8000-000000000004"] "Night Owl"
+                    option [value="00000000-0000-4000-8000-000000000006"] "Trade"
                   select.select.sm [id="alog-group" aria-label="Kind of event" value=""]
+                    option [value=""] "All events"
+                    option [value="play"] "Games"
+                    option [value="drops"] "Disconnects and problems"
+                    option [value="schedule"] "Schedules"
+                    option [value="signin"] "Sign-in"
+                    option [value="updates"] "Updates"
                   button.btn.sm
                     svg.i #1uvtx1
                     span "Export CSV"
@@ -274,7 +285,18 @@ html [data-theme="dark" lang="en"]
                 h3 [id="alog-h"] "Activity"
                 div.alog-tools
                   select.select.sm [id="alog-account" aria-label="Account" value=""]
+                    option [value=""] "All accounts"
+                    option [value="00000000-0000-4000-8000-000000000001"] "Main"
+                    option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
+                    option [value="00000000-0000-4000-8000-000000000004"] "Night Owl"
+                    option [value="00000000-0000-4000-8000-000000000006"] "Trade"
                   select.select.sm [id="alog-group" aria-label="Kind of event" value=""]
+                    option [value=""] "All events"
+                    option [value="play"] "Games"
+                    option [value="drops"] "Disconnects and problems"
+                    option [value="schedule"] "Schedules"
+                    option [value="signin"] "Sign-in"
+                    option [value="updates"] "Updates"
                   button.btn.sm [FOCUSED]
                     svg.i #1uvtx1
                     span "Export CSV"
