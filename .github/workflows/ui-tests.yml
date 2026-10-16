@@ -7,9 +7,9 @@ name: Interface checks
 on:
   push:
     branches: [main]
-    paths: ['RobloxManager/wwwroot/**', 'RobloxManager/whatsnew.json', 'dev/**', 'Tests/ui/**', '.github/workflows/ui-tests.yml']
+    paths: ['RobloxManager/wwwroot/**', 'RobloxManager/whatsnew.json', 'ui/**', 'dev/**', 'Tests/ui/**', '.github/workflows/ui-tests.yml']
   pull_request:
-    paths: ['RobloxManager/wwwroot/**', 'RobloxManager/whatsnew.json', 'dev/**', 'Tests/ui/**', '.github/workflows/ui-tests.yml']
+    paths: ['RobloxManager/wwwroot/**', 'RobloxManager/whatsnew.json', 'ui/**', 'dev/**', 'Tests/ui/**', '.github/workflows/ui-tests.yml']
   workflow_dispatch:
 
 permissions:
@@ -24,6 +24,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: React parts (ui/)
+        working-directory: ui
+        run: |
+          npm ci
+          npx --no-install tsc --noEmit
+          node build.mjs
       - name: Interface checks
         run: node Tests/ui/run.mjs
       - name: Keep what the page showed

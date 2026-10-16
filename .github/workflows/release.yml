@@ -37,6 +37,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      # The interface's React parts (ui/) are built during the .NET build (RobloxManager.csproj, BuildUi).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - name: Version
         id: version
         shell: pwsh

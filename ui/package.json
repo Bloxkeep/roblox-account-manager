@@ -1,0 +1,21 @@
+{
+  "name": "bloxkeep-ui",
+  "private": true,
+  "type": "module",
+  "description": "Bloxkeep's interface in React, built into RobloxManager/wwwroot/ui.js (see build.mjs).",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

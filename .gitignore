@@ -38,8 +38,9 @@ __pycache__/
 *.pyc
 .venv/
 
-# Node (if any tooling is added)
+# Node: the React parts' packages (ui/package-lock.json says which), and what ui/build.mjs builds from ui/src
 node_modules/
+RobloxManager/wwwroot/ui.js
 
 # Claude Code: each person's own settings and worktrees (.claude/launch.json is shared)
 .claude/settings.local.json

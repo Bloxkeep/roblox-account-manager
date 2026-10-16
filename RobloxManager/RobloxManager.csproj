@@ -40,9 +40,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="wwwroot\*" LogicalName="wwwroot/%(Filename)%(Extension)" />
+    <!-- ui.js is built (BuildUi below), so it's added once it exists rather than by this list. -->
+    <EmbeddedResource Include="wwwroot\*" Exclude="wwwroot\ui.js" LogicalName="wwwroot/%(Filename)%(Extension)" />
     <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
     <EmbeddedResource Include="whatsnew.json" LogicalName="whatsnew.json" />
   </ItemGroup>
+
+  <!--
+    The parts of the interface written in React (..\ui\src) built into wwwroot\ui.js before every build: Node.js is
+    needed to build Bloxkeep (not to run it). The packages come from ..\ui\package-lock.json, installed without running
+    any of their scripts (..\ui\.npmrc). Skipped when nothing in ..\ui changed since ui.js was built.
+  -->
+  <ItemGroup>
+    <UiSource Include="..\ui\src\**\*;..\ui\build.mjs;..\ui\package-lock.json;..\ui\tsconfig.json" />
+  </ItemGroup>
+  <Target Name="BuildUi" Inputs="@(UiSource)" Outputs="wwwroot\ui.js">
+    <Exec Command="npm ci" WorkingDirectory="..\ui" Condition="!Exists('..\ui\node_modules\.package-lock.json')" />
+    <Exec Command="node build.mjs" WorkingDirectory="..\ui" />
+  </Target>
+  <Target Name="EmbedUi" DependsOnTargets="BuildUi" BeforeTargets="BeforeBuild">
+    <ItemGroup>
+      <EmbeddedResource Include="wwwroot\ui.js" LogicalName="wwwroot/ui.js" />
+    </ItemGroup>
+  </Target>
 
 </Project>
