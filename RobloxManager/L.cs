@@ -257,6 +257,7 @@ public static class L
         ["The update is still downloading. Try again in a moment."] = "Bản cập nhật vẫn đang tải. Hãy thử lại sau một lát.",
         ["No update is ready to install. Check for updates again."] = "Chưa có bản cập nhật nào để cài. Hãy kiểm tra cập nhật lần nữa.",
         ["Couldn't reach the update server. Check your internet connection."] = "Không kết nối được với máy chủ cập nhật. Hãy kiểm tra mạng.",
+        ["Windows refused to move a Roblox window to other cores, so it was left as it was."] = "Windows không cho chuyển cửa sổ Roblox sang nhân khác nên cửa sổ đó được giữ nguyên.",
         ["The update couldn't be checked or downloaded. Bloxkeep tries again later."] = "Không kiểm tra hay tải được bản cập nhật. Bloxkeep sẽ thử lại sau.",
         ["Your PC is using {0}% of its RAM. Close some Roblox windows if things get slow."] =
             "Máy đang dùng {0}% RAM. Hãy đóng bớt cửa sổ Roblox nếu thấy lag.",

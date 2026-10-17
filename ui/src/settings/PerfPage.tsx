@@ -1,6 +1,6 @@
 // Settings › Staying in game: auto-rejoin for every account at once, Anti-AFK, the daily sign-in check (with when it
-// last ran); then memory (the low-RAM warning, saving RAM on background windows); then this app (keep running in the
-// tray, hardware acceleration).
+// last ran); then RAM and CPU (the low-RAM warning, saving RAM on background windows, the fast cores for the window
+// played); then this app (keep running in the tray, hardware acceleration).
 import { useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
@@ -18,6 +18,10 @@ export function PerfPage({ title }: { title: string }) {
   const [daily, setDaily] = useLocal(app.dailySignInCheck !== false);
   const [memWarn, setMemWarn] = useLocal(!!st.memoryWarnings);
   const [trim, setTrim] = useLocal(!!st.trimBackground);
+  const [cores, setCores] = useLocal(!!st.splitCores);
+  // Two kinds of cores (Intel 12th gen and later…): background windows go to the efficiency ones; otherwise only the
+  // power-saving mode is left to give.
+  const cpu: { hybrid?: boolean; efficient?: number } = st.cores || {};
   const [tray, setTray] = useLocal(app.closeToTray !== false);
   const [gpu, setGpu] = useLocal(!app.safeRendering);
 
@@ -53,6 +57,8 @@ export function PerfPage({ title }: { title: string }) {
     <Group id="memory" title={t('set.g.memory')}>
       <Row title={t('set.memWarn')}><Switch id="s-memwarn" label={t('set.memWarn')} checked={memWarn} onChange={setting('memoryWarnings', setMemWarn)} /></Row>
       <Row title={t('set.trim')} desc={t('set.trimDesc')}><Switch id="s-trim" label={t('set.trim')} checked={trim} onChange={setting('trimBackground', setTrim)} /></Row>
+      <Row title={t('set.cores')} desc={cpu.hybrid ? t('set.coresDesc', { e: cpu.efficient || 0 }) : t('set.coresDescOne')}>
+        <Switch id="s-cores" label={t('set.cores')} checked={cores} onChange={setting('splitCores', setCores)} /></Row>
     </Group>
     <Group id="app" title={t('set.g.app')}>
       <Row title={t('set.tray')} desc={t('set.trayDesc')}>

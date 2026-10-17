@@ -72,6 +72,11 @@ public sealed class AppSettings
     public int AutoLockMinutes { get; set; }
     public bool MemoryWarnings { get; set; } = true;
     public bool TrimBackground { get; set; }
+    /// <summary>
+    /// Roblox windows in the background run on the CPU's efficiency cores in power-saving mode; the one in front gets
+    /// every core (AppController.Cores.cs). Off until the person turns it on.
+    /// </summary>
+    public bool SplitCores { get; set; }
     /// <summary>Off until the user opts in: it briefly brings Roblox windows to the front while the PC is idle.</summary>
     public bool AntiAfk { get; set; }
     public RobloxConfig RobloxConfig { get; set; } = new();

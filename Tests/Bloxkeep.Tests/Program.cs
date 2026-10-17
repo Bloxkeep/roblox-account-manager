@@ -22,6 +22,8 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("autolock", false, AutoLockSuite.Run),
     ("vault-save", false, VaultSaveSuite.Run),
     ("main-browser", false, MainBrowserSuite.Run),
+    ("cores", false, CoresSuite.Run),
+    ("window-icons", false, WindowIconsSuite.Run),
     ("stats-icons", true, StatsIconSuite.Run),
     ("watch-online", true, WatchSuite.RunOnline),
 };

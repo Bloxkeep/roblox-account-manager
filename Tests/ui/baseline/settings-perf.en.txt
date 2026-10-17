@@ -134,7 +134,7 @@ html [data-theme="dark" lang="en"]
                           input [id="s-daily" type="checkbox" aria-label="Check sign-ins every day" checked=true]
                           span
                 div.set-grp [id="sec-memory"]
-                  h3.set-grp-title "Memory"
+                  h3.set-grp-title "RAM & CPU"
                   div.set-card
                     div.set-row
                       div
@@ -150,6 +150,14 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         label.switch
                           input [id="s-trim" type="checkbox" aria-label="Save RAM on background windows" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Fast cores for the window you play"
+                        div.d "Roblox windows in the background run on your CPU’s 16 efficiency cores, in power-saving mode; the window you’re playing, and everything else on the PC, keeps the fast ones. Smoother with many accounts open, and a cooler laptop."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Fast cores for the window you play" checked=false]
                           span
                 div.set-grp [id="sec-app"]
                   h3.set-grp-title "This app"

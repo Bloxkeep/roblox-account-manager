@@ -13,7 +13,7 @@ Mọi trang của **Cài đặt**, mỗi trang một bảng gọn: từng dòng,
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
 | **Multi-Roblox** | Chơi nhiều tài khoản cùng lúc. **Chi tiết** mở các bước. Xem [Multi-Roblox](multi-roblox.vi.md). | Tắt |
-| **Hiện tên tài khoản trên cửa sổ** | Ghi tên tài khoản lên tiêu đề cửa sổ Roblox, dễ phân biệt dưới taskbar. | Bật |
+| **Hiện tên và ảnh tài khoản trên cửa sổ** | Ghi tên tài khoản lên tiêu đề cửa sổ Roblox và lấy ảnh tài khoản làm biểu tượng cửa sổ, dễ phân biệt dưới taskbar và khi bấm Alt+Tab. | Bật |
 | **Khi cửa sổ Roblox mở ra** | **Để Roblox tự chọn**, **Phóng to** hoặc **Xếp cạnh nhau** (cần bật Multi-Roblox). | Để Roblox tự chọn |
 | **Kiểu xếp cửa sổ** | Cách xếp khi bấm **Xếp cửa sổ** (và khi tự xếp sau khi mở): **Lấp đầy màn hình**, **Ô nhỏ**, **Ô vừa**, **Ô lớn**. | Lấp đầy màn hình |
 | **Mở Roblox bằng** | Chương trình dùng để mở Roblox (bảng dưới). **Chọn…** để chọn chương trình của bạn. | Mặc định |
@@ -65,6 +65,7 @@ Chi tiết từng dòng nằm ở [Giữ tài khoản trong game](staying-in-gam
 | **Kiểm tra đăng nhập mỗi ngày** | Tìm các tài khoản Roblox đã đăng xuất, để bạn biết trước khi bấm Vào game. Ghi "Lần kiểm tra gần nhất: …". | Bật |
 | **Báo khi sắp hết RAM** | Hỏi trước khi mở nếu thiếu RAM, và cảnh báo khi đang chơi. | Bật |
 | **Tiết kiệm RAM cho cửa sổ chạy nền** | Cửa sổ Roblox bạn không chơi bị hạ mức ưu tiên bộ nhớ, nên Windows lấy RAM của chúng trước. | Tắt |
+| **Nhường nhân mạnh cho cửa sổ đang chơi** | Cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện; cửa sổ bạn đang chơi giữ các nhân mạnh. | Tắt |
 | **Chạy ẩn dưới khay hệ thống khi đóng** | Nút ✕ thu Bloxkeep xuống khay hệ thống thay vì thoát. | Bật |
 | **Tăng tốc phần cứng** | Vẽ cửa sổ Bloxkeep bằng card đồ họa. Tự tắt nếu driver card đồ họa bị lỗi. Bật hay tắt thì cửa sổ được tải lại. | Bật |
 

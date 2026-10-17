@@ -134,7 +134,7 @@ html [data-theme="dark" lang="vi"]
                           input [id="s-daily" type="checkbox" aria-label="Kiểm tra đăng nhập mỗi ngày" checked=true]
                           span
                 div.set-grp [id="sec-memory"]
-                  h3.set-grp-title "Bộ nhớ (RAM)"
+                  h3.set-grp-title "RAM & CPU"
                   div.set-card
                     div.set-row
                       div
@@ -150,6 +150,14 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         label.switch
                           input [id="s-trim" type="checkbox" aria-label="Tiết kiệm RAM cho cửa sổ chạy nền" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Nhường nhân mạnh cho cửa sổ đang chơi"
+                        div.d "Cửa sổ Roblox chạy nền chỉ dùng 16 nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện; cửa sổ bạn đang chơi và các ứng dụng khác giữ các nhân mạnh. Treo nhiều acc vẫn mượt, laptop mát hơn."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Nhường nhân mạnh cho cửa sổ đang chơi" checked=false]
                           span
                 div.set-grp [id="sec-app"]
                   h3.set-grp-title "Ứng dụng"

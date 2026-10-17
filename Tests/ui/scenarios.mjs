@@ -978,6 +978,9 @@ export default [
     await s.wait(600);
   }),
   // ── Locking by itself after a while without use (the lock screen, Bloxkeep open behind it) ──
+  // The fast cores for the window played: on, and on a CPU with one kind of core (its own words).
+  S('settings-cores', 'settings=perf', async s => { await s.click({ css: '#s-cores' }); }),
+  S('settings-cores-one', 'settings=perf&cpuone=1', null, { langs: ['en'] }),
   S('settings-autolock', 'settings=security', async s => {
     await s.choose({ css: '#s-autolock' }, '15');
     await s.snap('15 minutes');

@@ -85,6 +85,14 @@ If an account is kicked anyway, Bloxkeep says why: the PC was in use, it was loc
 
 The window in front gets its normal priority back. Roblox may refuse; Bloxkeep then skips that step.
 
+## Fast cores for the window you play
+
+**Settings › Staying in game › Fast cores for the window you play** (off by default). Most recent CPUs have two kinds of cores: fast ones and efficiency ones (Intel 12th gen and later, many recent laptops). With this on, every Roblox window in the background runs on the efficiency cores, in Windows' power-saving mode; the window you're playing, and the rest of the PC, keep the fast cores. Click another Roblox window and it gets the fast cores back within a second.
+
+- Many accounts open stay smooth where you play, and a laptop runs cooler.
+- On a CPU with one kind of core, background windows only get the power-saving mode.
+- These are Windows' own settings (Task Manager's "Set affinity" and efficiency mode): nothing in Roblox is changed. Turning it off, or closing Bloxkeep, gives the windows Windows' own choice back.
+
 ## The tray
 
 **Settings › Staying in game › Keep running in the tray when closed** (on by default). The ✕ button hides Bloxkeep to the system tray. Auto-rejoin, Multi-Roblox and schedules keep working.

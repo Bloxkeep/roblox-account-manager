@@ -119,11 +119,11 @@ html [data-theme="dark" lang="en"]
                           span
                     div.set-row
                       div
-                        div.t "Show account names on windows"
-                        div.d "Easier to tell windows apart on the taskbar."
+                        div.t "Show account names and pictures on windows"
+                        div.d "Each Roblox window carries its account’s name and picture, on the taskbar and in Alt+Tab."
                       div.ctl
                         label.switch
-                          input [id="s-rename" type="checkbox" aria-label="Show account names on windows" checked=true]
+                          input [id="s-rename" type="checkbox" aria-label="Show account names and pictures on windows" checked=true]
                           span
                     div.set-row
                       div

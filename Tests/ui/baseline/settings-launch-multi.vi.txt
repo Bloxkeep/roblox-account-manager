@@ -119,11 +119,11 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Dễ phân biệt các cửa sổ Roblox dưới taskbar."
+                        div.t "Hiện tên và ảnh tài khoản trên cửa sổ"
+                        div.d "Mỗi cửa sổ Roblox mang tên và ảnh của tài khoản, dưới taskbar và khi bấm Alt+Tab."
                       div.ctl
                         label.switch
-                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên và ảnh tài khoản trên cửa sổ" checked=true]
                           span
                     div.set-row
                       div
@@ -311,11 +311,11 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Dễ phân biệt các cửa sổ Roblox dưới taskbar."
+                        div.t "Hiện tên và ảnh tài khoản trên cửa sổ"
+                        div.d "Mỗi cửa sổ Roblox mang tên và ảnh của tài khoản, dưới taskbar và khi bấm Alt+Tab."
                       div.ctl
                         label.switch
-                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên và ảnh tài khoản trên cửa sổ" checked=true]
                           span
                     div.set-row
                       div
@@ -484,11 +484,11 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Dễ phân biệt các cửa sổ Roblox dưới taskbar."
+                        div.t "Hiện tên và ảnh tài khoản trên cửa sổ"
+                        div.d "Mỗi cửa sổ Roblox mang tên và ảnh của tài khoản, dưới taskbar và khi bấm Alt+Tab."
                       div.ctl
                         label.switch
-                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên và ảnh tài khoản trên cửa sổ" checked=true]
                           span
                     div.set-row
                       div

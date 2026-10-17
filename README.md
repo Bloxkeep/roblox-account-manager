@@ -372,7 +372,8 @@ Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's
 - **Arrange** in the game bar, **Arrange Roblox windows** in the ⋯ menu above the list and **Arranging windows** (in **Settings › Launching**): **Fill the screen**, or **Small tiles** / **Medium tiles** / **Large tiles** laid out from the top-left, leaving the rest of the screen free. The smaller a Roblox window, the less work for the graphics card. With several screens you pick one first.
 - **Low RAM warning** (on by default): warns before you open more accounts than the free RAM can take, and when the PC uses more than 92 % of its RAM.
 - **Save RAM on background windows** (off by default): the windows you aren't playing in get a low memory priority, so Windows takes RAM from them first, and when RAM runs low they are asked to give some back. Roblox may refuse; then Bloxkeep leaves it.
-- **Show account names on windows** (on by default): puts the account's name in the Roblox window title, to tell windows apart on the taskbar.
+- **Fast cores for the window you play** (off by default): Roblox windows in the background run on the CPU's efficiency cores in power-saving mode, and the window you're playing keeps the fast cores (Windows' own settings; nothing in Roblox is changed).
+- **Show account names and pictures on windows** (on by default): puts the account's name in the Roblox window title and its picture as the window's icon, to tell windows apart on the taskbar and in Alt+Tab.
 - **Wait between accounts**: 0 to 60 seconds, 8 by default. Opening too many at once can fail.
 
 More in the user guide: [Game monitor, windows and statistics](docs/guide/windows-and-stats.md).

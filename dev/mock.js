@@ -140,7 +140,9 @@
   const themeApplied = () => theme !== 'system' ? theme : matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   let settings = {
     lastPlaceInput: 'https://www.roblox.com/games/2753915549/Blox-Fruits', lastJobId: '', renameWindows: true, launchVia: 'auto', launchDelaySeconds: 8, autoLockMinutes: 0,
-    memoryWarnings: true, trimBackground: false, antiAfk: false, robloxConfig: { mode: params.has('rc') ? 'marked' : 'off', graphics: 1, fps: 30, volume: 0 },
+    memoryWarnings: true, trimBackground: false, antiAfk: false,
+    // The fast cores for the window played; ?cpuone=1: a CPU with one kind of core (only power saving to give).
+    splitCores: false, cores: params.has('cpuone') ? { hybrid: false, efficient: 0, logical: 8 } : { hybrid: true, efficient: 16, logical: 32 }, robloxConfig: { mode: params.has('rc') ? 'marked' : 'off', graphics: 1, fps: 30, volume: 0 },
     recentGames: [2753915549, 920587237, 4924922222].map(p => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl })),
     // Launch presets; ?nopresets=1 starts without any. A deleted account (…09) is skipped when it runs.
     presets: params.has('nopresets') ? [] : [

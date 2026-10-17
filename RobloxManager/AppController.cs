@@ -152,6 +152,7 @@ public sealed partial class AppController : IDisposable
         _post = postJson;
         _procTimer.Tick += (_, _) => OnProcTimer();
         _procTimer.Start();
+        WatchForeground();
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         SystemEvents.TimeChanged += OnTimeChanged;
         NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
@@ -777,6 +778,8 @@ public sealed partial class AppController : IDisposable
         s.LaunchDelaySeconds,
         s.MemoryWarnings,
         s.TrimBackground,
+        s.SplitCores,
+        cores = CoresDto(),
         s.AntiAfk,
         robloxConfig = new { s.RobloxConfig.Mode, s.RobloxConfig.Graphics, s.RobloxConfig.Fps, s.RobloxConfig.Volume },
         recentGames = s.RecentGames.Select(SavedGameDto),
@@ -3212,6 +3215,8 @@ public sealed partial class AppController : IDisposable
         }
         players.RemoveAll(p => !pids.Contains(p.Pid));
         if (scan)
+            Step(() => SplitCores(pids));
+        if (scan)
         {
             _lastScanFoundNone = pids.Count == 0;
             _lastPlayers = (players.ToList(), now); // the monitor tab's tiles use it (MonitorClients)
@@ -3250,6 +3255,8 @@ public sealed partial class AppController : IDisposable
                     RobloxProcesses.SetWindowTitle(list, $"Roblox - {NameText(account)}");
             }
         }
+        if (scan)
+            Step(() => ApplyWindowIcons(pids, windows));
 
         if (_vault is { Data.Settings.MultiInstance: true } && scan && pids.Count == 0)
         {
@@ -4251,6 +4258,12 @@ public sealed partial class AppController : IDisposable
             s.TrimBackground = trim;
             _trimRefusedShown = false;
         }
+        if (OptBool(a, "splitCores") is { } split)
+        {
+            s.SplitCores = split;
+            _coresRefusedShown = false;
+            SplitCores(_corePids); // at once, not at the next scan
+        }
         if (Has(a, "launchDelaySeconds", JsonValueKind.Number)) s.LaunchDelaySeconds = (int)Math.Clamp(Long(a, "launchDelaySeconds"), 0, 120);
         // Only the choices Settings offers; choosing counts as using the PC (the wait starts from now).
         if (Has(a, "autoLockMinutes", JsonValueKind.Number) && AutoLockChoices.Contains((int)Long(a, "autoLockMinutes")))
@@ -4360,6 +4373,8 @@ public sealed partial class AppController : IDisposable
         if (_disposed)
             return;
         _disposed = true;
+        GiveCoresBack();
+        GiveIconsBack();
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         SystemEvents.TimeChanged -= OnTimeChanged;
         NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;

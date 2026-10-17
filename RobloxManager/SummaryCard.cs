@@ -86,7 +86,8 @@ public static class SummaryCard
         }
     }
 
-    static async Task<byte[]?> LoadAvatarAsync(string url, CancellationToken ct)
+    /// <summary>An avatar's picture from Roblox's CDN (rbxcdn.com only), kept for the next time; null when it can't be had.</summary>
+    internal static async Task<byte[]?> LoadAvatarAsync(string url, CancellationToken ct)
     {
         lock (Avatars)
         {

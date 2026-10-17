@@ -366,7 +366,8 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 - Nút **Xếp cửa sổ** ở thanh dưới, **Xếp cửa sổ Roblox** trong menu ⋯ phía trên danh sách và **Kiểu xếp cửa sổ** (trong **Cài đặt › Khởi chạy**): **Lấp đầy màn hình**, hoặc **Ô nhỏ** / **Ô vừa** / **Ô lớn** xếp từ góc trên bên trái và chừa phần màn hình còn lại. Cửa sổ Roblox càng nhỏ thì card đồ họa càng đỡ tải. Máy có nhiều màn hình thì chọn màn hình trước.
 - **Báo khi sắp hết RAM** (bật sẵn): cảnh báo trước khi mở nhiều tài khoản hơn RAM trống chịu được, và khi máy dùng quá 92 % RAM.
 - **Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn): các cửa sổ bạn không chơi được đặt mức ưu tiên bộ nhớ thấp để Windows lấy RAM của chúng trước, và khi máy sắp hết RAM, chúng được yêu cầu nhả bớt. Roblox có thể không nhả; khi đó Bloxkeep bỏ qua.
-- **Hiện tên tài khoản trên cửa sổ** (bật sẵn): ghi tên tài khoản lên tiêu đề cửa sổ Roblox để dễ phân biệt trên taskbar.
+- **Nhường nhân mạnh cho cửa sổ đang chơi** (tắt sẵn): cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm của CPU ở chế độ tiết kiệm điện, cửa sổ bạn đang chơi giữ các nhân mạnh (công tắc của chính Windows; không có gì trong Roblox bị thay đổi).
+- **Hiện tên và ảnh tài khoản trên cửa sổ** (bật sẵn): ghi tên tài khoản lên tiêu đề cửa sổ Roblox và lấy ảnh tài khoản làm biểu tượng cửa sổ, để dễ phân biệt trên taskbar và khi bấm Alt+Tab.
 - **Chờ giữa các tài khoản**: từ 0 đến 60 giây, mặc định 8 giây. Mở quá nhiều tài khoản cùng lúc dễ bị lỗi.
 
 Xem thêm trong hướng dẫn: [Theo dõi game, cửa sổ và thống kê](docs/guide/windows-and-stats.vi.md).
