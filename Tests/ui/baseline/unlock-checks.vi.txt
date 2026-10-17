@@ -1,0 +1,98 @@
+== nothing typed
+html [data-theme="dark" lang="vi"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+    form.lock-card.shake [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Chào mừng trở lại"
+      p "Nhập mật khẩu chủ để mở khóa."
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
+            svg.i #1pcfgz
+      div.lock-error [id="lock-error" role="alert"] "Bạn chưa nhập mật khẩu chủ."
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Mở khóa"
+#layer
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+== typing again
+html [data-theme="dark" lang="vi"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+    form.lock-card.shake [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Chào mừng trở lại"
+      p "Nhập mật khẩu chủ để mở khóa."
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••" FOCUSED]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
+            svg.i #1pcfgz
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Mở khóa"
+#layer
+#toasts
+-- commands
+  (none)
+== shown
+html [data-theme="dark" lang="vi"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+    form.lock-card.shake [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Chào mừng trở lại"
+      p "Nhập mật khẩu chủ để mở khóa."
+      div.stack
+        div.pw
+          input.field [id="pw1" type="text" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="x"]
+          button.icon-btn [id="pw-eye" type="button" title="Ẩn mật khẩu" aria-label="Ẩn mật khẩu" aria-pressed="true" FOCUSED]
+            svg.i #1xzadie
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Mở khóa"
+#layer
+#toasts
+-- commands
+  (none)
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+    form.lock-card.shake [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Chào mừng trở lại"
+      p "Nhập mật khẩu chủ để mở khóa."
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••"]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false" FOCUSED]
+            svg.i #1pcfgz
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Mở khóa"
+#layer
+#toasts
+-- commands
+  (none)

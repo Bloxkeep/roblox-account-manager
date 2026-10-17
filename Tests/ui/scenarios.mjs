@@ -468,6 +468,40 @@ export default [
     await s.wait(2600);
   }),
   S('first-run-restore', 'new=1', async s => { await s.click(key('lock.restore')); await s.wait(800); }),
+  S('unlock-checks', 'locked=1', async s => {
+    await s.key('Enter');
+    await s.snap('nothing typed');
+    await s.type('x', key('lock.pw'));
+    await s.snap('typing again');
+    await s.click({ css: '#pw-eye' });
+    await s.snap('shown');
+    await s.click({ css: '#pw-eye' });
+  }),
+  S('first-run-checks', 'new=1', async s => {
+    await s.key('Enter');
+    await s.snap('too short');
+    await s.type('      ', key('lock.pw'));
+    await s.type('      ', key('lock.pw2'));
+    await s.key('Enter');
+    await s.snap('blank');
+    await s.fill(key('lock.pw'), 'Abcdef12');
+    await s.fill(key('lock.pw2'), 'Abcdef13');
+    await s.key('Enter');
+    await s.snap('mismatch');
+    await s.click({ css: '#pw-eye' });
+    await s.snap('shown');
+    await s.fill(key('lock.pw'), '');
+  }),
+  // Another language while typing: the screen is drawn again in it, what was typed and its strength kept.
+  S('first-run-language', 'new=1', async s => {
+    await s.type('Abcdef12!x', key('lock.pw'));
+    await s.type('Abc', key('lock.pw2'));
+    await s.click({ css: '[data-act=lang][data-lang=vi]' });
+  }, { langs: ['en'] }),
+  S('unlock-language', 'locked=1', async s => {
+    await s.type('half typed', key('lock.pw'));
+    await s.click({ css: '[data-act=lang][data-lang=vi]' });
+  }, { langs: ['en'] }),
 
   // ── Quick search ──
   S('palette-go-settings', '', async s => {

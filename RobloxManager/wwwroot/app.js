@@ -88,8 +88,6 @@
   const tn = (key, n, vars = {}) => t(n === 1 && `${key}1` in DICT[lang] ? `${key}1` : key, { n, ...vars });
   document.documentElement.lang = lang; // the page's language from the start, not only after a change
   const locale = () => (lang === 'vi' ? 'vi-VN' : 'en-US');
-  const langSwitch = () => `<div class="lang" role="group" aria-label="Language">${['en', 'vi'].map(l =>
-    `<button data-act="lang" data-lang="${l}" class="${l === lang ? 'on' : ''}" aria-pressed="${l === lang}" title="${esc(DICT[l]['lang.name'])}">${l.toUpperCase()}</button>`).join('')}</div>`;
 
   /* ───────────────────────── bridge ─────────────────────────
      The page never talks to the network: it sends commands to the app and receives replies/events. */
@@ -520,33 +518,9 @@
     }
   }
 
-  /** The eye next to a password box: shows or hides it, and says which (tooltip, pressed state). */
-  function eyeToggle(btn, inputs) {
-    if (!btn) return;
-    btn.onclick = () => {
-      const show = inputs[0].type === 'password';
-      inputs.forEach(i => i && (i.type = show ? 'text' : 'password'));
-      btn.innerHTML = icon(show ? 'eyeOff' : 'eye');
-      btn.title = t(show ? 'lock.hidePw' : 'lock.showPw');
-      btn.setAttribute('aria-label', btn.title);
-      btn.setAttribute('aria-pressed', String(show));
-    };
-  }
-
-  /** A master password's strength as a bar and a word (weak / OK / strong); only a guide, any 6+ characters are accepted. */
+  /** A master password's strength (weak / OK / strong); only a guide, any 6+ characters are accepted. */
   const strengthScore = v => [v.length >= 8, v.length >= 12, /[a-z]/.test(v) && /[A-Z]/.test(v), /\d/.test(v), /[^A-Za-z0-9]/.test(v)].filter(Boolean).length;
   const strengthLevel = v => { const s = strengthScore(v); return s <= 1 ? 'weak' : s <= 3 ? 'ok' : 'strong'; };
-  function showStrength(v, meter, label) {
-    const score = strengthScore(v), level = strengthLevel(v);
-    if (meter) {
-      meter.style.width = `${v ? Math.max(12, score * 20) : 0}%`;
-      meter.style.background = `var(--${level === 'weak' ? 'bad' : level === 'ok' ? 'warn' : 'ok'})`;
-    }
-    if (label) {
-      label.textContent = v ? t(`lock.strength.${level}`) : '';
-      label.className = `pw-strength ${v ? level : ''}`;
-    }
-  }
 
   /* ───────────────────────── lock screen ───────────────────────── */
   /** "15 minutes", "1 hour", "2 hours": how long the PC went unused before Bloxkeep locked itself. */
@@ -564,78 +538,12 @@
     closeMenu();
     closeAllModals();
     syncMonitor();
-    const create = mode === 'create';
     takeDownUiParts();
-    $('#app').innerHTML = `<div class="lock">
-      <div class="dots"></div>
-      <div class="lock-lang">${langSwitch()}</div>
-      <form class="lock-card" id="lock-form" autocomplete="off" data-mode="${mode}">
-        <img class="logo-img" src="${LOGO}" alt="">
-        <h2>${t(create ? 'lock.createTitle' : 'lock.unlockTitle')}</h2>
-        <p>${t(create ? 'lock.createText' : 'lock.unlockText')}</p>
-        ${!create && S.app.screenLock ? `<p class="lock-paused">${t('lock.auto', { t: autoLockText(S.app.screenLock.minutes) })}</p>`
-          : !create && S.lockedInUse ? `<p class="lock-paused">${t('lock.paused')}</p>` : ''}
-        <div class="stack">
-          <div class="pw"><input class="field" type="password" id="pw1" placeholder="${t('lock.pw')}" maxlength="256" aria-label="${t('lock.pw')}">
-            <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}" aria-label="${t('lock.showPw')}" aria-pressed="false">${icon('eye')}</button></div>
-          ${create ? `<input class="field" type="password" id="pw2" placeholder="${t('lock.pw2')}" maxlength="256" aria-label="${t('lock.pw2')}">
-            <div class="strength-row"><div class="strength"><i id="pw-meter"></i></div><span id="pw-strength" aria-live="polite"></span></div>` : ''}
-        </div>
-        <div class="lock-caps" id="lock-caps" hidden>${icon('alert')}${t('lock.caps')}</div>
-        <div class="lock-error" id="lock-error" role="alert"></div>
-        <button class="btn primary big w" type="submit" id="lock-btn">${t(create ? 'lock.create' : 'lock.unlock')}</button>
-        ${create ? `<div class="lock-alt"><button type="button" class="link" data-act="restore-backup">${t('lock.restore')}</button></div>` : ''}
-      </form>
-    </div>`;
-    const pw1 = $('#pw1'), pw2 = $('#pw2'), form = $('#lock-form');
-    setTimeout(() => pw1.focus(), 50);
-    eyeToggle($('#pw-eye'), [pw1, pw2]);
-    // An old error goes once the password is being typed again; Caps Lock is pointed out while it is on.
-    for (const input of [pw1, pw2]) {
-      input?.addEventListener('input', () => setText($('#lock-error'), ''));
-      input?.addEventListener('keydown', e => { $('#lock-caps').hidden = !e.getModifierState?.('CapsLock'); });
-      input?.addEventListener('keyup', e => { $('#lock-caps').hidden = !e.getModifierState?.('CapsLock'); });
-    }
-    if (create) {
-      pw1.addEventListener('input', () => showStrength(pw1.value, $('#pw-meter'), $('#pw-strength')));
-    }
-    if (kept) {
-      pw1.value = kept.pw1;
-      if (pw2) pw2.value = kept.pw2;
-      if (create) showStrength(pw1.value, $('#pw-meter'), $('#pw-strength'));
-    }
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      const err = $('#lock-error');
-      const fail = msg => {
-        err.textContent = msg;
-        form.classList.remove('shake');
-        void form.offsetWidth;
-        form.classList.add('shake');
-      };
-      if (create) {
-        if (pw1.value.length < 6) return fail(t('lock.short'));
-        if (!pw1.value.trim()) return fail(t('lock.blank'));
-        if (pw1.value !== pw2.value) return fail(t('lock.mismatch'));
-      } else if (!pw1.value) {
-        return fail(t('lock.empty'));
-      }
-      err.textContent = '';
-      let state;
-      await busy($('#lock-btn'), async () => {
-        try {
-          state = await bridge.call(create ? 'createVault' : 'unlock', { password: pw1.value });
-        } catch (ex) {
-          fail(ex.message);
-          pw1.select();
-        }
-      });
-      if (state) {
-        pw1.value = '';
-        if (pw2) pw2.value = '';
-        applyState(state);
-      }
-    });
+    // The screen is React's (ui/src/Lock.tsx); the vault it opens comes back here. Locked while in use (not at
+    // start-up), it says what waits for the unlock.
+    const notice = mode === 'create' ? '' : S.app.screenLock ? t('lock.auto', { t: autoLockText(S.app.screenLock.minutes) }) : S.lockedInUse ? t('lock.paused') : '';
+    $('#app').innerHTML = '';
+    uiParts.push(window.BloxkeepUI.lock($('#app'), uiHost(), { mode, notice, kept }, applyState));
   }
 
   /* ───────────────────────── shell ───────────────────────── */
@@ -3445,19 +3353,23 @@
     status: { label: 'boot.status', end: 0.8 },
     avatars: { label: 'boot.avatars', end: 1 },
   };
+  let bootUi = null;
   function showBoot(boot) {
     if (!$('#boot')) {
+      takeDownUiParts();
       const app = $('#app');
       app._html = null;
-      app.innerHTML = `<div class="boot" id="boot" role="progressbar" aria-valuemin="0" aria-valuemax="100"><img src="${LOGO}" alt=""><b>Bloxkeep</b>
-        <div class="boot-bar"><i id="boot-fill"></i></div><span id="boot-text"></span></div>`;
+      app.innerHTML = '';
+      // The screen is React's (ui/src/Lock.tsx, Boot): its bar and words are painted from here.
+      bootUi = window.BloxkeepUI.boot(app, uiHost());
+      uiParts.push(bootUi.unmount);
       S.lockMode = null;
       S.bootValue = 0.05;
     }
     const step = BOOT_STEPS[boot.stage] || { label: 'boot.loading', end: 1 };
     S.bootValue = Math.max(S.bootValue, boot.percent);
     S.bootCeil = Math.max(S.bootValue, step.end - 0.04);
-    setText($('#boot-text'), t(step.label));
+    S.bootText = t(step.label);
     paintBoot();
     S.bootTrickle ||= setInterval(() => {
       S.bootValue += (S.bootCeil - S.bootValue) * 0.05;
@@ -3471,10 +3383,7 @@
     }, BOOT_MAX);
   }
   function paintBoot() {
-    const fill = $('#boot-fill');
-    if (!fill) return;
-    fill.style.transform = `scaleX(${Math.min(1, S.bootValue).toFixed(3)})`;
-    $('#boot').setAttribute('aria-valuenow', Math.round(S.bootValue * 100));
+    if ($('#boot')) bootUi?.api.paint(S.bootText || '', S.bootValue);
   }
   function finishBoot(then) {
     stopBoot();

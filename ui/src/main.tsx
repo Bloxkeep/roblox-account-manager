@@ -9,6 +9,7 @@ import { Feedback, type FeedbackApi } from './Feedback';
 import { HostContext, type Host } from './host';
 import { ImportVault, type ImportResult, type ImportVaultApi } from './ImportVault';
 import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
+import { Boot, Lock, type BootApi, type LockMode } from './Lock';
 import { MultiHelp } from './MultiHelp';
 import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
 import { Palette, type PaletteEntry } from './Palette';
@@ -37,7 +38,8 @@ function mount(el: HTMLElement, host: Host, node: ReactNode): () => void {
   const root = createRoot(el);
   flushSync(() => root.render(<StrictMode><HostContext.Provider value={host}>{node}</HostContext.Provider></StrictMode>));
   const stop = keepFocus(el, host);
-  return () => { stop(); root.unmount(); };
+  // The element may be the page's own (#app, the lock screen's): what app.js draws there next isn't React's.
+  return () => { stop(); root.unmount(); delete el.dataset.react; };
 }
 
 /**
@@ -155,6 +157,16 @@ const BloxkeepUI = {
   /** The Presets tab into its section. */
   presetsView(el: HTMLElement, host: Host) {
     return mount(el, host, <PresetsView />);
+  },
+  /** The lock screen into #app: opened gets the state of the vault it opened (app.js applyState). */
+  lock(el: HTMLElement, host: Host, opts: { mode: LockMode; notice: string; kept: { pw1: string; pw2: string } | null }, opened: (state: object) => void) {
+    return mount(el, host, <Lock {...opts} opened={opened} />);
+  },
+  /** The loading screen into #app; app.js moves its bar (api.paint) as the app's steps go. */
+  boot(el: HTMLElement, host: Host) {
+    const api = createRef<BootApi>();
+    const unmount = mount(el, host, <Boot api={api} />);
+    return { unmount, api: api.current! };
   },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */
   pickList(el: HTMLElement, host: Host, text: string, items: PickItem[]) {
