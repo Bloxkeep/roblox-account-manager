@@ -15,7 +15,7 @@ public sealed partial class AppController
     void ApplyWindowIcons(IReadOnlySet<int> alive, Dictionary<int, List<IntPtr>> windows)
     {
         WindowIcons.Forget(alive);
-        if (_vault is not { Data.Settings.RenameWindows: true })
+        if (_vault?.Data.Settings is not { } s || !(s.WindowPictures ?? s.RenameWindows))
         {
             foreach (int pid in WindowIcons.Pids)
                 WindowIcons.Remove(pid, windows.GetValueOrDefault(pid) ?? []);
@@ -76,6 +76,33 @@ public sealed partial class AppController
     }
 
     /// <summary>
+    /// Settings › Taskbar buttons (<see cref="TaskbarGroups"/>): each account's window under a button of its own, or
+    /// each preset's windows in a group of their own (windows opened without a preset stay in Roblox's); Roblox's one
+    /// button for all of them puts every window's own id back.
+    /// </summary>
+    void ApplyTaskbarGroups(IReadOnlySet<int> alive, Dictionary<int, List<IntPtr>> windows)
+    {
+        TaskbarGroups.Forget(alive);
+        string mode = _vault?.Data.Settings.TaskbarGroups ?? "roblox";
+        var grouped = new HashSet<int>();
+        foreach (var (id, info) in _running)
+        {
+            string? group = mode switch
+            {
+                "account" => $"Bloxkeep.Roblox.{id:N}",
+                "preset" when info.Launch.PresetId is { } preset => $"Bloxkeep.Preset.{preset:N}",
+                _ => null,
+            };
+            if (group is null || !windows.TryGetValue(info.Pid, out var list) || list.Count == 0)
+                continue;
+            TaskbarGroups.Apply(info.Pid, list, group);
+            grouped.Add(info.Pid);
+        }
+        foreach (int pid in TaskbarGroups.Pids.Where(pid => !grouped.Contains(pid)))
+            TaskbarGroups.Remove(pid, windows.GetValueOrDefault(pid) ?? []);
+    }
+
+    /// <summary>
     /// Bloxkeep closing: the windows get Roblox's own icon back first. The icons are Bloxkeep's, and they go with it: a
     /// window still pointing at one would show none.
     /// </summary>
@@ -83,5 +110,8 @@ public sealed partial class AppController
     {
         foreach (int pid in WindowIcons.Pids)
             WindowIcons.Remove(pid, RobloxProcesses.VisibleWindows([pid]).GetValueOrDefault(pid) ?? []);
+        // And their own taskbar button: a group named after Bloxkeep's accounts means nothing once it has closed.
+        foreach (int pid in TaskbarGroups.Pids)
+            TaskbarGroups.Remove(pid, RobloxProcesses.VisibleWindows([pid]).GetValueOrDefault(pid) ?? []);
     }
 }

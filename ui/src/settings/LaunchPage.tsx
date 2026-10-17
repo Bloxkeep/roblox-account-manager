@@ -13,6 +13,8 @@ export function LaunchPage({ title }: { title: string }) {
 
   const [multi, setMultiOn] = useLocal(!!m.enabled);
   const [rename, setRename] = useLocal(!!st.renameWindows);
+  const [pictures, setPictures] = useLocal(st.windowPictures ?? !!st.renameWindows);
+  const [taskbar, setTaskbar] = useLocal(st.taskbarGroups || 'roblox');
   // One of three: as Roblox sizes it, maximised, or tiled (the app keeps the other one off).
   const [openAs, setOpenAs] = useLocal(m.tile ? 'tile' : st.maximizeOnOpen ? 'maximize' : 'roblox');
   const [layout, setLayout] = useLocal(st.windowLayout || 'fill');
@@ -60,6 +62,17 @@ export function LaunchPage({ title }: { title: string }) {
       </Row>
       <Row title={t('set.rename')} desc={t('set.renameDesc')}>
         <Switch id="s-rename" label={t('set.rename')} checked={rename} onChange={on => { setRename(on); call('setSettings', { renameWindows: on }); }} />
+      </Row>
+      <Row title={t('set.pictures')} desc={t('set.picturesDesc')}>
+        <Switch id="s-pictures" label={t('set.pictures')} checked={pictures} onChange={on => { setPictures(on); call('setSettings', { windowPictures: on }); }} />
+      </Row>
+      <Row title={t('set.taskbar')} desc={t('set.taskbarDesc')}>
+        <select className="select" id="s-taskbar" aria-label={t('set.taskbar')} value={taskbar} onChange={e => {
+          setTaskbar(e.target.value);
+          call('setSettings', { taskbarGroups: e.target.value });
+        }}>
+          {['roblox', 'account', 'preset'].map(k => <option key={k} value={k}>{t(`set.taskbar.${k}`)}</option>)}
+        </select>
       </Row>
       <Row title={t('set.openAs')} desc={t('set.openAsDesc')}>
         <select className="select" id="s-openas" aria-label={t('set.openAs')} value={openAs} onChange={e => {

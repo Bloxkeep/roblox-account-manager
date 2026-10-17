@@ -54,6 +54,10 @@ public sealed class AppSettings
     /// <summary>Maximise each Roblox window Bloxkeep opens (still a window, not Roblox's shared fullscreen); not with <see cref="MultiInstanceTile"/>.</summary>
     public bool MaximizeOnOpen { get; set; }
     public bool RenameWindows { get; set; } = true;
+    /// <summary>The account's picture as its Roblox window's icon; null (saved before it had its own switch): as <see cref="RenameWindows"/>.</summary>
+    public bool? WindowPictures { get; set; }
+    /// <summary>Taskbar buttons: "roblox" (one for every Roblox window, Windows' own), "account" (one each) or "preset" (one group per preset).</summary>
+    public string TaskbarGroups { get; set; } = "roblox";
     /// <summary>How Arrange windows lays the Roblox windows out: "fill" (the whole screen), or fixed tiles from the top-left, "small" / "medium" / "large".</summary>
     public string WindowLayout { get; set; } = "fill";
     /// <summary>Replaced by <see cref="LaunchVia"/>; only read to migrate older vaults.</summary>

@@ -859,6 +859,8 @@ export default [
   S('settings-backup-pick', 'settings=backup&long=1', async s => { await s.click(key('bk.choose')); }),
   S('settings-roblox-closed', 'settings=roblox&rbxclosed=1', async s => { await s.snap('warned'); await s.click(key('ru.hide')); }),
   S('settings-roblox-changed', 'settings=roblox&rw=changed&rbxold=1'),
+  // Taskbar buttons: one group per preset, and Roblox's own icon kept.
+  S('settings-taskbar', 'settings=launch', async s => { await s.choose({ css: '#s-taskbar' }, 'preset'); await s.click({ css: 'label:has(#s-pictures)' }); }),
   // Roblox out of date, Bloxstrap keeping it: Update now asks first while Roblox windows are open, then waits on Bloxstrap.
   S('settings-roblox-update', 'settings=roblox&rbxold=1', async s => { await s.click(key('rbx.update')); await s.snap('asked'); await s.click(key('rbx.updateOk')); }),
   // The sidebar's out-of-date version line leads to Settings › Roblox version.

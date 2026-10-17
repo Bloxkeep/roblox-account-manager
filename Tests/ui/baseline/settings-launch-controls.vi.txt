@@ -119,12 +119,29 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Hiện tên và ảnh tài khoản trên cửa sổ"
-                        div.d "Mỗi cửa sổ Roblox mang tên và ảnh của tài khoản, dưới taskbar và khi bấm Alt+Tab."
+                        div.t "Hiện tên tài khoản trên cửa sổ"
+                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản, dưới taskbar và khi bấm Alt+Tab."
                       div.ctl
                         label.switch
-                          input [id="s-rename" type="checkbox" aria-label="Hiện tên và ảnh tài khoản trên cửa sổ" checked=false]
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=false]
                           span
+                    div.set-row
+                      div
+                        div.t "Ảnh tài khoản làm biểu tượng cửa sổ"
+                        div.d "Mỗi cửa sổ Roblox hiện ảnh của tài khoản thay cho biểu tượng Roblox."
+                      div.ctl
+                        label.switch
+                          input [id="s-pictures" type="checkbox" aria-label="Ảnh tài khoản làm biểu tượng cửa sổ" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Nút trên taskbar"
+                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Có thể cho mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm riêng (cửa sổ mở ngoài preset vẫn gộp chung)."
+                      div.ctl
+                        select.select [id="s-taskbar" aria-label="Nút trên taskbar" value="roblox"]
+                          option [value="roblox"] "Gộp chung như Roblox"
+                          option [value="account"] "Mỗi tài khoản một nút"
+                          option [value="preset"] "Mỗi preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
@@ -300,12 +317,29 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Hiện tên và ảnh tài khoản trên cửa sổ"
-                        div.d "Mỗi cửa sổ Roblox mang tên và ảnh của tài khoản, dưới taskbar và khi bấm Alt+Tab."
+                        div.t "Hiện tên tài khoản trên cửa sổ"
+                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản, dưới taskbar và khi bấm Alt+Tab."
                       div.ctl
                         label.switch
-                          input [id="s-rename" type="checkbox" aria-label="Hiện tên và ảnh tài khoản trên cửa sổ" checked=false]
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=false]
                           span
+                    div.set-row
+                      div
+                        div.t "Ảnh tài khoản làm biểu tượng cửa sổ"
+                        div.d "Mỗi cửa sổ Roblox hiện ảnh của tài khoản thay cho biểu tượng Roblox."
+                      div.ctl
+                        label.switch
+                          input [id="s-pictures" type="checkbox" aria-label="Ảnh tài khoản làm biểu tượng cửa sổ" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Nút trên taskbar"
+                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Có thể cho mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm riêng (cửa sổ mở ngoài preset vẫn gộp chung)."
+                      div.ctl
+                        select.select [id="s-taskbar" aria-label="Nút trên taskbar" value="roblox"]
+                          option [value="roblox"] "Gộp chung như Roblox"
+                          option [value="account"] "Mỗi tài khoản một nút"
+                          option [value="preset"] "Mỗi preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"

@@ -13,7 +13,9 @@ Every page of **Settings** as one compact table: each row, what it does and its 
 | Row | What it does | Default |
 |---|---|---|
 | **Multi-Roblox** | Play on several accounts at once. **Details** opens the steps. See [Multi-Roblox](multi-roblox.md). | Off |
-| **Show account names and pictures on windows** | Puts the account's name in the Roblox window title and its picture as the window's icon, to tell windows apart on the taskbar and in Alt+Tab. | On |
+| **Show account names on windows** | Puts the account's name in the Roblox window title, to tell windows apart on the taskbar and in Alt+Tab. | On |
+| **Account pictures as window icons** | Each Roblox window shows its account's picture instead of Roblox's icon. | On |
+| **Taskbar buttons** | One button for all Roblox windows (Windows' own), one for each account (with its picture), or one group for each preset. | One for all |
 | **When a Roblox window opens** | **As Roblox sizes it**, **Maximise it** or **Tile them side by side** (needs Multi-Roblox). | As Roblox sizes it |
 | **Arranging windows** | How **Arrange windows** (and tiling after opening) lays them out: **Fill the screen**, **Small tiles**, **Medium tiles**, **Large tiles**. | Fill the screen |
 | **Open Roblox with** | Which program opens Roblox (below). **Choose…** picks your own. | Default |

@@ -25,6 +25,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("main-browser", false, MainBrowserSuite.Run),
     ("cores", false, CoresSuite.Run),
     ("window-icons", false, WindowIconsSuite.Run),
+    ("taskbar-groups", false, TaskbarGroupsSuite.Run),
     ("stats-icons", true, StatsIconSuite.Run),
     ("watch-online", true, WatchSuite.RunOnline),
 };

@@ -119,12 +119,29 @@ html [data-theme="dark" lang="en"]
                           span
                     div.set-row
                       div
-                        div.t "Show account names and pictures on windows"
-                        div.d "Each Roblox window carries its account’s name and picture, on the taskbar and in Alt+Tab."
+                        div.t "Show account names on windows"
+                        div.d "Each Roblox window’s title carries its account’s name, on the taskbar and in Alt+Tab."
                       div.ctl
                         label.switch
-                          input [id="s-rename" type="checkbox" aria-label="Show account names and pictures on windows" checked=false]
+                          input [id="s-rename" type="checkbox" aria-label="Show account names on windows" checked=false]
                           span
+                    div.set-row
+                      div
+                        div.t "Account pictures as window icons"
+                        div.d "Each Roblox window shows its account’s picture instead of Roblox’s icon."
+                      div.ctl
+                        label.switch
+                          input [id="s-pictures" type="checkbox" aria-label="Account pictures as window icons" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Taskbar buttons"
+                        div.d "Windows puts every Roblox window under one button. Each account can have its own button, with its picture, or each preset its own group (windows opened without a preset stay together)."
+                      div.ctl
+                        select.select [id="s-taskbar" aria-label="Taskbar buttons" value="roblox"]
+                          option [value="roblox"] "One for all Roblox windows"
+                          option [value="account"] "One for each account"
+                          option [value="preset"] "One for each preset"
                     div.set-row
                       div
                         div.t "When a Roblox window opens"
@@ -300,12 +317,29 @@ html [data-theme="dark" lang="en"]
                           span
                     div.set-row
                       div
-                        div.t "Show account names and pictures on windows"
-                        div.d "Each Roblox window carries its account’s name and picture, on the taskbar and in Alt+Tab."
+                        div.t "Show account names on windows"
+                        div.d "Each Roblox window’s title carries its account’s name, on the taskbar and in Alt+Tab."
                       div.ctl
                         label.switch
-                          input [id="s-rename" type="checkbox" aria-label="Show account names and pictures on windows" checked=false]
+                          input [id="s-rename" type="checkbox" aria-label="Show account names on windows" checked=false]
                           span
+                    div.set-row
+                      div
+                        div.t "Account pictures as window icons"
+                        div.d "Each Roblox window shows its account’s picture instead of Roblox’s icon."
+                      div.ctl
+                        label.switch
+                          input [id="s-pictures" type="checkbox" aria-label="Account pictures as window icons" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Taskbar buttons"
+                        div.d "Windows puts every Roblox window under one button. Each account can have its own button, with its picture, or each preset its own group (windows opened without a preset stay together)."
+                      div.ctl
+                        select.select [id="s-taskbar" aria-label="Taskbar buttons" value="roblox"]
+                          option [value="roblox"] "One for all Roblox windows"
+                          option [value="account"] "One for each account"
+                          option [value="preset"] "One for each preset"
                     div.set-row
                       div
                         div.t "When a Roblox window opens"

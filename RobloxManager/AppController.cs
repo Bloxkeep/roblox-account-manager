@@ -789,6 +789,8 @@ public sealed partial class AppController : IDisposable
         s.LastPlaceInput,
         s.LastJobId,
         s.RenameWindows,
+        windowPictures = s.WindowPictures ?? s.RenameWindows,
+        s.TaskbarGroups,
         s.WindowLayout,
         s.MaximizeOnOpen,
         s.LaunchVia,
@@ -3374,7 +3376,10 @@ public sealed partial class AppController : IDisposable
             }
         }
         if (scan)
+        {
             Step(() => ApplyWindowIcons(pids, windows));
+            Step(() => ApplyTaskbarGroups(pids, windows));
+        }
 
         if (_vault is { Data.Settings.MultiInstance: true } && scan && pids.Count == 0)
         {
@@ -4386,6 +4391,8 @@ public sealed partial class AppController : IDisposable
             return null;
         }
         if (OptBool(a, "renameWindows") is { } rename) s.RenameWindows = rename;
+        if (OptBool(a, "windowPictures") is { } pictures) s.WindowPictures = pictures;
+        if (OptStr(a, "taskbarGroups") is { } groups && groups is "roblox" or "account" or "preset") s.TaskbarGroups = groups;
         if (OptStr(a, "windowLayout") is "fill" or "small" or "medium" or "large") s.WindowLayout = OptStr(a, "windowLayout")!;
         // "custom" needs a launcher picked with PickLauncher; the page never supplies a path itself.
         // "other:<name>" only for a launcher actually found here, so the page can't name an arbitrary program.
