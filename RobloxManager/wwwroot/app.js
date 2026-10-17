@@ -553,14 +553,6 @@
     uiParts.forEach(unmount => unmount());
     uiParts = [];
   }
-  function mountUiParts() {
-    takeDownUiParts();
-    const ui = window.BloxkeepUI, host = uiHost();
-    for (const [id] of SET_PAGES) uiParts.push(ui.settingsPage($(`#set-page-${id}`), host, id, setPageTitle(id)));
-    uiParts.push(ui.presetsView($('#view-presets'), host));
-    statsUi = ui.statsView($('#view-stats'), host);
-    uiParts.push(statsUi.unmount);
-  }
   function buildShell() {
     S.shell = true;
     S.lockMode = null;
@@ -568,72 +560,14 @@
     // Dialogs stay open (the lock screen already closed them): a language change from elsewhere mustn't throw away a
     // form being typed in. They keep their old language until closed.
     takeDownUiParts();
-    $('#app').innerHTML = `<div class="shell">
-      <aside class="side">
-        <div class="lights"><button class="light l-close" data-act="win-close" title="${t('win.close')}" aria-label="${t('win.close')}"></button><button class="light l-min" data-act="win-min" title="${t('win.min')}" aria-label="${t('win.min')}"></button><button class="light l-zoom" data-act="win-zoom" title="${t('win.zoom')}" aria-label="${t('win.zoom')}"></button></div>
-        <div class="brand"><img src="${LOGO}" alt=""><div><div class="brand-name">Bloxkeep</div><div class="brand-sub">${t('brand.sub')}</div></div></div>
-        <div class="side-nav">
-        <button class="nav" data-act="view" data-view="accounts" title="${t('nav.accounts')}">${icon('users')}<span>${t('nav.accounts')}</span><em id="nav-count">0</em></button>
-        <button class="nav" data-act="view" data-view="presets" title="${t('nav.presets')}">${icon('layers')}<span>${t('nav.presets')}</span></button>
-        <button class="nav" data-act="view" data-view="monitor" title="${t('nav.monitor')}">${icon('screens')}<span>${t('nav.monitor')}</span></button>
-        <button class="nav" data-act="view" data-view="stats" title="${t('nav.stats')}">${icon('clock')}<span>${t('nav.stats')}</span></button>
-        <button class="nav" data-act="view" data-view="settings" title="${t('nav.settings')}">${icon('sliders')}<span>${t('nav.settings')}</span></button>
-        <button class="nav nav-mini" data-act="mini" title="${t('sys.mini')}" aria-pressed="false">${icon('monitor')}<span>${t('sys.mini')}</span></button>
-        </div>
-        <div class="side-bottom">
-        <div id="side-warn"></div>
-        <div class="side-card" id="sys-card">
-          <h4>${t('sys.title')}</h4>
-          <div class="sys-row"><span><b id="sys-count">0</b> <span id="sys-count-label">${t('sys.windows')}</span></span><span id="sys-ram">0 MB</span></div>
-          <div class="meter" id="sys-meter"><i class="roblox"></i><i class="other"></i></div>
-          <div class="sys-foot" id="sys-foot"></div>
-          <div class="sys-ver" id="sys-ver"></div>
-          <button class="btn sm w sys-mini" id="sys-mini" data-act="mini" aria-pressed="false">${icon('monitor')}<span>${t('sys.mini')}</span></button>
-          <button class="btn sm w sys-close" id="sys-close" data-act="close-all" hidden>${icon('power')}<span>${t('sys.closeAll')}</span></button>
-        </div>
-        <div id="multi-card"></div>
-        <div class="side-foot">
-          <div id="update-slot"></div>
-          <button class="btn ghost w" data-act="lock" title="${t('side.lockTip')}">${icon('lock')}<span>${t('side.lock')}</span></button>
-        </div>
-        </div>
-      </aside>
-      <main class="main">
-        <section class="view" id="view-accounts">
-          <header class="top">
-            <div class="top-title"><h1>${t('acc.title')}</h1><p id="acc-sub"></p></div>
-            <div class="top-tools">
-              <label class="search">${icon('search')}<input id="q" placeholder="${t('acc.search')}" maxlength="100" aria-label="${t('acc.search')}"></label>
-              <button class="icon-btn" data-act="refresh-presence" title="${t('acc.refreshTip')}">${icon('refresh')}</button>
-              <button class="icon-btn" data-act="tools-menu" title="${t('acc.moreTip')}" aria-haspopup="menu">${icon('more')}</button>
-              <div class="split">
-                <button class="btn primary" data-act="add-choose">${icon('userPlus')}<span>${t('acc.add')}</span></button>
-                <button class="btn primary" data-act="add-menu" title="${t('acc.addMoreTip')}" aria-haspopup="menu">${icon('chevronDown')}</button>
-              </div>
-            </div>
-          </header>
-          <div class="bar"><div class="chips" id="chips"></div><div class="seg" id="layout-seg"></div><button class="sort-btn" data-act="group-menu" id="group-btn" aria-haspopup="menu" hidden></button><button class="sort-btn" data-act="sort-menu" id="sort-btn" aria-haspopup="menu"></button></div>
-          <div class="scroll" id="scroll"><div id="grid"></div></div>
-          <div class="dock">
-            <button class="game-thumb" id="game-thumb" data-act="browse-games" title="${t('dock.browseTip')}">${icon('gamepad')}</button>
-            <div class="picker" id="picker" hidden></div>
-            <div class="dock-mid">
-              <div class="dock-inputs">
-                <label class="inwrap grow" title="${esc(t('dock.placeTip'))}">${icon('search')}<input id="place" autocomplete="off" placeholder="${t('dock.place')}" maxlength="500" spellcheck="false" aria-label="${t('dock.place')}" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false"></label>
-                <label class="inwrap job" title="${esc(t('dock.jobTip'))}">${icon('server')}<input id="job" placeholder="${t('dock.job')}" maxlength="60" spellcheck="false" aria-label="${t('dock.job')}"></label>
-                <button class="dock-join" data-act="join-player" title="${esc(t('jp.buttonTip'))}" aria-label="${esc(t('jp.button'))}">${icon('userGo')}</button>
-              </div>
-              <div class="dock-info" id="dock-info" aria-live="polite"></div>
-            </div>
-            <div class="dock-actions" id="dock-actions"></div>
-          </div>
-        </section>
-        <section class="view" id="view-presets" hidden></section>
-        <section class="view" id="view-stats" hidden></section>
-        <section class="view" id="view-monitor" hidden>${monitorHtml()}</section>
-        <section class="view" id="view-settings" hidden>${settingsHtml()}</section>
-      </main>
-    </div>`;
+    // The page is React's (ui/src/Shell.tsx): the tabs, Settings' pages, Presets and Statistics; the parts it marks
+    // data-vanilla are still drawn here (update).
+    $('#app').innerHTML = '';
+    const shell = window.BloxkeepUI.shell($('#app'), uiHost(), {
+      pages: SET_PAGES.map(([id, ic]) => ({ id, icon: ic, title: setPageTitle(id) })), page: setPage, preview: !(window.chrome && window.chrome.webview),
+    });
+    uiParts.push(shell.unmount);
+    statsUi = { api: shell.stats };
 
     const st = S.app.settings;
     $('#place').value = st.lastPlaceInput || '';
@@ -680,14 +614,14 @@
     });
     $('#job').addEventListener('input', scheduleSaveInputs);
     $('#job').addEventListener('keydown', e => { if (e.key === 'Enter') launch([...S.selected], false); });
-    mountUiParts();
     wireSettings();
     setView(S.view);
     resolveGame();
   }
 
   function update() {
-    renderSide();
+    pageChanged();
+    renderMetrics();
     renderHeader();
     renderChips();
     renderGrid();
@@ -732,7 +666,7 @@
       }
     }
     S.view = view;
-    document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.view === view));
+    pageChanged(); // the sidebar's tabs
     $('#view-accounts').hidden = view !== 'accounts';
     $('#view-presets').hidden = view !== 'presets';
     if (view === 'presets') uiSignal('presetsShown');
@@ -744,44 +678,6 @@
     watchMonitor();
     // Synced folders to offer under Backup are looked for when Settings opens, not with every state.
     if (view === 'settings' && !S.app.locked) call('backupSuggestions', {}, { silent: true });
-  }
-
-  function renderSide() {
-    const m = S.app.multi;
-    // Roblox closed windows when another one opened, or the Roblox watch found the lock changed in the build Multi-Roblox
-    // meets next (Settings › Roblox updates): the card says so and leads there.
-    const closed = m.enabled && !!S.app.robloxUpdates?.closed;
-    const watched = m.enabled && m.armed && !closed && watchWarns();
-    const cls = !m.enabled ? 'off' : m.armed && !closed && !watched ? 'ok' : 'warn';
-    const text = t(!m.enabled ? 'multi.off' : closed ? 'multi.closed' : watched ? 'multi.watchWarn' : m.armed ? 'multi.ready' : 'multi.notReady');
-    const tip = closed ? t('multi.closedTip', { page: t('set.p.roblox') }) : watched ? t('multi.watchTip', { page: t('set.p.roblox') }) : text;
-    // The light and text open the details; the switch turns it on or off right here.
-    setHtml($('#multi-card'), `<div class="multi ${cls}">
-        <button class="multi-open" data-act="${closed || watched ? 'ru-open' : 'multi-help'}" title="${t('multi.title')}: ${esc(tip)}"><span class="led"></span><div><b>${t('multi.title')}</b><small>${text}</small></div></button>
-        <label class="switch" title="${t(m.enabled ? 'multi.turnOff' : 'multi.turnOn')}"><input type="checkbox" id="side-multi" ${m.enabled ? 'checked' : ''} aria-label="${t('multi.title')}"><span></span></label>
-      </div>`);
-    setHtml($('#side-warn'), S.app.robloxInstalled ? '' : `<div class="warn-card" title="${esc(t('side.noRoblox'))}">${icon('alert')}<span>${t('side.noRoblox')}</span></div>`);
-    const u = S.app.update;
-    setHtml($('#update-slot'), u?.status === 'ready'
-      ? `<button class="btn primary w update-btn" data-act="apply-update" title="${esc(t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version }))}">${icon('refresh')}<span><b>${t('upd.restart')}</b><small>${t('upd.versionN', { v: esc(u.version) })}</small></span></button>` : '');
-    setText($('#nav-count'), String(accounts().length));
-    // Which window is whose, by process id (other tools pick a client by it).
-    const pids = accounts().filter(a => isLocal(a) && a.session?.pid > 0).map(a => `${a.label} · PID ${a.session.pid}`);
-    $('#sys-count').parentElement.title = pids.join('\n');
-    // The mini window's buttons (the card's, and the icon the narrow sidebar keeps) read as pressed while it is open
-    // (the tray menu and Esc can change that too).
-    for (const mini of document.querySelectorAll('.side [data-act="mini"]')) {
-      mini.setAttribute('aria-pressed', String(!!S.app.miniOpen));
-      setText(mini.querySelector('span'), t(S.app.miniOpen ? 'sys.miniHide' : 'sys.mini'));
-      if (mini.classList.contains('nav-mini')) mini.title = t(S.app.miniOpen ? 'sys.miniHide' : 'sys.mini');
-    }
-    const rv = S.app.robloxVersion || {};
-    const short = v => (v || '').split('.').slice(0, 2).join('.');
-    setHtml($('#sys-ver'), rv.installed
-      ? `<span title="${esc(`Roblox ${rv.installed}`)}"><i class="dot ${rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : ''}"></i>Roblox ${esc(short(rv.installed))}${rv.upToDate === false
-        ? ` · ${short(rv.latest) === short(rv.installed) ? t('rbx.newBuild') : t('rbx.available', { v: esc(short(rv.latest)) })}`
-        : rv.upToDate ? ` · ${t('rbx.latestShort')}` : ''}</span>` : '');
-    renderMetrics();
   }
 
   function renderHeader() {
@@ -1290,7 +1186,7 @@
     });
   }
 
-  /** Patches live RAM and uptime numbers in place; called on every metrics event. */
+  /** Patches the cards' live RAM and uptime numbers in place; called on every metrics event (the sidebar's are React's). */
   function renderMetrics() {
     if (document.hidden) return;
     const m = S.metrics;
@@ -1306,27 +1202,6 @@
         if (upEl.textContent !== up) upEl.textContent = up;
       }
     });
-    const count = $('#sys-count');
-    if (!count) return;
-    setText(count, String(m.robloxCount));
-    $('#sys-close').hidden = !m.robloxCount;
-    setText($('#sys-count-label'), t(m.robloxCount === 1 ? 'sys.window1' : 'sys.windows'));
-    // The monitor counts its pictures (windows it can show), not every Roblox process.
-    const tiles = m.monitorCount ?? m.robloxCount;
-    setText($('#mon-count'), tiles === 1 ? t('mon.count1') : t('mon.countN', { n: fmtNum(tiles) }));
-    const hint = $('#mon-hint');
-    if (hint) hint.hidden = !tiles;
-    setText($('#sys-ram'), fmtMb(m.totalMb));
-    // The bar is the whole PC's RAM: Roblox's share first, then everything else in use.
-    const robloxPct = m.systemMb ? Math.min(100, (m.totalMb / m.systemMb) * 100) : 0;
-    const usedPct = Math.max(robloxPct, m.usedPct || 0);
-    // Transforms only: moving the bars never makes the page re-run layout.
-    const meter = $('#sys-meter');
-    const robloxBar = `scaleX(${(robloxPct / 100).toFixed(3)})`, otherBar = `translateX(${robloxPct.toFixed(1)}%) scaleX(${((usedPct - robloxPct) / 100).toFixed(3)})`;
-    if (meter.children[0].style.transform !== robloxBar) meter.children[0].style.transform = robloxBar;
-    if (meter.children[1].style.transform !== otherBar) meter.children[1].style.transform = otherBar;
-    $('#sys-card').classList.toggle('hot', usedPct >= 90);
-    setText($('#sys-foot'), m.systemMb ? t('sys.used', { pct: Math.round(usedPct), free: fmtMb(m.availableMb || 0) }) : '');
   }
 
   /** Writing identical text still forces a layout pass, so skip no-op updates. */
@@ -1349,22 +1224,6 @@
   ];
   const setPageTitle = id => { const key = SET_PAGES.find(p => p[0] === id)?.[2]; return key ? t(key) : 'Discord'; };
   let setPage = (() => { const id = store.get(SET_PAGE_KEY, 'launch'); return SET_PAGES.some(p => p[0] === id) ? id : 'launch'; })();
-  function settingsHtml() {
-    // A page: the section alone, its title and groups come from ui/src/settings (mountUiParts).
-    const page = id => `<section class="set-page" data-page="${id}" id="set-page-${id}" aria-labelledby="set-page-${id}-h" ${id === setPage ? '' : 'hidden'}></section>`;
-    return `<header class="top"><div class="top-title"><h1>${t('set.title')}</h1></div></header>
-      <div class="set-layout">
-        <nav class="set-nav" aria-label="${esc(t('set.title'))}">
-          <label class="search set-search">${icon('search')}<input id="set-q" type="search" placeholder="${esc(t('set.search'))}" maxlength="60" aria-label="${esc(t('set.search'))}" autocomplete="off" spellcheck="false"></label>
-          ${SET_PAGES.map(([id, ic]) => `<button type="button" class="set-nav-item" data-set-page="${id}" ${id === setPage ? 'aria-current="page"' : ''}>${icon(ic)}<span>${setPageTitle(id)}</span><i class="set-nav-dot" title="${esc(t('set.needsLook'))}" hidden></i></button>`).join('')}
-        </nav>
-        <div class="scroll set-scroll"><div class="settings">
-        ${SET_PAGES.map(([id]) => page(id)).join('')}
-        <p class="set-empty" id="set-empty" hidden>${t('set.noMatch')}</p>
-      </div></div>
-      </div>`;
-  }
-
   /* Settings › Discord: what a summary can list. */
   const DC_PARTS = ['total', 'accounts', 'games', 'sessions', 'kicks'];
 
@@ -1524,6 +1383,17 @@
    * buttons lead. Made afresh for each part (a language change closes every dialog first).
    */
   const uiListeners = new Set();
+  /**
+   * The page's own state the React parts draw (host.page): the tab shown, the live figures. pageChanged() after any of
+   * it changes; the snapshot is made again only when asked for after that.
+   */
+  const pageListeners = new Set();
+  let pageSnap = null;
+  function pageChanged() {
+    pageSnap = null;
+    pageListeners.forEach(f => f());
+  }
+  const pageState = () => pageSnap ||= { view: S.view, metrics: S.metrics };
   /** What app.js tells the React parts by name (host.on): "hideDiscordLink", "clearPassword". */
   const uiSignals = new Map();
   const uiSignal = name => uiSignals.get(name)?.forEach(f => f());
@@ -1559,6 +1429,9 @@
     },
     state: () => S.app,
     subscribe: f => { uiListeners.add(f); return () => uiListeners.delete(f); },
+    page: pageState,
+    subscribePage: f => { pageListeners.add(f); return () => pageListeners.delete(f); },
+    fmtMb,
     go(target) {
       if (target.startsWith('settings:')) openSettings(target.slice(9));
       else if (target === 'guide') call('openGuide');
@@ -2702,12 +2575,6 @@
      moved, and { hidden } whenever something of the page must show there: another tab, a dialog or menu, the lock
      screen, the window hidden. Windows draws the pictures above the whole page, so nothing could show through them. */
   const MON = { sent: null, frame: 0, dpr: null };
-  function monitorHtml() {
-    // In the browser preview there is no app to draw the pictures: say what goes here.
-    const preview = !(window.chrome && window.chrome.webview);
-    return `<header class="top"><div class="top-title"><h1>${t('mon.title')}</h1><p><b id="mon-count"></b><span id="mon-hint" hidden><span class="sep">·</span>${t('mon.hint')}</span></p></div></header>
-      <div class="mon-area ${preview ? 'preview' : ''}" id="mon-area">${preview ? `<p>${t('mon.preview')}</p>` : ''}</div>`;
-  }
   function monitorArea() {
     const area = $('#mon-area');
     if (!S.shell || S.view !== 'monitor' || !area || document.hidden || openModals > 0 || menuEl) return { hidden: true };
@@ -2957,13 +2824,13 @@
       img.replaceWith(ini);
       return;
     }
-    if (!img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .activity, .pal-ic') || img.closest('[data-react]')) return;
+    // React's parts draw their own placeholder; the parts of its page app.js still fills (data-vanilla) get this one.
+    if (!img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .activity, .pal-ic') || img.closest('[data-react], [data-vanilla]')?.hasAttribute('data-react')) return;
     const ph = document.createElement(img.closest('.recent') ? 'i' : 'span');
     ph.className = img.closest('.recent') ? 'ph' : img.matches('.gicon') ? img.className : 'gph';
     if (!img.closest('.recent')) ph.innerHTML = icon('gamepad');
     img.replaceWith(ph);
   }, true);
-  document.addEventListener('change', e => { if (e.target.id === 'side-multi') setMulti(e.target); });
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
     if (!el || !S.app) return;
@@ -3298,6 +3165,7 @@
       stopBoot();
       S.selected.clear();
       S.metrics = { accounts: [], robloxCount: 0, totalMb: 0, systemMb: 0 };
+      pageChanged();
       renderLock();
       return;
     }
@@ -3410,6 +3278,7 @@
   });
   bridge.on('metrics', m => {
     S.metrics = m;
+    pageChanged();
     if (S.shell) renderMetrics();
   });
   const refreshTimes = () => {

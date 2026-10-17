@@ -16,19 +16,10 @@ import { Palette, type PaletteEntry } from './Palette';
 import { PasswordLogin, type PasswordLoginApi } from './PasswordLogin';
 import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
-import { PresetsView } from './PresetsView';
 import { QuickLogin, type QuickLoginApi } from './QuickLogin';
 import { Servers } from './Servers';
-import { StatsView, type StatsApi } from './StatsView';
-import { AppearancePage } from './settings/AppearancePage';
-import { BackupPage } from './settings/BackupPage';
-import { DiscordPage } from './settings/DiscordPage';
-import { LaunchPage } from './settings/LaunchPage';
-import { NotifyPage } from './settings/NotifyPage';
-import { PerfPage } from './settings/PerfPage';
-import { RobloxPage } from './settings/RobloxPage';
-import { SecurityPage } from './settings/SecurityPage';
-import { UpdatesPage } from './settings/UpdatesPage';
+import { Shell, type SettingsPageInfo } from './Shell';
+import { type StatsApi } from './StatsView';
 import { WhatsNew, type Release } from './WhatsNew';
 
 /** Draws into el now (app.js focuses the first control right after, so the content must be there), until unmount. */
@@ -96,14 +87,7 @@ const BloxkeepUI = {
   multiHelp(el: HTMLElement, host: Host, enable: () => void) {
     return mount(el, host, <MultiHelp enable={enable} />);
   },
-  /** A Settings page into its section (app.js makes the section; the page's title comes from there too). */
-  settingsPage(el: HTMLElement, host: Host, page: string, title: string) {
-    const pages: Record<string, ReactNode> = {
-      launch: <LaunchPage title={title} />, roblox: <RobloxPage title={title} />, perf: <PerfPage title={title} />, notify: <NotifyPage title={title} />,
-      discord: <DiscordPage title={title} />, appearance: <AppearancePage title={title} />, security: <SecurityPage title={title} />, backup: <BackupPage title={title} />, updates: <UpdatesPage title={title} />,
-    };
-    return mount(el, host, pages[page]);
-  },
+
   /** Launch order's text and list into its dialog's body; Done reads list.ids(). */
   launchOrder(el: HTMLElement, host: Host, accounts: OrderAccount[]) {
     const list = createRef<OrderListApi>();
@@ -132,12 +116,7 @@ const BloxkeepUI = {
     const unmount = mount(el, host, <QuickLogin forRealm={forRealm} forName={forName} api={api} browserButton={browserButton} />);
     return { unmount, api: api.current! };
   },
-  /** The Statistics tab into its section; api opens Activity and exports it (Ctrl+K). */
-  statsView(el: HTMLElement, host: Host) {
-    const api = createRef<StatsApi>();
-    const unmount = mount(el, host, <StatsView api={api} />);
-    return { unmount, api: api.current! };
-  },
+
   /** Quick search's box and list into its dialog's body; close closes the dialog. */
   palette(el: HTMLElement, host: Host, entries: PaletteEntry[], close: () => void) {
     return mount(el, host, <Palette entries={entries} close={close} />);
@@ -154,9 +133,12 @@ const BloxkeepUI = {
     const unmount = mount(el, host, <AccountForm account={account as never} api={form} browser={browser} />);
     return { unmount, form: form.current! };
   },
-  /** The Presets tab into its section. */
-  presetsView(el: HTMLElement, host: Host) {
-    return mount(el, host, <PresetsView />);
+
+  /** The main page into #app (the vault open); stats is the Statistics tab's api. */
+  shell(el: HTMLElement, host: Host, opts: { pages: SettingsPageInfo[]; page: string; preview: boolean }) {
+    const stats = createRef<StatsApi>();
+    const unmount = mount(el, host, <Shell {...opts} stats={stats} />);
+    return { unmount, stats: stats.current! };
   },
   /** The lock screen into #app: opened gets the state of the vault it opened (app.js applyState). */
   lock(el: HTMLElement, host: Host, opts: { mode: LockMode; notice: string; kept: { pw1: string; pw2: string } | null }, opened: (state: object) => void) {

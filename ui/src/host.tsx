@@ -5,6 +5,17 @@ import { createContext, useContext, useEffect, useState, useSyncExternalStore } 
 /** What the app last pushed (its state event: accounts, settings…), as app.js keeps it in S.app. */
 export type AppState = Record<string, any>;
 
+/** The live figures the app sends every few seconds (its metrics event): Roblox's windows and the PC's memory. */
+export type Metrics = {
+  accounts: { id: string; ramMb: number }[]; robloxCount: number; monitorCount?: number;
+  totalMb: number; systemMb: number; availableMb?: number; usedPct?: number;
+};
+/** The page's own state, kept by app.js (S): the tab shown, the live figures… A new object whenever any of it changes. */
+export interface PageState {
+  view: string;
+  metrics: Metrics;
+}
+
 export interface Host {
   /** The interface's words for an i18n key (wwwroot/i18n.js), {placeholders} filled from vars. */
   t(key: string, vars?: Record<string, string | number>): string;
@@ -94,12 +105,23 @@ export interface Host {
   /** The app's state now, and a way to hear when a new one comes (returns how to stop listening). */
   state(): AppState;
   subscribe(listener: () => void): () => void;
+  /** The page's own state now (app.js S), and a way to hear when it changes. */
+  page(): PageState;
+  subscribePage(listener: () => void): () => void;
+  /** Megabytes as the interface writes them ("850 MB", "1.7 GB"; app.js fmtMb). */
+  fmtMb(mb: number): string;
 }
 
 /** The app's state, drawn again whenever the app pushes a new one. */
 export function useAppState(): AppState {
   const { state, subscribe } = useHost();
   return useSyncExternalStore(subscribe, state);
+}
+
+/** A part of the page's own state, drawn again when that part changes (pick returns the same object until then). */
+export function usePage<T>(pick: (page: PageState) => T): T {
+  const { page, subscribePage } = useHost();
+  return useSyncExternalStore(subscribePage, () => pick(page()));
 }
 
 export const HostContext = createContext<Host | null>(null);
