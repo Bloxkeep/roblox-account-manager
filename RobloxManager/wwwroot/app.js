@@ -178,13 +178,28 @@
    * names stay in a.real for the search box and the name sort only; copying a username asks the app, which has it.
    */
   const hidingNames = () => !!S.app?.hideNames;
+  /**
+   * The accounts as last shown, by id: one whose data didn't change keeps its object, so the React parts (which skip
+   * what they drew from the same object) draw only the cards that changed with a state push, not every card.
+   */
+  let shownAccounts = new Map();
   function maskNames(st) {
     if (!st.accounts) return;
+    const next = new Map();
     // Copies: what the bridge handed over stays as it came (the preview's fake bridge hands over its own objects).
     st.accounts = st.accounts.map((a, i) => {
-      const real = a.real || { label: a.label, username: a.username, displayName: a.displayName, alias: a.alias };
-      return { ...a, real, ...(st.hideNames ? { label: t('hide.account', { n: i + 1 }), username: '', displayName: '', alias: '' } : real) };
+      // What the copy shown depends on: the account's own data and, while names are hidden, its place and the language.
+      const key = `${st.hideNames ? `${lang}|${i}` : ''}|${JSON.stringify(a)}`;
+      const was = shownAccounts.get(a.id);
+      let shown = was?.key === key ? was.account : null;
+      if (!shown) {
+        const real = a.real || { label: a.label, username: a.username, displayName: a.displayName, alias: a.alias };
+        shown = { ...a, real, ...(st.hideNames ? { label: t('hide.account', { n: i + 1 }), username: '', displayName: '', alias: '' } : real) };
+      }
+      next.set(a.id, { key, account: shown });
+      return shown;
     });
+    shownAccounts = next;
   }
 
   /* ───────────────────────── formatting ───────────────────────── */
