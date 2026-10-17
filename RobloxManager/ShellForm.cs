@@ -811,7 +811,7 @@ public sealed class ShellForm : Form
     {
         // Separate profile folders, because a running browser can't be reopened with different switches.
         return CoreWebView2Environment.CreateAsync(null, Path.Combine(Vault.DataDir, Prefs.SafeRendering ? "webview-safe" : "webview"),
-            WebView2Setup.EnvironmentOptions());
+            WebView2Setup.MainWindowOptions());
     }
 
     /// <param name="firstStart">

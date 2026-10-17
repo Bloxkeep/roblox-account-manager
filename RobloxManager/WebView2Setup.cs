@@ -22,6 +22,16 @@ static class WebView2Setup
     public static CoreWebView2EnvironmentOptions? EnvironmentOptions() =>
         Prefs.SafeRendering ? new CoreWebView2EnvironmentOptions(SafeRenderingArgs) : null;
 
+    /// <summary>
+    /// The main window's browser shows only Bloxkeep's own page (and the pictures in it), so the browser's own
+    /// background work (fetching its settings and component updates on its own) is left out there. The sign-in,
+    /// captcha and roblox.com windows keep a full browser (<see cref="EnvironmentOptions"/>).
+    /// </summary>
+    const string MainWindowArgs = "--disable-background-networking --disable-component-update";
+
+    public static CoreWebView2EnvironmentOptions MainWindowOptions() =>
+        new(Prefs.SafeRendering ? $"{MainWindowArgs} {SafeRenderingArgs}" : MainWindowArgs);
+
     public static async Task<bool> TryInstallAsync(IWin32Window owner)
     {
         if (!Ui.Modal(() => Dialog.Confirm(owner,

@@ -20,6 +20,8 @@
     <!-- Lighter runtime: no ICU culture data, no background GC thread, and a GC that prefers giving memory back. -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <!-- Compiled ahead of time when published (build.bat), so the app starts without compiling its own code first. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
     <!-- The WebView2 package also ships its WPF control, which drags in a WindowsBase version mismatch we never load. -->
     <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
