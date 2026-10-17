@@ -201,6 +201,7 @@ static class DiscordSuite
             Add("Alert · disconnected, rejoining", drop.Message);
             Stay(1, 0, TimeSpan.FromMinutes(134), null, open: true);
             Add("Alert · lost connection, restarting Roblox", Raise(() => Notify(L.F("{0} seems disconnected — restarting Roblox…", Name(1)), "drop", accounts[1].Id)).Message);
+            Add("Alert · couldn't get into the server", Raise(() => Notify(L.F("{0} couldn't get into that server (full or closed) — joining another one…", Name(1)), "drop", accounts[1].Id)).Message);
             Stay(2, 0, TimeSpan.FromMinutes(3), 279);
             Add("Alert · keeps getting disconnected", Raise(() => Notify(L.F("{0} keeps getting disconnected — trying again every few minutes.", Name(2)), "rejoinSlow", accounts[2].Id)).Message);
             Add("Alert · couldn't rejoin (an error)", Raise(() => Notify(L.F("Couldn't rejoin {0}: {1}", Name(2), "Roblox took too long to answer."), "rejoinFail", accounts[2].Id)).Message);

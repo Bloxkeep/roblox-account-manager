@@ -12,6 +12,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
 {
     ("afk", false, AfkSuite.Run),
     ("restart", false, RestartSuite.Run),
+    ("rejoin", false, RejoinSuite.Run),
     ("presets", false, PresetSuite.Run),
     ("window", false, WindowSuite.Run),
     ("watch", false, WatchSuite.Run),

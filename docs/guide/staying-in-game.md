@@ -30,6 +30,7 @@ When an account's Roblox disconnects, gets kicked or loses the connection, Bloxk
 | Situation | What Bloxkeep does |
 |---|---|
 | Roblox disconnects | Opens the game again after 10 seconds. |
+| It can't get into a server (the one it was sent to is full or has ended) | After a minute without a server, closes it and opens the same game again on any server. |
 | It keeps dropping | From the third time it waits 2, 5, 10, then 15 minutes between tries. The card shows the wait and a **Cancel** button. |
 | 10 minutes in the game | The count starts over. |
 | No internet | Retries every 30 seconds, up to 20 times. |

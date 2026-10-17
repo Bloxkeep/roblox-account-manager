@@ -80,6 +80,13 @@ public sealed partial class AppController : IDisposable
     static readonly TimeSpan TraySweep = TimeSpan.FromSeconds(15);
     /// <summary>A log stuck in "joining" (a join or teleport that never finished) stops being trusted after this.</summary>
     static readonly TimeSpan JoiningTimeout = TimeSpan.FromMinutes(2);
+    /// <summary>
+    /// A client that started its game and got no server in this time isn't getting one: the server it was sent to has
+    /// ended or is full (Roblox's join queue), or the join failed. Seen 2026-10-17 (0.743): five clients sent to Steal
+    /// An Egg sat on "This experience has ended, or the server became unavailable…" for three minutes without a
+    /// "Joining game" line, until Bloxkeep's presence check closed them.
+    /// </summary>
+    static readonly TimeSpan GetInTimeout = TimeSpan.FromSeconds(60);
     readonly Dictionary<long, string> _avatarUrls = new();
     readonly Dictionary<long, GameInfo?> _games = new();
     readonly Dictionary<long, DateTime> _gameFetchedAt = new();
@@ -3077,7 +3084,7 @@ public sealed partial class AppController : IDisposable
             PersistSoon(); // the open clients on disk (see Persist)
             // Read now, with the log's last lines (a leave by choice logged right before the client quit), before the
             // log watcher drops the pid below.
-            var log = _logs.LastStateOf(info.Pid);
+            var log = EndedState(info.Pid);
             // Roblox closed it because another client opened: not a hand-over, and no auto-rejoin.
             bool closedByRoblox = CheckClosedByRoblox(id, info.Pid, info.Launch.StartedAt, now, ChildrenOf);
             // Its log not followed (not found in time), but it left its notification-area copy behind: Roblox starts
@@ -3544,22 +3551,30 @@ public sealed partial class AppController : IDisposable
     }
 
     /// <summary>
-    /// Acts on a kick or lost connection as soon as the client logs it, instead of after two presence checks. A
-    /// voluntary leave, or the same account joining from another device, is left alone.
+    /// Acts on a kick or lost connection as soon as the client logs it, instead of after two presence checks, and on a
+    /// game start that never got a server (<see cref="GetInTimeout"/>): the rejoin then goes to any server of the game.
+    /// A voluntary leave, or the same account joining from another device, is left alone.
     /// </summary>
     void RejoinFromLogs()
     {
         if (_vault is null || _running.Count == 0 || Settling)
             return;
+        var now = DateTime.UtcNow;
         foreach (var (id, info) in _running.ToList())
         {
-            if (_logs.StateOf(info.Pid) is not { Status: "disconnected" } state || state.Reason == SameAccountElsewhere
-                || _closingForRejoin.Contains(info.Pid) || DateTime.UtcNow - state.At < TimeSpan.FromSeconds(3)
-                || FindAccount(id) is not { } account || !RejoinOn(account, info.Launch.PresetId) || info.Launch.Target is null
+            if (_logs.StateOf(info.Pid) is not { } state || _closingForRejoin.Contains(info.Pid))
+                continue;
+            bool dropped = state is { Status: "disconnected" } && state.Reason != SameAccountElsewhere && now - state.At >= TimeSpan.FromSeconds(3);
+            // A game start logs "joining" without a server; the server comes with the "Joining game" line.
+            bool neverGotIn = state is { Status: "joining", JobId: null } && now - state.At >= GetInTimeout;
+            if ((!dropped && !neverGotIn)
+                || FindAccount(id) is not { } account || !RejoinOn(account, info.Launch.PresetId) || info.Launch.Target is not { } target
                 || account.Banned == true) // no rejoin follows (see ShouldRejoin): the window stays, with Roblox's reason
                 continue;
             _closingForRejoin.Add(info.Pid);
-            Notify(L.F("{0} seems disconnected — restarting Roblox…", Name(account)), "info", "drop", account.Id);
+            Notify(dropped ? L.F("{0} seems disconnected — restarting Roblox…", Name(account))
+                : target.JobId is not null ? L.F("{0} couldn't get into that server (full or closed) — joining another one…", Name(account))
+                : L.F("{0} couldn't get into the game — trying again…", Name(account)), "info", "drop", account.Id);
             RobloxProcesses.Close(info.Pid);
         }
     }
@@ -3821,6 +3836,17 @@ public sealed partial class AppController : IDisposable
     /// </summary>
     bool LogFollowed(int pid) =>
         _logs.StateOf(pid) is { } log && !(log.Status == "joining" && DateTime.UtcNow - log.At > JoiningTimeout);
+
+    /// <summary>
+    /// What an ended client's log said last. Bloxkeep's own close (to start it again) makes Roblox leave the game first:
+    /// that leave is not the person's, so auto-rejoin still brings the client back. Seen 2026-10-17 (0.743): five
+    /// clients closed on Roblox's "experience has ended" screen each logged leaveUGCGameInternal, and none came back.
+    /// </summary>
+    RobloxLogWatcher.ClientState? EndedState(int pid)
+    {
+        var log = _logs.LastStateOf(pid);
+        return log is { Status: "left" } && _closingForRejoin.Contains(pid) ? log with { Status = "disconnected", Reason = null } : log;
+    }
 
     /// <summary>
     /// A client that is still open while its account has not been in a game for two presence checks is

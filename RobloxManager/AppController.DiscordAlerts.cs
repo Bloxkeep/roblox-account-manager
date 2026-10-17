@@ -46,6 +46,8 @@ public sealed partial class AppController
                 var (title, description, color) = type switch
                 {
                     "drop" when en.StartsWith("{0} seems disconnected", StringComparison.Ordinal) => (DT("Lost connection, restarting Roblox"), (string?)null, DiscordWebhook.Yellow),
+                    "drop" when en.StartsWith("{0} couldn't get into that server", StringComparison.Ordinal) => (DT("Couldn't get into the server, joining another"), null, DiscordWebhook.Yellow),
+                    "drop" when en.StartsWith("{0} couldn't get into the game", StringComparison.Ordinal) => (DT("Couldn't get into the game, trying again"), null, DiscordWebhook.Yellow),
                     "drop" => (DT("Disconnected, rejoining"), null, DiscordWebhook.Yellow),
                     "rejoinSlow" => (DT("Keeps getting disconnected"), DT("Bloxkeep now tries to rejoin every few minutes."), DiscordWebhook.Red),
                     "rejoinFail" => (DT("Couldn't rejoin"), why is null ? null : DiscordWebhook.Escape(why), DiscordWebhook.Red),
