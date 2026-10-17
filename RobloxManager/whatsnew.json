@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.1.3",
+    "date": "2026-10-17",
+    "new": {
+      "en": [
+        "The tray icon's menu shows whether Multi-Roblox is on, runs a preset, and closes every Roblox window, without opening Bloxkeep."
+      ],
+      "vi": [
+        "Menu ở biểu tượng khay cho biết Multi-Roblox có đang bật không, chạy preset và đóng mọi cửa sổ Roblox mà không cần mở Bloxkeep."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Multi-Roblox is on as soon as Bloxkeep starts, before the master password, so Roblox windows opened from roblox.com or the Roblox app run side by side even at the lock screen."
+      ],
+      "vi": [
+        "Multi-Roblox bật ngay khi Bloxkeep mở, trước cả khi nhập mật khẩu chủ, nên cửa sổ Roblox mở từ roblox.com hay app Roblox vẫn chạy song song kể cả lúc đang ở màn hình khóa."
+      ]
+    }
+  },
+  {
     "version": "1.1.2",
     "date": "2026-10-17",
     "new": {
