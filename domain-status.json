@@ -1,5 +1,10 @@
 {
-  "changedAt": "2026-10-16T04:36:48Z",
+  "changedAt": "2026-10-17T04:37:36Z",
+  "failing": {
+    "crtsh": {
+      "since": "2026-10-17T04:37:36Z"
+    }
+  },
   "names": {},
   "schema": 1
 }
