@@ -47,8 +47,9 @@ export function Lock({ mode, notice, kept, opened }: {
   }, []);
 
   const fail = (msg: string) => {
+    const f = form.current;
+    if (!f) return; // drawn again meanwhile (another language): this screen is gone
     setError(msg);
-    const f = form.current!;
     f.classList.remove('shake');
     void f.offsetWidth; // starts the shake again
     f.classList.add('shake');

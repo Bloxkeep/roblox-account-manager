@@ -1,7 +1,7 @@
 [
   {
     "version": "1.1.1",
-    "date": "2026-10-16",
+    "date": "2026-10-17",
     "new": {
       "en": [
         "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it.",
@@ -20,14 +20,16 @@
         "Roblox gives each PC only a few server lists a minute. When it says to wait, Servers shows how long and loads again by itself, and sorting by ping or FPS no longer spends a list on its own.",
         "Windows whose content changes while open (signing in, importing a vault file, Join a player, a preset’s settings, Send feedback) stay put instead of jumping.",
         "The game list above the game box keeps its height while it loads.",
-        "A filter chip cut off at the edge of the row fades out whole."
+        "A filter chip cut off at the edge of the row fades out whole.",
+        "Bloxkeep’s screens were rebuilt underneath, so new features can come faster. They look and work as before: nothing to relearn."
       ],
       "vi": [
         "Cửa sổ Server giữ nguyên kích thước khi đang tải, các server đang có vẫn hiện tới khi có danh sách mới, không còn nhảy sang vòng xoay rồi nhảy lại.",
         "Roblox chỉ cho mỗi máy tải vài danh sách server mỗi phút. Khi Roblox bảo chờ, cửa sổ Server ghi rõ còn bao lâu rồi tự tải lại; sắp xếp theo ping hay FPS không còn tự tốn thêm một lượt.",
         "Các cửa sổ có nội dung thay đổi khi đang mở (đăng nhập, nhập file dữ liệu, Vào cùng người chơi, cài đặt preset, Gửi góp ý) đứng yên một chỗ, không nhảy theo nữa.",
         "Danh sách game phía trên ô game giữ nguyên chiều cao khi đang tải.",
-        "Thẻ bộ lọc bị cắt ở mép hàng giờ mờ dần cả thẻ."
+        "Thẻ bộ lọc bị cắt ở mép hàng giờ mờ dần cả thẻ.",
+        "Giao diện Bloxkeep được làm lại phần bên trong để các tính năng mới ra nhanh hơn. Mọi thứ trông và dùng vẫn như cũ, không phải làm quen lại."
       ]
     },
     "fixed": {
@@ -35,13 +37,15 @@
         "Closing a Roblox window yourself no longer counts as a drop: Bloxkeep doesn't rejoin it and then say it “didn't rejoin: no Roblox window appeared”.",
         "Roblox now leaves a copy of itself in the notification area when its window closes, and that copy took over the next launch without opening a window. Bloxkeep ends it before opening Roblox, and Close all no longer ends a Roblox that another program (Bloxstrap, for one) is just starting.",
         "Discord play-time summaries are sent again (every one had failed).",
-        "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed."
+        "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed.",
+        "Sign in with your phone: the code’s “expires in” time stays right after Bloxkeep was minimized."
       ],
       "vi": [
         "Tự tay đóng cửa sổ Roblox giờ không còn bị tính là văng game: Bloxkeep không vào lại rồi báo “không vào lại được: không có cửa sổ Roblox nào hiện ra” nữa.",
         "Roblox giờ để lại một bản chạy ngầm ở khay hệ thống mỗi khi đóng cửa sổ, và bản đó nuốt lần mở tiếp theo nên không có cửa sổ nào hiện ra. Bloxkeep tắt nó trước khi mở Roblox, và Close all không còn tắt nhầm Roblox mà chương trình khác (như Bloxstrap) vừa mở.",
         "Bản tóm tắt giờ chơi gửi lên Discord đã gửi được trở lại (trước đó lần nào cũng lỗi).",
-        "Cửa sổ Server không còn kẹt ở “Roblox vẫn đang bận” sau vài lần bấm: trước đây nó hỏi lại Roblox quá sớm và hỏi nhiều hơn cần."
+        "Cửa sổ Server không còn kẹt ở “Roblox vẫn đang bận” sau vài lần bấm: trước đây nó hỏi lại Roblox quá sớm và hỏi nhiều hơn cần.",
+        "Đăng nhập bằng điện thoại: thời gian “hết hạn sau” của mã vẫn đúng sau khi thu nhỏ Bloxkeep."
       ]
     }
   },

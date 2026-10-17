@@ -154,7 +154,7 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.1.1 · 16 tháng 10, 2026"
+              small "Bloxkeep 1.1.1 · 17 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
@@ -188,6 +188,9 @@ html [data-theme="dark" lang="vi"]
           li
             svg.i #1l5qw3q
             span "Thẻ bộ lọc bị cắt ở mép hàng giờ mờ dần cả thẻ."
+          li
+            svg.i #1l5qw3q
+            span "Giao diện Bloxkeep được làm lại phần bên trong để các tính năng mới ra nhanh hơn. Mọi thứ trông và dùng vẫn như cũ, không phải làm quen lại."
         h4.fixed.wn-kind.wn-sub "Đã sửa"
           svg.i #yqrnd9
         ul.fixed.wn-also
@@ -203,6 +206,9 @@ html [data-theme="dark" lang="vi"]
           li
             svg.i #yqrnd9
             span "Cửa sổ Server không còn kẹt ở “Roblox vẫn đang bận” sau vài lần bấm: trước đây nó hỏi lại Roblox quá sớm và hỏi nhiều hơn cần."
+          li
+            svg.i #yqrnd9
+            span "Đăng nhập bằng điện thoại: thời gian “hết hạn sau” của mã vẫn đúng sau khi thu nhỏ Bloxkeep."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

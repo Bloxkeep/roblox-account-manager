@@ -96,16 +96,18 @@ export interface ToastsApi {
  * closes it, like a Windows notification. The same message again while it shows stays longer instead of stacking.
  */
 export function Toasts({ api }: { api: Ref<ToastsApi> }) {
-  const [list, setList] = useState<Toast[]>([]);
+  // The list itself, changed at once (a second message in the same moment sees the first), drawn after.
+  const items = useRef<Toast[]>([]);
+  const [, draw] = useState(0);
+  const set = (next: Toast[]) => { items.current = next; draw(n => n + 1); };
+  const list = items.current;
   const seq = useRef(0);
   const timers = useRef(new Map<number, number>());
   const els = useRef(new Map<number, HTMLDivElement>());
-  const current = useRef(list);
-  current.current = list;
   const dismiss = (id: number) => {
     clearTimeout(timers.current.get(id));
-    setList(l => l.map(x => x.id === id ? { ...x, out: true } : x));
-    setTimeout(() => setList(l => l.filter(x => x.id !== id)), 220);
+    set(items.current.map(x => x.id === id ? { ...x, out: true } : x));
+    setTimeout(() => set(items.current.filter(x => x.id !== id)), 220);
   };
   const arm = (id: number, ms: number) => {
     clearTimeout(timers.current.get(id));
@@ -114,7 +116,7 @@ export function Toasts({ api }: { api: Ref<ToastsApi> }) {
   useImperativeHandle(api, () => ({
     show(text, kind, action) {
       const life = Math.min(Math.max(kind === 'error' ? 6500 : action ? 9000 : 3800, text.length * 60), 15000);
-      const same = !action && current.current.find(x => !x.out && x.text === text && x.kind === kind);
+      const same = !action && items.current.find(x => !x.out && x.text === text && x.kind === kind);
       if (same) {
         const el = els.current.get(same.id);
         // Held while pointed at or focused: leaving it starts the countdown, as for any toast.
@@ -128,13 +130,14 @@ export function Toasts({ api }: { api: Ref<ToastsApi> }) {
         return;
       }
       const id = ++seq.current;
-      setList(l => [...l.slice(Math.max(0, l.length - 2)), { id, text, kind, action, out: false, again: 0 }]);
+      const l = items.current;
+      set([...l.slice(Math.max(0, l.length - 2)), { id, text, kind, action, out: false, again: 0 }]);
       arm(id, life);
     },
     clear() {
       timers.current.forEach(t => clearTimeout(t));
       timers.current.clear();
-      setList([]);
+      set([]);
     },
   }), []);
   useEffect(() => () => timers.current.forEach(t => clearTimeout(t)), []);

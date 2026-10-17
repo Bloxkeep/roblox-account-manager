@@ -34,13 +34,15 @@ function GameIcon({ url, className, holder }: { url?: string | null; className?:
 export function AccountsHead() {
   const { tn, t } = useHost();
   const app = useAppState();
-  const page = usePage(p => p);
+  const selected = usePage(p => p.selected);
+  // What the search, chip and group show (host.visible reads them): drawn again when they change.
+  usePage(p => p.query); usePage(p => p.filter); usePage(p => p.group);
   const host = useHost();
   const list: Account[] = app.accounts || [];
-  const n = page.selected.size;
+  const n = selected.size;
   // Selected accounts the search or filter hides still count (Play, Delete act on them), so it says so.
   const shown = n ? new Set(host.visible().map(a => a.id)) : null;
-  const hidden = n ? [...page.selected].filter(id => !shown!.has(id)).length : 0;
+  const hidden = n ? [...selected].filter(id => !shown!.has(id)).length : 0;
   return <p id="acc-sub">{richNodes(tn('acc.summary', list.length, { p: list.filter(inGame).length, o: list.filter(isOnline).length }))}
     {n ? <><span className="sep">·</span>{richNodes(t(hidden ? 'acc.selectedHidden' : 'acc.selected', { n, h: hidden }))}</>
       : list.length ? <><span className="sep">·</span>{richNodes(t('acc.selectAll'))}</> : null}</p>;
@@ -54,7 +56,7 @@ export function AccountsHead() {
 export function AccountsBar() {
   const { t, compareText } = useHost();
   const app = useAppState();
-  const { filter, group, layout, sort } = usePage(p => p);
+  const filter = usePage(p => p.filter), group = usePage(p => p.group), layout = usePage(p => p.layout), sort = usePage(p => p.sort);
   const list: Account[] = app.accounts || [];
   const groups = [...new Set(list.map(a => a.group).filter(Boolean))].sort(compareText);
   const inGroup = group ? list.filter(a => a.group === group) : list;
@@ -144,12 +146,17 @@ export function AccountGrid() {
   const host = useHost();
   const { t, logo } = host;
   const app = useAppState();
-  const page = usePage(p => p);
+  // Only what the list shows depends on: the dock's game box, the picker and the live figures don't draw it again.
+  const page = {
+    selected: usePage(p => p.selected), layout: usePage(p => p.layout), query: usePage(p => p.query), filter: usePage(p => p.filter),
+    group: usePage(p => p.group), sort: usePage(p => p.sort), introShown: usePage(p => p.introShown),
+  };
   const all: Account[] = app.accounts || [];
   const shown = all.length ? host.visible() : [];
   const asList = page.layout === 'list';
-  // Relative times ("5 min ago") drift: drawn again once a minute while the window is visible.
-  const [, tick] = useState(0);
+  // Relative times ("5 min ago") and countdowns drift: the cards are drawn again once a minute while the window is
+  // visible, whether or not the app pushed anything meanwhile.
+  const [minute, tick] = useState(0);
   useEffect(() => {
     const again = () => { if (!document.hidden) tick(n => n + 1); };
     const timer = setInterval(again, 60_000);
@@ -186,7 +193,7 @@ export function AccountGrid() {
   }
   return <div id="grid">
     <GridBox key={asList ? 'list' : 'cards'} asList={asList} intro={!page.introShown} label={t('acc.title')} box={grid}>
-      {shown.map(a => <AccountItem key={a.id} a={a} asList={asList} sel={page.selected.has(a.id)} lang={host.lang} />)}
+      {shown.map(a => <AccountItem key={a.id} a={a} asList={asList} sel={page.selected.has(a.id)} lang={host.lang} minute={minute} />)}
     </GridBox>
   </div>;
 }
@@ -208,7 +215,7 @@ function GridBox({ asList, intro, label, box, children }: { asList: boolean; int
     }}>{children}</div>;
 }
 
-const AccountItem = memo(function AccountItem({ a, asList, sel }: { a: Account; asList: boolean; sel: boolean; lang: string }) {
+const AccountItem = memo(function AccountItem({ a, asList, sel }: { a: Account; asList: boolean; sel: boolean; lang: string; minute: number }) {
   return asList ? <AccountRow a={a} sel={sel} /> : <AccountCard a={a} sel={sel} />;
 });
 
@@ -469,7 +476,7 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
     if (chips.every(c => c.hidden)) row.hidden = true;
   };
   // Measured when what it holds changes (one layout, at the start of the next frame) and when its size does.
-  const sig = JSON.stringify([page.progress, g, recents.map(r => r.placeId)]);
+  const sig = JSON.stringify([page.progress, g, recents.map(r => [r.placeId, r.name])]);
   useEffect(() => {
     const frame = requestAnimationFrame(fit);
     return () => cancelAnimationFrame(frame);
@@ -492,7 +499,9 @@ function Picker({ P }: { P: PageState['picker'] }) {
   const { t, fmtNum } = useHost();
   const rows: any[] = (P.mode === 'search' ? P.results : P.lists?.[P.tab]) || [];
   const list = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { list.current?.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' }); });
+  // The row chosen with the keys comes into view when the list changes, not with every state the app pushes.
+  useLayoutEffect(() => { list.current?.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' }); },
+    [P.index, P.mode, P.tab, P.query, P.loading, P.refreshing, rows]);
   const skeleton = <div className="game-row skel"><span className="gph" /><div className="gtxt"><b /><small /></div></div>;
   return <>
     {P.mode === 'browse'

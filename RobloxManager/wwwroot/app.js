@@ -69,7 +69,6 @@
     message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
     wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
   };
-  const icon = (name, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
   const LOGO = 'logo.svg';
 
   /* ───────────────────────── language ───────────────────────── */
@@ -228,12 +227,11 @@
    * A message in the corner. @param action optional { label, run } shown as a button; the toast then stays a little
    * longer. Drawn by React (ui/src/Overlays.tsx Toasts): how long each stays, three at most, the same one again.
    */
-  let toastUi = null;
+  let toastUi = null; // mounted once the page has started (below, before getState)
   function toast(text, kind = 'info', action = null) {
     // Not over the lock screen that came up by itself: an answer still on its way could name an account.
     if (!text || S.app?.screenLock) return;
-    toastUi ||= window.BloxkeepUI.toasts($('#toasts'), uiHost());
-    toastUi.api.show(text, kind, action);
+    toastUi?.api.show(text, kind, action);
   }
   /** While a dialog or menu is up, toasts sit behind it (still readable through the backdrop) rather than over its edge. */
   function syncToastLayer() {
@@ -418,8 +416,8 @@
     menuOpener = null;
   }
   /**
-   * @param items { icon, text, title, hint, danger, checked, disabled, run } or '-' for a line; their words as they
-   * read (not HTML). @param split the items before the first line scroll in a list of their own (the dock's presets).
+   * Items: each an icon, text, title, hint, danger, checked, disabled and run, or '-' for a line; their words as they
+   * read (not HTML). split: the items before the first line scroll in a list of their own (the dock's presets).
    */
   function openMenu(items, x, y, { cls = '', split = false } = {}) {
     closeMenu();
@@ -926,8 +924,12 @@
     pageSnap = null;
     if (pageListeners.size) window.BloxkeepUI.flush(() => pageListeners.forEach(f => f()));
   }
-  const pageState = () => pageSnap ||= {
-    view: S.view, selected: new Set(S.selected), query: S.query, filter: S.filter, group: S.group, layout: S.layout, sort: S.sort,
+  let lastSnap = null;
+  const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
+  /** The parts that didn't change keep their object, so a part that shows only those isn't drawn again. */
+  const pageState = () => pageSnap ||= lastSnap = {
+    view: S.view, selected: lastSnap && sameSet(lastSnap.selected, S.selected) ? lastSnap.selected : new Set(S.selected),
+    query: S.query, filter: S.filter, group: S.group, layout: S.layout, sort: S.sort,
     introShown: S.introShown, game: S.game, progress: S.progress, hasGame: !!$('#place')?.value.trim(), picker: { ...P },
   };
   /** What app.js tells the React parts by name (host.on): "hideDiscordLink", "clearPassword". */
@@ -1178,20 +1180,18 @@
     scheduleSaveInputs();
     clearTimeout(searchTimer);
     ++P.seq; // whatever search is still on its way answers an older box
-    pageChanged();
     if (!value) {
       S.game = null;
-      pageChanged();
       openPicker('browse');
       return;
     }
     if (looksLikeTarget(value)) {
+      pageChanged(); // the dock's Play follows what is in the box
       closePicker();
       scheduleResolve();
       return;
     }
     S.game = null;
-    pageChanged();
     const cached = searchCache.get(value.toLowerCase());
     if (cached && Date.now() - cached.at < SEARCH_TTL) {
       Object.assign(P, { open: true, mode: 'search', query: value, results: cached.rows, loading: false, refreshing: false, index: -1 });
@@ -2738,8 +2738,9 @@
   });
   bridge.on('metrics', m => {
     S.metrics = m;
-    metricsListeners.forEach(f => f());
+    if (!document.hidden) metricsListeners.forEach(f => f());
   });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) metricsListeners.forEach(f => f()); });
 
   /**
    * The browser is closed while the window stays minimised (and recreated when GPU drawing is switched); the app
@@ -2755,6 +2756,7 @@
   // Bloxkeep is about to install an update in the background and start again: the new page comes back like this one.
   bridge.on('saveView', () => saveView(true));
 
+  toastUi = window.BloxkeepUI.toasts($('#toasts'), uiHost());
   bridge.call('getState').then(first => {
     let saved = null;
     try { saved = first?.view ? JSON.parse(first.view) : null; } catch { saved = null; }

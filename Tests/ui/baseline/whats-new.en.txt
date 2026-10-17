@@ -154,7 +154,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.1.1 · October 16, 2026"
+              small "Bloxkeep 1.1.1 · October 17, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
@@ -188,6 +188,9 @@ html [data-theme="dark" lang="en"]
           li
             svg.i #1l5qw3q
             span "A filter chip cut off at the edge of the row fades out whole."
+          li
+            svg.i #1l5qw3q
+            span "Bloxkeep’s screens were rebuilt underneath, so new features can come faster. They look and work as before: nothing to relearn."
         h4.fixed.wn-kind.wn-sub "Fixed"
           svg.i #yqrnd9
         ul.fixed.wn-also
@@ -203,6 +206,9 @@ html [data-theme="dark" lang="en"]
           li
             svg.i #yqrnd9
             span "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed."
+          li
+            svg.i #yqrnd9
+            span "Sign in with your phone: the code’s “expires in” time stays right after Bloxkeep was minimized."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

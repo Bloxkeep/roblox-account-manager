@@ -2,6 +2,7 @@
 // monitor, Statistics, Settings). app.js builds it once per language (buildShell) and shows one tab at a time (setView).
 import { type Ref } from 'react';
 import { AccountGrid, AccountsBar, AccountsHead, Dock } from './Accounts';
+import { Guarded } from './Guard';
 import { Icon, useHost } from './host';
 import { PresetsView } from './PresetsView';
 import { MonitorHead, Sidebar } from './Sidebar';
@@ -21,11 +22,11 @@ export type SettingsPageInfo = { id: string; icon: string; title: string };
 export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo[]; page: string; preview: boolean; stats: Ref<StatsApi> }) {
   const { t } = useHost();
   return <div className="shell">
-    <Sidebar />
+    <Guarded name="the sidebar"><Sidebar /></Guarded>
     <main className="main">
       <section className="view" id="view-accounts">
         <header className="top">
-          <div className="top-title"><h1>{t('acc.title')}</h1><AccountsHead /></div>
+          <div className="top-title"><h1>{t('acc.title')}</h1><Guarded name="the accounts' heading"><AccountsHead /></Guarded></div>
           <div className="top-tools">
             <label className="search"><Icon name="search" /><input id="q" placeholder={t('acc.search')} maxLength={100} aria-label={t('acc.search')} /></label>
             <button className="icon-btn" data-act="refresh-presence" title={t('acc.refreshTip')}><Icon name="refresh" /></button>
@@ -36,14 +37,14 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
             </div>
           </div>
         </header>
-        <AccountsBar />
-        <div className="scroll" id="scroll"><AccountGrid /></div>
-        <Dock />
+        <Guarded name="the accounts' bar"><AccountsBar /></Guarded>
+        <div className="scroll" id="scroll"><Guarded name="the account list"><AccountGrid /></Guarded></div>
+        <Guarded name="the dock"><Dock /></Guarded>
       </section>
-      <section className="view" id="view-presets" hidden><PresetsView /></section>
-      <section className="view" id="view-stats" hidden><StatsView api={stats} /></section>
+      <section className="view" id="view-presets" hidden><Guarded name="Presets"><PresetsView /></Guarded></section>
+      <section className="view" id="view-stats" hidden><Guarded name="Statistics"><StatsView api={stats} /></Guarded></section>
       <section className="view" id="view-monitor" hidden>
-        <header className="top"><div className="top-title"><h1>{t('mon.title')}</h1><MonitorHead /></div></header>
+        <header className="top"><div className="top-title"><h1>{t('mon.title')}</h1><Guarded name="the game monitor's heading"><MonitorHead /></Guarded></div></header>
         {/* In the browser preview there is no app to draw the pictures: it says what goes here. */}
         <div className={`mon-area ${preview ? 'preview' : ''}`} id="mon-area">{preview ? <p>{t('mon.preview')}</p> : null}</div>
       </section>
@@ -81,7 +82,7 @@ function Settings({ pages, page }: { pages: SettingsPageInfo[]; page: string }) 
           <Icon name={p.icon} /><span>{p.title}</span><i className="set-nav-dot" title={t('set.needsLook')} hidden /></button>)}
       </nav>
       <div className="scroll set-scroll"><div className="settings">
-        {pages.map(p => <section key={p.id} className="set-page" data-page={p.id} id={`set-page-${p.id}`} aria-labelledby={`set-page-${p.id}-h`} hidden={p.id !== page}>{body(p.id, p.title)}</section>)}
+        {pages.map(p => <section key={p.id} className="set-page" data-page={p.id} id={`set-page-${p.id}`} aria-labelledby={`set-page-${p.id}-h`} hidden={p.id !== page}><Guarded name={`Settings › ${p.title}`}>{body(p.id, p.title)}</Guarded></section>)}
         <p className="set-empty" id="set-empty" hidden>{t('set.noMatch')}</p>
       </div></div>
     </div>
