@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using Microsoft.Win32;
+using System.Text.Json;
 
 namespace RobloxManager;
 
@@ -69,110 +68,118 @@ public sealed partial class AppController
         return null;
     }
 
+    RobloxHomeSession? _homeSession;
+    bool _openingHome;
+    DateTime _homeStartedAt;
+    static readonly string HomeAliases = Path.Combine(Path.GetTempPath(), "Bloxkeep.ClientPaths");
+
     /// <summary>
-    /// "Open Roblox": Roblox's home screen with whatever account Roblox's own app is signed in with (no account of
-    /// Bloxkeep's, no sign-in ticket), through the program Windows opens roblox: links with, so the person's launcher
-    /// and its mods are used. Only with no Roblox window open: Roblox hands any start without a ticket (a plain one, or
-    /// a game link) to the window already open, which then goes where it was sent (seen 2026-10-18, 0.743: "App
-    /// NoReload receiving deeplink", and the open window joined the game). A second window comes only from a start
-    /// with an account's ticket: Open account, or Play on roblox.com in another browser; that is said instead.
+    /// A new sign-in window without an account or ticket from Bloxkeep. The installed client is opened directly
+    /// through a junction, retaining its installed mods; shared sign-in files stay locked until all clients close.
     /// </summary>
-    public void TrayNewRoblox()
+    public async void TrayNewRoblox()
     {
+        if (_disposed || _openingHome || _applyingUpdate || _relaunching)
+            return;
         void Tell(string text)
         {
+            if (_disposed) return;
             Toast(text, "warn");
             ShowNotification?.Invoke(text, "warn");
         }
-        RobloxProcesses.CloseTrayCopies(); // Roblox's windowless copy would take the start over and open nothing
-        var players = RobloxProcesses.GetPlayerPids();
-        if (RobloxProcesses.VisibleWindows(players).Values.Any(list => list.Count > 0))
-        {
-            Tell(L.T("Roblox is already open, and Roblox opens another window only for a sign-in: open an account (from Bloxkeep or this menu), or press Play on roblox.com in another browser."));
-            return;
-        }
-        if (RobloxLinkCommand() is not { } command)
-        {
-            Tell(L.T("Roblox isn't installed on this PC."));
-            return;
-        }
-        string args = command.Args.Replace("\"%1\"", "").Replace("%1", "").Trim();
-        var startedAt = DateTime.UtcNow;
+        bool acquired = false;
+        _openingHome = true;
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(command.Exe, args)
+            var state = TrayState();
+            if (state.Multi != "ready")
             {
-                UseShellExecute = false,
-                WorkingDirectory = Path.GetDirectoryName(command.Exe)!,
-            })?.Dispose();
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
-        {
-            Tell(ex.Message);
-            return;
-        }
-        _ = TellIfHandedOverAsync(startedAt, Tell);
-    }
-
-    /// <summary>The program and its arguments Windows runs for roblox: links (else roblox-player: ones); null without Roblox.</summary>
-    static (string Exe, string Args)? RobloxLinkCommand()
-    {
-        foreach (string scheme in new[] { "roblox", "roblox-player" })
-        {
-            using var key = Registry.ClassesRoot.OpenSubKey($@"{scheme}\shell\open\command");
-            if (key?.GetValue(null) is not string line || (line = line.Trim()).Length == 0)
-                continue;
-            string exe, args;
-            if (line.StartsWith('"'))
-            {
-                int end = line.IndexOf('"', 1);
-                if (end < 2)
-                    continue;
-                exe = line[1..end];
-                args = line[(end + 1)..].Trim();
+                Tell(state.Multi == "off"
+                    ? L.T("Turn on Multi-Roblox before opening a separate Roblox sign-in window.")
+                    : MultiNotReadyText());
+                return;
             }
-            else
+            var settings = _vault?.Data.Settings;
+            string? client = RobloxInstalls.ClientFor(settings?.LaunchVia ?? "auto", settings?.CustomLauncher ?? "");
+            if (client is null)
             {
-                int space = line.IndexOf(' ');
-                exe = space > 0 ? line[..space] : line;
-                args = space > 0 ? line[(space + 1)..].Trim() : "";
+                Tell(L.T("Roblox isn't installed on this PC."));
+                return;
             }
-            if (File.Exists(exe))
-                return (exe, args.Contains("%1") ? args : (args + " \"%1\"").Trim());
-        }
-        return null;
-    }
-
-    /// <summary>A client started since then whose log says Roblox handed it over to the home screen already open.</summary>
-    static async Task TellIfHandedOverAsync(DateTime since, Action<string> tell)
-    {
-        await Task.Delay(TimeSpan.FromSeconds(12));
-        foreach (string dir in RobloxLogWatcher.Folders)
-        {
-            try
+            if (RobloxInstalls.IsStoreClient(client))
             {
-                foreach (var file in new DirectoryInfo(dir).EnumerateFiles("*_Player_*.log"))
+                Tell(L.T("Separate sign-in windows currently need Roblox from roblox.com, rather than the Microsoft Store edition."));
+                return;
+            }
+            if (RobloxProcesses.CloseTrayCopies() > 0)
+                await Task.Delay(250);
+            if (_homeSession is null)
+            {
+                if (RobloxProcesses.GetPlayerPids().Length == 0)
+                    RobloxHomeSession.CleanupAliases(HomeAliases);
+                string storage = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox", "LocalStorage");
+                // Roblox can have one of these files open briefly while saving. Each failed attempt releases both.
+                for (int attempt = 0; ; attempt++)
                 {
-                    if (file.CreationTimeUtc < since.AddSeconds(-2) || file.Name.Contains("CrashHandler", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    using var stream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-                    using var reader = new StreamReader(stream);
-                    if ((await reader.ReadToEndAsync()).Contains(NoReloadMark, StringComparison.Ordinal))
-                    {
-                        tell(L.T("Roblox brought its open home screen forward instead of opening another one: it runs one home screen at a time. To open more windows, press Play on roblox.com in another browser, or open an account from Bloxkeep."));
+                    if (_disposed || !MultiInstance.Armed)
                         return;
+                    try
+                    {
+                        _homeSession = new RobloxHomeSession(storage, HomeAliases);
+                        acquired = true;
+                        break;
+                    }
+                    catch (IOException) when (attempt < 9)
+                    {
+                        await Task.Delay(100);
                     }
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            if (_disposed || !MultiInstance.Armed)
+                return;
+            _homeStartedAt = DateTime.UtcNow;
+            _homeSession.Start(client);
+            _lastScanFoundNone = false;
+            _lastScan = DateTime.MinValue;
+            if (acquired)
             {
-                // A log Roblox is replacing, or no log folder: nothing to say.
+                string text = L.T("A separate Roblox sign-in window is opening. Keep Bloxkeep running; these windows don't save their sign-ins when closed.");
+                Toast(text, "info");
+                ShowNotification?.Invoke(text, "info");
             }
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+        {
+            if (acquired)
+            {
+                _homeSession?.Dispose();
+                _homeSession = null;
+            }
+            Log.Write(ex);
+            Tell(L.T("Couldn't open a separate Roblox sign-in window. Try again, or close Roblox and retry."));
+        }
+        finally
+        {
+            _openingHome = false;
+            if (!_disposed)
+                PushState();
         }
     }
 
-    /// <summary>What a client logs when Roblox hands it over to the one already open (seen 2026-10-13, 0.742).</summary>
-    const string NoReloadMark = "App NoReload!";
+    /// <summary>No automatic or manual update may drop the file locks while separate sign-ins are in use.</summary>
+    bool HomeSessionsActive => _homeSession is not null;
+
+    void ReleaseHomeSessionIfIdle(bool scan, int clients, DateTime now)
+    {
+        if (!scan || clients != 0 || _homeSession is null || OpeningRoblox || now - _homeStartedAt < TimeSpan.FromSeconds(15))
+            return;
+        RobloxProcesses.CloseTrayCopies();
+        if (RobloxProcesses.GetPlayerPids().Length != 0)
+            return;
+        _homeSession.Dispose();
+        _homeSession = null;
+        RobloxHomeSession.CleanupAliases(HomeAliases);
+    }
 
     /// <summary>
     /// An account from the menu, as the account card's Play: into the game chosen in the dock, else Roblox's home

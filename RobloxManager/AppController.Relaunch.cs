@@ -58,7 +58,7 @@ public sealed partial class AppController
     /// </summary>
     bool QuietForRelaunch(DateTime now)
     {
-        if (now - _started < RelaunchAfterStart || Settling)
+        if (now - _started < RelaunchAfterStart || Settling || HomeSessionsActive)
             return false;
         if (OpeningRoblox || _restarts.Count > 0 || _nudging || now < _sweepBackgroundUntil)
             return false;
@@ -76,7 +76,7 @@ public sealed partial class AppController
     /// Roblox being opened or rejoined: a launch, a window still awaited (a late one too, whose account a restart
     /// would forget), a rejoin queued or under way.
     /// </summary>
-    bool OpeningRoblox => _launchCts is not null || _pending.Count > 0 || _late.Count > 0 || _handedOver.Count > 0
+    bool OpeningRoblox => _openingHome || _launchCts is not null || _pending.Count > 0 || _late.Count > 0 || _handedOver.Count > 0
         || _rejoinQueue.Count > 0 || _rejoining || _closingForRejoin.Count > 0;
 
     async Task RelaunchAsync()
@@ -116,6 +116,8 @@ public sealed partial class AppController
             throw new UserError(_updater.Status is "checking" or "downloading"
                 ? L.T("The update is still downloading. Try again in a moment.")
                 : L.T("No update is ready to install. Check for updates again."));
+        if (HomeSessionsActive)
+            throw new UserError(L.T("Close all Roblox windows before updating while separate sign-ins are open."));
         if (OpeningRoblox)
             throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
         _applyingUpdate = true;
@@ -123,6 +125,8 @@ public sealed partial class AppController
         {
             await SaveViewAsync();
             // Started during that moment (a scheduled preset, a rejoin): the restart would cut it off.
+            if (HomeSessionsActive)
+                throw new UserError(L.T("Close all Roblox windows before updating while separate sign-ins are open."));
             if (OpeningRoblox)
                 throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
             if (!SaveBeforeClosing())

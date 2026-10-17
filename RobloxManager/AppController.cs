@@ -3186,6 +3186,7 @@ public sealed partial class AppController : IDisposable
         }
         pids.ExceptWith(trays);
         players.RemoveAll(p => trays.Contains(p.Pid));
+        ReleaseHomeSessionIfIdle(scan, pids.Count, now);
         NoteClientStarts(pids, now, ParentOf);
         bool changed = false;
 
@@ -4541,6 +4542,8 @@ public sealed partial class AppController : IDisposable
         NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
         _updater.Changed -= OnUpdaterChanged;
         _procTimer.Dispose();
+        _homeSession?.Dispose();
+        _homeSession = null;
         SaveBeforeClosing(); // normally done already, before the window agreed to close
         _backupTimer?.Dispose();
         DropVaultImport();

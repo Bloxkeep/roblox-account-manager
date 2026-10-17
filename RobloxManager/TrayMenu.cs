@@ -65,6 +65,7 @@ sealed class TrayMenu : ContextMenuStrip
         var state = State?.Invoke();
         _multi.Visible = _multiLine.Visible = _newRoblox.Visible = _toolsLine.Visible = state is not null;
         _newRoblox.Text = L.T("Open Roblox");
+        _newRoblox.ToolTipText = L.T("Sign in separately in each new window. Keep Bloxkeep running; sign-ins are not saved when these windows close.");
         if (state is not null)
         {
             _multi.Text = L.T(state.Multi switch { "ready" => "Multi-Roblox: on", "notReady" => "Multi-Roblox: not ready", _ => "Multi-Roblox: off" });
