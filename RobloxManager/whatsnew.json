@@ -1,5 +1,45 @@
 [
   {
+    "version": "1.1.2",
+    "date": "2026-10-17",
+    "new": {
+      "en": [
+        "Update Roblox now (Settings › Roblox version): Bloxstrap or Fishstrap installs the new Roblox without opening it. The out-of-date version line in the sidebar leads there.",
+        "Fast cores for the window you play (Settings › Staying in game): Roblox windows in the background run on the CPU's efficiency cores in power-saving mode.",
+        "Each Roblox window shows its account's picture as its icon, on the taskbar and in Alt+Tab."
+      ],
+      "vi": [
+        "Cập nhật Roblox ngay (Cài đặt › Phiên bản Roblox): Bloxstrap hoặc Fishstrap cài bản Roblox mới mà không mở Roblox. Dòng phiên bản cũ ở thanh bên dẫn tới đó.",
+        "Nhường nhân mạnh cho cửa sổ đang chơi (Cài đặt › Treo game): cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện.",
+        "Mỗi cửa sổ Roblox lấy ảnh tài khoản làm biểu tượng, dưới taskbar và khi bấm Alt+Tab."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Several accounts sent to one server: the first one checks the server lets it in; if it doesn't within 12 seconds (full or closed), they all go to another server with room for them.",
+        "Empty servers (closing) are no longer listed or picked.",
+        "A client that can't get a server is moved to another one after a minute instead of three.",
+        "Before rejoining, Bloxkeep checks the account isn't banned, instead of reopening a banned account over and over.",
+        "Starts faster and saves without pauses."
+      ],
+      "vi": [
+        "Khi gửi nhiều tài khoản vào một server: tài khoản đầu tiên xem server có nhận không; nếu sau 12 giây vẫn chưa vào được (đầy hoặc đã đóng), cả nhóm chuyển sang server khác còn đủ chỗ.",
+        "Server không còn ai (đang đóng) không còn hiện hay được chọn nữa.",
+        "Cửa sổ không vào được server sẽ được chuyển sang server khác sau 1 phút thay vì 3 phút.",
+        "Trước khi tự vào lại game, Bloxkeep xem tài khoản có bị ban không, thay vì mở lại tài khoản bị ban mãi.",
+        "Mở nhanh hơn, lưu không bị khựng."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Auto-rejoin said “restarting Roblox” for a client stuck on “This experience has ended” but never opened it again."
+      ],
+      "vi": [
+        "Tự vào lại game báo “đang mở lại Roblox” cho cửa sổ kẹt ở “This experience has ended” nhưng không mở lại."
+      ]
+    }
+  },
+  {
     "version": "1.1.1",
     "date": "2026-10-17",
     "new": {

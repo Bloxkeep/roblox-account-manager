@@ -39,7 +39,7 @@ html [data-theme="dark" lang="en"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
           div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · 0.743 available"
+            button.link [type="button" title="Roblox 0.742.0.7421053"] "Roblox 0.742 · 0.743 available"
               i.dot.warn
           button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
             svg.i #1y8kmj1
@@ -113,9 +113,10 @@ html [data-theme="dark" lang="en"]
                       div.set-row
                         div
                           div.t "Roblox version"
-                          div.d "Roblox 0.743.0.7430112 is out — it’ll update next time it opens."
+                          div.d "Roblox 0.743.0.7430112 is out. Update now has Bloxstrap install it without opening Roblox; otherwise it updates the next time it opens."
                         div.ctl
                           span.state-pill.warn "0.742.0.7421053"
+                          button.btn.sm [type="button"] "Update now"
                     div [id="s-rbxupd"]
                       div.set-row
                         div

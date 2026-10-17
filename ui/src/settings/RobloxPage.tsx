@@ -47,7 +47,10 @@ export function RobloxPage({ title }: { title: string }) {
   const c = ru.closed;
   const inst = ru.installed;
   const hist: any[] = ru.history || [];
+  // Out of date: the launcher that keeps this copy of Roblox can install the new one now (Update now), when there is one.
+  const canUpdate = rv.upToDate === false && !!rv.updater;
   const rvText = !rv.installed ? t('rbx.notInstalled')
+    : canUpdate ? t('rbx.outdatedUpdate', { v: rv.latest, l: rv.updater })
     : rv.upToDate === false ? t(rv.store ? 'rbx.outdatedStore' : rv.direct ? 'rbx.outdatedDirect' : 'rbx.outdated', { v: rv.latest })
     : rv.upToDate ? t('rbx.latest') : t('rbx.unknown');
 
@@ -76,7 +79,8 @@ export function RobloxPage({ title }: { title: string }) {
         </span></div> : null}
       </div>
       <div id="s-rbxver">
-        <Row title={t('rbx.title')} desc={rvText}><Pill tone={rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'}>{rv.installed || '—'}</Pill></Row>
+        <Row title={t('rbx.title')} desc={rvText}><Pill tone={rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'}>{rv.installed || '—'}</Pill>
+          {canUpdate ? <button type="button" className="btn sm" data-act="rbx-update" disabled={!!rv.updating}>{t(rv.updating ? 'rbx.updating' : 'rbx.update')}</button> : null}</Row>
       </div>
       <div id="s-rbxupd">
         <Row title={t('ru.installed')} desc={inst?.source ? t('ru.via', { s: inst.source }) : ''}>

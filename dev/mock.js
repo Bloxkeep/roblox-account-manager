@@ -205,6 +205,7 @@
   let ivWrong = 0, ivWaitUntil = 0, ivToken = null;
   const ivHere = u => accounts.find(x => x.username.toLowerCase() === u.toLowerCase());
   let rbxClosedHidden = false;
+  let robloxUpdating = false; // Settings › Roblox version › Update now pressed
   const rw = ['changed', 'renamed', 'gone', 'worked', 'none'].includes(params.get('rw')) ? params.get('rw') : 'same';
   // Statistics › Activity: made-up events, the same on every call (minutes back from now). ?noactivity=1: none yet;
   // ?activityfail=1: the list can't be loaded; ?manyactivity=1: more than a page. Like the app, each line comes in the
@@ -231,7 +232,8 @@
   const state = () => ({
     language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
-    robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store' },
+    robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
+      updater: settings.launchVia === 'store' ? null : 'Bloxstrap', updating: robloxUpdating },
     // Settings › Roblox updates, newest first: a new build under the same version, an update, the first build seen.
     // ?rbxclosed=1: Roblox closed windows when another one opened (the warning there and on the Multi-Roblox card).
     // ?rw=changed|renamed|gone: what the Roblox watch found in the installed build (default: no change, and the next
@@ -346,6 +348,7 @@
         case 'openWebsite': console.log('openWebsite', a.id); return null; // the app opens its own roblox.com window for the account
         case 'openWebsiteBlank': console.log('openWebsiteBlank'); return null; // likewise, blank, to sign in on the site
         case 'hideRobloxClosed': rbxClosedHidden = true; push(); return null;
+        case 'updateRoblox': robloxUpdating = true; push(); return null;
         // Like the app: only the fields sent change; a ping is { kind, value }, an alert switch { kind, enabled }.
         case 'setDiscord': {
           if (a.enabled && !discord.hasWebhook) throw new Error('Paste a webhook link first.');

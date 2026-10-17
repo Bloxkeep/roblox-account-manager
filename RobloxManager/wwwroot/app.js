@@ -2425,6 +2425,14 @@
       case 'multi-help': return multiHelp();
       case 'ru-notes': return call('openReleaseNotes', { version: el.dataset.v });
       case 'ru-hide': return call('hideRobloxClosed');
+      // Roblox's launcher here installs the new Roblox without opening it. With windows open it may close them (when it
+      // can't update in the background), so that is asked first. Not busy(): the button stays disabled from the app's
+      // state ("Updating…") until the launcher is done, which busy() would undo when the call returns.
+      case 'rbx-update': return (async () => {
+        const rv = S.app.robloxVersion || {}, n = S.metrics.robloxCount;
+        if (rv.updating || (n && !await confirmBox(tn('rbx.updateQ', n, { l: rv.updater }), { title: t('rbx.updateTitle'), ok: t('rbx.updateOk') }))) return;
+        if (await call('updateRoblox') !== undefined) toast(t('rbx.updateStarted', { l: rv.updater }), 'info');
+      })();
       case 'ru-open': return openSettings('rbxupd');
       case 'rw-how': return call('openRobloxWatch');
       case 'open-guide': return call('openGuide');

@@ -145,6 +145,9 @@ public sealed partial class AppController : IDisposable
     DateTime _nextPresence, _lastFullPresence, _lastTrim, _lastMemoryWarning, _installsReadAt, _sweepBackgroundUntil, _resumedAt, _lastSessionStart, _lastTick;
     string? _lastMetrics, _lastState, _pageView;
     InstallsInfo? _installs;
+    /// <summary>The launcher that can update the client the launch option starts (<see cref="RobloxInstalls.UpdaterFor"/>).</summary>
+    string? _updaterExe;
+    bool _robloxUpdating;
     DateTime? _saveDue;
     bool _saveFailed;
     /// <summary>Saves in a row that failed: the next try waits longer (see Persist).</summary>
@@ -414,6 +417,7 @@ public sealed partial class AppController : IDisposable
         "discordSummaryNow" => SendDiscordNowAsync(summary: true),
         "openReleaseNotes" => Done(OpenReleaseNotes(Str(a, "version"))),
         "hideRobloxClosed" => Done(HideRobloxClosed()),
+        "updateRoblox" => Done(UpdateRoblox()),
         "openRobloxWatch" => Done(OpenUrl(RobloxWatch.DocsUrl)),
         // The user guide on GitHub, in the app's language (docs/guide.md, docs/guide.vi.md).
         "openGuide" => Done(OpenUrl($"https://github.com/minhhoang0122/Bloxkeep/blob/main/docs/guide{(L.Language == "vi" ? ".vi" : "")}.md")),
@@ -563,7 +567,10 @@ public sealed partial class AppController : IDisposable
 
     /// <param name="UpToDate">null until both versions are known.</param>
     /// <param name="Store">Roblox from the Microsoft Store is chosen: the Store installs its updates, not Roblox itself.</param>
-    sealed record RobloxVersionInfo(string? Installed, string? Latest, bool? UpToDate, bool Direct, bool Store = false);
+    /// <param name="Updater">The launcher that can update this copy of Roblox now (its name), when there is one.</param>
+    /// <param name="Updating">It is doing so (Settings › Roblox version › Update now).</param>
+    sealed record RobloxVersionInfo(string? Installed, string? Latest, bool? UpToDate, bool Direct, bool Store = false, string? Updater = null,
+        bool Updating = false);
 
     /// <summary>Registry facts shown on the page; BuildState runs on every push, so they're re-read at most every 30 s.</summary>
     (bool Protocol, bool TrayAutostart) RegistryInfo()
@@ -591,6 +598,7 @@ public sealed partial class AppController : IDisposable
             Direct: RobloxInstalls.FindAnyClient() is not null,
             Store: RobloxInstalls.StoreEditionInstalled(),
             Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")));
+        _updaterExe = RobloxInstalls.UpdaterFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "");
         // Roblox (or its launcher) put a new build in place since the last look — or an older one (a launcher set to a
         // version, an older copy chosen), which isn't an update.
         // (The Store edition has no build folder: switching to or from it says nothing.)
@@ -622,7 +630,7 @@ public sealed partial class AppController : IDisposable
         bool? upToDate = installed is null || _latestRoblox is null ? null
             : sameBuild || newer || (!foldersKnown && installed.Version == _latestRoblox.Version);
         return new RobloxVersionInfo(installed?.Version, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct",
-            _vault?.Data.Settings.LaunchVia == "store");
+            _vault?.Data.Settings.LaunchVia == "store", _updaterExe is { } updater ? Path.GetFileNameWithoutExtension(updater) : null, _robloxUpdating);
     }
 
     async Task RefreshLatestRobloxAsync()
@@ -3866,6 +3874,22 @@ public sealed partial class AppController : IDisposable
         var cts = _rejoinCts = new CancellationTokenSource();
         try
         {
+            // Banned while it played (the daily check would say so hours later): a new window would only show the ban,
+            // again every few minutes. Its public profile is asked first; no clear answer lets the rejoin go on.
+            try
+            {
+                if (await CheckBanAsync(account) == true)
+                {
+                    NotifyBanned([account]);
+                    Persist();
+                    PushState();
+                    return;
+                }
+            }
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+            {
+            }
+            cts.Token.ThrowIfCancellationRequested();
             var players = RobloxProcesses.GetPlayerPids();
             if (vault.Data.Settings.MultiInstance && !MultiInstance.Armed && players.Length == 0)
                 MultiInstance.Enable();

@@ -172,6 +172,24 @@ public static class RobloxInstalls
         };
     }
 
+    /// <summary>
+    /// The Bloxstrap-style launcher whose copy of Roblox this launch option starts: run with "-player -nolaunch" it
+    /// installs the newest Roblox without opening it (Bloxstrap 2.11.4 and Fishstrap, read in their source on
+    /// 2026-10-17). Null for Roblox's own copy (its updater's switches aren't known), the Store edition, and a launcher
+    /// picked by hand.
+    /// </summary>
+    public static string? UpdaterFor(string launchVia, string customLauncher = "")
+    {
+        if (launchVia is "custom" or "store" or "roblox" || ClientFor(launchVia, customLauncher) is not { } client)
+            return null;
+        foreach (var name in KnownBootstrappers.Concat(FindOtherBootstrappers()))
+        {
+            if (FindBootstrapper(name) is { } exe && Path.GetDirectoryName(exe) is { } dir && Under(client, dir))
+                return exe;
+        }
+        return null;
+    }
+
     /// <summary>Reads the version stamped in a client's file (the file is only read, never run).</summary>
     public static ClientVersion? VersionOf(string? exe)
     {

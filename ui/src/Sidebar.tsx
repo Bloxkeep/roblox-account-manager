@@ -66,9 +66,12 @@ function SysCard({ mini }: { mini: string }) {
       <i className="other" style={{ transform: `translateX(${robloxPct.toFixed(1)}%) scaleX(${((usedPct - robloxPct) / 100).toFixed(3)})` }} /></div>
     <div className="sys-foot" id="sys-foot">{m.systemMb ? t('sys.used', { pct: Math.round(usedPct), free: fmtMb(m.availableMb || 0) }) : ''}</div>
     <div className="sys-ver" id="sys-ver">{rv.installed
-      ? <span title={`Roblox ${rv.installed}`}><i className={`dot ${rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : ''}`} />{`Roblox ${short(rv.installed)}${rv.upToDate === false
-        ? ` · ${short(rv.latest) === short(rv.installed) ? t('rbx.newBuild') : t('rbx.available', { v: short(rv.latest) })}`
-        : rv.upToDate ? ` · ${t('rbx.latestShort')}` : ''}`}</span> : null}</div>
+      ? rv.upToDate === false
+        // Out of date: Settings › Roblox version says how to update (and has Update now when a launcher here can).
+        ? <button type="button" className="link" data-act="ru-open" title={`Roblox ${rv.installed}`}><i className="dot warn" />{`Roblox ${short(rv.installed)} · ${
+          short(rv.latest) === short(rv.installed) ? t('rbx.newBuild') : t('rbx.available', { v: short(rv.latest) })}`}</button>
+        : <span title={`Roblox ${rv.installed}`}><i className={`dot ${rv.upToDate ? 'ok' : ''}`} />{`Roblox ${short(rv.installed)}${rv.upToDate ? ` · ${t('rbx.latestShort')}` : ''}`}</span>
+      : null}</div>
     <button className="btn sm w sys-mini" id="sys-mini" data-act="mini" aria-pressed={!!app.miniOpen}><Icon name="monitor" /><span>{mini}</span></button>
     <button className="btn sm w sys-close" id="sys-close" data-act="close-all" hidden={!m.robloxCount}><Icon name="power" /><span>{t('sys.closeAll')}</span></button>
   </div>;

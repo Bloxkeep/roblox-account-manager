@@ -132,6 +132,84 @@ public sealed partial class AppController
     }
 
     /// <summary>
+    /// Settings › Roblox version › Update now: the launcher that keeps this copy of Roblox installs the newest one
+    /// without opening it (<see cref="RobloxInstalls.UpdaterFor"/>). Bloxstrap does it in the background, leaving open
+    /// Roblox windows alone, when it can (its own setting, at most one version behind, 5 GB free); otherwise it closes
+    /// every Roblox window first, so the page asks before when some are open. The result shows as the usual
+    /// "Roblox updated to …"; the launcher ending without a new build is said too.
+    /// </summary>
+    object? UpdateRoblox()
+    {
+        if (_robloxUpdating)
+            return null;
+        _installsReadAt = DateTime.MinValue; // the launcher and the client as they are now
+        string? before = Installs().Client?.Folder;
+        if (_updaterExe is not { } exe || !File.Exists(exe))
+            throw new UserError(L.T("No launcher here can update Roblox by itself. Roblox updates the next time it opens."));
+        var startedAt = DateTime.Now;
+        var psi = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
+        psi.ArgumentList.Add("-player");
+        psi.ArgumentList.Add("-nolaunch");
+        System.Diagnostics.Process.Start(psi)?.Dispose();
+        _robloxUpdating = true;
+        PushState();
+        _ = WatchRobloxUpdateAsync(Path.GetFileNameWithoutExtension(exe), before, startedAt);
+        return null;
+    }
+
+    /// <summary>
+    /// Until the client's build changes, or the launcher's processes started for it (its window, its background
+    /// updater) have all ended, at most 15 minutes.
+    /// </summary>
+    async Task WatchRobloxUpdateAsync(string launcher, string? before, DateTime startedAt)
+    {
+        var until = DateTime.UtcNow + TimeSpan.FromMinutes(15);
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5));
+            while (!_disposed && DateTime.UtcNow < until)
+            {
+                _installsReadAt = DateTime.MinValue; // read again, compared with the last read (its "Roblox updated to …")
+                if (Installs().Client?.Folder != before)
+                    return; // Installs said "Roblox updated to …"
+                if (!LauncherRunningSince(launcher, startedAt))
+                {
+                    Toast(L.F("{0} found no newer Roblox to install.", launcher), "info");
+                    return;
+                }
+                await Task.Delay(TimeSpan.FromSeconds(3));
+            }
+        }
+        finally
+        {
+            _robloxUpdating = false;
+            if (!_disposed)
+                PushState();
+        }
+    }
+
+    /// <summary>A process of this launcher started at or after this time (not its watchers of windows already open).</summary>
+    static bool LauncherRunningSince(string launcher, DateTime since)
+    {
+        foreach (var p in System.Diagnostics.Process.GetProcessesByName(launcher))
+        {
+            using (p)
+            {
+                try
+                {
+                    if (p.StartTime >= since.AddSeconds(-1))
+                        return true;
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    // Ended meanwhile, or not ours to read.
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
     /// From the process tick: looks for a new Roblox build at the install check's own pace (every 3 minutes), also
     /// while the window is in the tray, and sends the "Roblox closed windows" notice — at most one a day. The warning
     /// goes by itself once two clients have been in a game at the same time for a few seconds (what "it works" looks

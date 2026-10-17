@@ -283,6 +283,9 @@ public static class L
         [" (copy {0})"] = " (bản sao {0})",
         ["This preset has no schedule. Edit it to add one."] = "Preset này chưa hẹn giờ. Bấm Sửa để thêm.",
         ["Finding a server…"] = "Đang tìm server…",
+        ["No launcher here can update Roblox by itself. Roblox updates the next time it opens."] =
+            "Máy này không có trình mở nào tự cập nhật Roblox được. Roblox sẽ tự cập nhật ở lần mở tới.",
+        ["{0} found no newer Roblox to install."] = "{0} không tìm thấy bản Roblox nào mới hơn để cài.",
         ["Checking that the server lets {0} in…"] = "Đang xem server có cho {0} vào không…",
         ["That server is full or has closed, so the accounts go to another one with room for them all."] =
             "Server đó đã đầy hoặc đã đóng, nên các tài khoản sẽ vào server khác còn đủ chỗ cho tất cả.",

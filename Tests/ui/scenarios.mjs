@@ -850,6 +850,10 @@ export default [
   S('settings-backup-pick', 'settings=backup&long=1', async s => { await s.click(key('bk.choose')); }),
   S('settings-roblox-closed', 'settings=roblox&rbxclosed=1', async s => { await s.snap('warned'); await s.click(key('ru.hide')); }),
   S('settings-roblox-changed', 'settings=roblox&rw=changed&rbxold=1'),
+  // Roblox out of date, Bloxstrap keeping it: Update now asks first while Roblox windows are open, then waits on Bloxstrap.
+  S('settings-roblox-update', 'settings=roblox&rbxold=1', async s => { await s.click(key('rbx.update')); await s.snap('asked'); await s.click(key('rbx.updateOk')); }),
+  // The sidebar's out-of-date version line leads to Settings › Roblox version.
+  S('sidebar-roblox-old', 'rbxold=1', async s => { await s.click({ css: '#sys-ver .link' }); }),
   S('settings-roblox-renamed', 'settings=roblox&rw=renamed'),
   S('settings-roblox-worked', 'settings=roblox&rw=worked', null, { langs: ['en'] }),
   S('settings-roblox-unread', 'settings=roblox&rw=none', null, { langs: ['en'] }),
