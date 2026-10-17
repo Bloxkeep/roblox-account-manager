@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.1.5",
+    "date": "2026-10-18",
+    "fixed": {
+      "en": [
+        "Open Roblox in the tray icon's menu no longer sends the Roblox window already open into a game. It opens Roblox's home screen when no Roblox is open; with one open, it says how to open another window (Roblox opens a second one only for a sign-in)."
+      ],
+      "vi": [
+        "Mở Roblox mới ở menu biểu tượng khay không còn đưa cửa sổ Roblox đang mở vào game. Khi chưa có Roblox nào mở, nó mở màn hình chính của Roblox; khi đã có, nó chỉ cách mở thêm cửa sổ (Roblox chỉ mở thêm cửa sổ khi vào bằng một tài khoản)."
+      ]
+    }
+  },
+  {
     "version": "1.1.4",
     "date": "2026-10-18",
     "new": {

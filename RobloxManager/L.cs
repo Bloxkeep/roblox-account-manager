@@ -290,6 +290,8 @@ public static class L
         ["Open Roblox"] = "Mở Roblox mới",
         ["Open account"] = "Mở tài khoản",
         ["Roblox isn't installed on this PC."] = "Máy này chưa cài Roblox.",
+        ["Roblox is already open, and Roblox opens another window only for a sign-in: open an account (from Bloxkeep or this menu), or press Play on roblox.com in another browser."] =
+            "Roblox đang mở sẵn, mà Roblox chỉ mở thêm cửa sổ khi vào bằng một tài khoản: hãy mở tài khoản (trong Bloxkeep hoặc ở menu này), hoặc bấm Play trên roblox.com ở trình duyệt khác.",
         ["Roblox brought its open home screen forward instead of opening another one: it runs one home screen at a time. To open more windows, press Play on roblox.com in another browser, or open an account from Bloxkeep."] =
             "Roblox đưa màn hình chính đang mở lên trước thay vì mở thêm cái mới: mỗi lúc Roblox chỉ chạy một màn hình chính. Muốn mở thêm cửa sổ, hãy bấm Play trên roblox.com ở trình duyệt khác, hoặc mở tài khoản từ Bloxkeep.",
         ["Opening this account asks something first. Open it from Bloxkeep."] = "Mở tài khoản này cần bạn trả lời một câu hỏi trước. Hãy mở nó trong Bloxkeep.",

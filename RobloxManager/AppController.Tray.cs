@@ -70,11 +70,12 @@ public sealed partial class AppController
     }
 
     /// <summary>
-    /// "Open Roblox": a Roblox window with whatever account Roblox's own app is signed in with (no account of
+    /// "Open Roblox": Roblox's home screen with whatever account Roblox's own app is signed in with (no account of
     /// Bloxkeep's, no sign-in ticket), through the program Windows opens roblox: links with, so the person's launcher
-    /// and its mods are used. The game chosen in the dock, when there is one, opens directly (Roblox's link
-    /// roblox://experiences/start). Roblox runs one home screen only: a second hands over to the first (seen
-    /// 2026-10-13); when the new client's log says so, the person is told how to open more.
+    /// and its mods are used. Only with no Roblox window open: Roblox hands any start without a ticket (a plain one, or
+    /// a game link) to the window already open, which then goes where it was sent (seen 2026-10-18, 0.743: "App
+    /// NoReload receiving deeplink", and the open window joined the game). A second window comes only from a start
+    /// with an account's ticket: Open account, or Play on roblox.com in another browser; that is said instead.
     /// </summary>
     public void TrayNewRoblox()
     {
@@ -83,18 +84,19 @@ public sealed partial class AppController
             Toast(text, "warn");
             ShowNotification?.Invoke(text, "warn");
         }
+        RobloxProcesses.CloseTrayCopies(); // Roblox's windowless copy would take the start over and open nothing
+        var players = RobloxProcesses.GetPlayerPids();
+        if (RobloxProcesses.VisibleWindows(players).Values.Any(list => list.Count > 0))
+        {
+            Tell(L.T("Roblox is already open, and Roblox opens another window only for a sign-in: open an account (from Bloxkeep or this menu), or press Play on roblox.com in another browser."));
+            return;
+        }
         if (RobloxLinkCommand() is not { } command)
         {
             Tell(L.T("Roblox isn't installed on this PC."));
             return;
         }
-        long place = 0;
-        if (_vault is { } vault && !_screenLocked && vault.Data.Settings.LastPlaceInput.Length > 0
-            && GameTarget.TryParse(vault.Data.Settings.LastPlaceInput, "", out var target, out _) && target is { LinkCode: null, ShareCode: null })
-            place = target.PlaceId;
-        string args = place > 0
-            ? command.Args.Replace("%1", $"roblox://experiences/start?placeId={place}")
-            : command.Args.Replace("\"%1\"", "").Replace("%1", "").Trim();
+        string args = command.Args.Replace("\"%1\"", "").Replace("%1", "").Trim();
         var startedAt = DateTime.UtcNow;
         try
         {

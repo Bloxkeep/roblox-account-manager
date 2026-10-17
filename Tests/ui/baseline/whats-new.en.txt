@@ -154,28 +154,16 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.1.4 · October 18, 2026"
+              small "Bloxkeep 1.1.5 · October 18, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        h4.new.wn-kind.wn-sub "New"
-          svg.i #u7ty99
-        ul.new.wn-also
+        h4.fixed.wn-kind.wn-sub "Fixed"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
           li
-            svg.i #u7ty99
-            span "Taskbar buttons (Settings › Launching): one button for each account, with its picture, or one group for each preset, instead of every Roblox window under one button."
-          li
-            svg.i #u7ty99
-            span "Open Roblox and Open account from the tray icon's menu."
-          li
-            svg.i #u7ty99
-            span "Just use Multi-Roblox: on the first screen, for those who sign in to Roblox only in their own browser. No master password, no accounts."
-        h4.improved.wn-kind.wn-sub "Improved"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "Account pictures as window icons have a switch of their own, to keep Roblox's icon."
+            svg.i #yqrnd9
+            span "Open Roblox in the tray icon's menu no longer sends the Roblox window already open into a game. It opens Roblox's home screen when no Roblox is open; with one open, it says how to open another window (Roblox opens a second one only for a sign-in)."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

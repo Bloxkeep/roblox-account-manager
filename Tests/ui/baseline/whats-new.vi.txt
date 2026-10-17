@@ -154,28 +154,16 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.1.4 · 18 tháng 10, 2026"
+              small "Bloxkeep 1.1.5 · 18 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        h4.new.wn-kind.wn-sub "Mới"
-          svg.i #u7ty99
-        ul.new.wn-also
+        h4.fixed.wn-kind.wn-sub "Đã sửa"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
           li
-            svg.i #u7ty99
-            span "Nút trên taskbar (Cài đặt › Khởi chạy): mỗi tài khoản một nút kèm ảnh, hoặc mỗi preset một nhóm, thay vì mọi cửa sổ Roblox gộp vào một nút."
-          li
-            svg.i #u7ty99
-            span "Mở Roblox mới và Mở tài khoản ngay từ menu ở biểu tượng khay."
-          li
-            svg.i #u7ty99
-            span "Chỉ dùng Multi-Roblox: lựa chọn ở màn hình đầu tiên cho ai chỉ đăng nhập Roblox trên trình duyệt của mình. Không mật khẩu chủ, không tài khoản."
-        h4.improved.wn-kind.wn-sub "Cải thiện"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "Ảnh tài khoản làm biểu tượng cửa sổ có công tắc riêng, tắt đi để giữ biểu tượng Roblox."
+            svg.i #yqrnd9
+            span "Mở Roblox mới ở menu biểu tượng khay không còn đưa cửa sổ Roblox đang mở vào game. Khi chưa có Roblox nào mở, nó mở màn hình chính của Roblox; khi đã có, nó chỉ cách mở thêm cửa sổ (Roblox chỉ mở thêm cửa sổ khi vào bằng một tài khoản)."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q
