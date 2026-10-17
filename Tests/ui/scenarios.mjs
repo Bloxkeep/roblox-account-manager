@@ -4,6 +4,14 @@
 // and at each s.snap('label').
 const S = (name, query, run, extra = {}) => ({ name, query, run, ...extra });
 const key = k => ({ key: k });
+/** Signs in with the password form (the mock answers by username: x, 2fa, sms, captcha, locked, finish, key). */
+const signIn = async (s, user, pass = 'hunter2') => {
+  await s.click(key('acc.add'));
+  await s.fill({ css: '#pw-user' }, user);
+  await s.fill({ css: '#pw-pass' }, pass);
+  await s.click({ css: '#pw-go' });
+  await s.wait(900);
+};
 
 export default [
   // ── Accounts ──
@@ -195,7 +203,113 @@ export default [
     await s.click({ css: '#pw-go' });
     await s.wait(800);
   }, { langs: ['en'] }),
+  // The password sign-in's other turns (dev/mock.js answers by username: x, 2fa, sms, captcha, locked, finish, key).
+  S('pw-empty', '', async s => { await s.click(key('acc.add')); await s.click({ css: '#pw-go' }); }),
+  S('pw-realm-keeps', '', async s => {
+    await s.click(key('acc.add'));
+    await s.fill({ css: '#pw-user' }, 'typedname');
+    await s.fill({ css: '#pw-pass' }, 'typedpass');
+    await s.click({ css: '.overlay [data-realm=vng]' });
+    await s.snap('vng');
+    await s.click({ css: '#pw-eye' });
+    await s.snap('shown');
+    await s.click({ css: '.overlay [data-realm=""]' });
+  }),
+  S('pw-autofill', '', async s => {
+    await signIn(s, '2fa');
+    await s.snap('filled');
+    await s.click({ css: '.overlay [data-m=email]' });
+    await s.wait(600);
+    await s.snap('email');
+    await s.click({ css: '.overlay [data-m=authenticator]' });
+    await s.wait(400);
+    await s.snap('back');
+    await s.click({ css: '#pw-verify' });
+    await s.wait(700);
+  }),
+  S('pw-code-checks', '', async s => {
+    await signIn(s, 'sms');
+    await s.type('12 3-45');
+    await s.snap('digits only');
+    await s.key('Enter');
+    await s.wait(700);
+    await s.snap('invalid');
+    await s.fill({ css: '#pw-otp' }, '000000');
+    await s.key('Enter');
+    await s.wait(700);
+    await s.snap('too many');
+    await s.click({ css: '.overlay [data-back]' });
+  }),
+  S('pw-locked', '', async s => { await signIn(s, 'locked'); await s.click({ css: '#pw-solve' }); await s.wait(1000); }),
+  S('pw-captcha-solved', '', async s => { await signIn(s, 'captcha'); await s.click({ css: '#pw-solve' }); await s.wait(1000); }, { langs: ['en'] }),
+  S('pw-finish', '', async s => { await signIn(s, 'finish'); await s.snap('try again'); await s.click({ css: '#pw-finish' }); await s.wait(800); }),
+  S('pw-key', '', async s => { await signIn(s, 'key'); }),
+  S('pw-two-added', '', async s => {
+    await signIn(s, 'firstfarm');
+    await s.wait(4000); // the first "Added" toast gone (it would be close to its end either way)
+    await s.fill({ css: '#pw-user' }, 'secondfarm');
+    await s.fill({ css: '#pw-pass' }, 'hunter2');
+    await s.click({ css: '#pw-go' });
+    await s.wait(900);
+    await s.snap('two added');
+    await s.key('Escape');
+    await s.wait(400);
+  }, { langs: ['en'] }),
+  S('pw-ask-close', '', async s => { await s.click(key('acc.add')); await s.fill({ css: '#pw-user' }, 'half'); await s.key('Escape'); }),
+  ...['cookie', 'vault', 'phone'].map(way => S(`pw-way-${way}`, '', async s => { await s.click(key('acc.add')); await s.click({ css: `.overlay [data-x2=${way}]` }); await s.wait(900); }, { langs: ['en'] })),
   S('add-phone', '', async s => { await s.click(key('acc.add')); await s.click({ key: 'start.phone', partial: true }); await s.wait(800); }, { langs: ['en'] }),
+  // Quick Login (the phone): the mock answers the polls (every 2.5 s) with ?ql=…, one each, and stays on the last.
+  ...[['ql-linked', 'linked'], ['ql-adding', 'adding']].map(([name, ql]) => S(name, `ql=${ql}`, async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(3000);
+  }, { langs: ['en'] })),
+  S('ql-added', 'ql=added,waiting', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(3000);
+    await s.snap('added');
+    await s.click({ key: 'common.done', within: '.overlay' });
+    await s.wait(300);
+  }),
+  S('ql-cancelled', 'ql=cancelled,waiting', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(3500);
+    await s.snap('declined');
+    await s.click({ css: '.overlay [data-new]' });
+    await s.wait(900);
+  }),
+  S('ql-expired', 'ql=expired', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(6000);
+  }),
+  S('ql-error', 'ql=error', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(3500);
+  }, { langs: ['en'] }),
+  S('ql-no-code', 'qlfail=1', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(900);
+    await s.snap('no code');
+    await s.click({ css: '.overlay [data-new]' });
+    await s.wait(900);
+  }),
+  S('ql-vng', '', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(900);
+    await s.click({ css: '.overlay [data-realm=vng]' });
+    await s.wait(900);
+  }),
+  S('ql-again', '', async s => {
+    await s.click(key('chip.invalid'));
+    await s.click({ css: '[data-act=relogin]' });
+    await s.wait(900);
+  }, { langs: ['en'] }),
   S('add-browser', '', async s => { await s.click(key('acc.add')); await s.click(key('ql.browser')); await s.wait(500); }),
   S('add-cookie', '', async s => {
     await s.click(key('acc.add'));

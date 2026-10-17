@@ -12,9 +12,11 @@ import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
 import { MultiHelp } from './MultiHelp';
 import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
 import { Palette, type PaletteEntry } from './Palette';
+import { PasswordLogin, type PasswordLoginApi } from './PasswordLogin';
 import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
 import { PresetsView } from './PresetsView';
+import { QuickLogin, type QuickLoginApi } from './QuickLogin';
 import { Servers } from './Servers';
 import { StatsView, type StatsApi } from './StatsView';
 import { AppearancePage } from './settings/AppearancePage';
@@ -115,6 +117,18 @@ const BloxkeepUI = {
   /** A game's servers (and the selected accounts' friends in it) into the Servers dialog's body; chosen picks one. */
   servers(el: HTMLElement, host: Host, placeId: number, ids: string[], chosen: (placeId: number, jobId: string) => void) {
     return mount(el, host, <Servers placeId={placeId} ids={ids} chosen={chosen} />);
+  },
+  /** The sign-in screen (username and password, the other ways around it) into its dialog's body; way opens another way. */
+  passwordLogin(el: HTMLElement, host: Host, forRealm: string | null, way: (way: string, realm: string) => void) {
+    const api = createRef<PasswordLoginApi>();
+    const unmount = mount(el, host, <PasswordLogin forRealm={forRealm} api={api} way={way} />);
+    return { unmount, api: api.current! };
+  },
+  /** Quick Login into its dialog's body; browserButton is the footer's "Sign in with the browser" (roblox.com only). */
+  quickLogin(el: HTMLElement, host: Host, forRealm: string | null, forName: string, browserButton: () => HTMLElement | null) {
+    const api = createRef<QuickLoginApi>();
+    const unmount = mount(el, host, <QuickLogin forRealm={forRealm} forName={forName} api={api} browserButton={browserButton} />);
+    return { unmount, api: api.current! };
   },
   /** The Statistics tab into its section; api opens Activity and exports it (Ctrl+K). */
   statsView(el: HTMLElement, host: Host) {

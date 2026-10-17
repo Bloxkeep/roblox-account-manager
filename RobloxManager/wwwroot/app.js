@@ -2400,390 +2400,37 @@
    * phone and no roblox.com: the values go only to Roblox's/VNG's official auth host, over HTTPS. Handles a 2-step code
    * and a captcha (shown in its own window, for the user to solve).
    */
-  const METHOD_LABEL = { authenticator: 'pw.auth', email: 'pw.email', sms: 'pw.sms' };
-
   function passwordLogin(forRealm) {
-    const added = [];
-    let realm = forRealm ?? (store.get('rm.qlRealm', '') === 'vng' ? 'vng' : '');
-    let step = 'login', method = 'authenticator', user = '';
-    // The 2-step methods this account has that take a typed code (the app asks Roblox), the preferred one first.
-    let methods = ['authenticator', 'email'];
-    // Email/SMS ways a code has gone out by (Roblox sends one by the preferred way itself), and per way when "Resend"
-    // works again. Both belong to one code screen: a new one (another account) starts empty.
-    const sent = new Set();
-    const resendAt = {};
-    let resendTimer = 0, sending = false;
-    const RESEND_WAIT = 30_000;
-    // A sign-in request on its way: every button that would send another stays off until the answer, also after a
-    // re-render (the realm tabs), so one click never sends the password twice.
-    let pending = false;
-    // Roblox said "too many tries" to a code: Verify (and Send) wait until then.
-    let verifyAt = 0, verifyTimer = 0;
-    // The account's authenticator key is saved here (the app said so): its code is filled in for the person, who still
-    // presses Verify. Never sent by itself, and never another code after Roblox refused one. A code still untouched in
-    // the box follows it when it changes.
-    let autofill = false, filled = '', fillTimer = 0, fillSeq = 0;
-    async function fillCode() {
-      clearTimeout(fillTimer);
-      const seq = ++fillSeq;
-      const box = () => m.el.querySelector('#pw-otp');
-      const untouched = () => box() && (!box().value || box().value === filled);
-      if (!autofill || method !== 'authenticator' || !untouched()) return;
-      let r;
-      try { r = await bridge.call('loginTwoStepCode'); } catch { return; }
-      if (seq !== fillSeq || !r?.code || method !== 'authenticator' || !untouched()) return;
-      box().value = filled = r.code;
-      const note = m.el.querySelector('#pw-filled');
-      if (note) note.hidden = false;
-      fillTimer = setTimeout(fillCode, Math.max(1, r.seconds) * 1000 + 300);
-    }
+    let ui = null;
     const m = modal({
       title: '',
       top: true,
       busy: true,
       dismissable: false, // a stray click beside it mustn't end a sign-in half way
       // Esc or the X asks first when that would throw away what was typed, or a sign-in half way (a code already sent).
-      askClose: () => pending || step !== 'login'
-        || !!(m.el.querySelector('#pw-user')?.value.trim() || m.el.querySelector('#pw-pass')?.value),
-      body: `<div id="pw-body"></div>`,
+      askClose: () => !!ui?.api.asksToClose(),
+      body: '',
       onClose: () => {
-        clearTimeout(resendTimer);
-        clearTimeout(verifyTimer);
-        clearTimeout(fillTimer);
-        fillSeq++;
+        ui?.api.stop();
         call('loginCancel', {}, { silent: true }); // the app drops the half-done sign-in and its password
+        const added = ui?.api.added() || [];
         if (!added.length) return;
         S.selected = new Set(added.map(a => a.id));
         S.anchor = added[added.length - 1].id;
         renderSelection();
       },
+      onRemoved: () => ui?.unmount(),
     });
     m.el.querySelector('.modal').classList.add('auth');
     m.el.querySelector('.modal').setAttribute('aria-label', t('pw.title'));
-    const body = () => m.el.querySelector('#pw-body');
-    const err = msg => { const e = m.el.querySelector('#pw-err'); if (e) { e.textContent = msg; e.hidden = !msg; } };
-
-    const realmTabs = () => `<div class="seg wide" role="tablist">
-        <button type="button" role="tab" data-realm="" class="${realm === '' ? 'on' : ''}" aria-selected="${realm === ''}">Roblox</button>
-        <button type="button" role="tab" data-realm="vng" class="${realm === 'vng' ? 'on' : ''}" aria-selected="${realm === 'vng'}">Roblox VNG</button>
-      </div>`;
-    const back = `<button type="button" class="auth-back" data-back>${t('pw.back')}</button>`;
-
-    function render() {
-      if (step === 'captcha') {
-        body().innerHTML = `<div class="auth-step">
-            <span class="auth-badge">${icon('shield')}</span>
-            <h4>${t('pw.captchaTitle')}</h4>
-            <p>${t('pw.captcha')}</p>
-          </div>
-          <div class="auth-acts">
-            <div class="form-error" id="pw-err" hidden></div>
-            <button type="button" class="btn go w" id="pw-solve">${t('pw.solve')}</button>
-            ${back}
-          </div>`;
-      } else if (step === 'finish') {
-        // Roblox handed out the sign-in but the account couldn't be looked up: only that is tried again.
-        body().innerHTML = `<div class="auth-step">
-            <span class="auth-badge">${icon('shieldCheck')}</span>
-            <h4>${t('pw.finishTitle')}</h4>
-            <p>${t('pw.finish')}</p>
-          </div>
-          <div class="auth-acts">
-            <div class="form-error" id="pw-err" hidden></div>
-            <button type="button" class="btn go w" id="pw-finish">${t('pw.retry')}</button>
-            ${back}
-          </div>`;
-      } else if (step === 'twostep') {
-        body().innerHTML = `<div class="auth-step">
-            <span class="auth-badge">${icon('shieldCheck')}</span>
-            <h4>${t('pw.twoTitle')}</h4>
-            <p>${t('pw.twoLead', { name: `<b>${esc(user)}</b>` })}</p>
-          </div>
-          ${methods.length > 1 ? `<div class="seg wide" role="tablist">
-            ${methods.map(x => `<button type="button" role="tab" data-m="${x}" class="${method === x ? 'on' : ''}" aria-selected="${method === x}">${t(METHOD_LABEL[x])}</button>`).join('')}
-          </div>` : ''}
-          <form id="pw-two" class="auth-form" autocomplete="off">
-            <input class="field auth-code" id="pw-otp" inputmode="numeric" maxlength="40" autocomplete="one-time-code" placeholder="000000" aria-label="${t('pw.code')}">
-            <p class="auth-hint" id="pw-filled" hidden>${t('pw.filled')}</p>
-            <div class="auth-sendrow" id="pw-sendrow" ${method === 'authenticator' ? 'hidden' : ''}>
-              <span class="auth-sentnote" id="pw-sentnote"></span>
-              <button type="button" class="link auth-send" id="pw-send"></button>
-            </div>
-            <div class="form-error" id="pw-err" hidden></div>
-            <button class="btn go w" type="submit" id="pw-verify">${t('pw.verify')}</button>
-            ${back}
-          </form>`;
-      } else {
-        // The phone comes first (no password, no puzzle); the browser sign-in is roblox.com only, so it isn't offered
-        // for Roblox VNG.
-        body().innerHTML = `<div class="auth-head"><img src="${LOGO}" alt=""><h3>${t('pw.title')}</h3></div>
-          ${realmTabs()}
-          ${added.length ? `<div class="auth-added">${icon('check')}<span>${t('pw.addedList', { names: esc(added.map(x => x.label).join(', ')) })}</span></div>` : ''}
-          <div class="auth-phone">${phoneOption('data-x2="phone"')}</div>
-          <div class="auth-or"><span>${t('pw.orPw')}</span></div>
-          <form id="pw-login" class="auth-form tight" autocomplete="off">
-            <label class="auth-label">${t('pw.user')}
-              <span class="lead-ic">${icon('user')}<input class="field" id="pw-user" maxlength="60" autocomplete="off" spellcheck="false" value="${esc(user)}"></span></label>
-            <label class="auth-label">${t('pw.pass')}
-              <span class="pw lead-ic">${icon('lock')}<input class="field" type="password" id="pw-pass" maxlength="200" autocomplete="off">
-              <button type="button" class="icon-btn" id="pw-eye" title="${t('lock.showPw')}" aria-label="${t('lock.showPw')}" aria-pressed="false">${icon('eye')}</button></span></label>
-            <div class="form-error" id="pw-err" hidden></div>
-            <button class="btn w" type="submit" id="pw-go">${t('pw.go')}</button>
-            <p class="auth-hint">${t('pw.extra')}</p>
-          </form>
-          <div class="auth-more">
-            <div class="ways"><span>${t('start.more')}</span>${realm === 'vng' ? '' : `<button type="button" class="btn sm ghost" data-x2="browser">${t('pw.withBrowser')}</button>`}<button type="button" class="btn sm ghost" data-x2="cookie">${t('pw.cookie')}</button></div>
-            <div class="ways"><span>${t('start.importFrom')}</span><button type="button" class="btn sm ghost" data-x2="vault" title="${t('start.vaultTip')}">${t('pw.vault')}</button></div>
-          </div>
-          <p class="auth-note">${icon('lock')}<span>${t('pw.note')}</span></p>`;
-      }
-      wire();
-    }
-
-    function wire() {
-      m.el.querySelectorAll('[data-realm]').forEach(b => b.onclick = () => {
-        if (pending || b.dataset.realm === realm) return; // the answer on its way is for the realm it was sent to
-        realm = b.dataset.realm;
-        store.set('rm.qlRealm', realm);
-        // Switching between Roblox and Roblox VNG keeps what was typed.
-        user = m.el.querySelector('#pw-user')?.value ?? user;
-        const pass = m.el.querySelector('#pw-pass')?.value || '';
-        render();
-        const box = m.el.querySelector('#pw-pass');
-        if (box) box.value = pass;
-      });
-      // Switching where the code comes from keeps what was typed. Email and SMS codes go out on their own, as on
-      // roblox.com: Roblox already sent one by the preferred way; another way gets one sent when it's picked.
-      m.el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
-        method = b.dataset.m;
-        m.el.querySelectorAll('[data-m]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); });
-        syncSend();
-        if (method !== 'authenticator' && !sent.has(method)) sendCode();
-        // A filled-in authenticator code isn't an email or SMS code: it goes with another way, and comes back with its own.
-        const otpBox = m.el.querySelector('#pw-otp');
-        if (method !== 'authenticator' && filled && otpBox?.value === filled) {
-          otpBox.value = '';
-          m.el.querySelector('#pw-filled').hidden = true;
-        }
-        fillCode();
-        otpBox?.focus();
-      });
-      const send = m.el.querySelector('#pw-send');
-      if (send) send.onclick = () => sendCode();
-      syncSend();
-      syncButtons();
-      // Back ends this attempt in the app too: the password goes, and a reply still on its way is dropped.
-      m.el.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
-        call('loginCancel', {}, { silent: true });
-        resetTwoStep();
-        step = 'login';
-        render();
-      });
-      m.el.querySelectorAll('[data-x2]').forEach(b => b.onclick = () => {
-        m.close();
-        const way = b.dataset.x2;
-        if (way === 'browser') addBrowser(null);
-        else if (way === 'phone') quickLogin(realm);
-        else if (way === 'cookie') accountModal(null);
-        else if (way === 'vault') importVault();
-      });
-      const solve = m.el.querySelector('#pw-solve');
-      if (solve) solve.onclick = async () => {
-        err('');
-        let r;
-        try { r = await request(solve, 'loginCaptcha', {}); }
-        catch (e) { return err(e.message); }
-        // The puzzle window was closed: "Solve" asks for a fresh one. Any other answer moves on (or is a new puzzle).
-        if (r?.status === 'captcha' && r.closed) return;
-        handle(r);
-      };
-      const finish = m.el.querySelector('#pw-finish');
-      if (finish) finish.onclick = async () => {
-        err('');
-        let r;
-        try { r = await request(finish, 'loginFinish', {}); }
-        catch (e) { return err(e.message); }
-        handle(r);
-      };
-      eyeToggle(m.el.querySelector('#pw-eye'), [m.el.querySelector('#pw-pass')]);
-      // A pasted "123 456" or "123-456" keeps its six digits; letters can't be typed.
-      const otp = m.el.querySelector('#pw-otp');
-      if (otp) otp.addEventListener('input', () => {
-        const digits = otp.value.replace(/\D/g, '').slice(0, 6);
-        if (otp.value !== digits) otp.value = digits;
-        // Typed over: the person's own code now, left alone.
-        if (otp.value !== filled) m.el.querySelector('#pw-filled').hidden = true;
-      });
-      const loginForm = m.el.querySelector('#pw-login');
-      if (loginForm) loginForm.onsubmit = e => { e.preventDefault(); submitLogin(); };
-      const twoForm = m.el.querySelector('#pw-two');
-      if (twoForm) twoForm.onsubmit = e => { e.preventDefault(); submitTwoStep(); };
-      // The puzzle and "Try again" screens have no box: their button takes the focus.
-      setTimeout(() => m.el.querySelector(step === 'login' && user ? '#pw-pass' : '#pw-user, #pw-otp, #pw-solve, #pw-finish')?.focus(), 30);
-    }
-
-    async function submitLogin() {
-      user = m.el.querySelector('#pw-user').value.trim();
-      const pass = m.el.querySelector('#pw-pass').value;
-      if (!user || !pass) return err(t('pw.need'));
-      err('');
-      let r;
-      try { r = await request(m.el.querySelector('#pw-go'), 'loginPassword', { username: user, password: pass, realm }); }
-      catch (e) {
-        err(e.message);
-        // Typing again replaces the refused password instead of adding to it.
-        const box = m.el.querySelector('#pw-pass');
-        box?.focus();
-        box?.select();
-        return;
-      }
-      handle(r);
-    }
-
-    /** One sign-in request at a time; see `pending`. */
-    async function request(btn, cmd, args) {
-      if (pending) return undefined;
-      try {
-        return await busy(btn, () => { pending = true; syncButtons(); return bridge.call(cmd, args); });
-      } finally {
-        pending = false;
-        syncButtons();
-      }
-    }
-
-    /** The buttons that send a sign-in request: off while one is on its way, Verify also while Roblox wants a pause. */
-    function syncButtons() {
-      clearTimeout(verifyTimer);
-      m.el.querySelectorAll('#pw-go, #pw-solve, #pw-finish, [data-realm]').forEach(b => { b.disabled = pending; });
-      const verify = m.el.querySelector('#pw-verify');
-      if (!verify) return;
-      const wait = Math.ceil((verifyAt - Date.now()) / 1000);
-      verify.disabled = pending || wait > 0;
-      verify.textContent = wait > 0 ? t('pw.verifyIn', { s: wait }) : t('pw.verify');
-      if (wait > 0) verifyTimer = setTimeout(syncButtons, 1000);
-    }
-
-    /** Leaving a code screen: what was sent, and the waits, belong to that sign-in, not to the next one. */
-    function resetTwoStep() {
-      sent.clear();
-      for (const k of Object.keys(resendAt)) delete resendAt[k];
-      verifyAt = 0;
-      clearTimeout(resendTimer);
-      clearTimeout(verifyTimer);
-      autofill = false;
-      filled = '';
-      clearTimeout(fillTimer);
-      fillSeq++;
-    }
-
-    async function submitTwoStep() {
-      const code = m.el.querySelector('#pw-otp').value.trim();
-      if (!code) return err(t('pw.needCode'));
-      err('');
-      let r;
-      try { r = await request(m.el.querySelector('#pw-verify'), 'loginTwoStep', { method, code }); }
-      catch (e) { return err(e.message); }
-      handle(r);
-    }
-
-    /** "Code sent to your email · Resend (25 s)": shown for email and SMS codes, the resend held back a little. */
-    function syncSend() {
-      clearTimeout(resendTimer);
-      const row = m.el.querySelector('#pw-sendrow'), btn = m.el.querySelector('#pw-send'), note = m.el.querySelector('#pw-sentnote');
-      if (!row || !btn) return;
-      row.hidden = method === 'authenticator';
-      if (row.hidden) return;
-      const wasSent = sent.has(method);
-      note.textContent = wasSent ? t(method === 'sms' ? 'pw.sentSms' : 'pw.sentEmail') : '';
-      const wait = Math.ceil(((resendAt[method] || 0) - Date.now()) / 1000);
-      const held = verifyAt > Date.now();
-      // Off while a send is on its way too, so flipping tabs fast can't send a second one.
-      btn.disabled = sending || held || (wasSent && wait > 0);
-      btn.textContent = !wasSent ? t('pw.send') : wait > 0 ? t('pw.resendIn', { s: wait }) : t('pw.resend');
-      if (held || (wasSent && wait > 0)) resendTimer = setTimeout(syncSend, 1000);
-    }
-
-    async function sendCode() {
-      const btn = m.el.querySelector('#pw-send');
-      if (!btn || btn.disabled || sending) return;
-      err('');
-      const way = method;
-      let r;
-      sending = true;
-      try { r = await busy(btn, () => bridge.call('loginTwoStepSend', { method: way })); }
-      catch (e) { return err(e.message); }
-      finally { sending = false; syncSend(); }
-      if (r?.status !== 'sent') return handle(r);
-      sent.add(way);
-      resendAt[way] = Date.now() + RESEND_WAIT;
-      syncSend();
-    }
-
-    function handle(r) {
-      if (!r) return;
-      // The attempt is over (wrong password, account locked, too many tries), or what it asked for was answered and
-      // then failed: back to the first step with the reason, the username kept, instead of offering the puzzle or the
-      // code again.
-      if (r.status === 'login') {
-        resetTwoStep();
-        step = 'login';
-        render();
-        err(r.error || '');
-        return;
-      }
-      // Signed in, but the account couldn't be looked up: "Try again" only does that.
-      if (r.status === 'finish') {
-        resetTwoStep();
-        step = 'finish';
-        render();
-        err(r.error || '');
-        return;
-      }
-      // Too many codes tried: the code screen stays, Verify waits a minute.
-      if (r.status === 'wait') {
-        verifyAt = Date.now() + (r.seconds || 60) * 1000;
-        const hadFocus = m.el.querySelector('#pw-verify') === document.activeElement;
-        syncButtons();
-        syncSend();
-        err(r.error || '');
-        // Verify turns itself off while it has the focus: the code box takes it, ready for the next code.
-        if (hadFocus || !m.el.contains(document.activeElement)) m.el.querySelector('#pw-otp')?.focus();
-        return;
-      }
-      if (r.status === 'captcha') {
-        // Solved, and Roblox wants another one (it can chain them): say so, or it looks like nothing happened.
-        const again = step === 'captcha';
-        step = 'captcha';
-        render();
-        if (again) err(t('pw.captchaAgain'));
-        return;
-      }
-      if (r.status === 'twostep') {
-        resetTwoStep();
-        step = 'twostep';
-        const known = (r.methods || []).filter(x => METHOD_LABEL[x]);
-        methods = known.length ? known : ['authenticator', 'email'];
-        // Roblox may already have sent the code a given way (e.g. by email): start on that tab.
-        method = methods.includes(r.media) ? r.media : methods[0];
-        // Roblox sends the code by the preferred way (or the one it named) as soon as it asks for it.
-        if (method === 'email' || method === 'sms') { sent.add(method); resendAt[method] = Date.now() + RESEND_WAIT; }
-        autofill = !!r.autofill;
-        render();
-        fillCode(); // on the authenticator tab (now or once picked), with the key saved here
-        return;
-      }
-      if (r.status === 'added') {
-        const a = r.added;
-        added.push(a);
-        toast(t(a.merged ? 't.merged' : 't.added', { name: a.label }), 'ok');
-        resetTwoStep();
-        step = 'login';
-        user = '';
-        render();
-      }
-    }
-
-    render();
+    // The screens are React's (ui/src/PasswordLogin.tsx); a way picked there closes this and opens that way.
+    ui = window.BloxkeepUI.passwordLogin(m.el.querySelector('.modal-body'), uiHost(), forRealm ?? null, (way, realm) => {
+      m.close();
+      if (way === 'browser') addBrowser(null);
+      else if (way === 'phone') quickLogin(realm);
+      else if (way === 'cookie') accountModal(null);
+      else if (way === 'vault') importVault();
+    });
   }
 
   /**
@@ -2792,149 +2439,30 @@
    */
   /** @param forName the account being signed in again (Sign in on a signed-out card), named at the top. */
   function quickLogin(forRealm, forName = '') {
-    const added = [];
-    let gen = 0, timer = 0, ticker = 0, seconds = 0, phase = '', expiredInRow = 0, closed = false;
-    // Roblox VNG (Vietnam) accounts confirm the code in the Roblox VNG app and sign in on VNG's servers.
-    let realm = forRealm ?? (store.get('rm.qlRealm', '') === 'vng' ? 'vng' : '');
+    let ui = null;
     const m = modal({
       title: t('ql.title'),
       top: true,
       busy: true,
-      body: `${forName ? `<p class="ql-for">${t('ql.for', { name: `<b>${esc(forName)}</b>` })}</p>` : ''}<div class="ql-realm" role="tablist">
-          <button role="tab" data-realm="">Roblox</button><button role="tab" data-realm="vng">Roblox VNG</button>
-        </div>
-        <div class="ql">
-          <div class="ql-qr" id="ql-qr"></div>
-          <div class="ql-side">
-            <div class="ql-code" id="ql-code"></div>
-            <ol class="ql-steps"><li id="ql-step1"></li><li>${t('ql.step2')}</li><li>${t('ql.step3')}</li></ol>
-          </div>
-        </div>
-        <div class="ql-status" id="ql-status"></div>
-        <div class="ql-added" id="ql-added"></div>`,
+      body: '',
       actions: [
         { text: t('ql.browser'), onClick: ({ close }) => { close(); addBrowser(null); } },
         { text: t('common.done'), kind: 'primary', onClick: ({ close }) => close() },
       ],
       onClose: () => {
-        closed = true;
-        clearTimeout(timer);
-        clearInterval(ticker);
+        ui?.api.stop();
         call('quickLoginCancel', {}, { silent: true });
+        const added = ui?.api.added() || [];
         if (!added.length) return;
         S.selected = new Set(added.map(a => a.id));
         S.anchor = added[added.length - 1].id;
         renderSelection();
       },
+      onRemoved: () => ui?.unmount(),
     });
-    const $q = sel => m.el.querySelector(sel);
-    const mmss = n => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
-    const show = (next, html, kind = '') => {
-      phase = next;
-      const box = $q('#ql-status');
-      box.className = `ql-status ${kind}`;
-      box.innerHTML = html;
-    };
-    const newCodeBtn = `<button class="btn sm" data-new>${t('ql.newCode')}</button>`;
-    // A declined or expired code can't be used any more: it goes, so nobody types it in.
-    const clearCode = () => { $q('#ql-code').textContent = '······'; $q('#ql-qr').innerHTML = ''; };
-    const showWaiting = () => show('waiting', `<span class="spin"></span><span>${t('ql.waiting', { time: mmss(seconds) })}</span>`);
-    const showRealm = () => {
-      m.el.querySelectorAll('[data-realm]').forEach(b => {
-        b.classList.toggle('on', b.dataset.realm === realm);
-        b.setAttribute('aria-selected', String(b.dataset.realm === realm));
-      });
-      $q('#ql-step1').textContent = t(realm === 'vng' ? 'ql.step1Vng' : 'ql.step1');
-      // The browser sign-in is roblox.com only.
-      $q('.modal-foot .btn[data-i="0"]').hidden = realm === 'vng';
-    };
-    m.el.addEventListener('click', e => {
-      const pick = e.target.closest('[data-realm]');
-      if (pick) {
-        if (pick.dataset.realm === realm) return;
-        realm = pick.dataset.realm;
-        store.set('rm.qlRealm', realm);
-        showRealm();
-      } else if (!e.target.closest('[data-new]')) {
-        return;
-      }
-      expiredInRow = 0;
-      start();
-    });
-    showRealm();
-
-    async function start() {
-      const my = ++gen;
-      clearTimeout(timer);
-      clearInterval(ticker);
-      $q('#ql-code').textContent = '······';
-      $q('#ql-qr').innerHTML = '';
-      show('getting', `<span class="spin"></span><span>${t('ql.getting')}</span>`);
-      let r;
-      try {
-        r = await bridge.call('quickLoginStart', { realm });
-      } catch (e) {
-        if (my === gen && !closed) show('error', `<span>${esc(e.message)}</span>${newCodeBtn}`, 'bad');
-        return;
-      }
-      if (my !== gen || closed) return;
-      $q('#ql-code').textContent = r.code;
-      $q('#ql-qr').innerHTML = r.qr ? `<img src="${r.qr}" alt="QR">` : '';
-      seconds = r.seconds;
-      showWaiting();
-      ticker = setInterval(() => {
-        if (seconds > 0) seconds--;
-        if (phase === 'waiting') showWaiting();
-      }, 1000);
-      timer = setTimeout(() => poll(my), 2500);
-    }
-
-    async function poll(my) {
-      let r;
-      try {
-        r = await bridge.call('quickLoginPoll', {});
-      } catch (e) {
-        if (my !== gen || closed) return;
-        // That code is spent: it goes with the error, as it does when it is declined or runs out.
-        clearInterval(ticker);
-        clearCode();
-        show('error', `<span>${esc(e.message)}</span>${newCodeBtn}`, 'bad');
-        return;
-      }
-      if (my !== gen || closed) return;
-      switch (r.status) {
-        case 'added': {
-          const a = r.added;
-          added.push(a);
-          toast(t(a.merged ? 't.merged' : 't.added', { name: a.label }), 'ok');
-          $q('#ql-added').textContent = t('ql.addedList', { names: added.map(x => x.label).join(', ') });
-          expiredInRow = 0;
-          return start();
-        }
-        case 'linked':
-          expiredInRow = 0;
-          show('linked', `${r.picture ? `<img class="ql-pic" src="${esc(r.picture)}" alt="">` : '<span class="spin"></span>'}<span>${hidingNames() ? t('ql.linkedHidden') : t('ql.linked', { name: esc(r.name || '') })}</span>`);
-          break;
-        case 'adding':
-          show('adding', `<span class="spin"></span><span>${t('ql.adding')}</span>`);
-          break;
-        case 'cancelled':
-          clearCode();
-          return show('cancelled', `<span>${t('ql.cancelled')}</span>${newCodeBtn}`, 'bad');
-        case 'expired':
-        case 'none':
-          // Renew quietly a few times; after that stop asking Roblox until the user comes back.
-          if (++expiredInRow <= 3) return start();
-          clearCode();
-          return show('expired', `<span>${t('ql.expired')}</span>${newCodeBtn}`);
-        default:
-          if (typeof r.seconds === 'number') seconds = r.seconds;
-          if (phase !== 'waiting') showWaiting();
-      }
-      timer = setTimeout(() => poll(my), 2500);
-    }
-
-    start();
+    // The codes, their QR and how it goes are React's (ui/src/QuickLogin.tsx); it hides the browser button for VNG.
+    ui = window.BloxkeepUI.quickLogin(m.el.querySelector('.modal-body'), uiHost(), forRealm ?? null, forName,
+      () => m.el.querySelector('.modal-foot .btn[data-i="0"]'));
   }
 
   async function checkAccounts(ids) {

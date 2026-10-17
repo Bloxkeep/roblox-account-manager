@@ -393,7 +393,7 @@ html [data-theme="dark" lang="en"]
               li "Enter the code or scan the QR, then confirm"
         div.ql-status [id="ql-status"]
           span.spin
-          span "Waiting for you to confirm · expires in 1:36"
+          span "Waiting for you to confirm · expires in 1:50"
       div.modal-foot
         button.btn "Sign in with a browser"
         button.btn.primary "Done"

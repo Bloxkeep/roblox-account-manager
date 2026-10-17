@@ -48,6 +48,8 @@
     return m && games[m[1]] && !params.has('noicons') ? games[m[1]].iconUrl : null;
   };
   const MAX_PRESETS = 50;
+  const QL_STEPS = (params.get('ql') || '').split(',').filter(Boolean);
+  let qlStep = 0, qlStarts = 0, qlFailed = false;
 
   let accounts = params.has('empty') ? [] : [
     { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', alias: tx('Main', 'Tài khoản chính'), label: tx('Main', 'Tài khoản chính'), group: 'Main', note: tx("My main account, don't farm on it", 'Tài khoản chơi chính, đừng dùng farm'),
@@ -655,8 +657,28 @@
         }
         // "locked": Roblox locked the account after the puzzle; the attempt is over (the page goes back to the first step).
         case 'loginCaptcha': await wait(800); if (loginUser === 'locked') return { status: 'login', error: language === 'vi' ? 'Roblox đã khóa tài khoản này để bảo vệ nó.' : 'Roblox has locked this account to protect it.' }; return { status: 'added', added: { id: id(3), label: 'captcha', merged: false } };
-        case 'quickLoginStart': await wait(500); return { code: 'K7Q2XW', seconds: 120, qr: null };
-        case 'quickLoginPoll': await wait(200); return { status: 'waiting' };
+        // Quick Login: ?ql=linked,adding,added,… walks the code through those answers, one a poll, and stays on the last;
+        // ?qlfail=1: the first code can't be had.
+        case 'quickLoginStart':
+          await wait(500);
+          if (params.has('qlfail') && !qlFailed) { qlFailed = true; throw new Error(language === 'vi' ? 'Roblox không đưa mã. Thử lại sau giây lát.' : "Roblox didn't give a code. Try again in a moment."); }
+          return { code: 'K7Q2X' + 'WABCDEFGH'[Math.min(8, qlStarts++)], seconds: 120, qr: null }; // K7Q2XW first, then A, B…
+        case 'quickLoginPoll': {
+          await wait(200);
+          const step = QL_STEPS[Math.min(qlStep++, QL_STEPS.length - 1)] || 'waiting';
+          if (step === 'error') throw new Error(language === 'vi' ? 'Roblox không trả lời. Thử lại.' : "Roblox didn't answer. Try again.");
+          if (step === 'linked') return { status: 'linked', name: 'PhoneUser', picture: null };
+          if (step === 'added') {
+            const n = accounts.length + 1;
+            const acc = { id: `ql${n}`, userId: 5150000000 + n, username: `PhoneUser${n}`, displayName: `PhoneUser${n}`, alias: '', label: `PhoneUser${n}`, group: '', note: '',
+              realm: '', hasPassword: false, cookieValid: true, lastUsed: null, avatarUrl: null, state: 'idle', presence: null, session: null };
+            accounts.push(acc);
+            push();
+            return { status: 'added', added: { id: acc.id, label: acc.label, merged: false } };
+          }
+          if (step === 'waiting') return { status: 'waiting', seconds: 110 };
+          return { status: step };
+        }
         case 'changePassword': await wait(400); if (a.current !== 'demo') throw new Error(language === 'vi' ? 'Mật khẩu chủ hiện tại không đúng.' : 'The current master password is wrong.'); return true;
         // Join a player: a name with "nobody" isn't a Roblox user; "hidden", "offline", "studio" and "web" are users
         // Roblox won't show a server for; any other name is found in Blox Fruits. Found names are remembered.
