@@ -177,13 +177,35 @@ public sealed partial class AppController
         }
 
         // Bans, from each account's public profile (no cookie): the ones checked above, and the signed-out and banned
-        // ones too, so a ban that ends is noticed as well. One call per account with the same pause; Roblox asking to
-        // slow down ends this part until the next run.
+        // ones too, so a ban that ends is noticed as well. Roblox asking to slow down ends this part until the next run.
         var banned = new List<Account>();
         if (!stopped && !rateLimited)
         {
-            foreach (var account in vault.Data.Accounts.Where(a => a.UserId > 0 && (due.Contains(a) || a.CookieValid == false || a.Banned == true)).ToList())
+            var toCheck = vault.Data.Accounts.Where(a => a.UserId > 0 && (due.Contains(a) || a.CookieValid == false || a.Banned == true)).ToList();
+            // Most accounts aren't banned, and roblox.com's list of users leaves banned ones out: one request per 100
+            // accounts finds those that aren't. Only the ones it leaves out (a ban, or no answer for them) and the ones
+            // banned before are asked about one by one, with the pause. (Roblox VNG's are on another host: one by one.)
+            var listed = new HashSet<long>();
+            var unbanned = toCheck.Where(a => a.Realm == Realm.Global && a.Banned != true).Select(a => a.UserId).ToList();
+            if (unbanned.Count > 1)
             {
+                try
+                {
+                    listed = (await RobloxApi.GetUsersAsync(unbanned)).Keys.ToHashSet();
+                }
+                catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+                {
+                    // No list: each is asked about on its own, as before.
+                }
+            }
+            foreach (var account in toCheck)
+            {
+                if (account.Realm == Realm.Global && account.Banned != true && listed.Contains(account.UserId))
+                {
+                    account.Banned = false; // as CheckBanAsync has it for one that isn't banned
+                    account.BannedSince = null;
+                    continue;
+                }
                 if (!SignInCheckCanGoOn(vault))
                 {
                     stopped = true;

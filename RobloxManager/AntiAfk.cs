@@ -74,7 +74,11 @@ static class AntiAfk
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
-    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int command);
+    // Async: ShowWindow on another program's window waits for it to answer, and a Roblox that hangs (loading, paging)
+    // would hold Bloxkeep's window and its timer (rejoin, saves) for as long.
+    [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr hWnd, int command);
+    /// <summary>Windows' own "not responding" (no answer for 5 seconds).</summary>
+    [DllImport("user32.dll")] static extern bool IsHungAppWindow(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool IsWindow(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT point);
     [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
@@ -166,12 +170,13 @@ static class AntiAfk
             {
                 if (!keepGoing() || LastInputTick() != baseline)
                     break; // turned off, or a person is back: hand the PC over right away
-                if (!IsWindow(hWnd))
+                // A window that isn't answering can't be nudged anyway; touching it could only make Bloxkeep wait.
+                if (!IsWindow(hWnd) || IsHungAppWindow(hWnd))
                     continue;
                 // A minimized window still gets kicked: show it for the moment of the nudge, then minimize it again.
                 bool minimized = IsIconic(hWnd);
                 if (minimized)
-                    ShowWindow(hWnd, SW_RESTORE);
+                    ShowWindowAsync(hWnd, SW_RESTORE);
                 try
                 {
                     if (!Focus(hWnd))
@@ -194,7 +199,7 @@ static class AntiAfk
                 finally
                 {
                     if (minimized)
-                        ShowWindow(hWnd, SW_SHOWMINNOACTIVE);
+                        ShowWindowAsync(hWnd, SW_SHOWMINNOACTIVE);
                 }
             }
         }
@@ -231,7 +236,8 @@ static class AntiAfk
             return true;
         uint self = GetCurrentThreadId();
         uint other = foreground == IntPtr.Zero ? 0 : GetWindowThreadProcessId(foreground, out _);
-        bool attached = other != 0 && other != self && AttachThreadInput(self, other, true);
+        // Not to a program that has stopped answering: sharing its input could leave Bloxkeep waiting on it too.
+        bool attached = other != 0 && other != self && !IsHungAppWindow(foreground) && AttachThreadInput(self, other, true);
         try
         {
             BringWindowToTop(hWnd);

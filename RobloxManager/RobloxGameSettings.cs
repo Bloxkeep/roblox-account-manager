@@ -224,7 +224,8 @@ public static class RobloxGameSettings
         try
         {
             Directory.CreateDirectory(Vault.DataDir);
-            File.WriteAllText(BaselinePath, JsonSerializer.Serialize(baseline));
+            // In one piece or not at all: a half-written copy of the person's own settings would never be put back.
+            DurableFile.WriteText(BaselinePath, JsonSerializer.Serialize(baseline));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

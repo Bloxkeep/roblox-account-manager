@@ -18,6 +18,12 @@ public sealed class ShellForm : Form
 {
     const string Origin = "https://bloxkeep.local/";
     const int MaxAutomaticRestarts = 3;
+    /// <summary>
+    /// After this long without a browser failure the counts start again: crashes days apart (a GPU reset after a
+    /// sleep, a browser ended by an antivirus) aren't a broken driver, nor a reason to stop restarting the page.
+    /// </summary>
+    static readonly TimeSpan BrowserHealthyAfter = TimeSpan.FromMinutes(30);
+    long _lastBrowserFailure = long.MinValue / 2;
 
     readonly AppController _app;
     // Long enough that a quick look at another program never closes the browser; it is then reopened on return.
@@ -904,6 +910,13 @@ public sealed class ShellForm : Form
 
     void OnProcessFailed(CoreWebView2 core, CoreWebView2ProcessFailedKind kind)
     {
+        long now = Environment.TickCount64;
+        if (now - _lastBrowserFailure > (long)BrowserHealthyAfter.TotalMilliseconds)
+        {
+            _gpuCrashes = 0;
+            _automaticRestarts = 0;
+        }
+        _lastBrowserFailure = now;
         switch (kind)
         {
             // The page's renderer died: load the page again; it re-reads the state on load.

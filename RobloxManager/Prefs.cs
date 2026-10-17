@@ -232,9 +232,9 @@ public static class Prefs
             // Never over a known key: a pref missing from Known would otherwise revert to its loaded value every restart.
             foreach (var (key, value) in _extra)
                 values.TryAdd(key, value);
-            string tmp = PrefsPath + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(values));
-            File.Move(tmp, PrefsPath, overwrite: true);
+            // Flushed to disk before it replaces the old file: a power cut can't leave it empty (language, theme and
+            // the backup folder would quietly reset, and backups stop).
+            DurableFile.WriteText(PrefsPath, JsonSerializer.Serialize(values));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

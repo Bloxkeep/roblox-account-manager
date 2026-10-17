@@ -810,7 +810,39 @@ public sealed partial class AppController : IDisposable
     void PersistIfDue(DateTime now)
     {
         if (_saveDue is { } due && now >= due)
-            Persist();
+            _ = PersistInBackgroundAsync();
+    }
+
+    /// <summary>
+    /// The usual save, of the last few seconds' changes: the vault is taken here and encrypted, written and flushed
+    /// to disk on a worker (<see cref="Vault.SaveInBackground"/>), which took the window 20-70 ms with a long play
+    /// history. A save that must be on disk before going on (lock, exit, a deleted account) is <see cref="Persist"/>.
+    /// </summary>
+    async Task PersistInBackgroundAsync()
+    {
+        _saveDue = null;
+        if (_vault is not { } vault)
+            return;
+        NoteOpenSessions(); // as Persist does: after a crash the next unlock still finds the clients open now
+        try
+        {
+            await vault.SaveInBackground();
+            if (_vault != vault)
+                return; // locked meanwhile: closing finished the write
+            _saveFailed = false;
+            _saveFailures = 0;
+            OnVaultSaved();
+        }
+        catch (Exception ex) when (_vault == vault)
+        {
+            if (ex is not (IOException or UnauthorizedAccessException))
+                Log.Write(ex);
+            SaveFailed(ex);
+        }
+        catch (Exception ex) when (ex is not (IOException or UnauthorizedAccessException or ObjectDisposedException))
+        {
+            Log.Write(ex);
+        }
     }
 
     /// <returns>false when the vault couldn't be written (it is tried again shortly).</returns>
@@ -832,15 +864,22 @@ public sealed partial class AppController : IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Try again shortly (and on lock or exit); an antivirus usually lets go within seconds. Say so once. A file
-            // that stays locked (a sync client, a read-only folder) is tried less and less often, up to every 5 minutes.
-            _saveDue = DateTime.UtcNow + TimeSpan.FromTicks(Math.Min(SaveDelay.Ticks << Math.Min(_saveFailures, 7), MaxSaveRetry.Ticks));
-            _saveFailures++;
-            if (!_saveFailed)
-                Toast(L.F("Couldn't save data: {0}", ErrorText(ex)), "error");
-            _saveFailed = true;
+            SaveFailed(ex);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Try again shortly (and on lock or exit); an antivirus usually lets go within seconds. Say so once. A file that
+    /// stays locked (a sync client, a read-only folder) is tried less and less often, up to every 5 minutes.
+    /// </summary>
+    void SaveFailed(Exception ex)
+    {
+        _saveDue = DateTime.UtcNow + TimeSpan.FromTicks(Math.Min(SaveDelay.Ticks << Math.Min(_saveFailures, 7), MaxSaveRetry.Ticks));
+        _saveFailures++;
+        if (!_saveFailed)
+            Toast(L.F("Couldn't save data: {0}", ErrorText(ex)), "error");
+        _saveFailed = true;
     }
 
     /// <summary>
@@ -850,7 +889,8 @@ public sealed partial class AppController : IDisposable
     /// </summary>
     public bool SaveBeforeClosing()
     {
-        bool due = NoteOpenSessions() | NotePlaySessions() | NoteScheduledRuns() | _saveDue is not null;
+        // A save still being written in the background is written again now, so a failure is known here.
+        bool due = NoteOpenSessions() | NotePlaySessions() | NoteScheduledRuns() | _saveDue is not null | _vault?.SavingInBackground == true;
         bool saved = !due;
         for (int attempt = 1; !saved && attempt <= 3; attempt++)
         {
@@ -3752,6 +3792,12 @@ public sealed partial class AppController : IDisposable
                 PushState();
             }
             Notify(L.F("Couldn't rejoin {0}: {1}", Name(account),ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex)), "error", "rejoinFail", account.Id);
+        }
+        catch (Exception ex)
+        {
+            // Anything else (a bug, a file or key Windows refused): said, and logged by ErrorText, rather than the
+            // account quietly not coming back.
+            Notify(L.F("Couldn't rejoin {0}: {1}", Name(account), ErrorText(ex)), "error", "rejoinFail", account.Id);
         }
         finally
         {

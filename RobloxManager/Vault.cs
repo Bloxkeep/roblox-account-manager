@@ -372,10 +372,15 @@ public sealed class Vault : IDisposable
     }
 
     /// <summary>Puts other vault bytes (a backup) in place of vault.rmv, with the same safe swap as a save.</summary>
-    public static void ReplaceFile(byte[] bytes) => WriteAtomic(bytes);
+    public static void ReplaceFile(byte[] bytes)
+    {
+        lock (FileGate)
+            WriteAtomic(bytes);
+    }
 
     static string Stamp() => DateTime.Now.ToString("yyyyMMdd-HHmmss");
 
+    /// <summary>Writes the vault now (lock, exit, a changed password: callers that need it on disk before going on).</summary>
     public void Save()
     {
         lock (_sync)
@@ -385,30 +390,145 @@ public sealed class Vault : IDisposable
         }
     }
 
+    /// <summary>One write to the vault file at a time: a save in the background and one made now never interleave.</summary>
+    static readonly object FileGate = new();
+    /// <summary>A background save waiting for the worker: the vault as it was then, and the key it goes under.</summary>
+    sealed record Pending(byte[] Plain, byte[] Key, byte[] Salt, int Iterations);
+    readonly object _queueGate = new();
+    Pending? _queued;
+    Task _background = Task.CompletedTask;
+
+    /// <summary>
+    /// Takes the vault as it is now (on the caller's thread, so nothing changes under it) and has it encrypted, written
+    /// and flushed to disk on a worker, which is most of a save's time: the window doesn't stall for it. One write at a
+    /// time; a newer save replaces one still waiting. The task ends once the vault as of this call (or newer) is on
+    /// disk, faulted when that write failed (it is then tried again with the next save).
+    /// </summary>
+    public Task SaveInBackground()
+    {
+        Pending next;
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_key.Length == 0, this);
+            next = new Pending(JsonSerializer.SerializeToUtf8Bytes(Data), _key.ToArray(), _salt.ToArray(), _iterations);
+        }
+        lock (_queueGate)
+        {
+            Forget(_queued);
+            _queued = next;
+            return _background = _background.ContinueWith(_ => WriteQueued(), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+        }
+    }
+
+    void WriteQueued()
+    {
+        Pending? p;
+        lock (_queueGate)
+        {
+            p = _queued;
+            _queued = null;
+        }
+        if (p is null)
+            return; // written already, by the save before this one or by one made now
+        try
+        {
+            lock (FileGate)
+                WriteEncrypted(p.Plain, p.Key, p.Salt, p.Iterations);
+        }
+        catch
+        {
+            // Kept for the next save to try again, unless a newer one is already waiting.
+            lock (_queueGate)
+            {
+                if (_queued is null)
+                {
+                    _queued = p;
+                    p = null;
+                }
+            }
+            throw;
+        }
+        finally
+        {
+            Forget(p);
+        }
+    }
+
+    /// <summary>A save waiting in the background goes: what is written now is newer (and may be under a new password).</summary>
+    void DropQueued()
+    {
+        lock (_queueGate)
+        {
+            Forget(_queued);
+            _queued = null;
+        }
+    }
+
+    static void Forget(Pending? p)
+    {
+        if (p is null)
+            return;
+        CryptographicOperations.ZeroMemory(p.Plain);
+        CryptographicOperations.ZeroMemory(p.Key);
+    }
+
+    /// <summary>A background save is waiting or being written.</summary>
+    public bool SavingInBackground
+    {
+        get
+        {
+            lock (_queueGate)
+                return !_background.IsCompleted;
+        }
+    }
+
+    /// <summary>Waits for a background save still being written (the vault is about to close: lock, exit, an update).</summary>
+    public void WaitForSaves(TimeSpan timeout)
+    {
+        Task pending;
+        lock (_queueGate)
+            pending = _background;
+        try
+        {
+            pending.Wait(timeout);
+        }
+        catch (AggregateException)
+        {
+            // Its failure was reported to whoever asked for that save.
+        }
+    }
+
     void Write(byte[] key, byte[] salt, int iterations)
     {
+        byte[] plain = JsonSerializer.SerializeToUtf8Bytes(Data);
+        try
         {
-            byte[] plain = JsonSerializer.SerializeToUtf8Bytes(Data);
-            try
+            lock (FileGate)
             {
-                byte[] file = new byte[HeaderSize + NonceSize + TagSize + plain.Length];
-                Magic.CopyTo(file, 0);
-                BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(4, 4), iterations);
-                salt.CopyTo(file, 8);
-                var nonce = file.AsSpan(HeaderSize, NonceSize);
-                RandomNumberGenerator.Fill(nonce);
-                using (var aes = new AesGcm(key, TagSize))
-                {
-                    aes.Encrypt(nonce, plain, file.AsSpan(HeaderSize + NonceSize + TagSize),
-                        file.AsSpan(HeaderSize + NonceSize, TagSize), file.AsSpan(0, HeaderSize));
-                }
-                WriteAtomic(file);
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(plain);
+                DropQueued(); // older than this, and possibly under the old password (ChangePassword)
+                WriteEncrypted(plain, key, salt, iterations);
             }
         }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plain);
+        }
+    }
+
+    static void WriteEncrypted(byte[] plain, byte[] key, byte[] salt, int iterations)
+    {
+        byte[] file = new byte[HeaderSize + NonceSize + TagSize + plain.Length];
+        Magic.CopyTo(file, 0);
+        BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(4, 4), iterations);
+        salt.CopyTo(file, 8);
+        var nonce = file.AsSpan(HeaderSize, NonceSize);
+        RandomNumberGenerator.Fill(nonce);
+        using (var aes = new AesGcm(key, TagSize))
+        {
+            aes.Encrypt(nonce, plain, file.AsSpan(HeaderSize + NonceSize + TagSize),
+                file.AsSpan(HeaderSize + NonceSize, TagSize), file.AsSpan(0, HeaderSize));
+        }
+        WriteAtomic(file);
     }
 
     /// <summary>Writes to a temp file first so a crash mid-write never leaves a half-written vault.</summary>
@@ -520,6 +640,9 @@ public sealed class Vault : IDisposable
 
     public void Dispose()
     {
+        // A save still on its way to disk is finished first: closing (lock, exit, an update's restart) mustn't lose it.
+        WaitForSaves(TimeSpan.FromSeconds(10));
+        DropQueued();
         lock (_sync)
         {
             CryptographicOperations.ZeroMemory(_key);

@@ -307,7 +307,7 @@ public sealed partial class AppController
                     Log.Note("Backup on closing took too long; it is made at the next unlock.");
                 }
             }
-            catch (AggregateException ex) when (ex.InnerException is IOException or UnauthorizedAccessException)
+            catch (AggregateException ex) when (ex.InnerException is not null)
             {
                 BackupFailed(ex.InnerException);
             }
@@ -349,8 +349,9 @@ public sealed partial class AppController
                 // That copy failed; this one is made anyway.
             }
         }
-        // A change still waiting to be saved goes into the file first, so the copy and its hash hold the same.
-        if (_saveDue is not null && _vault is not null)
+        // A change still waiting to be saved (or being written in the background) goes into the file first, so the
+        // copy and its hash hold the same.
+        if ((_saveDue is not null || _vault?.SavingInBackground == true) && _vault is not null)
             Persist();
         if (ReadVaultForBackup() is not { } bytes)
             return false;
@@ -364,7 +365,9 @@ public sealed partial class AppController
             BackupDone(hash, saves);
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        // Any reason, not only a file Windows refused: a folder setting that isn't a usable path would otherwise stop
+        // the copies without a word (the reason shows in Settings › Backup and goes to the log).
+        catch (Exception ex)
         {
             BackupFailed(ex);
             return false;

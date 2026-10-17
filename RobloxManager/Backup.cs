@@ -34,9 +34,7 @@ static class Backup
         string? id = Vault.IdOf(vault);
         Directory.CreateDirectory(folder);
         string final = Path.Combine(folder, FileName(id, DateTime.Now));
-        string tmp = final + ".tmp";
-        File.WriteAllBytes(tmp, vault);
-        File.Move(tmp, final, overwrite: true);
+        DurableFile.Write(final, vault); // never an empty file under a backup's name, counted among the kept ones
         var ids = new HashSet<string>(previousIds ?? [], StringComparer.OrdinalIgnoreCase);
         if (id is not null)
             ids.Add(id);
