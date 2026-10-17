@@ -20,7 +20,6 @@ function findEdge() {
 
 /** Starts Edge with a throwaway profile and returns a driver for its one tab. */
 export async function launch({ width = 1280, height = 800, scale = 1, locale = 'en-US', timezone = 'Asia/Ho_Chi_Minh' } = {}) {
-  const port = 9400 + Math.floor(Math.random() * 500);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'bloxkeep-ui-'));
   // No password manager: where it's on, Edge marks a new-password box aria-autocomplete="list" itself, which isn't
   // the page's doing and differs from PC to PC (it did between this PC and GitHub's).
@@ -28,7 +27,8 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
   fs.writeFileSync(path.join(profile, 'Default', 'Preferences'), JSON.stringify({
     credentials_enable_service: false, profile: { password_manager_enabled: false }, autofill: { enabled: false, profile_enabled: false, credit_card_enabled: false },
   }));
-  const proc = spawn(findEdge(), ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
+  // Port 0: Edge picks a free one and writes it into the profile (DevToolsActivePort), so several can run side by side.
+  const proc = spawn(findEdge(), ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--font-render-hinting=none',
     '--disable-features=msEdgeSidebarV2,msUndersideButton', '--disable-background-timer-throttling',
     `--window-size=${width},${height}`, `--lang=${locale}`, 'about:blank'], { stdio: 'ignore' });
@@ -36,6 +36,7 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
   for (let i = 0; i < 150 && !page; i++) {
     await sleep(150);
     try {
+      const port = fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0].trim();
       const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
       page = list.find(t => t.type === 'page');
     } catch { /* not up yet */ }
