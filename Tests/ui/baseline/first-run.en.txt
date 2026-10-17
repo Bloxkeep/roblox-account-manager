@@ -26,6 +26,8 @@ html [data-theme="dark" lang="en"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
       div.lock-alt
         button.link [type="button"] "Restore from a backup"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Just use Multi-Roblox, without accounts"
 #layer
 #toasts
 -- commands

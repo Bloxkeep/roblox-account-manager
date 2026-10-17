@@ -1,0 +1,122 @@
+== asked
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [title="English" aria-pressed="true"] "EN"
+        button [title="Tiếng Việt" aria-pressed="false"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Set a master password"
+      p "You’ll use it to unlock Bloxkeep. It if you forget it."
+        b "can’t be recovered"
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value=""]
+          button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [id="pw2" type="password" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value=""]
+        div.strength-row
+          div.strength
+            i [id="pw-meter"]
+          span [id="pw-strength" aria-live="polite"]
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Just use Multi-Roblox, without accounts"
+#layer
+  div.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Turn on Multi-Roblox?"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        p.modal-text.pre "Roblox doesn’t officially support several clients at once. Use at your own risk."
+      div.modal-foot
+        button.btn "Cancel"
+        button.btn.primary [FOCUSED] "Turn on"
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+== on
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [title="English" aria-pressed="true"] "EN"
+        button [title="Tiếng Việt" aria-pressed="false"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Set a master password"
+      p "You’ll use it to unlock Bloxkeep. It if you forget it."
+        b "can’t be recovered"
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value=""]
+          button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [id="pw2" type="password" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value=""]
+        div.strength-row
+          div.strength
+            i [id="pw-meter"]
+          span [id="pw-strength" aria-live="polite"]
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+      div.lock-alt.lock-multi
+        span [id="lock-multi-on"] "Multi-Roblox is on: Roblox windows from roblox.com in your browsers run side by side."
+        button.link [type="button" FOCUSED] "Turn it off"
+#layer
+#toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "Multi-Roblox is on. Sign in on roblox.com in your own browsers and press Play: each window runs side by side. The tray icon’s menu turns it off or opens Roblox."
+-- commands
+  multiOnly {"on":true}
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [title="English" aria-pressed="true"] "EN"
+        button [title="Tiếng Việt" aria-pressed="false"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Set a master password"
+      p "You’ll use it to unlock Bloxkeep. It if you forget it."
+        b "can’t be recovered"
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value=""]
+          button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [id="pw2" type="password" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value=""]
+        div.strength-row
+          div.strength
+            i [id="pw-meter"]
+          span [id="pw-strength" aria-live="polite"]
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+      div.lock-alt.lock-multi
+        button.link [type="button" FOCUSED] "Just use Multi-Roblox, without accounts"
+#layer
+#toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "Multi-Roblox is on. Sign in on roblox.com in your own browsers and press Play: each window runs side by side. The tray icon’s menu turns it off or opens Roblox."
+-- commands
+  multiOnly {"on":false}

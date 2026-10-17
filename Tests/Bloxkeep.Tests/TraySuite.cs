@@ -35,24 +35,41 @@ static class TraySuite
         var menuType = typeof(Prefs).Assembly.GetType("RobloxManager.TrayMenu")!;
         using var menu = (ContextMenuStrip)Activator.CreateInstance(menuType, true)!;
         var farm = Guid.NewGuid();
-        var info = new AppController.TrayInfo(true, "ready", 2, [(farm, "Farm")]);
+        var alt = Guid.NewGuid();
+        var info = new AppController.TrayInfo(true, "ready", 2, [(farm, "Farm")], [(alt, "Alt", false), (Guid.NewGuid(), "Main", true)]);
         menuType.GetProperty("State")!.SetValue(menu, (Func<AppController.TrayInfo>)(() => info));
-        Guid? ran = null;
-        bool closed = false;
+        Guid? ran = null, opened = null;
+        bool closed = false, fresh = false;
+        menuType.GetEvent("AccountClicked")!.AddEventHandler(menu, (Action<Guid>)(id => opened = id));
+        menuType.GetEvent("NewRobloxClicked")!.AddEventHandler(menu, (Action)(() => fresh = true));
         menuType.GetEvent("PresetClicked")!.AddEventHandler(menu, (Action<Guid>)(id => ran = id));
         menuType.GetEvent("CloseAllClicked")!.AddEventHandler(menu, (Action)(() => closed = true));
         void Open() => menuType.GetMethod("OnOpening", Harness.F)!.Invoke(menu, [new System.ComponentModel.CancelEventArgs()]);
         Open();
         var items = menu.Items.OfType<ToolStripMenuItem>().ToList();
         string Shown() => string.Join(" | ", menu.Items.OfType<ToolStripMenuItem>().Where(i => i.Available).Select(i => i.Text));
-        c.Check("tray menu: Multi-Roblox's state, presets, close all, then the window items", Shown() == "Multi-Roblox: on | Run preset | Close all Roblox | Mini window | Open Bloxkeep | Quit Bloxkeep", Shown());
-        items[1].DropDownItems[0].PerformClick();
-        items[2].DropDownItems[0].PerformClick();
-        c.Check("…a preset runs from its submenu, and closing asks with a second item that says how many",
-            ran == farm && closed && items[2].DropDownItems[0].Text == "Close 2 Roblox windows", items[2].DropDownItems[0].Text);
+        ToolStripMenuItem Item(string text) => items.Single(i => i.Text == text);
+        c.Check("tray menu: Multi-Roblox's state, a new Roblox, accounts, presets, close all, then the window items",
+            Shown() == "Multi-Roblox: on | Open Roblox | Open account | Run preset | Close all Roblox | Mini window | Open Bloxkeep | Quit Bloxkeep", Shown());
+        Item("Open Roblox").PerformClick();
+        Item("Open account").DropDownItems[0].PerformClick();
+        Item("Run preset").DropDownItems[0].PerformClick();
+        Item("Close all Roblox").DropDownItems[0].PerformClick();
+        var main = (ToolStripMenuItem)Item("Open account").DropDownItems[1];
+        c.Check("…a new Roblox, an account and a preset open from it, and closing asks with a second item that says how many",
+            fresh && opened == alt && ran == farm && closed && Item("Close all Roblox").DropDownItems[0].Text == "Close 2 Roblox windows", Item("Close all Roblox").DropDownItems[0].Text);
+        c.Check("…an account already open is ticked and can't be opened twice", main.Checked && !main.Enabled);
+        bool CanSwitch(bool on) => (bool)menuType.GetMethod("CanSwitchMulti")!.Invoke(menu, [on])!;
+        c.Check("…with a vault, Multi-Roblox turns off from here, and on only in Bloxkeep (its warning)", CanSwitch(true) && !CanSwitch(false));
         info = new AppController.TrayInfo(false, "off", 0, []);
         Open();
-        c.Check("tray menu while locked: Multi-Roblox's state and the window items only", Shown() == "Multi-Roblox: off | Mini window | Open Bloxkeep | Quit Bloxkeep", Shown());
+        c.Check("tray menu while locked: Multi-Roblox's state, a new Roblox and the window items",
+            Shown() == "Multi-Roblox: off | Open Roblox | Mini window | Open Bloxkeep | Quit Bloxkeep", Shown());
+        c.Check("…locked, Multi-Roblox isn't switched from here", !CanSwitch(true) && !CanSwitch(false));
+        info = new AppController.TrayInfo(false, "ready", 3, [], [], MultiOnly: true);
+        Open();
+        c.Check("Multi-Roblox only (no vault): it turns on and off from here, and every Roblox closes",
+            CanSwitch(true) && CanSwitch(false) && Shown() == "Multi-Roblox: on | Open Roblox | Close all Roblox | Mini window | Open Bloxkeep | Quit Bloxkeep", Shown());
         return Task.CompletedTask;
     }
 }

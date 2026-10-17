@@ -2468,6 +2468,14 @@
       case 'bk-import': return importVault();
       // First-run screen: the chosen file becomes the vault; the app then shows the unlock screen.
       case 'restore-backup': return busy(el, () => call('restoreBackup'));
+      // First start without a vault: Multi-Roblox only, for someone who signs in to Roblox in their own browser. It
+      // asks the same as the sidebar's switch, then Bloxkeep goes to the tray.
+      case 'multi-only': return (async () => {
+        if (!await confirmBox(t('set.multiConfirm'), { title: t('set.multiConfirmTitle'), ok: t('set.multiOk') })) return;
+        if (await call('multiOnly', { on: true }) === undefined) return;
+        toast(t('lock.multiOnlyDone'), 'ok');
+      })();
+      case 'multi-only-off': return call('multiOnly', { on: false });
       case 'check-updates': return busy(el, () => call('checkUpdates'));
       // From the Multi-Roblox check (Settings › Roblox): the answer comes here, not only on the updates page.
       case 'rw-check': return busy(el, async () => {

@@ -154,7 +154,7 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.1.1 · 17 tháng 10, 2026"
+              small "Bloxkeep 1.1.3 · 17 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
@@ -163,52 +163,13 @@ html [data-theme="dark" lang="vi"]
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Cho Bloxkeep một sao trên GitHub từ Cài đặt › Cập nhật Bloxkeep, Ctrl+K hoặc cuối bảng Có gì mới. Mỗi sao giúp thêm người chơi tìm thấy Bloxkeep."
-          li
-            svg.i #u7ty99
-            span "Tự khóa (Cài đặt › Bảo mật): khi không ai dùng máy trong khoảng thời gian bạn chọn, Bloxkeep hỏi lại mật khẩu chủ, còn Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy."
-          li
-            svg.i #u7ty99
-            span "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
+            span "Menu ở biểu tượng khay cho biết Multi-Roblox có đang bật không, chạy preset và đóng mọi cửa sổ Roblox mà không cần mở Bloxkeep."
         h4.improved.wn-kind.wn-sub "Cải thiện"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
-            span "Cửa sổ Server giữ nguyên kích thước khi đang tải, các server đang có vẫn hiện tới khi có danh sách mới, không còn nhảy sang vòng xoay rồi nhảy lại."
-          li
-            svg.i #1l5qw3q
-            span "Roblox chỉ cho mỗi máy tải vài danh sách server mỗi phút. Khi Roblox bảo chờ, cửa sổ Server ghi rõ còn bao lâu rồi tự tải lại; sắp xếp theo ping hay FPS không còn tự tốn thêm một lượt."
-          li
-            svg.i #1l5qw3q
-            span "Các cửa sổ có nội dung thay đổi khi đang mở (đăng nhập, nhập file dữ liệu, Vào cùng người chơi, cài đặt preset, Gửi góp ý) đứng yên một chỗ, không nhảy theo nữa."
-          li
-            svg.i #1l5qw3q
-            span "Danh sách game phía trên ô game giữ nguyên chiều cao khi đang tải."
-          li
-            svg.i #1l5qw3q
-            span "Thẻ bộ lọc bị cắt ở mép hàng giờ mờ dần cả thẻ."
-          li
-            svg.i #1l5qw3q
-            span "Giao diện Bloxkeep được làm lại phần bên trong để các tính năng mới ra nhanh hơn. Mọi thứ trông và dùng vẫn như cũ, không phải làm quen lại."
-        h4.fixed.wn-kind.wn-sub "Đã sửa"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
-          li
-            svg.i #yqrnd9
-            span "Tự tay đóng cửa sổ Roblox giờ không còn bị tính là văng game: Bloxkeep không vào lại rồi báo “không vào lại được: không có cửa sổ Roblox nào hiện ra” nữa."
-          li
-            svg.i #yqrnd9
-            span "Roblox giờ để lại một bản chạy ngầm ở khay hệ thống mỗi khi đóng cửa sổ, và bản đó nuốt lần mở tiếp theo nên không có cửa sổ nào hiện ra. Bloxkeep tắt nó trước khi mở Roblox, và Close all không còn tắt nhầm Roblox mà chương trình khác (như Bloxstrap) vừa mở."
-          li
-            svg.i #yqrnd9
-            span "Bản tóm tắt giờ chơi gửi lên Discord đã gửi được trở lại (trước đó lần nào cũng lỗi)."
-          li
-            svg.i #yqrnd9
-            span "Cửa sổ Server không còn kẹt ở “Roblox vẫn đang bận” sau vài lần bấm: trước đây nó hỏi lại Roblox quá sớm và hỏi nhiều hơn cần."
-          li
-            svg.i #yqrnd9
-            span "Đăng nhập bằng điện thoại: thời gian “hết hạn sau” của mã vẫn đúng sau khi thu nhỏ Bloxkeep."
+            span "Multi-Roblox bật ngay khi Bloxkeep mở, trước cả khi nhập mật khẩu chủ, nên cửa sổ Roblox mở từ roblox.com hay app Roblox vẫn chạy song song kể cả lúc đang ở màn hình khóa."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

@@ -26,6 +26,8 @@ html [data-theme="dark" lang="vi"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Chỉ dùng Multi-Roblox, không thêm tài khoản"
 #layer
 #toasts
 -- commands
@@ -60,6 +62,8 @@ html [data-theme="dark" lang="vi"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Chỉ dùng Multi-Roblox, không thêm tài khoản"
 #layer
 #toasts
 -- commands
@@ -92,6 +96,8 @@ html [data-theme="dark" lang="vi"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Chỉ dùng Multi-Roblox, không thêm tài khoản"
 #layer
 #toasts
 -- commands
@@ -124,6 +130,8 @@ html [data-theme="dark" lang="vi"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Chỉ dùng Multi-Roblox, không thêm tài khoản"
 #layer
 #toasts
 -- commands
@@ -156,6 +164,8 @@ html [data-theme="dark" lang="vi"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Chỉ dùng Multi-Roblox, không thêm tài khoản"
 #layer
 #toasts
 -- commands

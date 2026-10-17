@@ -558,6 +558,15 @@ export default [
     await s.wait(2600);
   }),
   S('first-run-restore', 'new=1', async s => { await s.click(key('lock.restore')); await s.wait(800); }),
+  // Multi-Roblox only, for someone who signs in to Roblox in their own browser: asked like the sidebar's switch, then
+  // the first screen says it is on, and it turns off again from there.
+  S('first-run-multi-only', 'new=1', async s => {
+    await s.click(key('lock.multiOnly'));
+    await s.snap('asked');
+    await s.click(key('set.multiOk'));
+    await s.snap('on');
+    await s.click(key('lock.multiOnlyOff'));
+  }),
   S('unlock-checks', 'locked=1', async s => {
     await s.key('Enter');
     await s.snap('nothing typed');

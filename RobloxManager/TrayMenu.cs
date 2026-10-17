@@ -9,8 +9,9 @@ namespace RobloxManager;
 /// </summary>
 sealed class TrayMenu : ContextMenuStrip
 {
-    readonly ToolStripMenuItem _mini = new(), _open = new(), _quit = new(), _multi = new(), _presets = new(), _closeAll = new();
-    readonly ToolStripSeparator _toolsLine = new();
+    readonly ToolStripMenuItem _mini = new(), _open = new(), _quit = new(), _multi = new(), _newRoblox = new(), _accounts = new(),
+        _presets = new(), _closeAll = new();
+    readonly ToolStripSeparator _multiLine = new(), _toolsLine = new();
 
     public event Action? MiniClicked;
     public event Action? OpenClicked;
@@ -22,9 +23,11 @@ sealed class TrayMenu : ContextMenuStrip
     /// <summary>Multi-Roblox's item: off while it is on; on opens Bloxkeep, where the switch asks first.</summary>
     public event Action<bool>? MultiClicked;
     public event Action<Guid>? PresetClicked;
+    public event Action? NewRobloxClicked;
+    public event Action<Guid>? AccountClicked;
     public event Action? CloseAllClicked;
-    /// <summary>When the menu last opened, a vault was open (Multi-Roblox's item can turn it off).</summary>
-    public bool TrayOpen => _multi.Tag is true;
+    /// <summary>When the menu last opened, Multi-Roblox's item could switch it from here (see <see cref="AppController.TrayMulti"/>).</summary>
+    public bool CanSwitchMulti(bool on) => _multi.Tag is AppController.TrayInfo info && (info.MultiOnly || (on && info.Open));
 
     /// <summary>Whether the mini window is open right now, for the check mark next to its item.</summary>
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
@@ -38,17 +41,18 @@ sealed class TrayMenu : ContextMenuStrip
         Font = new Font("Segoe UI", 9.75f);
         Padding = new Padding(4, 5, 4, 5);
         _open.Font = new Font("Segoe UI Semibold", 9.75f);
-        foreach (var item in new[] { _mini, _open, _quit, _multi, _presets, _closeAll })
+        foreach (var item in new[] { _mini, _open, _quit, _multi, _newRoblox, _accounts, _presets, _closeAll })
             item.Padding = new Padding(10, 6, 24, 6);
         _mini.Click += (_, _) => MiniClicked?.Invoke();
         _open.Click += (_, _) => OpenClicked?.Invoke();
         _quit.Click += (_, _) => QuitClicked?.Invoke();
         _multi.Click += (_, _) => MultiClicked?.Invoke(_multi.Checked);
+        _newRoblox.Click += (_, _) => NewRobloxClicked?.Invoke();
         // Closing every Roblox window is confirmed by its submenu's one item, not on the first click.
         var closeNow = new ToolStripMenuItem { Padding = new Padding(10, 6, 24, 6) };
         closeNow.Click += (_, _) => CloseAllClicked?.Invoke();
         _closeAll.DropDownItems.Add(closeNow);
-        Items.AddRange([_multi, _presets, _closeAll, _toolsLine, _mini, _open, new ToolStripSeparator(), _quit]);
+        Items.AddRange([_multi, _multiLine, _newRoblox, _accounts, _presets, _closeAll, _toolsLine, _mini, _open, new ToolStripSeparator(), _quit]);
     }
 
     protected override void OnOpening(System.ComponentModel.CancelEventArgs e)
@@ -59,13 +63,23 @@ sealed class TrayMenu : ContextMenuStrip
         _open.Text = L.T("Open Bloxkeep");
         _quit.Text = L.T("Quit Bloxkeep");
         var state = State?.Invoke();
-        _multi.Visible = _toolsLine.Visible = state is not null;
+        _multi.Visible = _multiLine.Visible = _newRoblox.Visible = _toolsLine.Visible = state is not null;
+        _newRoblox.Text = L.T("Open Roblox");
         if (state is not null)
         {
             _multi.Text = L.T(state.Multi switch { "ready" => "Multi-Roblox: on", "notReady" => "Multi-Roblox: not ready", _ => "Multi-Roblox: off" });
             _multi.Checked = state.Multi != "off";
-            // Locked, the setting can't change from here: the item opens Bloxkeep.
-            _multi.Tag = state.Open;
+            _multi.Tag = state;
+        }
+        _accounts.Visible = state is { Open: true, Accounts.Count: > 0 };
+        _accounts.Text = L.T("Open account");
+        _accounts.DropDownItems.Clear();
+        foreach (var (id, name, running) in state?.Accounts ?? [])
+        {
+            // One already open is ticked, not opened a second time.
+            var item = new ToolStripMenuItem(name.Replace("&", "&&")) { Padding = new Padding(10, 6, 24, 6), Checked = running, Enabled = !running };
+            item.Click += (_, _) => AccountClicked?.Invoke(id);
+            _accounts.DropDownItems.Add(item);
         }
         _presets.Visible = state is { Open: true, Presets.Count: > 0 };
         _presets.Text = L.T("Run preset");
@@ -76,14 +90,14 @@ sealed class TrayMenu : ContextMenuStrip
             item.Click += (_, _) => PresetClicked?.Invoke(id);
             _presets.DropDownItems.Add(item);
         }
-        _closeAll.Visible = state is { Open: true, RobloxCount: > 0 };
+        _closeAll.Visible = state is { RobloxCount: > 0 } && (state.Open || state.MultiOnly);
         _closeAll.Text = L.T("Close all Roblox");
         if (state is { RobloxCount: > 0 })
             _closeAll.DropDownItems[0].Text = state.RobloxCount == 1 ? L.T("Close 1 Roblox window") : L.F("Close {0} Roblox windows", state.RobloxCount);
         var theme = Themes.Current;
         var renderer = new ThemedRenderer(theme, RoundCorners(Handle, theme));
         Renderer = renderer;
-        foreach (var sub in new[] { _presets.DropDown, _closeAll.DropDown })
+        foreach (var sub in new[] { _accounts.DropDown, _presets.DropDown, _closeAll.DropDown })
         {
             sub.Renderer = new ThemedRenderer(theme, RoundCorners(sub.Handle, theme));
             sub.Font = Font;

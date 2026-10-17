@@ -3,7 +3,7 @@
 // (applyState); this draws it, checks what was typed and asks the app. The boxes keep what is typed themselves: app.js
 // reads them back when the screen is drawn again in another language.
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { Icon, useHost, type AppState } from './host';
+import { Icon, useAppState, useHost, type AppState } from './host';
 import { Rich } from './rich';
 
 export type LockMode = 'create' | 'unlock';
@@ -20,6 +20,7 @@ export function Lock({ mode, notice, kept, opened }: {
 }) {
   const { t, logo, ask, busy, strength } = useHost();
   const create = mode === 'create';
+  const multiOnly = !!useAppState().multiAtStart;
   const form = useRef<HTMLFormElement>(null), pw1 = useRef<HTMLInputElement>(null), pw2 = useRef<HTMLInputElement>(null);
   const btn = useRef<HTMLButtonElement>(null), meter = useRef<HTMLElement>(null), label = useRef<HTMLSpanElement>(null);
   const [error, setError] = useState('');
@@ -106,6 +107,10 @@ export function Lock({ mode, notice, kept, opened }: {
       <div className="lock-error" id="lock-error" role="alert">{error}</div>
       <button className="btn primary big w" type="submit" id="lock-btn" ref={btn}>{t(create ? 'lock.create' : 'lock.unlock')}</button>
       {create ? <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button></div> : null}
+      {/* For someone who signs in to Roblox only in their own browser: Multi-Roblox without a vault or accounts. */}
+      {create ? <div className="lock-alt lock-multi">{multiOnly
+        ? <><span id="lock-multi-on">{t('lock.multiOnlyOn')}</span> <button type="button" className="link" data-act="multi-only-off">{t('lock.multiOnlyOff')}</button></>
+        : <button type="button" className="link" data-act="multi-only">{t('lock.multiOnly')}</button>}</div> : null}
     </form>
   </div>;
 }

@@ -154,7 +154,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.1.1 · October 17, 2026"
+              small "Bloxkeep 1.1.3 · October 17, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
@@ -163,52 +163,13 @@ html [data-theme="dark" lang="en"]
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it."
-          li
-            svg.i #u7ty99
-            span "Lock automatically (Settings › Security): when nobody has used the PC for the time you pick, Bloxkeep asks for the master password again, while Roblox, auto-rejoin, scheduled presets and Discord keep running."
-          li
-            svg.i #u7ty99
-            span "What’s new lists what’s new, what works better and what’s fixed separately."
+            span "The tray icon's menu shows whether Multi-Roblox is on, runs a preset, and closes every Roblox window, without opening Bloxkeep."
         h4.improved.wn-kind.wn-sub "Improved"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
-            span "Servers keeps its size while a list loads, and the servers you had stay on screen until the new ones are in, instead of jumping to a spinner and back."
-          li
-            svg.i #1l5qw3q
-            span "Roblox gives each PC only a few server lists a minute. When it says to wait, Servers shows how long and loads again by itself, and sorting by ping or FPS no longer spends a list on its own."
-          li
-            svg.i #1l5qw3q
-            span "Windows whose content changes while open (signing in, importing a vault file, Join a player, a preset’s settings, Send feedback) stay put instead of jumping."
-          li
-            svg.i #1l5qw3q
-            span "The game list above the game box keeps its height while it loads."
-          li
-            svg.i #1l5qw3q
-            span "A filter chip cut off at the edge of the row fades out whole."
-          li
-            svg.i #1l5qw3q
-            span "Bloxkeep’s screens were rebuilt underneath, so new features can come faster. They look and work as before: nothing to relearn."
-        h4.fixed.wn-kind.wn-sub "Fixed"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
-          li
-            svg.i #yqrnd9
-            span "Closing a Roblox window yourself no longer counts as a drop: Bloxkeep doesn't rejoin it and then say it “didn't rejoin: no Roblox window appeared”."
-          li
-            svg.i #yqrnd9
-            span "Roblox now leaves a copy of itself in the notification area when its window closes, and that copy took over the next launch without opening a window. Bloxkeep ends it before opening Roblox, and Close all no longer ends a Roblox that another program (Bloxstrap, for one) is just starting."
-          li
-            svg.i #yqrnd9
-            span "Discord play-time summaries are sent again (every one had failed)."
-          li
-            svg.i #yqrnd9
-            span "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed."
-          li
-            svg.i #yqrnd9
-            span "Sign in with your phone: the code’s “expires in” time stays right after Bloxkeep was minimized."
+            span "Multi-Roblox is on as soon as Bloxkeep starts, before the master password, so Roblox windows opened from roblox.com or the Roblox app run side by side even at the lock screen."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

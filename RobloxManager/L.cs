@@ -287,6 +287,13 @@ public static class L
         ["Multi-Roblox: not ready"] = "Multi-Roblox: chưa sẵn sàng",
         ["Multi-Roblox: off"] = "Multi-Roblox: đang tắt",
         ["Run preset"] = "Chạy preset",
+        ["Open Roblox"] = "Mở Roblox mới",
+        ["Open account"] = "Mở tài khoản",
+        ["Roblox isn't installed on this PC."] = "Máy này chưa cài Roblox.",
+        ["Roblox brought its open home screen forward instead of opening another one: it runs one home screen at a time. To open more windows, press Play on roblox.com in another browser, or open an account from Bloxkeep."] =
+            "Roblox đưa màn hình chính đang mở lên trước thay vì mở thêm cái mới: mỗi lúc Roblox chỉ chạy một màn hình chính. Muốn mở thêm cửa sổ, hãy bấm Play trên roblox.com ở trình duyệt khác, hoặc mở tài khoản từ Bloxkeep.",
+        ["Opening this account asks something first. Open it from Bloxkeep."] = "Mở tài khoản này cần bạn trả lời một câu hỏi trước. Hãy mở nó trong Bloxkeep.",
+        ["Bloxkeep has a vault on this PC: Multi-Roblox is turned on or off inside it."] = "Máy này đã có kho của Bloxkeep: hãy bật hoặc tắt Multi-Roblox trong đó.",
         ["Close all Roblox"] = "Đóng tất cả Roblox",
         ["Close 1 Roblox window"] = "Đóng 1 cửa sổ Roblox",
         ["Close {0} Roblox windows"] = "Đóng {0} cửa sổ Roblox",

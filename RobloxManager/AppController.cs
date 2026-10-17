@@ -420,6 +420,7 @@ public sealed partial class AppController : IDisposable
         "discordSummaryNow" => SendDiscordNowAsync(summary: true),
         "openReleaseNotes" => Done(OpenReleaseNotes(Str(a, "version"))),
         "hideRobloxClosed" => Done(HideRobloxClosed()),
+        "multiOnly" => Done(MultiOnly(Bool(a, "on"))),
         "updateRoblox" => Done(UpdateRoblox()),
         "openRobloxWatch" => Done(OpenUrl(RobloxWatch.DocsUrl)),
         // The user guide on GitHub, in the app's language (docs/guide.md, docs/guide.vi.md).
@@ -542,6 +543,7 @@ public sealed partial class AppController : IDisposable
             ? new { from = _updatedFrom, releases = WhatsNew.Between(_updatedFrom, _updater.CurrentVersion) }
             : null,
         vaultExists = Vault.Exists,
+        multiAtStart = Prefs.MultiRobloxAtStart,
         locked = Open is null,
         // The lock screen after a while without use: Bloxkeep is open behind it, Roblox and the background carry on.
         screenLock = _screenLocked ? new { minutes = _vault?.Data.Settings.AutoLockMinutes ?? 0 } : null,

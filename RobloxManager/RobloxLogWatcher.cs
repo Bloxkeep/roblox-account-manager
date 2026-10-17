@@ -44,6 +44,8 @@ public sealed class RobloxLogWatcher
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox", "logs"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCGDK", "logs"),
         ];
+    /// <summary>Where Roblox writes its clients' logs (the Microsoft Store edition has its own folder).</summary>
+    internal static IReadOnlyList<string> Folders => LogDirs;
     // A game start, logged before "Joining game" (seen 2026-10-13 in 0.742, and in the Store edition): a launch that
     // stalls while loading never gets further, so it counts as joining from here.
     const string LaunchMark = "[FLog::SingleSurfaceApp] launchUGCGameInternal";
