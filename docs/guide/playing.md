@@ -47,6 +47,8 @@ Under the box you see the game's name, its creator, how many are playing and a *
 - **Public servers**: sort by **Most players**, **Fewest players**, **Lowest ping** or **Best FPS**. **Room for N** (with 2 or more accounts selected) shows only servers with room for all of them. **Random server** picks one.
 - **Use** puts that server's Job ID in the game bar ("Server chosen — select accounts and press Play."). A full server is greyed out.
 - The ping is the average of the players in that server, not your own. When Roblox is busy, the list tries again by itself, then offers **Try again**.
+- Empty servers aren't listed: a server whose last player has left is closing, and joining it ends on "This experience has ended".
+- Several accounts sent to one server: the first one to open shows whether the server lets it in (a normal join gets a server in about a second). If it doesn't within 12 seconds (the server is full or has closed), that account and the rest go to another server with room for them all.
 
 ## Join a player
 

@@ -34,6 +34,7 @@ A preset keeps the accounts (in order), the game, how to pick the server, the wa
 <summary>More details</summary>
 
 - The server is picked when the preset runs, among servers with room for its accounts. If none has room, Roblox picks.
+- If the picked server doesn't let the first account in (it is full or has closed), the accounts go to another one with room for them all.
 - If accounts were deleted, the form says so; they're left out when you save.
 - If saving is refused, the reason shows above the buttons and the box to fix gets the focus.
 

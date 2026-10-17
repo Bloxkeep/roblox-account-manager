@@ -47,6 +47,8 @@ Nút **Server** (không có với server riêng) mở danh sách server của ga
 - **Server công khai**: sắp xếp theo **Đông nhất**, **Vắng nhất**, **Ping thấp nhất** hoặc **FPS cao nhất**. **Đủ chỗ cho N tài khoản** (khi chọn từ 2 tài khoản) chỉ hiện server còn đủ chỗ cho tất cả. **Server ngẫu nhiên** chọn bừa một server.
 - **Dùng** điền Job ID của server đó vào thanh chọn game ("Đã chọn server. Giờ chọn tài khoản rồi bấm Vào game."). Server đã đầy thì nút bị mờ.
 - Ping hiển thị là ping trung bình của người chơi trong server, không phải ping từ máy bạn. Khi Roblox đang bận, danh sách tự thử lại, sau đó hiện nút **Thử lại**.
+- Server không còn ai thì không hiện trong danh sách: người cuối cùng đã thoát nên server đang đóng, vào sẽ gặp lỗi "This experience has ended".
+- Khi gửi nhiều tài khoản vào một server: tài khoản mở đầu tiên sẽ cho biết server có nhận hay không (bình thường chỉ khoảng 1 giây là được xếp vào server). Nếu sau 12 giây vẫn chưa vào được (server đã đầy hoặc đã đóng), tài khoản đó và các tài khoản còn lại sẽ chuyển sang một server khác còn đủ chỗ cho tất cả.
 
 ## Vào cùng người chơi
 

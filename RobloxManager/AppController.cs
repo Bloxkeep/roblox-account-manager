@@ -2591,9 +2591,13 @@ public sealed partial class AppController : IDisposable
             started = true;
             PushState();
             await WaitForSweepAsync(ct);
+            int party = accounts.Count(acc => (!_running.ContainsKey(acc.Id) || switching.Contains(acc)) && !StillOpening(acc.Id));
             if (pickServer is not null && target is not null)
-                target = await pickServer(target, accounts.Count(acc => (!_running.ContainsKey(acc.Id) || switching.Contains(acc))
-                                                                         && !StillOpening(acc.Id)), ct);
+                target = await pickServer(target, party, ct);
+            // Several accounts sent to one server: the first to open shows whether the server takes anyone before the
+            // rest follow it there; one that doesn't (it has ended, or is full) is swapped for another with room for them.
+            bool checkServer = party > 1;
+            var closedServers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < accounts.Count && _vault == vault; i++)
             {
@@ -2640,10 +2644,12 @@ public sealed partial class AppController : IDisposable
                             replaced.Add(id);
                     }
                 }
+                bool opened = false;
                 try
                 {
                     await StartSessionAsync(account, target, s.LaunchVia, ct, presetId: presetId);
                     launched++;
+                    opened = true;
                 }
                 catch (Exception ex) when (!ct.IsCancellationRequested
                                            && (RobloxApi.IsExpectedError(ex) || ex is Win32Exception or FileNotFoundException or UserError))
@@ -2655,7 +2661,36 @@ public sealed partial class AppController : IDisposable
                 PushState();
 
                 if (i < accounts.Count - 1)
+                {
                     await WaitBeforeNextLaunchAsync(account, startedAt, delaySeconds, ct);
+                    if (!opened || !checkServer || target is not { JobId: { } job, LinkCode: null })
+                        continue;
+                    if (await WaitForServerAnswerAsync(account, ct) != "closed")
+                    {
+                        checkServer = false; // it took this account (or its log can't tell): the rest follow
+                        continue;
+                    }
+                    closedServers.Add(job);
+                    target = closedServers.Count > MaxServerSwaps ? target with { JobId = null } : await OtherServerAsync(target, party, closedServers, ct);
+                    checkServer = target.JobId is not null;
+                    Toast(target.JobId is not null ? L.T("That server is full or has closed, so the accounts go to another one with room for them all.")
+                        : L.T("That server is full or has closed, and no other server was found with room for all the accounts: Roblox picks one for each."), "warn");
+                    // This account goes again, to the new server; not a drop for auto-rejoin to bring back to the old one.
+                    if (_running.TryGetValue(account.Id, out var stuck))
+                    {
+                        _userClosed.Add(account.Id);
+                        RobloxProcesses.Close(stuck.Pid, force: true);
+                        for (int waited = 0; _running.ContainsKey(account.Id) && waited < 15_000; waited += 300)
+                            await Task.Delay(300, ct);
+                        if (_running.ContainsKey(account.Id))
+                        {
+                            _userClosed.Remove(account.Id); // it wouldn't close: it stays, and auto-rejoin still looks after it
+                            continue;
+                        }
+                    }
+                    launched--;
+                    i--;
+                }
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -2692,6 +2727,68 @@ public sealed partial class AppController : IDisposable
             Notify(L.P(errors.Count, "{0} account didn't open.", "{0} accounts didn't open.", errors.Count), "warn", "launch", toast: false);
         return new LaunchResult(Launched: launched, Errors: errors, Cancelled: ct.IsCancellationRequested, Skipped: skipped);
     }
+
+    /// <summary>Servers found closed in one launch before Roblox is left to pick one for each account.</summary>
+    const int MaxServerSwaps = 3;
+    /// <summary>
+    /// How long a game start may go without a server before the server counts as not taking anyone: a normal join gets
+    /// one about a second after the start (1.0 and 1.2 s in Roblox logs from 2026-10-12).
+    /// </summary>
+    static readonly TimeSpan ServerCheck = TimeSpan.FromSeconds(12);
+    /// <summary>How long a launch waits for that answer before going on without it (the log not found, the window gone).</summary>
+    static readonly TimeSpan ServerCheckLimit = TimeSpan.FromSeconds(25);
+
+    /// <summary>
+    /// Whether the server this account's client was sent to has taken it: "in" once its log names a server, "closed"
+    /// when its game start has had none for <see cref="ServerCheck"/> (the server has ended, or it is full and Roblox
+    /// queues the join), null while its log says neither.
+    /// </summary>
+    string? ServerAnswer(Guid accountId) =>
+        !_running.TryGetValue(accountId, out var run) || _logs.StateOf(run.Pid) is not { } log ? null
+        : log.JobId is not null ? "in"
+        : log.Status == "joining" && DateTime.UtcNow - log.At >= ServerCheck ? "closed"
+        : null;
+
+    /// <summary>Waits for <see cref="ServerAnswer"/>, at most <see cref="ServerCheckLimit"/>; null when none came.</summary>
+    async Task<string?> WaitForServerAnswerAsync(Account account, CancellationToken ct)
+    {
+        var until = DateTime.UtcNow + ServerCheckLimit;
+        while (DateTime.UtcNow < until)
+        {
+            if (ServerAnswer(account.Id) is { } answer)
+                return answer;
+            Progress(L.F("Checking that the server lets {0} in…", Name(account)));
+            await Task.Delay(500, ct);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Another public server for accounts whose server didn't take them (<see cref="RoomyServer"/>), from the emptiest
+    /// ones. With none, or no answer from Roblox, Roblox picks one for each account.
+    /// </summary>
+    async Task<GameTarget> OtherServerAsync(GameTarget target, int party, HashSet<string> closed, CancellationToken ct)
+    {
+        Progress(L.T("Finding a server…"));
+        try
+        {
+            var (servers, _) = await RobloxApi.GetServersAsync(target.PlaceId, true, null, ct);
+            if (RoomyServer(servers, party, closed) is { } other)
+                return target with { JobId = other.JobId };
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
+        {
+            // Rate-limited or offline: Roblox picks.
+        }
+        return target with { JobId = null };
+    }
+
+    /// <summary>
+    /// One with room for all the accounts, the busiest of those (a server whose last player leaves closes), never one
+    /// already found closed.
+    /// </summary>
+    static ServerInfo? RoomyServer(IEnumerable<ServerInfo> servers, int party, IReadOnlySet<string> closed) =>
+        servers.Where(sv => sv.MaxPlayers - sv.Playing >= party && !closed.Contains(sv.JobId)).MaxBy(sv => sv.Playing);
 
     /// <summary>A launch of this account that is still waiting for its window (not one the person closed meanwhile).</summary>
     bool StillOpening(Guid accountId) => _pending.Any(p => p.AccountId == accountId && !_closeWhenClaimed.Contains(p));

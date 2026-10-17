@@ -7,7 +7,8 @@ namespace Bloxkeep.Tests;
 /// <summary>
 /// Auto-rejoin on a client that started its game and never got a server (a server that had ended, a full one's join
 /// queue), as seen on 2026-10-17: closed after a minute, the rejoin going to any server of the game; and the leave Roblox
-/// logs when Bloxkeep closes a client not taken for the person's own. Made-up Roblox logs held by this process (the log
+/// logs when Bloxkeep closes a client not taken for the person's own. Then the servers a party is sent to: empty ones
+/// left out of the list, the first account's client telling whether the server took it, and the server tried next. Made-up Roblox logs held by this process (the log
 /// watcher ties a log to whoever holds it), in a folder of the test's own; Bloxkeep's close refuses this process (not a
 /// Roblox client), so nothing is closed.
 /// </summary>
@@ -141,6 +142,46 @@ static class RejoinSuite
             said = Told();
             c.Check("a game start without a server, no server asked for: tried again",
                 closing.Contains(me) && said?.Contains("couldn't get into the game — trying again", StringComparison.Ordinal) == true, said);
+            closing.Clear();
+
+            // The server list: an empty server (its last player gone, so it is closing) is never offered.
+            var page = System.Text.Json.JsonDocument.Parse("""
+                {"data":[
+                  {"id":"one","maxPlayers":7,"playing":1,"fps":60,"ping":54},
+                  {"id":"emptied","maxPlayers":7,"fps":60,"ping":686},
+                  {"id":"zero","maxPlayers":7,"playing":0,"fps":60},
+                  {"id":"","maxPlayers":7,"playing":2},
+                  {"maxPlayers":7,"playing":3},
+                  {"id":"two","maxPlayers":7,"playing":2,"fps":59.9}
+                ]}
+                """);
+            var read = (List<ServerInfo>)typeof(RobloxApi).GetMethod("ReadServers", Harness.F)!.Invoke(null, [page.RootElement])!;
+            c.Check("empty servers (no player count, or 0) left out of the list", read.Select(sv => sv.JobId).SequenceEqual(["one", "two"]),
+                string.Join(",", read.Select(sv => sv.JobId)));
+            var roomy = t.GetMethod("RoomyServer", Harness.F)!;
+            ServerInfo Server(string id, int playing) => new(id, playing, 7, 50, 60);
+            var list = new List<ServerInfo> { Server("a", 1), Server("b", 2), Server("c", 3), Server("d", 6) };
+            string? Roomy(int party, params string[] closed) => (roomy.Invoke(null, [list, party, new HashSet<string>(closed)]) as ServerInfo)?.JobId;
+            c.Check("the next server for a party of 5: room for all, the busiest of those", Roomy(5) == "b", Roomy(5));
+            c.Check("…never one found closed", Roomy(5, "b") == "a", Roomy(5, "b"));
+            c.Check("…and none when no server has room", Roomy(7) is null, Roomy(7));
+
+            // A party of 5 sent to one server: what the first account's client says of it.
+            var answer = t.GetMethod("ServerAnswer", Harness.F)!;
+            string? Answer() => (string?)answer.Invoke(app, [account.Id]);
+            Run(new GameTarget(107778070777162, DeadServer));
+            Write(Line(DateTime.UtcNow.AddSeconds(-3), Launch));
+            Poll(s => s.Status == "joining" && DateTime.UtcNow - s.At < TimeSpan.FromSeconds(10));
+            c.Check("3 s after the game start, no server yet: not known", Answer() is null, Answer());
+            Write(Line(DateTime.UtcNow, Join));
+            Poll(s => s.JobId is not null);
+            c.Check("a server named in its log: the server took it", Answer() == "in", Answer());
+            Write(Line(DateTime.UtcNow.AddSeconds(-13), Launch));
+            Poll(s => s.JobId is null);
+            c.Check("13 s without a server (a normal join gets one in about a second): it didn't", Answer() == "closed", Answer());
+            var waited = Stopwatch.StartNew();
+            var told = await (Task<string?>)t.GetMethod("WaitForServerAnswerAsync", Harness.F)!.Invoke(app, [account, CancellationToken.None])!;
+            c.Check("…and the launch hears it without waiting", told == "closed" && waited.ElapsedMilliseconds < 2000, $"{told} {waited.ElapsedMilliseconds} ms");
         }
         finally
         {

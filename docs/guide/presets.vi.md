@@ -34,6 +34,7 @@ Một preset lưu sẵn các tài khoản (theo thứ tự), game, cách chọn 
 <summary>Chi tiết thêm</summary>
 
 - Server được chọn lúc preset chạy, trong số server còn đủ chỗ cho các tài khoản của preset. Không có server nào đủ chỗ thì để Roblox tự chọn.
+- Nếu server được chọn không cho tài khoản đầu tiên vào (đã đầy hoặc đã đóng), các tài khoản sẽ chuyển sang server khác còn đủ chỗ cho tất cả.
 - Nếu có tài khoản đã bị xóa, form sẽ báo; khi lưu chúng bị bỏ ra.
 - Nếu không lưu được, lý do hiện ngay trên các nút và ô cần sửa được đưa con trỏ tới.
 

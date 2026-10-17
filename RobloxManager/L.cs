@@ -283,6 +283,11 @@ public static class L
         [" (copy {0})"] = " (bản sao {0})",
         ["This preset has no schedule. Edit it to add one."] = "Preset này chưa hẹn giờ. Bấm Sửa để thêm.",
         ["Finding a server…"] = "Đang tìm server…",
+        ["Checking that the server lets {0} in…"] = "Đang xem server có cho {0} vào không…",
+        ["That server is full or has closed, so the accounts go to another one with room for them all."] =
+            "Server đó đã đầy hoặc đã đóng, nên các tài khoản sẽ vào server khác còn đủ chỗ cho tất cả.",
+        ["That server is full or has closed, and no other server was found with room for all the accounts: Roblox picks one for each."] =
+            "Server đó đã đầy hoặc đã đóng, và không tìm được server nào đủ chỗ cho tất cả tài khoản: Roblox sẽ tự chọn server cho từng tài khoản.",
         ["No server has room for {0} accounts right now, so Roblox picks one."] =
             "Hiện không có server nào đủ chỗ cho {0} tài khoản, nên để Roblox tự chọn server.",
         ["Waiting {0}s before the next account…"] = "Chờ {0} giây rồi mở tài khoản tiếp theo…",

@@ -1364,22 +1364,32 @@ public static class RobloxApi
                 _serverListReset = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Clamp(r, 0, 120));
             }
         }
-        var servers = new List<ServerInfo>();
         if (!res.IsSuccessStatusCode)
-            return (servers, null);
+            return ([], null);
         using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
-        if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var s in data.EnumerateArray())
-            {
-                int Int(string name) => s.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int n) ? n : 0;
-                double Num(string name) => s.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
-                if (s.TryGetProperty("id", out var id) && id.GetString() is { Length: > 0 } jobId)
-                    servers.Add(new ServerInfo(jobId, Int("playing"), Int("maxPlayers"), (int)Math.Round(Num("ping")), Math.Round(Num("fps"))));
-            }
-        }
         string? next = doc.RootElement.TryGetProperty("nextPageCursor", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null;
-        return (servers, next);
+        return (ReadServers(doc.RootElement), next);
+    }
+
+    /// <summary>
+    /// The servers of a page of the list, without empty ones: a server whose last player has left is closing, and
+    /// joining it ends on "This experience has ended, or the server became unavailable…". Seen 2026-10-17 (Steal An
+    /// Egg, 7 players a server): the emptiest-first list sometimes starts with one that has no player count but still a
+    /// ping (its last player's, from moments before), the very server a party of 5 was sent to.
+    /// </summary>
+    internal static List<ServerInfo> ReadServers(JsonElement root)
+    {
+        var servers = new List<ServerInfo>();
+        if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            return servers;
+        foreach (var s in data.EnumerateArray())
+        {
+            int Int(string name) => s.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int n) ? n : 0;
+            double Num(string name) => s.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
+            if (s.TryGetProperty("id", out var id) && id.GetString() is { Length: > 0 } jobId && Int("playing") > 0)
+                servers.Add(new ServerInfo(jobId, Int("playing"), Int("maxPlayers"), (int)Math.Round(Num("ping")), Math.Round(Num("fps"))));
+        }
+        return servers;
     }
 
     /// <summary>The first number of a rate-limit header ("2" of "2", "3" of "3, 3;w=60"), or null.</summary>
