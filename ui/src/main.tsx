@@ -67,6 +67,10 @@ function keepFocus(el: HTMLElement, host: Host): () => void {
 }
 
 const BloxkeepUI = {
+  /** Runs fn (app.js telling the parts its state changed) and draws what that changes at once, before returning. */
+  flush(fn: () => void) {
+    flushSync(fn);
+  },
   /** What's new into the body of the dialog app.js opened for it; close closes that dialog. */
   whatsNew(el: HTMLElement, host: Host, releases: Release[], close: () => void) {
     return mount(el, host, <WhatsNew releases={releases} close={close} />);

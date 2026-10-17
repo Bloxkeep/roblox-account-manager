@@ -157,6 +157,76 @@ export default [
     await s.key('ArrowDown');
     await s.key('ArrowDown', ['shift']);
   }),
+  // Play on a card: it opens, and the focus follows (the card, once Play has turned into Close).
+  S('card-play-focus', '', async s => {
+    await s.click({ key: 'card.play', within: '.card[data-id$="5"]' });
+    await s.wait(1500);
+  }),
+  S('accounts-group-pick', '', async s => {
+    await s.click({ css: '#group-btn' });
+    await s.snap('menu');
+    await s.click({ text: 'Farm', within: '.menu' });
+    await s.snap('farm');
+    await s.click(key('chip.ingame'));
+  }),
+  // A sort with a card focused: the cards move and the focus stays on it.
+  S('accounts-sort-status', '', async s => {
+    await s.click({ css: '.card[data-id$="5"]' });
+    await s.click({ css: '#sort-btn' });
+    await s.click({ key: 'sort.status', within: '.menu' });
+    await s.snap('by status');
+    await s.click({ css: '#sort-btn' });
+    await s.click({ key: 'sort.recent', within: '.menu' });
+  }),
+  S('accounts-search-none', 'select=1', async s => {
+    await s.type('zzz', key('acc.search'));
+    await s.wait(300);
+    await s.snap('nothing');
+    await s.click(key('nores.clear'));
+  }),
+  S('accounts-layout-switch', '', async s => {
+    await s.click(key('layout.list'));
+    await s.snap('list');
+    await s.click(key('layout.cards'));
+  }),
+  // The list is one Tab stop: back from the game box, the chosen card's buttons, then the card.
+  S('cards-tab-stop', 'select=1', async s => {
+    await s.click(key('dock.place'));
+    await s.key('Tab', ['shift']);
+    await s.snap('back from the game box');
+    await s.key('Tab', ['shift']);
+    await s.key('Tab', ['shift']);
+    await s.key('Tab', ['shift']);
+  }),
+  S('cards-double-click', '', async s => { await s.click({ css: '.card[data-id$="4"] .name' }, { double: true }); await s.wait(1500); }),
+  S('dock-recent-pick', '', async s => { await s.click({ css: '.recent-pick' }); await s.wait(800); }),
+  S('game-picker-keys', '', async s => {
+    await s.fill(key('dock.place'), '');
+    await s.wait(600);
+    await s.snap('lists');
+    await s.key('ArrowDown');
+    await s.key('ArrowDown');
+    await s.snap('second');
+    await s.key('Enter');
+    await s.wait(800);
+  }),
+  S('game-picker-tabs', '', async s => {
+    await s.click(key('dock.browseTip'));
+    await s.wait(600);
+    await s.click({ key: 'picker.popular', within: '#picker' });
+    await s.snap('popular');
+    await s.key('Escape');
+  }),
+  S('game-bad-link', '', async s => { await s.fill(key('dock.place'), 'https://www.roblox.com/games/abc'); await s.wait(800); }),
+  S('game-box-keys', '', async s => {
+    await s.click({ css: '.card[data-id$="4"]' });
+    await s.key('/');
+    await s.snap('slash');
+    await s.key('Escape');
+    await s.key('l', ['ctrl']);
+    await s.snap('ctrl+l');
+    await s.key('f', ['ctrl']);
+  }),
 
   // ── An account's menu: each item ──
   S('menu-copy-user', 'menu=1', async s => { await s.click(key('m.copyUser')); }),

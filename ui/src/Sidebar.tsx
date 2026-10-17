@@ -2,7 +2,7 @@
 // on this PC (its windows and memory, the Roblox version), Multi-Roblox's card, the update waiting for a restart and
 // Lock. Buttons keep their data-act: app.js's one click handler does what they do.
 import { useLocal } from './settings/parts';
-import { Icon, useAppState, useHost, usePage } from './host';
+import { Icon, useAppState, useHost, useMetrics, usePage } from './host';
 
 /** The watch found the lock changed in the build Multi-Roblox meets next, and it hasn't worked on it here since. */
 export const watchWarns = (app: Record<string, any>) => {
@@ -51,7 +51,7 @@ export function Sidebar() {
 function SysCard({ mini }: { mini: string }) {
   const { t, fmtMb } = useHost();
   const app = useAppState();
-  const m = usePage(p => p.metrics);
+  const m = useMetrics();
   const pids = (app.accounts || []).filter((a: any) => a.state === 'running' && a.session?.pid > 0).map((a: any) => `${a.label} · PID ${a.session.pid}`);
   // The bar is the whole PC's RAM: Roblox's share first, then everything else in use. Transforms only: moving the
   // bars never makes the page re-run layout.
@@ -66,9 +66,9 @@ function SysCard({ mini }: { mini: string }) {
       <i className="other" style={{ transform: `translateX(${robloxPct.toFixed(1)}%) scaleX(${((usedPct - robloxPct) / 100).toFixed(3)})` }} /></div>
     <div className="sys-foot" id="sys-foot">{m.systemMb ? t('sys.used', { pct: Math.round(usedPct), free: fmtMb(m.availableMb || 0) }) : ''}</div>
     <div className="sys-ver" id="sys-ver">{rv.installed
-      ? <span title={`Roblox ${rv.installed}`}><i className={`dot ${rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : ''}`} />Roblox {short(rv.installed)}{rv.upToDate === false
+      ? <span title={`Roblox ${rv.installed}`}><i className={`dot ${rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : ''}`} />{`Roblox ${short(rv.installed)}${rv.upToDate === false
         ? ` · ${short(rv.latest) === short(rv.installed) ? t('rbx.newBuild') : t('rbx.available', { v: short(rv.latest) })}`
-        : rv.upToDate ? ` · ${t('rbx.latestShort')}` : ''}</span> : null}</div>
+        : rv.upToDate ? ` · ${t('rbx.latestShort')}` : ''}`}</span> : null}</div>
     <button className="btn sm w sys-mini" id="sys-mini" data-act="mini" aria-pressed={!!app.miniOpen}><Icon name="monitor" /><span>{mini}</span></button>
     <button className="btn sm w sys-close" id="sys-close" data-act="close-all" hidden={!m.robloxCount}><Icon name="power" /><span>{t('sys.closeAll')}</span></button>
   </div>;
@@ -103,7 +103,7 @@ function MultiCard() {
 /** The game monitor's heading line: how many pictures it shows, and the hint once there are some. */
 export function MonitorHead() {
   const { t, fmtNum } = useHost();
-  const m = usePage(p => p.metrics);
+  const m = useMetrics();
   // The monitor counts its pictures (windows it can show), not every Roblox process.
   const tiles = m.monitorCount ?? m.robloxCount;
   return <p><b id="mon-count">{tiles === 1 ? t('mon.count1') : t('mon.countN', { n: fmtNum(tiles) })}</b><span id="mon-hint" hidden={!tiles}><span className="sep">·</span>{t('mon.hint')}</span></p>;

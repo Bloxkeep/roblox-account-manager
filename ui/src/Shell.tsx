@@ -1,7 +1,7 @@
 // The main page once the vault is open: the sidebar, and the tabs beside it (Accounts with its dock, Presets, the game
 // monitor, Statistics, Settings). app.js builds it once per language (buildShell) and shows one tab at a time (setView).
-// The parts marked data-vanilla are still filled by app.js (its render functions); the rest is React's.
 import { type Ref } from 'react';
+import { AccountGrid, AccountsBar, AccountsHead, Dock } from './Accounts';
 import { Icon, useHost } from './host';
 import { PresetsView } from './PresetsView';
 import { MonitorHead, Sidebar } from './Sidebar';
@@ -25,7 +25,7 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
     <main className="main">
       <section className="view" id="view-accounts">
         <header className="top">
-          <div className="top-title"><h1>{t('acc.title')}</h1><p id="acc-sub" data-vanilla="" /></div>
+          <div className="top-title"><h1>{t('acc.title')}</h1><AccountsHead /></div>
           <div className="top-tools">
             <label className="search"><Icon name="search" /><input id="q" placeholder={t('acc.search')} maxLength={100} aria-label={t('acc.search')} /></label>
             <button className="icon-btn" data-act="refresh-presence" title={t('acc.refreshTip')}><Icon name="refresh" /></button>
@@ -36,24 +36,9 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
             </div>
           </div>
         </header>
-        <div className="bar"><div className="chips" id="chips" data-vanilla="" /><div className="seg" id="layout-seg" data-vanilla="" />
-          <button className="sort-btn" data-act="group-menu" id="group-btn" aria-haspopup="menu" hidden data-vanilla="" />
-          <button className="sort-btn" data-act="sort-menu" id="sort-btn" aria-haspopup="menu" data-vanilla="" /></div>
-        <div className="scroll" id="scroll"><div id="grid" data-vanilla="" /></div>
-        <div className="dock">
-          <button className="game-thumb" id="game-thumb" data-act="browse-games" title={t('dock.browseTip')} data-vanilla="" />
-          <div className="picker" id="picker" hidden data-vanilla="" />
-          <div className="dock-mid">
-            <div className="dock-inputs">
-              <label className="inwrap grow" title={t('dock.placeTip')}><Icon name="search" /><input id="place" autoComplete="off" placeholder={t('dock.place')} maxLength={500} spellCheck={false}
-                aria-label={t('dock.place')} role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" /></label>
-              <label className="inwrap job" title={t('dock.jobTip')}><Icon name="server" /><input id="job" placeholder={t('dock.job')} maxLength={60} spellCheck={false} aria-label={t('dock.job')} /></label>
-              <button className="dock-join" data-act="join-player" title={t('jp.buttonTip')} aria-label={t('jp.button')}><Icon name="userGo" /></button>
-            </div>
-            <div className="dock-info" id="dock-info" aria-live="polite" data-vanilla="" />
-          </div>
-          <div className="dock-actions" id="dock-actions" data-vanilla="" />
-        </div>
+        <AccountsBar />
+        <div className="scroll" id="scroll"><AccountGrid /></div>
+        <Dock />
       </section>
       <section className="view" id="view-presets" hidden><PresetsView /></section>
       <section className="view" id="view-stats" hidden><StatsView api={stats} /></section>

@@ -13,7 +13,18 @@ export type Metrics = {
 /** The page's own state, kept by app.js (S): the tab shown, the live figures… A new object whenever any of it changes. */
 export interface PageState {
   view: string;
-  metrics: Metrics;
+  /** The accounts chosen (Play, Close… act on them), and the Accounts tab's search, status chip, group, layout, sort. */
+  selected: Set<string>;
+  query: string; filter: string; group: string; layout: 'cards' | 'list'; sort: string;
+  /** The cards have been shown once (they fade in only the first time). */
+  introShown: boolean;
+  /** The game in the dock's box, as the app found it ({ loading } meanwhile), and what a launch is doing now. */
+  game: Record<string, any> | null;
+  progress: string | null;
+  /** Something is in the game box (Play goes there; without, it opens Roblox's home screen). */
+  hasGame: boolean;
+  /** The game box's list (app.js P): open, browsing a tab or showing a search's results, the row chosen with the keys. */
+  picker: { open: boolean; mode: 'browse' | 'search'; tab: string; lists: Record<string, any[]> | null; results: any[]; query: string; index: number; loading: boolean; refreshing?: boolean };
 }
 
 export interface Host {
@@ -108,8 +119,21 @@ export interface Host {
   /** The page's own state now (app.js S), and a way to hear when it changes. */
   page(): PageState;
   subscribePage(listener: () => void): () => void;
+  /** The live figures now (the last metrics event), and a way to hear when new ones come. */
+  metrics(): Metrics;
+  subscribeMetrics(listener: () => void): () => void;
   /** Megabytes as the interface writes them ("850 MB", "1.7 GB"; app.js fmtMb). */
   fmtMb(mb: number): string;
+  /** How long since a time, "47 min" or "2 h 5 min" (app.js duration). */
+  duration(iso: string): string;
+  /** Two names in the language's order, "Farm 2" before "Farm 10" (app.js compareText). */
+  compareText(a: string, b: string): number;
+  /** The accounts the Accounts tab shows now: its search, chip and group, in its sort (app.js visible). */
+  visible(): Record<string, any>[];
+  /** The cards have been shown: later drawings don't fade them in again. */
+  introShown(): void;
+  /** Makes one card the list's Tab stop (the card with the focus, else the first selected, else the first; app.js setTabStop). */
+  setTabStop(box: Element, stop?: Element | null): void;
 }
 
 /** The app's state, drawn again whenever the app pushes a new one. */
@@ -122,6 +146,12 @@ export function useAppState(): AppState {
 export function usePage<T>(pick: (page: PageState) => T): T {
   const { page, subscribePage } = useHost();
   return useSyncExternalStore(subscribePage, () => pick(page()));
+}
+
+/** The live figures (Roblox's windows, memory), drawn again with each metrics event. */
+export function useMetrics(): Metrics {
+  const { metrics, subscribeMetrics } = useHost();
+  return useSyncExternalStore(subscribeMetrics, metrics);
 }
 
 export const HostContext = createContext<Host | null>(null);

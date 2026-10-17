@@ -187,8 +187,6 @@
       return { ...a, real, ...(st.hideNames ? { label: t('hide.account', { n: i + 1 }), username: '', displayName: '', alias: '' } : real) };
     });
   }
-  /** "@username", or nothing while names are hidden. */
-  const atName = a => (a.username ? `@${esc(a.username)}` : '');
 
   /* ───────────────────────── formatting ───────────────────────── */
   function ago(iso) {
@@ -578,7 +576,7 @@
     $('#q').addEventListener('input', e => {
       S.query = e.target.value;
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(renderGrid, 120);
+      searchTimer = setTimeout(pageChanged, 120);
     });
     $('#place').addEventListener('input', onPlaceInput);
     $('#place').addEventListener('focus', () => { if (!$('#place').value.trim()) openPicker('browse'); });
@@ -589,21 +587,6 @@
     });
     // Choosing in the list keeps the focus in the game box (the rows and tabs would otherwise take it).
     $('#picker').addEventListener('mousedown', e => { if (e.target.closest('#picker')) e.preventDefault(); });
-    // A card, or a button on it, that gets the focus (a click, Shift+Tab) becomes the list's one Tab stop.
-    $('#grid').addEventListener('focusin', e => {
-      const card = e.target.closest('.card');
-      if (card && card.tabIndex !== 0 && card.parentElement) setTabStop(card.parentElement, card);
-    });
-    // One row of filter chips: the wheel scrolls it sideways, and the faded edge says there is more.
-    const chips = $('#chips');
-    chips.addEventListener('wheel', e => {
-      if (chips.scrollWidth <= chips.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      e.preventDefault();
-      chips.scrollLeft += e.deltaY;
-    }, { passive: false });
-    chips.addEventListener('scroll', syncChipFade, { passive: true });
-    chipObserver.observe(chips);
-    dockObserver.observe($('#dock-info'));
     // The list opened from the thumbnail: arrow keys hand over to the game box, which drives it.
     $('#game-thumb').addEventListener('keydown', e => {
       // Esc closes the list first (the page's own Esc would clear the selection and leave the list open).
@@ -621,11 +604,6 @@
 
   function update() {
     pageChanged();
-    renderMetrics();
-    renderHeader();
-    renderChips();
-    renderGrid();
-    renderDock();
     syncSettings();
     syncMultiHelp();
   }
@@ -680,89 +658,18 @@
     if (view === 'settings' && !S.app.locked) call('backupSuggestions', {}, { silent: true });
   }
 
-  function renderHeader() {
-    const list = accounts();
-    const n = S.selected.size;
-    let html = tn('acc.summary', list.length, { p: list.filter(inGame).length, o: list.filter(isOnline).length });
-    // Selected accounts the search or filter hides still count (Play, Delete act on them), so say so.
-    const shown = n ? new Set(visible().map(a => a.id)) : null;
-    const hidden = n ? [...S.selected].filter(id => !shown.has(id)).length : 0;
-    if (n) html += `<span class="sep">·</span>${t(hidden ? 'acc.selectedHidden' : 'acc.selected', { n, h: hidden })}`;
-    else if (list.length) html += `<span class="sep">·</span>${t('acc.selectAll')}`;
-    setHtml($('#acc-sub'), html);
-  }
-
-  function renderChips() {
-    const list = accounts();
-    // Groups have their own menu next to Sort (they used to be chips here and fell off the end of the row); the
-    // status chips count within the chosen group.
-    const groups = accountGroups();
-    if (S.group && !groups.includes(S.group)) S.group = '';
-    const inGroup = S.group ? list.filter(a => a.group === S.group) : list;
-    // Accounts that need something done come right after All: at the end of the row they were cut off in a narrow window.
-    const chips = [
-      { f: 'all', text: t('chip.all'), n: inGroup.length },
-      { f: 'invalid', text: t('chip.invalid'), n: inGroup.filter(a => a.cookieValid === false).length, dot: 'var(--bad)', hide: !list.some(a => a.cookieValid === false) },
-      { f: 'banned', text: t('chip.banned'), n: inGroup.filter(a => a.banned).length, dot: 'var(--bad)', hide: !list.some(a => a.banned) },
-      { f: 'ingame', text: t('chip.ingame'), n: inGroup.filter(inGame).length, dot: 'var(--ok)' },
-      { f: 'online', text: t('chip.online'), n: inGroup.filter(isOnline).length, dot: 'var(--online)' },
-      { f: 'offline', text: t('chip.offline'), n: inGroup.filter(a => !isOnline(a)).length, dot: 'var(--dim)' },
-      { f: 'local', text: t('chip.local'), n: inGroup.filter(isLocal).length, hide: !list.some(isLocal) },
-    ].filter(c => !c.hide);
-    const groupBtn = $('#group-btn');
-    groupBtn.hidden = !groups.length;
-    groupBtn.classList.toggle('on', !!S.group);
-    setHtml(groupBtn, `${icon('tag')}<span>${t('grp.label')}: ${S.group ? esc(S.group) : t('chip.all')}</span>`);
-    groupBtn.title = S.group ? `${t('grp.label')}: ${S.group}` : '';
-    if (!chips.some(c => c.f === S.filter)) S.filter = 'all';
-    setHtml($('#chips'), list.length ? chips.map(c => `<button class="chip ${S.filter === c.f ? 'on' : ''}" data-act="filter" data-f="${esc(c.f)}" aria-pressed="${S.filter === c.f}">${c.dot ? `<i class="dot" style="background:${c.dot}"></i>` : ''}${c.text}<em>${c.n}</em></button>`).join('') : '');
-    setHtml($('#layout-seg'), list.length ? ['cards', 'list'].map(l =>
-      `<button class="${S.layout === l ? 'on' : ''}" data-act="layout" data-l="${l}" title="${t(`layout.${l}`)}" aria-label="${t(`layout.${l}`)}" aria-pressed="${S.layout === l}">${icon(l === 'cards' ? 'grid' : 'rows')}</button>`).join('') : '');
-    const sortBtn = $('#sort-btn');
-    sortBtn.hidden = list.length < 2;
-    setHtml(sortBtn, `${icon('sort')}<span>${t('sort.label')}: ${t(`sort.${S.sort}`)}</span>`);
-    measureLater();
-  }
-  let chipShown = 'all';
-
-  /**
-   * The chip row's fades and scroll and the dock's recent-game chips depend on measured sizes. Measuring right after
-   * changing the page forces a layout of all of it there and then, again after the next change (hundreds of cards on
-   * a state push); measured once at the start of the next frame, after every change, it's one layout.
-   */
-  let measureQueued = false, recentsChanged = false;
-  function measureLater(recents = false) {
-    recentsChanged ||= recents;
-    if (measureQueued) return;
-    measureQueued = true;
-    requestAnimationFrame(() => {
-      measureQueued = false;
-      const fit = recentsChanged;
-      recentsChanged = false;
-      // A newly chosen chip half under the faded edge (or off the row) slides fully into view.
-      const row = $('#chips'), on = row?.querySelector('.chip.on');
-      if (on && S.filter !== chipShown) {
-        chipShown = S.filter;
-        const r = on.getBoundingClientRect(), box = row.getBoundingClientRect(), edge = 40;
-        if (r.left < box.left + edge) row.scrollLeft -= box.left + edge - r.left;
-        else if (r.right > box.right - edge) row.scrollLeft += r.right - (box.right - edge);
-      }
-      syncChipFade();
-      if (fit) fitRecents(); // only when the dock's game line changed: it shows and re-hides chips to find what fits
-    });
-  }
-
-  /** The chip row scrolls sideways when it holds more than fits: its edges fade on the side(s) with more chips. */
-  function syncChipFade() {
-    const el = $('#chips');
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    el.classList.toggle('fade-l', max > 1 && el.scrollLeft > 1);
-    el.classList.toggle('fade-r', max > 1 && el.scrollLeft < max - 1);
-  }
-  const chipObserver = new ResizeObserver(() => syncChipFade());
   /** The account groups in use, sorted by name. */
   const accountGroups = () => [...new Set(accounts().map(a => a.group).filter(Boolean))].sort(compareText);
+  /**
+   * A group or status chip that no longer has a place (its accounts gone, renamed) goes back to all: the Accounts tab's
+   * bar (React) shows the groups in use, and the chips that apply (Needs sign-in, Banned, Open here only when some do).
+   */
+  function syncFilters() {
+    if (S.group && !accountGroups().includes(S.group)) S.group = '';
+    const list = accounts();
+    const shown = { all: true, ingame: true, online: true, offline: true, invalid: list.some(a => a.cookieValid === false), banned: list.some(a => a.banned), local: list.some(isLocal) };
+    if (!shown[S.filter]) S.filter = 'all';
+  }
 
   const statusRank = a => isLocal(a) ? 0 : a.state === 'launching' ? 1 : a.presence?.type === 'ingame' ? 2
     : ['online', 'studio'].includes(a.presence?.type) ? 3 : a.cookieValid === false || a.banned ? 5 : 4;
@@ -808,227 +715,6 @@
     }).sort(compare);
   }
 
-  /** Roblox's disconnect codes, as the client logs them (278 seen in practice; the others are Roblox's documented ones). */
-  const KICK = { 278: 'kick.idle', 267: 'kick.game', 273: 'kick.elsewhere', 277: 'kick.network', 279: 'kick.connect' };
-
-  function activityHtml(a) {
-    const p = a.presence;
-    const gIcon = url => url ? `<img class="gicon" src="${esc(url)}" alt="" loading="lazy" decoding="async">` : `<span class="gicon">${icon('gamepad')}</span>`;
-    const box = (cls, iconHtml, k, v, raw = false) => `<div class="activity ${cls}">${iconHtml}<div class="txt"><div class="k" title="${esc(k)}">${k}</div><div class="v"${raw ? '' : ` title="${esc(v)}"`}>${raw ? v : esc(v)}</div></div></div>`;
-    if (a.state === 'launching') return box('launching', '<span class="gicon"><span class="spin"></span></span>', t('act.opening'), a.session?.game?.name || t('act.waitWindow'));
-    // Auto-rejoin waiting its turn (longer after several drops in a row), or a preset's restart about to open it again.
-    if (a.rejoin && !isLocal(a)) return box('launching', `<span class="gicon">${icon(a.rejoin.restart ? 'refresh' : 'repeat')}</span>`, t(a.rejoin.restart ? 'rj.kRestart' : 'rj.k'),
-      `<span data-until="${esc(a.rejoin.at)}" data-tpl="rj.inMin" data-soon="rj.soon"></span>${a.rejoin.game?.name ? ` · ${esc(a.rejoin.game.name)}` : ''}`, true);
-    if (isLocal(a)) {
-      const game = p?.type === 'ingame' && p.game ? { name: p.game, iconUrl: p.iconUrl } : a.session?.game;
-      const c = a.session?.connection;
-      if (c === 'disconnected') {
-        const why = a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : '';
-        return box('kicked', `<span class="gicon">${icon('alert')}</span>`, t('act.kicked'),
-          [why, game?.name].filter(Boolean).join(' · ') || t('act.stillOpen'));
-      }
-      if (c === 'menu') return box('online', `<span class="gicon">${icon('monitor')}</span>`, t('act.menuHere'), t('act.menuWhere'));
-      if (c === 'signedout') return box('signedout', `<span class="gicon">${icon('logIn')}</span>`, t('act.signedOutHere'), t('act.signedOutWhere'));
-      return box('ingame', gIcon(game?.iconUrl), t(c === 'ingame' ? 'act.playingHere' : 'act.joiningHere'), game?.name || t('act.gameLoading'));
-    }
-    switch (p?.type) {
-      case 'ingame': return box('ingame', gIcon(p.iconUrl), t('act.playingElse'), p.game || t('act.hidden'));
-      case 'online': return box('online', `<span class="gicon">${icon('globe')}</span>`, t('act.online'), t('act.onlineWhere'));
-      case 'studio': return box('studio', `<span class="gicon">${icon('code')}</span>`, t('act.studio'), p.game || t('act.studioWhat'));
-      case 'offline':
-      case 'invisible':
-        // Signed out: that is what to act on, not "Offline" under a "Needs sign-in" badge.
-        if (a.cookieValid === false) return box('signedout', `<span class="gicon">${icon('logIn')}</span>`, t('act.signedOut'), t('act.signInAgain'));
-        return p.lastOnline
-          ? box('offline', `<span class="gicon">${icon('moon')}</span>`, t('act.offline'), `<span data-ago="${esc(p.lastOnline)}" data-tpl="act.lastOnline"></span>`, true)
-          : box('offline', `<span class="gicon">${icon('moon')}</span>`, t('act.offline'), t('act.inactive'));
-      default:
-        return a.cookieValid === false
-          ? box('signedout', `<span class="gicon">${icon('logIn')}</span>`, t('act.signedOut'), t('act.signInAgain'))
-          : box('unknown', `<span class="gicon">${icon('info')}</span>`, t('act.unknown'), t('act.updating'));
-    }
-  }
-
-  /** The colour of the avatar ring and dot: a client here in the Roblox menu is online, not in a game. */
-  const presenceType = a => !isLocal(a) ? a.presence?.type || ''
-    : a.session?.connection === 'disconnected' ? 'kicked' : a.session?.connection === 'menu' ? 'online'
-    : a.session?.connection === 'signedout' ? 'offline' : 'ingame';
-
-  function cardHtml(a) {
-    const pType = presenceType(a);
-    const ring = a.cookieValid === false || a.banned ? 'invalid' : ['ingame', 'online', 'kicked'].includes(pType) ? pType : '';
-    // A ban says more than the sign-in state, so it takes the badge's place.
-    const badge = isLocal(a) ? `<span class="badge run" title="${a.session?.pid > 0 ? esc(t('card.runningPid', { pid: a.session.pid })) : ''}"><i class="pulse"></i>${t('card.local')}</span>`
-      : a.state === 'launching' ? `<span class="badge wait"><span class="spin"></span>${t('card.launching')}</span>`
-      : a.banned ? `<span class="badge bad" title="${esc(t('card.bannedTip'))}">${t('card.banned')}</span>`
-      : a.cookieValid === false ? `<span class="badge bad">${t('card.expired')}</span>` : '';
-    const sub = [a.username ? `@${a.username}` : '', a.displayName && a.displayName !== a.username && a.displayName !== a.label ? a.displayName : ''].filter(Boolean).join(' · ');
-    // "Opened 8 h ago" only while the account isn't running here (a running card shows its play time instead).
-    const opened = isLocal(a) ? '' : `<span class="ago" title="${t('card.lastTip')}">${icon('history')}${a.lastUsed ? `<span data-ago="${esc(a.lastUsed)}" data-tpl="card.opened"></span>` : t('card.never')}</span>`;
-    return `<article class="card ${isLocal(a) ? 'local' : ''}" data-id="${a.id}" data-act="card" role="option" tabindex="-1" aria-selected="false" aria-label="${esc(a.label)}">
-      <div class="card-top"><span class="check">${icon('check')}</span>${badge}</div>
-      <div class="avatar ${ring}">${avatarInner(a)}<i class="pdot ${pType}"></i></div>
-      <div class="name" title="${esc(a.label)}">${esc(a.label)}</div>
-      <div class="sub" title="${esc(sub)}">${esc(sub)}</div>
-      ${activityHtml(a)}
-      ${isLocal(a) ? `<div class="live" data-live="${a.id}"><span title="${t('card.ramTip')}">${icon('chip')}<b class="ram">…</b></span><span title="${t('card.upTip')}">${icon('clock')}<b class="up"></b></span>${pidHtml(a)}</div>` : ''}
-      <div class="meta">${vngTag(a)}${a.group ? `<span class="tag" title="${esc(a.group)}">${esc(a.group)}</span>` : ''}${rejoinOn(a) ? `<span class="rejoin" title="${t('card.rejoinTip')}">${icon('repeat')}</span>` : ''}${opened}</div>
-      ${a.note ? `<div class="note" title="${esc(a.note)}">${esc(a.note)}</div>` : ''}
-      <div class="card-actions">
-        ${isLocal(a) || a.state === 'launching'
-          ? `<button class="pill-btn stop" data-act="close-one">${icon('power')}${t('card.close')}</button>`
-          : a.rejoin
-            ? `<button class="pill-btn stop" data-act="cancel-rejoin" title="${t('rj.cancelTip')}">${icon('x')}${t('rj.cancel')}</button>`
-          : a.cookieValid === false
-            ? `<button class="pill-btn relogin" data-act="relogin" title="${t('card.reloginTip')}">${icon('logIn')}${t('card.relogin')}</button>`
-            // A Roblox VNG account can't be opened yet (the app skips it): its Play is off and says why.
-            : `<button class="pill-btn play" data-act="play-one" ${a.realm === 'vng' ? `title="${t('card.vngNoPlay')}"` : ''} ${a.state === 'launching' || a.realm === 'vng' ? 'disabled' : ''}>${icon('play')}${t('card.play')}</button>`}
-        <button class="icon-btn" data-act="edit" title="${t('card.editTip')}">${icon('edit')}</button>
-        <button class="icon-btn" data-act="card-menu" title="${t('card.moreTip')}" aria-haspopup="menu">${icon('more')}</button>
-      </div>
-    </article>`;
-  }
-
-  /** One line per account for the compact list; the same actions as a card (select, right-click menu, play). */
-  const vngTag = a => a.realm === 'vng' ? `<span class="tag vng" title="${t('card.vngTip')}">VNG</span>` : '';
-  /** The client's process id, for tools that pick a Roblox window by it; a click copies it. Nothing until the window is there. */
-  const pidHtml = a => a.session?.pid > 0 ? `<button class="pid" data-act="copy-pid" title="${t('card.pidTip')}">PID ${a.session.pid}</button>` : '';
-
-  function rowHtml(a) {
-    const pType = presenceType(a);
-    const ring = a.cookieValid === false || a.banned ? 'invalid' : ['ingame', 'online', 'kicked'].includes(pType) ? pType : '';
-    const st = statusLine(a);
-    const action = isLocal(a) || a.state === 'launching' ? `<button class="icon-btn stop" data-act="close-one" title="${t('card.close')}" aria-label="${t('card.close')}">${icon('power')}</button>`
-      : a.rejoin ? `<button class="icon-btn stop" data-act="cancel-rejoin" title="${t('rj.cancelTip')}" aria-label="${t('rj.cancelTip')}">${icon('x')}</button>`
-      : a.cookieValid === false ? `<button class="icon-btn relogin" data-act="relogin" title="${t('card.relogin')}" aria-label="${t('card.relogin')}">${icon('logIn')}</button>`
-      : `<button class="icon-btn play" data-act="play-one" title="${a.realm === 'vng' ? t('card.vngNoPlay') : t('card.play')}" aria-label="${t('card.play')}" ${a.state === 'launching' || a.realm === 'vng' ? 'disabled' : ''}>${icon('play')}</button>`;
-    return `<article class="card row ${isLocal(a) ? 'local' : ''}" data-id="${a.id}" data-act="card" role="option" tabindex="-1" aria-selected="false" aria-label="${esc(a.label)}">
-      <span class="check">${icon('check')}</span>
-      <div class="avatar sm ${ring}">${avatarInner(a)}<i class="pdot ${pType}"></i></div>
-      <div class="row-name"><b title="${esc(a.label)}">${esc(a.label)}</b>${a.username ? `<small title="${atName(a)}">${atName(a)}</small>` : ''}</div>
-      <div class="row-status ${st.cls}" title="${esc(st.text)}">${rowBadge(a)}${st.until ? `<span data-until="${esc(st.until)}" data-tpl="rj.rowMin" data-soon="rj.rowSoon"></span>` : esc(st.text)}</div>
-      <div class="row-meta">${vngTag(a)}${a.group ? `<span class="tag" title="${esc(a.group)}">${esc(a.group)}</span>` : ''}${rejoinOn(a) ? `<span class="rejoin" title="${t('card.rejoinTip')}">${icon('repeat')}</span>` : ''}</div>
-      <div class="row-live">${isLocal(a) ? `${pidHtml(a)}<span data-live="${a.id}" title="${t('card.ramTip')}"><b class="ram">…</b><b class="up" hidden></b></span>` : ''}</div>
-      <div class="row-actions">${action}<button class="icon-btn" data-act="card-menu" title="${t('card.moreTip')}" aria-label="${t('card.moreTip')}" aria-haspopup="menu">${icon('more')}</button></div>
-    </article>`;
-  }
-
-  /** The card's red pill in a list row too (banned, or signed out), in front of the status words. */
-  const rowBadge = a => isLocal(a) || a.state === 'launching' ? ''
-    : a.banned ? `<span class="badge bad" title="${esc(t('card.bannedTip'))}">${t('card.banned')}</span>`
-    : a.cookieValid === false ? `<span class="badge bad">${t('card.expired')}</span>` : '';
-
-  /** The account's status in a few words, for the compact list. */
-  function statusLine(a) {
-    const p = a.presence;
-    if (a.state === 'launching') return { cls: 'launching', text: t('act.opening') };
-    // The countdown is filled in place (patchTimes); the title keeps the plain words.
-    if (a.rejoin && !isLocal(a)) return { cls: 'launching', text: t(a.rejoin.restart ? 'rj.rowRestart' : 'rj.k'), until: a.rejoin.restart ? null : a.rejoin.at };
-    if (isLocal(a)) {
-      const c = a.session?.connection;
-      const game = (p?.type === 'ingame' && p.game) || a.session?.game?.name || '';
-      const withGame = text => game ? `${text} · ${game}` : text;
-      if (c === 'disconnected') {
-        const why = a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : t('row.kicked');
-        return { cls: 'kicked', text: withGame(why) };
-      }
-      if (c === 'menu') return { cls: 'online', text: t('act.menuHere') };
-      if (c === 'signedout') return { cls: 'signedout', text: t('act.signedOutHere') };
-      return { cls: 'ingame', text: withGame(t(c === 'ingame' ? 'row.playing' : 'row.joining')) };
-    }
-    // A ban or a lost sign-in is the red pill in front (rowBadge); a lost sign-in needs no words after it ("Offline"
-    // next to "Needs sign-in" read as two different states).
-    switch (p?.type) {
-      case 'ingame': return { cls: 'ingame', text: `${t('row.elsewhere')} · ${p.game || t('act.hidden')}` };
-      case 'online': return { cls: 'online', text: t('act.online') };
-      case 'studio': return { cls: 'studio', text: t('act.studio') };
-      case 'offline':
-      case 'invisible': return a.cookieValid === false && !a.banned ? { cls: 'signedout', text: '' } : { cls: 'offline', text: t('act.offline') };
-      default: return a.cookieValid === false && !a.banned ? { cls: 'signedout', text: '' } : { cls: 'unknown', text: t(a.banned ? 'act.offline' : 'act.unknown') };
-    }
-  }
-
-  /**
-   * One element per account, rebuilt only when that account's own markup changed: a state push, a search or a click
-   * then touches a card or two instead of re-parsing hundreds. Selection is applied as a class (see syncSelection).
-   */
-  function renderGrid() {
-    const host = $('#grid');
-    if (!host) return;
-    const all = accounts();
-    const shown = all.length ? visible() : [];
-    // No accounts yet: nothing to play, and in a small window the dock would cover the sign-in choices.
-    $('#view-accounts').classList.toggle('no-accounts', !all.length);
-    if (!shown.length) {
-      host._cards = null;
-      setHtml(host, all.length
-        ? `<div class="empty"><h2>${t('nores.title')}</h2><p>${t('nores.text')}</p>
-            <div class="row"><button class="btn" data-act="clear-search">${t(S.query.trim() ? 'nores.clear' : 'nores.all')}</button></div></div>`
-        : `<div class="empty">
-        <img class="art" src="${LOGO}" alt="">
-        <h2>${t('empty.title')}</h2>
-        <p>${t('empty.text')}</p>
-        ${addOptions()}
-      </div>`);
-      if (all.length) S.introShown = true;
-      renderHeader(); // "Selected N (N hidden by the search)" follows a search that hides everything too
-      return;
-    }
-    const asList = S.layout === 'list';
-    let box = host._cards ? host.firstElementChild : null;
-    if (!box || host._list !== asList) {
-      // Cards fade in only on the first render, not on every live update.
-      host.innerHTML = `<div class="grid ${asList ? 'list' : ''} ${S.introShown ? '' : 'intro'}" role="listbox" aria-multiselectable="true" aria-label="${t('acc.title')}"></div>`;
-      host._html = null;
-      host._cards = new Map();
-      host._list = asList;
-      box = host.firstElementChild;
-      if (!S.introShown) setTimeout(() => box.classList.remove('intro'), 800);
-    }
-    const cards = host._cards, keep = new Set();
-    let changed = false, prev = null;
-    for (const a of shown) {
-      const html = (asList ? rowHtml : cardHtml)(a);
-      let entry = cards.get(a.id);
-      // The focus — on the card, or on one of its buttons (Play → launching) — survives the card being rebuilt or
-      // moved (a sort by status): the same button on the new card, else the card.
-      const active = document.activeElement;
-      const focused = entry?.el.contains(active) ? (active === entry.el ? 'card' : active.closest('[data-act]')?.dataset.act || 'card') : null;
-      if (!entry || entry.html !== html) {
-        const tpl = document.createElement('template');
-        tpl.innerHTML = html.trim();
-        const el = tpl.content.firstElementChild;
-        if (entry) entry.el.replaceWith(el);
-        cards.set(a.id, entry = { html, el });
-        changed = true;
-      }
-      setSelected(entry.el, S.selected.has(a.id));
-      keep.add(a.id);
-      const at = prev ? prev.nextElementSibling : box.firstElementChild;
-      if (at !== entry.el) box.insertBefore(entry.el, at);
-      if (focused && !entry.el.contains(document.activeElement)) (focused !== 'card' && entry.el.querySelector(`[data-act="${focused}"]`) || entry.el).focus();
-      prev = entry.el;
-    }
-    for (const [id, entry] of cards) {
-      if (keep.has(id)) continue;
-      entry.el.remove();
-      cards.delete(id);
-    }
-    setTabStop(box);
-    if (changed) {
-      patchTimes();
-      renderMetrics();
-    }
-    S.introShown = true;
-    renderHeader(); // the "N hidden" note follows the search and filter
-  }
-
-  function setSelected(el, sel) {
-    if (el.classList.contains('sel') === sel) return;
-    el.classList.toggle('sel', sel);
-    el.setAttribute('aria-selected', sel);
-  }
-
   /**
    * One Tab stop for the whole list (roving tabindex, like the theme swatches), so the dock is a Tab away with hundreds
    * of accounts; the arrow keys walk the cards (moveCardFocus). The stop is the card with the focus, else the first
@@ -1041,10 +727,9 @@
     for (const c of items) {
       const want = c === stop ? 0 : -1;
       if (c.tabIndex !== want) c.tabIndex = want;
-      if (c._inner !== want) {
-        c._inner = want;
-        for (const b of c.querySelectorAll('button')) b.tabIndex = want;
-      }
+      // Every time: React may have drawn a button anew (Play → Close). Set as an attribute even where it is the
+      // default (0), as it always was.
+      for (const b of c.querySelectorAll('button')) if (b.getAttribute('tabindex') !== String(want)) b.tabIndex = want;
     }
   }
 
@@ -1069,23 +754,9 @@
     to.focus();
   }
 
-  /** Selection only flips a class on the cards already on screen. */
-  function syncSelection() {
-    const cards = $('#grid')?._cards;
-    if (cards) for (const [id, { el }] of cards) setSelected(el, S.selected.has(id));
-  }
-
-  /** Replaces markup only when it changed, so frequent state pushes do not rebuild the DOM. Returns true if replaced. */
-  function setHtml(el, html) {
-    if (!el || el._html === html) return false;
-    // The focus inside goes to the same control in the new markup (Play ↔ Stop, a filter chip, the layout switch),
-    // or the nearest one still usable, instead of dropping to the page.
-    const active = document.activeElement;
-    const had = active && active !== el && el.contains(active) ? focusKey(active, el) : null;
-    el._html = html;
-    el.innerHTML = html;
-    if (had) refocus(el, had);
-    return true;
+  /** Writing identical text still forces a layout pass, so skip no-op updates. */
+  function setText(el, text) {
+    if (el && el.textContent !== text) el.textContent = text;
   }
   const FOCUS_ATTRS = ['act', 'pv', 'move', 'f', 'l', 'place', 'days', 'tab', 'lang', 'id', 'dc'];
   function focusKey(node, root) {
@@ -1105,108 +776,6 @@
       || all.slice(index).find(usable) || all.slice(0, index).reverse().find(usable);
     // Without scrolling to it: a part drawn again (Show more adding rows above the button) keeps the place being read.
     target?.focus({ preventScroll: true });
-  }
-
-  function renderDock() {
-    const actions = $('#dock-actions');
-    if (!actions) return;
-    const n = S.selected.size;
-    const sel = [...S.selected].map(byId).filter(Boolean);
-    // With no game in the bar, the main button opens Roblox on its home screen (one window per account).
-    const hasGame = !!$('#place')?.value.trim();
-    setHtml(actions, S.app.launching
-      ? `<button class="play-btn stop" data-act="cancel-launch">${icon('stop')}<span>${t('dock.stop')}</span></button>`
-      : `<button class="btn ghost" data-act="arrange" title="${t('dock.arrangeTip')}" aria-label="${t('dock.arrangeTip')}">${icon('screens')}</button>
-         <button class="btn ghost" data-act="open-app" ${n ? '' : 'disabled'} title="${t('dock.openAppTip')}" aria-label="${t('dock.openAppTip')}">${icon('monitor')}</button>
-         <button class="btn ghost" data-act="close-sel" ${sel.some(isLocal) ? '' : 'disabled'} title="${t('dock.closeTip')}" aria-label="${t('dock.closeTip')}">${icon('power')}</button>
-         <button class="btn ghost" data-act="preset-menu" title="${t('ps.tip')}" aria-label="${t('ps.tip')}" aria-haspopup="menu">${icon('layers')}</button>
-         <button class="play-btn" data-act="launch" ${n ? '' : 'disabled'}>${icon(hasGame ? 'play' : 'monitor')}<span>${t(!n ? 'dock.pick' : hasGame ? 'dock.play' : 'dock.openHome')}</span>${n ? `<em>${n}</em>` : ''}</button>`);
-    // Join a player needs selected accounts, like Open Roblox and Close next to it: dimmed until there are some.
-    const join = $('#view-accounts .dock-join');
-    if (join) join.disabled = !n;
-
-    const g = S.game;
-    setHtml($('#game-thumb'), g?.iconUrl ? `<img src="${esc(g.iconUrl)}" alt="">` : icon('gamepad'));
-    let info;
-    if (S.progress) {
-      info = `<span class="spin"></span><span class="progress" title="${esc(S.progress)}">${esc(S.progress)}</span>`;
-    } else if (!g) {
-      info = `<span class="hint">${t('dock.hint')}</span>`;
-    } else if (g.loading) {
-      info = `<span class="spin"></span><span>${t('dock.finding')}</span>`;
-    } else if (!g.ok) {
-      info = `<span class="err" title="${esc(g.error)}">${esc(g.error)}</span>`;
-    } else if (g.kind === 'share') {
-      info = `<span class="kind">${t('dock.share')}</span><span>${t('dock.shareNote')}</span>`;
-    } else {
-      const kind = g.kind === 'private' ? `<span class="kind">${t('dock.private')}</span>` : g.kind === 'server' ? `<span class="kind">${t('dock.server')}</span>` : '';
-      info = `<span class="gname" title="${esc(g.name)}">${esc(g.name || `Place ${g.placeId}`)}</span>${kind}${g.creator ? `<span class="creator">${t('dock.by', { c: esc(g.creator) })}</span>` : ''}${g.playing ? `<span class="players">${t('dock.playing', { n: fmtNum(g.playing) })}</span>` : ''}`
-        + (g.placeId && g.kind !== 'private' ? `<button class="srv-open" data-act="servers">${icon('server')}<span>${t('srv.button')}</span></button>` : '');
-    }
-    // The game already in the box isn't offered again as a shortcut.
-    const recents = (S.app.settings?.recentGames || []).filter(r => r.placeId !== g?.placeId).slice(0, 3);
-    if (recents.length && !S.progress) {
-      info += `<div class="recents">${recents.map(r => `<div class="recent" title="${esc(r.name)}"><button class="recent-pick" data-act="recent" data-place="${r.placeId}">${r.iconUrl ? `<img src="${esc(r.iconUrl)}" alt="">` : '<i class="ph"></i>'}<span>${esc(r.name)}</span></button><button class="rm" data-act="recent-remove" data-place="${r.placeId}" title="${t('dock.recentRemove')}" aria-label="${t('dock.recentRemove')}">${icon('x')}</button></div>`).join('')}</div>`;
-    }
-    if (setHtml($('#dock-info'), info)) measureLater(true);
-  }
-
-  /**
-   * The recent-game chips are a shortcut (the picker's Recent tab has them too), the game's name is not: chips are
-   * dropped from the end, then the whole row, until the name has room to be read.
-   */
-  function fitRecents() {
-    const box = $('#dock-info'), row = box?.querySelector('.recents');
-    if (!row) return;
-    const chips = [...row.children];
-    chips.forEach(c => { c.hidden = false; });
-    row.hidden = false;
-    const name = box.querySelector('.gname'), err = box.querySelector('.err');
-    const cramped = () => box.scrollWidth > box.clientWidth + 1
-      || (name && name.scrollWidth > name.clientWidth && name.clientWidth < 240) // 1 px over already ends it in "…"
-      || (err && err.scrollHeight > err.clientHeight + 1); // a reason cut short: the chips make room for it first
-    for (let i = chips.length - 1; i >= 0 && cramped(); i--) chips[i].hidden = true;
-    if (chips.every(c => c.hidden)) row.hidden = true;
-  }
-  const dockObserver = new ResizeObserver(() => fitRecents());
-
-  /** Fills relative times ("5 min ago") in place, so they never force the cards to be rebuilt. */
-  function patchTimes() {
-    document.querySelectorAll('[data-ago]').forEach(el => {
-      const text = el.dataset.tpl ? t(el.dataset.tpl, { t: ago(el.dataset.ago) }) : ago(el.dataset.ago);
-      if (el.textContent === text) return;
-      el.textContent = text;
-      if (el.parentElement?.classList.contains('v')) el.parentElement.title = text; // the card's status line, cut short when narrow
-    });
-    // Countdowns (a rejoin waiting its turn): whole minutes, rounded up, then "in a moment" for the last one.
-    document.querySelectorAll('[data-until]').forEach(el => {
-      const s = (new Date(el.dataset.until).getTime() - Date.now()) / 1000;
-      const text = s < 60 ? t(el.dataset.soon) : t(el.dataset.tpl, { n: Math.ceil(s / 60) });
-      if (el.textContent !== text) el.textContent = text;
-    });
-  }
-
-  /** Patches the cards' live RAM and uptime numbers in place; called on every metrics event (the sidebar's are React's). */
-  function renderMetrics() {
-    if (document.hidden) return;
-    const m = S.metrics;
-    const ram = new Map(m.accounts.map(x => [x.id, x.ramMb]));
-    document.querySelectorAll('[data-live]').forEach(el => {
-      const a = byId(el.dataset.live);
-      const mb = ram.get(el.dataset.live);
-      const ramEl = el.querySelector('.ram'), upEl = el.querySelector('.up');
-      const ramText = mb ? fmtMb(mb) : '…';
-      if (ramEl.textContent !== ramText) ramEl.textContent = ramText;
-      if (a?.session) {
-        const up = duration(a.session.since);
-        if (upEl.textContent !== up) upEl.textContent = up;
-      }
-    });
-  }
-
-  /** Writing identical text still forces a layout pass, so skip no-op updates. */
-  function setText(el, text) {
-    if (el && el.textContent !== text) el.textContent = text;
   }
 
   /* ───────────────────────── settings ───────────────────────── */
@@ -1387,13 +956,18 @@
    * The page's own state the React parts draw (host.page): the tab shown, the live figures. pageChanged() after any of
    * it changes; the snapshot is made again only when asked for after that.
    */
-  const pageListeners = new Set();
+  const pageListeners = new Set(), metricsListeners = new Set();
   let pageSnap = null;
+  /** Drawn at once (flushSync): what runs next may look for what was drawn (a card to focus, a scroll to reset). */
   function pageChanged() {
+    syncFilters();
     pageSnap = null;
-    pageListeners.forEach(f => f());
+    if (pageListeners.size) window.BloxkeepUI.flush(() => pageListeners.forEach(f => f()));
   }
-  const pageState = () => pageSnap ||= { view: S.view, metrics: S.metrics };
+  const pageState = () => pageSnap ||= {
+    view: S.view, selected: new Set(S.selected), query: S.query, filter: S.filter, group: S.group, layout: S.layout, sort: S.sort,
+    introShown: S.introShown, game: S.game, progress: S.progress, hasGame: !!$('#place')?.value.trim(), picker: { ...P },
+  };
   /** What app.js tells the React parts by name (host.on): "hideDiscordLink", "clearPassword". */
   const uiSignals = new Map();
   const uiSignal = name => uiSignals.get(name)?.forEach(f => f());
@@ -1431,7 +1005,10 @@
     subscribe: f => { uiListeners.add(f); return () => uiListeners.delete(f); },
     page: pageState,
     subscribePage: f => { pageListeners.add(f); return () => pageListeners.delete(f); },
-    fmtMb,
+    metrics: () => S.metrics,
+    subscribeMetrics: f => { metricsListeners.add(f); return () => metricsListeners.delete(f); },
+    fmtMb, duration, compareText, visible, setTabStop,
+    introShown() { S.introShown = true; },
     go(target) {
       if (target.startsWith('settings:')) openSettings(target.slice(9));
       else if (target === 'guide') call('openGuide');
@@ -1595,47 +1172,24 @@
     P.open = true;
     P.mode = mode;
     P.index = -1;
-    renderPicker();
+    pageChanged();
     if (mode === 'browse') loadGameLists();
   }
   function closePicker() {
     if (!P.open) return;
     P.open = false;
-    renderPicker();
+    pageChanged();
   }
   async function loadGameLists() {
     P.loading = !P.lists;
-    renderPicker();
+    pageChanged();
     const r = await call('gameLists', {}, { silent: true });
     P.loading = false;
     if (r) {
       P.lists = r;
       if (!r[P.tab]?.length) P.tab = TABS.find(k => r[k]?.length) || 'recent';
     }
-    renderPicker();
-  }
-  function renderPicker() {
-    const el = $('#picker');
-    if (!el) return;
-    el.hidden = !P.open;
-    $('#place').setAttribute('aria-expanded', String(P.open));
-    if (P.open && P.index >= 0) $('#place').setAttribute('aria-activedescendant', `pk-${P.index}`);
-    else $('#place').removeAttribute('aria-activedescendant');
-    if (!P.open) return;
-    const rows = pickerRows();
-    const head = P.mode === 'browse'
-      ? `<div class="picker-tabs" role="tablist">${TABS.filter(k => k !== 'popular' || P.lists?.popular?.length).map(k =>
-          `<button class="ptab ${P.tab === k ? 'on' : ''}" role="tab" data-act="picker-tab" data-tab="${k}">${t(`picker.${k}`)}</button>`).join('')}</div>`
-      : `<div class="picker-head">${t('picker.results', { q: esc(P.query) })}</div>`;
-    const body = P.loading ? '<div class="game-row skel"><span class="gph"></span><div class="gtxt"><b></b><small></small></div></div>'.repeat(5)
-      : !rows.length ? `<div class="picker-empty">${t(P.mode === 'search' ? 'picker.noResults' : `picker.empty.${P.tab}`)}</div>`
-      : rows.map((g, i) => `<div class="game-row ${i === P.index ? 'on' : ''}" role="option" id="pk-${i}" aria-selected="${i === P.index}" data-act="pick-game" data-i="${i}">
-          ${g.iconUrl ? `<img src="${esc(g.iconUrl)}" alt="">` : `<span class="gph">${icon('gamepad')}</span>`}
-          <div class="gtxt"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : `Place ${g.placeId}`}</small></div>
-          <button class="icon-btn pin ${g.pinned ? 'on' : ''}" data-act="pin-game" data-i="${i}" title="${t(g.pinned ? 'picker.unpin' : 'picker.pin')}">${icon(g.pinned ? 'starFill' : 'star')}</button>
-        </div>`).join('');
-    setHtml(el, `${head}<div class="picker-list ${P.refreshing ? 'refreshing' : ''}" role="listbox" id="picker-list">${body}</div>`);
-    el.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' });
+    pageChanged();
   }
   let searchTimer = 0;
   // Recent searches, so backspacing or typing a name again shows its results at once; the oldest make room.
@@ -1654,7 +1208,7 @@
     const icons = await call('gameIcons', { universeIds: ids }, { silent: true });
     if (!icons) return;
     for (const g of P.results) if (!g.iconUrl && icons[g.universeId]) g.iconUrl = icons[g.universeId];
-    if (seq === P.seq && P.open && P.mode === 'search') renderPicker();
+    if (seq === P.seq && P.open && P.mode === 'search') pageChanged();
   }
 
   function onPlaceInput() {
@@ -1662,10 +1216,10 @@
     scheduleSaveInputs();
     clearTimeout(searchTimer);
     ++P.seq; // whatever search is still on its way answers an older box
-    renderDock();
+    pageChanged();
     if (!value) {
       S.game = null;
-      renderDock();
+      pageChanged();
       openPicker('browse');
       return;
     }
@@ -1675,17 +1229,17 @@
       return;
     }
     S.game = null;
-    renderDock();
+    pageChanged();
     const cached = searchCache.get(value.toLowerCase());
     if (cached && Date.now() - cached.at < SEARCH_TTL) {
       Object.assign(P, { open: true, mode: 'search', query: value, results: cached.rows, loading: false, refreshing: false, index: -1 });
-      renderPicker();
+      pageChanged();
       return;
     }
     // Keep the last results on screen, dimmed, while the new ones load, instead of flashing placeholders.
     const keep = P.mode === 'search' && P.results?.length > 0;
     Object.assign(P, { open: true, mode: 'search', query: value, loading: !keep, refreshing: keep, index: -1 });
-    renderPicker();
+    pageChanged();
     searchTimer = setTimeout(async () => {
       const seq = P.seq;
       const r = await call('searchGames', { query: value }, { silent: true });
@@ -1693,7 +1247,7 @@
       P.results = r || [];
       P.loading = P.refreshing = false;
       if (r) rememberSearch(value.toLowerCase(), P.results);
-      renderPicker();
+      pageChanged();
       fillIcons(seq);
     }, 200);
   }
@@ -1702,7 +1256,7 @@
     if (P.open && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && rows.length) {
       e.preventDefault();
       P.index = (P.index + (e.key === 'ArrowDown' ? 1 : rows.length - 1) + (P.index < 0 && e.key === 'ArrowUp' ? 1 : 0)) % rows.length;
-      renderPicker();
+      pageChanged();
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (P.loading || P.refreshing) return; // results for what was just typed aren't in yet
@@ -1771,7 +1325,7 @@
       P.lists.pinned = (P.lists.pinned || []).filter(x => x.placeId !== g.placeId);
       if (pinned) P.lists.pinned.unshift({ ...g, pinned: true });
     }
-    renderPicker();
+    pageChanged();
   }
   document.addEventListener('mousedown', e => {
     if (P.open && !e.target.closest('#picker, #place, #game-thumb')) closePicker();
@@ -1795,11 +1349,11 @@
     const seq = ++S.gameSeq;
     if (!input) {
       S.game = null;
-      renderDock();
+      pageChanged();
       return;
     }
     S.game = { loading: true };
-    renderDock();
+    pageChanged();
     const r = await call('resolveGame', { input }, { silent: true });
     if (seq !== S.gameSeq || !S.shell) return; // a newer input superseded this one
     S.game = r || null;
@@ -1809,7 +1363,7 @@
       scheduleSaveInputs();
     }
     if (r?.placeId) S.jobPlace = r.placeId;
-    renderDock();
+    pageChanged();
   }
 
   /* ───────────────────────── actions ───────────────────────── */
@@ -1818,11 +1372,8 @@
     S.anchor = id;
     renderSelection();
   }
-  function renderSelection() {
-    syncSelection();
-    renderHeader();
-    renderDock();
-  }
+  /** The selection changed: the cards, the heading line and the dock's buttons follow (React). */
+  const renderSelection = () => pageChanged();
   /** "Select all" means what is on screen: it replaces a selection that included accounts now hidden. */
   function selectAllVisible() {
     S.selected = new Set(visible().map(a => a.id));
@@ -2155,22 +1706,6 @@
   }
 
   /* ───────────────────────── adding accounts ───────────────────────── */
-  /**
-   * The ways to add an account, each with one line on what it means. The phone comes first: Roblox asks it for no
-   * password and no puzzle, while a password sign-in may meet checks only Roblox's own site can show.
-   */
-  const phoneOption = (act = 'data-act="add-phone"') => `<button type="button" class="start-opt rec" ${act}>${icon('qr')}<span><b>${t('start.phone')}<em class="rec-tag">${t('start.rec')}</em></b><small>${t('start.phoneSub')}</small></span>${icon('chevronRight')}</button>`;
-  const addOptions = () => `<div class="start-opts">
-      ${phoneOption()}
-      <button class="start-opt" data-act="add-password">${icon('key')}<span><b>${t('start.pw')}</b><small>${t('start.pwSub')}</small></span>${icon('chevronRight')}</button>
-      <button class="start-opt" data-act="add-browser">${icon('globe')}<span><b>${t('start.browser')}</b><small>${t('start.browserSub')}</small></span>${icon('chevronRight')}</button>
-    </div>
-    <div class="start-more">
-      <div class="ways"><span>${t('start.more')}</span><button class="btn sm ghost" data-act="add-cookie">${t('start.cookie')}</button></div>
-      <div class="ways"><span>${t('start.importFrom')}</span><button class="btn sm ghost" data-act="import-vault" title="${t('start.vaultTip')}">${t('start.vault')}</button></div>
-      <div class="ways"><span>${t('start.webQ')}</span><button class="btn sm ghost" data-act="open-web" title="${t('start.webTip')}">${t('start.web')}</button></div>
-    </div>`;
-
   /** The sign-in screen lists every way to add an account. */
   const addChooser = () => passwordLogin();
   /** Picking a way closes the chooser it was picked from. */
@@ -2656,11 +2191,10 @@
       $('#q').value = '';
       S.filter = 'all';
       S.group = '';
-      renderChips();
-      renderGrid();
+      pageChanged();
     }
     selectOnly(id);
-    const card = $('#grid')?._cards?.get(id)?.el;
+    const card = $(`#grid .card[data-id="${CSS.escape(id)}"]`);
     if (!card) return;
     setTabStop(card.parentElement, card);
     card.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -2891,8 +2425,7 @@
       case 'layout':
         S.layout = el.dataset.l === 'list' ? 'list' : 'cards';
         call('setSettings', { layout: S.layout }, { silent: true });
-        renderChips();
-        renderGrid();
+        pageChanged();
         return;
       case 'sort-menu':
         return menuAt(el, ['name', 'status', 'recent', 'order'].map(k => ({
@@ -2900,16 +2433,14 @@
           run: () => {
             S.sort = k;
             call('setSettings', { sort: k }, { silent: true });
-            renderChips();
-            renderGrid();
+            pageChanged();
           },
         })), 200);
       // Account groups: one menu next to Sort ("Group: All"), apart from the status chips.
       case 'group-menu': {
         const pick = g => () => {
           S.group = g;
-          renderChips();
-          renderGrid();
+          pageChanged();
           $('#scroll').scrollTop = 0;
         };
         return menuAt(el, [
@@ -2926,8 +2457,7 @@
         });
       case 'filter':
         S.filter = el.dataset.f;
-        renderChips();
-        renderGrid();
+        pageChanged();
         $('#scroll').scrollTop = 0;
         return;
       case 'launch': return launch([...S.selected], false);
@@ -2960,8 +2490,7 @@
         $('#q').value = '';
         S.filter = 'all';
         S.group = '';
-        renderChips();
-        renderGrid();
+        pageChanged();
         return $('#q').focus();
       case 'join-player': return joinPlayerModal();
       case 'clear-sel':
@@ -3006,7 +2535,7 @@
       case 'picker-tab':
         P.tab = el.dataset.tab;
         P.index = -1;
-        return renderPicker();
+        return pageChanged();
       case 'pick-game': return pickGame(pickerRows()[+el.dataset.i]);
       case 'servers': return openServers();
       case 'pin-game':
@@ -3165,7 +2694,7 @@
       stopBoot();
       S.selected.clear();
       S.metrics = { accounts: [], robloxCount: 0, totalMb: 0, systemMb: 0 };
-      pageChanged();
+      metricsListeners.forEach(f => f());
       renderLock();
       return;
     }
@@ -3274,21 +2803,12 @@
   bridge.on('toast', m => toast(m.text, m.kind));
   bridge.on('progress', p => {
     S.progress = p?.text || null;
-    if (S.shell) renderDock();
+    if (S.shell) pageChanged();
   });
   bridge.on('metrics', m => {
     S.metrics = m;
-    pageChanged();
-    if (S.shell) renderMetrics();
+    metricsListeners.forEach(f => f());
   });
-  const refreshTimes = () => {
-    if (!S.shell || document.hidden) return;
-    patchTimes();
-    renderMetrics();
-  };
-  document.addEventListener('visibilitychange', refreshTimes);
-  // Relative times ("5 min ago") drift; refresh them once a minute while the window is visible.
-  setInterval(refreshTimes, 60_000);
 
   /**
    * The browser is closed while the window stays minimised (and recreated when GPU drawing is switched); the app
