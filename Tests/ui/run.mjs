@@ -69,10 +69,21 @@ const said = new Array(runs.length);
 let next = 0, shown = 0;
 const browsers = await Promise.all(Array.from({ length: Math.min(JOBS, runs.length) }, open));
 const cover = COVERAGE ? await startCoverage(browsers[0]) : null;
-await Promise.all(browsers.map(async b => {
+// A scenario stuck for 3 minutes (Edge stopped answering) fails, and its Edge is replaced: the run goes on.
+const STUCK = 180_000;
+await Promise.all(browsers.map(async (_, k) => {
   while (next < runs.length) {
     const i = next++;
-    said[i] = await runOne(b, runs[i]);
+    let timer;
+    const stuck = new Promise(res => { timer = setTimeout(() => res(null), STUCK); });
+    const r = await Promise.race([runOne(browsers[k], runs[i]), stuck]);
+    clearTimeout(timer);
+    if (r === null) {
+      failed++;
+      said[i] = `  FAIL   ${runs[i].sc.name}.${runs[i].lang}\n         nothing for ${STUCK / 60000} minutes: Edge stopped answering`;
+      browsers[k].kill();
+      browsers[k] = await open();
+    } else said[i] = r;
     for (; shown < runs.length && said[shown] !== undefined; shown++) if (said[shown]) console.log(said[shown]);
   }
 }));

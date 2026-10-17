@@ -54,7 +54,13 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
       msg.error ? rej(new Error(msg.error.message)) : res(msg.result);
     } else if (msg.method) listeners.forEach(f => f(msg));
   };
+  // Edge gone (closed, crashed): what was still waiting for an answer fails instead of waiting forever.
+  ws.onclose = () => {
+    for (const { rej } of waiting.values()) rej(new Error('Edge closed'));
+    waiting.clear();
+  };
   const send = (method, params = {}) => new Promise((res, rej) => {
+    if (ws.readyState !== WebSocket.OPEN) return rej(new Error('Edge closed'));
     const i = ++id;
     waiting.set(i, { res, rej });
     ws.send(JSON.stringify({ id: i, method, params }));
@@ -131,12 +137,18 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
         await send('Input.setInterceptDrags', { enabled: false });
       }
     },
+    /** Ends Edge at once (a scenario that never finished): no answer waited for. */
+    kill() {
+      try { ws.close(); } catch { /* closed */ }
+      try { proc.kill(); } catch { /* exited */ }
+    },
     async shot(file) {
       const r = await send('Page.captureScreenshot', { format: 'png' });
       fs.writeFileSync(file, Buffer.from(r.data, 'base64'));
     },
     async close() {
-      try { await send('Browser.close'); } catch { /* already gone */ }
+      // Edge may close before it answers: its answer isn't waited for long (a run on GitHub waited 28 minutes for it).
+      await Promise.race([send('Browser.close').catch(() => {}), sleep(2000)]);
       ws.close();
       await sleep(600);
       try { proc.kill(); } catch { /* exited */ }
