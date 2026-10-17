@@ -154,7 +154,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.1.3 · October 17, 2026"
+              small "Bloxkeep 1.1.4 · October 18, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
@@ -163,13 +163,19 @@ html [data-theme="dark" lang="en"]
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "The tray icon's menu shows whether Multi-Roblox is on, runs a preset, and closes every Roblox window, without opening Bloxkeep."
+            span "Taskbar buttons (Settings › Launching): one button for each account, with its picture, or one group for each preset, instead of every Roblox window under one button."
+          li
+            svg.i #u7ty99
+            span "Open Roblox and Open account from the tray icon's menu."
+          li
+            svg.i #u7ty99
+            span "Just use Multi-Roblox: on the first screen, for those who sign in to Roblox only in their own browser. No master password, no accounts."
         h4.improved.wn-kind.wn-sub "Improved"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
-            span "Multi-Roblox is on as soon as Bloxkeep starts, before the master password, so Roblox windows opened from roblox.com or the Roblox app run side by side even at the lock screen."
+            span "Account pictures as window icons have a switch of their own, to keep Roblox's icon."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
