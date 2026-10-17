@@ -283,6 +283,15 @@ public static class L
         [" (copy {0})"] = " (bản sao {0})",
         ["This preset has no schedule. Edit it to add one."] = "Preset này chưa hẹn giờ. Bấm Sửa để thêm.",
         ["Finding a server…"] = "Đang tìm server…",
+        ["Multi-Roblox: on"] = "Multi-Roblox: đang bật",
+        ["Multi-Roblox: not ready"] = "Multi-Roblox: chưa sẵn sàng",
+        ["Multi-Roblox: off"] = "Multi-Roblox: đang tắt",
+        ["Run preset"] = "Chạy preset",
+        ["Close all Roblox"] = "Đóng tất cả Roblox",
+        ["Close 1 Roblox window"] = "Đóng 1 cửa sổ Roblox",
+        ["Close {0} Roblox windows"] = "Đóng {0} cửa sổ Roblox",
+        ["This preset asks something before it opens. Run it from Bloxkeep's Presets tab."] =
+            "Preset này cần bạn trả lời một câu hỏi trước khi mở. Hãy chạy nó từ tab Preset trong Bloxkeep.",
         ["No launcher here can update Roblox by itself. Roblox updates the next time it opens."] =
             "Máy này không có trình mở nào tự cập nhật Roblox được. Roblox sẽ tự cập nhật ở lần mở tới.",
         ["{0} found no newer Roblox to install."] = "{0} không tìm thấy bản Roblox nào mới hơn để cài.",

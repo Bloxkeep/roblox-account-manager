@@ -163,6 +163,9 @@ public sealed partial class AppController : IDisposable
         _procTimer.Tick += (_, _) => OnProcTimer();
         _procTimer.Start();
         WatchForeground();
+        // Multi-Roblox before the master password (see Prefs.MultiRobloxAtStart).
+        if (Prefs.MultiRobloxAtStart && !MultiInstance.Armed)
+            MultiInstance.Enable();
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         SystemEvents.TimeChanged += OnTimeChanged;
         NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
@@ -1023,6 +1026,7 @@ public sealed partial class AppController : IDisposable
         if (s.MultiInstance && !MultiInstance.Armed)
             MultiInstance.Enable();
         _lastArmed = MultiInstance.Armed;
+        KeepMultiAtStart(s.MultiInstance);
         AdoptOpenSessions(vault);
         ResumePlaySessions(vault);
         ResumeSchedules(vault);
@@ -4426,6 +4430,7 @@ public sealed partial class AppController : IDisposable
             else
                 MultiInstance.Disable();
             _lastArmed = MultiInstance.Armed;
+            KeepMultiAtStart(multi);
         }
         // Both take effect at the next launch; the person's own fullscreen setting is put back by the process check.
         if (OptBool(a, "multiWindowed") is { } windowed)

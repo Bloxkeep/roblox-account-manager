@@ -250,6 +250,16 @@ public sealed class ShellForm : Form
         menu.MiniClicked += () => SetMiniOpen(null);
         menu.OpenClicked += BringToFront;
         menu.QuitClicked += Quit;
+        menu.State = _app.TrayState;
+        menu.MultiClicked += on =>
+        {
+            if (on && menu.TrayOpen)
+                _app.TrayMultiOff();
+            else
+                BringToFront(); // on: the sidebar's switch, which asks first; locked: the lock screen
+        };
+        menu.PresetClicked += _app.TrayRunPreset;
+        menu.CloseAllClicked += () => _app.CloseAllClients();
         var tray = new NotifyIcon { Icon = Ui.AppIcon, Text = Ui.Title, ContextMenuStrip = menu };
         tray.MouseClick += (_, e) =>
         {

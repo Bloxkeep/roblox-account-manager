@@ -96,11 +96,19 @@ public static class Prefs
     /// </summary>
     public static List<string> MultiWorked { get; } = new();
 
+    /// <summary>
+    /// Multi-Roblox was on in the vault last opened: it is taken as Bloxkeep starts, before the master password, so
+    /// Roblox windows opened any way (roblox.com in any browser, the Roblox app) run side by side even while Bloxkeep
+    /// waits at the lock screen. A copy of the vault's setting, kept in step by AppController.
+    /// </summary>
+    public static bool MultiRobloxAtStart { get; set; }
+
     static readonly string[] Known =
     [
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
+        "multiRobloxAtStart",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -171,6 +179,8 @@ public static class Prefs
                 LastSignInCheck = checkedAt.ToUniversalTime() is var checkedUtc && checkedUtc > DateTime.UtcNow ? DateTime.UtcNow : checkedUtc;
             if (root.TryGetProperty("miniOpen", out var mini) && mini.ValueKind == JsonValueKind.True)
                 MiniOpen = true;
+            if (root.TryGetProperty("multiRobloxAtStart", out var multiAtStart) && multiAtStart.ValueKind == JsonValueKind.True)
+                MultiRobloxAtStart = true;
             if (root.TryGetProperty("miniWindow", out var miniWindow) && miniWindow.ValueKind == JsonValueKind.String)
                 MiniWindow = miniWindow.GetString();
             if (root.TryGetProperty("mainWindow", out var mainWindow) && mainWindow.ValueKind == JsonValueKind.String)
@@ -228,6 +238,7 @@ public static class Prefs
                 ["robloxClosedAt"] = RobloxClosedAt, ["robloxClosedCount"] = RobloxClosedCount, ["robloxClosedNotified"] = RobloxClosedNotified,
                 ["skipConfirm"] = SkipConfirm.Order(StringComparer.Ordinal).ToArray(),
                 ["multiWorked"] = MultiWorked.ToArray(),
+                ["multiRobloxAtStart"] = MultiRobloxAtStart,
             };
             // Never over a known key: a pref missing from Known would otherwise revert to its loaded value every restart.
             foreach (var (key, value) in _extra)
