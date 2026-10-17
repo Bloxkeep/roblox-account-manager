@@ -6,6 +6,7 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, useAppState, useHost, useMetrics, usePage, type PageState } from './host';
 import { richNodes } from './rich';
+import { Avatar } from './Avatar';
 
 type Account = Record<string, any>;
 
@@ -22,18 +23,6 @@ const presenceType = (a: Account) => !isLocal(a) ? a.presence?.type || ''
   : a.session?.connection === 'disconnected' ? 'kicked' : a.session?.connection === 'menu' ? 'online'
   : a.session?.connection === 'signedout' ? 'offline' : 'ingame';
 const ringOf = (a: Account) => { const p = presenceType(a); return a.cookieValid === false || a.banned ? 'invalid' : ['ingame', 'online', 'kicked'].includes(p) ? p : ''; };
-const hue = (s: string) => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
-const initials = (s: string) => (String(s).match(/[\p{L}\p{N}]/gu) || ['?']).slice(0, 2).join('').toUpperCase();
-
-/** The account's picture, or its initials (also when the picture doesn't load: offline, gone from Roblox's CDN). */
-export function Avatar({ a }: { a: Account }) {
-  const [failed, setFailed] = useState('');
-  const style = { '--h': hue(a.username || a.label) } as React.CSSProperties;
-  return a.avatarUrl && failed !== a.avatarUrl
-    ? <img src={a.avatarUrl} alt="" draggable="false" loading="lazy" decoding="async" style={style} onError={() => setFailed(a.avatarUrl)} />
-    : <span className="initials" style={style}>{initials(a.label || a.username)}</span>;
-}
-
 /** A game's icon; a placeholder in its place when it has none or it doesn't load. */
 function GameIcon({ url, className, holder }: { url?: string | null; className?: string; holder: () => ReactNode }) {
   const [failed, setFailed] = useState('');

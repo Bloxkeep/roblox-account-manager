@@ -6,6 +6,7 @@ import { flushSync } from 'react-dom';
 import { Ago, Icon, useAppState, useHost } from './host';
 import { richNodes } from './rich';
 import { fold } from './text';
+import { Avatar } from './Avatar';
 
 /** The app's own limit (MaxPresets); app.js checks it too, so a full list doesn't open an empty form. */
 const MAX_PRESETS = 50;
@@ -196,7 +197,7 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
     </div>
     {accounts.length
       ? <div className="pv-accs" title={accTitle} aria-label={accCount(accounts.length)}>
-        {accounts.slice(0, AVATARS_SHOWN).map(a => <span key={a.id} className="avatar sm" dangerouslySetInnerHTML={{ __html: host.avatarHtml(a) }} />)}
+        {accounts.slice(0, AVATARS_SHOWN).map(a => <span key={a.id} className="avatar sm"><Avatar a={a} /></span>)}
         {accounts.length > AVATARS_SHOWN ? <em>+{accounts.length - AVATARS_SHOWN}</em> : null}
       </div>
       : <div className="pv-accs none" title={t('pv.noAccountsTip')}><Icon name="alert" /><small>{t('pv.noAccounts')}</small></div>}

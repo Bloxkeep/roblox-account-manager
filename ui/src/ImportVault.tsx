@@ -6,6 +6,7 @@
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
+import { Avatar } from './Avatar';
 
 type FileAccount = { key: number; label: string; username?: string; group?: string; realm?: string; cookieValid?: boolean | null; hasPassword?: boolean; exists?: boolean; avatarUrl?: string };
 type Preview = { token: string; accounts: FileAccount[]; presets: number };
@@ -142,7 +143,7 @@ export function ImportVault({ api, primary, finished }: {
             if (e.target.checked) next.add(a.key); else next.delete(a.key);
             setTicked(next);
           }} />
-          <div className="avatar sm" dangerouslySetInnerHTML={{ __html: host.avatarHtml(a) }} />
+          <div className="avatar sm"><Avatar a={a} /></div>
           <span className="iv-name"><b title={a.label}>{a.label}</b>
             <small>{parts.map((p, i) => <Fragment key={i}>{i ? ' · ' : null}{p}</Fragment>)}</small></span>
           {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}

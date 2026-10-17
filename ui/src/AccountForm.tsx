@@ -6,6 +6,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
+import { Avatar } from './Avatar';
 
 type Account = { id: string; label: string; username?: string; userId?: number; alias?: string; group?: string; note?: string; hasPassword?: boolean; hasAuthenticator?: boolean };
 export interface AccountFormApi {
@@ -150,7 +151,7 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
     {isNew
       ? <div className="callout" onClick={e => { if ((e.target as HTMLElement).closest('[data-local=browser]')) browser(); }}><Icon name="info" /><div><Rich k="am.callout" /></div></div>
       // Names hidden: no @username, and no user ID either (anyone can look an account up by it).
-      : <div className="acc-head"><div className="avatar" dangerouslySetInnerHTML={{ __html: host.avatarHtml(a) }} />
+      : <div className="acc-head"><div className="avatar"><Avatar a={a} /></div>
         <div><b>{a.label}</b><div className="muted">{[a.username ? `@${a.username}` : '', hide ? '' : `ID ${a.userId}`].filter(Boolean).join(' · ')}</div></div></div>}
     <div className="form">
       {/* A new account: the cookie (the one box it needs) comes first, then the optional ones. */}

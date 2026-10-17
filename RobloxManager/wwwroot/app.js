@@ -222,11 +222,6 @@
     return intl('d', lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric', minute: '2-digit' }).format(new Date(2000, 0, 1, h, m));
   };
   const fmtMb = mb => mb >= 1024 ? `${intl('n', { maximumFractionDigits: 1 }).format(mb / 1024)} GB` : `${Math.round(mb)} MB`;
-  const hue = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
-  const initials = s => (String(s).match(/[\p{L}\p{N}]/gu) || ['?']).slice(0, 2).join('').toUpperCase();
-  const avatarInner = a => a.avatarUrl
-    ? `<img src="${esc(a.avatarUrl)}" alt="" draggable="false" loading="lazy" decoding="async" data-ini="${esc(initials(a.label || a.username))}" style="--h:${hue(a.username || a.label)}">`
-    : `<span class="initials" style="--h:${hue(a.username || a.label)}">${esc(initials(a.label || a.username))}</span>`;
 
   /* ───────────────────────── toasts ───────────────────────── */
   /** @param action optional { label, run } shown as a button; the toast then stays a little longer. */
@@ -898,7 +893,7 @@
   }
 
   /** A picker's row for an account: its label, @username, and its picture as the cards draw it (PickList.tsx). */
-  const pickAccount = (a, checked) => ({ value: a.id, checked, label: a.label, sub: a.username ? `@${a.username}` : '', avatarHtml: avatarInner(a) });
+  const pickAccount = (a, checked) => ({ value: a.id, checked, label: a.label, sub: a.username ? `@${a.username}` : '', avatar: a });
 
   /** Settings › Discord › Includes: what the summary lists (at least one), as a short list like the accounts picker. */
   function pickDiscordParts() {
@@ -984,7 +979,7 @@
     ask: (cmd, args) => bridge.call(cmd, args), strength: strengthLevel,
     focusKey, refocus,
     presetQuery: () => PV.query, setPresetQuery: q => { PV.query = q; },
-    scheduleText, nextRunText, presetOptionsText, avatarHtml: avatarInner, runPreset, deletePreset, editPreset: presetModal,
+    scheduleText, nextRunText, presetOptionsText, runPreset, deletePreset, editPreset: presetModal,
     weekdayName, fmtNum, looksLikeTarget, store, copyField: copy,
     gameListsCached: () => P.lists,
     async loadGameLists() {
@@ -2250,7 +2245,7 @@
     }));
     // Settings pages as the page has them (a page added later comes along), their groups' and rows' titles to find them by.
     const sections = [...document.querySelectorAll('#view-settings .set-page')].map(pg => ({
-      id: `set:${pg.dataset.page}`, kind: 'setting', iconHtml: $(`#view-settings [data-set-page="${pg.dataset.page}"] .i`)?.outerHTML,
+      id: `set:${pg.dataset.page}`, kind: 'setting', icon: SET_PAGES.find(p => p[0] === pg.dataset.page)?.[1],
       text: pg.querySelector('.set-page-title')?.textContent || pg.dataset.page,
       keywords: [...pg.querySelectorAll('.set-row .t, .set-grp-title')].map(x => x.textContent.trim()),
       run: openSection(pg.dataset.page),
@@ -2344,27 +2339,6 @@
   }
 
   /* ───────────────────────── events ───────────────────────── */
-  // A game icon that fails to load (gone from Roblox's CDN, offline) shows the same placeholder as a game without one,
-  // not the browser's broken-image mark. Inline onerror isn't allowed by the page's CSP, so one listener catches them.
-  document.addEventListener('error', e => {
-    const img = e.target;
-    if (!(img instanceof HTMLImageElement)) return;
-    // An account's picture that doesn't load (offline, gone from the CDN): its initials, as without one.
-    if (img.parentElement?.classList.contains('avatar') && img.dataset.ini) {
-      const ini = document.createElement('span');
-      ini.className = 'initials';
-      ini.style.cssText = img.style.cssText;
-      ini.textContent = img.dataset.ini;
-      img.replaceWith(ini);
-      return;
-    }
-    // React's parts draw their own placeholder; the parts of its page app.js still fills (data-vanilla) get this one.
-    if (!img.closest('.sgame, .game-row, .ps-game, .recent, #game-thumb, .activity, .pal-ic') || img.closest('[data-react], [data-vanilla]')?.hasAttribute('data-react')) return;
-    const ph = document.createElement(img.closest('.recent') ? 'i' : 'span');
-    ph.className = img.closest('.recent') ? 'ph' : img.matches('.gicon') ? img.className : 'gph';
-    if (!img.closest('.recent')) ph.innerHTML = icon('gamepad');
-    img.replaceWith(ph);
-  }, true);
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
     if (!el || !S.app) return;

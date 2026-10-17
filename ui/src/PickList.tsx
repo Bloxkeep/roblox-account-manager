@@ -3,14 +3,15 @@
 // dialog's footer (app.js), which reads what is ticked through PickListApi.
 import { useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { useHost } from './host';
+import { Avatar } from './Avatar';
 
 export interface PickItem {
   value: string;
   checked: boolean;
   label: string;
-  /** A second line (an account's @username), and its picture as app.js draws it (HTML of the avatar's inside). */
+  /** A second line (an account's @username), and the account whose picture goes with it. */
   sub?: string;
-  avatarHtml?: string;
+  avatar?: { avatarUrl?: string | null; username?: string; label?: string };
 }
 export interface PickListApi { values(): string[] }
 
@@ -30,7 +31,7 @@ export function PickList({ text, items, api }: { text: string; items: PickItem[]
     <p className="modal-text">{text}</p>
     <div className="rc-list">{items.map(i => <label key={i.value} className="rc-item">
       <input type="checkbox" value={i.value} checked={checked.has(i.value)} onChange={e => toggle(i.value, e.target.checked)} />
-      {i.avatarHtml !== undefined ? <div className="avatar sm" dangerouslySetInnerHTML={{ __html: i.avatarHtml }} /> : null}
+      {i.avatar ? <div className="avatar sm"><Avatar a={i.avatar} /></div> : null}
       <span><b title={i.sub !== undefined ? i.label : undefined}>{i.label}</b>{i.sub !== undefined ? <small>{i.sub}</small> : null}</span>
     </label>)}</div>
   </>;

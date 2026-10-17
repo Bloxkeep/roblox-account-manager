@@ -79,8 +79,6 @@ export interface Host {
   nextRunText(preset: { nextRun?: string }): string;
   /** The options a preset sets differently from the usual settings, in one line (app.js presetOptionsText). */
   presetOptionsText(preset: object): string;
-  /** An account's picture, or its initials, as the cards draw it (app.js avatarInner: HTML). */
-  avatarHtml(account: object): string;
   /** Copies an account's username, PID or authenticator code (app.js copy: the app copies; a toast says what). */
   copyField(id: string, field: string): void;
   /** Runs a preset (app.js runPreset: one at a time, asking when Roblox is busy). */

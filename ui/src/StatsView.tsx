@@ -4,6 +4,7 @@
 // state the app pushes. The chart is plain divs, sized from the busiest bucket.
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
+import { Avatar } from './Avatar';
 
 const STATS_PERIODS = [1, 7, 30];
 const BAR_HEIGHT = 140;
@@ -244,7 +245,7 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
             // list's "Account N", and a deleted one is just that.
             const label = hide ? byId(a.id)?.label || t('stats.deleted') : a.label || t('stats.deleted');
             return <tr key={a.id}>
-              <td><div className="sacc"><span className="avatar sm" dangerouslySetInnerHTML={{ __html: host.avatarHtml({ avatarUrl: a.avatarUrl, username: hide ? a.id : a.username || a.id, label }) }} />
+              <td><div className="sacc"><span className="avatar sm"><Avatar a={{ avatarUrl: a.avatarUrl, username: hide ? a.id : a.username || a.id, label }} /></span>
                 <b title={label}>{label}{a.deleted && a.label && !hide ? <>{' '}<small className="muted">· {t('stats.deletedTag')}</small></> : null}</b></div></td>
               <td className="n">{fmtSecs(a.seconds)}</td><td className="n">{fmtNum(a.sessions)}</td><td className="n">{fmtNum(a.kicks)}</td>
             </tr>;
@@ -306,7 +307,7 @@ function Log({ log: d, failed, filtered, retry, more }: {
           <i className="dot" aria-hidden="true" />
           {key === today ? <AgoTime iso={e.at} title={full} /> : <time dateTime={e.at} title={full}>{clockOf(at)}</time>}
           {e.account
-            ? <span className="alog-acc" title={e.account}>{a ? <span className="avatar sm" dangerouslySetInnerHTML={{ __html: host.avatarHtml(a) }} /> : null}<b>{e.account}</b></span>
+            ? <span className="alog-acc" title={e.account}>{a ? <span className="avatar sm"><Avatar a={a} /></span> : null}<b>{e.account}</b></span>
             : <span className="alog-acc none" aria-hidden="true">—</span>}
           <span className="alog-text">{e.text}</span>
         </li>;

@@ -5,13 +5,14 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Icon, useHost } from './host';
 import { fold } from './text';
+import { Avatar } from './Avatar';
 
 const PAL_MAX = 60;
 const PAL_ALT_KEYS = ['Ctrl+Enter', 'Shift+Enter'];
 
 export type PaletteEntry = {
   id: string; kind: string; text: string; hint?: string; keywords?: string[];
-  icon?: string; iconHtml?: string; img?: string; avatar?: object;
+  icon?: string; img?: string; avatar?: { avatarUrl?: string | null; username?: string; label?: string };
   run: () => void; alts?: { text: string; run: () => void }[];
 };
 
@@ -137,10 +138,8 @@ export function Palette({ entries, close }: { entries: PaletteEntry[]; close: ()
 
 /** A row's picture: an account's avatar, a game's icon (the gamepad when it doesn't load), or the entry's icon. */
 function Lead({ e }: { e: PaletteEntry }) {
-  const { avatarHtml } = useHost();
   const [failed, setFailed] = useState(false);
-  if (e.avatar) return <span className="avatar sm" dangerouslySetInnerHTML={{ __html: avatarHtml(e.avatar) }} />;
+  if (e.avatar) return <span className="avatar sm"><Avatar a={e.avatar} /></span>;
   if (e.img) return <span className="pal-ic">{failed ? <span className="gph"><Icon name="gamepad" /></span> : <img src={e.img} alt="" onError={() => setFailed(true)} />}</span>;
-  if (e.iconHtml) return <span className="pal-ic" dangerouslySetInnerHTML={{ __html: e.iconHtml }} />;
   return <span className="pal-ic"><Icon name={e.icon || 'search'} /></span>;
 }

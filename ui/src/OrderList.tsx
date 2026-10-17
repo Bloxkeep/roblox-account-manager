@@ -4,6 +4,7 @@
 import { useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { flushSync } from 'react-dom';
 import { Icon, useHost } from './host';
+import { Avatar } from './Avatar';
 
 export type OrderAccount = { id: string; label: string; username?: string };
 export interface OrderListApi {
@@ -16,7 +17,7 @@ export interface OrderListApi {
 export function OrderList({ accounts, ticked, api, onChange }: {
   accounts: OrderAccount[]; ticked?: string[]; api?: Ref<OrderListApi>; onChange?: () => void;
 }) {
-  const { t, avatarHtml } = useHost();
+  const { t } = useHost();
   const byId = new Map(accounts.map(a => [a.id, a]));
   const [order, setOrder] = useState(() => accounts.map(a => a.id));
   const [checked, setChecked] = useState(() => new Set(ticked || []));
@@ -75,7 +76,7 @@ export function OrderList({ accounts, ticked, api, onChange }: {
         <span className="ord-grip" title={t('lo.drag')}><Icon name="grip" /></span>
         {ticked ? <input type="checkbox" value={id} checked={checked.has(id)} aria-label={a.label} onChange={e => tick(id, e.target.checked)} />
           : <span className="ord-n">{i + 1}</span>}
-        <div className="avatar sm" dangerouslySetInnerHTML={{ __html: avatarHtml(a) }} />
+        <div className="avatar sm"><Avatar a={a} /></div>
         <span className="ord-txt"><b title={a.label}>{a.label}</b><small>{a.username ? `@${a.username}` : ''}</small></span>
         <span className="ord-btns">
           <button type="button" className="icon-btn" data-move="-1" title={t('lo.up')} aria-label={t('lo.up')} onClick={e => move(id, -1, e.currentTarget)}><Icon name="chevronUp" /></button>
