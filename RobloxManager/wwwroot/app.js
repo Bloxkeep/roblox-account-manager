@@ -224,48 +224,16 @@
   const fmtMb = mb => mb >= 1024 ? `${intl('n', { maximumFractionDigits: 1 }).format(mb / 1024)} GB` : `${Math.round(mb)} MB`;
 
   /* ───────────────────────── toasts ───────────────────────── */
-  /** @param action optional { label, run } shown as a button; the toast then stays a little longer. */
+  /**
+   * A message in the corner. @param action optional { label, run } shown as a button; the toast then stays a little
+   * longer. Drawn by React (ui/src/Overlays.tsx Toasts): how long each stays, three at most, the same one again.
+   */
+  let toastUi = null;
   function toast(text, kind = 'info', action = null) {
-    const box = $('#toasts');
     // Not over the lock screen that came up by itself: an answer still on its way could name an account.
-    if (!box || !text || S.app?.screenLock) return;
-    // Long messages stay long enough to be read (about 60 ms a character).
-    const life = Math.min(Math.max(kind === 'error' ? 6500 : action ? 9000 : 3800, text.length * 60), 15000);
-    // The same message again while it still shows (a double click, a repeated event): the one toast stays longer
-    // instead of a second copy stacking under it.
-    const same = !action && [...box.children].find(x => !x.classList.contains('out') && x.dataset.text === text && x.classList.contains(kind));
-    if (same) {
-      clearTimeout(same._timer);
-      // Held while pointed at or focused: leaving it starts the countdown, as for any toast.
-      if (!same.matches(':hover') && !same.contains(document.activeElement)) same._timer = setTimeout(same._dismiss, life);
-      same.classList.remove('again');
-      void same.offsetWidth; // restarts the nudge animation
-      same.classList.add('again');
-      return;
-    }
-    while (box.children.length >= 3) box.firstElementChild.remove(); // three at most: a stack mustn't cover the page
-    const el = document.createElement('div');
-    el.className = `toast ${kind}`;
-    el.dataset.text = text;
-    el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
-    el.innerHTML = `${icon(kind === 'ok' ? 'check' : kind === 'info' ? 'info' : 'alert')}<span>${esc(text)}</span>${action ? `<button class="toast-act">${esc(action.label)}</button>` : ''}`;
-    const dismiss = () => {
-      el.classList.add('out');
-      setTimeout(() => el.remove(), 220);
-    };
-    el._dismiss = dismiss;
-    if (action) el.querySelector('.toast-act').addEventListener('click', () => { action.run(); dismiss(); });
-    // A click anywhere else on it closes it (like a Windows notification); pointing at it only holds it.
-    el.addEventListener('click', e => { if (!e.target.closest('.toast-act')) { clearTimeout(el._timer); dismiss(); } });
-    // Kept while the pointer or the focus is on it (being read, or its button about to be pressed).
-    const hold = () => clearTimeout(el._timer);
-    const resume = () => { clearTimeout(el._timer); el._timer = setTimeout(dismiss, 2500); };
-    el.addEventListener('mouseenter', hold);
-    el.addEventListener('focusin', hold);
-    el.addEventListener('mouseleave', () => { if (!el.contains(document.activeElement)) resume(); });
-    el.addEventListener('focusout', () => { if (!el.matches(':hover')) resume(); });
-    box.append(el);
-    el._timer = setTimeout(dismiss, life);
+    if (!text || S.app?.screenLock) return;
+    toastUi ||= window.BloxkeepUI.toasts($('#toasts'), uiHost());
+    toastUi.api.show(text, kind, action);
   }
   /** While a dialog or menu is up, toasts sit behind it (still readable through the backdrop) rather than over its edge. */
   function syncToastLayer() {
@@ -293,7 +261,8 @@
    * @param enterSubmits true for a form: Enter in a field presses the primary button (not in a textarea or a box with its list open).
    * @param askClose returns true when Esc or the X would throw away something typed: the user is asked first.
    */
-  function modal({ title, body, actions = [], onMount, onClose, dismissable = true, busy: keepsPage = false, enterSubmits = false, askClose = null, top = false, onRemoved }) {
+  function modal({ title, body, actions = [], onMount, onClose, dismissable = true, busy: keepsPage = false, enterSubmits = false, askClose = null, top = false, onRemoved,
+    boxClass, bodyClass, label, footError }) {
     closeMenu();
     // Gets the focus back on close. Opened from a busy button (What's new, Run's "Open anyway?"), which lost the focus
     // when it was turned off: that button.
@@ -307,11 +276,12 @@
     // in the middle, so a change moves only its bottom edge, not what is being read.
     el.className = top ? 'overlay at-top' : 'overlay';
     const titleId = `mdl-${++modalSeq}`;
-    el.innerHTML = `<div class="modal" role="dialog" aria-modal="true" ${title ? `aria-labelledby="${titleId}"` : ''}>
-      <div class="modal-head"><h3 id="${titleId}">${title}</h3><button class="icon-btn" data-x title="${t('common.close')}">${icon('x')}</button></div>
-      <div class="modal-body">${body}</div>
-      ${actions.length ? `<div class="modal-foot">${actions.map((a, i) => `<button class="btn ${a.kind || ''}" data-i="${i}">${a.text}</button>`).join('')}</div>` : ''}
-    </div>`;
+    // The frame is React's (ui/src/Overlays.tsx ModalFrame); its body too when given as one of its parts (an ask, the
+    // errors…), else a React part goes into .modal-body in onMount.
+    const unmountFrame = window.BloxkeepUI.modalFrame(el, uiHost(), {
+      title, titleId, body: body || null, actions: actions.map(a => ({ text: a.text, kind: a.kind })),
+      act: (i, btn) => actions[i].onClick?.({ ...api, btn }), close: () => tryClose(), boxClass, bodyClass, label, footError,
+    });
     let closed = false;
     const focusables = () => [...el.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])')]
       .filter(x => !x.disabled && !x.hidden && x.offsetParent !== null);
@@ -345,7 +315,7 @@
       if (keepsPage) busyModals--;
       document.removeEventListener('keydown', onKey, true);
       el.classList.add('out');
-      setTimeout(() => { el.remove(); onRemoved?.(); }, 150);
+      setTimeout(() => { el.remove(); onRemoved?.(); unmountFrame(); }, 150);
       lastOverlayClose = performance.now();
       onClose?.();
       syncBusy();
@@ -385,16 +355,12 @@
     // Not the second press of the double click that opened it (the dialog appears under the pointer).
     const openedAt = performance.now();
     if (dismissable) el.addEventListener('mousedown', e => { if (e.target === el && e.detail < 2 && performance.now() - openedAt > 450) tryClose(); });
-    el.querySelector('[data-x]').onclick = tryClose;
     const api = {
       el,
       close: () => { if (!held) close(); },
       /** Runs a save with the dialog kept open meanwhile (Cancel, the X and Esc wait for it). */
       hold: async job => { held++; try { return await job(); } finally { held--; } },
     };
-    el.querySelectorAll('.modal-foot .btn').forEach(btn => {
-      btn.onclick = () => actions[+btn.dataset.i].onClick?.({ ...api, btn });
-    });
     $('#layer').append(el);
     onMount?.(api);
     // Most modals focus one of their fields themselves; the rest start at their first control.
@@ -421,7 +387,7 @@
       let answer = false;
       const m = modal({
         title,
-        body: `<p class="pre modal-text">${esc(message)}</p>${remember ? `<label class="dont-ask"><input type="checkbox" id="dont-ask"><span>${t('common.dontAsk')}</span></label>` : ''}`,
+        body: window.BloxkeepUI.ask(message, !!remember),
         actions: [
           { text: t('common.cancel'), onClick: ({ close }) => close() },
           { text: ok, kind: danger ? 'danger' : 'primary', onClick: ({ el, close }) => {
@@ -436,36 +402,39 @@
     });
   }
 
-  let menuEl = null, menuOpener = null;
+  let menuEl = null, menuOpener = null, menuUnmount = null;
   /** @param refocus true (from the keyboard) puts the focus back on the button that opened the menu. */
   function closeMenu(refocus = false) {
     if (!menuEl) return;
     menuEl.remove();
-    menuEl = null;
+    // After the click that chose an item has been handled (the menu's items are React's).
+    const unmount = menuUnmount;
+    queueMicrotask(() => unmount?.());
+    menuEl = menuUnmount = null;
     lastOverlayClose = performance.now();
     syncToastLayer();
     if (menuOpener?.hasAttribute('aria-haspopup')) menuOpener.setAttribute('aria-expanded', 'false');
     if (refocus === true && menuOpener?.isConnected) menuOpener.focus();
     menuOpener = null;
   }
-  function openMenu(items, x, y) {
+  /**
+   * @param items { icon, text, title, hint, danger, checked, disabled, run } or '-' for a line; their words as they
+   * read (not HTML). @param split the items before the first line scroll in a list of their own (the dock's presets).
+   */
+  function openMenu(items, x, y, { cls = '', split = false } = {}) {
     closeMenu();
     menuOpener = document.activeElement !== document.body ? document.activeElement : null;
     const byKeyboard = !!menuOpener?.matches(':focus-visible');
     if (menuOpener?.hasAttribute('aria-haspopup')) menuOpener.setAttribute('aria-expanded', 'true');
     const el = document.createElement('div');
-    el.className = 'menu';
+    el.className = cls ? `menu ${cls}` : 'menu';
     el.setAttribute('role', 'menu');
-    el.innerHTML = items.map((it, i) => it === '-' ? '<hr>'
-      : `<button role="menuitem" data-mi="${i}" class="${it.danger ? 'danger' : ''} ${it.checked ? 'checked' : ''}" ${it.disabled ? 'disabled' : ''}>${icon(it.checked ? 'check' : it.icon)}<span${it.title ? ` title="${it.title}"` : ''}>${it.text}</span>${it.hint ? `<kbd>${it.hint}</kbd>` : ''}</button>`).join('');
-    el.addEventListener('click', e => {
-      const b = e.target.closest('[data-mi]');
-      if (!b) return;
-      const item = items[+b.dataset.mi];
-      closeMenu(e.detail === 0); // picked with the keyboard: the focus goes back to the button first
-      item.run();
-    });
     $('#layer').append(el);
+    // The items are React's (ui/src/Overlays.tsx MenuItems).
+    menuUnmount = window.BloxkeepUI.menu(el, uiHost(), items, (i, kb) => {
+      closeMenu(kb); // picked with the keyboard: the focus goes back to the button first
+      items[i].run();
+    }, split);
     menuEl = el;
     syncToastLayer();
     const r = el.getBoundingClientRect();
@@ -473,9 +442,9 @@
     el.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
     if (byKeyboard) el.querySelector('button:not(:disabled)')?.focus();
   }
-  const menuAt = (btn, items, width) => {
+  const menuAt = (btn, items, width, opts) => {
     const r = btn.getBoundingClientRect();
-    openMenu(items, width ? r.right - width : r.left, r.bottom + 6);
+    openMenu(items, width ? r.right - width : r.left, r.bottom + 6, opts);
   };
   document.addEventListener('mousedown', e => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); }, true);
   window.addEventListener('blur', closeMenu);
@@ -857,9 +826,7 @@
   function discordLinkModal(thenTurnOn = false) {
     modal({
       title: t('dc.pasteTitle'),
-      body: `<p class="modal-text">${t('dc.pasteText')}</p>
-        <input class="field" id="dc-link" type="text" maxlength="300" spellcheck="false" autocomplete="off" placeholder="https://discord.com/api/webhooks/…" aria-label="${esc(t('dc.webhook'))}">
-        <p class="dc-err" id="dc-link-err" role="alert"></p>`,
+      body: window.BloxkeepUI.discordLink(),
       // The "not a webhook link" note goes as soon as the box changes.
       onMount: ({ el }) => el.querySelector('#dc-link').addEventListener('input', () => setText(el.querySelector('#dc-link-err'), '')),
       busy: true,
@@ -1024,7 +991,7 @@
     const day = isNaN(date) ? '' : date.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
     let unmount = null;
     modal({
-      title: `<span class="wn-title"><img src="${LOGO}" alt=""><span>${t('wn.heading')}<small>${esc(`Bloxkeep ${latest.version}`)}${day ? ` · ${esc(day)}` : ''}</small></span></span>`,
+      title: window.BloxkeepUI.whatsNewTitle(`Bloxkeep ${latest.version}${day ? ` · ${day}` : ''}`),
       body: '',
       actions: [{ text: t('wn.ok'), kind: 'primary', onClick: ({ close }) => close() }],
       onMount: ({ el, close }) => { unmount = window.BloxkeepUI.whatsNew(el.querySelector('.modal-body'), uiHost(), releases, close); },
@@ -1296,13 +1263,13 @@
       title: t('srv.title', { game: esc(g.name || `Place ${g.placeId}`) }),
       top: true,
       body: '',
+      // Its layout (only the list scrolls) hangs on this class: a :has() rule did it, which re-styled the whole page on
+      // every change anywhere in it.
+      bodyClass: 'srv-body',
       actions: [{ text: t('common.close'), onClick: ({ close }) => close() }],
       onRemoved: () => unmount?.(),
     });
-    // Its layout (only the list scrolls) hangs on this class: a :has() rule did it, which re-styled the whole page on
-    // every change anywhere in it.
     const body = api.el.querySelector('.modal-body');
-    body.classList.add('srv-body');
     unmount = window.BloxkeepUI.servers(body, uiHost(), g.placeId, [...S.selected], (placeId, jobId) => {
       useServer(placeId, jobId);
       api.close();
@@ -1435,7 +1402,7 @@
       let answer = null;
       const m = modal({
         title: t('t.confirmTitle'),
-        body: `<p class="pre modal-text">${esc(r.message)}</p>${canSkip ? `<label class="dont-ask"><input type="checkbox" id="dont-ask"><span>${t('common.dontAsk')}</span></label>` : ''}`,
+        body: window.BloxkeepUI.ask(r.message, canSkip),
         actions: [
           { text: t('common.cancel'), onClick: ({ close }) => close() },
           ...(notReady ? [{ text: t('t.fixMulti'), onClick: ({ close }) => { answer = 'fix'; close(); } }] : []),
@@ -1468,7 +1435,7 @@
     if (r.errors?.length && !S.app.locked) {
       modal({
         title: t(r.launched ? 't.errsSome' : 't.errsAll'),
-        body: `<ul class="errs">${r.errors.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`,
+        body: window.BloxkeepUI.errors(r.errors),
         actions: [{ text: t('common.close'), kind: 'primary', onClick: ({ close }) => close() }],
       });
     }
@@ -1517,24 +1484,15 @@
     const list = presets();
     menuAt(btn, [
       ...(list.length ? list.map(p => ({
-        icon: p.nextRun ? 'clock' : 'play', text: esc(p.name), title: esc(presetSub(p)), hint: esc(nextRunText(p) || accCount(presetAccounts(p).length)),
+        icon: p.nextRun ? 'clock' : 'play', text: p.name, title: presetSub(p), hint: nextRunText(p) || accCount(presetAccounts(p).length),
         disabled: !presetAccounts(p).length, run: () => runPreset(p.id),
       })) : [{ icon: 'layers', text: t('ps.none'), disabled: true }]),
       '-',
       { icon: 'plus', text: t('ps.save'), run: newPreset },
       { icon: 'edit', text: t('ps.manage'), run: () => setView('presets') },
-    ], 300);
+    ], 300, { cls: 'preset-menu', split: true });
     // The dock is at the bottom: open above the button, right edges lined up. A long list scrolls inside the menu;
     // Save and Edit stay at its foot.
-    menuEl.classList.add('preset-menu');
-    const foot = [...menuEl.children].findIndex(x => x.tagName === 'HR');
-    const scroller = document.createElement('div');
-    scroller.className = 'pm-list';
-    // Moving the items drops the focus openMenu gave the first one (opened from the keyboard): it is given back.
-    const focused = menuEl.contains(document.activeElement) ? document.activeElement : null;
-    scroller.append(...[...menuEl.children].slice(0, foot));
-    menuEl.prepend(scroller);
-    focused?.focus();
     const r = btn.getBoundingClientRect();
     menuEl.style.maxHeight = `${Math.max(180, r.top - 14)}px`;
     const m = menuEl.getBoundingClientRect();
@@ -1595,6 +1553,7 @@
       // Anything changed (boxes, ticks, the accounts' order, the days): Esc or the X asks before throwing it away.
       askClose: () => !!ui?.form.dirty(),
       body: '',
+      footError: true,
       actions: [
         ...(isNew ? [] : [{ text: t('ps.delete'), kind: 'danger push', onClick: async ({ close }) => { if (await deletePreset(p)) close(); } }]),
         { text: t('common.cancel'), onClick: ({ close }) => close() },
@@ -1625,8 +1584,6 @@
         // The form is React's (ui/src/PresetForm.tsx): the preset's accounts first, ticked, then the rest.
         ui = window.BloxkeepUI.presetForm(el.querySelector('.modal-body'), uiHost(),
           { base, isNew, accounts: [...chosen, ...rest], ticked: chosen.map(a => a.id), gone });
-        // Where a refused save says why (see Save).
-        el.querySelector('.modal-foot').insertAdjacentHTML('beforebegin', '<div class="form-error ps-err" role="alert" hidden></div>');
         setTimeout(() => el.querySelector('#ps-name')?.focus(), 30);
       },
       onRemoved: () => ui?.unmount(),
@@ -1721,6 +1678,8 @@
       // Esc or the X asks first when that would throw away what was typed, or a sign-in half way (a code already sent).
       askClose: () => !!ui?.api.asksToClose(),
       body: '',
+      boxClass: 'auth',
+      label: t('pw.title'),
       onClose: () => {
         ui?.api.stop();
         call('loginCancel', {}, { silent: true }); // the app drops the half-done sign-in and its password
@@ -1732,8 +1691,6 @@
       },
       onRemoved: () => ui?.unmount(),
     });
-    m.el.querySelector('.modal').classList.add('auth');
-    m.el.querySelector('.modal').setAttribute('aria-label', t('pw.title'));
     // The screens are React's (ui/src/PasswordLogin.tsx); a way picked there closes this and opens that way.
     ui = window.BloxkeepUI.passwordLogin(m.el.querySelector('.modal-body'), uiHost(), forRealm ?? null, (way, realm) => {
       m.close();
@@ -1962,19 +1919,19 @@
       { icon: 'server', text: t('m.follow'), disabled: many || !serverOf(a), run: () => { const s = serverOf(a); useServer(s.placeId, s.jobId); toast(t('srv.followed', { name: a.label }), 'ok'); } },
       // Ticked as the card shows it (a running window's preset may decide), and says so when it does.
       { icon: 'repeat', text: t('m.autoRejoin'), checked: ids.every(i => byId(i) && rejoinOn(byId(i))), run: () => toggleRejoin(ids),
-        title: ids.some(i => { const x = byId(i); return x?.session && x.session.autoRejoin !== undefined && x.session.autoRejoin !== x.autoRejoin; }) ? esc(t('m.rejoinPreset')) : '' },
+        title: ids.some(i => { const x = byId(i); return x?.session && x.session.autoRejoin !== undefined && x.session.autoRejoin !== x.autoRejoin; }) ? t('m.rejoinPreset') : '' },
       ...(S.app.settings?.robloxConfig?.mode === 'marked'
         ? [{ icon: 'sliders', text: t('m.robloxConfig'), checked: ids.every(i => byId(i)?.useRobloxConfig), run: () => toggleRobloxConfig(ids) }] : []),
       { icon: 'external', text: t('m.profile'), disabled: many || !a.userId, run: () => call('openProfile', { userId: a.userId }) },
       // roblox.com signed in as this account, in a window of Bloxkeep's own (one per account, several side by side).
-      { icon: 'globe', text: t('m.website'), disabled: many || a.realm === 'vng', title: a.realm === 'vng' ? esc(t('card.vngNoPlay')) : '',
+      { icon: 'globe', text: t('m.website'), disabled: many || a.realm === 'vng', title: a.realm === 'vng' ? t('card.vngNoPlay') : '',
         run: () => call('openWebsite', { id }) },
       '-',
       { icon: 'copy', text: t('m.copyUser'), disabled: many, run: () => copy(id, 'username') },
       // Nothing saved to copy: picking it says why (a sign-in never keeps the password) instead of a dimmed line.
-      { icon: 'key', text: t('m.copyPw'), disabled: many, title: a.hasPassword ? '' : esc(t('m.noPw')),
+      { icon: 'key', text: t('m.copyPw'), disabled: many, title: a.hasPassword ? '' : t('m.noPw'),
         run: () => a.hasPassword ? copy(id, 'password') : toast(t('m.noPw'), 'info') },
-      { icon: 'shieldCheck', text: t('m.copyCode'), disabled: many, title: a.hasAuthenticator ? '' : esc(t('m.noCode')),
+      { icon: 'shieldCheck', text: t('m.copyCode'), disabled: many, title: a.hasAuthenticator ? '' : t('m.noCode'),
         run: () => a.hasAuthenticator ? copy(id, 'totp') : toast(t('m.noCode'), 'info') },
       '-',
       { icon: 'trash', text: many ? t('m.deleteN', { n: ids.length }) : t('m.delete'), hint: 'Del', danger: true, run: () => removeIds(ids) },
@@ -2259,9 +2216,9 @@
     modal({
       title: t('pal.title'),
       body: '',
+      boxClass: 'palette',
       onMount: ({ el, close }) => {
         PAL.close = close;
-        el.querySelector('.modal').classList.add('palette');
         unmount = window.BloxkeepUI.palette(el.querySelector('.modal-body'), uiHost(), paletteEntries(), close);
         el.querySelector('.pal-input').focus();
       },
@@ -2286,23 +2243,23 @@
       }
       // One launch at a time: while one runs, the join wouldn't start (and the lookup would be for nothing).
       const launchBusy = () => inFlight.has('launch') || !!S.app.launching;
-      if (launchBusy()) return ui.form.say(esc(t('jp.launching')), 'warn');
-      ui.form.say(`<span class="spin"></span>${t('jp.looking', { name: esc(input) })}`);
+      if (launchBusy()) return ui.form.say(t('jp.launching'), 'warn');
+      ui.form.say(t('jp.looking', { name: input }), 'info', { spin: true });
       let r;
       try {
         r = await busy(btn, () => bridge.call('findPlayer', { input, ids }));
       } catch (e) {
-        if (!gone) { ui.form.say(esc(e.message), 'error'); ui.form.focusName(); }
+        if (!gone) { ui.form.say(e.message, 'error'); ui.form.focusName(); }
         return;
       }
       if (gone || !r || S.app.locked) return;
       const who = r.displayName && r.displayName !== r.name ? `${r.displayName} (@${r.name})` : r.name || input;
       if (r.status !== 'found') {
         // A name Roblox knows is remembered even when it can't be joined now: the list shows it with the app's next state.
-        ui.form.say(t(`jp.${r.status}`, { name: `<b>${esc(who)}</b>` }), r.status === 'notFound' ? 'error' : 'warn');
+        ui.form.say(t(`jp.${r.status}`, { name: '\u0000' }), r.status === 'notFound' ? 'error' : 'warn', { bold: who });
         return ui.form.focusName(true);
       }
-      if (launchBusy()) return ui.form.say(esc(t('jp.launching')), 'warn'); // one started meanwhile (a scheduled preset)
+      if (launchBusy()) return ui.form.say(t('jp.launching'), 'warn'); // one started meanwhile (a scheduled preset)
       close();
       // Toasts escape their text themselves.
       toast(tn('jp.found', ids.length, { name: who, game: r.game || `Place ${r.placeId}` }), 'info');
@@ -2382,7 +2339,7 @@
           '-',
           { icon: 'folder', text: t('m.importVault'), run: importVault },
           '-',
-          { icon: 'external', text: t('m.openWeb'), title: esc(t('start.webTip')), run: () => call('openWebsiteBlank') },
+          { icon: 'external', text: t('m.openWeb'), title: t('start.webTip'), run: () => call('openWebsiteBlank') },
         ], 320);
       case 'tools-menu':
         return menuAt(el, [
@@ -2420,7 +2377,7 @@
         return menuAt(el, [
           { icon: 'tag', text: t('chip.all'), checked: !S.group, run: pick('') },
           '-',
-          ...accountGroups().map(g => ({ icon: 'tag', text: esc(g), checked: S.group === g, run: pick(g) })),
+          ...accountGroups().map(g => ({ icon: 'tag', text: g, checked: S.group === g, run: pick(g) })),
         ], 240);
       }
       case 'refresh-presence':
@@ -2662,7 +2619,7 @@
     if (st.themeApplied && !S.themePending) document.documentElement.dataset.theme = st.themeApplied;
     if (st.locked) {
       // Toasts from before the lock may name accounts: they don't stay on the lock screen.
-      if (S.shell) $('#toasts')?.replaceChildren();
+      if (S.shell) toastUi?.api.clear();
       S.bootDone = S.bootTimedOut = false;
       S.viewPrefsLoaded = false; // the next vault brings its own layout and sort
       stopBoot();

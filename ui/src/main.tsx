@@ -18,17 +18,21 @@ import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
 import { QuickLogin, type QuickLoginApi } from './QuickLogin';
 import { Servers } from './Servers';
+import { AskBody, DiscordLinkBody, ErrorsBody, MenuItems, ModalFrame, Toasts, WhatsNewTitle, type MenuItem, type ModalOpts, type ToastsApi } from './Overlays';
 import { Shell, type SettingsPageInfo } from './Shell';
 import { type StatsApi } from './StatsView';
 import { WhatsNew, type Release } from './WhatsNew';
 
-/** Draws into el now (app.js focuses the first control right after, so the content must be there), until unmount. */
-function mount(el: HTMLElement, host: Host, node: ReactNode): () => void {
+/**
+ * Draws into el now (app.js focuses the first control right after, so the content must be there), until unmount.
+ * keep: the focus is kept on what is drawn again (keepFocus); a frame drawn once (a dialog's, a menu) needs none.
+ */
+function mount(el: HTMLElement, host: Host, node: ReactNode, keep = true): () => void {
   // Marked as React's: the page-wide fallback for broken game pictures (app.js) leaves its elements alone.
   el.dataset.react = '';
   const root = createRoot(el);
   flushSync(() => root.render(<StrictMode><HostContext.Provider value={host}>{node}</HostContext.Provider></StrictMode>));
-  const stop = keepFocus(el, host);
+  const stop = keep ? keepFocus(el, host) : () => {};
   // The element may be the page's own (#app, the lock screen's): what app.js draws there next isn't React's.
   return () => { stop(); root.unmount(); delete el.dataset.react; };
 }
@@ -67,6 +71,25 @@ function keepFocus(el: HTMLElement, host: Host): () => void {
 }
 
 const BloxkeepUI = {
+  /** A dialog's frame into its overlay (app.js's modal); its body a part drawn here, or empty for one put in later. */
+  modalFrame(el: HTMLElement, host: Host, opts: ModalOpts) {
+    return mount(el, host, <ModalFrame {...opts} />, false);
+  },
+  /** Bodies and a title for modalFrame: a question (with "Don't ask again"), errors, the Discord link box, What's new's title. */
+  ask: (message: string, remember: boolean) => <AskBody message={message} remember={remember} />,
+  errors: (errors: string[]) => <ErrorsBody errors={errors} />,
+  discordLink: () => <DiscordLinkBody />,
+  whatsNewTitle: (sub: string) => <WhatsNewTitle sub={sub} />,
+  /** A menu's items into the menu app.js made; pick(i, byKeyboard) when one is chosen. */
+  menu(el: HTMLElement, host: Host, items: MenuItem[], pick: (i: number, byKeyboard: boolean) => void, split: boolean) {
+    return mount(el, host, <MenuItems items={items} pick={pick} split={split} />, false);
+  },
+  /** The messages in the corner into #toasts (once, for the page's life). */
+  toasts(el: HTMLElement, host: Host) {
+    const api = createRef<ToastsApi>();
+    const unmount = mount(el, host, <Toasts api={api} />, false);
+    return { unmount, api: api.current! };
+  },
   /** Runs fn (app.js telling the parts its state changed) and draws what that changes at once, before returning. */
   flush(fn: () => void) {
     flushSync(fn);

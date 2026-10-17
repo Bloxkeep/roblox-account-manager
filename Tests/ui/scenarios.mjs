@@ -497,6 +497,26 @@ export default [
     await s.key('Enter');
     await s.wait(1000);
   }),
+  // What the lookup says when it can't join: the name in bold (hidden, offline, nobody by that name), a name Roblox
+  // can't have, and a lookup that fails.
+  S('join-player-answers', 'select=1', async s => {
+    await s.click({ key: 'jp.button' });
+    await s.type('hiddenfriend');
+    await s.key('Enter');
+    await s.wait(800);
+    await s.snap('hidden');
+    await s.fill({ css: '#jp-name' }, 'offlinebuddy');
+    await s.key('Enter');
+    await s.wait(800);
+    await s.snap('offline');
+    await s.fill({ css: '#jp-name' }, 'nobody_here');
+    await s.key('Enter');
+    await s.wait(800);
+    await s.snap('not found');
+    await s.fill({ css: '#jp-name' }, 'not a name!');
+    await s.key('Enter');
+    await s.wait(800);
+  }),
   S('launch-ask-multi-off', 'multioff=1&select=1', async s => { await s.click({ key: 'dock.play', within: '.dock' }); await s.wait(500); }),
   S('arrange-windows', '', async s => { await s.click(key('dock.arrangeTip')); }),
   S('open-app-only', 'select=1', async s => { await s.click(key('dock.openAppTip')); await s.wait(800); }),
