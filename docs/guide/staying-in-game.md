@@ -99,10 +99,23 @@ The window in front gets its normal priority back. Roblox may refuse; Bloxkeep t
 
 **Settings › Staying in game › Keep running in the tray when closed** (on by default). The ✕ button hides Bloxkeep to the system tray. Auto-rejoin, Multi-Roblox and schedules keep working.
 
-| Tray icon, right-click | What it does |
+**Click the tray icon** for the quick panel, like Windows 11's own:
+
+- How many Roblox windows run and their RAM, with buttons for the mini window and for Bloxkeep itself.
+- **Multi-Roblox** with its switch. With your accounts unlocked it turns off from here; turning it on opens Bloxkeep, which asks first.
+- The accounts playing now: click one to bring its Roblox window up, or use the eye and the ✕ that show when the pointer is on it. **Close all** asks with a second click.
+- **Play** lists your accounts to open, **Presets** your presets, and **New Roblox** opens a Roblox window to sign in to separately.
+
+**Right-click the tray icon** for the menu:
+
+| Item | What it does |
 |---|---|
-| **Mini window** | Opens the small always-on-top window. |
-| **Open Bloxkeep** | Brings the main window back. |
+| The first row | Multi-Roblox's state and how many Roblox windows run. |
+| **Open Bloxkeep**, **Mini window** | Bring the main window back, or open the small always-on-top window. |
+| **Play as**, **Run preset** | Open an account (into the game in the bar) or run a preset. An account already playing is ticked. |
+| **New Roblox window to sign in** | A Roblox window you sign in to yourself; its sign-in isn't saved. |
+| **Multi-Roblox** | Shows On, Not ready or Off; its submenu turns it off (or opens Bloxkeep to turn it on or fix it). |
+| **Close all Roblox** | Its submenu closes every Roblox window, and says how many. |
 | **Quit Bloxkeep** | Closes Bloxkeep. |
 
 With the option off, ✕ quits Bloxkeep.

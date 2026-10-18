@@ -112,20 +112,25 @@ static class WindowIcons
     /// <summary>An account without a picture: up to two letters of its name on its own colour (the page's hue).</summary>
     public static Bitmap Initials(string name)
     {
-        string letters = new string(name.Where(char.IsLetterOrDigit).Take(2).ToArray()).ToUpperInvariant();
-        if (letters.Length == 0)
-            letters = "?";
+        string letters = InitialsOf(name);
         var bitmap = new Bitmap(96, 96);
         using var g = Graphics.FromImage(bitmap);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-        g.Clear(FromHue(Hue(name), 0.45, 0.42));
+        g.Clear(NameColor(name));
         using var font = new Font("Segoe UI Semibold", letters.Length > 1 ? 34 : 40, FontStyle.Regular, GraphicsUnit.Pixel);
         using var brush = new SolidBrush(Color.White);
         var size = g.MeasureString(letters, font);
         g.DrawString(letters, font, brush, (96 - size.Width) / 2, (96 - size.Height) / 2);
         return bitmap;
     }
+
+    /// <summary>Up to two letters or digits of a name, "?" when it has none.</summary>
+    public static string InitialsOf(string name) =>
+        new string(name.Where(char.IsLetterOrDigit).Take(2).ToArray()).ToUpperInvariant() is { Length: > 0 } letters ? letters : "?";
+
+    /// <summary>The colour behind a name's initials, as the page gives it.</summary>
+    public static Color NameColor(string name) => FromHue(Hue(name), 0.45, 0.42);
 
     /// <summary>The same hue the page gives a name (app.js hue).</summary>
     static int Hue(string s)
