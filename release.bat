@@ -13,5 +13,10 @@ if "%GITHUB_TOKEN%"=="" (
   echo Set GITHUB_TOKEN first.
   exit /b 1
 )
+rem A beta (1.0.5-beta.1) goes up as a pre-release: only copies with Settings > Get beta versions on take it, and it
+rem never becomes the Latest release the web installer downloads.
+set VERSION=%~1
+set PRE=
+if not "%VERSION:-=%"=="%VERSION%" set PRE=--pre
 dotnet tool restore >nul || exit /b 1
-dotnet vpk upload github --repoUrl %~2 --token %GITHUB_TOKEN% -o dist\releases --publish --releaseName "Bloxkeep %~1" --tag v%~1
+dotnet vpk upload github --repoUrl %~2 --token %GITHUB_TOKEN% -o dist\releases --publish %PRE% --releaseName "Bloxkeep %~1" --tag v%~1
