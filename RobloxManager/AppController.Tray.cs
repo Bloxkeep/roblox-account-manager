@@ -93,6 +93,8 @@ public sealed partial class AppController
 
     RobloxHomeSession? _homeSession;
     bool _openingHome;
+    /// <summary>The "separate sign-in windows are experimental" question is open: another click waits for it, nothing else does.</summary>
+    bool _askingHome;
     DateTime _homeStartedAt;
     static readonly string HomeAliases = Path.Combine(Vault.DataDir, "roblox-client-paths");
 
@@ -102,7 +104,7 @@ public sealed partial class AppController
     /// </summary>
     public async void TrayNewRoblox()
     {
-        if (_disposed || _openingHome || _applyingUpdate || _relaunching)
+        if (_disposed || _openingHome || _askingHome || _applyingUpdate || _relaunching)
             return;
         void Tell(string text)
         {
@@ -115,28 +117,59 @@ public sealed partial class AppController
             Tell(L.T("Wait until Bloxkeep finishes opening Roblox."));
             return;
         }
+        if (!HomeLaunchReady(Tell))
+            return;
+        var settings = _vault?.Data.Settings;
+        string? client;
+        try
+        {
+            client = RobloxInstalls.ClientFor(settings?.LaunchVia ?? "auto", settings?.CustomLauncher ?? "");
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+        {
+            Log.Write(ex);
+            Tell(L.T("Couldn't open a separate Roblox sign-in window. Try again, or close Roblox and retry."));
+            return;
+        }
+        if (client is null)
+        {
+            Tell(L.T("Roblox isn't installed on this PC."));
+            return;
+        }
+        if (RobloxInstalls.IsStoreClient(client))
+        {
+            Tell(L.T("Separate sign-in windows currently need Roblox from roblox.com, rather than the Microsoft Store edition."));
+            return;
+        }
+        // The question holds nothing up: auto-rejoin, schedules and the rest carry on while it waits for an answer
+        // (a window that lost its game while it was open was closed for a rejoin that then never came).
+        if (_homeSession is null)
+        {
+            _askingHome = true;
+            try
+            {
+                if (!Ui.Modal(() => Dialog.Confirm(_owner,
+                    L.T("Separate sign-in windows are experimental. All Roblox windows temporarily stop saving sign-ins and some settings. Your usual saved sign-in may expire. If Bloxkeep quits or crashes while a separate window stays open, that window may replace the saved sign-in. Close separate windows before quitting Bloxkeep. Long sessions have not been verified."),
+                    L.T("Open separate window"), L.T("Cancel"), danger: true)))
+                    return;
+            }
+            finally
+            {
+                _askingHome = false;
+            }
+        }
+        if (_disposed)
+            return;
+        // Something may have started opening Roblox while the question was open (a rejoin): it goes first.
+        if (OpeningRoblox)
+        {
+            Tell(L.T("Wait until Bloxkeep finishes opening Roblox."));
+            return;
+        }
         bool acquired = false, started = false;
         _openingHome = true;
         try
         {
-            if (!HomeLaunchReady(Tell))
-                return;
-            var settings = _vault?.Data.Settings;
-            string? client = RobloxInstalls.ClientFor(settings?.LaunchVia ?? "auto", settings?.CustomLauncher ?? "");
-            if (client is null)
-            {
-                Tell(L.T("Roblox isn't installed on this PC."));
-                return;
-            }
-            if (RobloxInstalls.IsStoreClient(client))
-            {
-                Tell(L.T("Separate sign-in windows currently need Roblox from roblox.com, rather than the Microsoft Store edition."));
-                return;
-            }
-            if (_homeSession is null && !Ui.Modal(() => Dialog.Confirm(_owner,
-                L.T("Separate sign-in windows are experimental. All Roblox windows temporarily stop saving sign-ins and some settings. Your usual saved sign-in may expire. If Bloxkeep quits or crashes while a separate window stays open, that window may replace the saved sign-in. Close separate windows before quitting Bloxkeep. Long sessions have not been verified."),
-                L.T("Open separate window"), L.T("Cancel"), danger: true)))
-                return;
             if (!HomeLaunchReady(Tell))
                 return;
             if (RobloxProcesses.CloseTrayCopies() > 0)
