@@ -162,7 +162,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.5-beta.1 · October 18, 2026"
+              small "Bloxkeep 1.0.6-beta.1 · October 18, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
@@ -179,9 +179,6 @@ html [data-theme="dark" lang="en"]
           li
             svg.i #u7ty99
             span "Separate sign-in windows: Open Roblox in the tray menu opens another window you can sign into independently, without adding the account to Bloxkeep. Multi-Roblox must be ready."
-          li
-            svg.i #u7ty99
-            span "Get beta versions (Settings › Bloxkeep updates): updates also bring beta versions, with new features before everyone else. Off by default."
         h4.fixed.wn-kind.wn-sub "Fixed"
           svg.i #yqrnd9
         ul.fixed.wn-also

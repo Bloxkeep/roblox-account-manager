@@ -1,6 +1,6 @@
 [
   {
-    "version": "1.0.5-beta.1",
+    "version": "1.0.6-beta.1",
     "date": "2026-10-18",
     "en": [
       "Experimental: all Roblox windows temporarily stop saving sign-ins and some settings while separate sign-in windows are open. Close the separate windows before quitting Bloxkeep. A crash may replace the usual saved sign-in; long sessions have not been verified."
@@ -10,12 +10,10 @@
     ],
     "new": {
       "en": [
-        "Separate sign-in windows: Open Roblox in the tray menu opens another window you can sign into independently, without adding the account to Bloxkeep. Multi-Roblox must be ready.",
-        "Get beta versions (Settings › Bloxkeep updates): updates also bring beta versions, with new features before everyone else. Off by default."
+        "Separate sign-in windows: Open Roblox in the tray menu opens another window you can sign into independently, without adding the account to Bloxkeep. Multi-Roblox must be ready."
       ],
       "vi": [
-        "Cửa sổ đăng nhập riêng: Mở Roblox mới trong menu khay mở thêm cửa sổ để đăng nhập độc lập, không cần thêm tài khoản vào Bloxkeep. Multi-Roblox phải sẵn sàng.",
-        "Nhận bản beta (Cài đặt › Cập nhật Bloxkeep): cập nhật cả lên bản beta để dùng tính năng mới sớm hơn mọi người. Mặc định tắt."
+        "Cửa sổ đăng nhập riêng: Mở Roblox mới trong menu khay mở thêm cửa sổ để đăng nhập độc lập, không cần thêm tài khoản vào Bloxkeep. Multi-Roblox phải sẵn sàng."
       ]
     },
     "fixed": {
@@ -26,6 +24,18 @@
       "vi": [
         "Tệp đăng nhập chung được nhả khóa sau khi các client riêng đóng, kể cả khi client thường vẫn chạy. Junction nằm trong dữ liệu Bloxkeep thay vì TEMP; tệp rỗng do Bloxkeep tạo được tự dọn.",
         "Mở cửa sổ riêng báo rõ khi Multi-Roblox mất trạng thái sẵn sàng, và không còn chạy đồng thời với việc mở tài khoản hoặc tự vào lại game."
+      ]
+    }
+  },
+  {
+    "version": "1.0.5",
+    "date": "2026-10-18",
+    "new": {
+      "en": [
+        "Get beta versions (Settings › Bloxkeep updates): updates also bring beta versions, with new features before everyone else. Off by default."
+      ],
+      "vi": [
+        "Nhận bản beta (Cài đặt › Cập nhật Bloxkeep): cập nhật cả lên bản beta để dùng tính năng mới sớm hơn mọi người. Mặc định tắt."
       ]
     }
   },
