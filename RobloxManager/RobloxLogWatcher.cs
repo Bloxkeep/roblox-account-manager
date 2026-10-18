@@ -17,10 +17,12 @@ public sealed class RobloxLogWatcher
     /// <param name="Status">joining, ingame, left (back in the app, by choice), disconnected, or signedout (signed out inside the window).</param>
     /// <param name="Reason">Roblox's disconnect code when it gave one (278 = idle for 20 minutes).</param>
     /// <param name="ChosenPlace">
-    /// The game the person last started in this window themselves (left a game, then started one from Roblox's own
-    /// screens); null while it is still in the game it was opened into. Teleports inside that game keep it.
+    /// The game the person last started in this window themselves (left a game or was kicked, then started one from
+    /// Roblox's own screens); null while it is still in the game it was opened into. Teleports inside that game keep it.
     /// </param>
-    public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At, long? ChosenPlace = null);
+    /// <param name="PersonStarted">This join comes from a game start the person made in the window, not Bloxkeep's.</param>
+    public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At, long? ChosenPlace = null,
+        bool PersonStarted = false);
 
     sealed class Tail(string path, int pid)
     {
@@ -33,8 +35,10 @@ public sealed class RobloxLogWatcher
         /// <summary>When the last teleport line was logged; only a disconnect soon after it belongs to that teleport.</summary>
         public DateTime? TeleportAt;
         public int? PendingReason;
-        /// <summary>A game start after a leave: the game its "Joining game" names is one the person chose.</summary>
+        /// <summary>A game start that isn't the window's first: the game its "Joining game" names is one the person chose.</summary>
         public bool OwnStart;
+        /// <summary>Servers connected to ("serverId:") and not yet left (a disconnect line ends one).</summary>
+        public int Connections;
         /// <summary>When the client logged that another Roblox client's start told it to close (see <see cref="ClosedByNewWindowAt"/>).</summary>
         public DateTime? ClosedByNewWindow;
     }
@@ -277,7 +281,8 @@ public sealed class RobloxLogWatcher
             tail.Leaving = false;
             tail.PendingReason = null;
             long? place = long.TryParse(join.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long id) ? id : null;
-            tail.State = new ClientState("joining", place, join.Groups[1].Value, null, TimeOf(line), tail.OwnStart ? place : tail.State?.ChosenPlace);
+            tail.State = new ClientState("joining", place, join.Groups[1].Value, null, TimeOf(line), tail.OwnStart ? place : tail.State?.ChosenPlace,
+                tail.State?.PersonStarted == true);
             tail.OwnStart = false;
         }
         else if (line.Contains(LaunchMark, StringComparison.Ordinal))
@@ -285,15 +290,22 @@ public sealed class RobloxLogWatcher
             tail.Leaving = false;
             tail.TeleportAt = null;
             tail.PendingReason = null;
-            // Bloxkeep's own start comes first in a window; one after a leave is the person picking a game in Roblox.
-            tail.OwnStart = tail.State is { Status: "left" };
-            tail.State = new ClientState("joining", null, null, null, TimeOf(line), tail.State?.ChosenPlace);
+            // Bloxkeep's own start is a window's first (it opens a new window for every launch); a later one is the
+            // person picking a game on Roblox's screens, after leaving one or being kicked (seen 2026-10-19: a kick, Leave,
+            // then a game start in the same window).
+            tail.OwnStart = tail.State is not null;
+            tail.State = new ClientState("joining", null, null, null, TimeOf(line), tail.State?.ChosenPlace, tail.OwnStart);
         }
-        else if (line.Contains(ConnectedMark, StringComparison.Ordinal) && tail.State is { Status: "joining" } joining)
-            tail.State = joining with { Status = "ingame", At = TimeOf(line) };
+        else if (line.Contains(ConnectedMark, StringComparison.Ordinal))
+        {
+            tail.Connections++;
+            if (tail.State is { Status: "joining" } joining)
+                tail.State = joining with { Status = "ingame", At = TimeOf(line), PersonStarted = false };
+        }
         else if (line.Contains(LeavingMark, StringComparison.Ordinal))
         {
             tail.Leaving = true;
+            tail.TeleportAt = null; // leaving, not moving: the disconnect line that follows is the leave's
             // Left while the game was still loading (or before anything was logged): no disconnect line follows.
             if (tail.State is null or { Status: "joining" })
                 tail.State = (tail.State ?? new ClientState("left", null, null, null, TimeOf(line))) with { Status = "left", Reason = null, At = TimeOf(line) };
@@ -317,14 +329,18 @@ public sealed class RobloxLogWatcher
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.State is { } state)
         {
             var at = TimeOf(line);
+            // A join under way while a server is still connected: this line ends that old server, whatever order
+            // Roblox logged them in (a teleport, a game started in the window), and the join goes on.
+            bool oldServer = state is { Status: "joining" } && tail.Connections > 0;
+            tail.Connections = Math.Max(0, tail.Connections - 1);
             // Leaving the old place on the way to the next one: still in the game, about to join.
             bool teleporting = tail.TeleportAt is { } teleport && at - teleport < TeleportWindow;
             // The new server already named since the teleport: this line is the old one's, and the new state stands.
             bool joinedSince = tail.TeleportAt is { } since && state.At >= since;
             tail.TeleportAt = null; // once: a later disconnect without a new teleport is a real one
-            if (teleporting)
+            if (teleporting || oldServer)
             {
-                if (!joinedSince)
+                if (state.Status != "joining" && !joinedSince)
                     tail.State = state with { Status = "joining", At = at };
                 tail.PendingReason = null;
                 return;

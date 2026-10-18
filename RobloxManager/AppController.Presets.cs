@@ -340,6 +340,7 @@ public sealed partial class AppController
             return (target, null); // every account is already open; nothing will join
         Progress(L.T("Finding a server…"));
         var servers = new List<ServerInfo>();
+        bool failed = false;
         try
         {
             var (first, next) = await RobloxApi.GetServersAsync(target.PlaceId, choice == "fewest", null, ct);
@@ -350,6 +351,7 @@ public sealed partial class AppController
         catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
         {
             // Rate-limited or offline: whatever loaded is used, else Roblox picks.
+            failed = true;
         }
         var fits = servers.Where(s => s.MaxPlayers - s.Playing >= party).ToList();
         var chosen = choice switch
@@ -360,7 +362,9 @@ public sealed partial class AppController
         };
         if (chosen is not null)
             return (target with { JobId = chosen.JobId }, null);
-        string note = L.F("No server has room for {0} accounts right now, so Roblox picks one.", party);
+        // Nothing loaded says nothing about room in the servers: said as what happened.
+        string note = failed && servers.Count == 0 ? L.T("Couldn't load the server list, so Roblox picks a server.")
+            : L.F("No server has room for {0} accounts right now, so Roblox picks one.", party);
         Toast(note, "warn");
         return (target, note);
     }
@@ -514,11 +518,14 @@ public sealed partial class AppController
 
     /// <summary>
     /// Where a restart goes: back into the server the client is in while that is the game it was opened into (accounts
-    /// a preset opened together stay together), else the same game or private server, as auto-rejoin does.
+    /// a preset opened together stay together), else the same game or private server, as auto-rejoin does. A game the
+    /// person picked in the window since is the one it is playing: the restart goes back into that one.
     /// </summary>
     GameTarget RestartTarget((int Pid, PendingLaunch Launch) run)
     {
         var target = run.Launch.Target!;
+        if (_logs.StateOf(run.Pid)?.ChosenPlace is { } chosen && chosen != target.PlaceId)
+            target = new GameTarget(chosen);
         return target.LinkCode is null && _logs.StateOf(run.Pid) is { Status: "ingame", JobId: { } job, PlaceId: { } place } && place == target.PlaceId
             ? target with { JobId = job }
             : target with { JobId = null };

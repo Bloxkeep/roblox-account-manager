@@ -82,6 +82,16 @@ static class RejoinSuite
             return watcher.StateOf(me);
         }
         void Tick() => Harness.Invoke(app, "RejoinFromLogs");
+        // A new window of Bloxkeep's (every launch opens one, with a log of its own): this test's one log starts over.
+        void NewWindow()
+        {
+            var tail = Harness.Get<System.Collections.IDictionary>(watcher, "_tails")[me]!;
+            foreach (string field in new[] { "State", "TeleportAt" })
+                tail.GetType().GetField(field)!.SetValue(tail, null);
+            foreach (string field in new[] { "OwnStart", "Leaving" })
+                tail.GetType().GetField(field)!.SetValue(tail, false);
+            tail.GetType().GetField("Connections")!.SetValue(tail, 0);
+        }
 
         using var log = new FileStream(Path.Combine(logs, $"0.743.0.7431134_{DateTime.UtcNow:yyyyMMddTHHmmss}Z_Player_REJOIN_last.log"),
             FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
@@ -103,7 +113,8 @@ static class RejoinSuite
             Tick();
             c.Check("a server found, still loading after a minute: left alone", !closing.Contains(me));
 
-            // Back on the start (the next game start from the Roblox window), a minute and more without a server.
+            // The same launch again in a new window, a minute and more without a server.
+            NewWindow();
             Write(Line(DateTime.UtcNow.AddSeconds(-70), Launch));
             Poll(s => s.JobId is null);
             account.AutoRejoin = false;
@@ -137,6 +148,7 @@ static class RejoinSuite
 
             // Sent to the game (Roblox picks the server), and none came.
             Run(new GameTarget(107778070777162));
+            NewWindow();
             Write(Line(DateTime.UtcNow.AddSeconds(-65), Launch));
             Poll(s => s.Status == "joining");
             Told();
@@ -172,12 +184,14 @@ static class RejoinSuite
             var answer = t.GetMethod("ServerAnswer", Harness.F)!;
             string? Answer() => (string?)answer.Invoke(app, [account.Id]);
             Run(new GameTarget(107778070777162, DeadServer));
+            NewWindow();
             Write(Line(DateTime.UtcNow.AddSeconds(-3), Launch));
             Poll(s => s.Status == "joining" && DateTime.UtcNow - s.At < TimeSpan.FromSeconds(10));
             c.Check("3 s after the game start, no server yet: not known", Answer() is null, Answer());
             Write(Line(DateTime.UtcNow, Join));
             Poll(s => s.JobId is not null);
             c.Check("a server named in its log: the server took it", Answer() == "in", Answer());
+            NewWindow(); // the next account's window
             Write(Line(DateTime.UtcNow.AddSeconds(-13), Launch));
             Poll(s => s.JobId is null);
             c.Check("13 s without a server (a normal join gets one in about a second): it didn't", Answer() == "closed", Answer());
@@ -237,6 +251,57 @@ static class RejoinSuite
             target = request?.GetType().GetProperty("Target")!.GetValue(request) as GameTarget;
             c.Check("…and a drop there rejoins that game (any server), not the one Bloxkeep opened", target is { PlaceId: Other, JobId: null }, target);
             queue.Clear();
+            // Kicked (seen 2026-10-19: a game's kick, Leave, then a game start in the same window): a game started
+            // after that is the person's choice too.
+            Write(Line(at.AddSeconds(4), Launch));
+            Write(Line(at.AddSeconds(4.5), "[FLog::Output] ! Joining game '55555555-2222-3333-4444-555555555555' place 444 at 10.0.0.5"));
+            Write(Line(at.AddSeconds(4.6), "[FLog::Network] serverId: 10.0.0.5|5000"));
+            state = Poll(s => s is { Status: "ingame", PlaceId: 444 });
+            c.Check("a game started in the window after a kick is the person's choice", state is { Status: "ingame", ChosenPlace: 444 }, state);
+            // A preset's "restart every N hours" of that window goes back into it too (and its server), not the first game.
+            var restartTo = Harness.Invoke(app, "RestartTarget", running[account.Id]!) as GameTarget;
+            c.Check("…and a preset's restart goes back into it, same server",
+                restartTo is { PlaceId: 444, JobId: "55555555-2222-3333-4444-555555555555" }, restartTo);
+
+            // A game the person starts in the window that gets no server in a minute is theirs to watch: closing it
+            // would reopen the game Bloxkeep opened instead.
+            Write(Line(DateTime.UtcNow.AddSeconds(-65), Launch));
+            state = Poll(s => s is { Status: "joining", JobId: null });
+            Tick();
+            c.Check("a game the person started that gets no server in a minute is left alone", state is { PersonStarted: true } && !closing.Contains(me), state);
+
+            // A game started in the window while still on a server (no leave logged first): the old server's disconnect
+            // line after the new join isn't a drop.
+            at = DateTime.UtcNow.AddSeconds(-10);
+            Write(Line(at, "[FLog::Output] ! Joining game '44444444-2222-3333-4444-555555555555' place 333 at 10.0.0.6"));
+            Write(Line(at.AddSeconds(0.2), "[FLog::Network] Time to disconnect replication data: 0.2"));
+            state = Poll(s => s.PlaceId == 333);
+            Tick();
+            c.Check("a new game while still on a server: the old server's disconnect line isn't a drop", state is { Status: "joining" } && !closing.Contains(me), state);
+            Write(Line(at.AddSeconds(1), "[FLog::Network] serverId: 10.0.0.6|5000"));
+            state = Poll(s => s.Status == "ingame");
+            c.Check("…in the game once its server answers", state is { Status: "ingame", PlaceId: 333 }, state);
+
+            // A teleport that fails, then Leave: the disconnect line that follows is the leave's.
+            at = at.AddSeconds(2);
+            Write(Line(at, "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url "));
+            Write(Line(at.AddSeconds(5), Leave));
+            Write(Line(at.AddSeconds(5.1), "[FLog::Network] Time to disconnect replication data: 0.2"));
+            state = Poll(s => s.Status != "ingame");
+            c.Check("a teleport that failed, then Leave: left, not joining", state is { Status: "left" }, state);
+
+            // Earlier drops stop counting once a window has stayed in its game ten minutes since it opened, even when the
+            // game moved it between servers meanwhile (one teleporting every few minutes never settled before).
+            var rejoins = Harness.Get<System.Collections.IDictionary>(app, "_rejoinsInARow");
+            var longAgo = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-11), new GameTarget(107778070777162), false, null)!;
+            running[account.Id] = Activator.CreateInstance(tupleType, me, longAgo);
+            Write(Line(DateTime.UtcNow, Launch));
+            Write(Line(DateTime.UtcNow, Join));
+            Write(Line(DateTime.UtcNow, "[FLog::Network] serverId: 10.0.0.1|5000"));
+            state = Poll(s => s.Status == "ingame" && DateTime.UtcNow - s.At < TimeSpan.FromSeconds(30));
+            rejoins[account.Id] = 2;
+            Harness.Invoke(app, "ForgetSettledRejoins", DateTime.UtcNow);
+            c.Check("in its game 11 min after it opened, its last server joined just now: settled", !rejoins.Contains(account.Id), state);
         }
         finally
         {

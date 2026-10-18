@@ -51,7 +51,7 @@ Các tùy chọn này áp dụng cho các cửa sổ mà preset mở, cho tới 
 | **Chống AFK** | **Theo Cài đặt (đang bật/đang tắt)**, **Bật**, **Tắt** |
 | **Tự vào lại game** | **Theo từng tài khoản**, **Bật**, **Tắt** |
 | **Hiệu năng** | **Bình thường**, hoặc **Treo máy nhẹ**: đồ họa thấp nhất, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. |
-| **Mở lại Roblox** | **Không**, hoặc **Mỗi 2 / 4 / 6 / 12 giờ**: lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ. Cần có game. |
+| **Mở lại Roblox** | **Không**, hoặc **Mỗi 2 / 4 / 6 / 12 giờ**: lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ (hoặc game bạn đã tự chuyển sang trong cửa sổ đó). Cần có game. |
 | **Xếp cửa sổ** | **Theo Cài đặt (đang bật/đang tắt)**, **Bật**, **Tắt**: xếp các cửa sổ sau khi preset mở xong. |
 
 ### Discord cho từng preset

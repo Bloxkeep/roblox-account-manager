@@ -51,7 +51,7 @@ These apply to the windows this preset opens, until they close (also when they r
 | **Anti-AFK** | **Follow Settings (on/off)**, **On**, **Off** |
 | **Auto-rejoin** | **Follow each account**, **On**, **Off** |
 | **Performance** | **Normal**, or **Light AFK**: lowest graphics, 30 FPS, no sound, and the window is minimised once it's in the game. |
-| **Restart Roblox** | **Never**, or **Every 2 / 4 / 6 / 12 hours**: each window is closed and opened again into the same game, one at a time. Needs a game. |
+| **Restart Roblox** | **Never**, or **Every 2 / 4 / 6 / 12 hours**: each window is closed and opened again into the same game (or the game you switched to in that window), one at a time. Needs a game. |
 | **Arrange windows** | **Follow Settings (on/off)**, **On**, **Off**: tiles the windows once the preset has opened them. |
 
 ### Discord for a preset

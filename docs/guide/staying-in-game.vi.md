@@ -15,7 +15,7 @@ Cách Bloxkeep giữ các tài khoản luôn ở trong game: Tự vào lại gam
 
 ## Tự vào lại game
 
-Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết nối, Bloxkeep mở lại đúng game đó (hoặc đúng server riêng), nhưng không chắc vào lại đúng server cũ.
+Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết nối, Bloxkeep mở lại đúng game đó (hoặc đúng server riêng), nhưng không chắc vào lại đúng server cũ. Nếu bạn đã tự chuyển sang game khác ngay trong cửa sổ Roblox đó, Bloxkeep mở lại game bạn vừa chuyển sang.
 
 | Bật cho | Ở đâu |
 |---|---|
@@ -30,9 +30,9 @@ Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết n�
 | Tình huống | Bloxkeep làm gì |
 |---|---|
 | Roblox bị văng | Mở lại game sau 10 giây. |
-| Không vào được server (server được chọn đã đầy hoặc đã đóng) | Sau một phút vẫn chưa vào được, đóng cửa sổ đó và mở lại đúng game, vào server nào cũng được. |
+| Không vào được server (server được chọn đã đầy hoặc đã đóng) | Sau một phút vẫn chưa vào được, đóng cửa sổ đó và mở lại đúng game, vào server nào cũng được. Game bạn tự mở trong cửa sổ thì Bloxkeep để bạn tự lo. |
 | Cứ bị văng liên tục | Từ lần thứ ba, chờ 2, 5, 10 rồi 15 phút giữa các lần thử. Thẻ tài khoản hiện thời gian chờ và nút **Hủy**. |
-| Ở trong game 10 phút | Đếm lại từ đầu. |
+| Ở trong game 10 phút, kể cả khi game chuyển bạn qua server khác | Đếm lại từ đầu. |
 | Mất mạng | Thử lại mỗi 30 giây, tối đa 20 lần. |
 | Máy vừa thức dậy | Chờ có mạng rồi mới vào lại. |
 

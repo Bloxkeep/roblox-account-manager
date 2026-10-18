@@ -99,6 +99,21 @@ static class CoresSuite
                 if (held)
                     gone.Dispose();
             }
+            // The same for the background windows' memory (Settings' trim): one that closed since the scan isn't
+            // "Roblox refused memory trimming".
+            Harness.Get<Vault>(app, "_vault").Data.Settings.TrimBackground = true;
+            var dead = Process.Start(new ProcessStartInfo("ping.exe", "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false })!;
+            int deadPid = dead.Id;
+            dead.Kill();
+            dead.WaitForExit();
+            dead.Dispose();
+            lock (posted)
+                posted.Clear();
+            Harness.Invoke(app, "GuardResources", new List<RobloxProcesses.PlayerProcess> { new(deadPid, 0) }, new MemoryStatus(16000, 8000, 50), DateTime.UtcNow);
+            bool trimTold;
+            lock (posted)
+                trimTold = posted.Any(json => json.Contains("refused memory trimming", StringComparison.Ordinal));
+            c.Check("a window that closed since the scan: no \"Roblox refused memory trimming\" notice", !trimTold);
             app.Dispose();
             var closed = Read(stand);
             c.Check("Bloxkeep closing gives the cores back", closed.Affinity == all && closed.Control == 0, $"0x{closed.Affinity:X} control {closed.Control}");

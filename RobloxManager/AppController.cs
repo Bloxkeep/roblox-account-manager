@@ -2683,8 +2683,9 @@ public sealed partial class AppController : IDisposable
                                            && (RobloxApi.IsExpectedError(ex) || ex is Win32Exception or FileNotFoundException or UserError))
                 {
                     errors.Add($"{NameText(account)}: {(ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))}");
+                    // Marked signed out only when the sign-in check agrees: an outage answers 401 for everyone.
                     if (ex is RobloxApiException { CookieInvalid: true })
-                        account.CookieValid = false;
+                        await ConfirmSignedOutAsync(account, ct);
                 }
                 PushState();
 
@@ -2699,7 +2700,15 @@ public sealed partial class AppController : IDisposable
                         continue;
                     }
                     closedServers.Add(job);
-                    target = closedServers.Count > MaxServerSwaps ? target with { JobId = null } : await OtherServerAsync(target, party, closedServers, ct);
+                    var other = closedServers.Count > MaxServerSwaps ? target with { JobId = null } : await OtherServerAsync(target, party, closedServers, ct);
+                    // Got in after all while the other servers were looked up (a slow join): it stays, the rest follow.
+                    if (ServerAnswer(account.Id) == "in")
+                    {
+                        closedServers.Remove(job);
+                        checkServer = false;
+                        continue;
+                    }
+                    target = other;
                     checkServer = target.JobId is not null;
                     Toast(target.JobId is not null ? L.T("That server is full or has closed, so the accounts go to another one with room for them all.")
                         : L.T("That server is full or has closed, and no other server was found with room for all the accounts: Roblox picks one for each."), "warn");
@@ -3567,7 +3576,7 @@ public sealed partial class AppController : IDisposable
                 continue;
             if (!RobloxProcesses.SetMemoryPriority(p.Pid, background))
             {
-                refused = true;
+                refused |= !RobloxProcesses.Ended(p.Pid); // one that closed since the scan had nothing to change
                 continue;
             }
             if (background)
@@ -3581,7 +3590,7 @@ public sealed partial class AppController : IDisposable
         {
             _lastTrim = now;
             var background = players.Where(p => p.Pid != foreground).ToList();
-            if (background.Count > 0 && background.Count(p => RobloxProcesses.TrimMemory(p.Pid)) == 0)
+            if (background.Count > 0 && background.Count(p => RobloxProcesses.TrimMemory(p.Pid) || RobloxProcesses.Ended(p.Pid)) == 0)
                 refused = true;
         }
         if (refused && !_trimRefusedShown)
@@ -3678,8 +3687,11 @@ public sealed partial class AppController : IDisposable
         {
             if (!_rejoinsInARow.ContainsKey(id))
                 continue;
+            // Counted from the window's start (a drop opens a new one), not from its last server: a game that
+            // teleports every few minutes would never count as settled, and three drops in a day would read as
+            // "keeps getting disconnected".
             bool settled = _logs.StateOf(info.Pid) is { } log
-                ? log.Status == "ingame" && now - log.At >= StayResetsRejoins
+                ? log.Status == "ingame" && now - info.Launch.StartedAt >= StayResetsRejoins
                 : now - info.Launch.StartedAt >= StayResetsRejoins && FindAccount(id) is { } account
                   && _presence.TryGetValue(account.UserId, out var presence) && presence.Type == 2;
             if (settled)
@@ -3712,8 +3724,9 @@ public sealed partial class AppController : IDisposable
             if (_logs.StateOf(info.Pid) is not { } state || _closingForRejoin.Contains(info.Pid))
                 continue;
             bool dropped = state is { Status: "disconnected" } && state.Reason != SameAccountElsewhere && now - state.At >= TimeSpan.FromSeconds(3);
-            // A game start logs "joining" without a server; the server comes with the "Joining game" line.
-            bool neverGotIn = state is { Status: "joining", JobId: null } && now - state.At >= GetInTimeout;
+            // A game start logs "joining" without a server; the server comes with the "Joining game" line. One the person
+            // started in the window is theirs to watch: closing it would reopen the game Bloxkeep opened instead.
+            bool neverGotIn = state is { Status: "joining", JobId: null, PersonStarted: false } && now - state.At >= GetInTimeout;
             if ((!dropped && !neverGotIn)
                 || FindAccount(id) is not { } account || !RejoinOn(account, info.Launch.PresetId) || info.Launch.Target is not { } target
                 || account.Banned == true) // no rejoin follows (see ShouldRejoin): the window stays, with Roblox's reason
@@ -3968,13 +3981,26 @@ public sealed partial class AppController : IDisposable
         {
             if (ex is RobloxApiException { CookieInvalid: true })
             {
-                account.CookieValid = false;
-                // Off until it is signed in again (then back on by itself, see SignedInAgain): rejoining can't work meanwhile.
-                if (account.AutoRejoin)
-                    account.RejoinOffBySignOut = true;
-                account.AutoRejoin = false;
-                Persist();
-                PushState();
+                // One refused ticket isn't proof of a sign-out (an outage answers 401 for everyone): without the sign-in
+                // check's word it is tried again later, like a network error, and auto-rejoin stays on.
+                if (!await ConfirmSignedOutAsync(account))
+                {
+                    if (request.NetworkRetries < MaxNetworkRetries)
+                    {
+                        var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (request.NetworkRetries + 1), MaxRetryDelay.Ticks));
+                        _rejoinQueue.Add(request with { Due = DateTime.UtcNow + delay, NetworkRetries = request.NetworkRetries + 1 });
+                        return;
+                    }
+                }
+                else
+                {
+                    // Off until it is signed in again (then back on by itself, see SignedInAgain): rejoining can't work meanwhile.
+                    if (account.AutoRejoin)
+                        account.RejoinOffBySignOut = true;
+                    account.AutoRejoin = false;
+                    Persist();
+                    PushState();
+                }
             }
             Notify(L.F("Couldn't rejoin {0}: {1}", Name(account),ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex)), "error", "rejoinFail", account.Id);
         }
@@ -4027,9 +4053,15 @@ public sealed partial class AppController : IDisposable
         foreach (var (id, info) in _running.ToList())
         {
             var account = FindAccount(id);
+            // When the client's own log is followed, it is the better source (RejoinFromLogs), and a strike from before
+            // it was found says nothing any more.
+            if (LogFollowed(info.Pid))
+            {
+                _offlineStrikes.Remove(id);
+                continue;
+            }
             // A status hidden by privacy settings or a failed request proves nothing; wait for a clear answer.
-            // When the client's own log is followed, it is the better source (RejoinFromLogs).
-            if ((account is not null && !reliable.Contains(account.UserId)) || LogFollowed(info.Pid))
+            if (account is not null && !reliable.Contains(account.UserId))
                 continue;
             if (account is null || !RejoinOn(account, info.Launch.PresetId) || account.Banned == true || info.Launch.Target is null || DateTime.UtcNow - info.Launch.StartedAt < DisconnectGrace
                 || !_presence.TryGetValue(account.UserId, out var presence) || presence.Type is 2 or 4)

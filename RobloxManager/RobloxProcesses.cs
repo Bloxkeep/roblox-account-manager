@@ -691,6 +691,30 @@ public static class RobloxProcesses
         }
     }
 
+    [DllImport("kernel32.dll")]
+    static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
+
+    /// <summary>
+    /// Whether the process has ended (no process has the id any more, or it has exited while a handle still holds it,
+    /// as Bloxkeep's own close keeps one): a change to a client that failed then had nothing left to change, and
+    /// Windows refused nothing. Pid lists come from the last scan, so a client may have closed since.
+    /// </summary>
+    public static bool Ended(int pid)
+    {
+        const int ERROR_INVALID_PARAMETER = 87;
+        IntPtr handle = OpenProcess(SYNCHRONIZE, false, pid);
+        if (handle == IntPtr.Zero)
+            return Marshal.GetLastWin32Error() == ERROR_INVALID_PARAMETER;
+        try
+        {
+            return WaitForSingleObject(handle, 0) == 0; // WAIT_OBJECT_0: exited
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
     /// <param name="force">End every client at once instead of closing their windows first.</param>
     /// <param name="forceWhen">Pids to end at once even without <paramref name="force"/> (clients in a game).</param>
     public static int CloseAll(bool force = false, Func<int, bool>? forceWhen = null)

@@ -67,7 +67,7 @@ public sealed partial class AppController
             {
                 // A client that ended since the last scan (its window closing is often what brought another to the
                 // front) had nothing to move: Windows refused nothing.
-                refused |= !CpuCores.Ended(pid);
+                refused |= !RobloxProcesses.Ended(pid);
                 continue;
             }
             if (want == CpuCores.Role.Default)
