@@ -162,16 +162,16 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.1.5 · October 18, 2026"
+              small "Bloxkeep 1.0.5 · October 18, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        h4.fixed.wn-kind.wn-sub "Fixed"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+        h4.new.wn-kind.wn-sub "New"
+          svg.i #u7ty99
+        ul.new.wn-also
           li
-            svg.i #yqrnd9
-            span "Open Roblox in the tray icon's menu no longer sends the Roblox window already open into a game. It opens Roblox's home screen when no Roblox is open; with one open, it says how to open another window (Roblox opens a second one only for a sign-in)."
+            svg.i #u7ty99
+            span "Get beta versions (Settings › Bloxkeep updates): updates also bring beta versions, with new features before everyone else. Off by default."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

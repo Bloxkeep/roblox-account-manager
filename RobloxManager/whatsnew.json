@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.5",
+    "date": "2026-10-18",
+    "new": {
+      "en": [
+        "Get beta versions (Settings › Bloxkeep updates): updates also bring beta versions, with new features before everyone else. Off by default."
+      ],
+      "vi": [
+        "Nhận bản beta (Cài đặt › Cập nhật Bloxkeep): cập nhật cả lên bản beta để dùng tính năng mới sớm hơn mọi người. Mặc định tắt."
+      ]
+    }
+  },
+  {
     "version": "1.0.4",
     "date": "2026-10-18",
     "new": {
