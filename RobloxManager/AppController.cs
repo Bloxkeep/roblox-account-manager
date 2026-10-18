@@ -3514,6 +3514,14 @@ public sealed partial class AppController : IDisposable
     }
 
     /// <summary>
+    /// Windows is short of memory: another Roblox wouldn't fit in what is left of the commit limit (RAM and paging file
+    /// together), or RAM is nearly all used. The main window then closes its browser sooner in the background.
+    /// </summary>
+    public static bool MemoryTight(MemoryStatus memory) =>
+        (memory.CommitLimitMb > 0 && memory.CommitAvailableMb < DefaultClientCommitMb + CommitMarginMb)
+        || memory.LoadPercent >= MemoryWarningLoad;
+
+    /// <summary>
     /// Warns when the PC runs low on RAM. With "save RAM on background windows", Roblox windows you aren't playing get a
     /// low memory priority (Windows takes RAM from them first, only when it runs short — nothing changes while there is
     /// plenty), and when the PC is really short of RAM they are asked to give some back, at most every two minutes.

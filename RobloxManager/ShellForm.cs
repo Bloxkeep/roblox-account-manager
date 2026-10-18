@@ -26,9 +26,13 @@ public sealed class ShellForm : Form
     long _lastBrowserFailure = long.MinValue / 2;
 
     readonly AppController _app;
-    // Long enough that a quick look at another program never closes the browser; it is then reopened on return.
-    const int ReleaseAfterMs = 5 * 60_000, BusyRecheckMs = 60_000;
-    readonly System.Windows.Forms.Timer _releaseTimer = new() { Interval = ReleaseAfterMs };
+    // Long enough that a quick look at another program never closes the browser; it is then reopened on return. When
+    // Windows is short of memory (Roblox windows opening meanwhile), the browser's 150–250 MB go after half a minute.
+    const int ReleaseAfterMs = 5 * 60_000, TightReleaseAfterMs = 30_000, BusyRecheckMs = 60_000;
+    readonly System.Windows.Forms.Timer _releaseTimer = new() { Interval = TightReleaseAfterMs };
+    /// <summary>When the window last went to the background (minimised or hidden), in Environment.TickCount64.</summary>
+    long _backgroundSince;
+    bool _wasBackground;
     readonly System.Windows.Forms.Timer _coverTimer = new() { Interval = 4000 };
     /// <summary>Hides the tray icon again once a notification shown with close-to-tray off is surely gone.</summary>
     readonly System.Windows.Forms.Timer _balloonTimer = new();
@@ -665,17 +669,21 @@ public sealed class ShellForm : Form
 
     /// <summary>
     /// In the background, hide the page (the browser throttles it), trim its memory and poll less; after 5 minutes
-    /// the browser is closed entirely, leaving only the small core running until the window comes back.
+    /// (half a minute when Windows is short of memory) the browser is closed entirely, leaving only the small core
+    /// running until the window comes back.
     /// </summary>
     void UpdateBackground()
     {
         if (!IsHandleCreated)
             return;
         bool background = InBackground;
+        if (background && !_wasBackground)
+            _backgroundSince = Environment.TickCount64;
+        _wasBackground = background;
         _app.Background = background;
         if (background)
         {
-            _releaseTimer.Interval = ReleaseAfterMs;
+            _releaseTimer.Interval = TightReleaseAfterMs;
             _releaseTimer.Start();
         }
         else
@@ -716,6 +724,14 @@ public sealed class ShellForm : Form
         _releaseTimer.Stop();
         if (_web is not { } web || !InBackground || _restarting)
             return;
+        long hidden = Environment.TickCount64 - _backgroundSince;
+        var memory = SystemMemory.Read();
+        if (ReleaseWait(hidden, memory) is > 0 and int wait)
+        {
+            _releaseTimer.Interval = wait;
+            _releaseTimer.Start();
+            return;
+        }
         // Something half done on the page (a form, a sign-in) would be lost with the browser: look again in a minute.
         if (_app.PageBusy)
         {
@@ -723,6 +739,8 @@ public sealed class ShellForm : Form
             _releaseTimer.Start();
             return;
         }
+        if (hidden < ReleaseAfterMs)
+            Log.Note($"Interface closed early in the background: {memory.CommitAvailableMb} MB of virtual memory and {memory.AvailableMb} MB of RAM left.");
         _web = null;
         _released = true;
         _app.PageGone();
@@ -734,6 +752,13 @@ public sealed class ShellForm : Form
         GC.Collect();
         SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
     }
+
+    /// <summary>
+    /// How much longer the browser stays after <paramref name="hiddenMs"/> in the background, 0 to close it now: 5 minutes
+    /// in all, but looked at every half minute meanwhile, and closed then if Windows is short of memory.
+    /// </summary>
+    static int ReleaseWait(long hiddenMs, MemoryStatus memory) =>
+        hiddenMs >= ReleaseAfterMs || AppController.MemoryTight(memory) ? 0 : (int)Math.Min(ReleaseAfterMs - hiddenMs, TightReleaseAfterMs);
 
     async Task RecreateWebViewAsync()
     {
