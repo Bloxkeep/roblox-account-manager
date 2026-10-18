@@ -326,7 +326,7 @@ Roblox kicks an account after 20 minutes without input. With **Settings › Stay
 - It can't work while the PC is locked.
 - If an account is kicked anyway, Bloxkeep says why: the PC was in use, it was locked, a full-screen app was in front, or Windows kept the window in the background.
 
-The **Staying in game** page (called **Performance** before 1.1.0) holds the switches for [Auto-rejoin](#auto-rejoin) and Anti-AFK, **Check sign-ins every day**, the low RAM warning and **Save RAM on background windows** (see [Windows, RAM and the game monitor](#windows-ram-and-the-game-monitor)), **Keep running in the tray when closed** and **Hardware acceleration**.
+The **Staying in game** page (called **Performance** before 1.0.3) holds the switches for [Auto-rejoin](#auto-rejoin) and Anti-AFK, **Check sign-ins every day**, the low RAM warning and **Save RAM on background windows** (see [Windows, RAM and the game monitor](#windows-ram-and-the-game-monitor)), **Keep running in the tray when closed** and **Hardware acceleration**.
 
 <img src="docs/screenshots/settings-staying.png" width="800" alt="Settings, Staying in game: Auto-rejoin, Anti-AFK, Check sign-ins every day, the low RAM warning, Save RAM on background windows, Keep running in the tray and Hardware acceleration">
 
@@ -361,7 +361,7 @@ Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's
 | **Roblox (official)** | The client from roblox.com |
 | **RobloxPlayerBeta directly (skip launchers)** | No launcher at all; try it when a launcher blocks several windows |
 | **Choose another launcher…** | An exe you pick. If it is moved or deleted, launching says so |
-| **Roblox (Microsoft Store)** | Being tested, new in 1.1.0: each account opens in a Store Roblox window of its own, skipping Microsoft's launcher (which allows only one). The Microsoft Store keeps it updated. If it doesn't work for you, say so with **Send feedback** |
+| **Roblox (Microsoft Store)** | Being tested, new in 1.0.3: each account opens in a Store Roblox window of its own, skipping Microsoft's launcher (which allows only one). The Microsoft Store keeps it updated. If it doesn't work for you, say so with **Send feedback** |
 
 ### Windows, RAM and the game monitor
 

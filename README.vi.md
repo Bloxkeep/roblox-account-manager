@@ -320,7 +320,7 @@ Roblox kick tài khoản sau 20 phút không có thao tác. Khi bật **Cài đ�
 - Không chạy được khi máy đang khóa.
 - Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do: bạn đang dùng máy, máy đang khóa, có ứng dụng toàn màn hình ở phía trước, hoặc Windows không cho đưa cửa sổ lên trước.
 
-Trang **Treo game** (trước bản 1.1.0 tên là **Hiệu năng**) có công tắc của [Tự vào lại game](#tự-vào-lại-game) và Chống AFK, **Kiểm tra đăng nhập mỗi ngày**, cảnh báo sắp hết RAM và **Tiết kiệm RAM cho cửa sổ chạy nền** (xem [Cửa sổ, RAM và màn hình theo dõi](#cửa-sổ-ram-và-màn-hình-theo-dõi)), **Chạy ẩn dưới khay hệ thống khi đóng** và **Tăng tốc phần cứng**.
+Trang **Treo game** (trước bản 1.0.3 tên là **Hiệu năng**) có công tắc của [Tự vào lại game](#tự-vào-lại-game) và Chống AFK, **Kiểm tra đăng nhập mỗi ngày**, cảnh báo sắp hết RAM và **Tiết kiệm RAM cho cửa sổ chạy nền** (xem [Cửa sổ, RAM và màn hình theo dõi](#cửa-sổ-ram-và-màn-hình-theo-dõi)), **Chạy ẩn dưới khay hệ thống khi đóng** và **Tăng tốc phần cứng**.
 
 <img src="docs/screenshots/vi/settings-staying.png" width="800" alt="Cài đặt, trang Treo game: Tự vào lại game, Chống AFK, Kiểm tra đăng nhập mỗi ngày, báo khi sắp hết RAM, Tiết kiệm RAM cho cửa sổ chạy nền, Chạy ẩn dưới khay hệ thống và Tăng tốc phần cứng">
 
@@ -355,7 +355,7 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 | **Roblox (chính thức)** | Bản cài từ roblox.com |
 | **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)** | Không qua launcher nào; thử khi launcher chặn nhiều cửa sổ |
 | **Chọn launcher khác…** | File exe bạn tự chọn. Nếu file bị chuyển đi hoặc xóa, lúc mở game app sẽ báo |
-| **Roblox (Microsoft Store)** | Đang thử nghiệm, mới có từ bản 1.1.0: mỗi tài khoản mở trong một cửa sổ Roblox Store riêng, bỏ qua trình khởi động của Microsoft (vốn chỉ cho một cửa sổ). Microsoft Store vẫn tự cập nhật. Nếu không chạy được, hãy báo bằng **Gửi góp ý** |
+| **Roblox (Microsoft Store)** | Đang thử nghiệm, mới có từ bản 1.0.3: mỗi tài khoản mở trong một cửa sổ Roblox Store riêng, bỏ qua trình khởi động của Microsoft (vốn chỉ cho một cửa sổ). Microsoft Store vẫn tự cập nhật. Nếu không chạy được, hãy báo bằng **Gửi góp ý** |
 
 ### Cửa sổ, RAM và màn hình theo dõi
 

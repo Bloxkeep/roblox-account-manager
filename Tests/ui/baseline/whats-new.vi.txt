@@ -162,7 +162,7 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.1.6-beta.1 · 18 tháng 10, 2026"
+              small "Bloxkeep 1.0.5-beta.1 · 18 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
@@ -179,6 +179,9 @@ html [data-theme="dark" lang="vi"]
           li
             svg.i #u7ty99
             span "Cửa sổ đăng nhập riêng: Mở Roblox mới trong menu khay mở thêm cửa sổ để đăng nhập độc lập, không cần thêm tài khoản vào Bloxkeep. Multi-Roblox phải sẵn sàng."
+          li
+            svg.i #u7ty99
+            span "Nhận bản beta (Cài đặt › Cập nhật Bloxkeep): cập nhật cả lên bản beta để dùng tính năng mới sớm hơn mọi người. Mặc định tắt."
         h4.fixed.wn-kind.wn-sub "Đã sửa"
           svg.i #yqrnd9
         ul.fixed.wn-also
