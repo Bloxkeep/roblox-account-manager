@@ -34,6 +34,8 @@ public sealed class ShellForm : Form
     readonly System.Windows.Forms.Timer _balloonTimer = new();
     const int BalloonMs = 8000;
     readonly NotifyIcon _tray;
+    /// <summary>The tray icon's quick panel (a left click); made with the icon, hidden until then.</summary>
+    readonly TrayPanel _panel = new();
     /// <summary>Until when the newest notification balloon may be on screen; the icon isn't hidden before that.</summary>
     DateTime _balloonUntil;
     WebView2? _web;
@@ -262,12 +264,26 @@ public sealed class ShellForm : Form
         menu.NewRobloxClicked += _app.TrayNewRoblox;
         menu.AccountClicked += _app.TrayOpenAccount;
         menu.CloseAllClicked += () => _app.CloseAllClients();
+
+        // A left click opens the quick panel (the right click, the menu): Windows 11's own tray icons do the same.
+        _panel.MiniOpen = () => _mini is { Visible: true };
+        _panel.State = _app.TrayState;
+        _panel.OpenClicked += BringToFront;
+        _panel.MiniClicked += () => SetMiniOpen(null);
+        _panel.MultiClicked += on => _app.TrayMulti(!on); // only raised when it can switch from here
+        _panel.AccountClicked += _app.TrayOpenAccount;
+        _panel.PresetClicked += _app.TrayRunPreset;
+        _panel.NewRobloxClicked += _app.TrayNewRoblox;
+        _panel.CloseAllClicked += () => _app.CloseAllClients();
+        _panel.ShowClientClicked += _app.TrayShowClient;
+        _panel.CloseClientClicked += _app.CloseClient;
         var tray = new NotifyIcon { Icon = Ui.AppIcon, Text = Ui.Title, ContextMenuStrip = menu };
         tray.MouseClick += (_, e) =>
         {
             if (e.Button == MouseButtons.Left)
-                BringToFront();
+                _panel.Toggle(Cursor.Position);
         };
+        menu.Opening += (_, _) => _panel.HidePanel();
         // A notification shown while the icon is normally hidden (close-to-tray off) takes the icon with it — but
         // not while a newer balloon is still showing (Windows closes the one it replaced right after).
         tray.BalloonTipClicked += (_, _) =>
@@ -1042,6 +1058,7 @@ public sealed class ShellForm : Form
         _tray.Visible = false;
         _tray.ContextMenuStrip?.Dispose();
         _tray.Dispose();
+        _panel.Dispose();
         // Closed for the exit (not dismissed), so it comes back next start if it was open.
         _mini?.Dispose();
         _releaseTimer.Dispose();

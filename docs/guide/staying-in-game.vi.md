@@ -98,10 +98,23 @@ Cửa sổ ở phía trước được trả lại mức ưu tiên bình thườ
 
 **Cài đặt › Treo game › Chạy ẩn dưới khay hệ thống khi đóng** (bật sẵn). Bấm ✕ thì Bloxkeep thu xuống khay hệ thống. Tự vào lại game, Multi-Roblox và preset hẹn giờ vẫn chạy.
 
-| Bấm chuột phải vào biểu tượng ở khay | Tác dụng |
+**Bấm vào biểu tượng ở khay** để mở bảng nhanh, giống bảng nhanh của Windows 11:
+
+- Số cửa sổ Roblox đang chạy và RAM của chúng, kèm nút mở cửa sổ nhỏ và mở Bloxkeep.
+- **Multi-Roblox** kèm công tắc. Khi đã mở khóa, bạn tắt được ngay tại đây; bật thì Bloxkeep mở ra và hỏi trước.
+- Các tài khoản đang chơi: bấm vào một tài khoản để hiện cửa sổ Roblox của nó, hoặc dùng nút con mắt và nút ✕ hiện ra khi rê chuột vào. **Đóng tất cả** phải bấm thêm lần nữa mới đóng.
+- **Vào game** liệt kê tài khoản để mở, **Preset** liệt kê các preset, còn **Roblox mới** mở một cửa sổ Roblox để đăng nhập riêng.
+
+**Bấm chuột phải vào biểu tượng ở khay** để mở menu:
+
+| Mục | Tác dụng |
 |---|---|
-| **Cửa sổ nhỏ** | Mở cửa sổ nhỏ luôn nằm trên cùng. |
-| **Mở Bloxkeep** | Hiện lại cửa sổ chính. |
+| Dòng đầu tiên | Trạng thái Multi-Roblox và số cửa sổ Roblox đang chạy. |
+| **Mở Bloxkeep**, **Cửa sổ nhỏ** | Hiện lại cửa sổ chính, hoặc mở cửa sổ nhỏ luôn nằm trên cùng. |
+| **Vào game bằng**, **Chạy preset** | Mở một tài khoản (vào game đang chọn ở thanh dưới) hoặc chạy một preset. Tài khoản đang chơi có dấu tích. |
+| **Mở Roblox để đăng nhập riêng** | Một cửa sổ Roblox để bạn tự đăng nhập; đăng nhập đó không được lưu. |
+| **Multi-Roblox** | Ghi Bật, Chưa sẵn sàng hoặc Tắt; menu con dùng để tắt (hoặc mở Bloxkeep để bật hay sửa). |
+| **Đóng tất cả Roblox** | Menu con đóng mọi cửa sổ Roblox, kèm số cửa sổ. |
 | **Thoát Bloxkeep** | Thoát Bloxkeep. |
 
 Tắt tùy chọn này thì bấm ✕ là thoát hẳn.
