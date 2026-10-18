@@ -1,7 +1,31 @@
 [
   {
-    "version": "1.1.5",
+    "version": "1.0.4",
     "date": "2026-10-18",
+    "new": {
+      "en": [
+        "Taskbar buttons (Settings › Launching): one button for each account, with its picture, or one group for each preset, instead of every Roblox window under one button.",
+        "Open Roblox and Open account from the tray icon's menu.",
+        "Just use Multi-Roblox: on the first screen, for those who sign in to Roblox only in their own browser. No master password, no accounts.",
+        "The tray icon's menu shows whether Multi-Roblox is on, runs a preset, and closes every Roblox window, without opening Bloxkeep."
+      ],
+      "vi": [
+        "Nút trên taskbar (Cài đặt › Khởi chạy): mỗi tài khoản một nút kèm ảnh, hoặc mỗi preset một nhóm, thay vì mọi cửa sổ Roblox gộp vào một nút.",
+        "Mở Roblox mới và Mở tài khoản ngay từ menu ở biểu tượng khay.",
+        "Chỉ dùng Multi-Roblox: lựa chọn ở màn hình đầu tiên cho ai chỉ đăng nhập Roblox trên trình duyệt của mình. Không mật khẩu chủ, không tài khoản.",
+        "Menu ở biểu tượng khay cho biết Multi-Roblox có đang bật không, chạy preset và đóng mọi cửa sổ Roblox mà không cần mở Bloxkeep."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Account pictures as window icons have a switch of their own, to keep Roblox's icon.",
+        "Multi-Roblox is on as soon as Bloxkeep starts, before the master password, so Roblox windows opened from roblox.com or the Roblox app run side by side even at the lock screen."
+      ],
+      "vi": [
+        "Ảnh tài khoản làm biểu tượng cửa sổ có công tắc riêng, tắt đi để giữ biểu tượng Roblox.",
+        "Multi-Roblox bật ngay khi Bloxkeep mở, trước cả khi nhập mật khẩu chủ, nên cửa sổ Roblox mở từ roblox.com hay app Roblox vẫn chạy song song kể cả lúc đang ở màn hình khóa."
+      ]
+    },
     "fixed": {
       "en": [
         "Open Roblox in the tray icon's menu no longer sends the Roblox window already open into a game. It opens Roblox's home screen when no Roblox is open; with one open, it says how to open another window (Roblox opens a second one only for a sign-in)."
@@ -12,142 +36,8 @@
     }
   },
   {
-    "version": "1.1.4",
-    "date": "2026-10-18",
-    "new": {
-      "en": [
-        "Taskbar buttons (Settings › Launching): one button for each account, with its picture, or one group for each preset, instead of every Roblox window under one button.",
-        "Open Roblox and Open account from the tray icon's menu.",
-        "Just use Multi-Roblox: on the first screen, for those who sign in to Roblox only in their own browser. No master password, no accounts."
-      ],
-      "vi": [
-        "Nút trên taskbar (Cài đặt › Khởi chạy): mỗi tài khoản một nút kèm ảnh, hoặc mỗi preset một nhóm, thay vì mọi cửa sổ Roblox gộp vào một nút.",
-        "Mở Roblox mới và Mở tài khoản ngay từ menu ở biểu tượng khay.",
-        "Chỉ dùng Multi-Roblox: lựa chọn ở màn hình đầu tiên cho ai chỉ đăng nhập Roblox trên trình duyệt của mình. Không mật khẩu chủ, không tài khoản."
-      ]
-    },
-    "improved": {
-      "en": [
-        "Account pictures as window icons have a switch of their own, to keep Roblox's icon."
-      ],
-      "vi": [
-        "Ảnh tài khoản làm biểu tượng cửa sổ có công tắc riêng, tắt đi để giữ biểu tượng Roblox."
-      ]
-    }
-  },
-  {
-    "version": "1.1.3",
+    "version": "1.0.3",
     "date": "2026-10-17",
-    "new": {
-      "en": [
-        "The tray icon's menu shows whether Multi-Roblox is on, runs a preset, and closes every Roblox window, without opening Bloxkeep."
-      ],
-      "vi": [
-        "Menu ở biểu tượng khay cho biết Multi-Roblox có đang bật không, chạy preset và đóng mọi cửa sổ Roblox mà không cần mở Bloxkeep."
-      ]
-    },
-    "improved": {
-      "en": [
-        "Multi-Roblox is on as soon as Bloxkeep starts, before the master password, so Roblox windows opened from roblox.com or the Roblox app run side by side even at the lock screen."
-      ],
-      "vi": [
-        "Multi-Roblox bật ngay khi Bloxkeep mở, trước cả khi nhập mật khẩu chủ, nên cửa sổ Roblox mở từ roblox.com hay app Roblox vẫn chạy song song kể cả lúc đang ở màn hình khóa."
-      ]
-    }
-  },
-  {
-    "version": "1.1.2",
-    "date": "2026-10-17",
-    "new": {
-      "en": [
-        "Update Roblox now (Settings › Roblox version): Bloxstrap or Fishstrap installs the new Roblox without opening it. The out-of-date version line in the sidebar leads there.",
-        "Fast cores for the window you play (Settings › Staying in game): Roblox windows in the background run on the CPU's efficiency cores in power-saving mode.",
-        "Each Roblox window shows its account's picture as its icon, on the taskbar and in Alt+Tab."
-      ],
-      "vi": [
-        "Cập nhật Roblox ngay (Cài đặt › Phiên bản Roblox): Bloxstrap hoặc Fishstrap cài bản Roblox mới mà không mở Roblox. Dòng phiên bản cũ ở thanh bên dẫn tới đó.",
-        "Nhường nhân mạnh cho cửa sổ đang chơi (Cài đặt › Treo game): cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện.",
-        "Mỗi cửa sổ Roblox lấy ảnh tài khoản làm biểu tượng, dưới taskbar và khi bấm Alt+Tab."
-      ]
-    },
-    "improved": {
-      "en": [
-        "Several accounts sent to one server: the first one checks the server lets it in; if it doesn't within 12 seconds (full or closed), they all go to another server with room for them.",
-        "Empty servers (closing) are no longer listed or picked.",
-        "A client that can't get a server is moved to another one after a minute instead of three.",
-        "Before rejoining, Bloxkeep checks the account isn't banned, instead of reopening a banned account over and over.",
-        "Starts faster and saves without pauses."
-      ],
-      "vi": [
-        "Khi gửi nhiều tài khoản vào một server: tài khoản đầu tiên xem server có nhận không; nếu sau 12 giây vẫn chưa vào được (đầy hoặc đã đóng), cả nhóm chuyển sang server khác còn đủ chỗ.",
-        "Server không còn ai (đang đóng) không còn hiện hay được chọn nữa.",
-        "Cửa sổ không vào được server sẽ được chuyển sang server khác sau 1 phút thay vì 3 phút.",
-        "Trước khi tự vào lại game, Bloxkeep xem tài khoản có bị ban không, thay vì mở lại tài khoản bị ban mãi.",
-        "Mở nhanh hơn, lưu không bị khựng."
-      ]
-    },
-    "fixed": {
-      "en": [
-        "Auto-rejoin said “restarting Roblox” for a client stuck on “This experience has ended” but never opened it again."
-      ],
-      "vi": [
-        "Tự vào lại game báo “đang mở lại Roblox” cho cửa sổ kẹt ở “This experience has ended” nhưng không mở lại."
-      ]
-    }
-  },
-  {
-    "version": "1.1.1",
-    "date": "2026-10-17",
-    "new": {
-      "en": [
-        "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it.",
-        "Lock automatically (Settings › Security): when nobody has used the PC for the time you pick, Bloxkeep asks for the master password again, while Roblox, auto-rejoin, scheduled presets and Discord keep running.",
-      "What’s new lists what’s new, what works better and what’s fixed separately."
-      ],
-      "vi": [
-        "Cho Bloxkeep một sao trên GitHub từ Cài đặt › Cập nhật Bloxkeep, Ctrl+K hoặc cuối bảng Có gì mới. Mỗi sao giúp thêm người chơi tìm thấy Bloxkeep.",
-        "Tự khóa (Cài đặt › Bảo mật): khi không ai dùng máy trong khoảng thời gian bạn chọn, Bloxkeep hỏi lại mật khẩu chủ, còn Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy.",
-      "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
-      ]
-    },
-    "improved": {
-      "en": [
-        "Servers keeps its size while a list loads, and the servers you had stay on screen until the new ones are in, instead of jumping to a spinner and back.",
-        "Roblox gives each PC only a few server lists a minute. When it says to wait, Servers shows how long and loads again by itself, and sorting by ping or FPS no longer spends a list on its own.",
-        "Windows whose content changes while open (signing in, importing a vault file, Join a player, a preset’s settings, Send feedback) stay put instead of jumping.",
-        "The game list above the game box keeps its height while it loads.",
-        "A filter chip cut off at the edge of the row fades out whole.",
-        "Bloxkeep’s screens were rebuilt underneath, so new features can come faster. They look and work as before: nothing to relearn."
-      ],
-      "vi": [
-        "Cửa sổ Server giữ nguyên kích thước khi đang tải, các server đang có vẫn hiện tới khi có danh sách mới, không còn nhảy sang vòng xoay rồi nhảy lại.",
-        "Roblox chỉ cho mỗi máy tải vài danh sách server mỗi phút. Khi Roblox bảo chờ, cửa sổ Server ghi rõ còn bao lâu rồi tự tải lại; sắp xếp theo ping hay FPS không còn tự tốn thêm một lượt.",
-        "Các cửa sổ có nội dung thay đổi khi đang mở (đăng nhập, nhập file dữ liệu, Vào cùng người chơi, cài đặt preset, Gửi góp ý) đứng yên một chỗ, không nhảy theo nữa.",
-        "Danh sách game phía trên ô game giữ nguyên chiều cao khi đang tải.",
-        "Thẻ bộ lọc bị cắt ở mép hàng giờ mờ dần cả thẻ.",
-        "Giao diện Bloxkeep được làm lại phần bên trong để các tính năng mới ra nhanh hơn. Mọi thứ trông và dùng vẫn như cũ, không phải làm quen lại."
-      ]
-    },
-    "fixed": {
-      "en": [
-        "Closing a Roblox window yourself no longer counts as a drop: Bloxkeep doesn't rejoin it and then say it “didn't rejoin: no Roblox window appeared”.",
-        "Roblox now leaves a copy of itself in the notification area when its window closes, and that copy took over the next launch without opening a window. Bloxkeep ends it before opening Roblox, and Close all no longer ends a Roblox that another program (Bloxstrap, for one) is just starting.",
-        "Discord play-time summaries are sent again (every one had failed).",
-        "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed.",
-        "Sign in with your phone: the code’s “expires in” time stays right after Bloxkeep was minimized."
-      ],
-      "vi": [
-        "Tự tay đóng cửa sổ Roblox giờ không còn bị tính là văng game: Bloxkeep không vào lại rồi báo “không vào lại được: không có cửa sổ Roblox nào hiện ra” nữa.",
-        "Roblox giờ để lại một bản chạy ngầm ở khay hệ thống mỗi khi đóng cửa sổ, và bản đó nuốt lần mở tiếp theo nên không có cửa sổ nào hiện ra. Bloxkeep tắt nó trước khi mở Roblox, và Close all không còn tắt nhầm Roblox mà chương trình khác (như Bloxstrap) vừa mở.",
-        "Bản tóm tắt giờ chơi gửi lên Discord đã gửi được trở lại (trước đó lần nào cũng lỗi).",
-        "Cửa sổ Server không còn kẹt ở “Roblox vẫn đang bận” sau vài lần bấm: trước đây nó hỏi lại Roblox quá sớm và hỏi nhiều hơn cần.",
-        "Đăng nhập bằng điện thoại: thời gian “hết hạn sau” của mã vẫn đúng sau khi thu nhỏ Bloxkeep."
-      ]
-    }
-  },
-  {
-    "version": "1.1.0",
-    "date": "2026-10-16",
     "highlights": [
       {
         "icon": "gamepad",
@@ -226,106 +116,122 @@
       "Trang Cài đặt › Hiệu năng đổi tên thành Treo game.",
       "Toàn bộ tiếng Việt trong app được viết lại cho tự nhiên.",
       "Bản tải về do GitHub build từ mã nguồn công khai, ai cũng kiểm tra được."
-    ]
+    ],
+    "new": {
+      "en": [
+        "Update Roblox now (Settings › Roblox version): Bloxstrap or Fishstrap installs the new Roblox without opening it. The out-of-date version line in the sidebar leads there.",
+        "Fast cores for the window you play (Settings › Staying in game): Roblox windows in the background run on the CPU's efficiency cores in power-saving mode.",
+        "Each Roblox window shows its account's picture as its icon, on the taskbar and in Alt+Tab.",
+        "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it.",
+        "Lock automatically (Settings › Security): when nobody has used the PC for the time you pick, Bloxkeep asks for the master password again, while Roblox, auto-rejoin, scheduled presets and Discord keep running.",
+        "What’s new lists what’s new, what works better and what’s fixed separately."
+      ],
+      "vi": [
+        "Cập nhật Roblox ngay (Cài đặt › Phiên bản Roblox): Bloxstrap hoặc Fishstrap cài bản Roblox mới mà không mở Roblox. Dòng phiên bản cũ ở thanh bên dẫn tới đó.",
+        "Nhường nhân mạnh cho cửa sổ đang chơi (Cài đặt › Treo game): cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện.",
+        "Mỗi cửa sổ Roblox lấy ảnh tài khoản làm biểu tượng, dưới taskbar và khi bấm Alt+Tab.",
+        "Cho Bloxkeep một sao trên GitHub từ Cài đặt › Cập nhật Bloxkeep, Ctrl+K hoặc cuối bảng Có gì mới. Mỗi sao giúp thêm người chơi tìm thấy Bloxkeep.",
+        "Tự khóa (Cài đặt › Bảo mật): khi không ai dùng máy trong khoảng thời gian bạn chọn, Bloxkeep hỏi lại mật khẩu chủ, còn Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy.",
+        "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Several accounts sent to one server: the first one checks the server lets it in; if it doesn't within 12 seconds (full or closed), they all go to another server with room for them.",
+        "Empty servers (closing) are no longer listed or picked.",
+        "A client that can't get a server is moved to another one after a minute instead of three.",
+        "Before rejoining, Bloxkeep checks the account isn't banned, instead of reopening a banned account over and over.",
+        "Starts faster and saves without pauses.",
+        "Servers keeps its size while a list loads, and the servers you had stay on screen until the new ones are in, instead of jumping to a spinner and back.",
+        "Roblox gives each PC only a few server lists a minute. When it says to wait, Servers shows how long and loads again by itself, and sorting by ping or FPS no longer spends a list on its own.",
+        "Windows whose content changes while open (signing in, importing a vault file, Join a player, a preset’s settings, Send feedback) stay put instead of jumping.",
+        "The game list above the game box keeps its height while it loads.",
+        "A filter chip cut off at the edge of the row fades out whole.",
+        "Bloxkeep’s screens were rebuilt underneath, so new features can come faster. They look and work as before: nothing to relearn."
+      ],
+      "vi": [
+        "Khi gửi nhiều tài khoản vào một server: tài khoản đầu tiên xem server có nhận không; nếu sau 12 giây vẫn chưa vào được (đầy hoặc đã đóng), cả nhóm chuyển sang server khác còn đủ chỗ.",
+        "Server không còn ai (đang đóng) không còn hiện hay được chọn nữa.",
+        "Cửa sổ không vào được server sẽ được chuyển sang server khác sau 1 phút thay vì 3 phút.",
+        "Trước khi tự vào lại game, Bloxkeep xem tài khoản có bị ban không, thay vì mở lại tài khoản bị ban mãi.",
+        "Mở nhanh hơn, lưu không bị khựng.",
+        "Cửa sổ Server giữ nguyên kích thước khi đang tải, các server đang có vẫn hiện tới khi có danh sách mới, không còn nhảy sang vòng xoay rồi nhảy lại.",
+        "Roblox chỉ cho mỗi máy tải vài danh sách server mỗi phút. Khi Roblox bảo chờ, cửa sổ Server ghi rõ còn bao lâu rồi tự tải lại; sắp xếp theo ping hay FPS không còn tự tốn thêm một lượt.",
+        "Các cửa sổ có nội dung thay đổi khi đang mở (đăng nhập, nhập file dữ liệu, Vào cùng người chơi, cài đặt preset, Gửi góp ý) đứng yên một chỗ, không nhảy theo nữa.",
+        "Danh sách game phía trên ô game giữ nguyên chiều cao khi đang tải.",
+        "Thẻ bộ lọc bị cắt ở mép hàng giờ mờ dần cả thẻ.",
+        "Giao diện Bloxkeep được làm lại phần bên trong để các tính năng mới ra nhanh hơn. Mọi thứ trông và dùng vẫn như cũ, không phải làm quen lại."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Auto-rejoin said “restarting Roblox” for a client stuck on “This experience has ended” but never opened it again.",
+        "Closing a Roblox window yourself no longer counts as a drop: Bloxkeep doesn't rejoin it and then say it “didn't rejoin: no Roblox window appeared”.",
+        "Roblox now leaves a copy of itself in the notification area when its window closes, and that copy took over the next launch without opening a window. Bloxkeep ends it before opening Roblox, and Close all no longer ends a Roblox that another program (Bloxstrap, for one) is just starting.",
+        "Discord play-time summaries are sent again (every one had failed).",
+        "Servers no longer gets stuck on “Roblox is still busy” after a few clicks: it asked Roblox again too soon, and for more than it needed.",
+        "Sign in with your phone: the code’s “expires in” time stays right after Bloxkeep was minimized."
+      ],
+      "vi": [
+        "Tự vào lại game báo “đang mở lại Roblox” cho cửa sổ kẹt ở “This experience has ended” nhưng không mở lại.",
+        "Tự tay đóng cửa sổ Roblox giờ không còn bị tính là văng game: Bloxkeep không vào lại rồi báo “không vào lại được: không có cửa sổ Roblox nào hiện ra” nữa.",
+        "Roblox giờ để lại một bản chạy ngầm ở khay hệ thống mỗi khi đóng cửa sổ, và bản đó nuốt lần mở tiếp theo nên không có cửa sổ nào hiện ra. Bloxkeep tắt nó trước khi mở Roblox, và Close all không còn tắt nhầm Roblox mà chương trình khác (như Bloxstrap) vừa mở.",
+        "Bản tóm tắt giờ chơi gửi lên Discord đã gửi được trở lại (trước đó lần nào cũng lỗi).",
+        "Cửa sổ Server không còn kẹt ở “Roblox vẫn đang bận” sau vài lần bấm: trước đây nó hỏi lại Roblox quá sớm và hỏi nhiều hơn cần.",
+        "Đăng nhập bằng điện thoại: thời gian “hết hạn sau” của mã vẫn đúng sau khi thu nhỏ Bloxkeep."
+      ]
+    }
   },
   {
-    "version": "1.0.11",
+    "version": "1.0.2",
     "date": "2026-10-16",
     "en": [
       "Multi-Roblox check: each new Roblox build is checked as soon as Roblox offers it, often before it reaches you, for changes to the lock Multi-Roblox relies on. Settings › Roblox version & graphics shows what was found for your Roblox, and the Multi-Roblox card turns yellow when the lock changed; opening several accounts then asks first, until two windows have played together on that build.",
-      "If Roblox only renames that lock, Bloxkeep holds the new name by itself, with no need to wait for a Bloxkeep update."
-    ],
-    "vi": [
-      "Kiểm tra Multi-Roblox: mỗi khi Roblox có bản mới, Bloxkeep kiểm tra ngay xem khóa mà Multi-Roblox cần có bị thay đổi không, thường là trước khi bản đó về tới máy bạn. Kết quả hiện ở Cài đặt › Phiên bản & đồ họa Roblox. Nếu khóa bị đổi, thẻ Multi-Roblox chuyển sang màu vàng và Bloxkeep sẽ hỏi lại trước khi mở nhiều tài khoản, cho đến khi đã có hai cửa sổ cùng chơi được trên bản đó.",
-      "Nếu Roblox chỉ đổi tên khóa, Bloxkeep tự giữ thêm tên mới, không cần chờ Bloxkeep ra bản cập nhật."
-    ]
-  },
-  {
-    "version": "1.0.10",
-    "date": "2026-10-15",
-    "en": [
-      "Switching tabs is faster, most of all with many accounts: coming back to Accounts with hundreds of cards no longer lays them all out again (about 3 times quicker), and an update from the app no longer lays the page out several times over."
-    ],
-    "vi": [
-      "Chuyển tab nhanh hơn, nhất là khi có nhiều tài khoản: quay lại tab Tài khoản có hàng trăm thẻ không còn phải sắp xếp lại tất cả (nhanh hơn khoảng 3 lần), và mỗi lần nhận thông tin mới, trang không còn bị sắp xếp lại nhiều lần."
-    ]
-  },
-  {
-    "version": "1.0.9",
-    "date": "2026-10-15",
-    "en": [
+      "If Roblox only renames that lock, Bloxkeep holds the new name by itself, with no need to wait for a Bloxkeep update.",
+      "Switching tabs is faster, most of all with many accounts: coming back to Accounts with hundreds of cards no longer lays them all out again (about 3 times quicker), and an update from the app no longer lays the page out several times over.",
       "74 themes, up from 32. Scenery and Seasonal themes now have a drawn scene behind glass panels: Ha Long Bay, rice terraces, Hoi An, Mount Fuji, a jungle, under the sea, sky islands, the Moon; Tết, Valentine, spring, flame trees, summer, kites, the rainy season, back to school, Mid-Autumn, autumn, sky lanterns, Halloween, winter, Christmas and New Year's Eve.",
       "Styles change the shapes, not only the colours: Windows 98, Classic Mac, macOS light and dark (its red, yellow and green buttons close, minimise and zoom the window), GNOME, Ubuntu, KDE Plasma, Terminal, Game Boy, Arcade, Blueprint, Newspaper, Notebook, Chalkboard, Neo-brutalism and Cyberpunk.",
       "New plain themes too: Grey, Midnight, High contrast light, Indigo, Crimson, Teal, Amber, Sky, Lavender, Peach and Mint.",
-      "Bloxkeep-Setup.exe is now a small installer that downloads the newest version as it installs. It stays the same file from release to release, so Windows SmartScreen can get to know it. Bloxkeep-Setup-Offline.exe has everything inside, for installing without internet."
-    ],
-    "vi": [
-      "Có 74 chủ đề, tăng từ 32. Các chủ đề Phong cảnh và Theo mùa giờ có tranh vẽ phía sau các khung kính mờ: Vịnh Hạ Long, ruộng bậc thang, phố cổ Hội An, núi Phú Sĩ, rừng nhiệt đới, đáy biển, đảo bay, Mặt trăng; Tết, Valentine, mùa xuân, hoa phượng, mùa hè, mùa diều, mùa mưa, khai giảng, Trung thu, mùa thu, đèn trời, Halloween, mùa đông, Giáng sinh và Giao thừa.",
-      "Các chủ đề Phong cách đổi cả hình dáng chứ không chỉ màu sắc: Windows 98, Mac cổ điển, macOS sáng và tối (3 nút đỏ, vàng, xanh bấm được để đóng, thu nhỏ, phóng to cửa sổ), GNOME, Ubuntu, KDE Plasma, Terminal, Game Boy, Arcade, Blueprint, Newspaper, Vở ô li, Bảng đen, Neo-brutalism và Cyberpunk.",
-      "Thêm các chủ đề màu mới: Xám, Nửa đêm, Tương phản sáng, Chàm, Đỏ thẫm, Xanh mòng két, Hổ phách, Trời xanh, Oải hương, Đào và Bạc hà.",
-      "Bloxkeep-Setup.exe giờ là bộ cài nhỏ, tự tải bản mới nhất trong lúc cài. File này giữ nguyên qua mọi bản phát hành nên Windows SmartScreen sẽ dần quen với nó. Bloxkeep-Setup-Offline.exe có sẵn mọi thứ bên trong, dùng để cài khi không có mạng."
-    ]
-  },
-  {
-    "version": "1.0.8",
-    "date": "2026-10-15",
-    "en": [
+      "Bloxkeep-Setup.exe is now a small installer that downloads the newest version as it installs. It stays the same file from release to release, so Windows SmartScreen can get to know it. Bloxkeep-Setup-Offline.exe has everything inside, for installing without internet.",
       "When Bloxkeep restarts (an update, a crash) while Roblox keeps running: anti-AFK looks after a window about to be kicked at once, even while you use the PC; play time is no longer counted twice; an old idle kick isn't announced again (on Discord too); a Roblox window open for many hours is still followed from its log; and a preset's timed restart waits until it knows the window is in its game.",
       "The Halloween theme has its own night scene behind glass panels: a moon with bats, a crooked house, a dead tree and jack-o'-lanterns."
     ],
     "vi": [
+      "Kiểm tra Multi-Roblox: mỗi khi Roblox có bản mới, Bloxkeep kiểm tra ngay xem khóa mà Multi-Roblox cần có bị thay đổi không, thường là trước khi bản đó về tới máy bạn. Kết quả hiện ở Cài đặt › Phiên bản & đồ họa Roblox. Nếu khóa bị đổi, thẻ Multi-Roblox chuyển sang màu vàng và Bloxkeep sẽ hỏi lại trước khi mở nhiều tài khoản, cho đến khi đã có hai cửa sổ cùng chơi được trên bản đó.",
+      "Nếu Roblox chỉ đổi tên khóa, Bloxkeep tự giữ thêm tên mới, không cần chờ Bloxkeep ra bản cập nhật.",
+      "Chuyển tab nhanh hơn, nhất là khi có nhiều tài khoản: quay lại tab Tài khoản có hàng trăm thẻ không còn phải sắp xếp lại tất cả (nhanh hơn khoảng 3 lần), và mỗi lần nhận thông tin mới, trang không còn bị sắp xếp lại nhiều lần.",
+      "Có 74 chủ đề, tăng từ 32. Các chủ đề Phong cảnh và Theo mùa giờ có tranh vẽ phía sau các khung kính mờ: Vịnh Hạ Long, ruộng bậc thang, phố cổ Hội An, núi Phú Sĩ, rừng nhiệt đới, đáy biển, đảo bay, Mặt trăng; Tết, Valentine, mùa xuân, hoa phượng, mùa hè, mùa diều, mùa mưa, khai giảng, Trung thu, mùa thu, đèn trời, Halloween, mùa đông, Giáng sinh và Giao thừa.",
+      "Các chủ đề Phong cách đổi cả hình dáng chứ không chỉ màu sắc: Windows 98, Mac cổ điển, macOS sáng và tối (3 nút đỏ, vàng, xanh bấm được để đóng, thu nhỏ, phóng to cửa sổ), GNOME, Ubuntu, KDE Plasma, Terminal, Game Boy, Arcade, Blueprint, Newspaper, Vở ô li, Bảng đen, Neo-brutalism và Cyberpunk.",
+      "Thêm các chủ đề màu mới: Xám, Nửa đêm, Tương phản sáng, Chàm, Đỏ thẫm, Xanh mòng két, Hổ phách, Trời xanh, Oải hương, Đào và Bạc hà.",
+      "Bloxkeep-Setup.exe giờ là bộ cài nhỏ, tự tải bản mới nhất trong lúc cài. File này giữ nguyên qua mọi bản phát hành nên Windows SmartScreen sẽ dần quen với nó. Bloxkeep-Setup-Offline.exe có sẵn mọi thứ bên trong, dùng để cài khi không có mạng.",
       "Khi Bloxkeep khởi động lại (do cập nhật hoặc bị tắt đột ngột) trong lúc Roblox vẫn chạy: chống AFK xử lý ngay cửa sổ sắp bị kick, kể cả khi bạn đang dùng máy; thời gian chơi không còn bị tính hai lần; lần bị kick vì AFK trước đó không bị báo lại (cả trên Discord); cửa sổ Roblox đã mở nhiều giờ vẫn được theo dõi qua log; và preset mở lại Roblox theo giờ sẽ chờ đến khi chắc chắn cửa sổ đã vào game.",
       "Chủ đề Halloween có cảnh đêm riêng phía sau các khung kính mờ: trăng và đàn dơi, ngôi nhà xiêu vẹo, cây khô và đèn bí ngô."
     ]
   },
   {
-    "version": "1.0.7",
+    "version": "1.0.1",
     "date": "2026-10-15",
     "en": [
       "Anti-AFK no longer lets Roblox windows get kicked after Bloxkeep restarts (an update, a crash): windows that were already open are looked after at once instead of 15 minutes later. It now steps in from 12 minutes, and a window about to be kicked stays in game even while you use the PC: it goes in a 2-second pause in your typing, never over a full-screen app.",
       "When an account is kicked for idling anyway, Bloxkeep says why (the PC was in use, locked, or Windows kept the window in the background) instead of always blaming a locked PC.",
       "Questions you see often (deleting a preset, closing all Roblox, opening anyway, turning on Multi-Roblox, leaving a form you typed in) have a Don't ask again box. Deleting accounts, restoring a backup and removing the Discord link still always ask.",
-      "Statistics: games played days ago and the presets' games show their icons again. On a wide window the page uses the room: how many accounts played, the longest stay, and play time by preset."
-    ],
-    "vi": [
-      "Chống AFK không còn để cửa sổ Roblox bị kick sau khi Bloxkeep khởi động lại (do cập nhật hoặc bị tắt đột ngột): các cửa sổ đang mở được xử lý ngay thay vì 15 phút sau. Chống AFK giờ bắt đầu từ phút thứ 12, và cửa sổ sắp bị kick vẫn được giữ trong game kể cả khi bạn đang dùng máy: Bloxkeep chen vào lúc bạn ngừng gõ 2 giây, và không bao giờ chen ngang ứng dụng toàn màn hình.",
-      "Nếu tài khoản vẫn bị kick vì AFK, Bloxkeep nói rõ lý do (bạn đang dùng máy, máy đang khóa, hoặc Windows giữ cửa sổ ở phía sau) thay vì lúc nào cũng đổ cho máy đang khóa.",
-      "Các câu hỏi hay gặp (xóa preset, đóng tất cả Roblox, vẫn mở, bật Multi-Roblox, bỏ những gì đã nhập) giờ có ô Không hỏi lại. Riêng xóa tài khoản, khôi phục bản sao lưu và gỡ link Discord thì vẫn luôn hỏi.",
-      "Thống kê: game đã chơi từ mấy hôm trước và game của các preset lại hiện biểu tượng. Khi cửa sổ rộng, trang tận dụng chỗ trống để hiện thêm số tài khoản đã chơi, lượt chơi dài nhất và thời gian chơi theo preset."
-    ]
-  },
-  {
-    "version": "1.0.6",
-    "date": "2026-10-15",
-    "en": [
-      "Updates no longer fail while Roblox is open. Programs Bloxkeep starts (Bloxstrap, Roblox) used to start inside Bloxkeep's own folder, and one still running there (Bloxstrap stays while Roblox does) kept Windows from replacing that folder. If an update can't install anyway, Bloxkeep now says why instead of showing Restart to update again as if nothing happened."
-    ],
-    "vi": [
-      "Cập nhật không còn bị lỗi khi Roblox đang mở. Trước đây các chương trình do Bloxkeep mở (Bloxstrap, Roblox) chạy từ bên trong thư mục của Bloxkeep, và chỉ cần một chương trình còn chạy ở đó (Bloxstrap chạy suốt khi Roblox còn mở) là Windows không thay được thư mục này. Nếu vẫn không cài được bản cập nhật, Bloxkeep giờ sẽ báo rõ lý do thay vì lặng lẽ hiện lại nút Khởi động lại để cập nhật."
-    ]
-  },
-  {
-    "version": "1.0.5",
-    "date": "2026-10-15",
-    "en": [
+      "Statistics: games played days ago and the presets' games show their icons again. On a wide window the page uses the room: how many accounts played, the longest stay, and play time by preset.",
+      "Updates no longer fail while Roblox is open. Programs Bloxkeep starts (Bloxstrap, Roblox) used to start inside Bloxkeep's own folder, and one still running there (Bloxstrap stays while Roblox does) kept Windows from replacing that folder. If an update can't install anyway, Bloxkeep now says why instead of showing Restart to update again as if nothing happened.",
       "Discord summaries are redone: a picture of play time by hour (or day) coloured by game, with a row per account and its avatar; the totals against the period before, drops with Roblox's codes, the longest stay, the most windows at once and the top games; and a block per preset with its accounts. Play is now noted with the preset that opened it.",
-      "Settings › Launching › When a Roblox window opens: as Roblox sizes it, maximised, or tiled side by side. A maximised window is still a window, so the windows don't fight over Roblox's one fullscreen setting."
-    ],
-    "vi": [
-      "Bản tổng kết trên Discord được làm lại: ảnh biểu đồ thời gian chơi theo giờ (hoặc theo ngày) tô màu theo game, mỗi tài khoản một dòng kèm avatar; tổng số so với kỳ trước, số lần văng kèm mã lỗi Roblox, lượt chơi dài nhất, số cửa sổ mở cùng lúc nhiều nhất và các game chơi nhiều nhất; mỗi preset có một khung riêng kèm các tài khoản của nó. Từ bản này, mỗi lượt chơi được ghi lại là do preset nào mở.",
-      "Cài đặt › Khởi chạy › Khi cửa sổ Roblox mở ra: để Roblox tự chọn, phóng to, hoặc xếp cạnh nhau. Cửa sổ phóng to vẫn là cửa sổ thường, nên các cửa sổ không tranh nhau một cài đặt toàn màn hình chung của Roblox."
-    ]
-  },
-  {
-    "version": "1.0.4",
-    "date": "2026-10-15",
-    "en": [
+      "Settings › Launching › When a Roblox window opens: as Roblox sizes it, maximised, or tiled side by side. A maximised window is still a window, so the windows don't fight over Roblox's one fullscreen setting.",
       "Presets can send their messages to a Discord channel of their own: their schedule messages, the summary after a scheduled stop (now counting only that preset's accounts) and the alerts about the windows they opened. Edit a preset › Discord.",
       "The Presets tab shows which presets have windows open, with a Close button for those windows; a preset can also arrange its windows once it has opened them, whatever Settings says.",
       "Settings › Performance › Auto-rejoin turns it on or off for every account at once, and the daily sign-in check says when it last ran. Auto-rejoin that a dead sign-in switched off comes back on by itself once the account is signed in again.",
       "The \"Send to Discord\" switch asks for the webhook link when there is none, instead of doing nothing. Deleting an account takes it out of presets too (a preset left empty has its schedule switched off); quick search (Ctrl+K) says how many more results there are; going back to an older Roblox no longer says \"Roblox updated\"."
     ],
     "vi": [
+      "Chống AFK không còn để cửa sổ Roblox bị kick sau khi Bloxkeep khởi động lại (do cập nhật hoặc bị tắt đột ngột): các cửa sổ đang mở được xử lý ngay thay vì 15 phút sau. Chống AFK giờ bắt đầu từ phút thứ 12, và cửa sổ sắp bị kick vẫn được giữ trong game kể cả khi bạn đang dùng máy: Bloxkeep chen vào lúc bạn ngừng gõ 2 giây, và không bao giờ chen ngang ứng dụng toàn màn hình.",
+      "Nếu tài khoản vẫn bị kick vì AFK, Bloxkeep nói rõ lý do (bạn đang dùng máy, máy đang khóa, hoặc Windows giữ cửa sổ ở phía sau) thay vì lúc nào cũng đổ cho máy đang khóa.",
+      "Các câu hỏi hay gặp (xóa preset, đóng tất cả Roblox, vẫn mở, bật Multi-Roblox, bỏ những gì đã nhập) giờ có ô Không hỏi lại. Riêng xóa tài khoản, khôi phục bản sao lưu và gỡ link Discord thì vẫn luôn hỏi.",
+      "Thống kê: game đã chơi từ mấy hôm trước và game của các preset lại hiện biểu tượng. Khi cửa sổ rộng, trang tận dụng chỗ trống để hiện thêm số tài khoản đã chơi, lượt chơi dài nhất và thời gian chơi theo preset.",
+      "Cập nhật không còn bị lỗi khi Roblox đang mở. Trước đây các chương trình do Bloxkeep mở (Bloxstrap, Roblox) chạy từ bên trong thư mục của Bloxkeep, và chỉ cần một chương trình còn chạy ở đó (Bloxstrap chạy suốt khi Roblox còn mở) là Windows không thay được thư mục này. Nếu vẫn không cài được bản cập nhật, Bloxkeep giờ sẽ báo rõ lý do thay vì lặng lẽ hiện lại nút Khởi động lại để cập nhật.",
+      "Bản tổng kết trên Discord được làm lại: ảnh biểu đồ thời gian chơi theo giờ (hoặc theo ngày) tô màu theo game, mỗi tài khoản một dòng kèm avatar; tổng số so với kỳ trước, số lần văng kèm mã lỗi Roblox, lượt chơi dài nhất, số cửa sổ mở cùng lúc nhiều nhất và các game chơi nhiều nhất; mỗi preset có một khung riêng kèm các tài khoản của nó. Từ bản này, mỗi lượt chơi được ghi lại là do preset nào mở.",
+      "Cài đặt › Khởi chạy › Khi cửa sổ Roblox mở ra: để Roblox tự chọn, phóng to, hoặc xếp cạnh nhau. Cửa sổ phóng to vẫn là cửa sổ thường, nên các cửa sổ không tranh nhau một cài đặt toàn màn hình chung của Roblox.",
       "Mỗi preset có thể gửi tin vào kênh Discord riêng: tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng (giờ chỉ tính các tài khoản của preset đó) và cảnh báo về các cửa sổ do preset mở. Vào Sửa preset › Discord.",
       "Tab Preset cho biết preset nào đang có cửa sổ mở, kèm nút Đóng để đóng các cửa sổ đó; preset cũng có thể tự xếp cửa sổ sau khi mở, dù Cài đặt chọn thế nào.",
       "Cài đặt › Hiệu năng › Tự vào lại game giờ bật hoặc tắt cho mọi tài khoản cùng lúc, và Kiểm tra đăng nhập mỗi ngày cho biết lần chạy gần nhất. Nếu tự vào lại game bị tắt do tài khoản mất đăng nhập, nó sẽ tự bật lại khi tài khoản đăng nhập lại.",
@@ -333,7 +239,7 @@
     ]
   },
   {
-    "version": "1.0.3",
+    "version": "1.0.0",
     "date": "2026-10-15",
     "en": [
       "Looks for a new version 5 seconds after it opens (was 20) and every hour instead of every 6 hours, so updates arrive sooner (and still install by themselves while you're not using Bloxkeep).",
@@ -343,51 +249,13 @@
       "If Bloxkeep doesn't come back after an update in the background, it is started again anyway (in the tray, saying it needs unlocking), and an update that failed isn't tried again every few minutes.",
       "The daily Discord summary covers the 24 hours before it is sent, so one at midnight reports the day that just ended; a long list of accounts says how many more there are.",
       "The sign-in form has a person and a lock in its fields. Importing from Roblox Account Manager is gone: Bloxkeep has no connection with that program.",
-      "Fixes: Setup won't install over a portable Bloxkeep's folder (its accounts are inside); a double click that closes a dialog no longer clicks what was behind it; long menus scroll; a one-time preset schedule that was missed turns itself off."
-    ],
-    "vi": [
-      "Bloxkeep tìm bản mới 5 giây sau khi mở (trước là 20 giây) và mỗi giờ một lần thay vì 6 giờ một lần, nên bản cập nhật đến sớm hơn (và vẫn tự cài vào lúc bạn không dùng Bloxkeep).",
-      "Cài đặt › Cập nhật Bloxkeep cho biết lần kiểm tra gần nhất là lúc nào, nên \"đã là bản mới nhất\" không bao giờ là kết quả cũ trông như mới.",
-      "Nút \"Khởi động lại để cập nhật\" hiện cửa sổ Đang cập nhật của Bloxkeep thay cho hộp thoại của Windows, và Bloxkeep mở lại y như cũ: vẫn mở khóa, đúng tab đang xem.",
-      "Các câu hỏi và thông báo lỗi dùng cửa sổ riêng của Bloxkeep theo chủ đề bạn chọn, thay cho hộp thoại trắng trơn của Windows; bộ cài và bộ gỡ cài đặt chỉ còn nút đóng.",
-      "Nếu Bloxkeep không tự mở lại sau khi cập nhật ngầm, nó vẫn sẽ được mở lại (nằm ở khay hệ thống, báo cần mở khóa), và bản cập nhật bị lỗi không còn bị thử lại vài phút một lần.",
-      "Bản tổng kết Discord hằng ngày tính 24 giờ trước lúc gửi, nên bản gửi lúc 0 giờ báo đúng ngày vừa hết; danh sách tài khoản dài thì ghi rõ còn bao nhiêu tài khoản nữa.",
-      "Ô nhập ở form đăng nhập có biểu tượng người và ổ khóa. Đã bỏ chức năng nhập từ Roblox Account Manager: Bloxkeep không liên quan gì tới chương trình đó.",
-      "Sửa lỗi: bộ cài không cài đè lên thư mục của Bloxkeep bản portable (tài khoản nằm trong đó); bấm đúp để đóng hộp thoại không còn bấm nhầm vào thứ nằm phía sau; menu dài cuộn được; hẹn giờ chạy một lần của preset nếu bị lỡ sẽ tự tắt."
-    ]
-  },
-  {
-    "version": "1.0.2",
-    "date": "2026-10-15",
-    "en": [
+      "Fixes: Setup won't install over a portable Bloxkeep's folder (its accounts are inside); a double click that closes a dialog no longer clicks what was behind it; long menus scroll; a one-time preset schedule that was missed turns itself off.",
       "Updates install by themselves while you're not using Bloxkeep, and it comes back as it was: still unlocked, on the same tab, still in the tray. Roblox windows keep running. \"Restart to update\" is still there for right away.",
       "The uninstaller opens in the middle of the screen, and a second copy started by mistake just brings the first one up.",
-      "Settings: \"Version & graphics\" is now \"Roblox version & graphics\", since it is about Roblox. Bloxkeep's own version is under Bloxkeep updates."
-    ],
-    "vi": [
-      "Bản cập nhật tự cài vào lúc bạn không dùng Bloxkeep, và Bloxkeep mở lại y như cũ: vẫn mở khóa, đúng tab đang xem, vẫn ở khay. Các cửa sổ Roblox vẫn chạy bình thường. Muốn cập nhật ngay thì vẫn có nút \"Khởi động lại để cập nhật\".",
-      "Bộ gỡ cài đặt mở ở giữa màn hình, và nếu lỡ mở lần thứ hai thì chỉ đưa cửa sổ đang có lên trước.",
-      "Cài đặt: mục \"Phiên bản & đồ họa\" đổi tên thành \"Phiên bản & đồ họa Roblox\" vì nó nói về Roblox. Phiên bản của chính Bloxkeep nằm ở Cập nhật Bloxkeep."
-    ]
-  },
-  {
-    "version": "1.0.1",
-    "date": "2026-10-15",
-    "en": [
+      "Settings: \"Version & graphics\" is now \"Roblox version & graphics\", since it is about Roblox. Bloxkeep's own version is under Bloxkeep updates.",
       "A new installer: choose where Bloxkeep goes, on any drive, and watch it install; your accounts and settings stay apart from the program.",
       "A new uninstaller (Windows Settings › Apps › Uninstall) that asks whether to delete your accounts and settings too, or keep them for a reinstall.",
-      "Setup closes a running Bloxkeep before installing, and a second copy of Setup can't start over the first one."
-    ],
-    "vi": [
-      "Bộ cài mới: chọn nơi cài Bloxkeep trên ổ nào cũng được và xem quá trình cài; tài khoản và cài đặt được lưu riêng, tách khỏi chương trình.",
-      "Bộ gỡ cài đặt mới (Cài đặt Windows › Ứng dụng › Gỡ cài đặt) hỏi có xóa luôn tài khoản và cài đặt không, hay giữ lại để cài lại sau.",
-      "Bộ cài tự đóng Bloxkeep đang chạy trước khi cài, và không thể mở bộ cài thứ hai chồng lên bộ cài đang chạy."
-    ]
-  },
-  {
-    "version": "1.0.0",
-    "date": "2026-10-15",
-    "en": [
+      "Setup closes a running Bloxkeep before installing, and a second copy of Setup can't start over the first one.",
       "Keep all your Roblox accounts in one place, saved only on this PC and locked with your master password.",
       "Add accounts with a code from the Roblox phone app, with a password (2-step verification and captchas included), on the official Roblox page, with a cookie, or from another Bloxkeep file.",
       "Find a game by name or link, pick accounts and press Play; choose the server (most or fewest players, lowest ping, room for all your accounts), join a friend, or join the server a player is in.",
@@ -399,6 +267,20 @@
       "Back up to a OneDrive or Google Drive folder and restore on a new PC; 32 themes, English and Vietnamese, keeps running in the tray, and new versions download in the background."
     ],
     "vi": [
+      "Bloxkeep tìm bản mới 5 giây sau khi mở (trước là 20 giây) và mỗi giờ một lần thay vì 6 giờ một lần, nên bản cập nhật đến sớm hơn (và vẫn tự cài vào lúc bạn không dùng Bloxkeep).",
+      "Cài đặt › Cập nhật Bloxkeep cho biết lần kiểm tra gần nhất là lúc nào, nên \"đã là bản mới nhất\" không bao giờ là kết quả cũ trông như mới.",
+      "Nút \"Khởi động lại để cập nhật\" hiện cửa sổ Đang cập nhật của Bloxkeep thay cho hộp thoại của Windows, và Bloxkeep mở lại y như cũ: vẫn mở khóa, đúng tab đang xem.",
+      "Các câu hỏi và thông báo lỗi dùng cửa sổ riêng của Bloxkeep theo chủ đề bạn chọn, thay cho hộp thoại trắng trơn của Windows; bộ cài và bộ gỡ cài đặt chỉ còn nút đóng.",
+      "Nếu Bloxkeep không tự mở lại sau khi cập nhật ngầm, nó vẫn sẽ được mở lại (nằm ở khay hệ thống, báo cần mở khóa), và bản cập nhật bị lỗi không còn bị thử lại vài phút một lần.",
+      "Bản tổng kết Discord hằng ngày tính 24 giờ trước lúc gửi, nên bản gửi lúc 0 giờ báo đúng ngày vừa hết; danh sách tài khoản dài thì ghi rõ còn bao nhiêu tài khoản nữa.",
+      "Ô nhập ở form đăng nhập có biểu tượng người và ổ khóa. Đã bỏ chức năng nhập từ Roblox Account Manager: Bloxkeep không liên quan gì tới chương trình đó.",
+      "Sửa lỗi: bộ cài không cài đè lên thư mục của Bloxkeep bản portable (tài khoản nằm trong đó); bấm đúp để đóng hộp thoại không còn bấm nhầm vào thứ nằm phía sau; menu dài cuộn được; hẹn giờ chạy một lần của preset nếu bị lỡ sẽ tự tắt.",
+      "Bản cập nhật tự cài vào lúc bạn không dùng Bloxkeep, và Bloxkeep mở lại y như cũ: vẫn mở khóa, đúng tab đang xem, vẫn ở khay. Các cửa sổ Roblox vẫn chạy bình thường. Muốn cập nhật ngay thì vẫn có nút \"Khởi động lại để cập nhật\".",
+      "Bộ gỡ cài đặt mở ở giữa màn hình, và nếu lỡ mở lần thứ hai thì chỉ đưa cửa sổ đang có lên trước.",
+      "Cài đặt: mục \"Phiên bản & đồ họa\" đổi tên thành \"Phiên bản & đồ họa Roblox\" vì nó nói về Roblox. Phiên bản của chính Bloxkeep nằm ở Cập nhật Bloxkeep.",
+      "Bộ cài mới: chọn nơi cài Bloxkeep trên ổ nào cũng được và xem quá trình cài; tài khoản và cài đặt được lưu riêng, tách khỏi chương trình.",
+      "Bộ gỡ cài đặt mới (Cài đặt Windows › Ứng dụng › Gỡ cài đặt) hỏi có xóa luôn tài khoản và cài đặt không, hay giữ lại để cài lại sau.",
+      "Bộ cài tự đóng Bloxkeep đang chạy trước khi cài, và không thể mở bộ cài thứ hai chồng lên bộ cài đang chạy.",
       "Giữ mọi tài khoản Roblox ở một chỗ, chỉ lưu trên máy này và khóa bằng mật khẩu chủ.",
       "Thêm tài khoản bằng mã từ app Roblox trên điện thoại, bằng mật khẩu (hỗ trợ cả xác minh 2 bước và captcha), qua trang Roblox chính thức, bằng cookie, hoặc lấy từ file Bloxkeep khác.",
       "Tìm game theo tên hoặc link, chọn tài khoản rồi bấm Vào game; chọn server (đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho mọi tài khoản), vào cùng bạn bè, hoặc vào đúng server của một người chơi.",
