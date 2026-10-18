@@ -40,6 +40,10 @@ public sealed partial class AppController : IDisposable
     static readonly TimeSpan NetworkRetryDelay = TimeSpan.FromSeconds(30);
     static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(5);
     const int MaxNetworkRetries = 20;
+    /// <summary>A refused launch ticket the sign-in check didn't confirm as a sign-out: tried again this many times, then said.</summary>
+    const int MaxTicketRetries = 3;
+    /// <summary>What a refused launch ticket is called when the sign-in check says the account is still signed in.</summary>
+    static string RefusedText => L.T("Roblox refused to open the game for this account. Try again in a moment.");
     /// <summary>
     /// Like the Claude app: a new version is found within the hour, then downloaded and installed by itself. One small
     /// request to GitHub's API each time, well within its 60 an hour for anonymous callers (several PCs on one IP too).
@@ -2682,10 +2686,9 @@ public sealed partial class AppController : IDisposable
                 catch (Exception ex) when (!ct.IsCancellationRequested
                                            && (RobloxApi.IsExpectedError(ex) || ex is Win32Exception or FileNotFoundException or UserError))
                 {
-                    errors.Add($"{NameText(account)}: {(ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))}");
-                    // Marked signed out only when the sign-in check agrees: an outage answers 401 for everyone.
-                    if (ex is RobloxApiException { CookieInvalid: true })
-                        await ConfirmSignedOutAsync(account, ct);
+                    // Marked (and said) signed out only when the sign-in check agrees: an outage answers 401 for everyone.
+                    bool refused = ex is RobloxApiException { CookieInvalid: true } && !await ConfirmSignedOutAsync(account, ct);
+                    errors.Add($"{NameText(account)}: {(refused ? RefusedText : ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))}");
                 }
                 PushState();
 
@@ -3590,7 +3593,9 @@ public sealed partial class AppController : IDisposable
         {
             _lastTrim = now;
             var background = players.Where(p => p.Pid != foreground).ToList();
-            if (background.Count > 0 && background.Count(p => RobloxProcesses.TrimMemory(p.Pid) || RobloxProcesses.Ended(p.Pid)) == 0)
+            // Refused when none was trimmed and one still running said no (one that closed since the scan says nothing).
+            int trimmed = background.Count(p => RobloxProcesses.TrimMemory(p.Pid));
+            if (trimmed == 0 && background.Any(p => !RobloxProcesses.Ended(p.Pid)))
                 refused = true;
         }
         if (refused && !_trimRefusedShown)
@@ -3979,18 +3984,20 @@ public sealed partial class AppController : IDisposable
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex) || ex is Win32Exception or FileNotFoundException)
         {
+            string? why = null;
             if (ex is RobloxApiException { CookieInvalid: true })
             {
                 // One refused ticket isn't proof of a sign-out (an outage answers 401 for everyone): without the sign-in
-                // check's word it is tried again later, like a network error, and auto-rejoin stays on.
+                // check's word it is tried again a few times, and then said as a refusal, auto-rejoin staying on.
                 if (!await ConfirmSignedOutAsync(account))
                 {
-                    if (request.NetworkRetries < MaxNetworkRetries)
+                    if (request.NetworkRetries < MaxTicketRetries)
                     {
                         var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (request.NetworkRetries + 1), MaxRetryDelay.Ticks));
                         _rejoinQueue.Add(request with { Due = DateTime.UtcNow + delay, NetworkRetries = request.NetworkRetries + 1 });
                         return;
                     }
+                    why = RefusedText;
                 }
                 else
                 {
@@ -4002,7 +4009,7 @@ public sealed partial class AppController : IDisposable
                     PushState();
                 }
             }
-            Notify(L.F("Couldn't rejoin {0}: {1}", Name(account),ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex)), "error", "rejoinFail", account.Id);
+            Notify(L.F("Couldn't rejoin {0}: {1}", Name(account), why ?? (ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))), "error", "rejoinFail", account.Id);
         }
         catch (Exception ex)
         {
@@ -4021,10 +4028,11 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>
     /// The client's own log is the better source while it says something current; one stuck in "joining" (a join
-    /// or teleport that never finished) is left to Roblox's status again.
+    /// or teleport that never finished) is left to Roblox's status again. Not a game the person started in the window:
+    /// that one is theirs, and the status check would close it and reopen the game Bloxkeep opened.
     /// </summary>
     bool LogFollowed(int pid) =>
-        _logs.StateOf(pid) is { } log && !(log.Status == "joining" && DateTime.UtcNow - log.At > JoiningTimeout);
+        _logs.StateOf(pid) is { } log && !(log is { Status: "joining", PersonStarted: false } && DateTime.UtcNow - log.At > JoiningTimeout);
 
     /// <summary>
     /// What an ended client's log said last. Bloxkeep's own close (to start it again) makes Roblox leave the game first:

@@ -269,6 +269,10 @@ static class RejoinSuite
             state = Poll(s => s is { Status: "joining", JobId: null });
             Tick();
             c.Check("a game the person started that gets no server in a minute is left alone", state is { PersonStarted: true } && !closing.Contains(me), state);
+            // …also after two minutes, when a join of Bloxkeep's would go to Roblox's status check (which closes it).
+            Write(Line(DateTime.UtcNow.AddMinutes(-3), Launch));
+            Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromMinutes(2.5));
+            c.Check("…and after two minutes its log still decides, not Roblox's status", Harness.Invoke(app, "LogFollowed", me) is true);
 
             // A game started in the window while still on a server (no leave logged first): the old server's disconnect
             // line after the new join isn't a drop.
@@ -302,6 +306,13 @@ static class RejoinSuite
             rejoins[account.Id] = 2;
             Harness.Invoke(app, "ForgetSettledRejoins", DateTime.UtcNow);
             c.Check("in its game 11 min after it opened, its last server joined just now: settled", !rejoins.Contains(account.Id), state);
+            // Not a window that is still getting in, however long ago it opened.
+            Write(Line(DateTime.UtcNow, Launch));
+            Poll(s => s is { Status: "joining", JobId: null });
+            rejoins[account.Id] = 2;
+            Harness.Invoke(app, "ForgetSettledRejoins", DateTime.UtcNow);
+            c.Check("…but not one still getting into its game 11 min after it opened", rejoins.Contains(account.Id));
+            rejoins.Remove(account.Id);
         }
         finally
         {
