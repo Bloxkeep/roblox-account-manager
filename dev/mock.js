@@ -261,16 +261,21 @@
     monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: LONG ? 'C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep' : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep', robloxInstalled: !params.has('noroblox'),
     launching: false, checking: false, multi, settings: locked ? null : settings, accounts: locked ? [] : accounts, discord: locked ? null : discord,
   });
-  const push = () => emit('state', state());
+  // Roblox windows of accounts deleted while playing: like the app, deleting doesn't close them, and they still count.
+  let orphans = 0;
+  const metrics = () => ({
+    accounts: accounts.filter(a => a.state === 'running').map((a, i) => ({ id: a.id, ramMb: 780 + i * 140 + Math.round(Math.random() * 30) })),
+    robloxCount: accounts.filter(a => a.state === 'running').length + orphans,
+    monitorCount: accounts.filter(a => a.state === 'running').length + orphans,
+    totalMb: 1750 + Math.round(Math.random() * 40), systemMb: 32 * 1024, usedPct: 63, availableMb: 12 * 1024,
+  });
+  // The panel's numbers go with every change to the cards, not only on the next 1.5 s tick: a window opened or closed
+  // is then counted in the sidebar as soon as its card says so, and Tests/ui doesn't write down one or the other by
+  // chance (the app's own check sends both within the same 1.5 s).
+  const push = () => { emit('state', state()); if (!locked) emit('metrics', metrics()); };
   let loginUser = '';
   const srvAsked = []; // when each server list was given, for Roblox's few-a-minute limit
   const wait = ms => new Promise(r => setTimeout(r, ms));
-  const metrics = () => ({
-    accounts: accounts.filter(a => a.state === 'running').map((a, i) => ({ id: a.id, ramMb: 780 + i * 140 + Math.round(Math.random() * 30) })),
-    robloxCount: accounts.filter(a => a.state === 'running').length,
-    monitorCount: accounts.filter(a => a.state === 'running').length,
-    totalMb: 1750 + Math.round(Math.random() * 40), systemMb: 32 * 1024, usedPct: 63, availableMb: 12 * 1024,
-  });
 
   window.__mockBridge = {
     attach(fn) {
@@ -538,7 +543,9 @@
           accounts.forEach(x => { if (a.ids.includes(x.id) && x.state === 'running') { x.state = 'idle'; x.session = null; } });
           push();
           return a.ids.length;
-        case 'deleteAccounts': accounts = accounts.filter(x => !a.ids.includes(x.id)); push(); return a.ids.length;
+        case 'deleteAccounts':
+          orphans += accounts.filter(x => a.ids.includes(x.id) && x.state === 'running').length;
+          accounts = accounts.filter(x => !a.ids.includes(x.id)); push(); return a.ids.length;
         case 'checkAccounts': await wait(800); return { ok: 5, bad: 1, failed: 0, banned: accounts.filter(x => x.banned).length };
         case 'refreshPresence': await wait(700); return params.has('refreshbusy') ? { skipped: true } : null; // ?refreshbusy=1: one was already running
         case 'copy': return { secret: !['username', 'pid'].includes(a.field), seconds: a.field === 'totp' ? fakeCode().seconds : null };
