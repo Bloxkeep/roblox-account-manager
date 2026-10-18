@@ -122,6 +122,14 @@ html [data-theme="dark" lang="en"]
                         label.switch
                           input [id="s-autoupd" type="checkbox" aria-label="Update automatically" checked=true]
                           span
+                    div.set-row
+                      div
+                        div.t "Get beta versions"
+                        div.d "Try new features early. Betas may still have bugs."
+                      div.ctl
+                        label.switch
+                          input [id="s-betaupd" type="checkbox" aria-label="Get beta versions" checked=false]
+                          span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Help & feedback"
                   div.set-card

@@ -123,6 +123,7 @@ Details are in [Backup and security](backup-and-security.md).
 |---|---|---|
 | **Bloxkeep** *version* | Shows the update state, with **What's new** and **Check now** (greyed out while checking or downloading) or **Restart to update**. | — |
 | **Update automatically** | Downloads new versions and installs them by itself the next time you're not using it. Off: nothing is downloaded by itself, but **Check now** still works. Greyed out on a copy that can't update itself. | On |
+| **Get beta versions** | Updates also bring beta versions: new features before everyone else, which may still have bugs. Turned off on a beta, you keep it until the next regular version. Greyed out on a copy that can't update itself. | Off |
 | **User guide › Open** | Opens this guide. | — |
 | **Send feedback › Write** | An idea, or something that doesn't work. It goes to Bloxkeep's developer. See [Troubleshooting](troubleshooting.md). | — |
 

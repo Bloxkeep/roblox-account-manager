@@ -73,6 +73,7 @@ export default [
   S('settings-discord-on', 'settings=discord&discord=1'),
   S('settings-backup-on', 'settings=backup&backup=1'),
   S('settings-update-ready', 'settings=updates&update=1'),
+  S('settings-updates-beta', 'settings=updates', async s => { await s.click({ css: 'label.switch:has(#s-betaupd)' }); }),
   S('settings-search', 'settings=1', async s => { await s.type('rejoin', key('set.search')); }),
   S('whats-new', 'settings=updates', async s => { await s.click(key('wn.link')); }),
   S('feedback', 'settings=updates', async s => { await s.click(key('fb.open')); }),

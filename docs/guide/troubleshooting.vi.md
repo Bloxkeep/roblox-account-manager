@@ -51,7 +51,7 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 | Các dòng trong **Loại sự kiện** | **Thông báo Windows** đang tắt. |
 | **Sao lưu ngay** | Chưa chọn thư mục sao lưu. |
 | **Hỏi lại** | Bạn chưa bỏ qua câu hỏi nào. |
-| **Tự động cập nhật** | Bản này không tự cập nhật được. |
+| **Tự động cập nhật**, **Nhận bản beta** | Bản này không tự cập nhật được. |
 
 ## Dữ liệu và mật khẩu
 

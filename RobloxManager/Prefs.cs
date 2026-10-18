@@ -30,6 +30,9 @@ public static class Prefs
     /// <summary>Look for new versions by itself (a manual check is always possible).</summary>
     public static bool CheckUpdates { get; set; } = true;
 
+    /// <summary>Updates include beta versions (GitHub pre-releases), automatic or not; off until the person turns it on.</summary>
+    public static bool BetaUpdates { get; set; }
+
     /// <summary>The version that last ran here; a newer one means the app was updated (see <see cref="WhatsNew"/>).</summary>
     public static string? LastVersion { get; set; }
 
@@ -105,7 +108,7 @@ public static class Prefs
 
     static readonly string[] Known =
     [
-        "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "lastVersion",
+        "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
         "multiRobloxAtStart",
@@ -143,6 +146,8 @@ public static class Prefs
                 SafeRendering = true;
             if (root.TryGetProperty("checkUpdates", out var updates) && updates.ValueKind == JsonValueKind.False)
                 CheckUpdates = false;
+            if (root.TryGetProperty("betaUpdates", out var beta) && beta.ValueKind == JsonValueKind.True)
+                BetaUpdates = true;
             if (root.TryGetProperty("lastVersion", out var last) && last.ValueKind == JsonValueKind.String)
                 LastVersion = last.GetString();
             if (root.TryGetProperty("notifications", out var notify) && notify.ValueKind == JsonValueKind.False)
@@ -228,7 +233,7 @@ public static class Prefs
             var values = new Dictionary<string, object?>
             {
                 ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
-                ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["lastVersion"] = LastVersion,
+                ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
                 ["notifications"] = Notifications, ["notifyOff"] = NotifyOff.Order(StringComparer.Ordinal).ToArray(),
                 ["backupFolder"] = BackupFolder, ["backupEnabled"] = BackupEnabled, ["lastBackup"] = LastBackup,
                 ["backupPending"] = BackupPending,
