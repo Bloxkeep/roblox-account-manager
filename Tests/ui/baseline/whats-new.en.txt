@@ -154,16 +154,32 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.1.5 · October 18, 2026"
+              small "Bloxkeep 1.1.6-beta.1 · October 18, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
+        ul.wn-list
+          li.wn-item
+            span.wn-ic
+              svg.i #14iobj
+            div
+              b "Experimental"
+              p "All Roblox windows temporarily stop saving sign-ins and some settings while separate sign-in windows are open. Close the separate windows before quitting Bloxkeep. A crash may replace the usual saved sign-in; long sessions have not been verified."
+        h4.new.wn-kind.wn-sub "New"
+          svg.i #u7ty99
+        ul.new.wn-also
+          li
+            svg.i #u7ty99
+            span "Separate sign-in windows: Open Roblox in the tray menu opens another window you can sign into independently, without adding the account to Bloxkeep. Multi-Roblox must be ready."
         h4.fixed.wn-kind.wn-sub "Fixed"
           svg.i #yqrnd9
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
-            span "Open Roblox in the tray icon's menu no longer sends the Roblox window already open into a game. It opens Roblox's home screen when no Roblox is open; with one open, it says how to open another window (Roblox opens a second one only for a sign-in)."
+            span "Shared sign-in files unlock after the separate clients close, even when ordinary clients remain open. Junctions stay in Bloxkeep data rather than TEMP; empty files created by Bloxkeep are removed automatically."
+          li
+            svg.i #yqrnd9
+            span "Opening a separate window reports when Multi-Roblox becomes unavailable and no longer overlaps account launches or automatic rejoins."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

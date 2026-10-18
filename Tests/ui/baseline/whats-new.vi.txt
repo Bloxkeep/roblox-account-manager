@@ -154,16 +154,32 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.1.5 · 18 tháng 10, 2026"
+              small "Bloxkeep 1.1.6-beta.1 · 18 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
+        ul.wn-list
+          li.wn-item
+            span.wn-ic
+              svg.i #14iobj
+            div
+              b "Đang thử nghiệm"
+              p "Mọi cửa sổ Roblox tạm thời không lưu đăng nhập và một số cài đặt khi có cửa sổ đăng nhập riêng. Hãy đóng các cửa sổ riêng trước khi thoát Bloxkeep. Nếu Bloxkeep bị lỗi, đăng nhập thường dùng có thể bị thay thế; chưa kiểm chứng việc treo lâu dài."
+        h4.new.wn-kind.wn-sub "Mới"
+          svg.i #u7ty99
+        ul.new.wn-also
+          li
+            svg.i #u7ty99
+            span "Cửa sổ đăng nhập riêng: Mở Roblox mới trong menu khay mở thêm cửa sổ để đăng nhập độc lập, không cần thêm tài khoản vào Bloxkeep. Multi-Roblox phải sẵn sàng."
         h4.fixed.wn-kind.wn-sub "Đã sửa"
           svg.i #yqrnd9
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
-            span "Mở Roblox mới ở menu biểu tượng khay không còn đưa cửa sổ Roblox đang mở vào game. Khi chưa có Roblox nào mở, nó mở màn hình chính của Roblox; khi đã có, nó chỉ cách mở thêm cửa sổ (Roblox chỉ mở thêm cửa sổ khi vào bằng một tài khoản)."
+            span "Tệp đăng nhập chung được nhả khóa sau khi các client riêng đóng, kể cả khi client thường vẫn chạy. Junction nằm trong dữ liệu Bloxkeep thay vì TEMP; tệp rỗng do Bloxkeep tạo được tự dọn."
+          li
+            svg.i #yqrnd9
+            span "Mở cửa sổ riêng báo rõ khi Multi-Roblox mất trạng thái sẵn sàng, và không còn chạy đồng thời với việc mở tài khoản hoặc tự vào lại game."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q
