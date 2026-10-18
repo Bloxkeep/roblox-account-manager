@@ -71,7 +71,7 @@ rem Plain names for the files people download, and the web installer and SHA256S
 rem update packages keep vpk's names).
 powershell -NoProfile -ExecutionPolicy Bypass -File Installer\assets.ps1 || goto :fail
 
-powershell -NoProfile -Command "Get-ChildItem dist\releases -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object { '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } | Set-Content -Encoding ascii dist\releases\SHA256SUMS.txt" || goto :fail
+powershell -NoProfile -ExecutionPolicy Bypass -File Installer\checksums.ps1 || goto :fail
 
 echo.
 echo Done:
