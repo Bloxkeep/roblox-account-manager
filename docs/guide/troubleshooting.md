@@ -15,6 +15,13 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 - Yellow **Roblox closed windows** or **A Roblox update may stop it**: a Roblox update may have changed how it blocks several windows. Open **Settings › Roblox version & graphics**, press **Check for a Bloxkeep update**, and play one account at a time until an update fixes it.
 - Using a launcher? If it blocks several windows, choose **RobloxPlayerBeta directly (skip launchers)** in **Settings › Launching › Open Roblox with**.
 
+### **Q:** A Roblox window crashes as it opens ("Memory dump captured", or Bloxstrap's "Roblox failed to launch")
+
+**A:** Windows ran out of memory for programs. That counts RAM and the paging file together, so it can happen with RAM still free: each Roblox window holds about 2–2.5 GB of it. Bloxkeep warns before **Play** when the next windows won't fit.
+
+- Close apps you don't need (browsers take a lot).
+- Or give Windows a bigger paging file. It can go on any drive, so drive C needs no space: press **Win+R**, type `sysdm.cpl`, then **Advanced › Performance › Settings › Advanced › Virtual memory › Change**. Untick **Automatically manage**, pick a drive with room, choose **Custom size** (for example 16384 and 32768 MB), press **Set**, then **OK**, and restart the PC.
+
 ### **Q:** An account says "Needs sign-in"
 
 **A:** Roblox ended its saved sign-in (a password change, "log out of all sessions", a security check). Press **Sign in** on the card and confirm with your phone, or add the account again any way: it is updated, not copied. The **Needs sign-in** filter shows them all, and **Check sign-ins every day** finds them before you press Play.

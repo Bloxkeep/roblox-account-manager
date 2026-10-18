@@ -15,6 +15,13 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 - Đèn vàng **Roblox đã đóng cửa sổ** hoặc **Bản Roblox mới có thể chặn**: một bản Roblox mới có thể đã đổi cách chặn nhiều cửa sổ. Mở **Cài đặt › Phiên bản & đồ họa Roblox**, bấm **Kiểm tra bản cập nhật Bloxkeep**, và chơi từng tài khoản một cho tới khi có bản sửa.
 - Đang dùng launcher? Nếu launcher chặn mở nhiều cửa sổ, chọn **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)** ở **Cài đặt › Khởi chạy › Mở Roblox bằng**.
 
+### **H:** Cửa sổ Roblox bị văng ngay khi mở ("Memory dump captured", hoặc Bloxstrap báo "Roblox failed to launch")
+
+**Đ:** Windows đã hết bộ nhớ cho các chương trình. Bộ nhớ này tính cả RAM lẫn file hoán đổi (paging file), nên vẫn có thể hết dù RAM còn trống: mỗi cửa sổ Roblox giữ khoảng 2–2,5 GB. Bloxkeep sẽ cảnh báo trước khi bạn bấm **Vào game** nếu không đủ chỗ cho cửa sổ mới.
+
+- Tắt bớt ứng dụng không cần (trình duyệt tốn nhiều nhất).
+- Hoặc tăng file hoán đổi cho Windows. File này đặt ở ổ nào cũng được nên không tốn chỗ ổ C: bấm **Win+R**, gõ `sysdm.cpl`, rồi vào **Advanced › Performance › Settings › Advanced › Virtual memory › Change**. Bỏ tích **Automatically manage**, chọn một ổ còn trống nhiều, chọn **Custom size** (ví dụ 16384 và 32768 MB), bấm **Set**, rồi **OK**, và khởi động lại máy.
+
 ### **H:** Tài khoản báo "Cần đăng nhập lại"
 
 **Đ:** Roblox đã kết thúc phiên đăng nhập đã lưu (đổi mật khẩu, đăng xuất mọi phiên, hoặc một đợt kiểm tra bảo mật). Bấm **Đăng nhập** trên thẻ và xác nhận bằng điện thoại, hoặc thêm lại tài khoản bằng cách bất kỳ: Bloxkeep chỉ cập nhật chứ không tạo bản trùng. Bộ lọc **Cần đăng nhập lại** gom hết các tài khoản này, và **Kiểm tra đăng nhập mỗi ngày** sẽ phát hiện trước khi bạn bấm Vào game.

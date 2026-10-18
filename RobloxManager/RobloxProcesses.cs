@@ -75,7 +75,8 @@ public static class RobloxProcesses
 
     /// <param name="Parent">The process that started it (which may have exited since); 0 when not known.</param>
     /// <param name="Created">When it started (a FILETIME, UTC): a process id Windows gave to a newer process has another one. 0 when not known.</param>
-    public readonly record struct PlayerProcess(int Pid, long WorkingSet, int Parent = 0, long Created = 0);
+    /// <param name="Private">The memory it holds for itself (its private bytes, its share of Windows' commit limit); 0 when not known.</param>
+    public readonly record struct PlayerProcess(int Pid, long WorkingSet, int Parent = 0, long Created = 0, long Private = 0);
 
     /// <summary>
     /// Running clients with their RAM use, parent and start time. All come from one system-wide process snapshot (the
@@ -114,7 +115,7 @@ public static class RobloxProcesses
         }
         try
         {
-            return processes.Select(p => new PlayerProcess(p.Id, WorkingSet(p))).ToList();
+            return processes.Select(p => new PlayerProcess(p.Id, WorkingSet(p), Private: PrivateBytes(p))).ToList();
         }
         finally
         {
@@ -140,7 +141,8 @@ public static class RobloxProcesses
     {
         if (IntPtr.Size != 8)
             return null;
-        const int CreateTime = 32, NameLength = 56, NameBuffer = 64, ProcessId = 80, ParentId = 88, WorkingSetSize = 144, EntryEnd = 152;
+        const int CreateTime = 32, NameLength = 56, NameBuffer = 64, ProcessId = 80, ParentId = 88, WorkingSetSize = 144,
+            PrivatePageCount = 200, EntryEnd = 208;
         const string Image = PlayerProcessName + ".exe";
         for (int attempt = 0; attempt < 4; attempt++)
         {
@@ -165,7 +167,7 @@ public static class RobloxProcesses
                     IntPtr name = Marshal.ReadIntPtr(entry, NameBuffer);
                     if (length == Image.Length * 2 && (long)name >= (long)buffer && (long)name + length <= end && IsImage(name, Image))
                         players.Add(new PlayerProcess((int)Marshal.ReadInt64(entry, ProcessId), Marshal.ReadInt64(entry, WorkingSetSize),
-                            (int)Marshal.ReadInt64(entry, ParentId), Marshal.ReadInt64(entry, CreateTime)));
+                            (int)Marshal.ReadInt64(entry, ParentId), Marshal.ReadInt64(entry, CreateTime), Marshal.ReadInt64(entry, PrivatePageCount)));
                     int next = Marshal.ReadInt32(entry, 0);
                     if (next <= 0)
                         break;
@@ -196,6 +198,18 @@ public static class RobloxProcesses
         try
         {
             return p.WorkingSet64;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;
+        }
+    }
+
+    static long PrivateBytes(Process p)
+    {
+        try
+        {
+            return p.PrivateMemorySize64;
         }
         catch (InvalidOperationException)
         {

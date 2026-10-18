@@ -181,14 +181,16 @@
   let multi = { enabled: !params.has('multioff'), armed: !params.has('notready') && !params.has('multioff'), windowed: true, tile: false, trayAutostart: true };
   /**
    * The app's launch warnings (AppController.LaunchAccountsAsync): Multi-Roblox off or not ready with several accounts,
-   * low RAM with ?lowram; one answered "Don't ask again" (launch.<kind>) is left out, as the app does.
+   * low RAM with ?lowram, Windows' commit limit almost used up with ?lowcommit; one answered "Don't ask again" (launch.<kind>) is left out, as the app does.
    */
   function launchAsks(count, force) {
     const vi = language === 'vi', asks = [];
     if (count > 1 && !multi.armed) asks.push(multi.enabled
       ? ['multiNotReady', vi ? 'Multi-Roblox chưa hoạt động: Roblox đã mở từ trước khi bật Multi-Roblox. Cửa sổ Roblox mới có thể đóng cửa sổ cũ.' : "Multi-Roblox isn't working yet: Roblox was already open before it was turned on. A new Roblox window may close the old one."]
       : ['multiOff', vi ? 'Multi-Roblox đang tắt nên mỗi lần mở Roblox mới, cửa sổ cũ sẽ bị đóng.' : 'Multi-Roblox is off, so each new Roblox window closes the previous one.']);
-    if (params.has('lowram')) asks.push(['memory', vi ? 'RAM chỉ còn trống 1.2 GB, mà mở thêm 2 cửa sổ Roblox cần khoảng 1.6 GB. Máy có thể bị chậm hoặc Roblox bị văng.' : 'Only 1.2 GB of RAM is free, and 2 more Roblox windows need about 1.6 GB. The PC may slow down or Roblox may crash.']);
+    // ?lowcommit=1: Windows' commit limit (RAM and paging file together) almost used up, with RAM to spare.
+    if (params.has('lowcommit')) asks.push(['memory', vi ? 'Windows chỉ còn 1.1 GB bộ nhớ cho các chương trình (tính cả RAM lẫn file hoán đổi), mà mở thêm 2 cửa sổ Roblox cần khoảng 4.8 GB, nên Roblox có thể bị văng ngay khi mở. Hãy tắt bớt ứng dụng khác, hoặc tăng file hoán đổi cho Windows, đặt ở ổ nào cũng được: Advanced system settings › Performance › Virtual memory.' : 'Windows has only 1.1 GB of memory left for programs (RAM and paging file together), and 2 more Roblox windows need about 4.8 GB, so they may crash as they open. Close other apps, or give Windows a bigger paging file, on any drive: Advanced system settings › Performance › Virtual memory.']);
+    else if (params.has('lowram')) asks.push(['memory', vi ? 'RAM chỉ còn trống 1.2 GB, mà mở thêm 2 cửa sổ Roblox cần khoảng 1.6 GB. Máy có thể bị chậm hoặc Roblox bị văng.' : 'Only 1.2 GB of RAM is free, and 2 more Roblox windows need about 1.6 GB. The PC may slow down or Roblox may crash.']);
     const left = asks.filter(([k]) => !(['multiOff', 'watch', 'memory'].includes(k) && skipConfirm.includes(`launch.${k}`)));
     return left.length && !force ? { needsConfirm: true, message: left.map(x => x[1]).join('\n\n'), asks: left.map(x => x[0]) } : null;
   }

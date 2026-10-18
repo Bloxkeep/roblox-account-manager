@@ -222,6 +222,12 @@ public static class L
             "RAM chỉ còn trống {0}, mà mở thêm {1} cửa sổ Roblox cần khoảng {2}. Máy có thể bị chậm hoặc Roblox bị văng.",
         ["Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash."] =
             "RAM chỉ còn trống {0}, mà mở thêm {1} cửa sổ Roblox cần khoảng {2}. Máy có thể bị chậm hoặc Roblox bị văng.",
+        ["Windows has only {0} of memory left for programs (RAM and paging file together), and {1} more Roblox window needs about {2}, so it may crash as it opens. Close other apps, or give Windows a bigger paging file, on any drive: Advanced system settings › Performance › Virtual memory."] =
+            "Windows chỉ còn {0} bộ nhớ cho các chương trình (tính cả RAM lẫn file hoán đổi), mà mở thêm {1} cửa sổ Roblox cần khoảng {2}, nên Roblox có thể bị văng ngay khi mở. Hãy tắt bớt ứng dụng khác, hoặc tăng file hoán đổi cho Windows, đặt ở ổ nào cũng được: Advanced system settings › Performance › Virtual memory.",
+        ["Windows has only {0} of memory left for programs (RAM and paging file together), and {1} more Roblox windows need about {2}, so they may crash as they open. Close other apps, or give Windows a bigger paging file, on any drive: Advanced system settings › Performance › Virtual memory."] =
+            "Windows chỉ còn {0} bộ nhớ cho các chương trình (tính cả RAM lẫn file hoán đổi), mà mở thêm {1} cửa sổ Roblox cần khoảng {2}, nên Roblox có thể bị văng ngay khi mở. Hãy tắt bớt ứng dụng khác, hoặc tăng file hoán đổi cho Windows, đặt ở ổ nào cũng được: Advanced system settings › Performance › Virtual memory.",
+        ["Windows is almost out of memory for programs ({0} left), so a Roblox window may crash. Close other apps, or give Windows a bigger paging file."] =
+            "Windows sắp hết bộ nhớ cho các chương trình (còn {0}), cửa sổ Roblox có thể bị văng. Hãy tắt bớt ứng dụng khác, hoặc tăng file hoán đổi cho Windows.",
         ["This file is too large to be an account list."] = "File này quá lớn, không thể là danh sách tài khoản.",
         ["This file is still encrypted. Decrypt it first with RAM's official RAMDecrypt tool, then import the decrypted file."] =
             "File này vẫn còn bị mã hóa. Hãy giải mã bằng công cụ RAMDecrypt chính thức của RAM trước, rồi nhập file đã giải mã.",

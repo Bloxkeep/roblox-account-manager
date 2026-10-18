@@ -58,6 +58,10 @@ public sealed partial class AppController : IDisposable
     static readonly TimeSpan BackgroundSweep = TimeSpan.FromSeconds(15);
     const int MemoryWarningLoad = 92;
     const long DefaultClientMb = 900;
+    /// <summary>What a Roblox client holds of Windows' commit limit once in a game (2.1–2.4 GB seen on 0.743), when none runs to go by.</summary>
+    const long DefaultClientCommitMb = 2048;
+    /// <summary>Below this much of the commit limit left, programs start failing; Windows itself warns at about this point.</summary>
+    const long CommitMarginMb = 1024;
     const long MB = 1024 * 1024;
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -2596,7 +2600,16 @@ public sealed partial class AppController : IDisposable
             var memory = SystemMemory.Read();
             long perClientMb = players.Count > 0 ? Math.Max(400, (long)players.Average(p => p.WorkingSet) / MB) : DefaultClientMb;
             long neededMb = toOpen * perClientMb;
-            if (s.MemoryWarnings && memory.TotalMb > 0 && memory.AvailableMb - neededMb < memory.TotalMb * 8 / 100)
+            // Windows' commit limit (RAM and paging file together) runs out before RAM does when the page file is small: a
+            // client that can't get memory crashes as it opens, with RAM to spare. That is the warning that matters then.
+            long perClientCommitMb = players.Count(p => p.Private > 0) is > 0 and var known
+                ? Math.Max(DefaultClientCommitMb / 2, players.Where(p => p.Private > 0).Sum(p => p.Private) / known / MB) : DefaultClientCommitMb;
+            long neededCommitMb = toOpen * perClientCommitMb;
+            if (s.MemoryWarnings && toOpen > 0 && memory.CommitLimitMb > 0 && memory.CommitAvailableMb - neededCommitMb < CommitMarginMb)
+                warnings.Add(("memory", L.P(toOpen, "Windows has only {0} of memory left for programs (RAM and paging file together), and {1} more Roblox window needs about {2}, so it may crash as it opens. Close other apps, or give Windows a bigger paging file, on any drive: Advanced system settings › Performance › Virtual memory.",
+                    "Windows has only {0} of memory left for programs (RAM and paging file together), and {1} more Roblox windows need about {2}, so they may crash as they open. Close other apps, or give Windows a bigger paging file, on any drive: Advanced system settings › Performance › Virtual memory.",
+                    FormatMb(Math.Max(0, memory.CommitAvailableMb)), toOpen, FormatMb(neededCommitMb))));
+            else if (s.MemoryWarnings && memory.TotalMb > 0 && memory.AvailableMb - neededMb < memory.TotalMb * 8 / 100)
                 warnings.Add(("memory", L.P(toOpen, "Only {0} of RAM is free, and {1} more Roblox window needs about {2}. The PC may slow down or Roblox may crash.",
                     "Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash.",
                     FormatMb(memory.AvailableMb), toOpen, FormatMb(neededMb))));
@@ -3516,6 +3529,15 @@ public sealed partial class AppController : IDisposable
         {
             _lastMemoryWarning = now;
             Notify(L.F("Your PC is using {0}% of its RAM. Close some Roblox windows if things get slow.", memory.LoadPercent), "warn", "ram");
+        }
+        // RAM may be fine while Windows' commit limit (RAM and paging file together) is nearly used up: a Roblox window
+        // that needs more then crashes.
+        else if (s.MemoryWarnings && players.Count > 0 && memory.CommitLimitMb > 0 && memory.CommitAvailableMb < CommitMarginMb
+            && now - _lastMemoryWarning > MemoryWarningInterval)
+        {
+            _lastMemoryWarning = now;
+            Notify(L.F("Windows is almost out of memory for programs ({0} left), so a Roblox window may crash. Close other apps, or give Windows a bigger paging file.",
+                FormatMb(Math.Max(0, memory.CommitAvailableMb))), "warn", "ram");
         }
 
         foreach (int gone in _lowMemoryPriority.Where(pid => players.All(p => p.Pid != pid)).ToList())

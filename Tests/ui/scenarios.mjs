@@ -35,6 +35,7 @@ export default [
     await s.click({ key: 'dock.play', within: '.dock' });
     await s.wait(1500);
   }),
+  S('play-low-commit', 'select=1&lowcommit=1', async s => { await s.click({ key: 'dock.play', within: '.dock' }); await s.wait(500); }),
   S('first-run', 'new=1'),
   S('locked', 'locked=1'),
 
