@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.6-beta.4",
+    "date": "2026-10-18",
+    "fixed": {
+      "en": [
+        "Auto-rejoin no longer waits while the separate sign-in question is open: a game that lost its connection meanwhile is reopened as usual."
+      ],
+      "vi": [
+        "Tự vào lại game không còn phải chờ hộp hỏi về cửa sổ đăng nhập riêng: game bị rớt mạng trong lúc hộp đang mở vẫn được mở lại như bình thường."
+      ]
+    }
+  },
+  {
     "version": "1.0.6-beta.3",
     "date": "2026-10-18",
     "new": {

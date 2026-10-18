@@ -162,22 +162,16 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.6-beta.3 · 18 tháng 10, 2026"
+              small "Bloxkeep 1.0.6-beta.4 · 18 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        h4.new.wn-kind.wn-sub "Mới"
-          svg.i #u7ty99
-        ul.new.wn-also
+        h4.fixed.wn-kind.wn-sub "Đã sửa"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
           li
-            svg.i #u7ty99
-            span "Bảng nhanh ở khay: bấm biểu tượng Bloxkeep ở khay để bật tắt Multi-Roblox, xem các tài khoản đang chơi (hiện hay đóng từng cửa sổ), cùng Vào game, Preset và Roblox mới. Bấm chuột phải để mở menu, giờ có biểu tượng và dòng trạng thái ở đầu."
-        h4.improved.wn-kind.wn-sub "Cải thiện"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "Cửa sổ chính tốn ít hơn khoảng 100 MB RAM, và khi Windows sắp hết bộ nhớ thì nó nhả trình duyệt sau nửa phút nằm dưới khay."
+            svg.i #yqrnd9
+            span "Tự vào lại game không còn phải chờ hộp hỏi về cửa sổ đăng nhập riêng: game bị rớt mạng trong lúc hộp đang mở vẫn được mở lại như bình thường."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q
