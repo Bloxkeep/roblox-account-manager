@@ -139,7 +139,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Tăng tốc phần cứng"
-                        div.d "Tự tắt nếu driver card đồ họa bị lỗi."
+                        div.d "Tắt đi sẽ đỡ tốn RAM. Tự tắt nếu driver card đồ họa bị lỗi."
                       div.ctl
                         label.switch
                           input [id="s-gpu" type="checkbox" aria-label="Tăng tốc phần cứng" checked=true]

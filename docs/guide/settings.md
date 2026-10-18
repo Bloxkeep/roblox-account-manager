@@ -69,7 +69,7 @@ Details for each row are in [Staying in game](staying-in-game.md).
 | **Save RAM on background windows** | Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first. | Off |
 | **Fast cores for the window you play** | Roblox windows in the background run on the CPU's efficiency cores in power-saving mode; the one you play keeps the fast cores. | Off |
 | **Keep running in the tray when closed** | The ✕ button hides Bloxkeep to the tray instead of quitting. | On |
-| **Hardware acceleration** | Draws Bloxkeep's window with the graphics card. Turns itself off if the driver acts up. Switching reloads the window. | On |
+| **Hardware acceleration** | Draws Bloxkeep's window with the graphics card. Off, the window uses less RAM (about 90 MB less on a PC with an NVIDIA card). Turns itself off if the driver acts up. Switching reloads the window. | On |
 
 ## Notifications
 

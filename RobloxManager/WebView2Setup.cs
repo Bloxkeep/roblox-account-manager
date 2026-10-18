@@ -29,8 +29,16 @@ static class WebView2Setup
     /// </summary>
     const string MainWindowArgs = "--disable-background-networking --disable-component-update";
 
+    /// <summary>
+    /// With the graphics card on, the page is still painted by the processor and only put together on the card.
+    /// Painting on the card made the browser's GPU process hold about 100 MB more for this small page, which scrolls
+    /// and animates just as smoothly either way (measured 2026-10-18, RTX 4070 laptop, 80 accounts: the whole browser
+    /// 360 → 265 MB when opened, 398 → 265 MB after scrolling and every tab, 254 → 225 MB minimised).
+    /// </summary>
+    const string GpuArgs = "--disable-gpu-rasterization";
+
     public static CoreWebView2EnvironmentOptions MainWindowOptions() =>
-        new(Prefs.SafeRendering ? $"{MainWindowArgs} {SafeRenderingArgs}" : MainWindowArgs);
+        new(Prefs.SafeRendering ? $"{MainWindowArgs} {SafeRenderingArgs}" : $"{MainWindowArgs} {GpuArgs}");
 
     public static async Task<bool> TryInstallAsync(IWin32Window owner)
     {

@@ -5,8 +5,9 @@ using RobloxManager;
 namespace Bloxkeep.Tests;
 
 /// <summary>
-/// The main window's browser (WebView2Setup.MainWindowOptions): it leaves out the browser's own background work, still
-/// starts with those switches and shows a page with its scripts running, and CPU drawing (safe rendering) keeps them.
+/// The main window's browser (WebView2Setup.MainWindowOptions): it leaves out the browser's own background work and
+/// painting on the graphics card, still starts with those switches and shows a page with its scripts running, and CPU
+/// drawing (safe rendering) keeps them.
 /// Also the small files written so a power cut can't leave them empty (DurableFile). Needs the WebView2 runtime.
 /// </summary>
 static class MainBrowserSuite
@@ -61,6 +62,8 @@ static class MainBrowserSuite
     {
         string args = Options().AdditionalBrowserArguments;
         c.Check("the main window's browser leaves out its background work", args.Contains("--disable-background-networking") && args.Contains("--disable-component-update"), args);
+        c.Check("…and paints the page on the processor, putting it together on the graphics card (about 100 MB less)",
+            args.Contains("--disable-gpu-rasterization") && !args.Contains("--disable-gpu "), args);
 
         var env = await CoreWebView2Environment.CreateAsync(null, Path.Combine(dir, "webview"), Options());
         using var web = new WebView2 { Dock = DockStyle.Fill };

@@ -139,7 +139,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Hardware acceleration"
-                        div.d "Turns off automatically if your graphics driver acts up."
+                        div.d "Off uses less RAM. Turns off automatically if your graphics driver acts up."
                       div.ctl
                         label.switch
                           input [id="s-gpu" type="checkbox" aria-label="Hardware acceleration" checked=true]
