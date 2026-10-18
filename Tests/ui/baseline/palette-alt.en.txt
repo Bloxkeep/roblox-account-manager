@@ -436,8 +436,8 @@ html [data-theme="dark" lang="en"]
           h4 "Roblox on this PC"
           div.sys-row
             span [title="Main · PID 1111\nFarm 1 · PID 9\nTesting · PID 9"]
-              b [id="sys-count"] "1"
-              span [id="sys-count-label"] "window"
+              b [id="sys-count"] "3"
+              span [id="sys-count-label"] "windows"
             span [id="sys-ram"] "1.7 GB"
           div.meter [id="sys-meter"]
             i.roblox [style="transform:scaleX(0.054)"]
@@ -575,7 +575,7 @@ html [data-theme="dark" lang="en"]
                 div.live
                   span [title="RAM in use"]
                     svg.i #m3noxv
-                    b.ram "…"
+                    b.ram "935 MB"
                   span [title="Play time"]
                     svg.i #ktpp14
                     b.up "0 min"
@@ -702,7 +702,7 @@ html [data-theme="dark" lang="en"]
                 div.live
                   span [title="RAM in use"]
                     svg.i #m3noxv
-                    b.ram "…"
+                    b.ram "1 GB"
                   span [title="Play time"]
                     svg.i #ktpp14
                     b.up "0 min"

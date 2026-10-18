@@ -31,7 +31,7 @@ html [data-theme="dark" lang="vi"]
           h4 "Roblox trên máy này"
           div.sys-row
             span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 9\nNight Owl · PID 9\nThử nghiệm · PID 9"]
-              b [id="sys-count"] "1"
+              b [id="sys-count"] "4"
               span [id="sys-count-label"] "cửa sổ"
             span [id="sys-ram"] "1,7 GB"
           div.meter [id="sys-meter"]
@@ -145,7 +145,7 @@ html [data-theme="dark" lang="vi"]
                 div.live
                   span [title="RAM đang dùng"]
                     svg.i #m3noxv
-                    b.ram "…"
+                    b.ram "935 MB"
                   span [title="Thời gian đã chơi"]
                     svg.i #ktpp14
                     b.up "0 phút"
@@ -208,7 +208,7 @@ html [data-theme="dark" lang="vi"]
                 div.live
                   span [title="RAM đang dùng"]
                     svg.i #m3noxv
-                    b.ram "…"
+                    b.ram "1 GB"
                   span [title="Thời gian đã chơi"]
                     svg.i #ktpp14
                     b.up "0 phút"
@@ -304,7 +304,7 @@ html [data-theme="dark" lang="vi"]
                 div.live
                   span [title="RAM đang dùng"]
                     svg.i #m3noxv
-                    b.ram "…"
+                    b.ram "1,2 GB"
                   span [title="Thời gian đã chơi"]
                     svg.i #ktpp14
                     b.up "0 phút"
