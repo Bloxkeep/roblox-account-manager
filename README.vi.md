@@ -5,15 +5,18 @@
 <p align="center">Quản lý và mở nhiều tài khoản Roblox trên Windows. Tài khoản được mã hóa và chỉ lưu trên máy của bạn.</p>
 <p align="center"><a href="README.md">English</a> | Tiếng Việt</p>
 <p align="center"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 hoặc 11, 64-bit"> <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10"> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="Giấy phép MIT"></a></p>
-<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
+<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://minhhoang0122.github.io/Bloxkeep/vi/">Trang web</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
-<p align="center"><img src="docs/screenshots/vi/hero.png" width="860" alt="Cửa sổ chính của Bloxkeep: danh sách tài khoản dạng thẻ với hai tài khoản đang được chọn, thanh chọn game ở dưới và Multi-Roblox đang bật"></p>
+<p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="Ảnh chụp thật trên một máy Windows: năm cửa sổ Roblox mở cùng lúc, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, bốn cửa sổ cùng ở trong một game và cửa sổ thứ năm đang vào, phía sau là Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật"></p>
+<p align="center"><sub>Ảnh chụp thật trên một máy: năm tài khoản Roblox mở cùng lúc bằng Bloxkeep, bốn tài khoản đã vào game, tài khoản thứ năm đang vào. Tên trong game đã được làm mờ.</sub></p>
 
 Bloxkeep dành cho người chơi nhiều tài khoản Roblox trên một máy Windows: giữ các tài khoản ở một chỗ, chọn game, chọn tài khoản rồi bấm **Vào game**. Dữ liệu chỉ nằm trên máy của bạn, được mã hóa bằng mật khẩu chủ; Bloxkeep không có máy chủ riêng.
 
 *Bloxkeep là dự án độc lập, không liên kết, không được Roblox Corporation bảo trợ hay tài trợ. Roblox là thương hiệu của Roblox Corporation.*
 
 ## Tính năng
+
+<img src="docs/screenshots/vi/hero.png" width="860" alt="Cửa sổ chính của Bloxkeep: danh sách tài khoản dạng thẻ với hai tài khoản đang được chọn, thanh chọn game ở dưới và Multi-Roblox đang bật">
 
 Mỗi mục đều được giải thích ở phần [Sử dụng](#sử-dụng) và, từng bước một, trong [hướng dẫn sử dụng](docs/guide.vi.md).
 
@@ -27,7 +30,7 @@ Mỗi mục đều được giải thích ở phần [Sử dụng](#sử-dụng)
 - **Multi-Roblox**: chạy nhiều cửa sổ Roblox cùng lúc, mở ở chế độ cửa sổ và xếp thành lưới, kèm kiểm tra từng bản Roblox mới. Tắt sẵn, bạn tự bật khi cần. [Multi-Roblox](#multi-roblox), [Cập nhật Roblox](#cập-nhật-roblox)
 - **Treo game**: [Chống AFK](#chống-afk) giữ cửa sổ khỏi bị kick vì đứng yên, còn [Tự vào lại game](#tự-vào-lại-game) vào lại sau khi bị văng, thử lại giãn dần chứ không bỏ cuộc.
 - **Cấu hình Roblox theo tài khoản** (đồ họa, FPS, âm lượng), và chọn chương trình dùng để mở Roblox: Roblox, Bloxstrap, Fishstrap, RobloxPlayerBeta trực tiếp, Roblox bản Microsoft Store (đang thử nghiệm) hoặc launcher của riêng bạn. [Cấu hình Roblox theo tài khoản](#cấu-hình-roblox-theo-tài-khoản), [Mở Roblox bằng](#mở-roblox-bằng)
-- **Cửa sổ và RAM**: hình trực tiếp của mọi cửa sổ Roblox trong tab Theo dõi game, cửa sổ nhỏ, xếp cửa sổ, cảnh báo trước khi hết RAM. [Cửa sổ, RAM và màn hình theo dõi](#cửa-sổ-ram-và-màn-hình-theo-dõi)
+- **Cửa sổ và RAM**: hình trực tiếp của mọi cửa sổ Roblox trong tab Theo dõi game, cửa sổ nhỏ, xếp cửa sổ, cảnh báo trước khi hết RAM hoặc bộ nhớ ảo của Windows. [Cửa sổ, RAM và màn hình theo dõi](#cửa-sổ-ram-và-màn-hình-theo-dõi)
 - **Thống kê và nhật ký hoạt động**: thời gian chơi, số lượt và số lần mất kết nối theo tài khoản, game và preset. [Thống kê và hoạt động](#thống-kê-và-hoạt-động)
 - **Discord**: cảnh báo, tin trạng thái tự cập nhật và tổng kết thời gian chơi gửi vào kênh của bạn. [Discord](#discord)
 - **Khóa app, khay hệ thống và thông báo**: khóa Bloxkeep bằng mật khẩu chủ, chạy ngầm ở khay, nhận thông báo Windows. [Khay hệ thống, khóa app và thông báo](#khay-hệ-thống-khóa-app-và-thông-báo)
@@ -74,6 +77,8 @@ Một chương trình canh nhỏ (chính chương trình gỡ cài đặt, chạ
 Tự cập nhật chỉ hoạt động khi repo trên GitHub ở chế độ công khai.
 
 Muốn tắt tự cập nhật: bỏ chọn **Cài đặt › Cập nhật Bloxkeep › Tự động cập nhật**; khi đó app không tự tải hay tự cài gì nữa. Nút **Kiểm tra ngay** vẫn dùng được.
+
+Muốn dùng tính năng mới sớm hơn mọi người, bật **Cài đặt › Cập nhật Bloxkeep › Nhận bản beta** (tắt sẵn): khi cập nhật, app nhận cả bản beta, có thể vẫn còn lỗi. Đang dùng bản beta mà tắt đi thì bạn vẫn giữ bản đó tới khi có bản chính thức tiếp theo. Trên trang Releases, bản beta có nhãn **Pre-release** và mang số của bản chính thức sắp ra (1.0.6-beta.2 ra trước 1.0.6).
 
 Chạy `Bloxkeep-Setup.exe` bản mới hơn đè lên bản đã cài cũng được: bộ cài cài vào đúng thư mục cũ, đóng Bloxkeep đang chạy trước và giữ nguyên dữ liệu. Muốn chuyển Bloxkeep sang ổ khác thì gỡ cài đặt rồi cài lại vào thư mục mới.
 
@@ -251,6 +256,10 @@ Xem thêm trong hướng dẫn: [Preset và hẹn giờ](docs/guide/presets.vi.m
 
 Multi-Roblox **tắt sẵn**. Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc; bạn tự chịu rủi ro khi bật (bật lên thì app hỏi **Bật Multi-Roblox?** trước). Bật bằng công tắc Multi-Roblox ở thanh bên hoặc trong **Cài đặt › Khởi chạy**.
 
+<img src="docs/screenshots/multi-roblox-real-detail.jpg" width="800" alt="Ảnh chụp thật: thẻ Roblox on this PC ở thanh bên của Bloxkeep đếm 5 cửa sổ, thẻ Multi-Roblox ghi On, several windows allowed, bên cạnh bốn cửa sổ Roblox cùng ở trong một game">
+
+Ảnh chụp thật: thanh bên đếm 5 cửa sổ Roblox và Multi-Roblox đang bật. Tên trong game đã được làm mờ.
+
 - Bloxkeep phải mở **trước** Roblox và để mở trong lúc chơi. Chạy ẩn dưới khay hệ thống thì được.
 - Đèn trên thẻ ở thanh bên cho biết tình trạng:
 
@@ -364,7 +373,7 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 - **Cửa sổ nhỏ**: một cửa sổ gọn luôn nằm trên cùng, để theo dõi các tài khoản đang chơi mà không cần mở cửa sổ chính: mỗi tài khoản có game, RAM, PID và nút **Hiện**, **Đóng**, cùng nút **Đóng tất cả** và **Mở Bloxkeep**. Mở từ thanh bên, menu ở khay hoặc `Ctrl+K`; nó vẫn chạy khi cửa sổ chính đang ẩn dưới khay. Nhấn `Esc` để ẩn; vị trí được nhớ lại.
 - **Khi cửa sổ Roblox mở ra** (trong **Cài đặt › Khởi chạy**): **Để Roblox tự chọn**, **Phóng to** (vẫn là cửa sổ nên các cửa sổ không giành nhau công tắc toàn màn hình chung của Roblox), hoặc **Xếp cạnh nhau** (cần Multi-Roblox). Preset có thể tự xếp cửa sổ của nó bất kể lựa chọn này.
 - Nút **Xếp cửa sổ** ở thanh dưới, **Xếp cửa sổ Roblox** trong menu ⋯ phía trên danh sách và **Kiểu xếp cửa sổ** (trong **Cài đặt › Khởi chạy**): **Lấp đầy màn hình**, hoặc **Ô nhỏ** / **Ô vừa** / **Ô lớn** xếp từ góc trên bên trái và chừa phần màn hình còn lại. Cửa sổ Roblox càng nhỏ thì card đồ họa càng đỡ tải. Máy có nhiều màn hình thì chọn màn hình trước.
-- **Báo khi sắp hết RAM** (bật sẵn): cảnh báo trước khi mở nhiều tài khoản hơn RAM trống chịu được, và khi máy dùng quá 92 % RAM.
+- **Báo khi sắp hết RAM** (bật sẵn): cảnh báo trước khi mở nhiều tài khoản hơn RAM trống chịu được, và khi máy dùng quá 92 % RAM. Nếu RAM vẫn trống mà bộ nhớ ảo của Windows sắp đầy thì app báo chuyện đó, trước khi bấm **Vào game** và cả lúc đang chơi, vì khi ấy cửa sổ Roblox sẽ bị văng ngay khi mở ([cách xử lý](#h-cửa-sổ-roblox-bị-văng-ngay-khi-mở-memory-dump-captured-hoặc-bloxstrap-báo-roblox-failed-to-launch)).
 - **Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn): các cửa sổ bạn không chơi được đặt mức ưu tiên bộ nhớ thấp để Windows lấy RAM của chúng trước, và khi máy sắp hết RAM, chúng được yêu cầu nhả bớt. Roblox có thể không nhả; khi đó Bloxkeep bỏ qua.
 - **Nhường nhân mạnh cho cửa sổ đang chơi** (tắt sẵn): cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm của CPU ở chế độ tiết kiệm điện, cửa sổ bạn đang chơi giữ các nhân mạnh (công tắc của chính Windows; không có gì trong Roblox bị thay đổi).
 - **Hiện tên và ảnh tài khoản trên cửa sổ** (bật sẵn): ghi tên tài khoản lên tiêu đề cửa sổ Roblox và lấy ảnh tài khoản làm biểu tượng cửa sổ, để dễ phân biệt trên taskbar và khi bấm Alt+Tab.
@@ -545,7 +554,7 @@ Bật **Cài đặt › Sao lưu & dữ liệu › Sao lưu vào thư mục**, r
 - File chưa có chữ ký số nên SmartScreen cảnh báo lần đầu. Tự cập nhật chỉ hoạt động khi repo GitHub để công khai.
 - Quên mật khẩu chủ thì không khôi phục được dữ liệu.
 
-Đã thử với tài khoản thật trên Windows 11 (Roblox 0.742 và 0.743, tháng 10/2026): đăng nhập bằng mật khẩu qua bước proof-of-work và captcha nhấn-giữ của HUMAN, vào game, 5 tài khoản cùng vào một game bằng Multi-Roblox với bản Roblox tháng 10/2026, mở nhiều trang chủ riêng.
+Đã thử với tài khoản thật trên Windows 11 (Roblox 0.742 và 0.743, tháng 10/2026): đăng nhập bằng mật khẩu qua bước proof-of-work và captcha nhấn-giữ của HUMAN, vào game, 5 tài khoản cùng vào một game bằng Multi-Roblox với bản Roblox tháng 10/2026 (ảnh ở đầu trang), mở nhiều trang chủ riêng.
 
 **Chưa thử với tài khoản thật:**
 
@@ -569,6 +578,10 @@ Từng tính năng được giải thích từng bước trong [hướng dẫn s
 
 **Đ:** Kiểm tra file trước: SHA-256 phải khớp với `SHA256SUMS.txt` trên trang phát hành, và file phải tải từ [Releases](https://github.com/minhhoang0122/bloxkeep/releases) của repo này. Nếu khớp, khôi phục file từ khu cách ly của antivirus và báo là nhận nhầm (với Windows Defender: [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)). Đừng bao giờ dùng "Bloxkeep" tải từ nơi khác.
 
+### **H:** Multi-Roblox có chạy được thật không?
+
+**Đ:** Có. Ảnh ở đầu trang là ảnh chụp thật trên một máy đang mở năm tài khoản cùng lúc (Roblox 0.743, tháng 10/2026). Roblox có thể đổi cách chặn nhiều cửa sổ ở bất kỳ bản cập nhật nào, nên Bloxkeep kiểm tra từng bản Roblox mới và ghi nhớ những bản đã chạy được hai cửa sổ cùng lúc trên máy bạn; xem [Cập nhật Roblox](#cập-nhật-roblox).
+
 ### **H:** Bật Multi-Roblox thế nào?
 
 **Đ:** Gạt công tắc **Multi-Roblox** ở cuối thanh bên (hoặc **Cài đặt › Khởi chạy › Multi-Roblox**) rồi xác nhận. Mở Bloxkeep trước Roblox và để nó mở trong lúc chơi. Màu đèn cho biết tình trạng:
@@ -588,6 +601,13 @@ Nếu bấm **Vào game** cho hai tài khoản khi Multi-Roblox đang tắt, Blo
 ### **H:** Không mở được nhiều tài khoản: cửa sổ mới mở là cửa sổ cũ bị đóng.
 
 **Đ:** Multi-Roblox đang tắt hoặc chưa hoạt động: xem hai câu ở trên. Nếu đèn đã xanh mà cửa sổ vẫn bị đóng, tức là Roblox đã đổi cách chặn mở nhiều cửa sổ. Hãy kiểm tra bản cập nhật Bloxkeep (**Cài đặt › Cập nhật Bloxkeep › Kiểm tra ngay**) và [gửi góp ý](#h-bạn-nên-thêm-tính-năng--tôi-gặp-lỗi).
+
+### **H:** Cửa sổ Roblox bị văng ngay khi mở ("Memory dump captured", hoặc Bloxstrap báo "Roblox failed to launch")
+
+**Đ:** Bộ nhớ ảo của Windows đã đầy, dù RAM vẫn còn trống: mỗi cửa sổ Roblox giữ trước khoảng 2,5 GB bộ nhớ ảo. Bloxkeep sẽ cảnh báo trước khi bạn bấm **Vào game** nếu sắp xảy ra chuyện này.
+
+- Tắt bớt ứng dụng không cần, hoặc
+- Tăng bộ nhớ ảo. Đặt ở ổ nào cũng được nên không tốn chỗ ổ C: **Win+R** › `sysdm.cpl` › **Advanced › Performance › Settings › Advanced › Virtual memory › Change**. Bỏ tích **Automatically manage**, chọn ổ còn trống nhiều, đặt **Custom size** 16384 / 32768 MB, bấm **Set**, **OK**, rồi khởi động lại máy.
 
 ### **H:** Mấy chấm màu trên tài khoản nghĩa là gì?
 

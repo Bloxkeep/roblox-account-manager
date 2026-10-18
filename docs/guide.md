@@ -24,7 +24,7 @@ Short pages, one per topic. Read the first three to get going; open the others w
 <td width="33%" valign="top"><a href="guide/playing.md"><img src="screenshots/game-picker.png" width="240" alt=""><br><b>Playing</b></a><br>Games, servers, private servers, joining a player, the website in tabs.</td>
 </tr>
 <tr>
-<td valign="top"><a href="guide/multi-roblox.md"><img src="screenshots/multi-help.png" width="240" alt=""><br><b>Multi-Roblox</b></a><br>Several Roblox windows at once, the light, Roblox updates, Microsoft Store Roblox.</td>
+<td valign="top"><a href="guide/multi-roblox.md"><img src="screenshots/multi-roblox-real.jpg" width="240" alt=""><br><b>Multi-Roblox</b></a><br>Several Roblox windows at once, the light, Roblox updates, Microsoft Store Roblox.</td>
 <td valign="top"><a href="guide/presets.md"><img src="screenshots/presets.png" width="240" alt=""><br><b>Presets and schedules</b></a><br>Saved accounts and game, opened with one click or on a schedule.</td>
 <td valign="top"><a href="guide/staying-in-game.md"><img src="screenshots/card-rejoin.png" width="240" alt=""><br><b>Staying in game</b></a><br>Auto-rejoin, Anti-AFK, the daily sign-in check, RAM.</td>
 </tr>

@@ -92,6 +92,7 @@ Before opening, Bloxkeep may stop and ask in a dialog titled **Before you open**
 | "Multi-Roblox isn't working yet: Roblox was already open before it was turned on." | Multi-Roblox is on but not ready. It also offers **Fix Multi-Roblox**. | No |
 | The Multi-Roblox check's warning | You open several windows on a Roblox build where two windows haven't played together yet. | Yes |
 | "Only *X* of RAM is free, and *N* more Roblox windows need about *Y*." | **Low RAM warning** is on and RAM would run short. | Yes |
+| "RAM is free, but Windows' virtual memory is almost full, so *N* more Roblox windows may crash as they open." | **Low RAM warning** is on, RAM is enough, but Windows' virtual memory would run short. See [Troubleshooting](troubleshooting.md#q-a-roblox-window-crashes-as-it-opens-memory-dump-captured-or-bloxstraps-roblox-failed-to-launch). | Yes |
 
 <img src="../screenshots/before-you-open.png" width="760" alt="The Before you open question: Multi-Roblox is off, with a Don't ask again box and the buttons Cancel, Open anyway and Turn on Multi-Roblox and play">
 

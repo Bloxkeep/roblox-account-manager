@@ -65,7 +65,7 @@ Chi tiết từng dòng nằm ở [Giữ tài khoản trong game](staying-in-gam
 | **Tự vào lại game** | **Bật cho mọi tài khoản** / **Tắt cho mọi tài khoản** (khi chỗ bật chỗ tắt ghi "Bật cho *n*/*m* tài khoản"). Menu ⋯ của từng tài khoản bật/tắt riêng cho tài khoản đó. | Tắt |
 | **Chống AFK** | Treo máy không lo bị kick, kể cả khi bạn đi vắng hay đang dùng cửa sổ khác. Không hoạt động khi máy đang khóa. | Tắt |
 | **Kiểm tra đăng nhập mỗi ngày** | Tìm các tài khoản Roblox đã đăng xuất, để bạn biết trước khi bấm Vào game. Ghi "Lần kiểm tra gần nhất: …". | Bật |
-| **Báo khi sắp hết RAM** | Hỏi trước khi mở nếu thiếu RAM, và cảnh báo khi đang chơi. | Bật |
+| **Báo khi sắp hết RAM** | Hỏi trước khi mở nếu thiếu RAM hoặc bộ nhớ ảo của Windows, và cảnh báo khi đang chơi. | Bật |
 | **Tiết kiệm RAM cho cửa sổ chạy nền** | Cửa sổ Roblox bạn không chơi bị hạ mức ưu tiên bộ nhớ, nên Windows lấy RAM của chúng trước. | Tắt |
 | **Nhường nhân mạnh cho cửa sổ đang chơi** | Cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện; cửa sổ bạn đang chơi giữ các nhân mạnh. | Tắt |
 | **Chạy ẩn dưới khay hệ thống khi đóng** | Nút ✕ thu Bloxkeep xuống khay hệ thống thay vì thoát. | Bật |

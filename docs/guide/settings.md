@@ -65,7 +65,7 @@ Details for each row are in [Staying in game](staying-in-game.md).
 | **Auto-rejoin** | **On for all accounts** / **Off for all accounts** ("On for *n* of *m*" when mixed). Each account's ⋯ menu sets it for that one. | Off |
 | **Anti-AFK** | Stay in game while you're away or busy in another window. Doesn't work when the PC is locked. | Off |
 | **Check sign-ins every day** | Finds accounts Roblox signed out, before you press Play. Shows "Last check: …". | On |
-| **Low RAM warning** | Asks before opening when RAM is short, and warns while playing. | On |
+| **Low RAM warning** | Asks before opening when RAM or Windows' virtual memory is short, and warns while playing. | On |
 | **Save RAM on background windows** | Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first. | Off |
 | **Fast cores for the window you play** | Roblox windows in the background run on the CPU's efficiency cores in power-saving mode; the one you play keeps the fast cores. | Off |
 | **Keep running in the tray when closed** | The ✕ button hides Bloxkeep to the tray instead of quitting. | On |

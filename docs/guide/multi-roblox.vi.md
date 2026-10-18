@@ -4,7 +4,9 @@
 
 Cách cho nhiều tài khoản chơi cùng lúc, thẻ Multi-Roblox ở thanh bên đang báo gì, và chương trình nào dùng để mở Roblox.
 
-<img src="../screenshots/vi/multi-help.png" width="760" alt="Hộp thoại Multi-Roblox: Multi-Roblox đang bật, với hai công tắc Luôn mở Roblox ở chế độ cửa sổ và Xếp các cửa sổ cạnh nhau sau khi mở">
+<img src="../screenshots/multi-roblox-real.jpg" width="760" alt="Ảnh chụp thật trên một máy Windows: năm cửa sổ Roblox mở cùng lúc, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, bốn cửa sổ cùng ở trong một game và cửa sổ thứ năm đang vào, phía sau là Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật">
+
+Ảnh chụp thật trên một máy: năm tài khoản mở cùng lúc bằng Bloxkeep, bốn tài khoản đã vào game, tài khoản thứ năm đang vào. Tên trong game đã được làm mờ.
 
 ## Làm nhanh
 
@@ -49,6 +51,8 @@ Lần sau nhớ mở Bloxkeep trước Roblox.
 ## Chế độ cửa sổ và xếp cửa sổ
 
 Khi Multi-Roblox đang bật, phần chi tiết có hai công tắc:
+
+<img src="../screenshots/vi/multi-help.png" width="760" alt="Hộp thoại Multi-Roblox: Multi-Roblox đang bật, với hai công tắc Luôn mở Roblox ở chế độ cửa sổ và Xếp các cửa sổ cạnh nhau sau khi mở">
 
 | Công tắc | Mặc định | Tác dụng |
 |---|---|---|

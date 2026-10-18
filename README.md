@@ -9,15 +9,18 @@
   <img src="https://img.shields.io/badge/.NET-10-512BD4" alt="Built with .NET 10">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
 </p>
-<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://minhhoang0122.github.io/Bloxkeep/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
 
-<p align="center"><img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards with two accounts chosen, the game bar at the bottom, and Multi-Roblox turned on"></p>
+<p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: five Roblox windows open at once, titled Roblox - Account 1 to Roblox - Account 5, four in the same game and the fifth joining, with Bloxkeep behind them counting 5 windows and Multi-Roblox on"></p>
+<p align="center"><sub>A real screenshot from one PC: five Roblox accounts open at once with Bloxkeep, four in the game and the fifth joining. Names in the game are blurred.</sub></p>
 
 Bloxkeep is for people who play on several Roblox accounts on one Windows PC: keep the accounts in one place, pick a game, pick accounts and press **Play**. Your data stays on your PC, encrypted with your master password; Bloxkeep has no server of its own.
 
 *Bloxkeep is an independent project. It is not affiliated with, endorsed or sponsored by Roblox Corporation. Roblox is a trademark of Roblox Corporation.*
 
 ## Features
+
+<img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards with two accounts chosen, the game bar at the bottom, and Multi-Roblox turned on">
 
 Each item is explained in [Using Bloxkeep](#using-bloxkeep) and, step by step, in the [user guide](docs/guide.md).
 
@@ -31,7 +34,7 @@ Each item is explained in [Using Bloxkeep](#using-bloxkeep) and, step by step, i
 - **Multi-Roblox**: several Roblox windows at once, opened windowed and tiled, with a check of every new Roblox build. Off until you turn it on. [Multi-Roblox](#multi-roblox), [Roblox updates](#roblox-updates)
 - **Staying in game**: [Anti-AFK](#anti-afk) keeps a window from being kicked for idling, and [Auto-rejoin](#auto-rejoin) goes back in after a disconnect, retrying with longer waits instead of giving up.
 - **Roblox settings per account** (graphics, frame rate, volume), and a choice of what opens Roblox: Roblox, Bloxstrap, Fishstrap, RobloxPlayerBeta directly, Roblox from the Microsoft Store (being tested) or your own launcher. [Roblox settings per account](#roblox-settings-per-account), [Open Roblox with](#open-roblox-with)
-- **Windows and RAM**: live pictures of every Roblox window in the Game monitor, a mini window, tiling, warnings before RAM runs out. [Windows, RAM and the game monitor](#windows-ram-and-the-game-monitor)
+- **Windows and RAM**: live pictures of every Roblox window in the Game monitor, a mini window, tiling, warnings before RAM or Windows' virtual memory runs out. [Windows, RAM and the game monitor](#windows-ram-and-the-game-monitor)
 - **Statistics and an activity log**: play time, sessions and disconnects per account, game and preset. [Statistics and activity](#statistics-and-activity)
 - **Discord**: alerts, a live status message and play-time summaries sent to your channel. [Discord](#discord)
 - **Lock, tray and notifications**: lock Bloxkeep with the master password, run from the tray, get Windows notifications. [Tray, lock and notifications](#tray-lock-and-notifications)
@@ -78,6 +81,8 @@ A small watcher (the uninstaller's program, run from a temporary copy) waits for
 Updating itself only works while the GitHub repository is public.
 
 To turn automatic updates off, untick **Settings › Bloxkeep updates › Update automatically**: nothing is downloaded or installed by itself then. **Check now** still works.
+
+To get new features before everyone else, tick **Settings › Bloxkeep updates › Get beta versions** (off by default): updates then also bring beta versions, which may still have bugs. Turn it off while on a beta and you keep that beta until the next regular version. On the Releases page betas are marked **Pre-release** and numbered after the version they lead to (1.0.6-beta.2 comes before 1.0.6).
 
 Running a newer `Bloxkeep-Setup.exe` over an installed copy works too: it installs into the same folder, closes a running Bloxkeep first, and keeps your data. To move Bloxkeep to another drive, uninstall it, then install it again in the new folder.
 
@@ -257,6 +262,10 @@ More in the user guide: [Presets and schedules](docs/guide/presets.md).
 
 Multi-Roblox is **off by default**. Roblox doesn't officially support running several clients; use it at your own risk (turning it on asks **Turn on Multi-Roblox?** first). Turn it on with the Multi-Roblox switch in the sidebar or in **Settings › Launching**.
 
+<img src="docs/screenshots/multi-roblox-real-detail.jpg" width="800" alt="A real screenshot: Bloxkeep's sidebar card Roblox on this PC counting 5 windows and the Multi-Roblox card reading On, several windows allowed, next to four Roblox windows in the same game">
+
+A real screenshot: the sidebar counts 5 Roblox windows and Multi-Roblox is on. Names in the game are blurred.
+
 - Bloxkeep has to be open **before** Roblox and stay open while you play. The tray is fine.
 - The sidebar card's light tells you how it's going:
 
@@ -370,7 +379,7 @@ Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's
 - **Mini window**: a small window that stays on top, to watch the accounts that are playing without the main window: game, RAM and PID for each, with **Show** and **Close**, plus **Close all** and **Open Bloxkeep**. Open it from the sidebar, the tray menu or `Ctrl+K`; it keeps working while the main window is in the tray. `Esc` hides it, and it remembers its place.
 - **When a Roblox window opens** (in **Settings › Launching**): **As Roblox sizes it**, **Maximise it** (still a window, so the windows don't fight over Roblox's one fullscreen setting), or **Tile them side by side** (needs Multi-Roblox). A preset can tile its own windows whatever this says.
 - **Arrange** in the game bar, **Arrange Roblox windows** in the ⋯ menu above the list and **Arranging windows** (in **Settings › Launching**): **Fill the screen**, or **Small tiles** / **Medium tiles** / **Large tiles** laid out from the top-left, leaving the rest of the screen free. The smaller a Roblox window, the less work for the graphics card. With several screens you pick one first.
-- **Low RAM warning** (on by default): warns before you open more accounts than the free RAM can take, and when the PC uses more than 92 % of its RAM.
+- **Low RAM warning** (on by default): warns before you open more accounts than the free RAM can take, and when the PC uses more than 92 % of its RAM. When RAM is free but Windows' virtual memory is almost full, it says that instead, before **Play** and while you play, because a Roblox window then crashes as it opens ([what to do](#q-a-roblox-window-crashes-as-it-opens-memory-dump-captured-or-bloxstraps-roblox-failed-to-launch)).
 - **Save RAM on background windows** (off by default): the windows you aren't playing in get a low memory priority, so Windows takes RAM from them first, and when RAM runs low they are asked to give some back. Roblox may refuse; then Bloxkeep leaves it.
 - **Fast cores for the window you play** (off by default): Roblox windows in the background run on the CPU's efficiency cores in power-saving mode, and the window you're playing keeps the fast cores (Windows' own settings; nothing in Roblox is changed).
 - **Show account names and pictures on windows** (on by default): puts the account's name in the Roblox window title and its picture as the window's icon, to tell windows apart on the taskbar and in Alt+Tab.
@@ -551,7 +560,7 @@ Turn on **Settings › Backup & data › Back up to a folder**, then click **Cho
 - The files aren't code-signed, so SmartScreen warns the first time. Updating itself only works while the GitHub repository is public.
 - A forgotten master password can't be recovered.
 
-Tried with real accounts on Windows 11 (Roblox 0.742 and 0.743, October 2026): password sign-in through the proof-of-work step and HUMAN's press-and-hold captcha, joining a game, 5 accounts in one game with Multi-Roblox on Roblox's October 2026 build, several separate home screens.
+Tried with real accounts on Windows 11 (Roblox 0.742 and 0.743, October 2026): password sign-in through the proof-of-work step and HUMAN's press-and-hold captcha, joining a game, 5 accounts in one game with Multi-Roblox on Roblox's October 2026 build (the picture at the top), several separate home screens.
 
 **Not tried with real accounts yet:**
 
@@ -575,6 +584,10 @@ Every feature is explained step by step in the [user guide](docs/guide.md).
 
 **A:** Check the download first: its SHA-256 must match `SHA256SUMS.txt` on the release page, and it must come from this repository's [Releases](https://github.com/minhhoang0122/bloxkeep/releases). If it matches, restore it from your antivirus's quarantine and report the file as a false positive (for Windows Defender: [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)). Never use a "Bloxkeep" from anywhere else.
 
+### **Q:** Does Multi-Roblox really work?
+
+**A:** Yes. The picture at the top of this page is a real screenshot of one PC with five accounts open at once (Roblox 0.743, October 2026). Roblox can change how it blocks several windows in any update, so Bloxkeep checks every new Roblox build and remembers each build on which two windows played together on your PC; see [Roblox updates](#roblox-updates).
+
 ### **Q:** How do I turn on Multi-Roblox?
 
 **A:** Flip the **Multi-Roblox** switch at the bottom of the sidebar (or **Settings › Launching › Multi-Roblox**) and confirm. Open Bloxkeep before Roblox, and keep it open while you play. The light tells you how it's going:
@@ -594,6 +607,13 @@ If you press **Play** for two accounts while it's off, Bloxkeep offers **Turn on
 ### **Q:** I can't open several accounts: each new window closes the last one.
 
 **A:** Multi-Roblox is off or not working yet: see the two answers above. If the light is green and windows still close, Roblox has changed how it blocks several windows. Look for a Bloxkeep update (**Settings › Bloxkeep updates › Check now**) and [send feedback](#q-you-should-add-a-feature--i-found-a-bug).
+
+### **Q:** A Roblox window crashes as it opens ("Memory dump captured", or Bloxstrap's "Roblox failed to launch")
+
+**A:** Windows' virtual memory is full, even if RAM is free: each Roblox window reserves about 2.5 GB of it. Bloxkeep warns before **Play** when this is about to happen.
+
+- Close apps you don't need, or
+- Increase virtual memory. It can go on any drive, so drive C needs no space: **Win+R** › `sysdm.cpl` › **Advanced › Performance › Settings › Advanced › Virtual memory › Change**. Untick **Automatically manage**, pick a drive with room, set **Custom size** 16384 / 32768 MB, press **Set**, **OK**, and restart the PC.
 
 ### **Q:** What do the coloured dots on an account mean?
 

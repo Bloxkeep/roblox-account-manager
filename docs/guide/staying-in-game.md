@@ -78,6 +78,7 @@ If an account is kicked anyway, Bloxkeep says why: the PC was in use, it was loc
 
 - Before opening, it asks when the free RAM can't take the new windows (the **Before you open** question, see [Playing](playing.md)).
 - While playing, it warns when the PC uses 92 % of its RAM or more, at most every 5 minutes.
+- When RAM is free but Windows' virtual memory is almost full, it says that instead, before opening and while playing: a Roblox window then crashes as it opens. See [Troubleshooting](troubleshooting.md#q-a-roblox-window-crashes-as-it-opens-memory-dump-captured-or-bloxstraps-roblox-failed-to-launch).
 - The bar in the sidebar's **Roblox on this PC** card turns red from 90 % (see [Windows and statistics](windows-and-stats.md)).
 
 ## Save RAM for background windows
