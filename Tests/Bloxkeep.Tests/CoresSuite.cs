@@ -62,7 +62,8 @@ static class CoresSuite
             seed.Data.Settings.SplitCores = true;
             seed.Save();
             seed.Dispose();
-            var app = new AppController(new Form(), _ => { });
+            var posted = new List<string>();
+            var app = new AppController(new Form(), json => { lock (posted) posted.Add(json); });
             await Harness.Unlock(app);
             void Split() => typeof(AppController).GetMethod("SplitCores", Harness.F)!.Invoke(app, [new List<int> { stand.Id }]);
             Split();
@@ -73,6 +74,31 @@ static class CoresSuite
             c.Check("turned off: Windows' own choice at once", off.Affinity == all && off.Control == 0, $"0x{off.Affinity:X} control {off.Control}");
             await Harness.Call(app, "setSettings", new { splitCores = true });
             c.Check("on again: back to the background cores", Read(stand).State == 1);
+
+            // A client in front that ended since the last scan (seen 2026-10-19: Bloxkeep closed a window to rejoin,
+            // and another came to the front): it has nothing to move, and Windows refused nothing. Both ways it can
+            // be gone: exited while a handle still holds it (Bloxkeep's close keeps one), and no longer there at all.
+            var roles = Harness.Get<System.Collections.IDictionary>(app, "_coreRoles");
+            foreach (bool held in new[] { true, false })
+            {
+                var gone = Process.Start(new ProcessStartInfo("ping.exe", "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false })!;
+                int pid = gone.Id;
+                gone.Kill();
+                gone.WaitForExit();
+                if (!held)
+                    gone.Dispose();
+                roles[pid] = Role("Front");
+                typeof(AppController).GetField("_coresRefusedShown", Harness.F)!.SetValue(app, false); // said once per run otherwise
+                lock (posted)
+                    posted.Clear();
+                typeof(AppController).GetMethod("SplitCores", Harness.F)!.Invoke(app, [new List<int> { stand.Id, pid }]);
+                bool told;
+                lock (posted)
+                    told = posted.Any(json => json.Contains("refused to move", StringComparison.Ordinal));
+                c.Check(held ? "a client that has exited (a handle still on it): no \"Windows refused\" notice" : "…nor one that is gone altogether", !told);
+                if (held)
+                    gone.Dispose();
+            }
             app.Dispose();
             var closed = Read(stand);
             c.Check("Bloxkeep closing gives the cores back", closed.Affinity == all && closed.Control == 0, $"0x{closed.Affinity:X} control {closed.Control}");

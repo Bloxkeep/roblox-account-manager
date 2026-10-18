@@ -8,7 +8,9 @@ namespace Bloxkeep.Tests;
 /// Auto-rejoin on a client that started its game and never got a server (a server that had ended, a full one's join
 /// queue), as seen on 2026-10-17: closed after a minute, the rejoin going to any server of the game; and the leave Roblox
 /// logs when Bloxkeep closes a client not taken for the person's own. Then the servers a party is sent to: empty ones
-/// left out of the list, the first account's client telling whether the server took it, and the server tried next. Made-up Roblox logs held by this process (the log
+/// left out of the list, the first account's client telling whether the server took it, and the server tried next. A
+/// teleport whose old server disconnects after the new join isn't a drop; a game the person starts in the window
+/// themselves is the one rejoined. Made-up Roblox logs held by this process (the log
 /// watcher ties a log to whoever holds it), in a folder of the test's own; Bloxkeep's close refuses this process (not a
 /// Roblox client), so nothing is closed.
 /// </summary>
@@ -182,6 +184,59 @@ static class RejoinSuite
             var waited = Stopwatch.StartNew();
             var told = await (Task<string?>)t.GetMethod("WaitForServerAnswerAsync", Harness.F)!.Invoke(app, [account, CancellationToken.None])!;
             c.Check("…and the launch hears it without waiting", told == "closed" && waited.ElapsedMilliseconds < 2000, $"{told} {waited.ElapsedMilliseconds} ms");
+
+            // A move to another server of the same place, as client 0.743 logged it on 2026-10-19: "Teleported." and the
+            // new join first, the old server's disconnect line after them. Bloxkeep took that for a drop and closed the
+            // window 3 s later.
+            Run(new GameTarget(107778070777162));
+            var at = DateTime.UtcNow.AddSeconds(-10);
+            const string Moved = "99999999-2222-3333-4444-555555555555";
+            Write(Line(at, Join));
+            Write(Line(at.AddSeconds(0.1), "[FLog::Network] serverId: 10.0.0.1|5000"));
+            Write(Line(at.AddSeconds(2), "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url "));
+            Write(Line(at.AddSeconds(2.2), "[FLog::SessionTransitionFSM] Teleported."));
+            Write(Line(at.AddSeconds(2.2), $"[FLog::Output] ! Joining game '{Moved}' place 107778070777162 at 10.0.0.2"));
+            Write(Line(at.AddSeconds(2.4), "[FLog::Network] Time to disconnect replication data: 0.125100"));
+            state = Poll(s => s.JobId == Moved); // the lines written together are read together
+            c.Check("a teleport whose old server logs its disconnect after the new join: still joining, not a drop", state is { Status: "joining", JobId: Moved }, state);
+            Tick();
+            c.Check("…and the window is left alone", !closing.Contains(me));
+            Write(Line(at.AddSeconds(3.5), "[FLog::Network] serverId: 10.0.0.2|5000"));
+            state = Poll(s => s.Status == "ingame");
+            c.Check("…in the game once the new server answers", state is { Status: "ingame", JobId: Moved }, state);
+            // The usual order (the disconnect before the new join) is still a teleport too.
+            at = at.AddSeconds(4);
+            Write(Line(at, "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url "));
+            Write(Line(at.AddSeconds(0.2), "[FLog::Network] Time to disconnect replication data: 0.1"));
+            state = Poll(s => s.At >= at.AddSeconds(0.1));
+            c.Check("a teleport that disconnects first: joining", state is { Status: "joining" }, state);
+            Write(Line(at.AddSeconds(0.3), Join));
+            Write(Line(at.AddSeconds(0.5), "[FLog::Network] serverId: 10.0.0.1|5000"));
+            state = Poll(s => s.Status == "ingame");
+
+            // The person leaves the game Bloxkeep opened and starts another one in the same window: a drop there
+            // rejoins that game, not the one Bloxkeep opened (on 2026-10-19 it went back to the first game).
+            const long Other = 126256942507957;
+            var opened = Run(new GameTarget(107778070777162));
+            at = at.AddSeconds(1);
+            Write(Line(at, Leave));
+            Write(Line(at.AddSeconds(0.1), "[FLog::Network] Time to disconnect replication data: 0.2"));
+            Write(Line(at.AddSeconds(1), Launch));
+            Write(Line(at.AddSeconds(1.5), $"[FLog::Output] ! Joining game '77777777-2222-3333-4444-555555555555' place {Other} at 10.0.0.3"));
+            Write(Line(at.AddSeconds(1.6), "[FLog::Network] serverId: 10.0.0.3|5000"));
+            Write(Line(at.AddSeconds(2), "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url "));
+            Write(Line(at.AddSeconds(2.1), "[FLog::Output] ! Joining game '66666666-2222-3333-4444-555555555555' place 555 at 10.0.0.4"));
+            Write(Line(at.AddSeconds(2.2), "[FLog::Network] Time to disconnect replication data: 0.2"));
+            Write(Line(at.AddSeconds(2.3), "[FLog::Network] serverId: 10.0.0.4|5000"));
+            Write(Line(at.AddSeconds(3), "[FLog::Network] Time to disconnect replication data: 0.2"));
+            state = Poll(s => s.Status == "disconnected");
+            c.Check("a game the person starts in the window is noted, and a teleport inside it keeps it",
+                state is { Status: "disconnected", PlaceId: 555, ChosenPlace: Other }, state);
+            Harness.Invoke(app, "OnSessionEnded", account.Id, opened, state);
+            request = queue.Cast<object>().SingleOrDefault();
+            target = request?.GetType().GetProperty("Target")!.GetValue(request) as GameTarget;
+            c.Check("…and a drop there rejoins that game (any server), not the one Bloxkeep opened", target is { PlaceId: Other, JobId: null }, target);
+            queue.Clear();
         }
         finally
         {

@@ -28,8 +28,11 @@ static class CpuCores
     static extern bool SetProcessAffinityMask(IntPtr process, UIntPtr mask);
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool SetProcessInformation(IntPtr process, int infoClass, ref PROCESS_POWER_THROTTLING_STATE info, int size);
+    [DllImport("kernel32.dll")]
+    static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
 
-    const uint PROCESS_SET_INFORMATION = 0x0200, PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    const uint PROCESS_SET_INFORMATION = 0x0200, PROCESS_QUERY_LIMITED_INFORMATION = 0x1000, SYNCHRONIZE = 0x00100000;
+    const int ERROR_INVALID_PARAMETER = 87;
     const int ProcessPowerThrottling = 4;
     const uint PROCESS_POWER_THROTTLING_CURRENT_VERSION = 1, PROCESS_POWER_THROTTLING_EXECUTION_SPEED = 1;
 
@@ -111,6 +114,25 @@ static class CpuCores
             };
             ok &= SetProcessInformation(handle, ProcessPowerThrottling, ref state, Marshal.SizeOf<PROCESS_POWER_THROTTLING_STATE>());
             return ok;
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
+    /// <summary>
+    /// Whether the process has ended (no process has the id any more, or it has exited while a handle still holds it):
+    /// then a <see cref="Set"/> that failed had nothing left to move, and Windows didn't refuse anything.
+    /// </summary>
+    public static bool Ended(int pid)
+    {
+        IntPtr handle = OpenProcess(SYNCHRONIZE, false, pid);
+        if (handle == IntPtr.Zero)
+            return Marshal.GetLastWin32Error() == ERROR_INVALID_PARAMETER;
+        try
+        {
+            return WaitForSingleObject(handle, 0) == 0; // WAIT_OBJECT_0: exited
         }
         finally
         {

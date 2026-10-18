@@ -16,7 +16,11 @@ public sealed class RobloxLogWatcher
 {
     /// <param name="Status">joining, ingame, left (back in the app, by choice), disconnected, or signedout (signed out inside the window).</param>
     /// <param name="Reason">Roblox's disconnect code when it gave one (278 = idle for 20 minutes).</param>
-    public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At);
+    /// <param name="ChosenPlace">
+    /// The game the person last started in this window themselves (left a game, then started one from Roblox's own
+    /// screens); null while it is still in the game it was opened into. Teleports inside that game keep it.
+    /// </param>
+    public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At, long? ChosenPlace = null);
 
     sealed class Tail(string path, int pid)
     {
@@ -29,6 +33,8 @@ public sealed class RobloxLogWatcher
         /// <summary>When the last teleport line was logged; only a disconnect soon after it belongs to that teleport.</summary>
         public DateTime? TeleportAt;
         public int? PendingReason;
+        /// <summary>A game start after a leave: the game its "Joining game" names is one the person chose.</summary>
+        public bool OwnStart;
         /// <summary>When the client logged that another Roblox client's start told it to close (see <see cref="ClosedByNewWindowAt"/>).</summary>
         public DateTime? ClosedByNewWindow;
     }
@@ -61,7 +67,9 @@ public sealed class RobloxLogWatcher
     const string SignedOutMark = "logout sync cookie to native";
     const string DisconnectedMark = "[FLog::Network] Time to disconnect replication data";
     // A game moving the player to another of its places (seen 2026-10-13): doTeleport, then the same disconnect line
-    // as a kick, then "Teleported." and a new "Joining game" a fraction of a second later.
+    // as a kick, then "Teleported." and a new "Joining game" a fraction of a second later. Or the other way round (seen
+    // 2026-10-19 on 0.743, a move to another server of the same place): "Teleported." and the new "Joining game"
+    // first, and the old server's disconnect line a fraction of a second after them.
     const string TeleportMark = "UgcExperienceController: doTeleport";
     // A teleport that never got that far (it failed) must not turn a kick minutes later into "joining".
     static readonly TimeSpan TeleportWindow = TimeSpan.FromSeconds(30);
@@ -265,18 +273,21 @@ public sealed class RobloxLogWatcher
         // that would stop the process check.
         if (line.Contains("! Joining game", StringComparison.Ordinal) && JoiningLine.Match(line) is { Success: true } join)
         {
+            // A teleport stays open: its old server's disconnect line may still come (see TeleportMark).
             tail.Leaving = false;
-            tail.TeleportAt = null;
             tail.PendingReason = null;
-            tail.State = new ClientState("joining", long.TryParse(join.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long place) ? place : null,
-                join.Groups[1].Value, null, TimeOf(line));
+            long? place = long.TryParse(join.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long id) ? id : null;
+            tail.State = new ClientState("joining", place, join.Groups[1].Value, null, TimeOf(line), tail.OwnStart ? place : tail.State?.ChosenPlace);
+            tail.OwnStart = false;
         }
         else if (line.Contains(LaunchMark, StringComparison.Ordinal))
         {
             tail.Leaving = false;
             tail.TeleportAt = null;
             tail.PendingReason = null;
-            tail.State = new ClientState("joining", null, null, null, TimeOf(line));
+            // Bloxkeep's own start comes first in a window; one after a leave is the person picking a game in Roblox.
+            tail.OwnStart = tail.State is { Status: "left" };
+            tail.State = new ClientState("joining", null, null, null, TimeOf(line), tail.State?.ChosenPlace);
         }
         else if (line.Contains(ConnectedMark, StringComparison.Ordinal) && tail.State is { Status: "joining" } joining)
             tail.State = joining with { Status = "ingame", At = TimeOf(line) };
@@ -308,10 +319,13 @@ public sealed class RobloxLogWatcher
             var at = TimeOf(line);
             // Leaving the old place on the way to the next one: still in the game, about to join.
             bool teleporting = tail.TeleportAt is { } teleport && at - teleport < TeleportWindow;
+            // The new server already named since the teleport: this line is the old one's, and the new state stands.
+            bool joinedSince = tail.TeleportAt is { } since && state.At >= since;
             tail.TeleportAt = null; // once: a later disconnect without a new teleport is a real one
             if (teleporting)
             {
-                tail.State = state with { Status = "joining", At = at };
+                if (!joinedSince)
+                    tail.State = state with { Status = "joining", At = at };
                 tail.PendingReason = null;
                 return;
             }

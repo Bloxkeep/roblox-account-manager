@@ -3621,8 +3621,10 @@ public sealed partial class AppController : IDisposable
         int inARow = _rejoinsInARow.GetValueOrDefault(accountId);
         _rejoinsInARow[accountId] = inARow + 1;
         var wait = RejoinWait(inARow);
-        // Rejoin the same game or private server rather than the exact server, which may be gone.
-        _rejoinQueue.Add(new RejoinRequest(accountId, launch.Target! with { JobId = null }, DateTime.UtcNow + wait, PresetId: launch.PresetId));
+        // Rejoin the same game or private server rather than the exact server, which may be gone. A game the person
+        // picked in the Roblox window since is the one they were playing: that one (any server), not the one opened.
+        var target = lastLog?.ChosenPlace is { } chosen && chosen != launch.Target!.PlaceId ? new GameTarget(chosen) : launch.Target! with { JobId = null };
+        _rejoinQueue.Add(new RejoinRequest(accountId, target, DateTime.UtcNow + wait, PresetId: launch.PresetId));
         if (inARow < QuickRejoins)
             Notify(L.F("{0} left the game — rejoining in {1}s…", Name(account), (int)wait.TotalSeconds), "info", "drop", account.Id);
         else if (inARow == QuickRejoins)

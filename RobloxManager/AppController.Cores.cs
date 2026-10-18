@@ -65,7 +65,9 @@ public sealed partial class AppController
                 continue;
             if (!CpuCores.Set(pid, want))
             {
-                refused = true;
+                // A client that ended since the last scan (its window closing is often what brought another to the
+                // front) had nothing to move: Windows refused nothing.
+                refused |= !CpuCores.Ended(pid);
                 continue;
             }
             if (want == CpuCores.Role.Default)
