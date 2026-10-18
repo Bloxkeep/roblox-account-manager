@@ -162,16 +162,22 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.6-beta.2 · October 18, 2026"
+              small "Bloxkeep 1.0.6-beta.3 · October 18, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
+        h4.new.wn-kind.wn-sub "New"
+          svg.i #u7ty99
+        ul.new.wn-also
+          li
+            svg.i #u7ty99
+            span "Tray quick panel: click Bloxkeep's icon in the tray for Multi-Roblox's switch, the accounts playing (show or close each window), and Play, Presets and New Roblox. Right-click it for the menu, now with icons and what's going on at the top."
         h4.improved.wn-kind.wn-sub "Improved"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
-            span "Before Play, Bloxkeep also warns when Windows' virtual memory is almost full even though RAM is free: that is why a Roblox window can crash as it opens (\"Memory dump captured\"). The same warning shows while you play."
+            span "The main window uses about 100 MB less RAM, and when Windows is short of memory it frees its browser half a minute after going to the tray."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

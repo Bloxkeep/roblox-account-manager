@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.0.6-beta.3",
+    "date": "2026-10-18",
+    "new": {
+      "en": [
+        "Tray quick panel: click Bloxkeep's icon in the tray for Multi-Roblox's switch, the accounts playing (show or close each window), and Play, Presets and New Roblox. Right-click it for the menu, now with icons and what's going on at the top."
+      ],
+      "vi": [
+        "Bảng nhanh ở khay: bấm biểu tượng Bloxkeep ở khay để bật tắt Multi-Roblox, xem các tài khoản đang chơi (hiện hay đóng từng cửa sổ), cùng Vào game, Preset và Roblox mới. Bấm chuột phải để mở menu, giờ có biểu tượng và dòng trạng thái ở đầu."
+      ]
+    },
+    "improved": {
+      "en": [
+        "The main window uses about 100 MB less RAM, and when Windows is short of memory it frees its browser half a minute after going to the tray."
+      ],
+      "vi": [
+        "Cửa sổ chính tốn ít hơn khoảng 100 MB RAM, và khi Windows sắp hết bộ nhớ thì nó nhả trình duyệt sau nửa phút nằm dưới khay."
+      ]
+    }
+  },
+  {
     "version": "1.0.6-beta.2",
     "date": "2026-10-18",
     "improved": {
