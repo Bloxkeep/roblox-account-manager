@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.6-beta.2",
+    "date": "2026-10-18",
+    "improved": {
+      "en": [
+        "Before Play, Bloxkeep also warns when Windows' virtual memory is almost full even though RAM is free: that is why a Roblox window can crash as it opens (\"Memory dump captured\"). The same warning shows while you play."
+      ],
+      "vi": [
+        "Trước khi vào game, Bloxkeep còn cảnh báo khi bộ nhớ ảo của Windows sắp đầy dù RAM vẫn trống: đó là lý do cửa sổ Roblox bị văng ngay khi mở (\"Memory dump captured\"). Lúc đang chơi cũng có cảnh báo này."
+      ]
+    }
+  },
+  {
     "version": "1.0.6-beta.1",
     "date": "2026-10-18",
     "en": [
