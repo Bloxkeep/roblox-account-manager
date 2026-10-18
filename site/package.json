@@ -1,0 +1,12 @@
+{
+  "name": "bloxkeep-site",
+  "private": true,
+  "type": "module",
+  "description": "Bloxkeep's website on GitHub Pages: the landing page and the user guide (docs/guide) as HTML (see build.mjs).",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "marked": "18.0.14"
+  }
+}
