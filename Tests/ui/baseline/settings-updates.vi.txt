@@ -122,6 +122,14 @@ html [data-theme="dark" lang="vi"]
                         label.switch
                           input [id="s-autoupd" type="checkbox" aria-label="Tự động cập nhật" checked=true]
                           span
+                    div.set-row
+                      div
+                        div.t "Nhận bản beta"
+                        div.d "Dùng thử tính năng mới sớm hơn. Bản beta có thể còn lỗi."
+                      div.ctl
+                        label.switch
+                          input [id="s-betaupd" type="checkbox" aria-label="Nhận bản beta" checked=false]
+                          span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Hướng dẫn & góp ý"
                   div.set-card

@@ -326,6 +326,7 @@ public sealed partial class AppController : IDisposable
         "checkUpdates" => CheckUpdatesAsync(),
         "applyUpdate" => ApplyUpdateAsync(),
         "setAutoUpdate" => Done(SetAutoUpdate(Bool(a, "enabled"))),
+        "setBetaUpdates" => Done(SetBetaUpdates(Bool(a, "enabled"))),
         "whatsNew" => Done(WhatsNew.Between(null, _updater.CurrentVersion)),
         "seenWhatsNew" => Done(SeenWhatsNew()),
         "setLanguage" => Done(SetLanguage(Str(a, "language"))),
@@ -4114,6 +4115,17 @@ public sealed partial class AppController : IDisposable
     {
         Prefs.CheckUpdates = enabled;
         Prefs.Save();
+        if (enabled)
+            _nextUpdateCheck = DateTime.UtcNow;
+        PushState();
+        return null;
+    }
+
+    object? SetBetaUpdates(bool enabled)
+    {
+        Prefs.BetaUpdates = enabled;
+        Prefs.Save();
+        // Turned on: the beta out now comes with the next check, at once rather than within the hour.
         if (enabled)
             _nextUpdateCheck = DateTime.UtcNow;
         PushState();

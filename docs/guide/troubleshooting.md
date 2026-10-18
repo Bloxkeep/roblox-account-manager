@@ -51,7 +51,7 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 | The kinds under **Which events** | **Windows notifications** is off. |
 | **Back up now** | No backup folder chosen yet. |
 | **Ask again** | You haven't skipped any question. |
-| **Update automatically** | This copy can't update itself. |
+| **Update automatically**, **Get beta versions** | This copy can't update itself. |
 
 ## Data and passwords
 

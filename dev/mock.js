@@ -111,6 +111,7 @@
   let notifications = !params.has('nonotify'); // ?nonotify=1: the main switch off (the kinds greyed)
   let notifyOff = params.has('nonotify') ? [] : ['ram']; // kinds turned off under it
   let dailySignInCheck = true;
+  let betaUpdates = params.has('beta'); // ?beta=1: Settings › Get beta versions on
   const skipConfirm = [];
   const lastSignInCheck = minsAgo(60 * 5);
   let miniOpen = params.has('mini'); // ?mini=1: the mini window counts as open
@@ -253,7 +254,7 @@
       },
       closed: params.has('rbxclosed') && !rbxClosedHidden ? { at: minsAgo(12), count: 3, updatedAt: minsAgo(60 * 20) } : null,
     },
-    update: { supported: true, current: '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? '1.0.1' : null, progress: 0, error: null, auto: true, checkedAt: minsAgo(23) },
+    update: { supported: true, current: '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? '1.0.1' : null, progress: 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(23) },
     installs: { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store') },
     monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: LONG ? 'C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep' : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep', robloxInstalled: !params.has('noroblox'),
     launching: false, checking: false, multi, settings: locked ? null : settings, accounts: locked ? [] : accounts, discord: locked ? null : discord,
@@ -326,6 +327,7 @@
           push();
           return null;
         case 'setDailySignInCheck': dailySignInCheck = a.enabled; push(); return null;
+        case 'setBetaUpdates': betaUpdates = a.enabled; push(); return null;
         case 'skipConfirm': if (!skipConfirm.includes(a.key)) skipConfirm.push(a.key); push(); return null;
         case 'resetSkipConfirm': { const n = skipConfirm.length; skipConfirm.length = 0; push(); return n; }
         case 'toggleMini': miniOpen = !miniOpen; push(); return null;

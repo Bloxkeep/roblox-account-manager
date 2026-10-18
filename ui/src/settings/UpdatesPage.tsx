@@ -1,5 +1,6 @@
 // Settings › Bloxkeep updates: the version and where the update check stands (with What's new, and Check now or
-// Restart to update), the automatic updates switch, then Help & feedback (the guide, feedback, a GitHub star).
+// Restart to update), the automatic updates and beta versions switches, then Help & feedback (the guide, feedback, a
+// GitHub star).
 import { useEffect, useState } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch } from './parts';
@@ -7,9 +8,11 @@ import { Group, Page, Row, Switch } from './parts';
 export function UpdatesPage({ title }: { title: string }) {
   const { t, lang, locale, call } = useHost();
   const u = useAppState().update || {};
-  // The switch answers at once; the app's next state confirms it (or puts it back).
+  // The switches answer at once; the app's next state confirms them (or puts them back).
   const [auto, setAuto] = useState(!!u.auto);
   useEffect(() => setAuto(!!u.auto), [u.auto]);
+  const [beta, setBeta] = useState(!!u.beta);
+  useEffect(() => setBeta(!!u.beta), [u.beta]);
 
   // "Up to date" as of the last check, which can be up to an hour old: it says when.
   const at = u.checkedAt ? new Date(u.checkedAt) : null;
@@ -37,6 +40,9 @@ export function UpdatesPage({ title }: { title: string }) {
       </div></div>
       <Row title={t('upd.auto')}>
         <Switch id="s-autoupd" checked={auto} disabled={!u.supported} onChange={on => { setAuto(on); call('setAutoUpdate', { enabled: on }); }} />
+      </Row>
+      <Row title={t('upd.beta')} desc={t('upd.betaDesc')}>
+        <Switch id="s-betaupd" checked={beta} disabled={!u.supported} onChange={on => { setBeta(on); call('setBetaUpdates', { enabled: on }); }} />
       </Row>
     </Group>
     <Group id="feedback" title={t('fb.group')}>

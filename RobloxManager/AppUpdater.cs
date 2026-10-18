@@ -1,5 +1,6 @@
 using System.Reflection;
 using Velopack;
+using Velopack.Logging;
 using Velopack.Sources;
 
 namespace RobloxManager;
@@ -27,7 +28,7 @@ public sealed class AppUpdater
         try
         {
             var manager = source is not null ? new UpdateManager(source)
-                : Repo is not null ? new UpdateManager(new GithubSource(Repo, accessToken: null, prerelease: false))
+                : Repo is not null ? new UpdateManager(new ReleaseSource(Repo))
                 : null;
             if (manager is { IsInstalled: true })
                 _manager = manager;
@@ -156,6 +157,27 @@ public sealed class AppUpdater
         progress = Progress,
         error = Error,
         auto = Prefs.CheckUpdates,
+        beta = Prefs.BetaUpdates,
         checkedAt = CheckedAt?.ToString("o"),
     };
+
+    /// <summary>
+    /// GitHub releases, beta versions (pre-releases) among them only while Settings › Get beta versions is on, as it is
+    /// at each check. Turned off on a beta, that beta stays until a regular version newer than it comes out.
+    /// </summary>
+    sealed class ReleaseSource(string repo) : IUpdateSource
+    {
+        readonly GithubSource _regular = new(repo, accessToken: null, prerelease: false);
+        readonly GithubSource _beta = new(repo, accessToken: null, prerelease: true);
+        GithubSource? _asked;
+
+        public Task<VelopackAssetFeed> GetReleaseFeed(IVelopackLogger logger, string? appId, string channel, Guid? stagingId = null,
+            VelopackAsset? latestLocalRelease = null) =>
+            (_asked = Prefs.BetaUpdates ? _beta : _regular).GetReleaseFeed(logger, appId, channel, stagingId, latestLocalRelease);
+
+        // From the source that listed it, should the switch have changed in between.
+        public Task DownloadReleaseEntry(IVelopackLogger logger, VelopackAsset releaseEntry, string localFile, Action<int> progress,
+            CancellationToken cancelToken = default) =>
+            (_asked ?? _regular).DownloadReleaseEntry(logger, releaseEntry, localFile, progress, cancelToken);
+    }
 }
