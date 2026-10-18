@@ -1,60 +1,36 @@
 [
   {
-    "version": "1.0.7",
+    "version": "1.0.1",
     "date": "2026-10-15",
     "en": [
       "Anti-AFK no longer lets Roblox windows get kicked after Bloxkeep restarts (an update, a crash): windows that were already open are looked after at once instead of 15 minutes later. It now steps in from 12 minutes, and a window about to be kicked stays in game even while you use the PC: it goes in a 2-second pause in your typing, never over a full-screen app.",
       "When an account is kicked for idling anyway, Bloxkeep says why (the PC was in use, locked, or Windows kept the window in the background) instead of always blaming a locked PC.",
       "Questions you see often (deleting a preset, closing all Roblox, opening anyway, turning on Multi-Roblox, leaving a form you typed in) have a Don't ask again box. Deleting accounts, restoring a backup and removing the Discord link still always ask.",
-      "Statistics: games played days ago and the presets' games show their icons again. On a wide window the page uses the room: how many accounts played, the longest stay, and play time by preset."
-    ],
-    "vi": [
-      "Chống AFK không còn để cửa sổ Roblox bị kick sau khi Bloxkeep khởi động lại (cập nhật, bị tắt đột ngột): các cửa sổ đang mở được lo ngay thay vì 15 phút sau. Giờ chống AFK bắt đầu từ phút thứ 12, và cửa sổ sắp bị kick vẫn được giữ lại cả khi bạn đang dùng máy: vào lúc bạn ngừng gõ 2 giây, không bao giờ chen ngang ứng dụng toàn màn hình.",
-      "Nếu tài khoản vẫn bị kick vì AFK, Bloxkeep nói rõ lý do (máy đang được dùng, máy đang khóa, hay Windows giữ cửa sổ ở phía sau) thay vì lúc nào cũng bảo máy đang khóa.",
-      "Các câu hỏi hay gặp (xóa Preset, đóng tất cả Roblox, vẫn mở, bật Multi-Roblox, bỏ những gì đang nhập) có ô Không hỏi lại. Xóa tài khoản, khôi phục bản sao lưu và gỡ link Discord thì vẫn luôn hỏi.",
-      "Thống kê: game chơi từ mấy hôm trước và game của Preset hiện lại logo. Khi mở rộng cửa sổ, trang dùng hết chỗ: thêm số tài khoản đã chơi, lượt chơi dài nhất và thời gian chơi theo Preset."
-    ]
-  },
-  {
-    "version": "1.0.6",
-    "date": "2026-10-15",
-    "en": [
-      "Updates no longer fail while Roblox is open. Programs Bloxkeep starts (Bloxstrap, Roblox) used to start inside Bloxkeep's own folder, and one still running there (Bloxstrap stays while Roblox does) kept Windows from replacing that folder. If an update can't install anyway, Bloxkeep now says why instead of showing Restart to update again as if nothing happened."
-    ],
-    "vi": [
-      "Cập nhật không còn thất bại khi Roblox đang mở. Trước đây các chương trình Bloxkeep mở ra (Bloxstrap, Roblox) chạy bên trong thư mục của Bloxkeep, và cái nào còn chạy (Bloxstrap chạy suốt lúc Roblox mở) khiến Windows không thay được thư mục đó. Nếu vẫn không cài được, Bloxkeep giờ báo rõ lý do thay vì lặng lẽ hiện lại nút Khởi động lại để cập nhật."
-    ]
-  },
-  {
-    "version": "1.0.5",
-    "date": "2026-10-15",
-    "en": [
+      "Statistics: games played days ago and the presets' games show their icons again. On a wide window the page uses the room: how many accounts played, the longest stay, and play time by preset.",
+      "Updates no longer fail while Roblox is open. Programs Bloxkeep starts (Bloxstrap, Roblox) used to start inside Bloxkeep's own folder, and one still running there (Bloxstrap stays while Roblox does) kept Windows from replacing that folder. If an update can't install anyway, Bloxkeep now says why instead of showing Restart to update again as if nothing happened.",
       "Discord summaries are redone: a picture of play time by hour (or day) coloured by game, with a row per account and its avatar; the totals against the period before, drops with Roblox's codes, the longest stay, the most windows at once and the top games; and a block per preset with its accounts. Play is now noted with the preset that opened it.",
-      "Settings › Launching › When a Roblox window opens: as Roblox sizes it, maximised, or tiled side by side. A maximised window is still a window, so the windows don't fight over Roblox's one fullscreen setting."
-    ],
-    "vi": [
-      "Làm lại bản tổng kết Discord: có ảnh biểu đồ thời gian chơi theo giờ (hoặc ngày) tô màu theo game, mỗi tài khoản một dòng kèm avatar; so với kỳ trước, số lần văng kèm mã lỗi Roblox, lượt chơi dài nhất, số cửa sổ cùng lúc nhiều nhất, game chơi nhiều nhất; và mỗi preset một khung riêng với các tài khoản của nó. Từ bản này mỗi lượt chơi được ghi lại thuộc preset nào.",
-      "Cài đặt › Khởi chạy › Khi mở cửa sổ Roblox: để Roblox tự chọn, phóng to, hoặc xếp cạnh nhau. Phóng to vẫn là cửa sổ nên các cửa sổ không giành nhau công tắc toàn màn hình chung của Roblox."
-    ]
-  },
-  {
-    "version": "1.0.4",
-    "date": "2026-10-15",
-    "en": [
+      "Settings › Launching › When a Roblox window opens: as Roblox sizes it, maximised, or tiled side by side. A maximised window is still a window, so the windows don't fight over Roblox's one fullscreen setting.",
       "Presets can send their messages to a Discord channel of their own: their schedule messages, the summary after a scheduled stop (now counting only that preset's accounts) and the alerts about the windows they opened. Edit a preset › Discord.",
       "The Presets tab shows which presets have windows open, with a Close button for those windows; a preset can also arrange its windows once it has opened them, whatever Settings says.",
       "Settings › Performance › Auto-rejoin turns it on or off for every account at once, and the daily sign-in check says when it last ran. Auto-rejoin that a dead sign-in switched off comes back on by itself once the account is signed in again.",
       "The \"Send to Discord\" switch asks for the webhook link when there is none, instead of doing nothing. Deleting an account takes it out of presets too (a preset left empty has its schedule switched off); quick search (Ctrl+K) says how many more results there are; going back to an older Roblox no longer says \"Roblox updated\"."
     ],
     "vi": [
-      "Preset có thể gửi tin vào kênh Discord riêng: tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng (giờ chỉ tính tài khoản của preset đó) và cảnh báo của các cửa sổ preset đã mở. Sửa preset › Discord.",
-      "Tab Preset cho biết preset nào đang có cửa sổ mở, kèm nút Đóng các cửa sổ đó; preset cũng có thể tự xếp cửa sổ sau khi mở, bất kể Cài đặt chung.",
-      "Cài đặt › Hiệu năng › Tự vào lại game bật/tắt cho mọi tài khoản cùng lúc, và mục kiểm tra đăng nhập mỗi ngày ghi lần chạy gần nhất. Tự vào lại game bị tắt vì mất đăng nhập sẽ tự bật lại khi tài khoản được đăng nhập lại.",
-      "Công tắc \"Gửi lên Discord\" hỏi link webhook khi chưa có, thay vì không phản ứng gì. Xóa tài khoản thì tài khoản cũng được bỏ khỏi preset (preset không còn tài khoản thì lịch hẹn tự tắt); tìm nhanh (Ctrl+K) báo còn bao nhiêu kết quả; Roblox về bản cũ không còn báo \"Roblox đã cập nhật\"."
+      "Chống AFK không còn để cửa sổ Roblox bị kick sau khi Bloxkeep khởi động lại (do cập nhật hoặc bị tắt đột ngột): các cửa sổ đang mở được xử lý ngay thay vì 15 phút sau. Chống AFK giờ bắt đầu từ phút thứ 12, và cửa sổ sắp bị kick vẫn được giữ trong game kể cả khi bạn đang dùng máy: Bloxkeep chen vào lúc bạn ngừng gõ 2 giây, và không bao giờ chen ngang ứng dụng toàn màn hình.",
+      "Nếu tài khoản vẫn bị kick vì AFK, Bloxkeep nói rõ lý do (bạn đang dùng máy, máy đang khóa, hoặc Windows giữ cửa sổ ở phía sau) thay vì lúc nào cũng đổ cho máy đang khóa.",
+      "Các câu hỏi hay gặp (xóa preset, đóng tất cả Roblox, vẫn mở, bật Multi-Roblox, bỏ những gì đã nhập) giờ có ô Không hỏi lại. Riêng xóa tài khoản, khôi phục bản sao lưu và gỡ link Discord thì vẫn luôn hỏi.",
+      "Thống kê: game đã chơi từ mấy hôm trước và game của các preset lại hiện biểu tượng. Khi cửa sổ rộng, trang tận dụng chỗ trống để hiện thêm số tài khoản đã chơi, lượt chơi dài nhất và thời gian chơi theo preset.",
+      "Cập nhật không còn bị lỗi khi Roblox đang mở. Trước đây các chương trình do Bloxkeep mở (Bloxstrap, Roblox) chạy từ bên trong thư mục của Bloxkeep, và chỉ cần một chương trình còn chạy ở đó (Bloxstrap chạy suốt khi Roblox còn mở) là Windows không thay được thư mục này. Nếu vẫn không cài được bản cập nhật, Bloxkeep giờ sẽ báo rõ lý do thay vì lặng lẽ hiện lại nút Khởi động lại để cập nhật.",
+      "Bản tổng kết trên Discord được làm lại: ảnh biểu đồ thời gian chơi theo giờ (hoặc theo ngày) tô màu theo game, mỗi tài khoản một dòng kèm avatar; tổng số so với kỳ trước, số lần văng kèm mã lỗi Roblox, lượt chơi dài nhất, số cửa sổ mở cùng lúc nhiều nhất và các game chơi nhiều nhất; mỗi preset có một khung riêng kèm các tài khoản của nó. Từ bản này, mỗi lượt chơi được ghi lại là do preset nào mở.",
+      "Cài đặt › Khởi chạy › Khi cửa sổ Roblox mở ra: để Roblox tự chọn, phóng to, hoặc xếp cạnh nhau. Cửa sổ phóng to vẫn là cửa sổ thường, nên các cửa sổ không tranh nhau một cài đặt toàn màn hình chung của Roblox.",
+      "Mỗi preset có thể gửi tin vào kênh Discord riêng: tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng (giờ chỉ tính các tài khoản của preset đó) và cảnh báo về các cửa sổ do preset mở. Vào Sửa preset › Discord.",
+      "Tab Preset cho biết preset nào đang có cửa sổ mở, kèm nút Đóng để đóng các cửa sổ đó; preset cũng có thể tự xếp cửa sổ sau khi mở, dù Cài đặt chọn thế nào.",
+      "Cài đặt › Hiệu năng › Tự vào lại game giờ bật hoặc tắt cho mọi tài khoản cùng lúc, và Kiểm tra đăng nhập mỗi ngày cho biết lần chạy gần nhất. Nếu tự vào lại game bị tắt do tài khoản mất đăng nhập, nó sẽ tự bật lại khi tài khoản đăng nhập lại.",
+      "Công tắc \"Gửi lên Discord\" sẽ hỏi link webhook nếu chưa có, thay vì không làm gì. Xóa tài khoản thì tài khoản đó cũng được bỏ khỏi các preset (preset không còn tài khoản nào thì hẹn giờ tự tắt); tìm nhanh (Ctrl+K) cho biết còn bao nhiêu kết quả nữa; Roblox quay về bản cũ không còn bị báo là \"Roblox đã cập nhật\"."
     ]
   },
   {
-    "version": "1.0.3",
+    "version": "1.0.0",
     "date": "2026-10-15",
     "en": [
       "Looks for a new version 5 seconds after it opens (was 20) and every hour instead of every 6 hours, so updates arrive sooner (and still install by themselves while you're not using Bloxkeep).",
@@ -64,51 +40,13 @@
       "If Bloxkeep doesn't come back after an update in the background, it is started again anyway (in the tray, saying it needs unlocking), and an update that failed isn't tried again every few minutes.",
       "The daily Discord summary covers the 24 hours before it is sent, so one at midnight reports the day that just ended; a long list of accounts says how many more there are.",
       "The sign-in form has a person and a lock in its fields. Importing from Roblox Account Manager is gone: Bloxkeep has no connection with that program.",
-      "Fixes: Setup won't install over a portable Bloxkeep's folder (its accounts are inside); a double click that closes a dialog no longer clicks what was behind it; long menus scroll; a one-time preset schedule that was missed turns itself off."
-    ],
-    "vi": [
-      "Kiểm tra bản mới 5 giây sau khi mở (trước là 20) và mỗi giờ thay vì 6 tiếng một lần, nên bản cập nhật đến sớm hơn (và vẫn tự cài vào lúc bạn không dùng Bloxkeep).",
-      "Cài đặt › Cập nhật Bloxkeep ghi rõ lần kiểm tra gần nhất lúc mấy giờ, nên \"đã là bản mới nhất\" không còn là kết quả cũ trông như mới.",
-      "Nút \"Khởi động lại để cập nhật\" hiện cửa sổ Đang cập nhật của Bloxkeep thay cho hộp thoại của Windows, và Bloxkeep quay lại y như cũ: vẫn mở khóa, đúng tab đang xem.",
-      "Các câu hỏi và thông báo lỗi dùng cửa sổ riêng của Bloxkeep theo theme bạn chọn, thay cho hộp thoại trắng của Windows; bộ cài và bộ gỡ chỉ còn nút đóng.",
-      "Nếu sau khi cập nhật ngầm Bloxkeep không tự mở lại, nó vẫn được mở lại (nằm ở khay, báo cần mở khóa), và bản cập nhật bị lỗi không bị thử lại vài phút một lần.",
-      "Bản tổng kết Discord hằng ngày tính 24 giờ trước lúc gửi, nên bản gửi lúc 0 giờ báo đúng ngày vừa qua; danh sách tài khoản dài ghi rõ còn bao nhiêu tài khoản nữa.",
-      "Form đăng nhập có biểu tượng người và ổ khóa trong ô nhập. Đã bỏ phần nhập từ Roblox Account Manager: Bloxkeep không liên quan gì đến chương trình đó.",
-      "Sửa lỗi: bộ cài không cài đè lên thư mục Bloxkeep bản portable (tài khoản nằm trong đó); double-click để đóng hộp thoại không còn bấm nhầm vào thứ phía sau; menu dài cuộn được; lịch chạy một lần của preset bị lỡ sẽ tự tắt."
-    ]
-  },
-  {
-    "version": "1.0.2",
-    "date": "2026-10-15",
-    "en": [
+      "Fixes: Setup won't install over a portable Bloxkeep's folder (its accounts are inside); a double click that closes a dialog no longer clicks what was behind it; long menus scroll; a one-time preset schedule that was missed turns itself off.",
       "Updates install by themselves while you're not using Bloxkeep, and it comes back as it was: still unlocked, on the same tab, still in the tray. Roblox windows keep running. \"Restart to update\" is still there for right away.",
       "The uninstaller opens in the middle of the screen, and a second copy started by mistake just brings the first one up.",
-      "Settings: \"Version & graphics\" is now \"Roblox version & graphics\", since it is about Roblox. Bloxkeep's own version is under Bloxkeep updates."
-    ],
-    "vi": [
-      "Bản cập nhật tự cài vào lúc bạn không dùng Bloxkeep, và app quay lại y như cũ: vẫn mở khóa, đúng tab đang xem, vẫn ở khay. Cửa sổ Roblox vẫn chạy. Nút \"Khởi động lại để cập nhật\" vẫn còn nếu muốn cập nhật ngay.",
-      "Bộ gỡ cài đặt mở ở giữa màn hình, và lỡ mở hai lần thì chỉ đưa cửa sổ đầu lên trước.",
-      "Cài đặt: mục \"Phiên bản & đồ họa\" đổi thành \"Phiên bản & đồ họa Roblox\" cho rõ. Phiên bản của Bloxkeep nằm ở Cập nhật Bloxkeep."
-    ]
-  },
-  {
-    "version": "1.0.1",
-    "date": "2026-10-15",
-    "en": [
+      "Settings: \"Version & graphics\" is now \"Roblox version & graphics\", since it is about Roblox. Bloxkeep's own version is under Bloxkeep updates.",
       "A new installer: choose where Bloxkeep goes, on any drive, and watch it install; your accounts and settings stay apart from the program.",
       "A new uninstaller (Windows Settings › Apps › Uninstall) that asks whether to delete your accounts and settings too, or keep them for a reinstall.",
-      "Setup closes a running Bloxkeep before installing, and a second copy of Setup can't start over the first one."
-    ],
-    "vi": [
-      "Bộ cài mới: chọn nơi cài Bloxkeep, ở ổ nào cũng được, và xem tiến trình cài; tài khoản và cài đặt vẫn lưu riêng với chương trình.",
-      "Bộ gỡ cài đặt mới (Cài đặt Windows › Ứng dụng › Gỡ cài đặt) hỏi có xóa luôn tài khoản và cài đặt không, hay giữ lại để cài lại sau.",
-      "Bộ cài đóng Bloxkeep đang chạy trước khi cài, và không mở được hai bộ cài cùng lúc."
-    ]
-  },
-  {
-    "version": "1.0.0",
-    "date": "2026-10-15",
-    "en": [
+      "Setup closes a running Bloxkeep before installing, and a second copy of Setup can't start over the first one.",
       "Keep all your Roblox accounts in one place, saved only on this PC and locked with your master password.",
       "Add accounts with a code from the Roblox phone app, with a password (2-step verification and captchas included), on the official Roblox page, with a cookie, or from another Bloxkeep file.",
       "Find a game by name or link, pick accounts and press Play; choose the server (most or fewest players, lowest ping, room for all your accounts), join a friend, or join the server a player is in.",
@@ -120,15 +58,29 @@
       "Back up to a OneDrive or Google Drive folder and restore on a new PC; 32 themes, English and Vietnamese, keeps running in the tray, and new versions download in the background."
     ],
     "vi": [
+      "Bloxkeep tìm bản mới 5 giây sau khi mở (trước là 20 giây) và mỗi giờ một lần thay vì 6 giờ một lần, nên bản cập nhật đến sớm hơn (và vẫn tự cài vào lúc bạn không dùng Bloxkeep).",
+      "Cài đặt › Cập nhật Bloxkeep cho biết lần kiểm tra gần nhất là lúc nào, nên \"đã là bản mới nhất\" không bao giờ là kết quả cũ trông như mới.",
+      "Nút \"Khởi động lại để cập nhật\" hiện cửa sổ Đang cập nhật của Bloxkeep thay cho hộp thoại của Windows, và Bloxkeep mở lại y như cũ: vẫn mở khóa, đúng tab đang xem.",
+      "Các câu hỏi và thông báo lỗi dùng cửa sổ riêng của Bloxkeep theo chủ đề bạn chọn, thay cho hộp thoại trắng trơn của Windows; bộ cài và bộ gỡ cài đặt chỉ còn nút đóng.",
+      "Nếu Bloxkeep không tự mở lại sau khi cập nhật ngầm, nó vẫn sẽ được mở lại (nằm ở khay hệ thống, báo cần mở khóa), và bản cập nhật bị lỗi không còn bị thử lại vài phút một lần.",
+      "Bản tổng kết Discord hằng ngày tính 24 giờ trước lúc gửi, nên bản gửi lúc 0 giờ báo đúng ngày vừa hết; danh sách tài khoản dài thì ghi rõ còn bao nhiêu tài khoản nữa.",
+      "Ô nhập ở form đăng nhập có biểu tượng người và ổ khóa. Đã bỏ chức năng nhập từ Roblox Account Manager: Bloxkeep không liên quan gì tới chương trình đó.",
+      "Sửa lỗi: bộ cài không cài đè lên thư mục của Bloxkeep bản portable (tài khoản nằm trong đó); bấm đúp để đóng hộp thoại không còn bấm nhầm vào thứ nằm phía sau; menu dài cuộn được; hẹn giờ chạy một lần của preset nếu bị lỡ sẽ tự tắt.",
+      "Bản cập nhật tự cài vào lúc bạn không dùng Bloxkeep, và Bloxkeep mở lại y như cũ: vẫn mở khóa, đúng tab đang xem, vẫn ở khay. Các cửa sổ Roblox vẫn chạy bình thường. Muốn cập nhật ngay thì vẫn có nút \"Khởi động lại để cập nhật\".",
+      "Bộ gỡ cài đặt mở ở giữa màn hình, và nếu lỡ mở lần thứ hai thì chỉ đưa cửa sổ đang có lên trước.",
+      "Cài đặt: mục \"Phiên bản & đồ họa\" đổi tên thành \"Phiên bản & đồ họa Roblox\" vì nó nói về Roblox. Phiên bản của chính Bloxkeep nằm ở Cập nhật Bloxkeep.",
+      "Bộ cài mới: chọn nơi cài Bloxkeep trên ổ nào cũng được và xem quá trình cài; tài khoản và cài đặt được lưu riêng, tách khỏi chương trình.",
+      "Bộ gỡ cài đặt mới (Cài đặt Windows › Ứng dụng › Gỡ cài đặt) hỏi có xóa luôn tài khoản và cài đặt không, hay giữ lại để cài lại sau.",
+      "Bộ cài tự đóng Bloxkeep đang chạy trước khi cài, và không thể mở bộ cài thứ hai chồng lên bộ cài đang chạy.",
       "Giữ mọi tài khoản Roblox ở một chỗ, chỉ lưu trên máy này và khóa bằng mật khẩu chủ.",
-      "Thêm tài khoản bằng mã từ app Roblox trên điện thoại, bằng mật khẩu (có xác minh 2 bước và captcha), trên trang Roblox chính thức, bằng cookie, hoặc chuyển từ file Bloxkeep khác.",
+      "Thêm tài khoản bằng mã từ app Roblox trên điện thoại, bằng mật khẩu (hỗ trợ cả xác minh 2 bước và captcha), qua trang Roblox chính thức, bằng cookie, hoặc lấy từ file Bloxkeep khác.",
       "Tìm game theo tên hoặc link, chọn tài khoản rồi bấm Vào game; chọn server (đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho mọi tài khoản), vào cùng bạn bè, hoặc vào đúng server của một người chơi.",
-      "Mở nhiều cửa sổ Roblox cùng lúc với Multi-Roblox (chỉ chạy khi bạn bật), mọi cửa sổ mở ở chế độ cửa sổ và xếp theo kiểu bạn chọn.",
-      "Preset: lưu tài khoản, game và server, chạy bằng một lần bấm hoặc theo giờ hẹn, với chống AFK, tự vào lại game, chế độ treo máy nhẹ và mở lại Roblox theo giờ riêng cho từng preset.",
-      "Tự vào lại game và thử tiếp với thời gian chờ giãn dần, màn hình theo dõi hình trực tiếp của mọi cửa sổ Roblox, cửa sổ nhỏ, và tìm nhanh bằng Ctrl+K.",
-      "Thống kê thời gian chơi theo tài khoản và theo game, nhật ký hoạt động, và gửi tổng kết, tin trạng thái, cảnh báo lên kênh Discord của bạn.",
-      "Mã 2FA ngay trong app, ẩn tên tài khoản khi chụp màn hình, kiểm tra đăng nhập mỗi ngày và đánh dấu tài khoản bị ban.",
-      "Sao lưu vào thư mục OneDrive hoặc Google Drive và khôi phục trên máy mới; 32 giao diện, tiếng Anh và tiếng Việt, chạy tiếp ở khay hệ thống, bản mới được tải ngầm."
+      "Chạy nhiều cửa sổ Roblox cùng lúc với Multi-Roblox (tắt cho tới khi bạn bật), tất cả đều mở dạng cửa sổ và xếp theo kiểu bạn chọn.",
+      "Preset: lưu sẵn tài khoản, game và server, chạy bằng một lần bấm hoặc theo giờ hẹn, mỗi preset có chống AFK, tự vào lại game, chế độ treo máy nhẹ và mở lại Roblox theo giờ riêng.",
+      "Tự vào lại game, chưa được thì thử tiếp với thời gian chờ dài dần; Theo dõi game với hình trực tiếp của mọi cửa sổ Roblox; cửa sổ nhỏ; và tìm nhanh bằng Ctrl+K.",
+      "Thống kê thời gian chơi theo tài khoản và theo game, nhật ký hoạt động, cùng bản tổng kết, tin trạng thái và cảnh báo gửi vào kênh Discord của bạn.",
+      "Mã xác thực (2FA) ngay trong app, ẩn tên tài khoản khi chụp màn hình, kiểm tra đăng nhập mỗi ngày và đánh dấu tài khoản bị ban.",
+      "Sao lưu vào thư mục OneDrive hoặc Google Drive và khôi phục trên máy mới; 32 chủ đề, tiếng Anh và tiếng Việt, chạy tiếp ở khay hệ thống, và tự tải bản mới ở chế độ nền."
     ]
   }
 ]
