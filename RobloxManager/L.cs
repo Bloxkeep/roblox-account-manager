@@ -300,8 +300,11 @@ public static class L
             "Chưa mở được cửa sổ Roblox đăng nhập riêng. Hãy thử lại, hoặc đóng Roblox rồi mở lại.",
         ["Sign in separately in each new window. Keep Bloxkeep running; sign-ins are not saved when these windows close."] =
             "Mỗi cửa sổ mới đăng nhập riêng. Hãy để Bloxkeep chạy; đăng nhập không được lưu khi đóng các cửa sổ này.",
-        ["Close all Roblox windows before updating while separate sign-ins are open."] =
-            "Đang có cửa sổ đăng nhập riêng. Hãy đóng tất cả Roblox trước khi cập nhật Bloxkeep.",
+        ["Close the separate Roblox sign-in windows before updating Bloxkeep."] =
+            "Hãy đóng các cửa sổ Roblox đăng nhập riêng trước khi cập nhật Bloxkeep.",
+        ["Open separate window"] = "Mở cửa sổ riêng",
+        ["Separate sign-in windows are experimental. All Roblox windows temporarily stop saving sign-ins and some settings. Your usual saved sign-in may expire. If Bloxkeep quits or crashes while a separate window stays open, that window may replace the saved sign-in. Close separate windows before quitting Bloxkeep. Long sessions have not been verified."] =
+            "Cửa sổ đăng nhập riêng còn đang thử nghiệm. Mọi cửa sổ Roblox tạm thời không lưu đăng nhập và một số cài đặt. Phiên đăng nhập thường dùng có thể hết hạn. Nếu Bloxkeep tắt hoặc bị lỗi khi cửa sổ riêng còn mở, tài khoản trong cửa sổ đó có thể ghi đè đăng nhập đã lưu. Hãy đóng các cửa sổ riêng trước khi thoát Bloxkeep. Chưa kiểm chứng việc treo lâu dài.",
         ["Opening this account asks something first. Open it from Bloxkeep."] = "Mở tài khoản này cần bạn trả lời một câu hỏi trước. Hãy mở nó trong Bloxkeep.",
         ["Bloxkeep has a vault on this PC: Multi-Roblox is turned on or off inside it."] = "Máy này đã có kho của Bloxkeep: hãy bật hoặc tắt Multi-Roblox trong đó.",
         ["Close all Roblox"] = "Đóng tất cả Roblox",

@@ -2492,7 +2492,7 @@ public sealed partial class AppController : IDisposable
 
     void CheckCanLaunch(List<Account> accounts)
     {
-        if (_launchCts is not null)
+        if (_launchCts is not null || _openingHome)
             throw new UserError(L.T("Already launching — wait a moment or press Stop."));
         if (accounts.Count == 0)
             throw new UserError(L.T("Select at least one account."));
@@ -3186,7 +3186,7 @@ public sealed partial class AppController : IDisposable
         }
         pids.ExceptWith(trays);
         players.RemoveAll(p => trays.Contains(p.Pid));
-        ReleaseHomeSessionIfIdle(scan, pids.Count, now);
+        ReleaseHomeSessionIfIdle(scan, scanned, trays, now);
         NoteClientStarts(pids, now, ParentOf);
         bool changed = false;
 
@@ -3865,7 +3865,7 @@ public sealed partial class AppController : IDisposable
     {
         // One client at a time: the previous one must have its window (Roblox may be updating), then a short gap.
         var spacing = TimeSpan.FromSeconds(Math.Max(3, _vault?.Data.Settings.LaunchDelaySeconds ?? 0));
-        if (_rejoinQueue.Count == 0 || _rejoining || _launchCts is not null || now < _sweepBackgroundUntil || _pending.Count > 0
+        if (_rejoinQueue.Count == 0 || _rejoining || _openingHome || _launchCts is not null || now < _sweepBackgroundUntil || _pending.Count > 0
             || now - _lastSessionStart < spacing || Settling)
             return;
         var due = _rejoinQueue.FirstOrDefault(r => r.Due <= now);

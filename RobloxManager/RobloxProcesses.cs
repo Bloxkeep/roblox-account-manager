@@ -264,6 +264,22 @@ public static class RobloxProcesses
     static extern bool QueryFullProcessImageName(IntPtr process, int flags, StringBuilder name, ref int size);
 
     /// <summary>
+    /// The executable path as supplied at launch. QueryFullProcessImageName resolves junctions, hiding which alias
+    /// was used; the command line retains it. Only the first argument is returned, never tickets in later arguments.
+    /// </summary>
+    public static string? LaunchPath(int pid, long expectedCreation)
+    {
+        string? line = CommandLineOf(pid, expectedCreation)?.TrimStart();
+        if (string.IsNullOrEmpty(line))
+            return null;
+        int end = line[0] == '"' ? line.IndexOf('"', 1) : line.IndexOfAny([' ', '\t']);
+        if (line[0] == '"' && end < 1)
+            return null;
+        string path = line[0] == '"' ? line[1..end] : end < 0 ? line : line[..end];
+        return Path.IsPathFullyQualified(path) ? path : null;
+    }
+
+    /// <summary>
     /// Whether <paramref name="pid"/> is still the Roblox client the last snapshot saw under it: the id of a client
     /// that ended a moment ago (between two process checks) may already belong to another program, or a new client.
     /// Asked of the handle when Windows gives one (then the id can't change hands meanwhile), else of a fresh snapshot.
@@ -702,7 +718,7 @@ public static class RobloxProcesses
     }
 
     /// <summary>A process's command line (Windows 8.1 and later), or null when it can't be read (gone, not ours).</summary>
-    static string? CommandLineOf(int pid)
+    static string? CommandLineOf(int pid, long expectedCreation = 0)
     {
         IntPtr handle = OpenProcess(ProcessQueryLimitedInformation, false, pid);
         if (handle == IntPtr.Zero)
@@ -710,6 +726,8 @@ public static class RobloxProcesses
         IntPtr buffer = IntPtr.Zero;
         try
         {
+            if (expectedCreation != 0 && (!GetProcessTimes(handle, out long created, out _, out _, out _) || created != expectedCreation))
+                return null;
             NtQueryInformationProcess(handle, ProcessCommandLineInformation, IntPtr.Zero, 0, out int size);
             if (size <= 0 || size > 1 << 16)
                 return null;

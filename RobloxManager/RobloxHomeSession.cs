@@ -10,7 +10,7 @@ namespace RobloxManager;
 /// Ticket-free Roblox home screens. A directory junction gives each start its own path-based .shm/.mtx names,
 /// without copying or modifying the client. Exclusive handles keep both shared sign-in files unreadable and
 /// unwritable: each new client signs in in memory instead of adopting or overwriting another client's session.
-/// Keep this alive while clients run, including while Bloxkeep is locked or Multi-Roblox is switched off.
+/// Keep this alive while clients using these aliases run, including while Bloxkeep is locked or Multi-Roblox is switched off.
 /// Verified with Roblox 0.743.0.7431134: signing in and out in the new window leaves the old window signed in.
 /// </summary>
 sealed class RobloxHomeSession : IDisposable
@@ -18,21 +18,96 @@ sealed class RobloxHomeSession : IDisposable
     readonly List<FileStream> _files = [];
     readonly string _aliases;
     bool _disposed;
+    readonly Dictionary<(int Pid, long Created), bool> _clientPaths = [];
 
     public RobloxHomeSession(string storage, string aliases)
     {
-        _aliases = Path.GetFullPath(aliases);
+        _aliases = Path.TrimEndingDirectorySeparator(Path.GetFullPath(aliases));
         Directory.CreateDirectory(storage);
         try
         {
             foreach (string name in new[] { "RobloxCookies.dat", "appStorage.json" })
-                _files.Add(new FileStream(Path.Combine(storage, name), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None));
+                _files.Add(LockFile(Path.Combine(storage, name)));
         }
         catch
         {
             Dispose(); // If the second file is busy, never leave just the first one locked.
             throw;
         }
+    }
+
+    static FileStream LockFile(string path)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+            }
+            catch (FileNotFoundException)
+            {
+                try
+                {
+                    // Only our own empty placeholder disappears, atomically when its handle closes (even on a crash).
+                    return new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
+                }
+                catch (IOException) when (attempt < 2 && File.Exists(path))
+                {
+                    // Someone created the file between Open and CreateNew: open it normally, never truncate it.
+                }
+            }
+        }
+    }
+
+    /// <summary>Only a client executable directly inside one of our GUID-named junctions belongs to this session.</summary>
+    public bool OwnsClientPath(string path)
+    {
+        try
+        {
+            if (!Path.IsPathFullyQualified(path) || !Path.GetFileName(path).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase))
+                return false;
+            var parent = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(path))!);
+            return parent.Parent?.FullName.Equals(_aliases, StringComparison.OrdinalIgnoreCase) == true
+                && parent.Name.Length == 39 && parent.Name.StartsWith("client-", StringComparison.OrdinalIgnoreCase)
+                && Guid.TryParseExact(parent.Name[7..], "N", out _);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Query each process identity once; a reused PID is a new identity. Failure to inspect an unknown client keeps
+    /// the locks held until its path can be confirmed or it exits, rather than risking an early unlock.
+    /// </summary>
+    public (int[] Pids, bool Uncertain) FindClients(IReadOnlyList<RobloxProcesses.PlayerProcess> players, Func<int, long, string?>? query = null)
+    {
+        query ??= RobloxProcesses.LaunchPath;
+        var alive = players.Select(p => (p.Pid, p.Created)).ToHashSet();
+        foreach (var key in _clientPaths.Keys.Where(k => !alive.Contains(k)).ToArray())
+            _clientPaths.Remove(key);
+        var ours = new List<int>();
+        bool uncertain = false;
+        foreach (var player in players)
+        {
+            var key = (player.Pid, player.Created);
+            if (player.Created == 0 || !_clientPaths.TryGetValue(key, out bool own))
+            {
+                string? path = query(player.Pid, player.Created);
+                if (path is null)
+                {
+                    uncertain = true;
+                    continue;
+                }
+                own = OwnsClientPath(path);
+                if (player.Created != 0)
+                    _clientPaths[key] = own;
+            }
+            if (own)
+                ours.Add(player.Pid);
+        }
+        return (ours.ToArray(), uncertain);
     }
 
     public ProcessStartInfo CreateStartInfo(string client)
@@ -60,6 +135,14 @@ sealed class RobloxHomeSession : IDisposable
         try
         {
             using var process = Process.Start(info) ?? throw new IOException("Roblox did not start.");
+            try
+            {
+                _clientPaths[(process.Id, process.StartTime.ToFileTimeUtc())] = true;
+            }
+            catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+            {
+                // The snapshot and launch-path query will identify it if it is still running.
+            }
         }
         catch
         {
@@ -68,7 +151,7 @@ sealed class RobloxHomeSession : IDisposable
         }
     }
 
-    /// <summary>Call only when no Roblox clients are running. Delete junctions themselves, never their targets.</summary>
+    /// <summary>Call only when no clients using these aliases are running. Delete junctions themselves, never their targets.</summary>
     public static void CleanupAliases(string root)
     {
         if (!Directory.Exists(root))
@@ -137,6 +220,7 @@ sealed class RobloxHomeSession : IDisposable
         foreach (var file in _files)
             file.Dispose();
         _files.Clear();
+        _clientPaths.Clear();
         // Paths stay usable if someone explicitly quits Bloxkeep before closing their clients.
     }
 }

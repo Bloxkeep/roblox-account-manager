@@ -117,7 +117,7 @@ public sealed partial class AppController
                 ? L.T("The update is still downloading. Try again in a moment.")
                 : L.T("No update is ready to install. Check for updates again."));
         if (HomeSessionsActive)
-            throw new UserError(L.T("Close all Roblox windows before updating while separate sign-ins are open."));
+            throw new UserError(L.T("Close the separate Roblox sign-in windows before updating Bloxkeep."));
         if (OpeningRoblox)
             throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
         _applyingUpdate = true;
@@ -126,7 +126,7 @@ public sealed partial class AppController
             await SaveViewAsync();
             // Started during that moment (a scheduled preset, a rejoin): the restart would cut it off.
             if (HomeSessionsActive)
-                throw new UserError(L.T("Close all Roblox windows before updating while separate sign-ins are open."));
+                throw new UserError(L.T("Close the separate Roblox sign-in windows before updating Bloxkeep."));
             if (OpeningRoblox)
                 throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
             if (!SaveBeforeClosing())

@@ -1,5 +1,33 @@
 [
   {
+    "version": "1.1.6-beta.1",
+    "date": "2026-10-18",
+    "en": [
+      "Experimental: all Roblox windows temporarily stop saving sign-ins and some settings while separate sign-in windows are open. Close the separate windows before quitting Bloxkeep. A crash may replace the usual saved sign-in; long sessions have not been verified."
+    ],
+    "vi": [
+      "Đang thử nghiệm: mọi cửa sổ Roblox tạm thời không lưu đăng nhập và một số cài đặt khi có cửa sổ đăng nhập riêng. Hãy đóng các cửa sổ riêng trước khi thoát Bloxkeep. Nếu Bloxkeep bị lỗi, đăng nhập thường dùng có thể bị thay thế; chưa kiểm chứng việc treo lâu dài."
+    ],
+    "new": {
+      "en": [
+        "Separate sign-in windows: Open Roblox in the tray menu opens another window you can sign into independently, without adding the account to Bloxkeep. Multi-Roblox must be ready."
+      ],
+      "vi": [
+        "Cửa sổ đăng nhập riêng: Mở Roblox mới trong menu khay mở thêm cửa sổ để đăng nhập độc lập, không cần thêm tài khoản vào Bloxkeep. Multi-Roblox phải sẵn sàng."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Shared sign-in files unlock after the separate clients close, even when ordinary clients remain open. Junctions stay in Bloxkeep data rather than TEMP; empty files created by Bloxkeep are removed automatically.",
+        "Opening a separate window reports when Multi-Roblox becomes unavailable and no longer overlaps account launches or automatic rejoins."
+      ],
+      "vi": [
+        "Tệp đăng nhập chung được nhả khóa sau khi các client riêng đóng, kể cả khi client thường vẫn chạy. Junction nằm trong dữ liệu Bloxkeep thay vì TEMP; tệp rỗng do Bloxkeep tạo được tự dọn.",
+        "Mở cửa sổ riêng báo rõ khi Multi-Roblox mất trạng thái sẵn sàng, và không còn chạy đồng thời với việc mở tài khoản hoặc tự vào lại game."
+      ]
+    }
+  },
+  {
     "version": "1.1.5",
     "date": "2026-10-18",
     "fixed": {
@@ -102,12 +130,12 @@
       "en": [
         "Star Bloxkeep on GitHub from Settings › Bloxkeep updates, Ctrl+K or the end of What’s new. A star helps other players find it.",
         "Lock automatically (Settings › Security): when nobody has used the PC for the time you pick, Bloxkeep asks for the master password again, while Roblox, auto-rejoin, scheduled presets and Discord keep running.",
-      "What’s new lists what’s new, what works better and what’s fixed separately."
+        "What’s new lists what’s new, what works better and what’s fixed separately."
       ],
       "vi": [
         "Cho Bloxkeep một sao trên GitHub từ Cài đặt › Cập nhật Bloxkeep, Ctrl+K hoặc cuối bảng Có gì mới. Mỗi sao giúp thêm người chơi tìm thấy Bloxkeep.",
         "Tự khóa (Cài đặt › Bảo mật): khi không ai dùng máy trong khoảng thời gian bạn chọn, Bloxkeep hỏi lại mật khẩu chủ, còn Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy.",
-      "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
+        "Bảng Có gì mới giờ chia riêng phần mới, phần cải thiện và phần đã sửa."
       ]
     },
     "improved": {

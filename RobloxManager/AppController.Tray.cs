@@ -71,11 +71,11 @@ public sealed partial class AppController
     RobloxHomeSession? _homeSession;
     bool _openingHome;
     DateTime _homeStartedAt;
-    static readonly string HomeAliases = Path.Combine(Path.GetTempPath(), "Bloxkeep.ClientPaths");
+    static readonly string HomeAliases = Path.Combine(Vault.DataDir, "roblox-client-paths");
 
     /// <summary>
     /// A new sign-in window without an account or ticket from Bloxkeep. The installed client is opened directly
-    /// through a junction, retaining its installed mods; shared sign-in files stay locked until all clients close.
+    /// through a junction, retaining its installed mods; shared sign-in files stay locked until clients using these aliases close.
     /// </summary>
     public async void TrayNewRoblox()
     {
@@ -87,18 +87,17 @@ public sealed partial class AppController
             Toast(text, "warn");
             ShowNotification?.Invoke(text, "warn");
         }
-        bool acquired = false;
+        if (OpeningRoblox)
+        {
+            Tell(L.T("Wait until Bloxkeep finishes opening Roblox."));
+            return;
+        }
+        bool acquired = false, started = false;
         _openingHome = true;
         try
         {
-            var state = TrayState();
-            if (state.Multi != "ready")
-            {
-                Tell(state.Multi == "off"
-                    ? L.T("Turn on Multi-Roblox before opening a separate Roblox sign-in window.")
-                    : MultiNotReadyText());
+            if (!HomeLaunchReady(Tell))
                 return;
-            }
             var settings = _vault?.Data.Settings;
             string? client = RobloxInstalls.ClientFor(settings?.LaunchVia ?? "auto", settings?.CustomLauncher ?? "");
             if (client is null)
@@ -111,6 +110,12 @@ public sealed partial class AppController
                 Tell(L.T("Separate sign-in windows currently need Roblox from roblox.com, rather than the Microsoft Store edition."));
                 return;
             }
+            if (_homeSession is null && !Ui.Modal(() => Dialog.Confirm(_owner,
+                L.T("Separate sign-in windows are experimental. All Roblox windows temporarily stop saving sign-ins and some settings. Your usual saved sign-in may expire. If Bloxkeep quits or crashes while a separate window stays open, that window may replace the saved sign-in. Close separate windows before quitting Bloxkeep. Long sessions have not been verified."),
+                L.T("Open separate window"), L.T("Cancel"), danger: true)))
+                return;
+            if (!HomeLaunchReady(Tell))
+                return;
             if (RobloxProcesses.CloseTrayCopies() > 0)
                 await Task.Delay(250);
             if (_homeSession is null)
@@ -121,7 +126,7 @@ public sealed partial class AppController
                 // Roblox can have one of these files open briefly while saving. Each failed attempt releases both.
                 for (int attempt = 0; ; attempt++)
                 {
-                    if (_disposed || !MultiInstance.Armed)
+                    if (!HomeLaunchReady(Tell))
                         return;
                     try
                     {
@@ -135,10 +140,18 @@ public sealed partial class AppController
                     }
                 }
             }
-            if (_disposed || !MultiInstance.Armed)
+            if (!HomeLaunchReady(Tell))
+            {
+                if (acquired)
+                {
+                    _homeSession?.Dispose();
+                    _homeSession = null;
+                }
                 return;
+            }
             _homeStartedAt = DateTime.UtcNow;
             _homeSession.Start(client);
+            started = true;
             _lastScanFoundNone = false;
             _lastScan = DateTime.MinValue;
             if (acquired)
@@ -150,7 +163,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
         {
-            if (acquired)
+            if (acquired && !started)
             {
                 _homeSession?.Dispose();
                 _homeSession = null;
@@ -169,12 +182,29 @@ public sealed partial class AppController
     /// <summary>No automatic or manual update may drop the file locks while separate sign-ins are in use.</summary>
     bool HomeSessionsActive => _homeSession is not null;
 
-    void ReleaseHomeSessionIfIdle(bool scan, int clients, DateTime now)
+    bool HomeLaunchReady(Action<string> tell)
     {
-        if (!scan || clients != 0 || _homeSession is null || OpeningRoblox || now - _homeStartedAt < TimeSpan.FromSeconds(15))
+        if (_disposed)
+            return false;
+        var state = TrayState();
+        if (state.Multi == "ready")
+            return true;
+        tell(state.Multi == "off"
+            ? L.T("Turn on Multi-Roblox before opening a separate Roblox sign-in window.")
+            : MultiNotReadyText());
+        return false;
+    }
+
+    void ReleaseHomeSessionIfIdle(bool scan, IReadOnlyList<RobloxProcesses.PlayerProcess> players, HashSet<int> trays, DateTime now)
+    {
+        if (!scan || _homeSession is null || OpeningRoblox || now - _homeStartedAt < TimeSpan.FromSeconds(15))
             return;
-        RobloxProcesses.CloseTrayCopies();
-        if (RobloxProcesses.GetPlayerPids().Length != 0)
+        var (pids, uncertain) = _homeSession.FindClients(players);
+        // Only our own windowless copies are ended. A normal client or tray copy never extends this session's life.
+        foreach (int pid in pids.Where(trays.Contains))
+            RobloxProcesses.Kill(pid);
+        // Even a tray we just ended stays counted until a later snapshot confirms it really exited.
+        if (pids.Length > 0 || uncertain)
             return;
         _homeSession.Dispose();
         _homeSession = null;
