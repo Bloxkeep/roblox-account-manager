@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.0.6-beta.5",
+    "date": "2026-10-19",
+    "fixed": {
+      "en": [
+        "A game moving you to another of its servers is no longer taken for a disconnect: Bloxkeep no longer closes that window and opens a different game.",
+        "Auto-rejoin and a preset's Restart Roblox go back to the game you switched to inside the Roblox window, not the one Bloxkeep first opened.",
+        "A game you start yourself in a Roblox window is left to you, however long it takes to get in.",
+        "One refusal from Roblox no longer marks an account as signed out or turns its auto-rejoin off: Bloxkeep checks the sign-in first.",
+        "Games that move you between servers often no longer bring \"keeps getting disconnected\" and its long waits after a few drops.",
+        "Opening several accounts into one server no longer closes the first window when it got in a little late.",
+        "No more \"Windows refused to move a Roblox window to other cores\" or \"Roblox refused memory trimming\" for a window that had just closed, and a server list that didn't load is no longer reported as \"no server has room\"."
+      ],
+      "vi": [
+        "Game chuyển bạn sang server khác không còn bị hiểu nhầm là rớt mạng: Bloxkeep không còn đóng cửa sổ đó rồi mở một game khác.",
+        "Tự vào lại game và Mở lại Roblox của preset giờ quay về game bạn đã tự chuyển sang trong cửa sổ Roblox, không phải game Bloxkeep mở lúc đầu.",
+        "Game bạn tự mở trong một cửa sổ Roblox thì Bloxkeep để bạn tự lo, dù vào lâu đến đâu.",
+        "Roblox từ chối một lần không còn làm tài khoản bị coi là đã đăng xuất hay bị tắt tự vào lại game: Bloxkeep kiểm tra đăng nhập trước.",
+        "Game hay chuyển bạn qua lại giữa các server không còn khiến Bloxkeep báo \"cứ bị văng khỏi game\" rồi chờ lâu sau vài lần rớt mạng.",
+        "Mở nhiều tài khoản vào cùng một server không còn đóng cửa sổ đầu tiên khi nó vào hơi chậm.",
+        "Hết báo nhầm \"Windows không cho chuyển cửa sổ Roblox sang nhân khác\" hay \"Roblox không cho giảm RAM\" với cửa sổ vừa tắt, và danh sách server không tải được cũng không còn bị báo là \"không có server nào đủ chỗ\"."
+      ]
+    }
+  },
+  {
     "version": "1.0.6-beta.4",
     "date": "2026-10-18",
     "fixed": {
