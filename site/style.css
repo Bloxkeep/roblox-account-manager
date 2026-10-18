@@ -91,6 +91,10 @@ kbd { font: .85em ui-monospace, Consolas, monospace; border: 1px solid var(--lin
 .feature p, .card p { margin: 0 0 8px; color: var(--muted); }
 .feature .shot { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top left; }
 .more { font-weight: 600; }
+.proof > p { color: var(--muted); max-width: 760px; }
+.proof figure { margin: 0; }
+.proof .shot { width: 100%; }
+.proof figcaption { color: var(--muted); font-size: .9rem; margin-top: 8px; }
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; }
 .get { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px 24px 20px; margin-top: 40px; }
 .faq dt { font-weight: 600; margin-top: 1rem; }

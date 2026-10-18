@@ -78,6 +78,7 @@ Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do: bạn dùng máy l
 
 - Trước khi mở, hỏi lại nếu RAM trống không đủ cho các cửa sổ mới (hộp thoại **Lưu ý trước khi mở**, xem [Vào game](playing.vi.md)).
 - Trong lúc chơi, báo khi máy dùng từ 92 % RAM trở lên, tối đa 5 phút một lần.
+- Nếu RAM vẫn trống mà bộ nhớ ảo của Windows sắp đầy thì báo chuyện đó, cả trước khi mở lẫn lúc đang chơi: khi ấy cửa sổ Roblox sẽ bị văng ngay khi mở. Xem [Gỡ rối](troubleshooting.vi.md#h-cửa-sổ-roblox-bị-văng-ngay-khi-mở-memory-dump-captured-hoặc-bloxstrap-báo-roblox-failed-to-launch).
 - Thanh RAM trong thẻ **Roblox trên máy này** ở thanh bên chuyển đỏ từ 90 % (xem [Cửa sổ và thống kê](windows-and-stats.vi.md)).
 
 ## Tiết kiệm RAM cho cửa sổ chạy nền

@@ -92,6 +92,7 @@ Trước khi mở, Bloxkeep có thể dừng lại hỏi trong hộp thoại **L
 | "Multi-Roblox chưa hoạt động: Roblox đã mở từ trước khi bật Multi-Roblox." | Multi-Roblox đã bật nhưng chưa sẵn sàng. Có thêm nút **Sửa Multi-Roblox**. | Không |
 | Cảnh báo của Kiểm tra Multi-Roblox | Mở nhiều cửa sổ trên một bản Roblox mà chưa có hai cửa sổ nào cùng chơi được. | Có |
 | "RAM chỉ còn trống *X*, mà mở thêm *N* cửa sổ Roblox cần khoảng *Y*." | Đang bật **Báo khi sắp hết RAM** và RAM sắp không đủ. | Có |
+| "RAM vẫn còn trống, nhưng bộ nhớ ảo của Windows sắp đầy nên mở thêm *N* cửa sổ Roblox có thể bị văng." | Đang bật **Báo khi sắp hết RAM**, RAM vẫn đủ nhưng bộ nhớ ảo của Windows sắp không đủ. Xem [Gỡ rối](troubleshooting.vi.md#h-cửa-sổ-roblox-bị-văng-ngay-khi-mở-memory-dump-captured-hoặc-bloxstrap-báo-roblox-failed-to-launch). | Có |
 
 <img src="../screenshots/vi/before-you-open.png" width="760" alt="Hộp Lưu ý trước khi mở: Multi-Roblox đang tắt, có ô Không hỏi lại và các nút Hủy, Vẫn mở, Bật Multi-Roblox rồi chơi">
 

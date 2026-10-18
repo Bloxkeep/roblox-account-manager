@@ -24,7 +24,7 @@ Mỗi chủ đề một trang ngắn. Đọc ba trang đầu là dùng được 
 <td width="33%" valign="top"><a href="guide/playing.vi.md"><img src="screenshots/vi/game-picker.png" width="240" alt=""><br><b>Vào game</b></a><br>Chọn game, server, server riêng, vào cùng người chơi, trang web theo tab.</td>
 </tr>
 <tr>
-<td valign="top"><a href="guide/multi-roblox.vi.md"><img src="screenshots/vi/multi-help.png" width="240" alt=""><br><b>Multi-Roblox</b></a><br>Nhiều cửa sổ Roblox cùng lúc, màu đèn, bản cập nhật Roblox, Roblox bản Microsoft Store.</td>
+<td valign="top"><a href="guide/multi-roblox.vi.md"><img src="screenshots/multi-roblox-real.jpg" width="240" alt=""><br><b>Multi-Roblox</b></a><br>Nhiều cửa sổ Roblox cùng lúc, màu đèn, bản cập nhật Roblox, Roblox bản Microsoft Store.</td>
 <td valign="top"><a href="guide/presets.vi.md"><img src="screenshots/vi/presets.png" width="240" alt=""><br><b>Preset và hẹn giờ</b></a><br>Lưu sẵn tài khoản và game, mở bằng một cú bấm hoặc theo lịch.</td>
 <td valign="top"><a href="guide/staying-in-game.vi.md"><img src="screenshots/vi/card-rejoin.png" width="240" alt=""><br><b>Treo game</b></a><br>Tự vào lại game, chống AFK, kiểm tra đăng nhập mỗi ngày, RAM.</td>
 </tr>

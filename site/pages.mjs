@@ -53,15 +53,20 @@ const L = {
     all: 'All downloads',
     meta: v => `Version ${v} · Windows 10 or 11, 64-bit · Free`,
     heroAlt: "Bloxkeep's main window: account cards, the game bar at the bottom, Multi-Roblox on in the sidebar",
+    proofTitle: 'See it working',
+    proofText: "A real screenshot from one Windows PC: five Roblox accounts open at once with Bloxkeep. Four are already in the game, the fifth is joining, and Bloxkeep's sidebar counts 5 windows with Multi-Roblox on.",
+    proofAlt: 'Five Roblox windows open at once on one PC, titled Roblox - Account 1 to Roblox - Account 5, four in the same game and the fifth joining, with Bloxkeep behind them',
+    proofCaption: 'Names in the game are blurred. Roblox 0.743, October 2026.',
+    proofLink: 'How to turn on Multi-Roblox',
     featuresTitle: 'What it does',
     more: 'How it works',
     features: [
-      ['multi-roblox', 'multi-help.png', 'Several Roblox windows at once', 'Turn on Multi-Roblox and every account plays in its own window, opened windowed and tiled the way you choose. Each new Roblox build is checked.'],
+      ['multi-roblox', 'multi-roblox-real-detail.jpg', 'Several Roblox windows at once', 'Turn on Multi-Roblox and every account plays in its own window, opened windowed and tiled the way you choose. Each new Roblox build is checked.'],
       ['accounts', 'accounts-list.png', 'All your accounts in one place', 'Add accounts with a code from the Roblox phone app, a password (2-step verification works), the Roblox page or a cookie. See who is online, in a game or needs to sign in.'],
       ['playing', 'game-picker.png', 'Pick a game, pick a server', 'Find a game by name or link. Choose the server with the most players, the fewest, the lowest ping or room for all your accounts, or join a friend.'],
       ['presets', 'presets.png', 'Presets and schedules', 'Save accounts, a game and a server and start them in one click, or on a schedule that also stops them, with timed restarts.'],
       ['staying-in-game', 'card-rejoin.png', 'Stay in game', 'Anti-AFK keeps windows from being kicked for idling. Auto-rejoin goes back in after a disconnect, waiting a little longer each try instead of giving up.'],
-      ['windows-and-stats', 'stats.png', 'Game monitor and statistics', 'Live pictures of every Roblox window, a mini window, a warning before RAM runs out, and play time per account and game.'],
+      ['windows-and-stats', 'stats.png', 'Game monitor and statistics', "Live pictures of every Roblox window, a mini window, a warning before RAM or Windows' virtual memory runs out, and play time per account and game."],
       ['discord', 'discord-alert.png', 'Discord alerts', 'Alerts, a live status message and play-time summaries in your own Discord channel.'],
       ['backup-and-security', 'lock.png', 'Locked with your password', 'Accounts are encrypted with your master password and stay on your PC. Back them up to a OneDrive or Google Drive folder and restore them on a new PC.'],
     ],
@@ -73,12 +78,13 @@ const L = {
     ],
     caution: 'Only download Bloxkeep from its GitHub Releases page or this site. A copy from anywhere else may have been changed to steal accounts.',
     getTitle: 'Download',
-    getText: 'Bloxkeep-Setup.exe is a small installer: it downloads the newest Bloxkeep as it installs (about 60 MB) and installs Microsoft Edge WebView2 if your PC lacks it. You choose the folder, on any drive, and it needs no admin rights. Bloxkeep then updates itself.',
+    getText: 'Bloxkeep-Setup.exe is a small installer: it downloads the newest Bloxkeep as it installs (about 60 MB) and installs Microsoft Edge WebView2 if your PC lacks it. You choose the folder, on any drive, and it needs no admin rights. Bloxkeep then updates itself; to get new features earlier, turn on Get beta versions in Settings › Bloxkeep updates.',
     smartscreen: "The files aren't code-signed yet, so Windows SmartScreen may warn the first time: click More info, then Run anyway.",
     faqTitle: 'Questions',
     faq: [
       ['Is Bloxkeep free?', 'Yes. It is free and open source under the MIT license, with no account or subscription.'],
       ['Does it need Microsoft Edge or a particular browser?', 'No. It uses WebView2, a part of Windows, whatever browser you use; Setup installs it if it is missing.'],
+      ['Does Multi-Roblox really work?', 'Yes: the screenshot above is real, five accounts at once on one PC. Roblox can change how it blocks several windows in any update, so Bloxkeep checks every new Roblox build and tells you when one may stop it.'],
       ['Is running several Roblox windows allowed?', "Roblox doesn't officially support running several clients, so use Multi-Roblox at your own risk. It is off until you turn it on."],
       ['Where do I get help?', 'Read the guide, use Send feedback in the app (Settings › Bloxkeep updates), or open an issue on GitHub.'],
     ],
@@ -94,15 +100,20 @@ const L = {
     all: 'Tất cả bản tải',
     meta: v => `Phiên bản ${v} · Windows 10 hoặc 11, 64-bit · Miễn phí`,
     heroAlt: 'Cửa sổ chính của Bloxkeep: các thẻ tài khoản, thanh chọn game ở dưới, Multi-Roblox đang bật ở thanh bên',
+    proofTitle: 'Chạy thật trên một máy',
+    proofText: 'Ảnh chụp thật trên một máy Windows: năm tài khoản Roblox mở cùng lúc bằng Bloxkeep. Bốn tài khoản đã vào game, tài khoản thứ năm đang vào, thanh bên của Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật.',
+    proofAlt: 'Năm cửa sổ Roblox mở cùng lúc trên một máy, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, bốn cửa sổ cùng ở trong một game và cửa sổ thứ năm đang vào, phía sau là Bloxkeep',
+    proofCaption: 'Tên trong game đã được làm mờ. Roblox 0.743, tháng 10/2026.',
+    proofLink: 'Cách bật Multi-Roblox',
     featuresTitle: 'Bloxkeep làm được gì',
     more: 'Xem cách dùng',
     features: [
-      ['multi-roblox', 'multi-help.png', 'Nhiều cửa sổ Roblox cùng lúc', 'Bật Multi-Roblox là mỗi tài khoản chơi trong một cửa sổ riêng, mở ở chế độ cửa sổ và xếp theo ý bạn. Mỗi bản Roblox mới đều được kiểm tra.'],
+      ['multi-roblox', 'multi-roblox-real-detail.jpg', 'Nhiều cửa sổ Roblox cùng lúc', 'Bật Multi-Roblox là mỗi tài khoản chơi trong một cửa sổ riêng, mở ở chế độ cửa sổ và xếp theo ý bạn. Mỗi bản Roblox mới đều được kiểm tra.'],
       ['accounts', 'accounts-list.png', 'Mọi tài khoản ở một chỗ', 'Thêm tài khoản bằng mã từ app Roblox trên điện thoại, bằng mật khẩu (có xác minh 2 bước), qua trang Roblox hoặc bằng cookie. Xem ngay ai đang online, đang trong game hay cần đăng nhập lại.'],
       ['playing', 'game-picker.png', 'Chọn game, chọn server', 'Tìm game theo tên hoặc link. Chọn server đông nhất, vắng nhất, ping thấp nhất hay đủ chỗ cho mọi tài khoản, hoặc vào cùng bạn bè.'],
       ['presets', 'presets.png', 'Preset và hẹn giờ', 'Lưu sẵn tài khoản, game và server rồi mở bằng một cú bấm, hoặc theo lịch tự mở tự tắt, kèm khởi động lại định kỳ.'],
       ['staying-in-game', 'card-rejoin.png', 'Treo game yên tâm', 'Chống AFK giữ cửa sổ khỏi bị kick vì đứng yên. Tự vào lại game sau khi bị văng, mỗi lần chờ lâu hơn một chút chứ không bỏ cuộc.'],
-      ['windows-and-stats', 'stats.png', 'Theo dõi game và thống kê', 'Hình trực tiếp của mọi cửa sổ Roblox, cửa sổ nhỏ, cảnh báo trước khi hết RAM, và thời gian chơi theo tài khoản và game.'],
+      ['windows-and-stats', 'stats.png', 'Theo dõi game và thống kê', 'Hình trực tiếp của mọi cửa sổ Roblox, cửa sổ nhỏ, cảnh báo trước khi hết RAM hoặc bộ nhớ ảo của Windows, và thời gian chơi theo tài khoản và game.'],
       ['discord', 'discord-alert.png', 'Báo về Discord', 'Cảnh báo, tin trạng thái cập nhật liên tục và tổng kết giờ chơi gửi vào kênh Discord của bạn.'],
       ['backup-and-security', 'lock.png', 'Khóa bằng mật khẩu của bạn', 'Tài khoản được mã hóa bằng mật khẩu chủ và chỉ nằm trên máy bạn. Sao lưu vào thư mục OneDrive hoặc Google Drive, rồi khôi phục trên máy mới.'],
     ],
@@ -114,12 +125,13 @@ const L = {
     ],
     caution: 'Chỉ tải Bloxkeep từ trang Releases trên GitHub hoặc từ trang này. Bản tải ở nơi khác có thể đã bị sửa để lấy cắp tài khoản.',
     getTitle: 'Tải về',
-    getText: 'Bloxkeep-Setup.exe là bộ cài nhỏ: khi cài nó tải bản Bloxkeep mới nhất (khoảng 60 MB) và tự cài Microsoft Edge WebView2 nếu máy chưa có. Bạn chọn thư mục cài, ở ổ nào cũng được, không cần quyền admin. Sau đó Bloxkeep tự cập nhật.',
+    getText: 'Bloxkeep-Setup.exe là bộ cài nhỏ: khi cài nó tải bản Bloxkeep mới nhất (khoảng 60 MB) và tự cài Microsoft Edge WebView2 nếu máy chưa có. Bạn chọn thư mục cài, ở ổ nào cũng được, không cần quyền admin. Sau đó Bloxkeep tự cập nhật; muốn dùng tính năng mới sớm hơn, bật Nhận bản beta trong Cài đặt › Cập nhật Bloxkeep.',
     smartscreen: 'File chưa có chữ ký số nên lần đầu chạy Windows SmartScreen có thể cảnh báo: bấm More info (Thông tin thêm) rồi Run anyway (Vẫn chạy).',
     faqTitle: 'Hỏi đáp',
     faq: [
       ['Bloxkeep có mất phí không?', 'Không. Bloxkeep miễn phí và mã nguồn mở theo giấy phép MIT, không cần tài khoản hay đăng ký gói nào.'],
       ['Có cần Microsoft Edge hay trình duyệt nào không?', 'Không. Bloxkeep dùng WebView2, một thành phần của Windows, bạn dùng trình duyệt nào cũng được; bộ cài tự cài WebView2 nếu máy chưa có.'],
+      ['Multi-Roblox có chạy được thật không?', 'Có: ảnh ở trên là ảnh chụp thật, năm tài khoản cùng lúc trên một máy. Roblox có thể đổi cách chặn nhiều cửa sổ ở bất kỳ bản cập nhật nào, nên Bloxkeep kiểm tra từng bản Roblox mới và báo cho bạn khi có bản có thể chặn.'],
       ['Chạy nhiều cửa sổ Roblox có được phép không?', 'Roblox không chính thức hỗ trợ chạy nhiều cửa sổ cùng lúc, nên bạn tự cân nhắc khi dùng Multi-Roblox. Tính năng này tắt sẵn cho tới khi bạn bật.'],
       ['Cần giúp thì hỏi ở đâu?', 'Đọc hướng dẫn, dùng Gửi góp ý trong app (Cài đặt › Cập nhật Bloxkeep), hoặc mở issue trên GitHub.'],
     ],
@@ -127,13 +139,16 @@ const L = {
   },
 };
 
+/** Real screenshots of Roblox windows (not Bloxkeep's interface): the same picture in every language. */
+const SHARED = new Set(['multi-roblox-real.jpg', 'multi-roblox-real-detail.jpg']);
+
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** The landing page of one language: its title and description for the head, its body, and what search engines read. */
 export function landing(lang, { version, rel }) {
   const l = L[lang];
   const home = lang === 'vi' ? 'vi/' : '';
-  const shot = name => rel(`screenshots/${lang === 'vi' ? 'vi/' : ''}${name}`);
+  const shot = name => rel(`screenshots/${lang === 'vi' && !SHARED.has(name) ? 'vi/' : ''}${name}`);
   const buttons = `<div class="cta">
       <a class="btn primary" href="${DOWNLOAD}">${esc(l.download)}</a>
       <a class="btn" href="${PORTABLE}">${esc(l.portable)}</a>
@@ -147,6 +162,15 @@ export function landing(lang, { version, rel }) {
     ${buttons}
   </div>
   <img class="shot hero-shot" src="${shot('hero.png')}" width="1320" height="840" alt="${esc(l.heroAlt)}">
+</section>
+
+<section class="wrap proof" aria-labelledby="proof">
+  <h2 id="proof">${esc(l.proofTitle)}</h2>
+  <p>${esc(l.proofText)}</p>
+  <figure>
+    <a href="${shot('multi-roblox-real.jpg')}"><img class="shot" src="${shot('multi-roblox-real.jpg')}" width="1920" height="1080" alt="${esc(l.proofAlt)}"></a>
+    <figcaption>${esc(l.proofCaption)} <a href="${rel(`${home}guide/multi-roblox/`)}">${esc(l.proofLink)} ›</a></figcaption>
+  </figure>
 </section>
 
 <section class="wrap" aria-labelledby="features">
