@@ -380,7 +380,7 @@ html [data-theme="dark" lang="vi"]
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "Windows chỉ còn 1.1 GB bộ nhớ cho các chương trình (tính cả RAM lẫn file hoán đổi), mà mở thêm 2 cửa sổ Roblox cần khoảng 4.8 GB, nên Roblox có thể bị văng ngay khi mở. Hãy tắt bớt ứng dụng khác, hoặc tăng file hoán đổi cho Windows, đặt ở ổ nào cũng được: Advanced system settings › Performance › Virtual memory."
+        p.modal-text.pre "RAM vẫn còn trống, nhưng bộ nhớ ảo của Windows sắp đầy nên mở thêm 2 cửa sổ Roblox có thể bị văng. Hãy tắt bớt ứng dụng khác hoặc tăng bộ nhớ ảo."
         label.dont-ask
           input [id="dont-ask" type="checkbox" checked=false]
           span "Không hỏi lại"

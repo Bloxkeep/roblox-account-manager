@@ -17,10 +17,10 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 
 ### **H:** Cửa sổ Roblox bị văng ngay khi mở ("Memory dump captured", hoặc Bloxstrap báo "Roblox failed to launch")
 
-**Đ:** Windows đã hết bộ nhớ cho các chương trình. Bộ nhớ này tính cả RAM lẫn file hoán đổi (paging file), nên vẫn có thể hết dù RAM còn trống: mỗi cửa sổ Roblox giữ khoảng 2–2,5 GB. Bloxkeep sẽ cảnh báo trước khi bạn bấm **Vào game** nếu không đủ chỗ cho cửa sổ mới.
+**Đ:** Bộ nhớ ảo của Windows đã đầy, dù RAM vẫn còn trống: mỗi cửa sổ Roblox giữ trước khoảng 2,5 GB bộ nhớ ảo. Bloxkeep sẽ cảnh báo trước khi bạn bấm **Vào game** nếu sắp xảy ra chuyện này.
 
-- Tắt bớt ứng dụng không cần (trình duyệt tốn nhiều nhất).
-- Hoặc tăng file hoán đổi cho Windows. File này đặt ở ổ nào cũng được nên không tốn chỗ ổ C: bấm **Win+R**, gõ `sysdm.cpl`, rồi vào **Advanced › Performance › Settings › Advanced › Virtual memory › Change**. Bỏ tích **Automatically manage**, chọn một ổ còn trống nhiều, chọn **Custom size** (ví dụ 16384 và 32768 MB), bấm **Set**, rồi **OK**, và khởi động lại máy.
+- Tắt bớt ứng dụng không cần, hoặc
+- Tăng bộ nhớ ảo. Đặt ở ổ nào cũng được nên không tốn chỗ ổ C: **Win+R** › `sysdm.cpl` › **Advanced › Performance › Settings › Advanced › Virtual memory › Change**. Bỏ tích **Automatically manage**, chọn ổ còn trống nhiều, đặt **Custom size** 16384 / 32768 MB, bấm **Set**, **OK**, rồi khởi động lại máy.
 
 ### **H:** Tài khoản báo "Cần đăng nhập lại"
 

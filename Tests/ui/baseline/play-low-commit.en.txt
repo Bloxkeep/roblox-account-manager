@@ -380,7 +380,7 @@ html [data-theme="dark" lang="en"]
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "Windows has only 1.1 GB of memory left for programs (RAM and paging file together), and 2 more Roblox windows need about 4.8 GB, so they may crash as they open. Close other apps, or give Windows a bigger paging file, on any drive: Advanced system settings › Performance › Virtual memory."
+        p.modal-text.pre "RAM is free, but Windows' virtual memory is almost full, so 2 more Roblox windows may crash as they open. Close other apps or increase virtual memory."
         label.dont-ask
           input [id="dont-ask" type="checkbox" checked=false]
           span "Don’t ask again"

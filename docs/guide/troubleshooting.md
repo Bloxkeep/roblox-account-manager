@@ -17,10 +17,10 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 
 ### **Q:** A Roblox window crashes as it opens ("Memory dump captured", or Bloxstrap's "Roblox failed to launch")
 
-**A:** Windows ran out of memory for programs. That counts RAM and the paging file together, so it can happen with RAM still free: each Roblox window holds about 2–2.5 GB of it. Bloxkeep warns before **Play** when the next windows won't fit.
+**A:** Windows' virtual memory is full, even if RAM is free: each Roblox window reserves about 2.5 GB of it. Bloxkeep warns before **Play** when this is about to happen.
 
-- Close apps you don't need (browsers take a lot).
-- Or give Windows a bigger paging file. It can go on any drive, so drive C needs no space: press **Win+R**, type `sysdm.cpl`, then **Advanced › Performance › Settings › Advanced › Virtual memory › Change**. Untick **Automatically manage**, pick a drive with room, choose **Custom size** (for example 16384 and 32768 MB), press **Set**, then **OK**, and restart the PC.
+- Close apps you don't need, or
+- Increase virtual memory. It can go on any drive, so drive C needs no space: **Win+R** › `sysdm.cpl` › **Advanced › Performance › Settings › Advanced › Virtual memory › Change**. Untick **Automatically manage**, pick a drive with room, set **Custom size** 16384 / 32768 MB, press **Set**, **OK**, and restart the PC.
 
 ### **Q:** An account says "Needs sign-in"
 
