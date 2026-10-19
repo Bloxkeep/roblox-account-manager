@@ -42,13 +42,20 @@ public sealed partial class AppController
     /// <summary>Not this soon after a start (a restart can never loop), nor while someone used the PC this recently with a window of the app on screen.</summary>
     static readonly TimeSpan RelaunchAfterStart = TimeSpan.FromMinutes(3);
     static readonly TimeSpan RelaunchIdle = TimeSpan.FromMinutes(10);
+    /// <summary>
+    /// An update found by the checks right after Bloxkeep was opened installs at once, before it is used (the owner's
+    /// choice, 2026-10-19), with the "Updating" window; one ready later waits for a quiet moment as before.
+    /// </summary>
+    static readonly TimeSpan StartupUpdateWindow = TimeSpan.FromMinutes(5);
 
     void RelaunchIfQuiet(DateTime now)
     {
+        // Opened by the person, not started again by an update (that run would only be its own update again).
+        bool startup = now - _started < StartupUpdateWindow && _resumedFrom is null;
         if (_relaunching || _applyingUpdate || _disposed || !Prefs.CheckUpdates || _updater.Status != "ready"
-            || now < _autoRelaunchPausedUntil || !QuietForRelaunch(now))
+            || now < _autoRelaunchPausedUntil || !QuietForRelaunch(now, startup))
             return;
-        _ = RelaunchAsync();
+        _ = RelaunchAsync(startup);
     }
 
     /// <summary>
@@ -56,9 +63,10 @@ public sealed partial class AppController
     /// restart under way, no sign-in, captcha, message box or half-filled form open, no backup, import or save
     /// pending. Roblox windows that are simply running don't count: they keep running and are followed again after.
     /// </summary>
-    bool QuietForRelaunch(DateTime now)
+    /// <param name="startup">Right after Bloxkeep was opened: no wait after the start, and nobody's use of it holds the update back.</param>
+    bool QuietForRelaunch(DateTime now, bool startup = false)
     {
-        if (now - _started < RelaunchAfterStart || Settling || HomeSessionsActive)
+        if ((!startup && now - _started < RelaunchAfterStart) || Settling || HomeSessionsActive)
             return false;
         if (OpeningRoblox || _restarts.Count > 0 || _nudging || now < _sweepBackgroundUntil)
             return false;
@@ -68,6 +76,8 @@ public sealed partial class AppController
         // Another window of the app (the sign-in browser, a captcha) means someone is in the middle of it.
         if (Application.OpenForms.Cast<Form>().Any(f => f != _owner && f is not MiniForm && f.Visible))
             return false;
+        if (startup)
+            return true;
         var (window, _, mini) = WindowNow?.Invoke() ?? ("hidden", false, false);
         return (window != "shown" && !mini) || AntiAfk.IdleTime() >= RelaunchIdle;
     }
@@ -79,16 +89,18 @@ public sealed partial class AppController
     bool OpeningRoblox => _openingHome || _launchCts is not null || _pending.Count > 0 || _late.Count > 0 || _handedOver.Count > 0
         || _rejoinQueue.Count > 0 || _rejoining || _closingForRejoin.Count > 0;
 
-    async Task RelaunchAsync()
+    /// <param name="startup">Right after Bloxkeep was opened: the "Updating" window shows, as for the button.</param>
+    async Task RelaunchAsync(bool startup = false)
     {
         _relaunching = true;
         try
         {
             await SaveViewAsync();
             // Something may have started meanwhile (or updates were turned off): the next quiet moment then.
-            if (_disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || !QuietForRelaunch(DateTime.UtcNow) || !SaveBeforeClosing())
+            if (_disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || !QuietForRelaunch(DateTime.UtcNow, startup) || !SaveBeforeClosing())
                 return;
-            QuitIntoUpdate(showWindow: false);
+            // Opened to the tray (at sign-in), it updates there without a window coming up.
+            QuitIntoUpdate(showWindow: startup && WindowNow?.Invoke().Window == "shown");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or CryptographicException or ObjectDisposedException)
         {

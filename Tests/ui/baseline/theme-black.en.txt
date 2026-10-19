@@ -140,7 +140,8 @@ html [data-theme="black" lang="en"]
                     div.k [title="Roblox Studio"] "Roblox Studio"
                     div.v [title="Place1"] "Place1"
                 div.meta
-                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 1,300"
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "1,300"
+                    svg.i #hpg3hu
                   span.ago [title="Last launched from this app"] "Never opened"
                     svg.i #n87usa
                 div.card-actions
@@ -176,7 +177,8 @@ html [data-theme="black" lang="en"]
                     b.up "1 min"
                   button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 2222"
                 div.meta
-                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 80"
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "80"
+                    svg.i #hpg3hu
                   span.tag [title="Farm"] "Farm"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
@@ -240,7 +242,8 @@ html [data-theme="black" lang="en"]
                     b.up "47 min"
                   button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 1111"
                 div.meta
-                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 12,450"
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "12,450"
+                    svg.i #hpg3hu
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
@@ -268,7 +271,8 @@ html [data-theme="black" lang="en"]
                     div.k [title="Playing · another device"] "Playing · another device"
                     div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 div.meta
-                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 0"
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "0"
+                    svg.i #hpg3hu
                   span.tag [title="Farm"] "Farm"
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
@@ -355,6 +359,8 @@ html [data-theme="black" lang="en"]
               button.srv-open
                 svg.i #ej9lod
                 span "Servers"
+              button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
+                svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick

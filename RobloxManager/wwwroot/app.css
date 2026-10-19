@@ -1445,6 +1445,7 @@ b, strong { font-weight: 650; }
 .srv-open { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; margin-left: 4px; border-radius: 7px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .srv-open:hover { background: var(--surface-3); }
 .srv-open .i { width: 14px; height: 14px; }
+.srv-save { padding: 0 6px; }
 .srv-sort { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .srv-tools { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .srv-tools .btn { margin-left: auto; }
@@ -2469,7 +2470,11 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .ql-realm button { height: 28px; padding: 0 14px; border-radius: 16px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
 .ql-realm button.on { background: var(--surface-3); color: var(--text); }
 .tag.vng { flex: none; color: var(--warn-ink); background: var(--warn-soft); }
-.meta .robux, .row-meta .robux { flex: none; color: var(--text-2); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.meta .robux, .row-meta .robux { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.robux .i { width: 14px; height: 14px; stroke-width: 2.2; }
+.sv-label { display: block; margin: 12px 0 6px; font-size: 12.5px; font-weight: 650; color: var(--text-2); }
+.game-row.saved .icon-btn { opacity: .55; }
+.game-row.saved:hover .icon-btn, .game-row.saved.on .icon-btn { opacity: 1; }
 .ql { display: grid; grid-template-columns: 172px 1fr; gap: 22px; align-items: center; margin: 6px 0 2px; }
 .ql-qr { width: 172px; height: 172px; padding: 12px; border-radius: 14px; background: #fff; }
 .ql-qr:empty { background: var(--surface-3); }

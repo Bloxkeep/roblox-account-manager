@@ -162,7 +162,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.6-beta.7 · October 19, 2026"
+              small "Bloxkeep 1.0.6-beta.8 · October 21, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
@@ -171,16 +171,16 @@ html [data-theme="dark" lang="en"]
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Each account's Robux shows on its card and in the list (\"R$ 1,234\"), read with the account's own sign-in every 30 minutes and kept only on this PC."
+            span "Saved servers: Save server under the game box keeps a private server's link, or a game with the code it asks for, in the game box's Saved tab. A link sends the selected accounts straight in; a code is copied, to paste in the game once in."
+        h4.improved.wn-kind.wn-sub "Improved"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #u7ty99
-            span "Roblox VNG accounts can be played (new, still being tried out): Bloxkeep gets their sign-in from Roblox VNG and opens Roblox with your usual launcher. If Roblox refuses, the result says why."
-        h4.fixed.wn-kind.wn-sub "Fixed"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+            svg.i #1l5qw3q
+            span "A Bloxkeep update found right after you open Bloxkeep installs at once, before you use it, instead of waiting for a quiet moment (Roblox windows stay open)."
           li
-            svg.i #yqrnd9
-            span "Installing Roblox VNG no longer changes what Bloxkeep opens Roblox with: Default never uses Roblox VNG's client, for any account, Roblox VNG ones included. When another Roblox took Roblox's links, or its uninstaller removed them, Play opens Roblox with Bloxstrap, Fishstrap or the Roblox still on the PC instead of saying only the Microsoft Store edition is installed."
+            svg.i #1l5qw3q
+            span "The Robux on each account's card and in the list show with a Robux icon instead of \"R$\"."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

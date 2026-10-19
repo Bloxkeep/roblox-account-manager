@@ -162,7 +162,7 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.6-beta.7 · 19 tháng 10, 2026"
+              small "Bloxkeep 1.0.6-beta.8 · 21 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
@@ -171,16 +171,16 @@ html [data-theme="dark" lang="vi"]
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Thẻ tài khoản và danh sách hiện số Robux của từng tài khoản (\"R$ 1.234\"), đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này."
+            span "Server đã lưu: nút Lưu server dưới ô game giữ link server riêng, hoặc game kèm code mà game yêu cầu, trong tab Đã lưu của ô game. Link đưa các tài khoản đang chọn vào thẳng server; code được sao chép sẵn để dán vào game khi đã vào."
+        h4.improved.wn-kind.wn-sub "Cải thiện"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #u7ty99
-            span "Tài khoản Roblox VNG đã vào game được (tính năng mới, đang thử nghiệm): Bloxkeep lấy đăng nhập từ Roblox VNG rồi mở Roblox bằng launcher bạn vẫn dùng. Nếu Roblox từ chối, kết quả sẽ ghi lý do."
-        h4.fixed.wn-kind.wn-sub "Đã sửa"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+            svg.i #1l5qw3q
+            span "Bản cập nhật Bloxkeep tìm thấy ngay khi vừa mở Bloxkeep được cài luôn trước khi bạn dùng, không còn chờ lúc bạn rảnh (các cửa sổ Roblox vẫn mở)."
           li
-            svg.i #yqrnd9
-            span "Cài Roblox VNG không còn làm đổi chương trình Bloxkeep dùng để mở Roblox: Mặc định không bao giờ dùng bản Roblox VNG, với mọi tài khoản, kể cả tài khoản VNG. Khi một bản Roblox khác chiếm link Roblox, hoặc trình gỡ của nó xóa mất link, bấm Vào game sẽ mở bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy, thay vì báo chỉ có bản Microsoft Store."
+            svg.i #1l5qw3q
+            span "Số Robux trên thẻ và trong danh sách tài khoản hiện kèm biểu tượng Robux thay cho chữ \"R$\"."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

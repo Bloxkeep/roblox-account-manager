@@ -18,7 +18,7 @@ import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
 import { QuickLogin, type QuickLoginApi } from './QuickLogin';
 import { Servers } from './Servers';
-import { AskBody, DiscordLinkBody, ErrorsBody, MenuItems, ModalFrame, Toasts, WhatsNewTitle, type MenuItem, type ModalOpts, type ToastsApi } from './Overlays';
+import { AskBody, DiscordLinkBody, ErrorsBody, MenuItems, ModalFrame, SaveServerBody, Toasts, WhatsNewTitle, type MenuItem, type ModalOpts, type ToastsApi } from './Overlays';
 import { Shell, type SettingsPageInfo } from './Shell';
 import { type StatsApi } from './StatsView';
 import { WhatsNew, type Release } from './WhatsNew';
@@ -79,6 +79,7 @@ const BloxkeepUI = {
   ask: (message: string, remember: boolean) => <AskBody message={message} remember={remember} />,
   errors: (errors: string[]) => <ErrorsBody errors={errors} />,
   discordLink: () => <DiscordLinkBody />,
+  saveServer: (game: string, hasLink: boolean) => <SaveServerBody game={game} hasLink={hasLink} />,
   whatsNewTitle: (sub: string) => <WhatsNewTitle sub={sub} />,
   /** A menu's items into the menu app.js made; pick(i, byKeyboard) when one is chosen. */
   menu(el: HTMLElement, host: Host, items: MenuItem[], pick: (i: number, byKeyboard: boolean) => void, split: boolean) {

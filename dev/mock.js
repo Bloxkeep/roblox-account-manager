@@ -145,6 +145,11 @@
     // The fast cores for the window played; ?cpuone=1: a CPU with one kind of core (only power saving to give).
     splitCores: false, cores: params.has('cpuone') ? { hybrid: false, efficient: 0, logical: 8 } : { hybrid: true, efficient: 16, logical: 32 }, robloxConfig: { mode: params.has('rc') ? 'marked' : 'off', graphics: 1, fps: 30, volume: 0 },
     recentGames: [2753915549, 920587237, 4924922222].map(p => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl })),
+    // Saved servers (the game picker's Saved tab): a private server's link, and a game's own code; ?nosaved=1: none.
+    savedServers: params.has('nosaved') ? [] : [
+      { id: 's1', name: 'VIP farm', placeId: 2753915549, universeId: 0, gameName: games[2753915549].name, link: 'https://www.roblox.com/games/2753915549/Blox-Fruits?privateServerLinkCode=12345678901234567890', code: '', iconUrl: games[2753915549].iconUrl },
+      { id: 's2', name: tx('Trade room', 'Phòng trade'), placeId: 920587237, universeId: 0, gameName: games[920587237].name, link: '', code: '4F7K2Q', iconUrl: games[920587237].iconUrl },
+    ],
     // Launch presets; ?nopresets=1 starts without any. A deleted account (…09) is skipped when it runs.
     presets: params.has('nopresets') ? [] : [
       // p1 runs by itself on weekdays at 20:00 and closes what it opened three hours later; its windows get anti-AFK,
@@ -468,6 +473,19 @@
           return preset.id;
         }
         case 'deletePreset': settings.presets = settings.presets.filter(p => p.id !== a.id); push(); return null;
+        // Like the app: a link must be a private server's; without one a code and a game are needed; the same link updates.
+        case 'saveServer': {
+          if (a.link && !/privateServerLinkCode=|share\?code=|type=Server/i.test(a.link))
+            throw new Error(language === 'vi' ? 'Link này không phải link server riêng. Hãy dán link server riêng, hoặc nhập code mà game yêu cầu.' : 'That link isn’t a private server’s. Paste the private server’s link, or enter the code the game asks for.');
+          if (!a.link && !a.code) throw new Error(language === 'vi' ? 'Hãy nhập code mà game yêu cầu, hoặc dán link server riêng vào ô game trước.' : 'Enter the code the game asks for, or put a private server’s link in the game box first.');
+          let s = a.link ? settings.savedServers.find(x => x.link === a.link) : null;
+          if (!s) { s = { id: `s${Date.now()}` }; settings.savedServers.unshift(s); }
+          Object.assign(s, { name: a.name || a.gameName || (language === 'vi' ? 'Server riêng' : 'Private server'), placeId: a.placeId, universeId: a.universeId, gameName: a.gameName, link: a.link, code: a.code, iconUrl: games[a.placeId]?.iconUrl });
+          push();
+          return s;
+        }
+        case 'deleteServer': settings.savedServers = settings.savedServers.filter(s => s.id !== a.id); push(); return null;
+        case 'copyServerCode': return { code: settings.savedServers.find(s => s.id === a.id)?.code };
         // Like the app: the copy goes right after the original, named "… (copy)" (numbered when taken), its schedule off.
         case 'duplicatePreset': {
           const list = settings.presets, i = list.findIndex(p => p.id === a.id);

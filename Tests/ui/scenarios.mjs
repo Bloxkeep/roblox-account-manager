@@ -219,6 +219,34 @@ export default [
     await s.snap('popular');
     await s.key('Escape');
   }),
+  // Saved servers: the Saved tab, picking one with a code (the game goes in the box, the code is copied), and saving a
+  // private server's link, then a game with a code.
+  S('saved-servers', '', async s => {
+    await s.click(key('dock.browseTip'));
+    await s.wait(600);
+    await s.click({ key: 'picker.saved', within: '#picker' });
+    await s.snap('tab');
+    await s.click({ css: '.game-row.saved[data-i="1"]' });
+    await s.wait(800);
+  }),
+  S('save-server-link', '', async s => {
+    await s.fill(key('dock.place'), 'https://www.roblox.com/games/2753915549/Blox-Fruits?privateServerLinkCode=99999999999999999999');
+    await s.wait(900);
+    await s.click(key('sv.save'));
+    await s.wait(300);
+    await s.snap('dialog');
+    await s.click({ key: 'sv.saveBtn', within: '.modal' });
+    await s.wait(400);
+  }),
+  S('save-server-code', '', async s => {
+    await s.click(key('sv.save'));
+    await s.wait(300);
+    await s.click({ key: 'sv.saveBtn', within: '.modal' });
+    await s.snap('no code');
+    await s.fill({ css: '#sv-code' }, 'ZX81');
+    await s.click({ key: 'sv.saveBtn', within: '.modal' });
+    await s.wait(400);
+  }),
   S('game-bad-link', '', async s => { await s.fill(key('dock.place'), 'https://www.roblox.com/games/abc'); await s.wait(800); }),
   S('game-box-keys', '', async s => {
     await s.click({ css: '.card[data-id$="4"]' });

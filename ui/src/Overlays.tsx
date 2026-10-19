@@ -57,6 +57,22 @@ export function DiscordLinkBody() {
     <p className="dc-err" id="dc-link-err" role="alert" /></>;
 }
 
+/**
+ * "Save server": what is saved (the private server's link in the game box, or the game with a code it asks for), its
+ * name, and the code. app.js reads #sv-name and #sv-code and writes a mistake into #sv-err.
+ */
+export function SaveServerBody({ game, hasLink }: { game: string; hasLink: boolean }) {
+  const { t } = useHost();
+  return <>
+    <p className="modal-text">{t(hasLink ? 'sv.withLink' : 'sv.withCode', { game })}</p>
+    <label className="sv-label" htmlFor="sv-name">{t('sv.name')}</label>
+    <input className="field" id="sv-name" type="text" maxLength={60} defaultValue={game} autoComplete="off" spellCheck={false} />
+    <label className="sv-label" htmlFor="sv-code">{t(hasLink ? 'sv.codeOptional' : 'sv.code')}</label>
+    <input className="field" id="sv-code" type="text" maxLength={100} autoComplete="off" spellCheck={false} placeholder={t('sv.codeHint')} />
+    <p className="dc-err" id="sv-err" role="alert" />
+  </>;
+}
+
 /** What's new's title: the logo, "What's new", and the version and its date under it. */
 export function WhatsNewTitle({ sub }: { sub: string }) {
   const { t, logo } = useHost();

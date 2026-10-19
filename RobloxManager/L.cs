@@ -193,6 +193,16 @@ public static class L
         ["This account has no saved password."] = "Tài khoản này chưa lưu mật khẩu.",
         ["This account has no saved cookie."] = "Tài khoản này chưa lưu cookie.",
         ["Couldn't access the clipboard; try again."] = "Không dùng được clipboard. Hãy thử lại.",
+        ["That link isn't a private server's. Paste the private server's link, or enter the code the game asks for."] =
+            "Link này không phải link server riêng. Hãy dán link server riêng, hoặc nhập code mà game yêu cầu.",
+        ["Enter the code the game asks for, or put a private server's link in the game box first."] =
+            "Hãy nhập code mà game yêu cầu, hoặc dán link server riêng vào ô game trước.",
+        ["That code is too long."] = "Code này dài quá.",
+        ["Put the game in the game box first, then save its code."] = "Hãy đưa game vào ô game trước rồi mới lưu code.",
+        ["Private server"] = "Server riêng",
+        ["You can save up to {0} servers. Delete one first."] = "Chỉ lưu được tối đa {0} server. Hãy xóa bớt một server trước.",
+        ["That saved server isn't there any more."] = "Server đã lưu này không còn nữa.",
+        ["This saved server has no code."] = "Server này không có code.",
         ["Multi-Roblox isn't working yet: Roblox was already open before it was turned on."] =
             "Multi-Roblox chưa hoạt động: Roblox đã mở từ trước khi bật Multi-Roblox.",
         ["Roblox also starts by itself in the background when Windows starts."] =

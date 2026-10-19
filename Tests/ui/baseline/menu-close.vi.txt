@@ -141,7 +141,8 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Online"] "Online"
                     div.v [title="Trên web hoặc app Roblox"] "Trên web hoặc app Roblox"
                 div.meta
-                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "R$ 80"
+                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "80"
+                    svg.i #hpg3hu
                   span.tag [title="Farm"] "Farm"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
@@ -198,7 +199,8 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Đang chơi · thiết bị khác"] "Đang chơi · thiết bị khác"
                     div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 div.meta
-                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "R$ 0"
+                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "0"
+                    svg.i #hpg3hu
                   span.tag [title="Farm"] "Farm"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
@@ -236,7 +238,8 @@ html [data-theme="dark" lang="vi"]
                     b.up "47 phút"
                   button.pid [title="Mã tiến trình Roblox (PID), bấm để sao chép" tabindex="-1"] "PID 1111"
                 div.meta
-                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "R$ 12.450"
+                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "12.450"
+                    svg.i #hpg3hu
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Đang bật tự vào lại game"]
                     svg.i #1ap9cll
@@ -264,7 +267,8 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Roblox Studio"] "Roblox Studio"
                     div.v [title="Place1"] "Place1"
                 div.meta
-                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "R$ 1.300"
+                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "1.300"
+                    svg.i #hpg3hu
                   span.ago [title="Lần cuối mở từ Bloxkeep"] "Chưa mở lần nào"
                     svg.i #n87usa
                 div.card-actions
@@ -349,6 +353,8 @@ html [data-theme="dark" lang="vi"]
               button.srv-open
                 svg.i #ej9lod
                 span "Server"
+              button.srv-open.srv-save [title="Lưu server này để vào lại từ tab Đã lưu: link server riêng, hoặc code mà game yêu cầu." aria-label="Lưu server"]
+                svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick

@@ -294,7 +294,7 @@ function Meta({ a }: { a: Account }) {
   const { t, fmtNum } = useHost();
   return <>
     {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
-    {typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}>{`R$ ${fmtNum(a.robux)}`}</span> : null}
+    {typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span> : null}
     {a.group ? <span className="tag" title={a.group}>{a.group}</span> : null}
     {rejoinOn(a) ? <span className="rejoin" title={t('card.rejoinTip')}><Icon name="repeat" /></span> : null}
   </>;
@@ -452,13 +452,16 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
   else if (!g) info = <span className="hint">{richNodes(t('dock.hint'))}</span>;
   else if (g.loading) info = <><span className="spin" /><span>{t('dock.finding')}</span></>;
   else if (!g.ok) info = <span className="err" title={g.error}>{g.error}</span>;
-  else if (g.kind === 'share') info = <><span className="kind">{t('dock.share')}</span><span>{t('dock.shareNote')}</span></>;
+  else if (g.kind === 'share') info = <><span className="kind">{t('dock.share')}</span><span>{t('dock.shareNote')}</span>
+    <button className="srv-open srv-save" data-act="save-server" title={t('sv.saveTip')} aria-label={t('sv.save')}><Icon name="bookmark" /></button></>;
   else info = <>
     <span className="gname" title={g.name}>{g.name || `Place ${g.placeId}`}</span>
     {g.kind === 'private' ? <span className="kind">{t('dock.private')}</span> : g.kind === 'server' ? <span className="kind">{t('dock.server')}</span> : null}
     {g.creator ? <span className="creator">{t('dock.by', { c: g.creator })}</span> : null}
     {g.playing ? <span className="players">{t('dock.playing', { n: fmtNum(g.playing) })}</span> : null}
     {g.placeId && g.kind !== 'private' ? <button className="srv-open" data-act="servers"><Icon name="server" /><span>{t('srv.button')}</span></button> : null}
+    {/* Only its icon (its name on hover): with words it took the room of the recent games beside it. */}
+    {g.placeId ? <button className="srv-open srv-save" data-act="save-server" title={t('sv.saveTip')} aria-label={t('sv.save')}><Icon name="bookmark" /></button> : null}
   </>;
   // The game already in the box isn't offered again as a shortcut.
   const recents = page.progress ? [] : recentGames.filter(r => r.placeId !== g?.placeId).slice(0, 3);
@@ -492,12 +495,17 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
       <button className="rm" data-act="recent-remove" data-place={r.placeId} title={t('dock.recentRemove')} aria-label={t('dock.recentRemove')}><Icon name="x" /></button></div>)}</div> : null}</div>;
 }
 
-const TABS = ['recent', 'pinned', 'favorites', 'popular'];
+const TABS = ['recent', 'pinned', 'saved', 'favorites', 'popular'];
 
-/** The game box's list: recent, pinned, favourite and popular games while it is empty, a search's results once typed in. */
+/**
+ * The game box's list: recent, pinned, saved servers, favourite and popular games while it is empty, a search's results
+ * once typed in. Saved servers come with the app's state (they change as they are saved), the rest with gameLists.
+ */
 function Picker({ P }: { P: PageState['picker'] }) {
   const { t, fmtNum } = useHost();
-  const rows: any[] = (P.mode === 'search' ? P.results : P.lists?.[P.tab]) || [];
+  const app = useAppState();
+  const saved = P.mode === 'browse' && P.tab === 'saved';
+  const rows: any[] = (P.mode === 'search' ? P.results : saved ? app.settings?.savedServers : P.lists?.[P.tab]) || [];
   const list = useRef<HTMLDivElement>(null);
   // The row chosen with the keys comes into view when the list changes, not with every state the app pushes.
   useLayoutEffect(() => { list.current?.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' }); },
@@ -511,6 +519,12 @@ function Picker({ P }: { P: PageState['picker'] }) {
     <div className={`picker-list ${P.refreshing ? 'refreshing' : ''}`} role="listbox" id="picker-list" ref={list}>{P.loading
       ? [0, 1, 2, 3, 4].map(i => <Fragment key={i}>{skeleton}</Fragment>)
       : !rows.length ? <div className="picker-empty">{t(P.mode === 'search' ? 'picker.noResults' : `picker.empty.${P.tab}`)}</div>
+      : saved ? rows.map((s, i) => <div key={s.id} className={`game-row saved ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
+        <GameIcon key={s.iconUrl || ''} url={s.iconUrl} holder={() => <span className="gph"><Icon name="bookmark" /></span>} />
+        <div className="gtxt"><b title={s.name}>{s.name}</b><small>{[s.gameName || (s.placeId ? `Place ${s.placeId}` : ''), s.link ? t('sv.kindLink') : '', s.code ? t('sv.kindCode', { code: s.code }) : ''].filter(Boolean).join(' · ')}</small></div>
+        {s.code ? <button className="icon-btn" data-act="copy-server-code" data-i={i} title={t('sv.copyCode')} aria-label={t('sv.copyCode')}><Icon name="copy" /></button> : null}
+        <button className="icon-btn" data-act="delete-server" data-i={i} title={t('sv.delete')} aria-label={t('sv.delete')}><Icon name="x" /></button>
+      </div>)
       : rows.map((g, i) => <div key={`${g.placeId}-${i}`} className={`game-row ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={g.iconUrl || ''} url={g.iconUrl} holder={() => <span className="gph"><Icon name="gamepad" /></span>} />
         <div className="gtxt"><b title={g.name}>{g.name}</b><small>{g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : `Place ${g.placeId}`}</small></div>

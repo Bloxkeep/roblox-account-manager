@@ -50,6 +50,14 @@ Nút **Server** (không có với server riêng) mở danh sách server của ga
 - Server không còn ai thì không hiện trong danh sách: người cuối cùng đã thoát nên server đang đóng, vào sẽ gặp lỗi "This experience has ended".
 - Khi gửi nhiều tài khoản vào một server: tài khoản mở đầu tiên sẽ cho biết server có nhận hay không (bình thường chỉ khoảng 1 giây là được xếp vào server). Nếu sau 12 giây vẫn chưa vào được (server đã đầy hoặc đã đóng), tài khoản đó và các tài khoản còn lại sẽ chuyển sang một server khác còn đủ chỗ cho tất cả.
 
+## Server đã lưu
+
+Giữ các server bạn hay vào lại trong tab **Đã lưu** của ô game.
+
+- **Lưu server** (dưới ô game) lưu thứ đang có trong ô: link server riêng (`privateServerLinkCode` hoặc link share), hoặc game kèm **code mà game yêu cầu**, với game có server riêng của nó phải gõ code vào trong game. Đặt tên cho dễ nhớ; lưu lại cùng một link thì Bloxkeep cập nhật server đã lưu chứ không thêm bản mới.
+- Chọn một server ở tab **Đã lưu**: link sẽ vào ô game, nên bấm **Vào game** là các tài khoản đang chọn vào thẳng server đó. Code sẽ được sao chép, game của nó vào ô game: vào game rồi dán code vào chỗ game yêu cầu. Bloxkeep không bao giờ tự gõ vào Roblox.
+- Nút **sao chép** cạnh server đã lưu sao chép lại code; nút **×** để xóa.
+
 ## Vào cùng người chơi
 
 Nút hình người có mũi tên cạnh ô Job ID (cũng có trong Ctrl+K). Nút bị mờ cho tới khi bạn chọn tài khoản. Gõ **Tên đăng nhập Roblox hoặc ID người dùng** (dán link trang cá nhân cũng được) rồi bấm **Tìm và vào**: các tài khoản đã chọn sẽ vào đúng server người đó đang ở. Nếu không được, hộp thoại nói rõ lý do:

@@ -86,6 +86,8 @@ public sealed class AppSettings
     public RobloxConfig RobloxConfig { get; set; } = new();
     public List<RecentGame> RecentGames { get; set; } = new();
     public List<RecentGame> PinnedGames { get; set; } = new();
+    /// <summary>Servers saved to join again (the game picker's Saved tab), newest first.</summary>
+    public List<SavedServer> SavedServers { get; set; } = new();
     /// <summary>Names last looked up with "Join a player…", newest first (see AppController.JoinPlayer.cs).</summary>
     public List<string> RecentPlayers { get; set; } = new();
     public List<LaunchPreset> Presets { get; set; } = new();
@@ -154,6 +156,25 @@ public sealed class PresetSchedule
     public string StopTime { get; set; } = "";
     /// <summary>The scheduled minute that last ran, "yyyy-MM-dd HH:mm", so a clock set back can't run it again.</summary>
     public string LastRun { get; set; } = "";
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>
+/// A server saved to join again (AppController.SavedServers.cs): a Roblox private server's link, or a code a game asks
+/// for inside it to join a server of its own (Bloxkeep opens the game and copies the code; it never types it in).
+/// </summary>
+public sealed class SavedServer
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public long PlaceId { get; set; }
+    public long UniverseId { get; set; }
+    public string GameName { get; set; } = "";
+    /// <summary>The private server's link as pasted (privateServerLinkCode or a share link); empty for a code only.</summary>
+    public string Link { get; set; } = "";
+    /// <summary>What the game asks for inside it; empty for a link only.</summary>
+    public string Code { get; set; } = "";
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }

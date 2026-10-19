@@ -173,6 +173,8 @@ html [data-theme="dark" lang="en"]
               button.srv-open
                 svg.i #ej9lod
                 span "Servers"
+              button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
+                svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick

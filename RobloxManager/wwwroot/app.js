@@ -60,6 +60,8 @@
     gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
     cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>',
     bookmark: '<path d="M19 21 12 16l-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+    // Robux: a hexagon with a square inside, Bloxkeep's own drawing of the currency's shape.
+    robux: '<path d="M12 2.6 20.2 7.3v9.4L12 21.4l-8.2-4.7V7.3z"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
     tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
     chevronUp: '<path d="m6 15 6-6 6 6"/>',
     grip: '<circle cx="9" cy="6" r="1.3" fill="currentColor"/><circle cx="15" cy="6" r="1.3" fill="currentColor"/><circle cx="9" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="18" r="1.3" fill="currentColor"/><circle cx="15" cy="18" r="1.3" fill="currentColor"/>',
@@ -1143,9 +1145,12 @@
   /* ───────────────────────── game picker ─────────────────────────
      Typing a name searches Roblox; an empty box offers recent, pinned, favourite and popular games. */
   const P = { open: false, mode: 'browse', tab: 'recent', lists: null, results: [], query: '', index: -1, seq: 0, loading: false };
-  const TABS = ['recent', 'pinned', 'favorites', 'popular'];
+  const TABS = ['recent', 'pinned', 'saved', 'favorites', 'popular'];
   const looksLikeTarget = v => /^\d+$/.test(v) || /roblox\.com|roblox:\/\//i.test(v);
-  const pickerRows = () => (P.mode === 'search' ? P.results : P.lists?.[P.tab]) || [];
+  // Saved servers come with the app's state (they change as they are saved), the other lists with gameLists.
+  const savedServers = () => S.app?.settings?.savedServers || [];
+  const tabRows = k => (k === 'saved' ? savedServers() : P.lists?.[k]) || [];
+  const pickerRows = () => (P.mode === 'search' ? P.results : tabRows(P.tab)) || [];
 
   function openPicker(mode) {
     P.open = true;
@@ -1166,7 +1171,7 @@
     P.loading = false;
     if (r) {
       P.lists = r;
-      if (!r[P.tab]?.length) P.tab = TABS.find(k => r[k]?.length) || 'recent';
+      if (!tabRows(P.tab).length) P.tab = TABS.find(k => tabRows(k).length) || 'recent';
     }
     pageChanged();
   }
@@ -1248,6 +1253,7 @@
   }
   function pickGame(g) {
     if (!g) return;
+    if (P.mode === 'browse' && P.tab === 'saved' && g.id) return pickSaved(g);
     $('#place').value = `https://www.roblox.com/games/${g.placeId}`;
     $('#job').value = '';
     closePicker();
@@ -1255,6 +1261,58 @@
     resolveGame();
     scheduleSaveInputs();
   }
+  /**
+   * A saved server into the dock: its private server's link (Play sends the selected accounts there), or its game; a
+   * code the game asks for goes on the clipboard, to paste in the game once in (Bloxkeep never types into Roblox).
+   */
+  async function pickSaved(s) {
+    $('#place').value = s.link || `https://www.roblox.com/games/${s.placeId}`;
+    $('#job').value = '';
+    closePicker();
+    $('#place').blur();
+    resolveGame();
+    scheduleSaveInputs();
+    if (s.code && await call('copyServerCode', { id: s.id })) toast(t('sv.codeCopied', { code: s.code }), 'ok');
+  }
+  /** "Save server": the private server's link in the box (with a code if the game asks for one too), or the game and a code. */
+  function saveServerModal() {
+    const g = S.game;
+    if (!g?.ok) return;
+    const place = $('#place').value.trim();
+    const hasLink = g.kind === 'private' || g.kind === 'share';
+    const game = g.name || (g.placeId ? `Place ${g.placeId}` : '');
+    modal({
+      title: t('sv.title'),
+      body: window.BloxkeepUI.saveServer(game, hasLink),
+      onMount: ({ el }) => setTimeout(() => el.querySelector(hasLink ? '#sv-name' : '#sv-code')?.focus(), 30),
+      enterSubmits: true,
+      actions: [
+        { text: t('common.cancel'), onClick: ({ close }) => close() },
+        {
+          text: t('sv.saveBtn'), kind: 'primary', onClick: async ({ el, close, btn }) => {
+            const code = el.querySelector('#sv-code').value.trim();
+            if (!hasLink && !code) return setText(el.querySelector('#sv-err'), t('sv.needCode'));
+            // A refusal (not a private server's link, too many saved) is said in the dialog, not as a toast.
+            const r = await busy(btn, async () => {
+              try {
+                return await bridge.call('saveServer', {
+                  name: el.querySelector('#sv-name').value.trim(), code, link: hasLink ? place : '',
+                  placeId: g.placeId || 0, universeId: g.universeId || 0, gameName: g.name || '',
+                });
+              } catch (err) {
+                setText(el.querySelector('#sv-err'), err.message);
+                return undefined;
+              }
+            });
+            if (!r) return;
+            close();
+            toast(t('sv.saved', { name: r.name }), 'ok');
+          },
+        },
+      ],
+    });
+  }
+
   /** Puts a game and one of its servers in the dock; Play then sends the selected accounts there. */
   function useServer(placeId, jobId) {
     S.jobPlace = placeId;
@@ -2503,6 +2561,17 @@
       case 'pin-game':
         e.stopPropagation();
         return pinGame(pickerRows()[+el.dataset.i]);
+      case 'save-server': return saveServerModal();
+      case 'copy-server-code': {
+        e.stopPropagation();
+        const s = pickerRows()[+el.dataset.i];
+        return s && call('copyServerCode', { id: s.id }).then(r => { if (r) toast(t('sv.codeCopiedShort'), 'ok'); });
+      }
+      case 'delete-server': {
+        e.stopPropagation();
+        const s = pickerRows()[+el.dataset.i];
+        return s && call('deleteServer', { id: s.id }).then(() => { P.index = -1; pageChanged(); });
+      }
     }
   });
 

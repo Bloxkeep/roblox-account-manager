@@ -50,6 +50,14 @@ Under the box you see the game's name, its creator, how many are playing and a *
 - Empty servers aren't listed: a server whose last player has left is closing, and joining it ends on "This experience has ended".
 - Several accounts sent to one server: the first one to open shows whether the server lets it in (a normal join gets a server in about a second). If it doesn't within 12 seconds (the server is full or has closed), that account and the rest go to another server with room for them all.
 
+## Saved servers
+
+Keep the servers you go back to in the game box's **Saved** tab.
+
+- **Save server** (under the game box) saves what the box holds: a private server's link (`privateServerLinkCode`, or a share link), or the game with the **code it asks for** when it has private servers of its own that you join by typing a code in the game. Give it a name; the same link saved again updates the one saved.
+- Pick a saved server in the **Saved** tab: a link goes in the game box, so **Play** sends the selected accounts straight there. A code goes on the clipboard and its game in the box: once in the game, paste the code where the game asks for it. Bloxkeep never types into Roblox.
+- **Copy** next to a saved server copies its code again; **×** deletes it.
+
 ## Join a player
 
 The button with a person and an arrow, next to the Job ID box (also in Ctrl+K). It is greyed out until you select accounts. Type a player's **Roblox username or user ID** (a profile link works too) and press **Find and join**: the selected accounts open into the server that player is in. When that can't happen, the dialog says why:
