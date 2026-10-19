@@ -162,7 +162,7 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.6-beta.8 · 21 tháng 10, 2026"
+              small "Bloxkeep 1.0.6 · 20 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
@@ -174,16 +174,61 @@ html [data-theme="dark" lang="vi"]
             span "Server đã lưu: nút Lưu server dưới ô game giữ link server riêng, hoặc game kèm code mà game yêu cầu, trong tab Đã lưu của ô game. Link đưa các tài khoản đang chọn vào thẳng server; code được sao chép sẵn để dán vào game khi đã vào."
           li
             svg.i #u7ty99
-            span "Hiện trên hồ sơ Discord (Cài đặt › Discord, tắt cho tới khi bạn bật): hồ sơ Discord của bạn hiện \"Đang chơi Bloxkeep\" kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút Tải Bloxkeep."
+            span "Robux trên thẻ: thẻ tài khoản và danh sách hiện số Robux của từng tài khoản kèm biểu tượng Robux, đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này."
+          li
+            svg.i #u7ty99
+            span "Bảng nhanh ở khay: bấm biểu tượng Bloxkeep ở khay để bật tắt Multi-Roblox, xem các tài khoản đang chơi (hiện hay đóng từng cửa sổ), cùng Vào game, Preset và Roblox mới. Bấm chuột phải để mở menu, giờ có biểu tượng và dòng trạng thái ở đầu."
+          li
+            svg.i #u7ty99
+            span "Hiện trên hồ sơ Discord: bật trong Cài đặt › Discord (mặc định tắt), hồ sơ Discord của bạn sẽ hiện \"Đang chơi Bloxkeep\" kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút Tải Bloxkeep."
+          li
+            svg.i #u7ty99
+            span "Tài khoản Roblox VNG vào game được (đang thử nghiệm): Bloxkeep lấy đăng nhập từ Roblox VNG rồi mở Roblox bằng launcher bạn vẫn dùng. Nếu Roblox từ chối, kết quả sẽ ghi lý do."
+          li
+            svg.i #u7ty99
+            span "Cửa sổ đăng nhập riêng (đang thử nghiệm): Roblox mới ở khay mở thêm một cửa sổ Roblox để đăng nhập độc lập, không cần thêm tài khoản vào Bloxkeep, khi Multi-Roblox đã sẵn sàng. Lúc cửa sổ riêng còn mở, các cửa sổ Roblox tạm không lưu đăng nhập và một số cài đặt, nên hãy đóng nó trước khi thoát Bloxkeep."
         h4.improved.wn-kind.wn-sub "Cải thiện"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
+            span "Tiêu đề mỗi cửa sổ Roblox ghi thêm mã tiến trình (PID) cạnh tên tài khoản (\"Roblox - Main (PID 33588)\"), thấy dưới taskbar và khi bấm Alt+Tab. Rê chuột vào cửa sổ trong bảng nhanh ở khay cũng hiện PID, nên dễ tìm đúng cửa sổ trong Task Manager."
+          li
+            svg.i #1l5qw3q
             span "Bản cập nhật Bloxkeep tìm thấy ngay khi vừa mở Bloxkeep được cài luôn trước khi bạn dùng, không còn chờ lúc bạn rảnh (các cửa sổ Roblox vẫn mở)."
           li
             svg.i #1l5qw3q
-            span "Số Robux trên thẻ và trong danh sách tài khoản hiện kèm biểu tượng Robux thay cho chữ \"R$\"."
+            span "Cửa sổ chính tốn ít hơn khoảng 100 MB RAM, và khi Windows sắp hết bộ nhớ thì nó nhả trình duyệt sau nửa phút nằm dưới khay."
+          li
+            svg.i #1l5qw3q
+            span "Trước khi vào game, Bloxkeep còn cảnh báo khi bộ nhớ ảo của Windows sắp đầy dù RAM vẫn trống: đó là lý do cửa sổ Roblox bị văng ngay khi mở (\"Memory dump captured\"). Lúc đang chơi cũng có cảnh báo này."
+        h4.fixed.wn-kind.wn-sub "Đã sửa"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
+          li
+            svg.i #yqrnd9
+            span "Game chuyển bạn sang server khác không còn bị hiểu nhầm là rớt mạng: Bloxkeep không còn đóng cửa sổ đó rồi mở một game khác."
+          li
+            svg.i #yqrnd9
+            span "Tự vào lại game và Mở lại Roblox của preset giờ quay về game bạn đã tự chuyển sang trong cửa sổ Roblox, không phải game Bloxkeep mở lúc đầu."
+          li
+            svg.i #yqrnd9
+            span "Game bạn tự mở trong một cửa sổ Roblox thì Bloxkeep để bạn tự lo, dù vào lâu đến đâu."
+          li
+            svg.i #yqrnd9
+            span "Roblox từ chối một lần không còn làm tài khoản bị coi là đã đăng xuất hay bị tắt tự vào lại game: Bloxkeep kiểm tra đăng nhập trước."
+          li
+            svg.i #yqrnd9
+            span "Game hay chuyển bạn qua lại giữa các server không còn khiến Bloxkeep báo \"cứ bị văng khỏi game\" rồi chờ lâu sau vài lần rớt mạng."
+          li
+            svg.i #yqrnd9
+            span "Mở nhiều tài khoản vào cùng một server không còn đóng cửa sổ đầu tiên khi nó vào hơi chậm."
+          li
+            svg.i #yqrnd9
+            span "Hết báo nhầm \"Windows không cho chuyển cửa sổ Roblox sang nhân khác\" hay \"Roblox không cho giảm RAM\" với cửa sổ vừa tắt, và danh sách server không tải được cũng không còn bị báo là \"không có server nào đủ chỗ\"."
+          li
+            svg.i #yqrnd9
+            span "Cài Roblox VNG không còn làm đổi chương trình Bloxkeep dùng để mở Roblox: Mặc định không bao giờ dùng bản Roblox VNG, với mọi tài khoản, kể cả tài khoản VNG. Khi một bản Roblox khác chiếm link Roblox, hoặc trình gỡ của nó xóa mất link, bấm Vào game sẽ mở bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy, thay vì báo chỉ có bản Microsoft Store."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

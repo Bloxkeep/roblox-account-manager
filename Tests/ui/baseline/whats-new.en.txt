@@ -162,7 +162,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.6-beta.8 · October 21, 2026"
+              small "Bloxkeep 1.0.6 · October 20, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
@@ -174,16 +174,61 @@ html [data-theme="dark" lang="en"]
             span "Saved servers: Save server under the game box keeps a private server's link, or a game with the code it asks for, in the game box's Saved tab. A link sends the selected accounts straight in; a code is copied, to paste in the game once in."
           li
             svg.i #u7ty99
-            span "Show on my Discord profile (Settings › Discord, off until turned on): your Discord profile shows \"Playing Bloxkeep\" with how many Roblox windows are open and the game, never an account's name, and a Get Bloxkeep button."
+            span "Robux on each card: each account's Robux shows on its card and in the list with the Robux icon, read with the account's own sign-in every 30 minutes and kept only on this PC."
+          li
+            svg.i #u7ty99
+            span "Tray quick panel: click Bloxkeep's icon in the tray for Multi-Roblox's switch, the accounts playing (show or close each window), and Play, Presets and New Roblox. Right-click it for the menu, now with icons and what's going on at the top."
+          li
+            svg.i #u7ty99
+            span "Show on my Discord profile: turned on in Settings › Discord (it is off until then), your Discord profile shows \"Playing Bloxkeep\" with how many Roblox windows are open and the game, never an account's name, and a Get Bloxkeep button."
+          li
+            svg.i #u7ty99
+            span "Roblox VNG accounts can be played (still being tried out): Bloxkeep gets their sign-in from Roblox VNG and opens Roblox with your usual launcher. If Roblox refuses, the result says why."
+          li
+            svg.i #u7ty99
+            span "Separate sign-in windows (experimental): New Roblox in the tray opens another Roblox window you sign into on its own, without adding the account to Bloxkeep, when Multi-Roblox is ready. While one is open, Roblox windows don't save sign-ins and some settings, so close it before quitting Bloxkeep."
         h4.improved.wn-kind.wn-sub "Improved"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
+            span "Each Roblox window's title shows its process ID next to the account name (\"Roblox - Main (PID 33588)\") on the taskbar and in Alt+Tab, and pointing at a window in the tray's quick panel shows it too: the right window is easy to find in Task Manager."
+          li
+            svg.i #1l5qw3q
             span "A Bloxkeep update found right after you open Bloxkeep installs at once, before you use it, instead of waiting for a quiet moment (Roblox windows stay open)."
           li
             svg.i #1l5qw3q
-            span "The Robux on each account's card and in the list show with a Robux icon instead of \"R$\"."
+            span "The main window uses about 100 MB less RAM, and when Windows is short of memory it frees its browser half a minute after going to the tray."
+          li
+            svg.i #1l5qw3q
+            span "Before Play, Bloxkeep also warns when Windows' virtual memory is almost full even though RAM is free: that is why a Roblox window can crash as it opens (\"Memory dump captured\"). The same warning shows while you play."
+        h4.fixed.wn-kind.wn-sub "Fixed"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
+          li
+            svg.i #yqrnd9
+            span "A game moving you to another of its servers is no longer taken for a disconnect: Bloxkeep no longer closes that window and opens a different game."
+          li
+            svg.i #yqrnd9
+            span "Auto-rejoin and a preset's Restart Roblox go back to the game you switched to inside the Roblox window, not the one Bloxkeep first opened."
+          li
+            svg.i #yqrnd9
+            span "A game you start yourself in a Roblox window is left to you, however long it takes to get in."
+          li
+            svg.i #yqrnd9
+            span "One refusal from Roblox no longer marks an account as signed out or turns its auto-rejoin off: Bloxkeep checks the sign-in first."
+          li
+            svg.i #yqrnd9
+            span "Games that move you between servers often no longer bring \"keeps getting disconnected\" and its long waits after a few drops."
+          li
+            svg.i #yqrnd9
+            span "Opening several accounts into one server no longer closes the first window when it got in a little late."
+          li
+            svg.i #yqrnd9
+            span "No more \"Windows refused to move a Roblox window to other cores\" or \"Roblox refused memory trimming\" for a window that had just closed, and a server list that didn't load is no longer reported as \"no server has room\"."
+          li
+            svg.i #yqrnd9
+            span "Installing Roblox VNG no longer changes what Bloxkeep opens Roblox with: Default never uses Roblox VNG's client, for any account, Roblox VNG ones included. When another Roblox took Roblox's links, or its uninstaller removed them, Play opens Roblox with Bloxstrap, Fishstrap or the Roblox still on the PC instead of saying only the Microsoft Store edition is installed."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

@@ -1,65 +1,39 @@
 [
   {
-    "version": "1.0.6-beta.8",
-    "date": "2026-10-21",
+    "version": "1.0.6",
+    "date": "2026-10-20",
     "new": {
       "en": [
         "Saved servers: Save server under the game box keeps a private server's link, or a game with the code it asks for, in the game box's Saved tab. A link sends the selected accounts straight in; a code is copied, to paste in the game once in.",
-        "Show on my Discord profile (Settings › Discord, off until turned on): your Discord profile shows \"Playing Bloxkeep\" with how many Roblox windows are open and the game, never an account's name, and a Get Bloxkeep button."
+        "Robux on each card: each account's Robux shows on its card and in the list with the Robux icon, read with the account's own sign-in every 30 minutes and kept only on this PC.",
+        "Tray quick panel: click Bloxkeep's icon in the tray for Multi-Roblox's switch, the accounts playing (show or close each window), and Play, Presets and New Roblox. Right-click it for the menu, now with icons and what's going on at the top.",
+        "Show on my Discord profile: turned on in Settings › Discord (it is off until then), your Discord profile shows \"Playing Bloxkeep\" with how many Roblox windows are open and the game, never an account's name, and a Get Bloxkeep button.",
+        "Roblox VNG accounts can be played (still being tried out): Bloxkeep gets their sign-in from Roblox VNG and opens Roblox with your usual launcher. If Roblox refuses, the result says why.",
+        "Separate sign-in windows (experimental): New Roblox in the tray opens another Roblox window you sign into on its own, without adding the account to Bloxkeep, when Multi-Roblox is ready. While one is open, Roblox windows don't save sign-ins and some settings, so close it before quitting Bloxkeep."
       ],
       "vi": [
         "Server đã lưu: nút Lưu server dưới ô game giữ link server riêng, hoặc game kèm code mà game yêu cầu, trong tab Đã lưu của ô game. Link đưa các tài khoản đang chọn vào thẳng server; code được sao chép sẵn để dán vào game khi đã vào.",
-        "Hiện trên hồ sơ Discord (Cài đặt › Discord, tắt cho tới khi bạn bật): hồ sơ Discord của bạn hiện \"Đang chơi Bloxkeep\" kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút Tải Bloxkeep."
+        "Robux trên thẻ: thẻ tài khoản và danh sách hiện số Robux của từng tài khoản kèm biểu tượng Robux, đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này.",
+        "Bảng nhanh ở khay: bấm biểu tượng Bloxkeep ở khay để bật tắt Multi-Roblox, xem các tài khoản đang chơi (hiện hay đóng từng cửa sổ), cùng Vào game, Preset và Roblox mới. Bấm chuột phải để mở menu, giờ có biểu tượng và dòng trạng thái ở đầu.",
+        "Hiện trên hồ sơ Discord: bật trong Cài đặt › Discord (mặc định tắt), hồ sơ Discord của bạn sẽ hiện \"Đang chơi Bloxkeep\" kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút Tải Bloxkeep.",
+        "Tài khoản Roblox VNG vào game được (đang thử nghiệm): Bloxkeep lấy đăng nhập từ Roblox VNG rồi mở Roblox bằng launcher bạn vẫn dùng. Nếu Roblox từ chối, kết quả sẽ ghi lý do.",
+        "Cửa sổ đăng nhập riêng (đang thử nghiệm): Roblox mới ở khay mở thêm một cửa sổ Roblox để đăng nhập độc lập, không cần thêm tài khoản vào Bloxkeep, khi Multi-Roblox đã sẵn sàng. Lúc cửa sổ riêng còn mở, các cửa sổ Roblox tạm không lưu đăng nhập và một số cài đặt, nên hãy đóng nó trước khi thoát Bloxkeep."
       ]
     },
     "improved": {
       "en": [
+        "Each Roblox window's title shows its process ID next to the account name (\"Roblox - Main (PID 33588)\") on the taskbar and in Alt+Tab, and pointing at a window in the tray's quick panel shows it too: the right window is easy to find in Task Manager.",
         "A Bloxkeep update found right after you open Bloxkeep installs at once, before you use it, instead of waiting for a quiet moment (Roblox windows stay open).",
-        "The Robux on each account's card and in the list show with a Robux icon instead of \"R$\"."
+        "The main window uses about 100 MB less RAM, and when Windows is short of memory it frees its browser half a minute after going to the tray.",
+        "Before Play, Bloxkeep also warns when Windows' virtual memory is almost full even though RAM is free: that is why a Roblox window can crash as it opens (\"Memory dump captured\"). The same warning shows while you play."
       ],
       "vi": [
+        "Tiêu đề mỗi cửa sổ Roblox ghi thêm mã tiến trình (PID) cạnh tên tài khoản (\"Roblox - Main (PID 33588)\"), thấy dưới taskbar và khi bấm Alt+Tab. Rê chuột vào cửa sổ trong bảng nhanh ở khay cũng hiện PID, nên dễ tìm đúng cửa sổ trong Task Manager.",
         "Bản cập nhật Bloxkeep tìm thấy ngay khi vừa mở Bloxkeep được cài luôn trước khi bạn dùng, không còn chờ lúc bạn rảnh (các cửa sổ Roblox vẫn mở).",
-        "Số Robux trên thẻ và trong danh sách tài khoản hiện kèm biểu tượng Robux thay cho chữ \"R$\"."
-      ]
-    }
-  },
-  {
-    "version": "1.0.6-beta.7",
-    "date": "2026-10-19",
-    "new": {
-      "en": [
-        "Each account's Robux shows on its card and in the list (\"R$ 1,234\"), read with the account's own sign-in every 30 minutes and kept only on this PC.",
-        "Roblox VNG accounts can be played (new, still being tried out): Bloxkeep gets their sign-in from Roblox VNG and opens Roblox with your usual launcher. If Roblox refuses, the result says why."
-      ],
-      "vi": [
-        "Thẻ tài khoản và danh sách hiện số Robux của từng tài khoản (\"R$ 1.234\"), đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này.",
-        "Tài khoản Roblox VNG đã vào game được (tính năng mới, đang thử nghiệm): Bloxkeep lấy đăng nhập từ Roblox VNG rồi mở Roblox bằng launcher bạn vẫn dùng. Nếu Roblox từ chối, kết quả sẽ ghi lý do."
+        "Cửa sổ chính tốn ít hơn khoảng 100 MB RAM, và khi Windows sắp hết bộ nhớ thì nó nhả trình duyệt sau nửa phút nằm dưới khay.",
+        "Trước khi vào game, Bloxkeep còn cảnh báo khi bộ nhớ ảo của Windows sắp đầy dù RAM vẫn trống: đó là lý do cửa sổ Roblox bị văng ngay khi mở (\"Memory dump captured\"). Lúc đang chơi cũng có cảnh báo này."
       ]
     },
-    "fixed": {
-      "en": [
-        "Installing Roblox VNG no longer changes what Bloxkeep opens Roblox with: Default never uses Roblox VNG's client, for any account, Roblox VNG ones included. When another Roblox took Roblox's links, or its uninstaller removed them, Play opens Roblox with Bloxstrap, Fishstrap or the Roblox still on the PC instead of saying only the Microsoft Store edition is installed."
-      ],
-      "vi": [
-        "Cài Roblox VNG không còn làm đổi chương trình Bloxkeep dùng để mở Roblox: Mặc định không bao giờ dùng bản Roblox VNG, với mọi tài khoản, kể cả tài khoản VNG. Khi một bản Roblox khác chiếm link Roblox, hoặc trình gỡ của nó xóa mất link, bấm Vào game sẽ mở bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy, thay vì báo chỉ có bản Microsoft Store."
-      ]
-    }
-  },
-  {
-    "version": "1.0.6-beta.6",
-    "date": "2026-10-19",
-    "improved": {
-      "en": [
-        "Each Roblox window's title shows its process ID next to the account name (\"Roblox - Main (PID 33588)\") on the taskbar and in Alt+Tab, and pointing at a window in the tray's quick panel shows it too: the right window is easy to find in Task Manager."
-      ],
-      "vi": [
-        "Tiêu đề mỗi cửa sổ Roblox ghi thêm mã tiến trình (PID) cạnh tên tài khoản (\"Roblox - Main (PID 33588)\"), thấy dưới taskbar và khi bấm Alt+Tab. Rê chuột vào cửa sổ trong bảng nhanh ở khay cũng hiện PID, nên dễ tìm đúng cửa sổ trong Task Manager."
-      ]
-    }
-  },
-  {
-    "version": "1.0.6-beta.5",
-    "date": "2026-10-19",
     "fixed": {
       "en": [
         "A game moving you to another of its servers is no longer taken for a disconnect: Bloxkeep no longer closes that window and opens a different game.",
@@ -68,7 +42,8 @@
         "One refusal from Roblox no longer marks an account as signed out or turns its auto-rejoin off: Bloxkeep checks the sign-in first.",
         "Games that move you between servers often no longer bring \"keeps getting disconnected\" and its long waits after a few drops.",
         "Opening several accounts into one server no longer closes the first window when it got in a little late.",
-        "No more \"Windows refused to move a Roblox window to other cores\" or \"Roblox refused memory trimming\" for a window that had just closed, and a server list that didn't load is no longer reported as \"no server has room\"."
+        "No more \"Windows refused to move a Roblox window to other cores\" or \"Roblox refused memory trimming\" for a window that had just closed, and a server list that didn't load is no longer reported as \"no server has room\".",
+        "Installing Roblox VNG no longer changes what Bloxkeep opens Roblox with: Default never uses Roblox VNG's client, for any account, Roblox VNG ones included. When another Roblox took Roblox's links, or its uninstaller removed them, Play opens Roblox with Bloxstrap, Fishstrap or the Roblox still on the PC instead of saying only the Microsoft Store edition is installed."
       ],
       "vi": [
         "Game chuyển bạn sang server khác không còn bị hiểu nhầm là rớt mạng: Bloxkeep không còn đóng cửa sổ đó rồi mở một game khác.",
@@ -77,79 +52,8 @@
         "Roblox từ chối một lần không còn làm tài khoản bị coi là đã đăng xuất hay bị tắt tự vào lại game: Bloxkeep kiểm tra đăng nhập trước.",
         "Game hay chuyển bạn qua lại giữa các server không còn khiến Bloxkeep báo \"cứ bị văng khỏi game\" rồi chờ lâu sau vài lần rớt mạng.",
         "Mở nhiều tài khoản vào cùng một server không còn đóng cửa sổ đầu tiên khi nó vào hơi chậm.",
-        "Hết báo nhầm \"Windows không cho chuyển cửa sổ Roblox sang nhân khác\" hay \"Roblox không cho giảm RAM\" với cửa sổ vừa tắt, và danh sách server không tải được cũng không còn bị báo là \"không có server nào đủ chỗ\"."
-      ]
-    }
-  },
-  {
-    "version": "1.0.6-beta.4",
-    "date": "2026-10-18",
-    "fixed": {
-      "en": [
-        "Auto-rejoin no longer waits while the separate sign-in question is open: a game that lost its connection meanwhile is reopened as usual."
-      ],
-      "vi": [
-        "Tự vào lại game không còn phải chờ hộp hỏi về cửa sổ đăng nhập riêng: game bị rớt mạng trong lúc hộp đang mở vẫn được mở lại như bình thường."
-      ]
-    }
-  },
-  {
-    "version": "1.0.6-beta.3",
-    "date": "2026-10-18",
-    "new": {
-      "en": [
-        "Tray quick panel: click Bloxkeep's icon in the tray for Multi-Roblox's switch, the accounts playing (show or close each window), and Play, Presets and New Roblox. Right-click it for the menu, now with icons and what's going on at the top."
-      ],
-      "vi": [
-        "Bảng nhanh ở khay: bấm biểu tượng Bloxkeep ở khay để bật tắt Multi-Roblox, xem các tài khoản đang chơi (hiện hay đóng từng cửa sổ), cùng Vào game, Preset và Roblox mới. Bấm chuột phải để mở menu, giờ có biểu tượng và dòng trạng thái ở đầu."
-      ]
-    },
-    "improved": {
-      "en": [
-        "The main window uses about 100 MB less RAM, and when Windows is short of memory it frees its browser half a minute after going to the tray."
-      ],
-      "vi": [
-        "Cửa sổ chính tốn ít hơn khoảng 100 MB RAM, và khi Windows sắp hết bộ nhớ thì nó nhả trình duyệt sau nửa phút nằm dưới khay."
-      ]
-    }
-  },
-  {
-    "version": "1.0.6-beta.2",
-    "date": "2026-10-18",
-    "improved": {
-      "en": [
-        "Before Play, Bloxkeep also warns when Windows' virtual memory is almost full even though RAM is free: that is why a Roblox window can crash as it opens (\"Memory dump captured\"). The same warning shows while you play."
-      ],
-      "vi": [
-        "Trước khi vào game, Bloxkeep còn cảnh báo khi bộ nhớ ảo của Windows sắp đầy dù RAM vẫn trống: đó là lý do cửa sổ Roblox bị văng ngay khi mở (\"Memory dump captured\"). Lúc đang chơi cũng có cảnh báo này."
-      ]
-    }
-  },
-  {
-    "version": "1.0.6-beta.1",
-    "date": "2026-10-18",
-    "en": [
-      "Experimental: all Roblox windows temporarily stop saving sign-ins and some settings while separate sign-in windows are open. Close the separate windows before quitting Bloxkeep. A crash may replace the usual saved sign-in; long sessions have not been verified."
-    ],
-    "vi": [
-      "Đang thử nghiệm: mọi cửa sổ Roblox tạm thời không lưu đăng nhập và một số cài đặt khi có cửa sổ đăng nhập riêng. Hãy đóng các cửa sổ riêng trước khi thoát Bloxkeep. Nếu Bloxkeep bị lỗi, đăng nhập thường dùng có thể bị thay thế; chưa kiểm chứng việc treo lâu dài."
-    ],
-    "new": {
-      "en": [
-        "Separate sign-in windows: Open Roblox in the tray menu opens another window you can sign into independently, without adding the account to Bloxkeep. Multi-Roblox must be ready."
-      ],
-      "vi": [
-        "Cửa sổ đăng nhập riêng: Mở Roblox mới trong menu khay mở thêm cửa sổ để đăng nhập độc lập, không cần thêm tài khoản vào Bloxkeep. Multi-Roblox phải sẵn sàng."
-      ]
-    },
-    "fixed": {
-      "en": [
-        "Shared sign-in files unlock after the separate clients close, even when ordinary clients remain open. Junctions stay in Bloxkeep data rather than TEMP; empty files created by Bloxkeep are removed automatically.",
-        "Opening a separate window reports when Multi-Roblox becomes unavailable and no longer overlaps account launches or automatic rejoins."
-      ],
-      "vi": [
-        "Tệp đăng nhập chung được nhả khóa sau khi các client riêng đóng, kể cả khi client thường vẫn chạy. Junction nằm trong dữ liệu Bloxkeep thay vì TEMP; tệp rỗng do Bloxkeep tạo được tự dọn.",
-        "Mở cửa sổ riêng báo rõ khi Multi-Roblox mất trạng thái sẵn sàng, và không còn chạy đồng thời với việc mở tài khoản hoặc tự vào lại game."
+        "Hết báo nhầm \"Windows không cho chuyển cửa sổ Roblox sang nhân khác\" hay \"Roblox không cho giảm RAM\" với cửa sổ vừa tắt, và danh sách server không tải được cũng không còn bị báo là \"không có server nào đủ chỗ\".",
+        "Cài Roblox VNG không còn làm đổi chương trình Bloxkeep dùng để mở Roblox: Mặc định không bao giờ dùng bản Roblox VNG, với mọi tài khoản, kể cả tài khoản VNG. Khi một bản Roblox khác chiếm link Roblox, hoặc trình gỡ của nó xóa mất link, bấm Vào game sẽ mở bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy, thay vì báo chỉ có bản Microsoft Store."
       ]
     }
   },
