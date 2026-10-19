@@ -49,7 +49,7 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 | Greyed out | Why |
 |---|---|
 | **Play** in the game bar ("Select accounts") | No account is selected. |
-| **Play** on a card | A Roblox VNG account, or it is launching. |
+| **Play** on a card | It is launching. |
 | **Open Roblox**, **Join a player…** | No account is selected. |
 | **Close** in the game bar, **Close Roblox**, **Force close** | None of the selected accounts is open on this PC. |
 | **Edit…**, **Join this server**, **Roblox profile**, **Open website**, the **Copy** items | Several accounts are selected. **Join this server** also needs a known server; **Open website** isn't available for Roblox VNG. |

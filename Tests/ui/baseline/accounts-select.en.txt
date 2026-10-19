@@ -141,6 +141,7 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Roblox Studio"] "Roblox Studio"
                     div.v [title="Place1"] "Place1"
                 div.meta
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 1,300"
                   span.ago [title="Last launched from this app"] "Never opened"
                     svg.i #n87usa
                 div.card-actions
@@ -176,6 +177,7 @@ html [data-theme="dark" lang="en"]
                     b.up "1 min"
                   button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 2222"
                 div.meta
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 80"
                   span.tag [title="Farm"] "Farm"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
@@ -239,6 +241,7 @@ html [data-theme="dark" lang="en"]
                     b.up "47 min"
                   button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 1111"
                 div.meta
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 12,450"
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
@@ -266,6 +269,7 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Playing · another device"] "Playing · another device"
                     div.v [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 div.meta
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 0"
                   span.tag [title="Farm"] "Farm"
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa

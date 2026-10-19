@@ -49,7 +49,7 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 | Bị mờ | Vì sao |
 |---|---|
 | Nút **Vào game** ở thanh dưới ("Chọn tài khoản") | Chưa chọn tài khoản nào. |
-| **Vào game** trên thẻ | Tài khoản Roblox VNG, hoặc tài khoản đang được mở. |
+| **Vào game** trên thẻ | Tài khoản đang được mở. |
 | **Mở Roblox**, **Vào cùng người chơi…** | Chưa chọn tài khoản nào. |
 | **Đóng** ở thanh dưới, **Đóng Roblox**, **Buộc tắt** | Không tài khoản nào đã chọn đang mở trên máy này. |
 | **Sửa…**, **Vào cùng server**, **Trang cá nhân Roblox**, **Mở trang web**, các mục **Sao chép** | Đang chọn nhiều tài khoản. **Vào cùng server** còn cần biết server; **Mở trang web** không dùng được cho Roblox VNG. |

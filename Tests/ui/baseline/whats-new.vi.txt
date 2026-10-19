@@ -162,16 +162,25 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.6-beta.4 · 18 tháng 10, 2026"
+              small "Bloxkeep 1.0.6-beta.7 · 19 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
+        h4.new.wn-kind.wn-sub "Mới"
+          svg.i #u7ty99
+        ul.new.wn-also
+          li
+            svg.i #u7ty99
+            span "Thẻ tài khoản và danh sách hiện số Robux của từng tài khoản (\"R$ 1.234\"), đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này."
+          li
+            svg.i #u7ty99
+            span "Tài khoản Roblox VNG đã vào game được (tính năng mới, đang thử nghiệm): Bloxkeep lấy đăng nhập từ Roblox VNG rồi mở Roblox bằng launcher bạn vẫn dùng. Nếu Roblox từ chối, kết quả sẽ ghi lý do."
         h4.fixed.wn-kind.wn-sub "Đã sửa"
           svg.i #yqrnd9
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
-            span "Tự vào lại game không còn phải chờ hộp hỏi về cửa sổ đăng nhập riêng: game bị rớt mạng trong lúc hộp đang mở vẫn được mở lại như bình thường."
+            span "Sau khi gỡ một bản Roblox khác (như Roblox VNG) làm mất liên kết mở Roblox, bấm Vào game không còn báo chỉ có bản Microsoft Store mà mở Roblox bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

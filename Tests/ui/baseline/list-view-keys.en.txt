@@ -136,6 +136,7 @@ html [data-theme="dark" lang="en"]
                   small [title="@lananh_2010"] "@lananh_2010"
                 div.row-status.studio [title="Roblox Studio"] "Roblox Studio"
                 div.row-meta
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 1,300"
                 div.row-live
                 div.row-actions
                   button.icon-btn.play [title="Play" tabindex="-1" aria-label="Play"]
@@ -153,6 +154,7 @@ html [data-theme="dark" lang="en"]
                   small [title="@pixelfarmer01"] "@pixelfarmer01"
                 div.ingame.row-status [title="Joining · Blox Fruits"] "Joining · Blox Fruits"
                 div.row-meta
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 80"
                   span.tag [title="Farm"] "Farm"
                 div.row-live
                   button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 2222"
@@ -193,6 +195,7 @@ html [data-theme="dark" lang="en"]
                   small [title="@sunny_builds"] "@sunny_builds"
                 div.ingame.row-status [title="Playing · Blox Fruits"] "Playing · Blox Fruits"
                 div.row-meta
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 12,450"
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
@@ -216,6 +219,7 @@ html [data-theme="dark" lang="en"]
                   small [title="@night_owl_rb"] "@night_owl_rb"
                 div.ingame.row-status [title="Playing · another device · [🎃] Adopt Me!"] "Playing · another device · [🎃] Adopt Me!"
                 div.row-meta
+                  span.robux [title="Robux on this account, checked every 30 minutes"] "R$ 0"
                   span.tag [title="Farm"] "Farm"
                 div.row-live
                 div.row-actions

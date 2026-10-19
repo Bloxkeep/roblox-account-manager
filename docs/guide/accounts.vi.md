@@ -58,7 +58,7 @@ Vòng đỏ quanh avatar nghĩa là **Cần đăng nhập lại** hoặc **Bị 
 
 <img src="../screenshots/vi/card-rejoin.png" width="760" alt="Các thẻ tài khoản: một thẻ chờ vào lại sau 5 phút kèm nút Hủy, một thẻ bị văng vì AFK, một thẻ cần đăng nhập lại, một thẻ bị ban">
 
-Tài khoản đang mở trên máy này còn hiện **RAM đang dùng**, **Thời gian đã chơi** và **PID** (bấm để sao chép). Các nút là **Vào game** (đổi thành **Đóng** khi đang mở, **Hủy** khi đang chờ vào lại, **Đăng nhập** khi cần đăng nhập lại), **Sửa (F2)** và **⋯ Tùy chọn khác**. Trạng thái tự làm mới mỗi 30 giây; bấm **Làm mới trạng thái online** để làm mới ngay.
+Dòng phía trên các nút hiện số **Robux** của tài khoản (**R$ 1.234**), Bloxkeep đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này. Tài khoản đang mở trên máy này còn hiện **RAM đang dùng**, **Thời gian đã chơi** và **PID** (bấm để sao chép). Các nút là **Vào game** (đổi thành **Đóng** khi đang mở, **Hủy** khi đang chờ vào lại, **Đăng nhập** khi cần đăng nhập lại), **Sửa (F2)** và **⋯ Tùy chọn khác**. Trạng thái tự làm mới mỗi 30 giây; bấm **Làm mới trạng thái online** để làm mới ngay.
 
 ## Chọn, tìm và sắp xếp
 
@@ -137,7 +137,7 @@ Dùng cho tài khoản trong `vault.rmv` của máy khác, hoặc file `Bloxkeep
 
 Thêm các tài khoản này ở tab **Roblox VNG** của hộp **Đăng nhập Roblox** hoặc của **Đăng nhập bằng điện thoại** (xác nhận trong app Roblox VNG). Không có cách đăng nhập bằng trình duyệt cho loại này. Chúng có nhãn **VNG**.
 
-- Bloxkeep chưa mở được game cho chúng: nút **Vào game** bị mờ ("Bloxkeep chưa mở được Roblox VNG.").
-- Khi mở nhiều tài khoản một lúc, tài khoản VNG bị bỏ qua và kết quả có ghi rõ. **Mở trang web** cũng bị mờ.
+- **Vào game** mở chúng như mọi tài khoản khác (tính năng mới, đang thử nghiệm): Bloxkeep lấy đăng nhập từ Roblox VNG rồi mở Roblox bằng launcher bạn vẫn dùng. Vào được server nào là do Roblox quyết định. Nếu Roblox từ chối, kết quả sẽ ghi lý do.
+- **Mở trang web** vẫn bị mờ với loại tài khoản này.
 
 ← [Hướng dẫn](../guide.vi.md) · Tiếp: [Vào game](playing.vi.md) →

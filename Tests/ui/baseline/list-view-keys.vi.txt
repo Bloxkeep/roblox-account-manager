@@ -136,6 +136,7 @@ html [data-theme="dark" lang="vi"]
                   small [title="@pixelfarmer01"] "@pixelfarmer01"
                 div.ingame.row-status [title="Đang vào game · Blox Fruits"] "Đang vào game · Blox Fruits"
                 div.row-meta
+                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "R$ 80"
                   span.tag [title="Farm"] "Farm"
                 div.row-live
                   button.pid [title="Mã tiến trình Roblox (PID), bấm để sao chép" tabindex="-1"] "PID 2222"
@@ -176,6 +177,7 @@ html [data-theme="dark" lang="vi"]
                   small [title="@night_owl_rb"] "@night_owl_rb"
                 div.ingame.row-status [title="Đang chơi · thiết bị khác · [🎃] Adopt Me!"] "Đang chơi · thiết bị khác · [🎃] Adopt Me!"
                 div.row-meta
+                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "R$ 0"
                   span.tag [title="Farm"] "Farm"
                 div.row-live
                 div.row-actions
@@ -194,6 +196,7 @@ html [data-theme="dark" lang="vi"]
                   small [title="@sunny_builds"] "@sunny_builds"
                 div.ingame.row-status [title="Đang chơi · Blox Fruits"] "Đang chơi · Blox Fruits"
                 div.row-meta
+                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "R$ 12.450"
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Đang bật tự vào lại game"]
                     svg.i #1ap9cll
@@ -217,6 +220,7 @@ html [data-theme="dark" lang="vi"]
                   small [title="@lananh_2010"] "@lananh_2010"
                 div.row-status.studio [title="Roblox Studio"] "Roblox Studio"
                 div.row-meta
+                  span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "R$ 1.300"
                 div.row-live
                 div.row-actions
                   button.icon-btn.play [title="Vào game" tabindex="-1" aria-label="Vào game"]

@@ -74,7 +74,7 @@ How a launch goes:
 
 - Accounts open one after another, with **Wait between accounts** in between (**Settings › Launching**, 8 seconds by default; a preset can have its own).
 - An account already in this game is left as it is. An account in another game is asked about first, then closed and opened again in the new game.
-- Banned and Roblox VNG accounts are skipped, with a line in the result. If some accounts fail, **Some accounts didn't open** lists why.
+- Banned accounts are skipped, with a line in the result. If some accounts fail, **Some accounts didn't open** lists why.
 - Afterwards the windows can arrange themselves: see [Windows and statistics](windows-and-stats.md).
 
 ## Launch order

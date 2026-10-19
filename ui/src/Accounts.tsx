@@ -291,9 +291,10 @@ function Pid({ a }: { a: Account }) {
   return a.session?.pid > 0 ? <button className="pid" data-act="copy-pid" title={t('card.pidTip')}>{`PID ${a.session.pid}`}</button> : null;
 }
 function Meta({ a }: { a: Account }) {
-  const { t } = useHost();
+  const { t, fmtNum } = useHost();
   return <>
     {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
+    {typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}>{`R$ ${fmtNum(a.robux)}`}</span> : null}
     {a.group ? <span className="tag" title={a.group}>{a.group}</span> : null}
     {rejoinOn(a) ? <span className="rejoin" title={t('card.rejoinTip')}><Icon name="repeat" /></span> : null}
   </>;
@@ -316,8 +317,7 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
       ? <button key="cancel-rejoin" className="pill-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" />{t('rj.cancel')}</button>
     : a.cookieValid === false
       ? <button key="relogin" className="pill-btn relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" />{t('card.relogin')}</button>
-      // A Roblox VNG account can't be opened yet (the app skips it): its Play is off and says why.
-      : <button key="play-one" className="pill-btn play" data-act="play-one" title={a.realm === 'vng' ? t('card.vngNoPlay') : undefined} disabled={a.state === 'launching' || a.realm === 'vng'}><Icon name="play" />{t('card.play')}</button>;
+      : <button key="play-one" className="pill-btn play" data-act="play-one" disabled={a.state === 'launching'}><Icon name="play" />{t('card.play')}</button>;
   return <article className={`card ${local ? 'local' : ''}${sel ? ' sel' : ''}`} data-id={a.id} data-act="card" role="option" tabIndex={-1} aria-selected={sel} aria-label={a.label}>
     <div className="card-top"><span className="check"><Icon name="check" /></span>{badge}</div>
     <div className={`avatar ${ringOf(a)}`}><Avatar a={a} /><i className={`pdot ${pType}`} /></div>
@@ -373,7 +373,7 @@ function AccountRow({ a, sel }: { a: Account; sel: boolean }) {
   const action = local || a.state === 'launching' ? <button key="close-one" className="icon-btn stop" data-act="close-one" title={t('card.close')} aria-label={t('card.close')}><Icon name="power" /></button>
     : a.rejoin ? <button key="cancel-rejoin" className="icon-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')} aria-label={t('rj.cancelTip')}><Icon name="x" /></button>
     : a.cookieValid === false ? <button key="relogin" className="icon-btn relogin" data-act="relogin" title={t('card.relogin')} aria-label={t('card.relogin')}><Icon name="logIn" /></button>
-    : <button key="play-one" className="icon-btn play" data-act="play-one" title={a.realm === 'vng' ? t('card.vngNoPlay') : t('card.play')} aria-label={t('card.play')} disabled={a.state === 'launching' || a.realm === 'vng'}><Icon name="play" /></button>;
+    : <button key="play-one" className="icon-btn play" data-act="play-one" title={t('card.play')} aria-label={t('card.play')} disabled={a.state === 'launching'}><Icon name="play" /></button>;
   // The card's red pill in a list row too (banned, or signed out), in front of the status words.
   const badge = local || a.state === 'launching' ? null
     : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>

@@ -683,6 +683,7 @@ public sealed partial class AppController : IDisposable
         a.AutoRejoin,
         a.UseRobloxConfig,
         avatarUrl = _avatarUrls.GetValueOrDefault(a.UserId),
+        robux = RobuxOf(a),
         state = _running.ContainsKey(a.Id) ? "running"
             : _pending.Any(p => p.AccountId == a.Id && !_closeWhenClaimed.Contains(p)) ? "launching" : "idle",
         presence = PresenceDto(a),
@@ -2505,13 +2506,7 @@ public sealed partial class AppController : IDisposable
             throw new UserError(L.T("Already launching — wait a moment or press Stop."));
         if (accounts.Count == 0)
             throw new UserError(L.T("Select at least one account."));
-        // VNG accounts need the Roblox VNG client, whose launch hasn't been tried yet. Mixed with others they are left
-        // out with a line in the result (LaunchAccountsAsync), so one of them doesn't stop the whole launch.
-        if (accounts.All(acc => acc.Realm == Realm.Vng))
-            throw new UserError(string.Join("\n", accounts.Select(VngNotOpened)));
     }
-
-    string VngNotOpened(Account account) => L.F("{0} is a Roblox VNG account. Opening Roblox VNG isn't supported yet.", Name(account));
 
     string BannedNotOpened(Account account) =>
         L.F("{0} is banned on Roblox, so it wasn't opened. If the ban is over, Check sign-in clears this.", Name(account));
@@ -2526,10 +2521,10 @@ public sealed partial class AppController : IDisposable
         Func<GameTarget, int, CancellationToken, Task<GameTarget>>? pickServer = null, Guid? presetId = null)
     {
         // Accounts Roblox reports banned (the account checks read it) aren't opened: their window would only show the
-        // ban. Nor are Roblox VNG accounts (see CheckCanLaunch). Said with the result, like an account that failed to
-        // open; with nothing else to open, said at once.
-        var leftOut = accounts.Where(acc => acc.Realm == Realm.Vng || acc.Banned == true).ToList();
-        var leftOutText = leftOut.Select(acc => acc.Realm == Realm.Vng ? VngNotOpened(acc) : BannedNotOpened(acc)).ToList();
+        // ban. Said with the result, like an account that failed to open; with nothing else to open, said at once.
+        // Roblox VNG accounts open like the others, with a ticket from Roblox VNG's sign-in (tried from 2026-10-19).
+        var leftOut = accounts.Where(acc => acc.Banned == true).ToList();
+        var leftOutText = leftOut.Select(BannedNotOpened).ToList();
         if (leftOut.Count > 0)
         {
             if (leftOut.Count == accounts.Count)
@@ -2963,7 +2958,7 @@ public sealed partial class AppController : IDisposable
     async Task StartSessionAsync(Account account, GameTarget? target, string launchVia, CancellationToken ct = default, bool rejoin = false,
         Guid? presetId = null, bool restart = false)
     {
-        string ticket = await RobloxApi.GetAuthTicketAsync(account.Cookie, ct);
+        string ticket = await RobloxApi.GetAuthTicketAsync(account.Cookie, ct, account.Realm);
         // Stop (or Close all) and a deletion while the ticket was fetched: no client for it any more.
         ct.ThrowIfCancellationRequested();
         if (FindAccount(account.Id) is null)
@@ -3460,6 +3455,7 @@ public sealed partial class AppController : IDisposable
         Step(() => RunDueRejoin(now));
         Step(() => RestartDueClients(now));
         Step(() => RunSignInCheckIfDue(now));
+        Step(() => RefreshRobuxIfDue(now));
         Step(() => TickDiscord(now, players));
         if (!_presenceBusy && now >= _nextPresence)
             _ = RefreshPresenceAsync();

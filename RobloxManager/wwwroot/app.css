@@ -1802,7 +1802,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .row-live { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: auto; min-width: 64px; }
 .row-live .pid { height: 24px; padding: 0 7px; }
 
-.meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 11px; font-size: 12px; color: var(--muted); min-height: 22px; }
+.meta { display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-top: 11px; font-size: 12px; color: var(--muted); min-height: 22px; }
 .tag { max-width: 50%; padding: 2px 9px; border-radius: 20px; background: var(--hover); color: var(--text-2); font-weight: 650; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rejoin { display: inline-flex; color: var(--online); }
 .rejoin .i { width: 14px; height: 14px; }
@@ -2469,6 +2469,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .ql-realm button { height: 28px; padding: 0 14px; border-radius: 16px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
 .ql-realm button.on { background: var(--surface-3); color: var(--text); }
 .tag.vng { flex: none; color: var(--warn-ink); background: var(--warn-soft); }
+.meta .robux, .row-meta .robux { flex: none; color: var(--text-2); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ql { display: grid; grid-template-columns: 172px 1fr; gap: 22px; align-items: center; margin: 6px 0 2px; }
 .ql-qr { width: 172px; height: 172px; padding: 12px; border-radius: 14px; background: #fff; }
 .ql-qr:empty { background: var(--surface-3); }

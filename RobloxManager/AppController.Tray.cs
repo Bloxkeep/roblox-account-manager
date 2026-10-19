@@ -32,7 +32,7 @@ public sealed partial class AppController
         bool on = open ? _vault!.Data.Settings.MultiInstance : Prefs.MultiRobloxAtStart;
         var presets = open ? _vault!.Data.Settings.Presets.Select(p => (p.Id, p.Name)).ToList() : [];
         var accounts = open
-            ? _vault!.Data.Accounts.Where(a => a.UserId > 0 && a.Banned != true && a.Realm != Realm.Vng).OrderByDescending(a => a.LastUsed ?? DateTime.MinValue)
+            ? _vault!.Data.Accounts.Where(a => a.UserId > 0 && a.Banned != true).OrderByDescending(a => a.LastUsed ?? DateTime.MinValue)
                 .Take(TrayAccounts).Select(a => (a.Id, NameText(a), _running.ContainsKey(a.Id))).ToList()
             : [];
         var clients = open ? RunningClients().Select(c => new TrayClient(c.Id, c.Label, c.Game, c.Pid, c.RamMb)).ToList() : [];

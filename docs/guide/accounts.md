@@ -58,7 +58,7 @@ A red ring around the avatar means **Needs sign-in** or **Banned**. While Bloxke
 
 <img src="../screenshots/card-rejoin.png" width="760" alt="Account cards: one rejoining in 5 minutes with Cancel, one disconnected for being idle, one needing sign-in, one banned">
 
-An account open on this PC also shows **RAM in use**, **Play time** and **PID** (click to copy). The buttons are **Play** (**Close** while open, **Cancel** while a rejoin waits, **Sign in** when it needs sign-in), **Edit (F2)** and **⋯ More**. Status refreshes every 30 seconds; **Refresh online status** does it now.
+The line above the buttons shows the account's **Robux** (**R$ 1,234**), read with its own sign-in every 30 minutes and kept only on this PC. An account open on this PC also shows **RAM in use**, **Play time** and **PID** (click to copy). The buttons are **Play** (**Close** while open, **Cancel** while a rejoin waits, **Sign in** when it needs sign-in), **Edit (F2)** and **⋯ More**. Status refreshes every 30 seconds; **Refresh online status** does it now.
 
 ## Select, search and sort
 
@@ -137,7 +137,7 @@ For accounts in `vault.rmv` from another PC, or a `Bloxkeep-backup-…` file. Op
 
 Add these accounts on the **Roblox VNG** tab of **Sign in to Roblox** or **Sign in with your phone** (confirm in the Roblox VNG app). There is no browser sign-in for them. They carry a **VNG** tag.
 
-- Bloxkeep can't open games for them yet: **Play** is greyed out ("Opening Roblox VNG isn't supported yet.").
-- When you play several accounts at once, VNG accounts are left out and the result says so. **Open website** is greyed out too.
+- **Play** opens them like any account (new, still being tried out): Bloxkeep gets their sign-in from Roblox VNG and opens Roblox with your usual launcher. Which servers they can join is up to Roblox. If Roblox refuses, the result says why.
+- **Open website** is greyed out for them.
 
 ← [User guide](../guide.md) · Next: [Playing](playing.md) →

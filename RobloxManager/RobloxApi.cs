@@ -369,12 +369,12 @@ public static class RobloxApi
     /// Since Sep 2026 roblox.com first fetches a client assertion and posts it as the body of the
     /// authentication-ticket request. Falls back to the older empty body if the endpoint is unavailable.
     /// </summary>
-    static async Task<string?> GetClientAssertionAsync(string cookie, CancellationToken ct)
+    static async Task<string?> GetClientAssertionAsync(string cookie, CancellationToken ct, string realm = Realm.Global)
     {
-        const string url = "https://auth.roblox.com/v1/client-assertion/";
+        string url = Realm.Api(realm, "auth") + "/v1/client-assertion/";
         try
         {
-            using (var req = Request(HttpMethod.Get, url, cookie, fromWebsite: true))
+            using (var req = Request(HttpMethod.Get, url, cookie, fromWebsite: true, realm: realm))
             using (var res = await Http.SendAsync(req, ct))
             {
                 string body = (await res.Content.ReadAsStringAsync(ct)).Trim();
@@ -383,7 +383,7 @@ public static class RobloxApi
                 if (res.StatusCode != HttpStatusCode.MethodNotAllowed)
                     return null;
             }
-            using var post = await PostWithCsrfAsync(url, cookie, "{}", null, ct);
+            using var post = await PostWithCsrfAsync(url, cookie, "{}", null, ct, realm);
             string postBody = (await post.Content.ReadAsStringAsync(ct)).Trim();
             return post.IsSuccessStatusCode && postBody.StartsWith('{') ? postBody : null;
         }
@@ -1007,12 +1007,48 @@ public static class RobloxApi
         throw LoginRefused("login after two-step", done.StatusCode, doneBody);
     }
 
-    /// <summary>One-time ticket that lets the Roblox client sign in as this account.</summary>
-    public static async Task<string> GetAuthTicketAsync(string cookie, CancellationToken ct = default)
+    /// <summary>
+    /// The account's Robux, asked with its own cookie (economy …/v1/users/{id}/currency answers {"robux": n} to the
+    /// account itself; without a sign-in it answers 401, checked on both hosts on 2026-10-19). Null when Roblox didn't
+    /// say: signed out, a refusal, or an answer in another shape.
+    /// </summary>
+    public static async Task<long?> GetRobuxAsync(string cookie, string realm, long userId, CancellationToken ct = default)
     {
-        string body = await GetClientAssertionAsync(cookie, ct) ?? "{}";
-        using var res = await PostWithCsrfAsync("https://auth.roblox.com/v1/authentication-ticket/", cookie, body,
-            req => req.Headers.TryAddWithoutValidation("RBXAuthenticationNegotiation", "1"), ct);
+        realm = Realm.Normalize(realm);
+        using var req = Request(HttpMethod.Get, $"{Realm.Api(realm, "economy")}/v1/users/{userId.ToString(CultureInfo.InvariantCulture)}/currency", cookie,
+            realm: realm);
+        using var res = await Http.SendAsync(req, ct);
+        if (!res.IsSuccessStatusCode)
+            return null;
+        return ReadRobux(await res.Content.ReadAsStringAsync(ct));
+    }
+
+    /// <summary>The number in a currency answer, or null for anything else.</summary>
+    internal static long? ReadRobux(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("robux", out var robux)
+                   && robux.TryGetInt64(out long n) && n >= 0 ? n : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// One-time ticket that lets the Roblox client sign in as this account, from the account's own Roblox (a Roblox VNG
+    /// account's from Roblox VNG's sign-in service). Roblox VNG's client redeemed tickets from roblox.com at
+    /// auth.robloxapp.vnggames.com (seen 2026-10-19), so the two look like one sign-in service under two names.
+    /// </summary>
+    public static async Task<string> GetAuthTicketAsync(string cookie, CancellationToken ct = default, string realm = Realm.Global)
+    {
+        realm = Realm.Normalize(realm);
+        string body = await GetClientAssertionAsync(cookie, ct, realm) ?? "{}";
+        using var res = await PostWithCsrfAsync(Realm.Api(realm, "auth") + "/v1/authentication-ticket/", cookie, body,
+            req => req.Headers.TryAddWithoutValidation("RBXAuthenticationNegotiation", "1"), ct, realm);
 
         if (Header(res, "rbx-authentication-ticket") is { Length: > 0 } ticket)
             return ticket;
@@ -1021,7 +1057,7 @@ public static class RobloxApi
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
             throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
         string text = await res.Content.ReadAsStringAsync(ct);
-        Log.Note($"Sign-in ticket: HTTP {(int)res.StatusCode}, errors {Errors(text).Summary}");
+        Log.Note($"Sign-in ticket{(realm == Realm.Vng ? " (VNG)" : "")}: HTTP {(int)res.StatusCode}, errors {Errors(text).Summary}");
         // A 5xx is Roblox's problem; anything else (a ban, a challenge, a bad request) won't change by retrying.
         throw new RobloxApiException(L.F("Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment.", (int)res.StatusCode),
             serverError: (int)res.StatusCode >= 500);

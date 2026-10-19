@@ -162,16 +162,25 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.6-beta.4 · October 18, 2026"
+              small "Bloxkeep 1.0.6-beta.7 · October 19, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
+        h4.new.wn-kind.wn-sub "New"
+          svg.i #u7ty99
+        ul.new.wn-also
+          li
+            svg.i #u7ty99
+            span "Each account's Robux shows on its card and in the list (\"R$ 1,234\"), read with the account's own sign-in every 30 minutes and kept only on this PC."
+          li
+            svg.i #u7ty99
+            span "Roblox VNG accounts can be played (new, still being tried out): Bloxkeep gets their sign-in from Roblox VNG and opens Roblox with your usual launcher. If Roblox refuses, the result says why."
         h4.fixed.wn-kind.wn-sub "Fixed"
           svg.i #yqrnd9
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
-            span "Auto-rejoin no longer waits while the separate sign-in question is open: a game that lost its connection meanwhile is reopened as usual."
+            span "After another Roblox (such as Roblox VNG) was uninstalled and took Roblox's links with it, Play no longer says only the Microsoft Store edition is installed: it opens Roblox with Bloxstrap, Fishstrap or the Roblox still on the PC."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

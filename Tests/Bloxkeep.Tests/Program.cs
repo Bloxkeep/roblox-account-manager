@@ -24,6 +24,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("vault-save", false, VaultSaveSuite.Run),
     ("main-browser", false, MainBrowserSuite.Run),
     ("cores", false, CoresSuite.Run),
+    ("robux", false, RobuxSuite.Run),
     ("window-icons", false, WindowIconsSuite.Run),
     ("taskbar-groups", false, TaskbarGroupsSuite.Run),
     ("home-session", false, HomeSessionSuite.Run),

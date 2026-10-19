@@ -74,7 +74,7 @@ Một lượt mở diễn ra thế này:
 
 - Các tài khoản mở lần lượt, cách nhau một khoảng **Chờ giữa các tài khoản** (**Cài đặt › Khởi chạy**, mặc định 8 giây; preset có thể đặt riêng).
 - Tài khoản đang ở đúng game này thì được giữ nguyên. Tài khoản đang ở game khác thì Bloxkeep hỏi trước, rồi đóng và mở lại vào game mới.
-- Tài khoản bị ban và tài khoản Roblox VNG bị bỏ qua, có ghi trong kết quả. Nếu có tài khoản không mở được, hộp **Một số tài khoản chưa mở được** liệt kê lý do.
+- Tài khoản bị ban bị bỏ qua, có ghi trong kết quả. Nếu có tài khoản không mở được, hộp **Một số tài khoản chưa mở được** liệt kê lý do.
 - Mở xong, các cửa sổ có thể tự xếp: xem [Cửa sổ và thống kê](windows-and-stats.vi.md).
 
 ## Thứ tự mở tài khoản

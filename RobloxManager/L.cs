@@ -173,8 +173,6 @@ public static class L
         ["That code was used already. Wait for the next one in the authenticator app."] = "Mã này đã dùng rồi. Chờ mã tiếp theo trong app xác thực.",
         ["This sign-in has expired. Sign in again."] = "Đã quá thời gian đăng nhập. Hãy đăng nhập lại.",
         ["Enter the code from the authenticator app."] = "Nhập mã từ app xác thực.",
-        ["{0} is a Roblox VNG account. Opening Roblox VNG isn't supported yet."] =
-            "{0} là tài khoản Roblox VNG. Bloxkeep chưa mở được Roblox VNG.",
         ["Roblox wants an extra check for this sign-in. Use Sign in with browser instead."] =
             "Roblox cần xác minh thêm cho lần đăng nhập này. Hãy chọn Đăng nhập bằng trình duyệt.",
         ["Roblox wants an extra check for this sign-in. Sign in with the username and password instead."] =
