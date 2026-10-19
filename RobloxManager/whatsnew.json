@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.6-beta.7",
+    "date": "2026-10-19",
+    "new": {
+      "en": [
+        "Each account's Robux shows on its card and in the list (\"R$ 1,234\"), read with the account's own sign-in every 30 minutes and kept only on this PC.",
+        "Roblox VNG accounts can be played (new, still being tried out): Bloxkeep gets their sign-in from Roblox VNG and opens Roblox with your usual launcher. If Roblox refuses, the result says why."
+      ],
+      "vi": [
+        "Thẻ tài khoản và danh sách hiện số Robux của từng tài khoản (\"R$ 1.234\"), đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này.",
+        "Tài khoản Roblox VNG đã vào game được (tính năng mới, đang thử nghiệm): Bloxkeep lấy đăng nhập từ Roblox VNG rồi mở Roblox bằng launcher bạn vẫn dùng. Nếu Roblox từ chối, kết quả sẽ ghi lý do."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "After another Roblox (such as Roblox VNG) was uninstalled and took Roblox's links with it, Play no longer says only the Microsoft Store edition is installed: it opens Roblox with Bloxstrap, Fishstrap or the Roblox still on the PC."
+      ],
+      "vi": [
+        "Sau khi gỡ một bản Roblox khác (như Roblox VNG) làm mất liên kết mở Roblox, bấm Vào game không còn báo chỉ có bản Microsoft Store mà mở Roblox bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy."
+      ]
+    }
+  },
+  {
     "version": "1.0.6-beta.6",
     "date": "2026-10-19",
     "improved": {
