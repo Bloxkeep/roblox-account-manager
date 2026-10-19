@@ -604,7 +604,10 @@ public sealed partial class AppController : IDisposable
         _installsReadAt = DateTime.UtcNow;
         string? before = _installs?.Client?.Folder, beforeVersion = _installs?.Client?.Version;
         _installs = new InstallsInfo(
-            Handler: RobloxInstalls.ProtocolHandlerPath() is { } h ? Path.GetFileNameWithoutExtension(h) : null,
+            // What Default opens Roblox with: the links' program, or what stands in for it when they are gone or Roblox
+            // VNG's (RobloxLauncher.FallbackLauncher), so Settings names the program really used.
+            Handler: (RobloxInstalls.UsableHandlerPath() ?? RobloxLauncher.FallbackLauncher()?.Exe) is { } used
+                ? Path.GetFileNameWithoutExtension(used) : null,
             Bloxstrap: RobloxInstalls.FindBootstrapper("Bloxstrap") is not null,
             Fishstrap: RobloxInstalls.FindBootstrapper("Fishstrap") is not null,
             Others: RobloxInstalls.FindOtherBootstrappers(),

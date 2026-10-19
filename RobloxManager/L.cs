@@ -102,6 +102,8 @@ public static class L
             "Máy chưa cài Roblox. Hãy cài từ roblox.com/download rồi thử lại.",
         ["Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download."] =
             "Máy chỉ có Roblox bản Microsoft Store. Hãy chọn nó ở Cài đặt › Khởi chạy › Mở Roblox bằng, hoặc cài Roblox từ roblox.com/download.",
+        ["Only Roblox VNG is installed, and Bloxkeep doesn't open Roblox with it. Install Roblox from roblox.com/download (or Bloxstrap), then try again."] =
+            "Máy chỉ có Roblox VNG, mà Bloxkeep không mở Roblox bằng bản này. Hãy cài Roblox từ roblox.com/download (hoặc Bloxstrap) rồi thử lại.",
         ["Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Launching › Open Roblox with."] =
             "Máy chưa cài Roblox bản Microsoft Store. Hãy chọn cách mở khác ở Cài đặt › Khởi chạy › Mở Roblox bằng.",
         ["Couldn't start Roblox from the Microsoft Store."] = "Không mở được Roblox bản Microsoft Store.",

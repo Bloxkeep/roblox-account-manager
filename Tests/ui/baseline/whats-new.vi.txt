@@ -180,7 +180,7 @@ html [data-theme="dark" lang="vi"]
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
-            span "Sau khi gỡ một bản Roblox khác (như Roblox VNG) làm mất liên kết mở Roblox, bấm Vào game không còn báo chỉ có bản Microsoft Store mà mở Roblox bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy."
+            span "Cài Roblox VNG không còn làm đổi chương trình Bloxkeep dùng để mở Roblox: Mặc định không bao giờ dùng bản Roblox VNG, với mọi tài khoản, kể cả tài khoản VNG. Khi một bản Roblox khác chiếm link Roblox, hoặc trình gỡ của nó xóa mất link, bấm Vào game sẽ mở bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy, thay vì báo chỉ có bản Microsoft Store."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

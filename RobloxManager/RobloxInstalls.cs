@@ -26,6 +26,17 @@ public static class RobloxInstalls
         return space > 0 ? command[..space] : command;
     }
 
+    /// <summary>
+    /// Roblox VNG's client, in a folder of its own (%LOCALAPPDATA%\RobloxPCVNG). Its installer takes the roblox-player:
+    /// links (seen 2026-10-19); Bloxkeep's Default never follows them there, not even for a Roblox VNG account, so
+    /// installing Roblox VNG doesn't change what Bloxkeep opens Roblox with.
+    /// </summary>
+    public static bool IsVngClient(string path) => path.Contains(@"\RobloxPCVNG\", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The program roblox-player: links open, when it is still there and isn't Roblox VNG's client.</summary>
+    public static string? UsableHandlerPath() =>
+        ProtocolHandlerPath() is { } handler && File.Exists(handler) && !IsVngClient(handler) ? handler : null;
+
     /// <summary>A bootstrapper by name, from its uninstall entry, its default folder, or the protocol handler.</summary>
     public static string? FindBootstrapper(string name)
     {
@@ -111,7 +122,7 @@ public static class RobloxInstalls
             if (FindBootstrapper(name) is { } exe)
                 clients.AddRange(ClientsIn(Path.GetDirectoryName(exe)));
         }
-        if (ProtocolHandlerPath() is { } handler && File.Exists(handler))
+        if (UsableHandlerPath() is { } handler)
         {
             if (Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase))
                 clients.Add(handler);
@@ -164,7 +175,8 @@ public static class RobloxInstalls
             "direct" => FindAnyClient(),
             "store" => FindStoreClient(),
             // Whatever opens roblox-player: links: the client itself, or a bootstrapper with its own copies.
-            _ => ProtocolHandlerPath() is { } handler && File.Exists(handler)
+            // (Not Roblox VNG's client: see IsVngClient.)
+            _ => UsableHandlerPath() is { } handler
                 ? Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase)
                     ? handler
                     : Newest(ClientsIn(Path.GetDirectoryName(handler))) ?? FindAnyClient()

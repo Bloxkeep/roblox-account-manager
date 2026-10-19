@@ -30,9 +30,12 @@ public static class RobloxLauncher
         return key is not null;
     }
 
-    /// <summary>Whether roblox-player: links open something: registered, and the program they name is still there.</summary>
+    /// <summary>
+    /// Whether Default may hand the link to Windows: registered, the program it names is still there, and it isn't
+    /// Roblox VNG's client (whose installer takes the links; Bloxkeep never opens Roblox with it, see IsVngClient).
+    /// </summary>
     static bool LinksOpen() =>
-        IsProtocolRegistered() && (RobloxInstalls.ProtocolHandlerPath() is not { } handler || File.Exists(handler));
+        IsProtocolRegistered() && (RobloxInstalls.ProtocolHandlerPath() is not { } handler || (File.Exists(handler) && !RobloxInstalls.IsVngClient(handler)));
 
     /// <summary>
     /// What opens Roblox when the links don't: Bloxstrap or Fishstrap (as their own options start them), another
@@ -127,6 +130,8 @@ public static class RobloxLauncher
                         break;
                     }
                     // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
+                    if (RobloxInstalls.ProtocolHandlerPath() is { } vng && RobloxInstalls.IsVngClient(vng))
+                        throw new FileNotFoundException(L.T("Only Roblox VNG is installed, and Bloxkeep doesn't open Roblox with it. Install Roblox from roblox.com/download (or Bloxstrap), then try again."));
                     throw new FileNotFoundException(RobloxInstalls.StoreEditionInstalled()
                         ? L.T("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
                         : L.T("Roblox isn't installed. Install it from roblox.com/download, then try again."));

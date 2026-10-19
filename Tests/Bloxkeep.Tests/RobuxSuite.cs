@@ -5,7 +5,8 @@ namespace Bloxkeep.Tests;
 /// <summary>
 /// Each account's Robux on its card (AppController.Robux.cs, RobloxApi.GetRobuxAsync): what Roblox's answers read as,
 /// that a round waits a little after unlocking, and that the page gets the number. And Roblox VNG accounts open like
-/// the others now (a ticket from Roblox VNG's sign-in). Offline: nothing is asked of Roblox.
+/// the others now (a ticket from Roblox VNG's sign-in), never with Roblox VNG's own client. Offline: nothing is asked of
+/// Roblox.
 /// </summary>
 static class RobuxSuite
 {
@@ -36,6 +37,16 @@ static class RobuxSuite
             refused = ex.InnerException?.Message;
         }
         c.Check("a Roblox VNG account alone may be opened (it was refused before)", refused is null, refused);
+
+        // Roblox VNG's client is never what Default opens Roblox with, even when its installer took the links.
+        c.Check("Roblox VNG's client is told by its folder",
+            RobloxInstalls.IsVngClient(@"C:\Users\A\AppData\Local\RobloxPCVNG\Versions\version-1\RobloxPlayerBeta.exe")
+            && !RobloxInstalls.IsVngClient(@"C:\Users\A\AppData\Local\Roblox\Versions\version-1\RobloxPlayerBeta.exe")
+            && !RobloxInstalls.IsVngClient(@"D:\bloxtrap\Bloxstrap.exe"));
+        var fallback = typeof(RobloxLauncher).GetMethod("FallbackLauncher", Harness.F)!.Invoke(null, null);
+        string? fallbackExe = fallback?.GetType().GetField("Item1")!.GetValue(fallback) as string;
+        c.Check("…and never what stands in for the links", fallbackExe is null || !RobloxInstalls.IsVngClient(fallbackExe), fallbackExe);
+        c.Check("…nor the client Default counts as its own", RobloxInstalls.ClientFor("auto") is not { } own || !RobloxInstalls.IsVngClient(own));
 
         var now = DateTime.UtcNow;
         Harness.Invoke(app, "RefreshRobuxIfDue", now);

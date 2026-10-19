@@ -25,7 +25,7 @@ Every page of **Settings** as one compact table: each row, what it does and its 
 
 | Option | Notes |
 |---|---|
-| **Default** (*name*) | Whatever opens Roblox links on this PC. |
+| **Default** (*name*) | Whatever opens Roblox links on this PC, but never Roblox VNG's client, for any account: Roblox VNG's installer takes the links, so then (or when nothing opens them) Bloxstrap, Fishstrap or the Roblox on this PC opens it instead. |
 | **Bloxstrap**, **Fishstrap** | They keep your mods. Other Bloxstrap-style launchers are listed when found. |
 | **Roblox (official)** | The client from roblox.com. |
 | **RobloxPlayerBeta directly (skip launchers)** | No launcher at all. Try it when a launcher blocks several windows. |

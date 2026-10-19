@@ -14,10 +14,10 @@
     },
     "fixed": {
       "en": [
-        "After another Roblox (such as Roblox VNG) was uninstalled and took Roblox's links with it, Play no longer says only the Microsoft Store edition is installed: it opens Roblox with Bloxstrap, Fishstrap or the Roblox still on the PC."
+        "Installing Roblox VNG no longer changes what Bloxkeep opens Roblox with: Default never uses Roblox VNG's client, for any account, Roblox VNG ones included. When another Roblox took Roblox's links, or its uninstaller removed them, Play opens Roblox with Bloxstrap, Fishstrap or the Roblox still on the PC instead of saying only the Microsoft Store edition is installed."
       ],
       "vi": [
-        "Sau khi gỡ một bản Roblox khác (như Roblox VNG) làm mất liên kết mở Roblox, bấm Vào game không còn báo chỉ có bản Microsoft Store mà mở Roblox bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy."
+        "Cài Roblox VNG không còn làm đổi chương trình Bloxkeep dùng để mở Roblox: Mặc định không bao giờ dùng bản Roblox VNG, với mọi tài khoản, kể cả tài khoản VNG. Khi một bản Roblox khác chiếm link Roblox, hoặc trình gỡ của nó xóa mất link, bấm Vào game sẽ mở bằng Bloxstrap, Fishstrap hoặc bản Roblox còn trên máy, thay vì báo chỉ có bản Microsoft Store."
       ]
     }
   },
