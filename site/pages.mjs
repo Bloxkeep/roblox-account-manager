@@ -2,6 +2,11 @@
 // Vietnamese. Every claim here is one the README and the guide make; keep them in step.
 export const SITE = 'https://minhhoang0122.github.io/Bloxkeep/';
 export const REPO = 'https://github.com/minhhoang0122/Bloxkeep';
+// Google gives a name to a whole host, never to a folder like /Bloxkeep/, and reads it from the WebSite data on the
+// host's own home page (https://developers.google.com/search/docs/appearance/site-names). That page is the repo
+// minhhoang0122/minhhoang0122.github.io; the landing pages carry the same WebSite node so the two never disagree.
+const HOST = 'https://minhhoang0122.github.io/';
+const WEBSITE = { '@type': 'WebSite', '@id': `${HOST}#website`, name: 'Bloxkeep', alternateName: ['minhhoang0122.github.io'], url: HOST };
 const DOWNLOAD = `${REPO}/releases/latest/download/Bloxkeep-Setup.exe`;
 const PORTABLE = `${REPO}/releases/latest/download/Bloxkeep-Portable.zip`;
 
@@ -209,17 +214,19 @@ ${l.faq.map(([q, a]) => `    <dt>${esc(q)}</dt><dd>${esc(a)}</dd>`).join('\n')}
 </section>`;
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'Bloxkeep',
-    description: l.description,
-    applicationCategory: 'UtilitiesApplication',
-    operatingSystem: 'Windows 10, Windows 11',
-    softwareVersion: version,
-    downloadUrl: DOWNLOAD,
-    url: SITE + home,
-    license: `${REPO}/blob/main/LICENSE`,
-    inLanguage: lang,
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    '@graph': [WEBSITE, {
+      '@type': 'SoftwareApplication',
+      name: 'Bloxkeep',
+      description: l.description,
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'Windows 10, Windows 11',
+      softwareVersion: version,
+      downloadUrl: DOWNLOAD,
+      url: SITE + home,
+      license: `${REPO}/blob/main/LICENSE`,
+      inLanguage: lang,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    }],
   };
   return { title: l.title, description: l.description, body, jsonLd };
 }
