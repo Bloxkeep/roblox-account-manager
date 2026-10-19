@@ -1,8 +1,9 @@
 {
-  "changedAt": "2026-10-17T20:48:25Z",
+  "changedAt": "2026-10-19T20:49:34Z",
   "failing": {
     "crtsh": {
-      "since": "2026-10-17T20:48:25Z"
+      "since": "2026-10-17T20:48:25Z",
+      "told": true
     }
   },
   "names": {},
