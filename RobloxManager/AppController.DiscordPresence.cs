@@ -8,8 +8,8 @@ namespace RobloxManager;
 /// </summary>
 public sealed partial class AppController
 {
-    /// <summary>Bloxkeep's application on Discord's developer portal, whose name and icon the profile shows; empty until it exists.</summary>
-    internal const string DiscordApplicationId = "";
+    /// <summary>Bloxkeep's application on Discord's developer portal (created 2026-10-20, with the logo as its icon), whose name and icon the profile shows.</summary>
+    internal const string DiscordApplicationId = "1561788269933498408";
     const string WebsiteUrl = "https://minhhoang0122.github.io/Bloxkeep/";
     static readonly TimeSpan DiscordPresenceInterval = TimeSpan.FromSeconds(15);
 
