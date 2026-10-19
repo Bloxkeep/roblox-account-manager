@@ -44,7 +44,7 @@ public sealed class RobloxLogWatcher
     }
 
     /// <summary>
-    /// The usual client's logs, and the Microsoft Store edition's (it writes them to a folder of its own).
+    /// The usual client's logs, and the Microsoft Store edition's and Roblox VNG's (each writes to a folder of its own).
     /// BLOXKEEP_ROBLOX_LOGS (set by the tests only) points at a folder of made-up logs instead.
     /// </summary>
     static readonly string[] LogDirs = Environment.GetEnvironmentVariable("BLOXKEEP_ROBLOX_LOGS") is { Length: > 0 } testLogs
@@ -53,6 +53,8 @@ public sealed class RobloxLogWatcher
         [
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox", "logs"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCGDK", "logs"),
+            // Roblox VNG's client keeps its own folder (seen 2026-10-19), and opens global accounts too.
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCVNG", "logs"),
         ];
     /// <summary>Where Roblox writes its clients' logs (the Microsoft Store edition has its own folder).</summary>
     internal static IReadOnlyList<string> Folders => LogDirs;

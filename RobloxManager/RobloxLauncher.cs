@@ -30,6 +30,29 @@ public static class RobloxLauncher
         return key is not null;
     }
 
+    /// <summary>Whether roblox-player: links open something: registered, and the program they name is still there.</summary>
+    static bool LinksOpen() =>
+        IsProtocolRegistered() && (RobloxInstalls.ProtocolHandlerPath() is not { } handler || File.Exists(handler));
+
+    /// <summary>
+    /// What opens Roblox when the links don't: Bloxstrap or Fishstrap (as their own options start them), another
+    /// Bloxstrap-style launcher, else the newest RobloxPlayerBeta.exe on the PC. Null when there is none.
+    /// </summary>
+    internal static (string Exe, string[] Args)? FallbackLauncher()
+    {
+        foreach (string name in new[] { "Bloxstrap", "Fishstrap" })
+        {
+            if (RobloxInstalls.FindBootstrapper(name) is { } exe)
+                return (exe, ["-player"]);
+        }
+        foreach (string name in RobloxInstalls.FindOtherBootstrappers())
+        {
+            if (RobloxInstalls.FindBootstrapper(name) is { } exe)
+                return (exe, []);
+        }
+        return RobloxInstalls.FindAnyClient() is { } client ? (client, []) : null;
+    }
+
     static string NewBrowserTrackerId() => Random.Shared.NextInt64(100_000_000_000, 999_999_999_999).ToString();
 
     static string PlaceLauncherUrl(GameTarget t, string browserTrackerId)
@@ -93,11 +116,21 @@ public static class RobloxLauncher
                                     ?? throw new FileNotFoundException(L.T("Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Launching › Open Roblox with.")), uri);
                 break;
             default:
-                // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
-                if (!IsProtocolRegistered())
+                if (!LinksOpen())
+                {
+                    // Nothing opens roblox-player: links any more, yet a launcher or client may still be here: another
+                    // Roblox's uninstaller takes the links with it (seen 2026-10-19: Roblox VNG installed, took them from
+                    // Bloxstrap, then removed). Whatever is left opens it, as Windows would have.
+                    if (FallbackLauncher() is { } fallback)
+                    {
+                        Start(fallback.Exe, [.. fallback.Args, uri]);
+                        break;
+                    }
+                    // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
                     throw new FileNotFoundException(RobloxInstalls.StoreEditionInstalled()
                         ? L.T("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
                         : L.T("Roblox isn't installed. Install it from roblox.com/download, then try again."));
+                }
                 // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
                 Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true, WorkingDirectory = Path.GetTempPath() })?.Dispose();
                 break;
