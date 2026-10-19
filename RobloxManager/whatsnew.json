@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.6-beta.6",
+    "date": "2026-10-19",
+    "improved": {
+      "en": [
+        "Each Roblox window's title shows its process ID next to the account name (\"Roblox - Main (PID 33588)\") on the taskbar and in Alt+Tab, and pointing at a window in the tray's quick panel shows it too: the right window is easy to find in Task Manager."
+      ],
+      "vi": [
+        "Tiêu đề mỗi cửa sổ Roblox ghi thêm mã tiến trình (PID) cạnh tên tài khoản (\"Roblox - Main (PID 33588)\"), thấy dưới taskbar và khi bấm Alt+Tab. Rê chuột vào cửa sổ trong bảng nhanh ở khay cũng hiện PID, nên dễ tìm đúng cửa sổ trong Task Manager."
+      ]
+    }
+  },
+  {
     "version": "1.0.6-beta.5",
     "date": "2026-10-19",
     "fixed": {
