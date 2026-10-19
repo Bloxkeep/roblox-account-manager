@@ -449,7 +449,7 @@ sealed class TrayPanel : Form
                     }
                 }
                 var (id, pid) = (c.Id, c.Pid);
-                Hit(row, "client:" + id, () => { HidePanel(); ShowClientClicked?.Invoke(pid); });
+                Hit(row, "client:" + id, () => { HidePanel(); ShowClientClicked?.Invoke(pid); }, $"PID {pid}");
                 if (hover)
                 {
                     Hit(show, "show:" + id, () => { HidePanel(); ShowClientClicked?.Invoke(pid); }, L.T("Show"));

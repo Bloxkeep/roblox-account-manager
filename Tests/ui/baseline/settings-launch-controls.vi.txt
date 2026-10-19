@@ -120,7 +120,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản, dưới taskbar và khi bấm Alt+Tab."
+                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), dưới taskbar và khi bấm Alt+Tab."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=false]
@@ -318,7 +318,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản, dưới taskbar và khi bấm Alt+Tab."
+                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), dưới taskbar và khi bấm Alt+Tab."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=false]

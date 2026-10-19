@@ -120,7 +120,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Show account names on windows"
-                        div.d "Each Roblox window’s title carries its account’s name, on the taskbar and in Alt+Tab."
+                        div.d "Each Roblox window’s title carries its account’s name and its process ID (PID), on the taskbar and in Alt+Tab."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Show account names on windows" checked=true]

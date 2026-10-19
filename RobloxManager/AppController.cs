@@ -3396,8 +3396,9 @@ public sealed partial class AppController : IDisposable
         {
             foreach (var (id, info) in _running)
             {
+                // With its process id, so a window can be matched to Task Manager and to its Roblox log.
                 if (FindAccount(id) is { } account && windows.TryGetValue(info.Pid, out var list))
-                    RobloxProcesses.SetWindowTitle(list, $"Roblox - {NameText(account)}");
+                    RobloxProcesses.SetWindowTitle(list, $"Roblox - {NameText(account)} (PID {info.Pid})");
             }
         }
         if (scan)

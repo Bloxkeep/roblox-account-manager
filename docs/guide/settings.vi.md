@@ -13,7 +13,7 @@ Mọi trang của **Cài đặt**, mỗi trang một bảng gọn: từng dòng,
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
 | **Multi-Roblox** | Chơi nhiều tài khoản cùng lúc. **Chi tiết** mở các bước. Xem [Multi-Roblox](multi-roblox.vi.md). | Tắt |
-| **Hiện tên tài khoản trên cửa sổ** | Ghi tên tài khoản lên tiêu đề cửa sổ Roblox, dễ phân biệt dưới taskbar và khi bấm Alt+Tab. | Bật |
+| **Hiện tên tài khoản trên cửa sổ** | Ghi tên tài khoản và mã tiến trình (PID) lên tiêu đề cửa sổ Roblox ("Roblox - Main (PID 33588)"), dễ phân biệt dưới taskbar và khi bấm Alt+Tab, và dễ tìm trong Task Manager. | Bật |
 | **Ảnh tài khoản làm biểu tượng cửa sổ** | Mỗi cửa sổ Roblox hiện ảnh của tài khoản thay cho biểu tượng Roblox. | Bật |
 | **Nút trên taskbar** | Gộp chung mọi cửa sổ Roblox (như Windows vẫn làm), mỗi tài khoản một nút (kèm ảnh), hoặc mỗi preset một nhóm. | Gộp chung |
 | **Khi cửa sổ Roblox mở ra** | **Để Roblox tự chọn**, **Phóng to** hoặc **Xếp cạnh nhau** (cần bật Multi-Roblox). | Để Roblox tự chọn |
