@@ -144,7 +144,7 @@ public sealed partial class AppController
     /// <summary>A Bloxkeep update finished downloading: noted once per version.</summary>
     void NoteUpdateReady()
     {
-        if (_updater.Status != "ready" || _updater.NewVersion is not { } version || version == _updateNoted)
+        if (_updater.Status != "ready" || _updater.NewVersion is not { } version || version == _updateNoted || WhatsNew.IsQuietFix(version))
             return;
         _updateNoted = version;
         NoteActivity("updateReady", text: L.F("Bloxkeep {0} is ready to install: it installs when Bloxkeep restarts.", version), tone: "info");

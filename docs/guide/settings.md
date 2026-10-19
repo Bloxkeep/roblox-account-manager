@@ -127,6 +127,6 @@ Details are in [Backup and security](backup-and-security.md).
 | **User guide › Open** | Opens this guide. | — |
 | **Send feedback › Write** | An idea, or something that doesn't work. It goes to Bloxkeep's developer. See [Troubleshooting](troubleshooting.md). | — |
 
-When an update is ready, **Restart to update** shows in the sidebar. Roblox keeps running while Bloxkeep restarts, and **What's new** then shows what changed.
+When an update is ready, **Restart to update** shows in the sidebar. Roblox keeps running while Bloxkeep restarts, and **What's new** then shows what changed. Small fixes between versions install by themselves the same way, without the button or **What's new**, and the version number stays the same.
 
 ← [User guide](../guide.md) · Next: [Backup and security](backup-and-security.md) →

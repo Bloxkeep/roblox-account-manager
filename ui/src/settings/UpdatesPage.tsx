@@ -22,7 +22,7 @@ export function UpdatesPage({ title }: { title: string }) {
   const status = !u.supported ? t('upd.unsupported')
     : u.status === 'checking' ? t('upd.checking')
     : u.status === 'downloading' ? t('upd.downloading', { v: u.version, p: u.progress })
-    : u.status === 'ready' ? t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version })
+    : u.status === 'ready' ? (u.quiet ? t('upd.readyQuiet') : t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version }))
     : u.status === 'upToDate' ? t('upd.latest') + (when ? ' · ' + t('upd.checkedAt', { t: when }) : '')
     : u.status === 'error' ? (u.error ? `${t('upd.error')}: ${u.error}` : t('upd.error')) // the reason, when the app gives one
     : u.auto ? t('upd.idle') : t('upd.off');
@@ -30,12 +30,13 @@ export function UpdatesPage({ title }: { title: string }) {
   return <Page id="updates" title={title}>
     <Group id="updates">
       <div id="s-update"><div className="set-row">
-        <div><div className="t">Bloxkeep {u.current || ''}</div><div className="d">{status}</div></div>
+        {/* A quiet fix shows as the version it fixes; its own number on hover. */}
+        <div><div className="t" title={u.build && u.build !== u.current ? u.build : undefined}>Bloxkeep {u.current || ''}</div><div className="d">{status}</div></div>
         <div className="ctl">
           <button className="btn sm ghost" data-act="whats-new">{t('wn.link')}</button>
-          {!u.supported ? null : u.status === 'ready'
+          {!u.supported ? null : u.status === 'ready' && !u.quiet
             ? <button className="btn sm primary" data-act="apply-update"><Icon name="refresh" />{t('upd.restart')}</button>
-            : <button className="btn sm" data-act="check-updates" disabled={u.status === 'checking' || u.status === 'downloading'}><Icon name="refresh" />{t('upd.check')}</button>}
+            : <button className="btn sm" data-act="check-updates" disabled={u.status === 'checking' || u.status === 'downloading' || u.status === 'ready'}><Icon name="refresh" />{t('upd.check')}</button>}
         </div>
       </div></div>
       <Row title={t('upd.auto')}>

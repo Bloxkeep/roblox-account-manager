@@ -5,6 +5,11 @@ param([string]$Version, [string]$Out)
 $release = (Get-Content -Raw -Encoding UTF8 (Join-Path $PSScriptRoot 'RobloxManager\whatsnew.json') | ConvertFrom-Json) |
     Where-Object { $_.version -eq $Version }
 if (-not $release) {
+    # A quiet fix (1.0.7-alpha.1, see release-fix.ps1) has no notes of its own: the next public version's say what it fixed.
+    if ($Version -match '-alpha\.\d+$') {
+        [IO.File]::WriteAllText($Out, 'Small fixes.')
+        exit 0
+    }
     Write-Host "Add the release notes for $Version to RobloxManager\whatsnew.json first."
     exit 1
 }

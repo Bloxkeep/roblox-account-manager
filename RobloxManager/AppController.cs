@@ -4166,13 +4166,13 @@ public sealed partial class AppController : IDisposable
         // The updater swapped the program files and rewrote the shortcuts; Explorer may keep showing a blank icon.
         if (Prefs.LastVersion is { } previous && previous != current && _updater.Supported)
             Ui.RefreshShellIcons();
-        if (Prefs.LastVersion is { } last && WhatsNew.Parse(last) < WhatsNew.Parse(current) && WhatsNew.Between(last, current).Length > 0)
+        if (Prefs.LastVersion is { } last && WhatsNew.Older(last, current) && WhatsNew.Between(last, current).Length > 0)
         {
             _updatedFrom = last;
             return;
         }
         // Only ever raised: an older build run afterwards (a development copy) must not make "what's new" show again.
-        if (Prefs.LastVersion is not { } seen || WhatsNew.Parse(seen) < WhatsNew.Parse(current))
+        if (Prefs.LastVersion is not { } seen || WhatsNew.Older(seen, current))
         {
             Prefs.LastVersion = current;
             Prefs.Save();

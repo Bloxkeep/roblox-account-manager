@@ -187,6 +187,7 @@ static class Program
     /// Installed apps › Uninstall opens Bloxkeep's uninstaller window (BloxkeepUninstall.exe, shipped with the app)
     /// rather than Velopack's bare one. Bloxkeep's installer sets this; doing it at every start keeps it after an update
     /// rewrites the entry. Nothing to do for the portable copy or a development build (no entry, no uninstaller).
+    /// A quiet fix also shows there as the version it fixes.
     /// </summary>
     static void UseOurUninstaller()
     {
@@ -200,6 +201,11 @@ static class Program
             if (key?.GetValue("InstallLocation") is not string at
                 || !string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(at)), root, StringComparison.OrdinalIgnoreCase))
                 return;
+            // A quiet fix shows in Installed apps as the version it fixes (Velopack writes the full number at each update).
+            if (typeof(Program).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                    .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0] is { } version
+                && WhatsNew.IsQuietFix(version) && key.GetValue("DisplayVersion") as string != WhatsNew.Shown(version))
+                key.SetValue("DisplayVersion", WhatsNew.Shown(version));
             string command = $"\"{uninstaller}\"";
             if (key.GetValue("UninstallString") as string == command)
                 return;

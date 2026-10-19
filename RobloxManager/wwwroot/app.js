@@ -2540,7 +2540,7 @@
         if (await call('checkUpdates') === undefined) return;
         const u = S.app.update || {};
         toast(!u.supported ? t('upd.unsupported') : u.status === 'upToDate' ? t('upd.latest')
-          : u.status === 'ready' ? t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version })
+          : u.status === 'ready' ? (u.quiet ? t('upd.readyQuiet') : t(u.auto ? 'upd.readyAuto' : 'upd.ready', { v: u.version }))
           : u.status === 'downloading' ? t('upd.downloading', { v: u.version, p: u.progress })
           : u.status === 'error' ? t('upd.error') : t('upd.checking'), u.status === 'error' ? 'warn' : 'info');
       });

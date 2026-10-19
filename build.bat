@@ -8,7 +8,7 @@ rem   Bloxkeep-Portable.zip         no install; keeps its data in a "data" folde
 rem   *.nupkg + releases.win.json   what installed copies download when they update
 rem Usage: build.bat [version] [github repo url]   e.g. build.bat 1.0.1
 rem The repo url defaults to Bloxkeep's GitHub repo; pass another one to build a fork. Updates only work while the repo is public. Each version needs its notes in RobloxManager\whatsnew.json
-rem (shown in the app after updating, and on the GitHub release). Publish with release.bat.
+rem (shown in the app after updating, and on the GitHub release); a quiet fix (1.0.7-alpha.1) has none. Publish with release.bat.
 setlocal
 cd /d "%~dp0"
 set VERSION=1.0.0

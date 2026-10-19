@@ -274,6 +274,8 @@ public static class L
         ["Bloxkeep couldn't update to {0}: a program it opened earlier (Bloxstrap, or a Roblox window) was still using its folder. Close those, then click Restart to update again."] = "Bloxkeep chưa cập nhật lên {0} được vì một chương trình nó mở trước đó (Bloxstrap hoặc cửa sổ Roblox) vẫn đang dùng thư mục của Bloxkeep. Hãy đóng chúng rồi bấm Khởi động lại để cập nhật lần nữa.",
         ["Bloxkeep couldn't update to {0}. Click Restart to update to try again."] = "Bloxkeep chưa cập nhật lên {0} được. Muốn thử lại, hãy bấm Khởi động lại để cập nhật.",
         ["Bloxkeep was updated to {0}. Unlock it to carry on."] = "Bloxkeep đã cập nhật lên {0}. Mở khóa để dùng tiếp.",
+        ["Bloxkeep installed a small fix. Unlock it to carry on."] = "Bloxkeep vừa cài một bản vá nhỏ. Mở khóa để dùng tiếp.",
+        ["Bloxkeep restarted. Unlock it to carry on."] = "Bloxkeep vừa khởi động lại. Mở khóa để dùng tiếp.",
         ["The update to {0} didn't install, so Bloxkeep started again as it was. Unlock it to carry on."] = "Không cài được bản cập nhật {0} nên Bloxkeep đã mở lại như cũ. Mở khóa để dùng tiếp.",
         ["The update is still downloading. Try again in a moment."] = "Bản cập nhật vẫn đang tải. Hãy thử lại sau một lát.",
         ["No update is ready to install. Check for updates again."] = "Chưa có bản cập nhật nào để cài. Hãy kiểm tra cập nhật lần nữa.",

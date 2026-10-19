@@ -127,6 +127,6 @@ Chi tiết nằm ở [Sao lưu và bảo mật](backup-and-security.vi.md).
 | **Hướng dẫn sử dụng › Mở** | Mở chính hướng dẫn này. | — |
 | **Gửi góp ý › Viết góp ý** | Một ý tưởng, hoặc lỗi gặp phải. Lời nhắn đi thẳng tới người làm Bloxkeep. Xem [Gỡ rối](troubleshooting.vi.md). | — |
 
-Khi bản cập nhật đã sẵn sàng, nút **Khởi động lại để cập nhật** hiện ở thanh bên. Roblox vẫn chạy bình thường trong lúc Bloxkeep khởi động lại, và mục **Có gì mới** cho biết những gì đã thay đổi.
+Khi bản cập nhật đã sẵn sàng, nút **Khởi động lại để cập nhật** hiện ở thanh bên. Roblox vẫn chạy bình thường trong lúc Bloxkeep khởi động lại, và mục **Có gì mới** cho biết những gì đã thay đổi. Các bản vá nhỏ giữa hai phiên bản cũng tự cài như vậy, không hiện nút hay **Có gì mới**, và số phiên bản giữ nguyên.
 
 ← [Hướng dẫn](../guide.vi.md) · Tiếp: [Sao lưu và bảo mật](backup-and-security.vi.md) →

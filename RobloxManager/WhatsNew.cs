@@ -42,7 +42,33 @@ public static class WhatsNew
     public static Version Parse(string? version) =>
         Version.TryParse((version ?? "").Split('-', '+')[0], out var v) ? v : new Version(0, 0);
 
-    /// <summary>Releases newer than <paramref name="after"/> (all of them when null) up to <paramref name="upTo"/>.</summary>
+    /// <summary>
+    /// Releases newer than <paramref name="after"/> (all of them when null) up to <paramref name="upTo"/>. A quiet fix
+    /// comes before the version it leads to: after one, that version's notes are new; up to one, they aren't yet.
+    /// </summary>
     public static Release[] Between(string? after, string upTo) =>
-        Releases.Value.Where(r => (after is null || Parse(r.Version) > Parse(after)) && Parse(r.Version) <= Parse(upTo)).ToArray();
+        Releases.Value.Where(r => (after is null || Parse(r.Version) > Parse(after) || (IsQuietFix(after) && Parse(r.Version) == Parse(after)))
+            && (Parse(r.Version) < Parse(upTo) || (Parse(r.Version) == Parse(upTo) && !IsQuietFix(upTo)))).ToArray();
+
+    /// <summary>
+    /// A quiet fix ("1.0.7-alpha.2"): a small fix after a public version (1.0.6), put inside that version's GitHub
+    /// release instead of a release of its own (release-fix.ps1), installed in the background without "Restart to
+    /// update" or notes, and shown as the version it fixes. Numbered below the next version's betas and the next
+    /// version itself, so both still update over it.
+    /// </summary>
+    public static bool IsQuietFix(string? version) =>
+        (version ?? "").Split('+')[0].Split('-', 2) is [_, var label] && label.StartsWith("alpha.", StringComparison.Ordinal);
+
+    /// <summary>Whether <paramref name="a"/> is older than <paramref name="b"/>: a quiet fix before the version it leads to, an earlier quiet fix before a later one.</summary>
+    public static bool Older(string a, string b)
+    {
+        static (Version Version, int Fix) Key(string v) =>
+            (Parse(v), IsQuietFix(v) && int.TryParse(v.Split('+')[0].Split("-alpha.")[1], out int n) ? n : int.MaxValue);
+        var (x, y) = (Key(a), Key(b));
+        return x.Version < y.Version || (x.Version == y.Version && x.Fix < y.Fix);
+    }
+
+    /// <summary>The version as people see it: a quiet fix shows as the public version it fixes (1.0.7-alpha.2 is 1.0.6).</summary>
+    public static string Shown(string version) => !IsQuietFix(version) ? version
+        : Releases.Value.Select(r => r.Version).FirstOrDefault(v => !v.Contains('-') && Parse(v) < Parse(version)) ?? version;
 }

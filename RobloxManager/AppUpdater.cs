@@ -151,9 +151,13 @@ public sealed class AppUpdater
     public object Dto() => new
     {
         supported = Supported,
-        current = CurrentVersion,
+        // A quiet fix shows as the version it fixes; the full number stays for anyone looking closer.
+        current = WhatsNew.Shown(CurrentVersion),
+        build = CurrentVersion,
         status = Status,
         version = NewVersion,
+        // A quiet fix on its way: no "Restart to update" while automatic updates install it by themselves.
+        quiet = WhatsNew.IsQuietFix(NewVersion) && Prefs.CheckUpdates,
         progress = Progress,
         error = Error,
         auto = Prefs.CheckUpdates,

@@ -38,7 +38,7 @@ export function Sidebar() {
       <SysCard mini={mini} />
       <div id="multi-card"><MultiCard /></div>
       <div className="side-foot">
-        <div id="update-slot">{u?.status === 'ready'
+        <div id="update-slot">{u?.status === 'ready' && !u.quiet
           ? <button className="btn primary w update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
             <Icon name="refresh" /><span><b>{t('upd.restart')}</b><small>{t('upd.versionN', { v: u.version })}</small></span></button> : null}</div>
         <button className="btn ghost w" data-act="lock" title={t('side.lockTip')}><Icon name="lock" /><span>{t('side.lock')}</span></button>
