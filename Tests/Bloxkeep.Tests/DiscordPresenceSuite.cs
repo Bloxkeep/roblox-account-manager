@@ -16,6 +16,9 @@ static class DiscordPresenceSuite
     public static async Task Run(Checks c, string dir)
     {
         Harness.UseDataFolder(dir);
+        // First, on this thread: the app's window is made on the thread the suite starts on, as in the other suites.
+        await GameShown(c, dir);
+
         string pipeName = $"bloxkeep-test-discord-{Guid.NewGuid():N}";
         Environment.SetEnvironmentVariable("BLOXKEEP_DISCORD_PIPE", pipeName);
 
@@ -68,6 +71,63 @@ static class DiscordPresenceSuite
 
         presence.Dispose();
         await Task.WhenAny(served, Task.Delay(3000));
+    }
+
+    /// <summary>
+    /// The game on the profile is the one a window is in: after leaving it for Roblox's home screen the window still
+    /// counts but its game no longer shows (seen 2026-10-20). A made-up Roblox log held by this process stands in for the
+    /// window's, as in RejoinSuite.
+    /// </summary>
+    static async Task GameShown(Checks c, string dir)
+    {
+        string logs = Path.Combine(dir, "roblox-logs");
+        Directory.CreateDirectory(logs);
+        Environment.SetEnvironmentVariable("BLOXKEEP_ROBLOX_LOGS", logs);
+        int me = Environment.ProcessId;
+        const long Place = 121165298854655;
+        string Line(DateTime at, string text) => $"{at:yyyy-MM-ddTHH:mm:ss.fff}Z,1.0,abcd,6 {text}\n";
+
+        var seed = Vault.Create(Harness.Password);
+        seed.Data.Accounts.Add(new Account { Username = "Player", UserId = 31 });
+        seed.Save();
+        using var form = new Form();
+        using var app = new AppController(form, _ => { });
+        await Harness.Unlock(app);
+        var account = Harness.Get<Vault>(app, "_vault").Data.Accounts.Single();
+        Harness.Get<Dictionary<long, GameInfo?>>(app, "_games")[Place] = new GameInfo(Place, 1, "Monster Game", "Maker", 0, null);
+        var running = Harness.Get<System.Collections.IDictionary>(app, "_running");
+        var launchType = typeof(AppController).GetNestedType("PendingLaunch", Harness.F)!;
+        var launch = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-2), new GameTarget(Place), false, null)!;
+        running[account.Id] = Activator.CreateInstance(running.GetType().GetGenericArguments()[1], me, launch);
+        string? Game() => ((DiscordPresence.Activity)Harness.Invoke(app, "PresenceActivity")!).State;
+        c.Check("a window just opened shows the game it was opened with", Game() == "Monster Game", Game());
+
+        var watcher = Harness.Get<RobloxLogWatcher>(app, "_logs");
+        using var log = new FileStream(Path.Combine(logs, $"0.743.0.7431134_{DateTime.UtcNow:yyyyMMddTHHmmss}Z_Player_PRESENCE_last.log"),
+            FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
+        void Write(string text) { log.Seek(0, SeekOrigin.End); log.Write(Encoding.UTF8.GetBytes(text)); log.Flush(); }
+        RobloxLogWatcher.ClientState? Poll(string status)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 15000 && watcher.StateOf(me)?.Status != status)
+            {
+                watcher.Poll([me]);
+                Thread.Sleep(200);
+            }
+            return watcher.StateOf(me);
+        }
+
+        var at = DateTime.UtcNow.AddSeconds(-20);
+        Write(Line(at, "[FLog::SingleSurfaceApp] launchUGCGameInternal"));
+        Write(Line(at.AddSeconds(1), $"[FLog::Output] ! Joining game '11111111-2222-3333-4444-555555555555' place {Place} at 10.0.0.1"));
+        Write(Line(at.AddSeconds(2), "[FLog::Network] serverId: 10.0.0.1|5000"));
+        var state = Poll("ingame");
+        c.Check("in the game: the profile shows it", state is { Status: "ingame" } && Game() == "Monster Game", (state, Game()));
+
+        Write(Line(at.AddSeconds(10), "[FLog::SingleSurfaceApp] leaveUGCGameInternal"));
+        Write(Line(at.AddSeconds(10.1), "[FLog::Network] Time to disconnect replication data: 0.24"));
+        state = Poll("left");
+        c.Check("left for Roblox's home screen: the game no longer shows", state is { Status: "left" } && Game() is null, (state, Game()));
     }
 
     static JsonElement Json(string body) => JsonDocument.Parse(body).RootElement.Clone();

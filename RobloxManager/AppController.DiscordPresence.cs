@@ -29,7 +29,7 @@ public sealed partial class AppController
     DiscordPresence.Activity PresenceActivity()
     {
         int windows = RobloxCount;
-        var games = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? r.Launch.Target?.PlaceId).OfType<long>()
+        var games = _running.Values.Select(PlayingPlace).OfType<long>()
             .Select(id => _games.GetValueOrDefault(id)?.Name).OfType<string>().Where(n => n.Length > 0).Distinct().ToList();
         string details = windows == 0 ? L.T("Managing Roblox accounts")
             : L.P(windows, "1 Roblox window open", "{0} Roblox windows open", windows);
@@ -37,6 +37,14 @@ public sealed partial class AppController
         long since = new DateTimeOffset(DateTime.SpecifyKind(_started, DateTimeKind.Utc)).ToUnixTimeSeconds();
         return new(details, state, since, L.T("Get Bloxkeep"), WebsiteUrl);
     }
+
+    /// <summary>
+    /// The game a window is playing: none once it left the game for Roblox's home screen, lost its connection or was
+    /// signed out (the log keeps the last game's place then; seen 2026-10-20, a game shown long after leaving it); without
+    /// a log yet, the one it was opened with.
+    /// </summary>
+    long? PlayingPlace((int Pid, PendingLaunch Launch) run) =>
+        _logs.StateOf(run.Pid) is { } log ? log.Status is "ingame" or "joining" ? log.PlaceId : null : run.Launch.Target?.PlaceId;
 
     object? SetDiscordPresence(bool on)
     {
