@@ -14,6 +14,10 @@ Bloxkeep can post play-time summaries, a live status message and alerts to a Dis
 
 Turning on **Send to Discord** without a link asks for it.
 
+## On your Discord profile
+
+**Show on my Discord profile** (at the top of Settings › Discord) puts "Playing Bloxkeep" on your own Discord profile: how many Roblox windows are open, the game (or how many games), since when, and a **Get Bloxkeep** button to the website. It never shows an account's name. It works through the Discord app running on this PC, needs no webhook, and is off until you turn it on. Quitting Bloxkeep takes it away.
+
 ## What it does
 
 Bloxkeep posts through a webhook: a link that lets a program post to one channel. Nothing is sent while Bloxkeep is locked.

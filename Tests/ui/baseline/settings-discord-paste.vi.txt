@@ -104,6 +104,16 @@ html [data-theme="dark" lang="vi"]
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Hiện trên hồ sơ Discord"
+                        div.d "Hồ sơ Discord của bạn hiện “Đang chơi Bloxkeep” kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút dẫn tới Bloxkeep. Cần app Discord đang chạy trên máy này."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Hiện trên hồ sơ Discord" checked=false]
+                          span
                 div.set-grp [id="sec-discord"]
                   div.set-card
                     div.set-row
@@ -377,6 +387,16 @@ html [data-theme="dark" lang="vi"]
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Hiện trên hồ sơ Discord"
+                        div.d "Hồ sơ Discord của bạn hiện “Đang chơi Bloxkeep” kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút dẫn tới Bloxkeep. Cần app Discord đang chạy trên máy này."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Hiện trên hồ sơ Discord" checked=false]
+                          span
                 div.set-grp [id="sec-discord"]
                   div.set-card
                     div.set-row

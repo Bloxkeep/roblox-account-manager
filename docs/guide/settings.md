@@ -82,7 +82,7 @@ Details for each row are in [Staying in game](staying-in-game.md).
 
 ## Discord
 
-Every row is explained in [Sending to Discord](discord.md): **Send to Discord**, **Webhook link**, **Send test**, **Play time summary**, **Alerts**, **Keep a status message up to date**, **Quiet hours** and **Customise messages**. **Send to Discord** is off until you turn it on.
+Every row is explained in [Sending to Discord](discord.md): **Show on my Discord profile**, **Send to Discord**, **Webhook link**, **Send test**, **Play time summary**, **Alerts**, **Keep a status message up to date**, **Quiet hours** and **Customise messages**. **Send to Discord** is off until you turn it on.
 
 ## Appearance
 

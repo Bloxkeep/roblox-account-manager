@@ -14,6 +14,10 @@ Bloxkeep có thể gửi tổng kết thời gian chơi, một tin trạng thái
 
 Bật **Gửi lên Discord** khi chưa có link thì app cũng hỏi link.
 
+## Trên hồ sơ Discord của bạn
+
+**Hiện trên hồ sơ Discord** (trên cùng của Cài đặt › Discord) cho hồ sơ Discord của bạn hiện "Đang chơi Bloxkeep": số cửa sổ Roblox đang mở, tên game (hoặc số game), chơi từ lúc nào, kèm nút **Tải Bloxkeep** dẫn tới website. Không bao giờ hiện tên tài khoản. Tính năng này chạy qua app Discord đang mở trên máy, không cần webhook, và tắt cho tới khi bạn bật. Thoát Bloxkeep thì dòng này cũng mất.
+
 ## Cách hoạt động
 
 Bloxkeep gửi qua webhook: một đường link cho phép chương trình gửi tin vào đúng một kênh. Khi Bloxkeep đang khóa thì không gửi gì.

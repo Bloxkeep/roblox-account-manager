@@ -104,6 +104,16 @@ html [data-theme="dark" lang="en"]
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Show on my Discord profile"
+                        div.d "Your Discord profile shows “Playing Bloxkeep” with how many Roblox windows are open and the game, never an account’s name, and a link to Bloxkeep. Needs the Discord app running on this PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
+                          span
                 div.set-grp [id="sec-discord"]
                   div.set-card
                     div.set-row
@@ -408,6 +418,16 @@ html [data-theme="dark" lang="en"]
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Show on my Discord profile"
+                        div.d "Your Discord profile shows “Playing Bloxkeep” with how many Roblox windows are open and the game, never an account’s name, and a link to Bloxkeep. Needs the Discord app running on this PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
+                          span
                 div.set-grp [id="sec-discord"]
                   div.set-card
                     div.set-row
@@ -707,6 +727,16 @@ html [data-theme="dark" lang="en"]
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Show on my Discord profile"
+                        div.d "Your Discord profile shows “Playing Bloxkeep” with how many Roblox windows are open and the game, never an account’s name, and a link to Bloxkeep. Needs the Discord app running on this PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
+                          span
                 div.set-grp [id="sec-discord"]
                   div.set-card
                     div.set-row
@@ -1006,6 +1036,16 @@ html [data-theme="dark" lang="en"]
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Show on my Discord profile"
+                        div.d "Your Discord profile shows “Playing Bloxkeep” with how many Roblox windows are open and the game, never an account’s name, and a link to Bloxkeep. Needs the Discord app running on this PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
+                          span
                 div.set-grp [id="sec-discord"]
                   div.set-card
                     div.set-row

@@ -82,7 +82,7 @@ Chi tiết từng dòng nằm ở [Giữ tài khoản trong game](staying-in-gam
 
 ## Discord
 
-Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **Gửi lên Discord**, **Link webhook**, **Gửi thử**, **Tổng kết thời gian chơi**, **Cảnh báo**, **Luôn cập nhật tin trạng thái**, **Giờ yên lặng** và **Tùy chỉnh tin nhắn**. **Gửi lên Discord** tắt cho tới khi bạn bật.
+Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **Hiện trên hồ sơ Discord**, **Gửi lên Discord**, **Link webhook**, **Gửi thử**, **Tổng kết thời gian chơi**, **Cảnh báo**, **Luôn cập nhật tin trạng thái**, **Giờ yên lặng** và **Tùy chỉnh tin nhắn**. **Gửi lên Discord** tắt cho tới khi bạn bật.
 
 ## Giao diện
 

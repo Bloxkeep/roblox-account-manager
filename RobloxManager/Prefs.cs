@@ -33,6 +33,9 @@ public static class Prefs
     /// <summary>Updates include beta versions (GitHub pre-releases), automatic or not; off until the person turns it on.</summary>
     public static bool BetaUpdates { get; set; }
 
+    /// <summary>Settings › Discord › Show on my Discord profile: off until the person turns it on (AppController.DiscordPresence.cs).</summary>
+    public static bool DiscordPresence { get; set; }
+
     /// <summary>The version that last ran here; a newer one means the app was updated (see <see cref="WhatsNew"/>).</summary>
     public static string? LastVersion { get; set; }
 
@@ -111,7 +114,7 @@ public static class Prefs
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
-        "multiRobloxAtStart",
+        "multiRobloxAtStart", "discordPresence",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -150,6 +153,7 @@ public static class Prefs
                 BetaUpdates = true;
             if (root.TryGetProperty("lastVersion", out var last) && last.ValueKind == JsonValueKind.String)
                 LastVersion = last.GetString();
+            DiscordPresence = root.TryGetProperty("discordPresence", out var presence) && presence.ValueKind == JsonValueKind.True;
             if (root.TryGetProperty("notifications", out var notify) && notify.ValueKind == JsonValueKind.False)
                 Notifications = false;
             if (root.TryGetProperty("notifyOff", out var off) && off.ValueKind == JsonValueKind.Array)
@@ -234,6 +238,7 @@ public static class Prefs
             {
                 ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
+                ["discordPresence"] = DiscordPresence,
                 ["notifications"] = Notifications, ["notifyOff"] = NotifyOff.Order(StringComparer.Ordinal).ToArray(),
                 ["backupFolder"] = BackupFolder, ["backupEnabled"] = BackupEnabled, ["lastBackup"] = LastBackup,
                 ["backupPending"] = BackupPending,

@@ -172,6 +172,9 @@ html [data-theme="dark" lang="en"]
           li
             svg.i #u7ty99
             span "Saved servers: Save server under the game box keeps a private server's link, or a game with the code it asks for, in the game box's Saved tab. A link sends the selected accounts straight in; a code is copied, to paste in the game once in."
+          li
+            svg.i #u7ty99
+            span "Show on my Discord profile (Settings › Discord, off until turned on): your Discord profile shows \"Playing Bloxkeep\" with how many Roblox windows are open and the game, never an account's name, and a Get Bloxkeep button."
         h4.improved.wn-kind.wn-sub "Improved"
           svg.i #1l5qw3q
         ul.improved.wn-also

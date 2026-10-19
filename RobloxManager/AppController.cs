@@ -426,6 +426,7 @@ public sealed partial class AppController : IDisposable
         "joinServer" => JoinServerAsync(a),
         "forgetPlayer" => Done(ForgetPlayer(Str(a, "name"))),
         "setDiscord" => Done(SetDiscord(a)),
+        "setDiscordPresence" => Done(SetDiscordPresence(Bool(a, "enabled"))),
         "setDiscordWebhook" => Done(SetDiscordWebhook(Str(a, "url"))),
         "revealDiscordWebhook" => Done(RevealDiscordWebhook()),
         "discordTest" => SendDiscordNowAsync(summary: false),
@@ -3448,6 +3449,7 @@ public sealed partial class AppController : IDisposable
         Step(SayUpdateFailed); // one that didn't install, said once something can show it
 
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
+        Step(() => TickDiscordPresence(now)); // Settings › Discord › Show on my Discord profile, locked or not
         if (_vault is null)
             return;
         Step(() => CheckAutoLock(AntiAfk.IdleTime(), DateTime.UtcNow));
@@ -4626,6 +4628,7 @@ public sealed partial class AppController : IDisposable
         SystemEvents.TimeChanged -= OnTimeChanged;
         NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
         _updater.Changed -= OnUpdaterChanged;
+        _discordPresence.Dispose(); // the profile stops showing Bloxkeep
         _procTimer.Dispose();
         _homeSession?.Dispose();
         _homeSession = null;

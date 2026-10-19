@@ -28,6 +28,7 @@ export function DiscordPage({ title }: { title: string }) {
   };
 
   const [on, setOn] = useLocal(!!d.enabled, again);
+  const [presence, setPresence] = useLocal(!!d.presence, again);
   const [hideNames, setHideNames] = useLocal(!!d.hideNames, again);
   const whenNow = s.daily && s.weekly ? 'both' : s.daily ? 'daily' : s.weekly ? 'weekly' : 'none';
   const [when, setWhen] = useLocal(whenNow, again);
@@ -77,6 +78,16 @@ export function DiscordPage({ title }: { title: string }) {
   const picked = (s.accounts || []).length;
 
   return <Page id="discord" title={title}>
+    {/* "Playing Bloxkeep" on the person's own profile, through the Discord app on this PC: offered once Bloxkeep's
+        Discord application exists. */}
+    {d.presenceReady ? <Group id="dc-profile">
+      <Row title={t('dc.presence')} desc={t('dc.presenceDesc')}>
+        <Switch id="s-dc-presence" label={t('dc.presence')} checked={presence} onChange={async v => {
+          setPresence(v);
+          if (await call('setDiscordPresence', { enabled: v }) === undefined) putBack();
+        }} />
+      </Row>
+    </Group> : null}
     <Group id="discord">
       <Row title={t('dc.on')} desc={t('dc.onDesc')}>
         {/* No link yet: the switch asks for one, and turns on once it is saved. */}

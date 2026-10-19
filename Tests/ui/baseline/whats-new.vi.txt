@@ -172,6 +172,9 @@ html [data-theme="dark" lang="vi"]
           li
             svg.i #u7ty99
             span "Server đã lưu: nút Lưu server dưới ô game giữ link server riêng, hoặc game kèm code mà game yêu cầu, trong tab Đã lưu của ô game. Link đưa các tài khoản đang chọn vào thẳng server; code được sao chép sẵn để dán vào game khi đã vào."
+          li
+            svg.i #u7ty99
+            span "Hiện trên hồ sơ Discord (Cài đặt › Discord, tắt cho tới khi bạn bật): hồ sơ Discord của bạn hiện \"Đang chơi Bloxkeep\" kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút Tải Bloxkeep."
         h4.improved.wn-kind.wn-sub "Cải thiện"
           svg.i #1l5qw3q
         ul.improved.wn-also

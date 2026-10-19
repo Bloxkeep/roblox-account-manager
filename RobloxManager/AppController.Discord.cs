@@ -67,6 +67,9 @@ public sealed partial class AppController
         return new
         {
             d.Enabled,
+            // Show on my Discord profile: this PC's choice (Prefs), offered once Bloxkeep's Discord application exists.
+            presence = Prefs.DiscordPresence,
+            presenceReady = DiscordApplicationId.Length > 0,
             hasWebhook = d.WebhookUrl.Length > 0,
             webhookHint = DiscordWebhook.Mask(d.WebhookUrl),
             d.Stopped,

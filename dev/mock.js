@@ -126,7 +126,7 @@
   // ?dcfail=1 makes "Send test" fail. The link is made up (the page only sees it on Show).
   const DC_ID = '123456789012345678';
   let discord = {
-    enabled: params.has('discord'), hasWebhook: params.has('discord') || params.has('dcgone'), webhookHint: `discord.com/api/webhooks/…${DC_ID.slice(-4)}/••••••`,
+    enabled: params.has('discord'), presence: false, presenceReady: true, hasWebhook: params.has('discord') || params.has('dcgone'), webhookHint: `discord.com/api/webhooks/…${DC_ID.slice(-4)}/••••••`,
     stopped: params.has('dcgone') ? 'gone' : null, username: 'Bloxkeep', avatarUrl: '', language: 'app', style: 'embed', hideNames: false,
     summary: { daily: true, dailyTime: '22:00', weekly: false, weekday: 0, weeklyTime: '21:00', afterSchedule: true, days: 1, parts: ['total', 'accounts', 'games', 'sessions', 'kicks'], accounts: [] },
     board: { enabled: params.has('discord'), minutes: 5 }, events: ['drop', 'schedule', 'signin', 'launch'],
@@ -366,6 +366,7 @@
         case 'updateRoblox': robloxUpdating = true; push(); return null;
         case 'multiOnly': multiAtStart = !!a.on; push(); return null;
         // Like the app: only the fields sent change; a ping is { kind, value }, an alert switch { kind, enabled }.
+        case 'setDiscordPresence': discord = { ...discord, presence: !!a.enabled }; push(); return null;
         case 'setDiscord': {
           if (a.enabled && !discord.hasWebhook) throw new Error('Paste a webhook link first.');
           if (a.ping && !/^(none|here|everyone|(user|role):\d{17,20})$/.test(a.ping.value)) throw new Error('A user ID is 17 to 20 digits.');
