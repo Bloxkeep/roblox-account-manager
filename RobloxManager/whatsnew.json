@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.6-beta.8",
+    "date": "2026-10-21",
+    "new": {
+      "en": [
+        "Saved servers: Save server under the game box keeps a private server's link, or a game with the code it asks for, in the game box's Saved tab. A link sends the selected accounts straight in; a code is copied, to paste in the game once in."
+      ],
+      "vi": [
+        "Server đã lưu: nút Lưu server dưới ô game giữ link server riêng, hoặc game kèm code mà game yêu cầu, trong tab Đã lưu của ô game. Link đưa các tài khoản đang chọn vào thẳng server; code được sao chép sẵn để dán vào game khi đã vào."
+      ]
+    },
+    "improved": {
+      "en": [
+        "A Bloxkeep update found right after you open Bloxkeep installs at once, before you use it, instead of waiting for a quiet moment (Roblox windows stay open).",
+        "The Robux on each account's card and in the list show with a Robux icon instead of \"R$\"."
+      ],
+      "vi": [
+        "Bản cập nhật Bloxkeep tìm thấy ngay khi vừa mở Bloxkeep được cài luôn trước khi bạn dùng, không còn chờ lúc bạn rảnh (các cửa sổ Roblox vẫn mở).",
+        "Số Robux trên thẻ và trong danh sách tài khoản hiện kèm biểu tượng Robux thay cho chữ \"R$\"."
+      ]
+    }
+  },
+  {
     "version": "1.0.6-beta.7",
     "date": "2026-10-19",
     "new": {
