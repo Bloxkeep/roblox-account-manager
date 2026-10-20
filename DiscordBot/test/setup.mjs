@@ -83,7 +83,13 @@ const rest = http.createServer((req, res) => {
       if (m === 'PATCH') { Object.assign(c, body); return send(200, c); }
       if (m === 'DELETE') { channels.splice(channels.indexOf(c), 1); return send(200, c); }
     }
-    if (u === `/guilds/${G}/onboarding` && m === 'PUT') { if (!community) return send(400, { message: 'needs Community' }); onboarding = body; return send(200, body); }
+    if (u === `/guilds/${G}/onboarding` && m === 'PUT') {
+      if (!community) return send(400, { message: 'needs Community' });
+      // Like Discord: an id (a snowflake) on each question and each answer, new ones too.
+      if (!body.prompts.every(p => /^\d{17,20}$/.test(p.id ?? '') && p.options.every(o => /^\d{17,20}$/.test(o.id ?? ''))))
+        return send(400, { message: 'Invalid Form Body', code: 50035, errors: { prompts: { 0: { id: { _errors: [{ code: 'BASE_TYPE_REQUIRED' }] } } } } });
+      onboarding = body; return send(200, body);
+    }
     if (u === `/guilds/${G}/auto-moderation/rules`) { if (m === 'GET') return send(200, automod); automod.push(x = { id: id(), ...body }); return send(200, x); }
     if ((x = /^\/channels\/(\w+)\/messages$/.exec(u))) {
       messages[x[1]] ??= [];

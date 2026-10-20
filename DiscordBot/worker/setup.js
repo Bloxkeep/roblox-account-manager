@@ -159,14 +159,17 @@ export async function setupServer(env, guildId, bot, runner) {
     [modChat, modLog],
   ].flatMap(list => list.filter(Boolean).map((c, position) => ({ id: c.id, position })))));
 
-  // Onboarding: everyone sees the main channels, and picks a ping when Roblox updates if they want it.
+  // Onboarding: everyone sees the main channels, and picks a ping when Roblox updates if they want it. Discord wants an
+  // id on each question and answer, even new ones: any snowflake of ours (Discord keeps them).
+  let n = 0n;
+  const snowflake = () => String(((BigInt(Date.now()) - 1420070400000n) << 22n) + n++);
   await step('onboarding', () => call('PUT', `${g}/onboarding`, {
     enabled: true, mode: 0,
     default_channel_ids: [welcome, rules, announcements, updates, general, showcase, offTopic, help, bugs, ideas].filter(Boolean).map(c => c.id),
     prompts: [
       {
-        type: 0, title: 'Want a ping when Roblox updates?', single_select: true, required: false, in_onboarding: true,
-        options: [{ title: 'Yes, ping me', description: 'Roblox builds coming and live, outages, new Bloxkeep versions', role_ids: [pings.id], channel_ids: [] }],
+        id: snowflake(), type: 0, title: 'Want a ping when Roblox updates?', single_select: true, required: false, in_onboarding: true,
+        options: [{ id: snowflake(), title: 'Yes, ping me', description: 'Roblox builds coming and live, outages, new Bloxkeep versions', role_ids: [pings.id], channel_ids: [] }],
       },
     ],
   }));

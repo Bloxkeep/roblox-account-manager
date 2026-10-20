@@ -69,7 +69,14 @@ export class Gateway extends DurableObject {
   }
 
   /** From the cron, every minute: connected, or connecting now. Stopped by a refused token, it starts over once the token is another. */
-  async ensure() {
+  async ensure(version) {
+    // After a deploy the object goes on with the code it started with for as long as its connection is open (20 minutes
+    // and more); the cron, already the new code, says which version that is, and an older object starts over on it.
+    const mine = this.env.CF_VERSION?.id;
+    if (version && mine && version !== mine) {
+      this.ctx.abort('a newer version of the bot was deployed');
+      return;
+    }
     if (!this.env.DISCORD_TOKEN || this.retired)
       return; // not set yet (the worker's settings): nothing to connect with
     if (this.stopped && this.stopped.token !== await tokenHash(this.env.DISCORD_TOKEN))
@@ -746,6 +753,6 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(bot(env).ensure());
+    ctx.waitUntil(bot(env).ensure(env.CF_VERSION?.id).catch(() => {})); // an object starting over rejects this call
   },
 };

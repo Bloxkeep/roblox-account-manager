@@ -16,6 +16,11 @@ crons = ["* * * * *"]
 DISCORD_APP_ID = "1561788269933498408"
 DISCORD_PUBLIC_KEY = "fafc7af8a87571963ebe66f46a4941279b2aee309c28d1b7ddc0b88d565c7a08"
 
+# Which version of this Worker runs: the bot's object, still on an older one after a deploy, starts over on the new one
+# (worker.js ensure).
+[version_metadata]
+binding = "CF_VERSION"
+
 [[durable_objects.bindings]]
 name = "GATEWAY"
 class_name = "Gateway"
