@@ -26,8 +26,10 @@ html [data-theme="dark" lang="vi"]
               span.led
         div.side-foot
           div [id="update-slot"]
-          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
-            svg.i #21scx0
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+              svg.i #21scx0
+            button.btn.ghost.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]

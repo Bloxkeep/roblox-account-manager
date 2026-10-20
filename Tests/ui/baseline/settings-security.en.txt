@@ -59,9 +59,12 @@ html [data-theme="dark" lang="en"]
               span
         div.side-foot
           div [id="update-slot"]
-          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
-            svg.i #21scx0
-            span "Lock app"
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -104,6 +107,37 @@ html [data-theme="dark" lang="en"]
             div.settings
               section.set-page [id="set-page-security" aria-labelledby="set-page-security-h"]
                 h2.set-page-title [id="set-page-security-h"] "Security"
+                div.set-grp [id="sec-vault"]
+                  h3.set-grp-title "Vault"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Vault name"
+                        div.d "Shown on the lock screen, where anyone at this PC sees it."
+                      div.ctl
+                        input.field [id="s-vault-name" maxlength="40" aria-label="Vault name" value="Vault 1"]
+                    div.set-row
+                      div
+                        div.t "Picture"
+                        div.d "Shown on the lock screen instead of the first letter of the name."
+                      div.ctl
+                        span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+                        button.btn.sm "Choose…"
+                          svg.i #16jqtkh
+                    div.set-row
+                      div
+                        div.t "Ask which vault to use each time Bloxkeep starts"
+                      div.ctl
+                        label.switch
+                          input [id="s-vault-ask" type="checkbox" aria-label="Ask which vault to use each time Bloxkeep starts" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Switch vault"
+                        div.d "Lock this vault and pick another. Its Roblox windows keep running."
+                      div.ctl
+                        button.btn.sm "Switch vault"
+                          svg.i #1ap9cll
                 div.set-grp [id="sec-master"]
                   h3.set-grp-title "Master password"
                   div.set-card

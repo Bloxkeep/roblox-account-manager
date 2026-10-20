@@ -32,6 +32,7 @@ static class Harness
         Environment.SetEnvironmentVariable("BLOXKEEP_DATA", dir);
         WindowsFormsSynchronizationContext.AutoInstall = false; // no message loop here: awaits carry on on the pool
         Prefs.Load();
+        Vaults.Load();
     }
 
     public static async Task<object?> Call(AppController app, string command, object args)

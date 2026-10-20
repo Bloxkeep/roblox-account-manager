@@ -141,9 +141,12 @@ public static class Themes
     public static string? Hex(string? text) =>
         text is { Length: 7 } && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit) ? text.ToLowerInvariant() : null;
 
-    /// <summary>The custom theme's picture as kept in the data folder: theme-background-&lt;time&gt;.&lt;picture type&gt;.</summary>
+    /// <summary>
+    /// A picture of the person's as kept in the data folder, the only files the page may load from there: the custom
+    /// theme's (theme-background-&lt;time&gt;.png…) and each vault's (vault-picture-&lt;id&gt;-&lt;time&gt;.png…).
+    /// </summary>
     public static bool IsPictureName(string name) =>
-        System.Text.RegularExpressions.Regex.IsMatch(name, @"^theme-background-\d{1,20}\.(png|jpe?g|webp|gif|bmp)$");
+        System.Text.RegularExpressions.Regex.IsMatch(name, @"^(theme-background|vault-picture-[0-9a-f]{8})-\d{1,20}\.(png|jpe?g|webp|gif|bmp)$");
 
     static bool WindowsUsesLight()
     {

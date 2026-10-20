@@ -1,0 +1,49 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.lock.vault-pick
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+    div.vp [id="vault-picker"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Ai đang dùng Bloxkeep?"
+      ul.vp-tiles
+        li.vp-item
+          button.last.vp-tile [title="Main"]
+            span.letter.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
+          span.vp-name [title="Main"] "Main"
+          button.icon-btn.vp-remove [title="Gỡ khỏi máy này" aria-label="Gỡ khỏi máy này: Main"]
+            svg.i #1tyq039
+        li.vp-item
+          button.vp-tile [title="Farm"]
+            span.vault-face
+              img [alt="" src="scene-halong.svg"]
+          span.vp-name [title="Farm"] "Farm"
+          button.icon-btn.vp-remove [title="Gỡ khỏi máy này" aria-label="Gỡ khỏi máy này: Farm"]
+            svg.i #1tyq039
+        li.vp-item
+          button.vp-tile [title="Alt"]
+            span.letter.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(217, 119, 6);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "A"
+          span.vp-name [title="Alt"] "Alt"
+          button.icon-btn.vp-remove [title="Gỡ khỏi máy này" aria-label="Gỡ khỏi máy này: Alt"]
+            svg.i #1tyq039
+        li.vp-item
+          button.vp-add.vp-tile [title="Thêm vault" aria-label="Thêm vault"]
+            svg.i #u7ty99
+          span.vp-name "Thêm vault"
+      label.vp-ask
+        span "Hỏi chọn vault mỗi lần mở Bloxkeep"
+        span.switch
+          input [id="vault-ask" type="checkbox" checked=false]
+          span
+#layer
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  pickVault {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

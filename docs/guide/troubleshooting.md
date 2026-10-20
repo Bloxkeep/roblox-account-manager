@@ -71,7 +71,7 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 **A:** It can't be recovered, and there's no need to reinstall. Right under **Unlock** are two ways on:
 
 - **Restore from a backup**: open a backup whose password you remember. The vault you're locked out of is kept beside it.
-- **Create a new vault**: the accounts and presets in the current vault can't be opened any more, but the old vault file is kept, not deleted, and you set a master password for the new one. The saved accounts and presets are no longer in Bloxkeep; your Roblox accounts are fine, so sign in to add them again. Remember the old password later? Use **Restore from a backup** and pick the `vault-before-start-over-….rmv` file in Bloxkeep's data folder.
+- **Create a new vault**: a vault of its own with a new master password. Your Roblox accounts are fine: sign in to add them again. The old vault stays on the list, so pick it again if you remember its password, or take it off with **×** in the picker (its file is kept in the data folder).
 
 ## Schedules and status
 

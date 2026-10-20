@@ -1399,6 +1399,33 @@ b, strong { font-weight: 650; }
 .lock-alt { margin-top: 16px; font-size: 13px; }
 .lock-alt .link { color: var(--text-2); }
 .lock-alt .sep { margin: 0 8px; color: var(--dim); }
+/* Several vaults (ui/src/Vaults.tsx): a vault's face (its picture, or its first letter on a colour of its own), the
+   lock screen's line saying which vault it is, and the picker, Steam-like: big tiles, + to add one. */
+.vault-face { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 12px; overflow: hidden; color: #fff; font-weight: 700; font-family: var(--font-display); line-height: 1; }
+.vault-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vault-face.sm { width: 40px; height: 40px; border-radius: 10px; font-size: 18px; flex: none; }
+.vault-face.xs { width: 22px; height: 22px; border-radius: 6px; font-size: 12px; flex: none; }
+.lock-vault { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 2px 0 12px; min-width: 0; }
+.lock-vault b { font-size: 16px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lock-vault .link { font-size: 13px; color: var(--text-2); }
+.vp { position: relative; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px; max-width: 920px; }
+.vp .logo-img { width: 56px; height: 56px; }
+.vp h2 { margin: 0; font-family: var(--font-display); font-size: 30px; text-align: center; }
+.vp-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; margin: 0; padding: 0; list-style: none; }
+.vp-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 132px; }
+.vp-tile { width: 132px; height: 132px; padding: 0; border: 2px solid var(--line-3); border-radius: 16px; background: var(--surface); overflow: hidden; cursor: pointer; transition: border-color .15s, transform .1s; }
+.vp-tile:hover, .vp-tile:focus-visible { border-color: var(--text); transform: translateY(-2px); }
+.vp-tile .vault-face { border-radius: 0; font-size: 56px; }
+.vp-add { display: grid; place-items: center; background: transparent; border-style: dashed; color: var(--text-2); }
+.vp-add .i { width: 44px; height: 44px; }
+.vp-name { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-weight: 600; }
+.vp-remove { position: absolute; top: -9px; right: -9px; width: 28px; height: 28px; border: 1px solid var(--line-3); border-radius: 50%; background: var(--raised); opacity: 0; transition: opacity .15s; }
+.vp-item:hover .vp-remove, .vp-remove:focus-visible { opacity: 1; }
+.vp-ask { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: 14px; cursor: pointer; }
+/* The sidebar's Switch vault, next to Lock app: the vault's face. */
+.side-lock { display: flex; gap: 8px; }
+.side-lock .btn.w { flex: 1; min-width: 0; }
+.vault-btn { flex: none; width: 40px; padding: 0; display: grid; place-items: center; }
 .lock-caps { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; color: var(--warn-ink); font-size: 12.5px; }
 .lock-caps[hidden] { display: none; }
 .lock-caps .i { width: 14px; height: 14px; }

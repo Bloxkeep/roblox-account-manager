@@ -59,9 +59,12 @@ html [data-theme="dark" lang="vi"]
               span
         div.side-foot
           div [id="update-slot"]
-          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
-            svg.i #21scx0
-            span "Khóa app"
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -104,6 +107,37 @@ html [data-theme="dark" lang="vi"]
             div.settings
               section.set-page [id="set-page-security" aria-labelledby="set-page-security-h"]
                 h2.set-page-title [id="set-page-security-h"] "Bảo mật"
+                div.set-grp [id="sec-vault"]
+                  h3.set-grp-title "Vault"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Tên vault"
+                        div.d "Hiện ở màn hình khóa, ai ngồi vào máy cũng thấy."
+                      div.ctl
+                        input.field [id="s-vault-name" maxlength="40" aria-label="Tên vault" value="Vault 1"]
+                    div.set-row
+                      div
+                        div.t "Ảnh"
+                        div.d "Hiện ở màn hình khóa thay cho chữ cái đầu của tên."
+                      div.ctl
+                        span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+                        button.btn.sm "Chọn ảnh…"
+                          svg.i #16jqtkh
+                    div.set-row
+                      div
+                        div.t "Hỏi chọn vault mỗi lần mở Bloxkeep"
+                      div.ctl
+                        label.switch
+                          input [id="s-vault-ask" type="checkbox" aria-label="Hỏi chọn vault mỗi lần mở Bloxkeep" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Đổi vault"
+                        div.d "Khóa vault này rồi chọn vault khác. Các cửa sổ Roblox của nó vẫn chạy."
+                      div.ctl
+                        button.btn.sm "Đổi vault"
+                          svg.i #1ap9cll
                 div.set-grp [id="sec-master"]
                   h3.set-grp-title "Mật khẩu chủ"
                   div.set-card
@@ -199,9 +233,12 @@ html [data-theme="dark" lang="vi"]
               span
         div.side-foot
           div [id="update-slot"]
-          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
-            svg.i #21scx0
-            span "Khóa app"
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -244,6 +281,37 @@ html [data-theme="dark" lang="vi"]
             div.settings
               section.set-page [id="set-page-security" aria-labelledby="set-page-security-h"]
                 h2.set-page-title [id="set-page-security-h"] "Bảo mật"
+                div.set-grp [id="sec-vault"]
+                  h3.set-grp-title "Vault"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Tên vault"
+                        div.d "Hiện ở màn hình khóa, ai ngồi vào máy cũng thấy."
+                      div.ctl
+                        input.field [id="s-vault-name" maxlength="40" aria-label="Tên vault" value="Vault 1"]
+                    div.set-row
+                      div
+                        div.t "Ảnh"
+                        div.d "Hiện ở màn hình khóa thay cho chữ cái đầu của tên."
+                      div.ctl
+                        span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+                        button.btn.sm "Chọn ảnh…"
+                          svg.i #16jqtkh
+                    div.set-row
+                      div
+                        div.t "Hỏi chọn vault mỗi lần mở Bloxkeep"
+                      div.ctl
+                        label.switch
+                          input [id="s-vault-ask" type="checkbox" aria-label="Hỏi chọn vault mỗi lần mở Bloxkeep" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Đổi vault"
+                        div.d "Khóa vault này rồi chọn vault khác. Các cửa sổ Roblox của nó vẫn chạy."
+                      div.ctl
+                        button.btn.sm "Đổi vault"
+                          svg.i #1ap9cll
                 div.set-grp [id="sec-master"]
                   h3.set-grp-title "Mật khẩu chủ"
                   div.set-card

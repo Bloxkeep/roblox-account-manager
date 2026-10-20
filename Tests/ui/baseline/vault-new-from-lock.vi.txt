@@ -1,0 +1,40 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      div.lock-vault
+        span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(219, 39, 119);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+        b [title="Vault 2"] "Vault 2"
+        button.link [type="button"] "Hủy"
+      h2 "Tạo vault mới"
+      p "Một vault riêng, với tài khoản, preset và mật khẩu chủ của riêng nó. Quên mật khẩu chủ thì ."
+        b "không lấy lại được"
+      div.stack
+        input.field [id="vault-name" placeholder="Tên vault" maxlength="40" aria-label="Tên vault" value="Vault 2"]
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value=""]
+        div.strength-row
+          div.strength
+            i [id="pw-meter"]
+          span [id="pw-strength" aria-live="polite"]
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
+      div.lock-alt
+        button.link [type="button"] "Khôi phục từ bản sao lưu"
+#layer
+#toasts
+-- commands
+  addVault {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}

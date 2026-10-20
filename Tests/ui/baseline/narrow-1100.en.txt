@@ -26,8 +26,10 @@ html [data-theme="dark" lang="en"]
               span.led
         div.side-foot
           div [id="update-slot"]
-          button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
-            svg.i #21scx0
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+            button.btn.ghost.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
     main.main
       section.seen.view [id="view-accounts"]
         header.top

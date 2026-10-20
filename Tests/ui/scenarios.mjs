@@ -600,13 +600,28 @@ export default [
   // ── Lock screen and first run ──
   S('unlock-wrong', 'locked=1', async s => { await s.type('wrong-one', key('lock.pw')); await s.key('Enter'); await s.wait(800); }),
   S('unlock-ok', 'locked=1', async s => { await s.type('demo', key('lock.pw')); await s.key('Enter'); await s.wait(2600); }),
-  // A forgotten master password: Start over asks first (what goes, what stays), then the lock screen sets up afresh.
-  S('unlock-start-over', 'locked=1', async s => {
-    await s.click(key('lock.startOver'));
+  // Several vaults: the picker (Steam-like) at a start that asks; picking one asks for its password; adding one asks for
+  // a name and a new master password and opens it; Switch vault from the sidebar; one taken off the list.
+  S('vault-picker', 'locked=1&vaults=1&vaultpick=1'),
+  S('vault-pick-one', 'locked=1&vaults=1&vaultpick=1', async s => { await s.click({ css: '.vp-tile[data-id="b2c3d4e5"]' }); await s.wait(400); }),
+  S('vault-add', 'locked=1&vaults=1&vaultpick=1', async s => {
+    await s.click({ css: '.vp-add' });
+    await s.wait(400);
+    await s.snap('new');
+    await s.fill({ css: '#vault-name' }, 'Trade');
+    await s.type('a long new password', { css: '#pw1' });
+    await s.type('a long new password', { css: '#pw2' });
+    await s.key('Enter');
+    await s.wait(2600);
+  }),
+  S('vault-new-from-lock', 'locked=1', async s => { await s.click(key('vault.new')); await s.wait(400); }),
+  S('vault-switch-sidebar', 'vaults=1', async s => { await s.click({ css: '.vault-btn' }); await s.wait(400); }),
+  S('vault-remove', 'locked=1&vaults=1&vaultpick=1', async s => {
+    await s.click({ css: '.vp-remove[data-id="c3d4e5f6"]' });
     await s.wait(300);
     await s.snap('asked');
-    await s.click({ key: 'lock.startOverOk', within: '.modal' });
-    await s.wait(800);
+    await s.click({ key: 'vault.removeOk', within: '.modal' });
+    await s.wait(400);
   }),
   S('first-run-create', 'new=1', async s => {
     await s.type('short', key('lock.pw'));

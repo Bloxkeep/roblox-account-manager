@@ -1,0 +1,40 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [title="English" aria-pressed="true"] "EN"
+        button [title="Tiếng Việt" aria-pressed="false"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      div.lock-vault
+        span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(219, 39, 119);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+        b [title="Vault 2"] "Vault 2"
+        button.link [type="button"] "Cancel"
+      h2 "Create a new vault"
+      p "A vault of its own, with its own accounts, presets and master password. The password if you forget it."
+        b "can’t be recovered"
+      div.stack
+        input.field [id="vault-name" placeholder="Vault name" maxlength="40" aria-label="Vault name" value="Vault 2"]
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value="" FOCUSED]
+          button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [id="pw2" type="password" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value=""]
+        div.strength-row
+          div.strength
+            i [id="pw-meter"]
+          span [id="pw-strength" aria-live="polite"]
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+#layer
+#toasts
+-- commands
+  addVault {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}

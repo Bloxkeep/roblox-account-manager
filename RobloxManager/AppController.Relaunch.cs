@@ -249,6 +249,7 @@ public sealed partial class AppController
     public void Resume(Relaunch.State state)
     {
         _resumedFrom = state;
+        _vaultPick = false; // the vault that was open comes back, not the picker
         // Still the version it was meant to leave: the install didn't take. No new try by itself for a while.
         if (!string.IsNullOrEmpty(state.To) && state.To != _updater.CurrentVersion)
         {

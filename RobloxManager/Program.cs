@@ -92,6 +92,7 @@ static class Program
         }
 
         Prefs.Load();
+        Vaults.Load(); // the vault the lock screen offers (and an update's restart opens): the last one used
         BrowserLoginForm.CleanupLeftoverProfiles();
         CaptchaForm.CleanupLeftoverProfiles();
         WebsiteTab.CleanupLeftovers();
@@ -186,9 +187,10 @@ static class Program
     /// </summary>
     static bool AskToDeleteData(DateTime deadline)
     {
-        if (!File.Exists(Vault.VaultPath))
-            return false;
         Prefs.Load();
+        Vaults.Load();
+        if (Prefs.VaultList.Count == 0 && !File.Exists(Vault.VaultPath))
+            return false;
         ApplicationConfiguration.Initialize();
         int picked = Dialog.Show(null, L.T("Bloxkeep is being removed from this PC. Your accounts and settings stay unless you delete them."),
             L.T("Delete your accounts too?"), Dialog.Kind.Warning,

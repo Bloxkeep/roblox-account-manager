@@ -496,33 +496,4 @@ public sealed partial class AppController
         PushState();
         return null;
     }
-
-    /// <summary>
-    /// The lock screen's "Create a new vault", for a forgotten master password (it can't be recovered): the vault is set aside,
-    /// not deleted (<see cref="Vault.SetAside"/>), and the lock screen asks for a new master password. Saved accounts and
-    /// presets stay in the set-aside file; settings outside the vault (theme, language, backups) stay as they are.
-    /// </summary>
-    object? StartOver()
-    {
-        if (_launchCts is not null)
-            throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
-        if (_vault is not null)
-            Lock();
-        if (Vault.Exists)
-        {
-            try
-            {
-                Log.Note($"Started over from the lock screen; the vault was set aside as {Path.GetFileName(Vault.SetAside())}.");
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                throw new UserError(L.F("Couldn't create a new vault: {0}", ErrorText(ex)));
-            }
-        }
-        _backupDirty = false;
-        Prefs.BackupPending = false;
-        Prefs.Save();
-        PushState();
-        return null;
-    }
 }

@@ -63,13 +63,61 @@ public static class Prefs
 
     public static bool BackupEnabled { get; set; } = true;
 
-    public static DateTime? LastBackup { get; set; }
+    /// <summary>When the vault in use (<see cref="Vaults"/>) was last copied to the backup folder; each vault has its own.</summary>
+    public static DateTime? LastBackup
+    {
+        get => Vaults.Current is { } v ? v.LastBackup : _lastBackup;
+        set
+        {
+            if (Vaults.Current is { } v)
+                v.LastBackup = value;
+            else
+                _lastBackup = value;
+        }
+    }
+    static DateTime? _lastBackup;
 
     /// <summary>
     /// A change worth a backup was saved and not copied yet; cleared by the copy. Set when the app closed first (killed,
-    /// or the copy on exit took too long), so the next unlock makes it.
+    /// or the copy on exit took too long), so the next unlock makes it. Each vault has its own.
     /// </summary>
-    public static bool BackupPending { get; set; }
+    public static bool BackupPending
+    {
+        get => Vaults.Current is { } v ? v.BackupPending : _backupPending;
+        set
+        {
+            if (Vaults.Current is { } v)
+                v.BackupPending = value;
+            else
+                _backupPending = value;
+        }
+    }
+    static bool _backupPending;
+
+    /// <summary>
+    /// The vaults on this PC, in the order they were added (the lock screen's picker, see <see cref="Vaults"/>): each
+    /// its own file in the data folder with its own master password. Their names and pictures show before anything is
+    /// unlocked, so nothing in here is secret.
+    /// </summary>
+    public sealed class VaultEntry
+    {
+        public string Id { get; set; } = "";
+        /// <summary>vault.rmv for the first, vault-&lt;id&gt;.rmv for the others.</summary>
+        public string File { get; set; } = "";
+        public string Name { get; set; } = "";
+        /// <summary>A picture copied into the data folder (vault-picture-&lt;id&gt;-&lt;time&gt;.png…), or none: the name's first letter shows.</summary>
+        public string? Picture { get; set; }
+        public DateTime? LastBackup { get; set; }
+        public bool BackupPending { get; set; }
+    }
+
+    public static List<VaultEntry> VaultList { get; } = new();
+
+    /// <summary>The vault last opened or picked: the one the lock screen offers at the next start.</summary>
+    public static string? LastVault { get; set; }
+
+    /// <summary>The lock screen starts on the picker, Steam-like ("Ask which vault to use each time Bloxkeep starts").</summary>
+    public static bool AskVault { get; set; }
 
     /// <summary>Every saved sign-in is verified once a day (see AppController.Health.cs).</summary>
     public static bool DailySignInCheck { get; set; } = true;
@@ -121,7 +169,7 @@ public static class Prefs
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
-        "multiRobloxAtStart", "discordPresence", "customTheme",
+        "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -146,6 +194,25 @@ public static class Prefs
                 Language = "vi";
             if (root.TryGetProperty("theme", out var theme) && theme.ValueKind == JsonValueKind.String)
                 Theme = Themes.Normalize(theme.GetString());
+            if (root.TryGetProperty("vaults", out var vaults) && vaults.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var v in vaults.EnumerateArray())
+                {
+                    if (v.ValueKind != JsonValueKind.Object || Text(v, "id") is not { } vid || !Vaults.IsId(vid) || Text(v, "file") is not { } vfile
+                        || !Vaults.IsFile(vfile) || VaultList.Any(e => e.Id == vid || e.File == vfile))
+                        continue;
+                    VaultList.Add(new VaultEntry
+                    {
+                        Id = vid, File = vfile, Name = Vaults.CleanName(Text(v, "name")) ?? "Vault",
+                        Picture = Text(v, "picture") is { } vpic && Themes.IsPictureName(vpic) ? vpic : null,
+                        LastBackup = v.TryGetProperty("lastBackup", out var vb) && vb.ValueKind == JsonValueKind.String && vb.TryGetDateTime(out var vbAt)
+                            ? vbAt.ToUniversalTime() is var vbUtc && vbUtc > DateTime.UtcNow ? DateTime.UtcNow : vbUtc : null,
+                        BackupPending = v.TryGetProperty("backupPending", out var vp) && vp.ValueKind == JsonValueKind.True,
+                    });
+                }
+            }
+            LastVault = Text(root, "lastVault");
+            AskVault = root.TryGetProperty("askVault", out var ask) && ask.ValueKind == JsonValueKind.True;
             if (root.TryGetProperty("customTheme", out var custom) && custom.ValueKind == JsonValueKind.Object)
                 Custom = new(Themes.Hex(Text(custom, "background")) ?? Custom.Background, Themes.Hex(Text(custom, "accent")) ?? Custom.Accent,
                     custom.TryGetProperty("fade", out var fade) && fade.ValueKind == JsonValueKind.Number && fade.TryGetInt32(out int f) ? Math.Clamp(f, 0, 90) : Custom.Fade,
@@ -189,9 +256,9 @@ public static class Prefs
                 BackupEnabled = false;
             if (root.TryGetProperty("lastBackup", out var lastBackup) && lastBackup.ValueKind == JsonValueKind.String && lastBackup.TryGetDateTime(out var at))
                 // A time in the future (the clock was set back) would hold the next backup off for days.
-                LastBackup = at.ToUniversalTime() is var utc && utc > DateTime.UtcNow ? DateTime.UtcNow : utc;
+                _lastBackup = at.ToUniversalTime() is var utc && utc > DateTime.UtcNow ? DateTime.UtcNow : utc;
             if (root.TryGetProperty("backupPending", out var pending) && pending.ValueKind == JsonValueKind.True)
-                BackupPending = true;
+                _backupPending = true;
             if (root.TryGetProperty("dailySignInCheck", out var daily) && daily.ValueKind == JsonValueKind.False)
                 DailySignInCheck = false;
             if (root.TryGetProperty("lastSignInCheck", out var lastCheck) && lastCheck.ValueKind == JsonValueKind.String && lastCheck.TryGetDateTime(out var checkedAt))
@@ -252,8 +319,12 @@ public static class Prefs
                 ["discordPresence"] = DiscordPresence,
                 ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture },
                 ["notifications"] = Notifications, ["notifyOff"] = NotifyOff.Order(StringComparer.Ordinal).ToArray(),
-                ["backupFolder"] = BackupFolder, ["backupEnabled"] = BackupEnabled, ["lastBackup"] = LastBackup,
-                ["backupPending"] = BackupPending,
+                // The first vault's backup state also where builds before several vaults read it.
+                ["backupFolder"] = BackupFolder, ["backupEnabled"] = BackupEnabled,
+                ["lastBackup"] = VaultList.FirstOrDefault(v => v.File == Vaults.FirstFile)?.LastBackup ?? _lastBackup,
+                ["backupPending"] = VaultList.FirstOrDefault(v => v.File == Vaults.FirstFile)?.BackupPending ?? _backupPending,
+                ["vaults"] = VaultList.Select(v => new { id = v.Id, file = v.File, name = v.Name, picture = v.Picture, lastBackup = v.LastBackup, backupPending = v.BackupPending }).ToArray(),
+                ["lastVault"] = LastVault, ["askVault"] = AskVault,
                 ["dailySignInCheck"] = DailySignInCheck, ["lastSignInCheck"] = LastSignInCheck, ["miniOpen"] = MiniOpen, ["miniWindow"] = MiniWindow,
                 ["mainWindow"] = MainWindow, ["mainMaximized"] = MainMaximized,
                 ["robloxHistory"] = RobloxHistory.Select(h => new { at = h.At, version = h.Version, folder = h.Folder, source = h.Source, first = h.First }).ToArray(),

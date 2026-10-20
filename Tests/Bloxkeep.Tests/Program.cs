@@ -29,7 +29,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("discord-presence", false, DiscordPresenceSuite.Run),
     ("quiet-fixes", false, QuietFixSuite.Run),
     ("custom-theme", false, CustomThemeSuite.Run),
-    ("start-over", false, StartOverSuite.Run),
+    ("vaults", false, VaultsSuite.Run),
     ("window-icons", false, WindowIconsSuite.Run),
     ("taskbar-groups", false, TaskbarGroupsSuite.Run),
     ("home-session", false, HomeSessionSuite.Run),

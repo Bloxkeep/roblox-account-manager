@@ -3,6 +3,7 @@
 // Lock. Buttons keep their data-act: app.js's one click handler does what they do.
 import { useLocal } from './settings/parts';
 import { Icon, useAppState, useHost, useMetrics, usePage } from './host';
+import { VaultFace, type VaultInfo } from './Vaults';
 
 /** The watch found the lock changed in the build Multi-Roblox meets next, and it hasn't worked on it here since. */
 export const watchWarns = (app: Record<string, any>) => {
@@ -21,6 +22,9 @@ export function Sidebar() {
   const nav = (v: string, icon: string, extra?: React.ReactNode) =>
     <button className={`nav ${view === v ? 'on' : ''}`} data-act="view" data-view={v} title={t(`nav.${v}`)}><Icon name={icon} /><span>{t(`nav.${v}`)}</span>{extra}</button>;
   const u = app.update;
+  // The open vault, for Switch vault (once there is a list of them).
+  const vault: VaultInfo | null = app.vaults?.current && app.vaults?.name
+    ? { id: app.vaults.current, name: app.vaults.name, picture: app.vaults.picture || null } : null;
   return <aside className="side">
     <div className="lights">{(['close', 'min', 'zoom'] as const).map(w =>
       <button key={w} className={`light l-${w}`} data-act={`win-${w}`} title={t(`win.${w}`)} aria-label={t(`win.${w}`)} />)}</div>
@@ -41,7 +45,12 @@ export function Sidebar() {
         <div id="update-slot">{u?.status === 'ready' && !u.quiet
           ? <button className="btn primary w update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
             <Icon name="refresh" /><span><b>{t('upd.restart')}</b><small>{t('upd.versionN', { v: u.version })}</small></span></button> : null}</div>
-        <button className="btn ghost w" data-act="lock" title={t('side.lockTip')}><Icon name="lock" /><span>{t('side.lock')}</span></button>
+        {/* Switch vault (its face): the open vault locks and the lock screen's picker shows (Vaults.tsx). */}
+        <div className="side-lock">
+          <button className="btn ghost w" data-act="lock" title={t('side.lockTip')}><Icon name="lock" /><span>{t('side.lock')}</span></button>
+          {vault ? <button className="btn ghost vault-btn" data-act="vault-pick" title={t('vault.switchTip', { name: vault.name })} aria-label={t('vault.switchTip', { name: vault.name })}>
+            <VaultFace vault={vault} className="xs" /></button> : null}
+        </div>
       </div>
     </div>
   </aside>;

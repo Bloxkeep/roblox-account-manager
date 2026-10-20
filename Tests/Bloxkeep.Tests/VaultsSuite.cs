@@ -1,0 +1,92 @@
+using RobloxManager;
+
+namespace Bloxkeep.Tests;
+
+/// <summary>
+/// Several vaults (Vaults.cs, AppController.Vaults.cs): the vault from before joins the list with its backup state; a
+/// vault is added with its own name and master password; each keeps its own accounts and file (an open vault writes
+/// only its own), the one last used comes back after a restart, the picker shows at start when asked for, and one taken
+/// off the list is set aside, never deleted, but not the one open.
+/// </summary>
+static class VaultsSuite
+{
+    const string MainPassword = "main vault password", FarmPassword = "farm vault password";
+
+    public static async Task Run(Checks c, string dir)
+    {
+        Harness.UseDataFolder(dir);
+        string data = Vault.DataDir;
+        // A PC from before several vaults: vault.rmv, and its backup state in prefs.json's old keys.
+        var old = Vault.Create(MainPassword);
+        old.Data.Accounts.Add(new Account { Username = "MainOne", UserId = 51 });
+        old.Save();
+        old.Dispose();
+        var backedUp = DateTime.UtcNow.AddHours(-3);
+        Prefs.LastBackup = backedUp;
+        Prefs.Save();
+        Prefs.VaultList.Clear();
+        Prefs.Load();
+        Vaults.Load();
+        var main = Prefs.VaultList.SingleOrDefault();
+        c.Check("the vault from before joins the list, with its backup state", main is { File: "vault.rmv" }
+            && Vaults.Current == main && main.LastBackup is { } at && Math.Abs((at - backedUp).TotalSeconds) < 2, main?.Name);
+
+        using var form = new Form();
+        using var app = new AppController(form, _ => { });
+        await Harness.Call(app, "unlock", new { password = MainPassword });
+        c.Check("it opens as before", Harness.Get<Vault>(app, "_vault").Data.Accounts.Any(a => a.Username == "MainOne"));
+
+        await Harness.Call(app, "pickVault", new { });
+        c.Check("Switch vault locks the open one and shows the picker", Harness.Get<Vault?>(app, "_vault") is null && Harness.Get<bool>(app, "_vaultPick"));
+
+        await Harness.Call(app, "addVault", new { });
+        c.Check("adding one: a file of its own, not on the list until it is set up",
+            Vault.ActiveFile.StartsWith("vault-") && Prefs.VaultList.Count == 1 && !Vault.Exists, Vault.ActiveFile);
+        await Harness.Call(app, "createVault", new { password = FarmPassword, name = "  Farm  " });
+        var farm = Prefs.VaultList.FirstOrDefault(v => v.Name == "Farm");
+        c.Check("set up with its name and its own master password, it joins the list and opens empty",
+            farm is not null && Vaults.Current == farm && Prefs.LastVault == farm.Id && Harness.Get<Vault>(app, "_vault").Data.Accounts.Count == 0,
+            string.Join(", ", Prefs.VaultList.Select(v => $"{v.Name} {v.File}")));
+        Harness.Get<Vault>(app, "_vault").Data.Accounts.Add(new Account { Username = "FarmOne", UserId = 52 });
+        Harness.Get<Vault>(app, "_vault").Save();
+        c.Check("a new vault has no backup yet (each has its own)", Prefs.LastBackup is null);
+
+        byte[] farmBytes = File.ReadAllBytes(Path.Combine(data, farm!.File));
+        await Harness.Call(app, "selectVault", new { id = main!.Id });
+        c.Check("picking the other one locks this one and offers that one", Harness.Get<Vault?>(app, "_vault") is null && Vault.ActiveFile == "vault.rmv");
+        bool refused = await Harness.Try(app, "unlock", new { password = FarmPassword }) is UserError;
+        c.Check("each vault has its own master password", refused && Harness.Get<Vault?>(app, "_vault") is null);
+        await Harness.Call(app, "unlock", new { password = MainPassword });
+        var mainOpen = Harness.Get<Vault>(app, "_vault");
+        c.Check("and its own accounts", mainOpen.Data.Accounts.Any(a => a.Username == "MainOne") && !mainOpen.Data.Accounts.Any(a => a.Username == "FarmOne"));
+        mainOpen.Data.Accounts.Add(new Account { Username = "MainTwo", UserId = 53 });
+        mainOpen.Save();
+        c.Check("an open vault writes only its own file", File.ReadAllBytes(Path.Combine(data, farm.File)).SequenceEqual(farmBytes));
+
+        // Back after a restart: the list, and the last vault used is the one offered.
+        Prefs.Save();
+        Prefs.VaultList.Clear();
+        Prefs.LastVault = null;
+        Prefs.Load();
+        Vaults.Load();
+        c.Check("after a restart the list is back and the last vault used is offered",
+            Prefs.VaultList.Count == 2 && Vaults.Current?.Id == main.Id, string.Join(", ", Prefs.VaultList.Select(v => v.Name)));
+
+        await Harness.Call(app, "setAskVault", new { enabled = true });
+        using (var second = new AppController(new Form(), _ => { }))
+            c.Check("asked for: with two vaults the picker shows at start", Harness.Get<bool>(second, "_vaultPick"));
+
+        bool kept = await Harness.Try(app, "removeVault", new { id = main.Id }) is UserError && Prefs.VaultList.Any(v => v.Id == main.Id);
+        c.Check("the vault open right now can't be taken off the list", kept);
+        await Harness.Call(app, "removeVault", new { id = farm.Id });
+        var setAside = Directory.GetFiles(data, "vault-removed-*.rmv").Select(f => Path.GetFileName(f)!).ToList();
+        c.Check("one taken off the list is set aside, never deleted", Prefs.VaultList.Count == 1 && !File.Exists(Path.Combine(data, farm.File))
+            && setAside.Any(n => !n.Contains("-spare")), string.Join(", ", setAside));
+        using (var third = new AppController(new Form(), _ => { }))
+            c.Check("with one vault left the picker doesn't show at start", !Harness.Get<bool>(third, "_vaultPick"));
+
+        c.Check("a vault's picture is served by its own kind of name only",
+            Themes.IsPictureName("vault-picture-a1b2c3d4-638700000000000000.png") && !Themes.IsPictureName("vault-picture-a1b2c3d4-1.png/../vault.rmv")
+            && !Themes.IsPictureName("vault-picture-xyz-1.png"));
+    }
+}

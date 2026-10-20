@@ -504,12 +504,15 @@
   /** "15 minutes", "1 hour", "2 hours": how long the PC went unused before Bloxkeep locked itself. */
   const autoLockText = n => n >= 60 ? (n === 60 ? t('lock.autoHour1') : t('lock.autoHours', { n: n / 60 })) : t('lock.autoMin', { n });
   function renderLock() {
-    const mode = S.app.vaultExists ? 'unlock' : 'create';
-    if (S.lockMode === mode) return; // keep what the user is typing
+    // The picker (several vaults), or the password for the vault it offers (a new one for a vault being set up).
+    const v = S.app.vaults || {};
+    const mode = v.pick ? 'pick' : S.app.vaultExists ? 'unlock' : 'create';
+    const screen = `${mode}:${v.current || ''}:${v.adding ? 'new' : ''}`;
+    if (S.lockMode === screen) return; // keep what the user is typing
     // Rebuilt in another language (same screen): what was typed stays.
     const form0 = $('#lock-form');
     const kept = form0?.dataset.mode === mode ? { pw1: $('#pw1')?.value || '', pw2: $('#pw2')?.value || '' } : null;
-    S.lockMode = mode;
+    S.lockMode = screen;
     // Locked while in use (not at start-up): the lock screen says what waits for the unlock.
     if (S.shell) S.lockedInUse = true;
     S.shell = false;
@@ -2638,12 +2641,19 @@
       case 'bk-import': return importVault();
       // First-run screen: the chosen file becomes the vault; the app then shows the unlock screen.
       case 'restore-backup': return busy(el, () => call('restoreBackup'));
-      // The lock screen's "Create a new vault" (a forgotten master password): what goes and what stays, asked first.
-      case 'start-over': return (async () => {
-        if (!await confirmBox(t('lock.startOverText'), { title: t('lock.startOverTitle'), ok: t('lock.startOverOk'), danger: true })) return;
-        if (await call('startOver') === undefined) return;
-        toast(t('lock.startOverDone'), 'ok');
+      // Several vaults (RobloxManager/AppController.Vaults.cs): the picker, a vault picked or added, and each one's name
+      // and picture. Switching locks the open vault first; its Roblox windows keep running.
+      case 'vault-pick': return busy(el, () => call('pickVault'));
+      case 'vault-select': return call('selectVault', { id: el.dataset.id });
+      case 'vault-add': return call('addVault');
+      case 'vault-cancel-add': return call('cancelAddVault');
+      case 'vault-remove': return (async () => {
+        const name = (S.app.vaults?.list || []).find(x => x.id === el.dataset.id)?.name || '';
+        if (!await confirmBox(t('vault.removeText'), { title: t('vault.removeTitle', { name }), ok: t('vault.removeOk'), danger: true })) return;
+        await call('removeVault', { id: el.dataset.id });
       })();
+      case 'vault-picture': return busy(el, () => call('pickVaultPicture', { id: el.dataset.id }));
+      case 'vault-picture-clear': return call('clearVaultPicture', { id: el.dataset.id });
       // First start without a vault: Multi-Roblox only, for someone who signs in to Roblox in their own browser. It
       // asks the same as the sidebar's switch, then Bloxkeep goes to the tray.
       case 'multi-only': return (async () => {

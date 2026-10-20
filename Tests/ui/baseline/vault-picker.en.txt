@@ -1,0 +1,47 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.lock.vault-pick
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [title="English" aria-pressed="true"] "EN"
+        button [title="Tiếng Việt" aria-pressed="false"] "VI"
+    div.vp [id="vault-picker"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Who’s using Bloxkeep?"
+      ul.vp-tiles
+        li.vp-item
+          button.last.vp-tile [title="Main"]
+            span.letter.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
+          span.vp-name [title="Main"] "Main"
+          button.icon-btn.vp-remove [title="Remove from this PC" aria-label="Remove from this PC: Main"]
+            svg.i #1tyq039
+        li.vp-item
+          button.vp-tile [title="Farm"]
+            span.vault-face
+              img [alt="" src="scene-halong.svg"]
+          span.vp-name [title="Farm"] "Farm"
+          button.icon-btn.vp-remove [title="Remove from this PC" aria-label="Remove from this PC: Farm"]
+            svg.i #1tyq039
+        li.vp-item
+          button.vp-tile [title="Alt"]
+            span.letter.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(217, 119, 6);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "A"
+          span.vp-name [title="Alt"] "Alt"
+          button.icon-btn.vp-remove [title="Remove from this PC" aria-label="Remove from this PC: Alt"]
+            svg.i #1tyq039
+        li.vp-item
+          button.vp-add.vp-tile [title="Add a vault" aria-label="Add a vault"]
+            svg.i #u7ty99
+          span.vp-name "Add a vault"
+      label.vp-ask
+        span "Ask which vault to use each time Bloxkeep starts"
+        span.switch
+          input [id="vault-ask" type="checkbox" checked=true]
+          span
+#layer
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}

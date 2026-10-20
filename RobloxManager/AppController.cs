@@ -345,7 +345,7 @@ public sealed partial class AppController : IDisposable
         "clearThemePicture" => Done(ClearThemePicture()),
         "setCloseToTray" => Done(SetCloseToTray(Bool(a, "enabled"))),
         "setHideNames" => Done(SetHideNames(Bool(a, "enabled"))),
-        "createVault" => CreateVaultAsync(Str(a, "password")),
+        "createVault" => CreateVaultAsync(Str(a, "password"), Str(a, "name")),
         "unlock" => UnlockAsync(Str(a, "password")),
         "lock" => Done(Lock()),
         "changePassword" => ChangePasswordAsync(Str(a, "current"), Str(a, "next")),
@@ -422,7 +422,15 @@ public sealed partial class AppController : IDisposable
         "backupSuggestions" => Done(RefreshBackupSuggestions()),
         "backupNow" => BackupNowAsync(),
         "restoreBackup" => Done(RestoreBackup()),
-        "startOver" => Done(StartOver()),
+        "pickVault" => Done(ShowVaultPicker()),
+        "selectVault" => Done(SelectVault(Str(a, "id"))),
+        "addVault" => Done(AddVault()),
+        "cancelAddVault" => Done(CancelAddVault()),
+        "renameVault" => Done(RenameVault(Str(a, "id"), Str(a, "name"))),
+        "pickVaultPicture" => Done(PickVaultPicture(Str(a, "id"))),
+        "clearVaultPicture" => Done(ClearVaultPicture(Str(a, "id"))),
+        "removeVault" => Done(RemoveVault(Str(a, "id"))),
+        "setAskVault" => Done(SetAskVault(Bool(a, "enabled"))),
         "pickLauncher" => Done(PickLauncher()),
         "playStats" => PlayStatsAsync((int)Long(a, "days")),
         "activity" => Done(ActivityList(a)),
@@ -562,6 +570,7 @@ public sealed partial class AppController : IDisposable
             ? new { from = _updatedFrom, releases = WhatsNew.Between(_updatedFrom, _updater.CurrentVersion) }
             : null,
         vaultExists = Vault.Exists,
+        vaults = VaultsDto(),
         multiAtStart = Prefs.MultiRobloxAtStart,
         locked = Open is null,
         // The lock screen after a while without use: Bloxkeep is open behind it, Roblox and the background carry on.
@@ -986,7 +995,7 @@ public sealed partial class AppController : IDisposable
 
     // ───────────────────────────── vault ─────────────────────────────
 
-    async Task<object?> CreateVaultAsync(string password)
+    async Task<object?> CreateVaultAsync(string password, string name = "")
     {
         if (Vault.Exists)
             throw new UserError(L.T("Bloxkeep is already set up."));
@@ -1005,6 +1014,7 @@ public sealed partial class AppController : IDisposable
             return BuildState();
         }
         _weakPassword = Backup.WeakPassword(password);
+        JoinVaultList(name); // before it opens: its backup state is its own from the start
         OnUnlocked(created);
         return BuildState();
     }
@@ -1039,6 +1049,12 @@ public sealed partial class AppController : IDisposable
             return BuildState();
         }
         _weakPassword = Backup.WeakPassword(password);
+        // The one the lock screen offers at the next start.
+        if (Vaults.Current is { } opened && Prefs.LastVault != opened.Id)
+        {
+            Prefs.LastVault = opened.Id;
+            Prefs.Save();
+        }
         OnUnlocked(vault);
         return BuildState();
     }

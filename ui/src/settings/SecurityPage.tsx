@@ -1,11 +1,12 @@
-// Settings › Security: changing the master password, and locking by itself after a while without use (the lock screen
+// Settings › Security: this vault (its name, picture, the picker at every start, Switch vault), changing the master password, and locking by itself after a while without use (the lock screen
 // comes up with Bloxkeep open behind it: Roblox and the background keep going). The password boxes keep what is typed
 // themselves (not React's state):
 // app.js empties them when Settings is left (the "clearPassword" signal) and, rebuilding the page in another language,
 // puts back what was typed and says so with an input event.
 import { useEffect, useRef, useState } from 'react';
-import { useAppState, useHost } from '../host';
-import { Group, Page, Row, useLocal } from './parts';
+import { Icon, useAppState, useHost } from '../host';
+import { VaultFace } from '../Vaults';
+import { Group, Page, Row, Switch, useLocal } from './parts';
 
 /** Lock automatically's choices, in minutes (the app takes only these); 0 never. */
 const AUTO_LOCK = [0, 5, 10, 15, 30, 60, 120];
@@ -33,7 +34,31 @@ export function SecurityPage({ title }: { title: string }) {
       onInput={e => onInput(e.currentTarget.value)} />;
   const dropError = () => { if (msg.text && msg.kind === 'err') pwMsg(''); };
 
+  // This vault: its name and picture (shown on the lock screen, before unlocking), the picker at every start, Switch vault.
+  const vaults = app.vaults || {};
+  const vault = vaults.current ? { id: vaults.current, name: vaults.name || '', picture: vaults.picture || null } : null;
+  const [vaultName, setVaultName] = useLocal(vault?.name || '');
+  const [askVault, setAskVault] = useLocal(!!vaults.ask);
+  const saveName = () => { if (vault && vaultName.trim() && vaultName.trim() !== vault.name) call('renameVault', { id: vault.id, name: vaultName }); };
+
   return <Page id="security" title={title}>
+    {vault ? <Group id="vault" title={t('vault.group')}>
+      <Row title={t('vault.name')} desc={t('vault.nameDesc')}>
+        <input className="field" id="s-vault-name" value={vaultName} maxLength={40} aria-label={t('vault.name')} spellCheck={false}
+          onChange={e => setVaultName(e.target.value)} onBlur={saveName} onKeyDown={e => { if (e.key === 'Enter') saveName(); }} />
+      </Row>
+      <Row title={t('vault.picture')} desc={t('vault.pictureDesc')}>
+        <VaultFace vault={vault} className="sm" />
+        {vault.picture ? <button className="btn sm ghost" data-act="vault-picture-clear" data-id={vault.id}>{t('vault.pictureRemove')}</button> : null}
+        <button className="btn sm" data-act="vault-picture" data-id={vault.id}><Icon name="image" />{t('vault.pick')}</button>
+      </Row>
+      <Row title={t('vault.ask')}>
+        <Switch id="s-vault-ask" label={t('vault.ask')} checked={askVault} onChange={on => { setAskVault(on); call('setAskVault', { enabled: on }); }} />
+      </Row>
+      <Row title={t('vault.switch')} desc={t('vault.switchDesc')}>
+        <button className="btn sm" data-act="vault-pick"><Icon name="repeat" />{t('vault.switch')}</button>
+      </Row>
+    </Group> : null}
     <Group id="master" title={t('set.master')}>
       <form className="pw-form" id="pw-form" autoComplete="off" onSubmit={async e => {
         e.preventDefault();

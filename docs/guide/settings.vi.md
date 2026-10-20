@@ -99,7 +99,12 @@ Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **H
 
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
+| **Tên vault** và **Ảnh** | Thứ vault này hiện ở màn hình khóa và màn hình chọn vault. Ai ngồi vào máy cũng thấy, kể cả khi chưa mở khóa. | Vault 1, chữ cái đầu |
+| **Hỏi chọn vault mỗi lần mở Bloxkeep** | Khi có từ 2 vault trở lên, mở Bloxkeep sẽ hiện màn hình chọn vault (giống "Who's playing?" của Steam) thay vì vào thẳng vault dùng lần trước. | Tắt |
+| **Đổi vault** | Khóa vault này rồi hiện màn hình chọn vault. Các cửa sổ Roblox của nó vẫn chạy; tự vào lại game, preset hẹn giờ và Discord của nó chờ tới lúc mở khóa lại. | — |
 | **Mật khẩu chủ** | **Mật khẩu hiện tại**, **Mật khẩu mới (ít nhất 6 ký tự)**, **Nhập lại mật khẩu mới**, rồi bấm **Đổi mật khẩu**. | Đặt lúc mở app lần đầu |
+
+Mỗi vault có tài khoản, preset, cài đặt, bản sao lưu và mật khẩu chủ riêng. Thêm vault bằng nút **+** ở màn hình chọn vault, hoặc **Tạo vault mới** ở màn hình khóa. Nút **×** trên một ô sẽ gỡ vault đó khỏi danh sách; file của nó vẫn nằm trong thư mục dữ liệu của Bloxkeep, và **Khôi phục từ bản sao lưu** có thể mở lại.
 
 Độ mạnh hiện ra khi bạn gõ. App không chấp nhận mật khẩu hiện tại sai, mật khẩu mới ngắn hơn 6 ký tự hoặc chỉ toàn dấu cách, hay trùng mật khẩu cũ. Các bản sao lưu làm trước khi đổi vẫn chỉ mở được bằng mật khẩu cũ.
 

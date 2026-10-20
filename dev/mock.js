@@ -101,8 +101,17 @@
   let locked = params.has('locked') || params.has('new') || !!screenLock;
   let language = params.get('lang') || 'en';
   let theme = params.get('theme') || 'dark';
-  // Set up yet (?new=1: not); "Start over" on the lock screen sets the vault aside.
+  // Set up yet (?new=1: not). The vaults on this PC (?vaults=1: three, one with a picture; ?vaultpick=1: the picker
+  // shows, as at a start that asks), the one offered, one being added.
   let vaultExists = !params.has('new');
+  let vaultList = params.has('new') ? [] : params.has('vaults')
+    ? [{ id: 'a1b2c3d4', name: 'Main', picture: null }, { id: 'b2c3d4e5', name: 'Farm', picture: 'scene-halong.svg' }, { id: 'c3d4e5f6', name: 'Alt', picture: null }]
+    : [{ id: 'a1b2c3d4', name: 'Vault 1', picture: null }];
+  let vaultCurrent = vaultList[0]?.id || null, vaultPick = params.has('vaultpick'), vaultAdding = null, askVault = params.has('vaultpick');
+  const vaultsState = () => {
+    const cur = vaultAdding || vaultList.find(v => v.id === vaultCurrent);
+    return { list: vaultList, current: cur?.id || null, name: cur?.name || null, picture: vaultAdding ? null : cur?.picture || null, pick: vaultPick, adding: !!vaultAdding, ask: askVault };
+  };
   // Settings › Appearance › Custom (?theme=custom; ?ctpicture=1 with a picture, a scenery theme's standing in).
   let customTheme = { background: params.has('ctbg') ? '#' + params.get('ctbg') : '#1b2a3a', accent: '#f59e0b', fade: 45, picture: params.has('ctpicture') ? 'scene-halong.svg' : null };
   let closeToTray = true;
@@ -243,7 +252,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, locked, screenLock,
+    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
       updater: settings.launchVia === 'store' ? null : 'Bloxstrap', updating: robloxUpdating },
@@ -318,6 +327,12 @@
           await wait(500);
           // "sai" or anything starting "wrong" is the wrong master password (the app's own words for it).
           if (a.password === 'sai' || a.password.startsWith('wrong')) throw new Error(language === 'vi' ? 'Sai mật khẩu chủ.' : 'Wrong master password.');
+          if (cmd === 'createVault') {
+            // The vault set up joins the list under the name typed (the first one: Vault 1).
+            const made = vaultAdding || { id: 'a1b2c3d4', name: 'Vault 1', picture: null };
+            vaultList = [...vaultList.filter(v => v.id !== made.id), { ...made, name: (a.name || '').trim() || made.name }];
+            vaultCurrent = made.id; vaultAdding = null; vaultExists = true;
+          }
           locked = false;
           screenLock = null;
           unlockedAt = Date.now();
@@ -413,7 +428,21 @@
           discord = { ...discord, lastSent: new Date().toISOString(), error: null };
           push();
           return null;
-        case 'startOver': await wait(300); vaultExists = false; locked = true; push(); return null;
+        case 'pickVault': locked = true; screenLock = null; vaultAdding = null; vaultExists = true; vaultPick = true; push(); return null;
+        case 'selectVault': locked = true; vaultCurrent = a.id; vaultAdding = null; vaultExists = true; vaultPick = false; push(); return null;
+        case 'addVault':
+          locked = true; vaultPick = false; vaultExists = false;
+          vaultAdding = { id: 'd4e5f6a7', name: `Vault ${vaultList.length + 1}`, picture: null };
+          push(); return null;
+        case 'cancelAddVault': vaultAdding = null; vaultExists = true; vaultPick = vaultList.length > 1; push(); return null;
+        case 'removeVault':
+          vaultList = vaultList.filter(v => v.id !== a.id);
+          if (vaultCurrent === a.id) vaultCurrent = vaultList[0]?.id || null;
+          vaultPick = vaultList.length > 1; vaultExists = vaultList.length > 0; push(); return null;
+        case 'renameVault': vaultList = vaultList.map(v => v.id === a.id ? { ...v, name: a.name.trim() || v.name } : v); push(); return null;
+        case 'pickVaultPicture': vaultList = vaultList.map(v => v.id === a.id ? { ...v, picture: 'scene-aurora.svg' } : v); push(); return null;
+        case 'clearVaultPicture': vaultList = vaultList.map(v => v.id === a.id ? { ...v, picture: null } : v); push(); return null;
+        case 'setAskVault': askVault = !!a.enabled; push(); return null;
         case 'restoreBackup': await wait(500); vaultExists = true; locked = true; push(); emit('toast', { text: 'Backup restored. Unlock it with the master password it was saved with.', kind: 'ok' }); return null;
         case 'resolveGame': {
           const m = /(\d{5,})/.exec(a.input);

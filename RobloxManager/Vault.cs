@@ -56,13 +56,15 @@ public sealed class Vault : IDisposable
         if (!Directory.Exists(DataDir))
             return;
         DeleteCaches();
-        // By exact name: in a folder of the person's own, "prefs.json5" or "error.logs" aren't ours.
+        // By exact name or pattern: in a folder of the person's own, "prefs.json5" or "error.logs" aren't ours.
         var own = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { "vault.rmv", "vault.rmv.bak", "vault.rmv.tmp", "prefs.json", "prefs.json.tmp", "error.log", "roblox-settings.json", "starting.flag", "resume.bin" };
-        bool Own(string name) => own.Contains(name) || name.StartsWith("vault.rmv.damaged-", StringComparison.OrdinalIgnoreCase)
-            || ((name.StartsWith("vault-before-restore-", StringComparison.OrdinalIgnoreCase) || name.StartsWith("vault-before-start-over-", StringComparison.OrdinalIgnoreCase))
+            { "prefs.json", "prefs.json.tmp", "error.log", "roblox-settings.json", "starting.flag", "resume.bin" };
+        bool Own(string name) => own.Contains(name)
+            // Every vault (vault.rmv, vault-<id>.rmv) with its spare, unfinished and damaged copies.
+            || System.Text.RegularExpressions.Regex.IsMatch(name, @"^vault(-[0-9a-f]{8})?\.rmv(\.bak|\.tmp|\.damaged-.*|\.spare-.*)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            || ((name.StartsWith("vault-before-restore-", StringComparison.OrdinalIgnoreCase) || name.StartsWith("vault-removed-", StringComparison.OrdinalIgnoreCase))
                 && name.EndsWith(".rmv", StringComparison.OrdinalIgnoreCase))
-            || Themes.IsPictureName(name); // the custom theme's picture
+            || Themes.IsPictureName(name); // the custom theme's picture, the vaults' pictures
         foreach (string file in Directory.EnumerateFiles(DataDir).Where(f => Own(Path.GetFileName(f))).ToList())
         {
             try
@@ -84,26 +86,33 @@ public sealed class Vault : IDisposable
         }
     }
 
-    public static string VaultPath => Path.Combine(DataDir, "vault.rmv");
-    static string BackupPath => Path.Combine(DataDir, "vault.rmv.bak");
-    static string TempPath => Path.Combine(DataDir, "vault.rmv.tmp");
-    static bool _restoreChecked;
+    /// <summary>
+    /// The vault file the lock screen opens or sets up (see <see cref="Vaults"/>): vault.rmv for the first vault on this
+    /// PC, vault-&lt;id&gt;.rmv for each one added since. An open vault keeps writing to its own file whatever this
+    /// becomes meanwhile.
+    /// </summary>
+    public static string ActiveFile { get; set; } = "vault.rmv";
+    public static string VaultPath => Path.Combine(DataDir, ActiveFile);
+    static string BackupPath => VaultPath + ".bak";
+    static string TempPath => VaultPath + ".tmp";
+    static readonly HashSet<string> _restoreChecked = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Decides between "set up" and "unlock", so a vault lost mid-save is put back first (once per run).</summary>
+    /// <summary>Decides between "set up" and "unlock", so a vault lost mid-save is put back first (once per run and file).</summary>
     public static bool Exists
     {
         get
         {
-            if (!_restoreChecked)
-            {
-                _restoreChecked = true;
+            if (_restoreChecked.Add(ActiveFile))
                 RestoreIfMissing();
-            }
             return File.Exists(VaultPath);
         }
     }
 
+    /// <summary>The file this vault was opened from or created in, which every save writes.</summary>
+    public string FilePath => _path;
+
     readonly object _sync = new();
+    readonly string _path;
     byte[] _key;
     byte[] _salt;
     int _iterations;
@@ -112,6 +121,7 @@ public sealed class Vault : IDisposable
 
     Vault(byte[] key, byte[] salt, int iterations, VaultData data)
     {
+        _path = VaultPath;
         _key = key;
         _salt = salt;
         _iterations = iterations;
@@ -377,25 +387,24 @@ public sealed class Vault : IDisposable
     public static void ReplaceFile(byte[] bytes)
     {
         lock (FileGate)
-            WriteAtomic(bytes);
+            WriteAtomic(VaultPath, bytes);
     }
 
     /// <summary>
-    /// The lock screen's "Create a new vault", for a master password nobody remembers: the vault and its spare copies are moved
-    /// aside as vault-before-start-over-&lt;time&gt;.rmv (never deleted: remembered later, it is restored like a backup), so
-    /// Bloxkeep sets up afresh. Nothing is left that would bring the old vault back on the next start (RestoreIfMissing).
+    /// A vault taken off this PC's list (the lock screen's picker): its file and spare copies are moved aside as
+    /// vault-removed-&lt;time&gt;.rmv, never deleted (it is restored like a backup), so nothing brings it back.
     /// </summary>
     /// <returns>The file the vault now is.</returns>
-    public static string SetAside()
+    public static string SetAside(string file)
     {
         lock (FileGate)
         {
-            string stamp = Stamp(), kept = Path.Combine(DataDir, $"vault-before-start-over-{stamp}.rmv");
-            File.Move(VaultPath, kept);
-            foreach (var (from, what) in new[] { (BackupPath, "spare"), (TempPath, "unsaved") })
+            string path = Path.Combine(DataDir, file), stamp = Stamp(), kept = Path.Combine(DataDir, $"vault-removed-{stamp}.rmv");
+            File.Move(path, kept);
+            foreach (var (from, what) in new[] { (path + ".bak", "spare"), (path + ".tmp", "unsaved") })
             {
                 if (File.Exists(from))
-                    File.Move(from, Path.Combine(DataDir, $"vault-before-start-over-{stamp}-{what}.rmv"));
+                    File.Move(from, Path.Combine(DataDir, $"vault-removed-{stamp}-{what}.rmv"));
             }
             return kept;
         }
@@ -416,7 +425,7 @@ public sealed class Vault : IDisposable
     /// <summary>One write to the vault file at a time: a save in the background and one made now never interleave.</summary>
     static readonly object FileGate = new();
     /// <summary>A background save waiting for the worker: the vault as it was then, and the key it goes under.</summary>
-    sealed record Pending(byte[] Plain, byte[] Key, byte[] Salt, int Iterations);
+    sealed record Pending(byte[] Plain, byte[] Key, byte[] Salt, int Iterations, string Path);
     readonly object _queueGate = new();
     Pending? _queued;
     Task _background = Task.CompletedTask;
@@ -433,7 +442,7 @@ public sealed class Vault : IDisposable
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_key.Length == 0, this);
-            next = new Pending(JsonSerializer.SerializeToUtf8Bytes(Data), _key.ToArray(), _salt.ToArray(), _iterations);
+            next = new Pending(JsonSerializer.SerializeToUtf8Bytes(Data), _key.ToArray(), _salt.ToArray(), _iterations, _path);
         }
         lock (_queueGate)
         {
@@ -456,7 +465,7 @@ public sealed class Vault : IDisposable
         try
         {
             lock (FileGate)
-                WriteEncrypted(p.Plain, p.Key, p.Salt, p.Iterations);
+                WriteEncrypted(p.Plain, p.Key, p.Salt, p.Iterations, p.Path);
         }
         catch
         {
@@ -529,7 +538,7 @@ public sealed class Vault : IDisposable
             lock (FileGate)
             {
                 DropQueued(); // older than this, and possibly under the old password (ChangePassword)
-                WriteEncrypted(plain, key, salt, iterations);
+                WriteEncrypted(plain, key, salt, iterations, _path);
             }
         }
         finally
@@ -538,7 +547,7 @@ public sealed class Vault : IDisposable
         }
     }
 
-    static void WriteEncrypted(byte[] plain, byte[] key, byte[] salt, int iterations)
+    static void WriteEncrypted(byte[] plain, byte[] key, byte[] salt, int iterations, string path)
     {
         byte[] file = new byte[HeaderSize + NonceSize + TagSize + plain.Length];
         Magic.CopyTo(file, 0);
@@ -551,23 +560,23 @@ public sealed class Vault : IDisposable
             aes.Encrypt(nonce, plain, file.AsSpan(HeaderSize + NonceSize + TagSize),
                 file.AsSpan(HeaderSize + NonceSize, TagSize), file.AsSpan(0, HeaderSize));
         }
-        WriteAtomic(file);
+        WriteAtomic(path, file);
     }
 
     /// <summary>Writes to a temp file first so a crash mid-write never leaves a half-written vault.</summary>
-    static void WriteAtomic(byte[] bytes)
+    static void WriteAtomic(string path, byte[] bytes)
     {
         Directory.CreateDirectory(DataDir);
-        string tmp = TempPath;
+        string tmp = path + ".tmp";
         using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
         {
             fs.Write(bytes);
             fs.Flush(flushToDisk: true);
         }
-        if (File.Exists(VaultPath))
-            File.Replace(tmp, VaultPath, BackupPath, ignoreMetadataErrors: true);
+        if (File.Exists(path))
+            File.Replace(tmp, path, path + ".bak", ignoreMetadataErrors: true);
         else
-            File.Move(tmp, VaultPath);
+            File.Move(tmp, path);
     }
 
     public bool VerifyPassword(string password)
