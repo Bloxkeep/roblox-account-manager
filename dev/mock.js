@@ -99,6 +99,8 @@
     accounts[4].username = 'lananh_2010_lananh_2010_lananh'; accounts[4].label = accounts[4].alias = tx('Lan Anh (alt, for trading and buying items)', 'Lan Anh (tài khoản phụ, dùng để trade và mua đồ)');
     accounts[6].group = tx('AVeryLongTestingGroupNameWithNoBreaksAtAll', 'Nhóm thử nghiệm với tên rất dài không ngắt'); accounts[6].username = 'noavatar_user_noavatar_user';
   }
+  // ?robuxwait=1: right after unlocking, the Robux not answered yet (each signed-in card keeps the number's place).
+  if (params.has('robuxwait')) accounts.forEach(a => { if (a.cookieValid && !a.banned) { delete a.robux; a.robuxWait = true; } });
   // ?autolock=15: Bloxkeep behind its lock screen after a while without use (the vault open behind it);
   // ?autolockin=1500: the same, coming up 1.5 s after the page opens (as if the PC went unused meanwhile).
   let screenLock = params.has('autolock') ? { minutes: +params.get('autolock') || 15 } : null;

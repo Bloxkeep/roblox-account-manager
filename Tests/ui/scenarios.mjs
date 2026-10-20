@@ -25,6 +25,9 @@ export default [
   S('accounts-rejoin-wait', 'rejoin=1'),
   S('accounts-long-names', 'long=1'),
   S('accounts-many', 'accounts=40'),
+  // Right after unlocking: each signed-in account's Robux not answered yet, its place kept (cards, then rows).
+  S('accounts-robux-wait', 'robuxwait=1'),
+  S('accounts-robux-wait-list', 'robuxwait=1', async s => { await s.click(key('layout.list')); }),
   S('accounts-search', '', async s => { await s.type('farm', key('acc.search')); }),
   S('accounts-filter-playing', '', async s => { await s.click(key('chip.ingame')); }),
   S('accounts-filter-signin', '', async s => { await s.click(key('chip.invalid')); }),

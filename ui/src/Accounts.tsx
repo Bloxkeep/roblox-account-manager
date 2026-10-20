@@ -294,7 +294,8 @@ function Meta({ a }: { a: Account }) {
   const { t, fmtNum } = useHost();
   return <>
     {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
-    {typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span> : null}
+    {typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span>
+      : a.robuxWait ? <span className="robux wait" title={t('card.robuxTip')}><Icon name="robux" />…</span> : null}
     {a.group ? <span className="tag" title={a.group}>{a.group}</span> : null}
     {rejoinOn(a) ? <span className="rejoin" title={t('card.rejoinTip')}><Icon name="repeat" /></span> : null}
   </>;

@@ -2511,6 +2511,10 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .tag.vng { flex: none; color: var(--warn-ink); background: var(--warn-soft); }
 .meta .robux, .row-meta .robux { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .robux .i { width: 14px; height: 14px; stroke-width: 2.2; }
+/* The first number on its way: its place kept, so the row doesn't move when it comes. In a row the number has room for
+   six figures, right-aligned, so the tags beside it stay put whatever it is. */
+.robux.wait { color: var(--muted); font-weight: 500; }
+.row-meta .robux { min-width: calc(18px + 6ch); justify-content: flex-end; }
 .sv-label { display: block; margin: 12px 0 6px; font-size: 12.5px; font-weight: 650; color: var(--text-2); }
 .game-row.saved .icon-btn { opacity: .55; }
 .game-row.saved:hover .icon-btn, .game-row.saved.on .icon-btn { opacity: 1; }

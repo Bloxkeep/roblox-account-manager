@@ -4,7 +4,8 @@ namespace Bloxkeep.Tests;
 
 /// <summary>
 /// Each account's Robux on its card (AppController.Robux.cs, RobloxApi.GetRobuxAsync): what Roblox's answers read as,
-/// that a round waits a little after unlocking, and that the page gets the number. And Roblox VNG accounts open like
+/// that the first round starts at unlocking, that the card keeps the number's place until its first answer, and that
+/// the page gets the number. And Roblox VNG accounts open like
 /// the others now (a ticket from Roblox VNG's sign-in), never with Roblox VNG's own client. Offline: nothing is asked of
 /// Roblox.
 /// </summary>
@@ -24,6 +25,7 @@ static class RobuxSuite
         seed.Save();
         using var form = new Form();
         using var app = new AppController(form, _ => { });
+        Harness.Set(app, "_networkUp", true); // as on a PC online, whatever this one is
         await Harness.Unlock(app);
         var account = Harness.Get<Vault>(app, "_vault").Data.Accounts.Single();
 
@@ -48,15 +50,23 @@ static class RobuxSuite
         c.Check("…and never what stands in for the links", fallbackExe is null || !RobloxInstalls.IsVngClient(fallbackExe), fallbackExe);
         c.Check("…nor the client Default counts as its own", RobloxInstalls.ClientFor("auto") is not { } own || !RobloxInstalls.IsVngClient(own));
 
-        var now = DateTime.UtcNow;
-        Harness.Invoke(app, "RefreshRobuxIfDue", now);
+        // The unlock started the first round already (not 20 s later, as before): the next is half an hour away. The
+        // account has no cookie, so nothing was asked of Roblox.
         var next = Harness.Get<DateTime>(app, "_nextRobux");
-        c.Check("right after unlocking, the first round waits its turn", next > now && next - now <= TimeSpan.FromMinutes(1) && Harness.Get<bool>(app, "_robuxBusy") == false,
-            next - now);
+        c.Check("the first round starts at unlocking, alongside status and avatars", next - DateTime.UtcNow > TimeSpan.FromMinutes(29), next - DateTime.UtcNow);
 
+        object? Field(string name) { object dto = Harness.Invoke(app, "AccountDto", account)!; return dto.GetType().GetProperty(name)!.GetValue(dto); }
+        account.Cookie = "_|WARNING:-DO-NOT-SHARE-THIS.--test";
+        Harness.Set(app, "_networkUp", true);
+        c.Check("a signed-in account not answered yet keeps the number's place on its card", Field("robuxWait") is true && Field("robux") is null);
+        Harness.Get<HashSet<Guid>>(app, "_robuxAsked").Add(account.Id);
+        c.Check("…given back once asked, when Roblox gave no number", Field("robuxWait") is false);
         Harness.Get<Dictionary<Guid, long>>(app, "_robux")[account.Id] = 1234;
-        object dto = Harness.Invoke(app, "AccountDto", account)!;
-        object? robux = dto.GetType().GetProperty("robux")!.GetValue(dto);
-        c.Check("the card gets the account's Robux", robux is long n && n == 1234, robux);
+        c.Check("the card gets the account's Robux", Field("robux") is long n && n == 1234 && Field("robuxWait") is false, Field("robux"));
+        Harness.Get<HashSet<Guid>>(app, "_robuxAsked").Clear();
+        Harness.Get<Dictionary<Guid, long>>(app, "_robux").Clear();
+        Harness.Set(app, "_networkUp", false);
+        c.Check("…and offline, no place kept for a number that won't come", Field("robuxWait") is false);
+        account.Cookie = "";
     }
 }

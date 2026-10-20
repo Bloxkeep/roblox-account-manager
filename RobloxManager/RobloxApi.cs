@@ -1010,7 +1010,7 @@ public static class RobloxApi
     /// <summary>
     /// The account's Robux, asked with its own cookie (economy …/v1/users/{id}/currency answers {"robux": n} to the
     /// account itself; without a sign-in it answers 401, checked on both hosts on 2026-10-19). Null when Roblox didn't
-    /// say: signed out, a refusal, or an answer in another shape.
+    /// say: signed out, a refusal, or an answer in another shape. Too many requests (429) throws, so a round stops there.
     /// </summary>
     public static async Task<long?> GetRobuxAsync(string cookie, string realm, long userId, CancellationToken ct = default)
     {
@@ -1018,6 +1018,8 @@ public static class RobloxApi
         using var req = Request(HttpMethod.Get, $"{Realm.Api(realm, "economy")}/v1/users/{userId.ToString(CultureInfo.InvariantCulture)}/currency", cookie,
             realm: realm);
         using var res = await Http.SendAsync(req, ct);
+        if (res.StatusCode == HttpStatusCode.TooManyRequests)
+            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
         if (!res.IsSuccessStatusCode)
             return null;
         return ReadRobux(await res.Content.ReadAsStringAsync(ct));

@@ -768,6 +768,7 @@ public sealed partial class AppController : IDisposable
         a.UseRobloxConfig,
         avatarUrl = _avatarUrls.GetValueOrDefault(a.UserId),
         robux = RobuxOf(a),
+        robuxWait = RobuxWaiting(a),
         state = _running.ContainsKey(a.Id) ? "running"
             : _pending.Any(p => p.AccountId == a.Id && !_closeWhenClaimed.Contains(p)) ? "launching" : "idle",
         presence = PresenceDto(a),
@@ -1152,6 +1153,7 @@ public sealed partial class AppController : IDisposable
             _ = RefreshPresenceAsync();
         _ = LoadAvatarsAsync(vault.Data.Accounts.Select(a => a.UserId));
         _ = LoadRecentGamesAsync();
+        RefreshRobuxIfDue(DateTime.UtcNow); // alongside those, not after them
         OnVaultUnlocked();
         AddLockedActivity(vault); // what happened while locked (a window closed) is in the log at once, also if Bloxkeep quits next
     }
