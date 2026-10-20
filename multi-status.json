@@ -149,12 +149,13 @@
         "WndProcessCheck"
       ],
       "added": [],
-      "removed": []
+      "removed": [],
+      "liveAt": "2026-10-20T20:16:00Z"
     }
   ],
   "live": {
-    "version": "0.743.0.7431134",
-    "hash": "version-11f155f3450f4c8e"
+    "version": "0.744.0.7441080",
+    "hash": "version-9ac8595712b447a7"
   },
   "future": {
     "version": "0.744.0.7441080",
@@ -165,7 +166,7 @@
     "DFIntWindowsAppReloadTrackingThrottleHundredthsPercent": "50",
     "FFlagRemoveSingleInstanceSempahore": "True"
   },
-  "changedAt": "2026-10-20T16:26:42Z",
+  "changedAt": "2026-10-20T20:16:01Z",
   "beta": {
     "version": "0.744.0.7441080",
     "hash": "version-9ac8595712b447a7"
