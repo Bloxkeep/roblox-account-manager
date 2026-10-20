@@ -24,6 +24,10 @@ stored. The other files in Bloxkeep's data folder, and how they're protected, ar
 | Your Discord webhook (`discord.com`) | Only when you turn on **Settings › Discord**: account names (or **Account 1**, **Account 2**… when hidden), game names, play time, sessions, PID, RAM, and links to Roblox's own pictures of the games and of the accounts' avatars (no avatar when names are hidden). Never cookies or passwords |
 | The backup folder you choose | A copy of the encrypted vault; a OneDrive or Google Drive app may sync it |
 
+**Bloxkeep's Discord bot** (a Cloudflare Worker) runs apart from the app and knows nothing about your accounts. In the
+servers that add it, it reads nothing: it asks Discord for no messages, members or other events, and keeps only what
+it needs to stay connected (its own session, and when its connection started and ended).
+
 Each of these services has its own privacy policy: [Roblox](https://www.roblox.com/info/privacy),
 [GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),
 [Microsoft](https://privacy.microsoft.com/privacystatement), [Cloudflare](https://www.cloudflare.com/privacypolicy/),
