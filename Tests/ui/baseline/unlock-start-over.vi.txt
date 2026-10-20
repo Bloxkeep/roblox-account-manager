@@ -21,19 +21,19 @@ html [data-theme="dark" lang="vi"]
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
         span.sep "·"
-        button.link [type="button"] "Làm lại từ đầu"
+        button.link [type="button"] "Tạo vault mới"
 #layer
   div.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
-        h3 [id="mdl-1"] "Làm lại từ đầu?"
+        h3 [id="mdl-1"] "Tạo vault mới?"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "Bloxkeep không có cách nào lấy lại mật khẩu chủ. Làm lại từ đầu thì các tài khoản và preset đang lưu sẽ không mở được nữa và Bloxkeep bắt đầu trống, với mật khẩu chủ mới. File cũ vẫn được giữ lại chứ không bị xóa. Tài khoản Roblox của bạn không bị ảnh hưởng gì, chỉ cần đăng nhập lại để thêm vào. Sau này nhớ ra mật khẩu cũ thì bấm Khôi phục từ bản sao lưu và chọn file đó trong thư mục dữ liệu của Bloxkeep."
+        p.modal-text.pre "Bloxkeep không có cách nào lấy lại mật khẩu chủ. Tạo vault mới thì các tài khoản và preset trong vault này sẽ không mở được nữa, nhưng file vault cũ vẫn được giữ lại chứ không bị xóa. Tài khoản Roblox của bạn không bị ảnh hưởng gì, chỉ cần đăng nhập lại để thêm vào. Sau này nhớ ra mật khẩu cũ thì bấm Khôi phục từ bản sao lưu và chọn file vault cũ trong thư mục dữ liệu của Bloxkeep."
       div.modal-foot
         button.btn [FOCUSED] "Hủy"
-        button.btn.danger "Làm lại từ đầu"
+        button.btn.danger "Tạo vault mới"
 #toasts
 -- commands
   getState {}
@@ -73,6 +73,6 @@ html [data-theme="dark" lang="vi"]
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Giờ hãy đặt mật khẩu chủ mới. File cũ vẫn nằm trong thư mục dữ liệu của Bloxkeep."
+    span "Đặt mật khẩu chủ cho vault mới. Vault cũ vẫn nằm trong thư mục dữ liệu của Bloxkeep."
 -- commands
   startOver {}

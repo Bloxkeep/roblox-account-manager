@@ -21,7 +21,7 @@ html [data-theme="dark" lang="en"]
       div.lock-alt
         button.link [type="button"] "Restore from a backup"
         span.sep "·"
-        button.link [type="button"] "Start over"
+        button.link [type="button"] "Create a new vault"
 #layer
 #toasts
 -- commands
@@ -51,7 +51,7 @@ html [data-theme="dark" lang="en"]
       div.lock-alt
         button.link [type="button"] "Restore from a backup"
         span.sep "·"
-        button.link [type="button"] "Start over"
+        button.link [type="button"] "Create a new vault"
 #layer
 #toasts
 -- commands
@@ -79,7 +79,7 @@ html [data-theme="dark" lang="en"]
       div.lock-alt
         button.link [type="button"] "Restore from a backup"
         span.sep "·"
-        button.link [type="button"] "Start over"
+        button.link [type="button"] "Create a new vault"
 #layer
 #toasts
 -- commands
@@ -107,7 +107,7 @@ html [data-theme="dark" lang="en"]
       div.lock-alt
         button.link [type="button"] "Restore from a backup"
         span.sep "·"
-        button.link [type="button"] "Start over"
+        button.link [type="button"] "Create a new vault"
 #layer
 #toasts
 -- commands

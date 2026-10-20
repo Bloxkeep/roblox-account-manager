@@ -21,19 +21,19 @@ html [data-theme="dark" lang="en"]
       div.lock-alt
         button.link [type="button"] "Restore from a backup"
         span.sep "·"
-        button.link [type="button"] "Start over"
+        button.link [type="button"] "Create a new vault"
 #layer
   div.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
-        h3 [id="mdl-1"] "Start over with a new master password?"
+        h3 [id="mdl-1"] "Create a new vault?"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "A forgotten master password can’t be recovered. Bloxkeep sets the saved accounts and presets aside (it doesn’t delete them) and asks for a new master password. Your Roblox accounts themselves are fine: add them again by signing in. Remember the old password later? Restore the set-aside file from Bloxkeep’s data folder with Restore from a backup."
+        p.modal-text.pre "A forgotten master password can’t be recovered. With a new vault, the accounts and presets saved in this one can’t be opened any more, but the old vault file is kept, not deleted. Your Roblox accounts themselves are fine: sign in to add them again. Remember the old password later? Use Restore from a backup and pick the old vault file in Bloxkeep’s data folder."
       div.modal-foot
         button.btn [FOCUSED] "Cancel"
-        button.btn.danger "Start over"
+        button.btn.danger "Create a new vault"
 #toasts
 -- commands
   getState {}
@@ -73,6 +73,6 @@ html [data-theme="dark" lang="en"]
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Set a new master password to carry on. The old data is kept aside in Bloxkeep’s data folder."
+    span "Set a master password for the new vault. The old vault is still in Bloxkeep’s data folder."
 -- commands
   startOver {}

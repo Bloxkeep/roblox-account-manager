@@ -2638,7 +2638,7 @@
       case 'bk-import': return importVault();
       // First-run screen: the chosen file becomes the vault; the app then shows the unlock screen.
       case 'restore-backup': return busy(el, () => call('restoreBackup'));
-      // The lock screen's "Start over" (a forgotten master password): what goes and what stays, asked first.
+      // The lock screen's "Create a new vault" (a forgotten master password): what goes and what stays, asked first.
       case 'start-over': return (async () => {
         if (!await confirmBox(t('lock.startOverText'), { title: t('lock.startOverTitle'), ok: t('lock.startOverOk'), danger: true })) return;
         if (await call('startOver') === undefined) return;

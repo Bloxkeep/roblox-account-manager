@@ -381,7 +381,7 @@ public sealed class Vault : IDisposable
     }
 
     /// <summary>
-    /// The lock screen's "Start over", for a master password nobody remembers: the vault and its spare copies are moved
+    /// The lock screen's "Create a new vault", for a master password nobody remembers: the vault and its spare copies are moved
     /// aside as vault-before-start-over-&lt;time&gt;.rmv (never deleted: remembered later, it is restored like a backup), so
     /// Bloxkeep sets up afresh. Nothing is left that would bring the old vault back on the next start (RestoreIfMissing).
     /// </summary>

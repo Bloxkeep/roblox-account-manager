@@ -498,7 +498,7 @@ public sealed partial class AppController
     }
 
     /// <summary>
-    /// The lock screen's "Start over", for a forgotten master password (it can't be recovered): the vault is set aside,
+    /// The lock screen's "Create a new vault", for a forgotten master password (it can't be recovered): the vault is set aside,
     /// not deleted (<see cref="Vault.SetAside"/>), and the lock screen asks for a new master password. Saved accounts and
     /// presets stay in the set-aside file; settings outside the vault (theme, language, backups) stay as they are.
     /// </summary>
@@ -516,7 +516,7 @@ public sealed partial class AppController
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                throw new UserError(L.F("Couldn't start over: {0}", ErrorText(ex)));
+                throw new UserError(L.F("Couldn't create a new vault: {0}", ErrorText(ex)));
             }
         }
         _backupDirty = false;
