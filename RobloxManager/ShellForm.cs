@@ -26,9 +26,9 @@ public sealed class ShellForm : Form
     long _lastBrowserFailure = long.MinValue / 2;
 
     readonly AppController _app;
-    // Long enough that a quick look at another program never closes the browser; it is then reopened on return. When
-    // Windows is short of memory (Roblox windows opening meanwhile), the browser's 150–250 MB go after half a minute.
-    const int ReleaseAfterMs = 5 * 60_000, TightReleaseAfterMs = 30_000, BusyRecheckMs = 60_000;
+    // In the background the browser sleeps and stays, so the window comes back at once. When Windows is short of memory
+    // (Roblox windows opening meanwhile), it is closed instead, looked at every half minute, and made again on return.
+    const int TightReleaseAfterMs = 30_000, BusyRecheckMs = 60_000;
     readonly System.Windows.Forms.Timer _releaseTimer = new() { Interval = TightReleaseAfterMs };
     /// <summary>When the window last went to the background (minimised or hidden), in Environment.TickCount64.</summary>
     long _backgroundSince;
@@ -215,6 +215,11 @@ public sealed class ShellForm : Form
             TellIfLockedAfterUpdate();
             value = false;
         }
+        // Into the tray: the browser hears it is hidden while the window still shows. Told after (OnVisibleChanged), it
+        // never was (a hidden window's control doesn't pass it on): its page kept drawing as if on screen, and the
+        // picture over the window on its way back waited 4 seconds for a "drawn again" that never came.
+        if (!value && _web is { Visible: true } web)
+            web.Visible = false;
         base.SetVisibleCore(value);
     }
 
@@ -684,9 +689,10 @@ public sealed class ShellForm : Form
     }
 
     /// <summary>
-    /// In the background, hide the page (the browser throttles it), trim its memory and poll less; after 5 minutes
-    /// (half a minute when Windows is short of memory) the browser is closed entirely, leaving only the small core
-    /// running until the window comes back.
+    /// In the background, hide the page and put it to sleep (the browser stops its timers and drawing and Windows takes
+    /// its memory back), and poll less; it wakes in a few dozen milliseconds when the window comes back (made again,
+    /// as before, it took about 2.5 s: Tests/perf/TrayBench). Only when Windows is short of memory is the browser
+    /// closed entirely, leaving the small core running until the window comes back.
     /// </summary>
     void UpdateBackground()
     {
@@ -725,14 +731,47 @@ public sealed class ShellForm : Form
         _monitor?.Place(); // gone at once while minimised or hidden; back with the page's next report
     }
 
-    /// <summary>In the background the page is hidden (the browser throttles it) and its memory trimmed; also for a browser made while minimised.</summary>
+    /// <summary>In the background the page is hidden and put to sleep; also for a browser made while minimised. Shown, it is awake (showing wakes it).</summary>
     void ApplyBackgroundToBrowser()
     {
         if (_web?.CoreWebView2 is not { } core)
             return;
         bool background = InBackground;
         _web.Visible = !background;
-        core.MemoryUsageTargetLevel = background ? CoreWebView2MemoryUsageTargetLevel.Low : CoreWebView2MemoryUsageTargetLevel.Normal;
+        if (background)
+        {
+            _ = SleepAsync(core);
+            return;
+        }
+        if (core.MemoryUsageTargetLevel != CoreWebView2MemoryUsageTargetLevel.Normal)
+            core.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
+        _app.PageAsleep = false; // what it missed, and a fresh state
+    }
+
+    /// <summary>
+    /// The hidden page asleep (TrySuspend): nothing is sent to it meanwhile (AppController.PageAsleep), so nothing wakes
+    /// it before the window does. A page that won't sleep keeps getting states, with its memory level low instead.
+    /// </summary>
+    async Task SleepAsync(CoreWebView2 core)
+    {
+        // The browser hears it is hidden on a later turn of the message loop; asked to sleep before that, it refuses.
+        await Task.Delay(300);
+        if (!InBackground || _web?.CoreWebView2 != core || core.IsSuspended)
+            return;
+        _app.PageAsleep = true;
+        bool asleep = false;
+        try
+        {
+            asleep = await core.TrySuspendAsync();
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
+        {
+            // Shown again meanwhile, or the browser went: nothing to put to sleep.
+        }
+        if (asleep || !InBackground || _web?.CoreWebView2 != core)
+            return;
+        _app.PageAsleep = false;
+        core.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low;
     }
 
     void ReleaseWebView()
@@ -755,8 +794,7 @@ public sealed class ShellForm : Form
             _releaseTimer.Start();
             return;
         }
-        if (hidden < ReleaseAfterMs)
-            Log.Note($"Interface closed early in the background: {memory.CommitAvailableMb} MB of virtual memory and {memory.AvailableMb} MB of RAM left.");
+        Log.Note($"Interface closed in the background, Windows short of memory: {memory.CommitAvailableMb} MB of virtual memory and {memory.AvailableMb} MB of RAM left.");
         _web = null;
         _released = true;
         _app.PageGone();
@@ -770,11 +808,11 @@ public sealed class ShellForm : Form
     }
 
     /// <summary>
-    /// How much longer the browser stays after <paramref name="hiddenMs"/> in the background, 0 to close it now: 5 minutes
-    /// in all, but looked at every half minute meanwhile, and closed then if Windows is short of memory.
+    /// When to look again, 0 to close the browser now: every half minute in the background, closed once Windows is short
+    /// of memory. Otherwise it stays, asleep: it holds about 180 MB of virtual memory but next to no RAM, and waking it
+    /// takes a few dozen milliseconds where making it again took about 2.5 s.
     /// </summary>
-    static int ReleaseWait(long hiddenMs, MemoryStatus memory) =>
-        hiddenMs >= ReleaseAfterMs || AppController.MemoryTight(memory) ? 0 : (int)Math.Min(ReleaseAfterMs - hiddenMs, TightReleaseAfterMs);
+    static int ReleaseWait(long hiddenMs, MemoryStatus memory) => AppController.MemoryTight(memory) ? 0 : TightReleaseAfterMs;
 
     async Task RecreateWebViewAsync()
     {

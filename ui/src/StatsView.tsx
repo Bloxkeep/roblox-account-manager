@@ -82,7 +82,10 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
     const back = () => { if (!document.hidden && shown.current) { loadStats(); loadActivity(); } };
     const stopShow = on('statsShown', show), stopHide = on('statsHidden', hide);
     document.addEventListener('visibilitychange', back);
-    return () => { stopShow(); stopHide(); clearInterval(timer); document.removeEventListener('visibilitychange', back); };
+    // Ready before the tab is first opened: the figures and the games' icons (which the app may have to ask Roblox for)
+    // are asked for once the app has settled, so opening Statistics shows them at once instead of after a moment.
+    const stopSettled = on('settled', () => { if (!shown.current) loadStats(); });
+    return () => { stopShow(); stopHide(); stopSettled(); clearInterval(timer); document.removeEventListener('visibilitychange', back); };
   }, []); // the loaders read the latest period and filters (now)
 
   // Activity's sentences name accounts as the app wrote them: once names are hidden or shown again, the kept list goes
@@ -329,8 +332,12 @@ function AgoTime({ iso, title }: { iso: string; title: string }) {
   return <time dateTime={iso} title={title}>{ago(iso)}</time>;
 }
 
-/** A game's picture; a broken one becomes the gamepad placeholder. */
+/**
+ * A game's picture; a broken one becomes the gamepad placeholder. Loaded and decoded while the tab is still hidden (not
+ * lazily, when it is first shown), so opening Statistics shows the icons at once.
+ */
 function GameImg({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
-  return failed ? <span className="gph"><Icon name="gamepad" /></span> : <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} />;
+  return failed ? <span className="gph"><Icon name="gamepad" /></span>
+    : <img src={src} alt="" onLoad={e => { e.currentTarget.decode?.().catch(() => {}); }} onError={() => setFailed(true)} />;
 }

@@ -42,10 +42,14 @@
   const id = n => `00000000-0000-4000-8000-00000000000${n}`;
   const g = p => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl });
   const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random'];
+  // Tests/perf: ?coldicons=1 gives Statistics' and the presets' game icons addresses the browser hasn't loaded yet (games
+  // not on the accounts page); ?statsms=350 has Statistics answer that much later, as the app does when it asks Roblox first.
+  const coldStamp = Date.now();
+  const cold = url => url && params.has('coldicons') ? `${url}?cold=${coldStamp}` : url;
   // Like the app: a preset's game icon when the game is known (?noicons=1: none yet, as right after starting).
   const presetIcon = input => {
     const m = /(\d{5,})/.exec(input || '');
-    return m && games[m[1]] && !params.has('noicons') ? games[m[1]].iconUrl : null;
+    return m && games[m[1]] && !params.has('noicons') ? cold(games[m[1]].iconUrl) : null;
   };
   const MAX_PRESETS = 50;
   const QL_STEPS = (params.get('ql') || '').split(',').filter(Boolean);
@@ -296,13 +300,17 @@
   const push = () => { emit('state', state()); if (!locked) emit('metrics', metrics()); };
   let loginUser = '';
   const srvAsked = []; // when each server list was given, for Roblox's few-a-minute limit
-  const wait = ms => new Promise(r => setTimeout(r, ms));
+  // ?nodelay=1: answers at once, like the app, for timing the page (Tests/perf); otherwise a little later, as over a bridge.
+  const wait = ms => new Promise(r => setTimeout(r, params.has('nodelay') ? 0 : ms));
 
   window.__mockBridge = {
     attach(fn) {
       emit = fn;
       // The first right away rather than 1.5 s in, so the panel's numbers are there when the page settles (Tests/ui).
       setTimeout(() => !locked && emit('metrics', metrics()), 0);
+      // ?settled=1: the app says it has settled (it does a moment after the loading screen), so the tabs not opened yet
+      // get ready (Tests/ui settled-ready). Not otherwise: the commands it brings would land in every scenario.
+      if (params.has('settled')) setTimeout(() => !locked && emit('settled', null), 300);
       setInterval(() => !locked && emit('metrics', metrics()), 1500);
     },
     async call(cmd, a) {
@@ -805,6 +813,7 @@
         // (no randomness) so screenshots repeat. ?nostats=1: nothing recorded yet.
         case 'playStats': {
           await wait(200);
+          if (params.has('statsms')) await new Promise(r => setTimeout(r, Number(params.get('statsms'))));
           if (params.has('statsfail')) throw new Error('Couldn’t load the statistics.'); // ?statsfail=1: every request fails
           const days = [7, 30].includes(a.days) ? a.days : 1, hourly = days === 1, now = new Date();
           const start = new Date(now);
@@ -821,10 +830,10 @@
           const share = p => Math.round(total * p);
           return { days, hourly, since: start.toISOString(), recorded: !params.has('nostats'), totalSeconds: total, sessions: count, kicks: Math.round(total / 20000),
             accounts: [[1, .45, 1], [2, .33, 2], [4, .2, 0], [9, .02, 0]].map(([n, p, k]) => { const acc = accounts.find(x => x.id === id(n)); return { id: id(n), label: acc?.label, username: acc?.username, avatarUrl: acc?.avatarUrl, seconds: share(p), sessions: Math.max(1, Math.round(count * p)), kicks: k }; }),
-            games: [[2753915549, .55], [920587237, .3], [4924922222, .15]].map(([p, s]) => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl, seconds: share(s), sessions: Math.max(1, Math.round(count * s)) })),
+            games: [[2753915549, .55], [920587237, .3], [4924922222, .15]].map(([p, s]) => ({ placeId: p, name: games[p].name, iconUrl: cold(games[p].iconUrl), seconds: share(s), sessions: Math.max(1, Math.round(count * s)) })),
             buckets,
-            presets: [{ id: 'p1', name: 'Farm Blox Fruits', iconUrl: games[2753915549].iconUrl, seconds: share(.62), sessions: Math.max(1, Math.round(count * .6)), kicks: 1, accounts: 3 },
-              { id: 'p2', name: 'Adopt Me trade', iconUrl: games[920587237].iconUrl, seconds: share(.25), sessions: 3, kicks: 0, accounts: 1 },
+            presets: [{ id: 'p1', name: 'Farm Blox Fruits', iconUrl: cold(games[2753915549].iconUrl), seconds: share(.62), sessions: Math.max(1, Math.round(count * .6)), kicks: 1, accounts: 3 },
+              { id: 'p2', name: 'Adopt Me trade', iconUrl: cold(games[920587237].iconUrl), seconds: share(.25), sessions: 3, kicks: 0, accounts: 1 },
               { id: '00000000-0000-0000-0000-000000000000', name: '', iconUrl: null, seconds: share(.13), sessions: 2, kicks: 0, accounts: 2 }],
             longest: total ? { seconds: Math.round(total * .3), account: id(1), label: accounts.find(x => x.id === id(1))?.label, game: games[2753915549].name } : null };
         }

@@ -216,12 +216,69 @@ public sealed partial class AppController : IDisposable
     /// </summary>
     public bool PageAttached { get; set; }
 
+    /// <summary>
+    /// The page sleeps while the window is in the background (ShellForm suspends it): no state is built or sent to it
+    /// (that would wake it, and it is the costly part of a day in the tray), and events wait, the latest few, with every
+    /// reply to a command it sent before. Woken, it gets those, one fresh state and the memory figures.
+    /// </summary>
+    public bool PageAsleep
+    {
+        get => _pageAsleep;
+        set
+        {
+            string[] missed;
+            lock (_asleepEvents)
+            {
+                if (_pageAsleep == value)
+                    return;
+                _pageAsleep = value;
+                if (value)
+                    return;
+                missed = _asleepEvents.ToArray();
+                _asleepEvents.Clear();
+            }
+            foreach (string json in missed)
+                Post(json);
+            _lastMetrics = null; // sent again at the next look, though unchanged
+            PushState();
+        }
+    }
+    volatile bool _pageAsleep;
+    readonly List<string> _asleepEvents = new();
+    const int MaxAsleepEvents = 30;
+
+    /// <summary>The sleeping page went (the browser closed, or a new page): what waited for it goes too.</summary>
+    void ForgetSleep()
+    {
+        lock (_asleepEvents)
+        {
+            _pageAsleep = false;
+            _asleepEvents.Clear();
+        }
+    }
+
     // ───────────────────────────── bridge ─────────────────────────────
 
     void Post(string json)
     {
-        if (!_disposed)
-            _post(json);
+        if (_disposed)
+            return;
+        if (_pageAsleep)
+        {
+            // States aren't sent to a sleeping page at all (PushState); an event waits for it to wake, the newest kept. A
+            // reply always waits: the page's command would otherwise never finish.
+            lock (_asleepEvents)
+            {
+                if (_pageAsleep)
+                {
+                    _asleepEvents.Add(json);
+                    if (_asleepEvents.Count > MaxAsleepEvents && _asleepEvents.FindIndex(j => j.StartsWith("{\"type\":\"event\"", StringComparison.Ordinal)) is >= 0 and var oldest)
+                        _asleepEvents.RemoveAt(oldest);
+                    return;
+                }
+            }
+        }
+        _post(json);
     }
 
     /// <summary>An event for the page; none while the screen is locked (a toast could name an account on the lock screen).</summary>
@@ -236,7 +293,7 @@ public sealed partial class AppController : IDisposable
     public void PushState()
     {
         RenameWebsites();
-        if (PageAttached)
+        if (PageAttached && !_pageAsleep)
             PostState(BuildState(), force: true);
     }
 
@@ -247,7 +304,7 @@ public sealed partial class AppController : IDisposable
     /// </summary>
     void PushStateIfChanged()
     {
-        if (PageAttached)
+        if (PageAttached && !_pageAsleep)
             PostState(BuildState(), force: false);
     }
 
@@ -484,8 +541,11 @@ public sealed partial class AppController : IDisposable
         bool resume = ResumingPage;
         ResumingPage = false;
         PageAttached = true;
+        ForgetSleep(); // a new page is awake and gets everything here
         PageBusy = false; // a fresh page has nothing open yet
         _lastMetrics = _lastState = null; // a new page has nothing yet; send both again
+        if (_vault is not null && _boot is null)
+            _ = SettledAsync(); // a page made again (after the browser was closed in the background) gets ready too
         string? view = resume && Open is not null ? _pageView : null;
         _pageView = null;
         return new { resume, view, state = BuildState() };
@@ -534,6 +594,7 @@ public sealed partial class AppController : IDisposable
     public void PageGone()
     {
         PageAttached = false; // the next page asks for everything with getState
+        ForgetSleep();
         PageBusy = false;
         SetMonitorArea?.Invoke(null); // the next page says again where its monitor tab is, if it shows it
         LoginCancel();
@@ -2060,6 +2121,24 @@ public sealed partial class AppController : IDisposable
             : null;
         if (push)
             PushState();
+        if (_boot is null)
+            _ = SettledAsync();
+    }
+
+    const int SettledDelayMs = 1500;
+
+    /// <summary>
+    /// A moment after the loading screen is done (or a new page came to an open vault), once the accounts and avatars
+    /// are drawn: the page hears "settled" and gets ready what its tabs not opened yet show (Statistics' figures, the
+    /// presets' icons, and those games' pictures, which may have to be asked of Roblox), instead of when they are first
+    /// opened (0.3-1.4 s from here). A sleeping page hears it on waking.
+    /// </summary>
+    async Task SettledAsync()
+    {
+        var vault = _vault;
+        await Task.Delay(SettledDelayMs);
+        if (vault is not null && _vault == vault && _boot is null && PageAttached)
+            Emit("settled", null);
     }
 
     // ───────────────────────────── games ─────────────────────────────
@@ -3550,7 +3629,8 @@ public sealed partial class AppController : IDisposable
             availableMb = memory.AvailableMb / 128 * 128, // coarse, so idle jitter doesn't repaint the page
             usedPct = memory.LoadPercent,
         }, Json);
-        if (json == _lastMetrics)
+        // A sleeping page gets the figures of the moment it wakes, not a queue of old ones.
+        if (json == _lastMetrics || _pageAsleep)
             return;
         _lastMetrics = json;
         Post($"{{\"type\":\"event\",\"name\":\"metrics\",\"data\":{json}}}");

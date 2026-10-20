@@ -28,6 +28,7 @@ AccountData.json
 TestResults/
 *.trx
 Tests/ui/out/
+Tests/perf/out/
 
 # Discord message samples the discord test suite writes for dev/discord-preview.html
 dev/discord-samples*.json

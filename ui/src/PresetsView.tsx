@@ -47,14 +47,19 @@ export function PresetsView() {
   const q = fold(shownQuery.trim());
   const shown = q ? all.filter(p => fold(`${p.name}\n${p.placeInput ? p.gameName || p.placeInput : t('ps.noGame')}`).includes(q)) : all;
 
-  // The tab just opened: game icons not known yet are asked for (at most every few minutes).
+  // The tab just opened, or the app has settled (so they are there when it first opens): game icons not known yet are
+  // asked for (at most every few minutes).
   const iconsAt = useRef(0), latest = useRef(all);
   latest.current = all;
-  useEffect(() => on('presetsShown', () => {
-    if (!latest.current.some(p => p.placeInput && !p.iconUrl) || Date.now() - iconsAt.current <= 5 * 60_000) return;
-    iconsAt.current = Date.now();
-    call('presetIcons', {}, { silent: true });
-  }), [on, call]);
+  useEffect(() => {
+    const ask = () => {
+      if (!latest.current.some(p => p.placeInput && !p.iconUrl) || Date.now() - iconsAt.current <= 5 * 60_000) return;
+      iconsAt.current = Date.now();
+      call('presetIcons', {}, { silent: true });
+    };
+    const stops = [on('presetsShown', ask), on('settled', ask)];
+    return () => stops.forEach(stop => stop());
+  }, [on, call]);
 
   // Dragging a row by its handle (only the handle starts a drag, so the row's buttons and switch work as usual): the
   // rows show the new order as it goes and keep it until the app answers; Esc, or a drop outside, puts them back.
@@ -187,7 +192,9 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
 
   return <div className={`pv-item${dragging ? ' dragging' : ''}`} role="listitem" data-id={p.id} draggable={draggable} onDragStart={dragStart}>
     {ordered ? <span className="ord-grip pv-grip" title={t('lo.drag')} onPointerDown={arm}><Icon name="grip" /></span> : null}
-    {p.iconUrl && !iconFailed ? <img className="pv-icon" src={p.iconUrl} alt="" draggable="false" loading="lazy" onError={() => setIconFailed(true)} />
+    {/* Loaded and decoded while the tab is hidden, so opening it shows the icons at once. */}
+    {p.iconUrl && !iconFailed ? <img className="pv-icon" src={p.iconUrl} alt="" draggable="false"
+      onLoad={e => { e.currentTarget.decode?.().catch(() => {}); }} onError={() => setIconFailed(true)} />
       : <span className="pv-icon"><Icon name={p.placeInput ? 'gamepad' : 'monitor'} /></span>}
     <div className="pv-main">
       <b title={p.name}>{p.name}</b>

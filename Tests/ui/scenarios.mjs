@@ -68,6 +68,9 @@ export default [
   S('monitor', 'monitor=1'),
   S('stats', 'stats=1'),
   S('stats-none', 'stats=1&nostats=1'),
+  // The app has settled after the loading screen: Statistics' figures and the presets' icons are asked for before
+  // either tab is opened.
+  S('settled-ready', 'settled=1', async s => { await s.wait(600); }),
 
   // ── Settings: every page ──
   ...['launch', 'roblox', 'perf', 'notify', 'discord', 'appearance', 'security', 'backup', 'updates'].map(p => S(`settings-${p}`, `settings=${p}`)),

@@ -76,9 +76,10 @@ export interface Host {
    * fn runs each time app.js gives the signal: "hideDiscordLink" (a shown webhook link goes: Settings or its page left,
    * the window left), "clearPassword" (typed passwords go: Settings left), "presetQuery" (the Presets search was put
    * back: presetQuery), "presetsShown" (the Presets tab was opened), "statsShown" / "statsHidden" (the Statistics tab
-   * came on screen or went). Returns how to stop.
+   * came on screen or went), "settled" (the app has settled after an unlock, or for a new page: tabs not open yet get
+   * ready). Returns how to stop.
    */
-  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden', fn: () => void): () => void;
+  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden' | 'settled', fn: () => void): () => void;
   /** The Presets tab's search, as app.js keeps it (a page restarted comes back with it), and a new one typed. */
   presetQuery(): string;
   setPresetQuery(q: string): void;

@@ -3012,6 +3012,8 @@
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveView(); });
   // Bloxkeep is about to install an update in the background and start again: the new page comes back like this one.
   bridge.on('saveView', () => saveView(true));
+  // The app has settled (after an unlock, or for a new page): the tabs not opened yet get their figures and icons ready.
+  bridge.on('settled', () => uiSignal('settled'));
 
   toastUi = window.BloxkeepUI.toasts($('#toasts'), uiHost());
   bridge.call('getState').then(first => {
