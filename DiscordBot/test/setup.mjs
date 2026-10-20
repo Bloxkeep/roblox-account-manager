@@ -41,14 +41,15 @@ gw.on('connection', ws => {
 const message = (channel, author, roles = [], bot = false) =>
   socket.send(JSON.stringify({ op: 0, t: 'MESSAGE_CREATE', s: seq++, d: { id: `m${seq}`, guild_id: G, channel_id: channel, author: { id: author, username: `user_${author}`, bot }, member: { roles }, content: '' } }));
 
-// ── the fake server: what a new server has (Discord's own categories, #general and the General voice channel) ──
+// ── the fake server: what a new server has, made by someone whose Discord is in Vietnamese (Discord's own categories,
+//    #chung and the Chung voice channel) ──
 let next = 1000;
 const id = () => String(next++);
 const guild = { id: G, owner_id: OWNER, features: [], icon: null };
 const roles = [{ id: G, name: '@everyone', position: 0, permissions: '0' }];
 const channels = [
-  { id: 't1', name: 'Text Channels', type: 4, parent_id: null }, { id: 'c1', name: 'general', type: 0, parent_id: 't1' },
-  { id: 't2', name: 'Voice Channels', type: 4, parent_id: null }, { id: 'v1', name: 'General', type: 2, parent_id: 't2' },
+  { id: 't1', name: 'Kênh Chat', type: 4, parent_id: null }, { id: 'c1', name: 'chung', type: 0, parent_id: 't1' },
+  { id: 't2', name: 'Kênh đàm thoại', type: 4, parent_id: null }, { id: 'v1', name: 'Chung', type: 2, parent_id: 't2' },
 ];
 const messages = {}, automod = [], bans = [], memberRoles = [], answers = [];
 let onboarding = null;
@@ -146,24 +147,25 @@ try {
   await setup(OWNER, 'tok2');
   check('the owner\'s /setup finishes, with nothing it couldn\'t do', await waitFor(() => answers.length === 2, 20000) && /^Done\. Made: /.test(answers[1]) && !/Couldn't/.test(answers[1]), answers[1]);
   const names = roles.filter(x => x.id !== G).sort((a, b) => b.position - a.position).map(x => x.name).join(', ');
-  check('roles, top to bottom: Admin, Moderator, Roblox updates, Tiếng Việt, English', names === 'Admin, Moderator, Roblox updates, Tiếng Việt, English', names);
+  check('roles, top to bottom: Admin, Moderator, Roblox updates (the server is English only)', names === 'Admin, Moderator, Roblox updates', names);
   check('…Admin for whoever ran it', memberRoles.some(([u, role]) => u === OWNER && role === roles.find(x => x.name === 'Admin').id));
   check('…"Roblox updates" may be pinged', roles.find(x => x.name === 'Roblox updates')?.mentionable === true);
   const cat = name => named(name, 4)?.id;
   const under = (cat, list) => list.every(([name, type]) => named(name, type)?.parent_id === cat);
   check('Info: the trap, welcome, rules, announcements, roblox-updates', under(cat('Info'), [['dont-type-here', 0], ['welcome', 0], ['rules', 0], ['announcements', 5], ['roblox-updates', 5]]), JSON.stringify(channels.map(c => [c.name, c.type, c.parent_id])));
-  check('Community: general (Discord\'s, moved), showcase, off-topic, tiếng-việt, the voice channel', under(cat('Community'), [['general', 0], ['showcase', 0], ['off-topic', 0], ['tiếng-việt', 0], ['General', 2]]) && named('general').id === 'c1');
+  check('Community: general (Discord\'s #chung, renamed), showcase, off-topic, the voice channel (renamed General), nothing in Vietnamese', under(cat('Community'), [['general', 0], ['showcase', 0], ['off-topic', 0], ['General', 2]])
+    && !named('tiếng-việt')
+    && named('general').id === 'c1' && named('General').id === 'v1');
   check('Support: the help, bug-reports and ideas forums, with tags', under(cat('Support'), [['help', 15], ['bug-reports', 15], ['ideas', 15]]) && named('help').available_tags.some(t => t.name === 'Solved'));
   check('Staff: mod-chat and mod-log, hidden from everyone else', under(cat('Staff'), [['mod-chat', 0], ['mod-log', 0]])
     && named('mod-log').permission_overwrites.some(o => o.id === G && BigInt(o.deny) & (1n << 10n)));
-  check('Discord\'s own categories are gone', !named('Text Channels') && !named('Voice Channels'));
+  check('Discord\'s own categories are gone', !named('Kênh Chat') && !named('Kênh đàm thoại') && !named('chung'));
   check('rules and welcome: everyone reads, only moderators and the bot post', ['rules', 'welcome', 'roblox-updates'].every(n => named(n).permission_overwrites.some(o => o.id === G && BigInt(o.deny) & (1n << 11n))
     && named(n).permission_overwrites.some(o => o.id === BOT && o.type === 1 && BigInt(o.allow) & (1n << 11n))));
-  check('#tiếng-việt: only for Tiếng Việt (and moderators)', named('tiếng-việt').permission_overwrites.some(o => o.id === roles.find(x => x.name === 'Tiếng Việt').id && BigInt(o.allow) & (1n << 10n)));
   check('Community on: rules channel, updates to #mod-log, verification, media scanned', guild.features.includes('COMMUNITY') && guild.rules_channel_id === named('rules').id
     && guild.public_updates_channel_id === named('mod-log').id && guild.verification_level === 2 && guild.explicit_content_filter === 2);
-  check('onboarding: a language to pick, the Roblox ping, the trap not shown to newcomers', onboarding?.enabled === true && onboarding.prompts.length === 2
-    && onboarding.prompts[0].options.map(o => o.title).join() === 'English,Tiếng Việt' && !onboarding.default_channel_ids.includes(named('dont-type-here').id)
+  check('onboarding: the Roblox ping to pick, the trap not shown to newcomers', onboarding?.enabled === true && onboarding.prompts.length === 1
+    && onboarding.prompts[0].options[0].role_ids[0] === roles.find(x => x.name === 'Roblox updates').id && !onboarding.default_channel_ids.includes(named('dont-type-here').id)
     && onboarding.default_channel_ids.includes(named('help').id), JSON.stringify(onboarding?.default_channel_ids));
   const cookie = automod.find(a => a.name === 'Roblox cookies and scams');
   check('AutoMod: four rules, a pasted Roblox cookie blocked and reported in #mod-log', automod.length === 4 && cookie?.trigger_metadata.regex_patterns.includes('_\\|WARNING:-DO-NOT-SHARE-THIS')

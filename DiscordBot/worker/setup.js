@@ -1,5 +1,5 @@
 // Bloxkeep's community server, set up by the bot itself with /setup (Bloxkeep's developers only): its roles, categories
-// and channels, who may post where, Community on, onboarding (a language, and a ping when Roblox updates), AutoMod
+// and channels, who may post where, Community on, onboarding (a ping when Roblox updates), AutoMod
 // (spam, mention raids, bad words, and a Roblox cookie or a free-Robux scam pasted in chat), #dont-type-here (a trap:
 // whoever posts there is banned, worker.js trap), its icon, the rules and welcome posts. Run again, it only adds what is missing and updates its own posts: nothing is made twice. A step
 // Discord refuses is reported, and the others still run.
@@ -14,6 +14,8 @@ const P = {
   MODERATE: B(40),
 };
 const TEXT = 0, VOICE = 2, CATEGORY = 4, NEWS = 5, FORUM = 15;
+// The categories Discord makes with a new server, in English and in Vietnamese (the creator's language decides).
+const DISCORD_CATEGORIES = ['Text Channels', 'Voice Channels', 'Kênh Chat', 'Kênh đàm thoại'];
 const ICON = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/server-icon.png';
 const SETUP = `${REPO}/releases/latest/download/Bloxkeep-Setup.exe`;
 const DESCRIPTION = "Bloxkeep: the free Roblox account manager for Windows. Help, ideas, and Roblox update alerts.";
@@ -80,19 +82,27 @@ export async function setupServer(env, guildId, bot, runner) {
     return c;
   }
 
-  // Roles, top to bottom: Admin (everything), Moderator, then the ones members pick when they join.
+  // Roles, top to bottom: Admin (everything), Moderator, then the one members pick when they join. The server is in
+  // English, one language for everyone.
   const admin = await role('Admin', { permissions: String(P.ADMIN), color: 0xED4245, hoist: true });
   const mod = await role('Moderator', {
     permissions: String(P.KICK | P.BAN | P.AUDIT_LOG | P.MANAGE_MESSAGES | P.MANAGE_NICKNAMES | P.MANAGE_THREADS | P.MODERATE),
     color: 0x5865F2, hoist: true,
   });
   const pings = await role('Roblox updates', { permissions: '0', color: 0xF5C933, mentionable: true });
-  const vietnamese = await role('Tiếng Việt', { permissions: '0' });
-  const english = await role('English', { permissions: '0' });
-  const top = Math.max(...[admin, mod, pings, vietnamese, english].map(r => r.position ?? 1));
-  await step('role order', () => call('PATCH', `${g}/roles`, [admin, mod, pings, vietnamese, english].map((r, i) => ({ id: r.id, position: top - i }))));
+  const top = Math.max(...[admin, mod, pings].map(r => r.position ?? 1));
+  await step('role order', () => call('PATCH', `${g}/roles`, [admin, mod, pings].map((r, i) => ({ id: r.id, position: top - i }))));
   if (runner)
     await step('Admin for you', () => call('PUT', `${g}/members/${runner}/roles/${admin.id}`));
+
+  // What Discord made with the server: its first text channel ("chung" in Vietnamese) becomes #general, its voice
+  // channel "General"; both move into Community below, and Discord's categories go once empty.
+  const defaults = channels.filter(c => c.type === CATEGORY && DISCORD_CATEGORIES.includes(c.name));
+  const theirs = type => channels.find(c => c.type === type && defaults.some(d => d.id === c.parent_id));
+  if (!channels.some(c => c.type === TEXT && c.name === 'general') && theirs(TEXT))
+    await step('rename #general', async () => Object.assign(theirs(TEXT), await call('PATCH', `/channels/${theirs(TEXT).id}`, { name: 'general' })));
+  if (theirs(VOICE) && theirs(VOICE).name !== 'General')
+    await step('rename General', async () => Object.assign(theirs(VOICE), await call('PATCH', `/channels/${theirs(VOICE).id}`, { name: 'General' })));
 
   // Categories and the channels that need nothing more than a server.
   const info = await channel('Info', CATEGORY, null);
@@ -106,12 +116,10 @@ export async function setupServer(env, guildId, bot, runner) {
   const general = await channel('general', TEXT, community, { topic: 'Anything about Bloxkeep and Roblox' });
   const showcase = await channel('showcase', TEXT, community, { topic: 'Your window layouts, presets and setups' });
   const offTopic = await channel('off-topic', TEXT, community, { topic: 'Everything else' });
-  const viet = await channel('tiếng-việt', TEXT, community, { topic: 'Trò chuyện bằng tiếng Việt', permission_overwrites: only(everyone, [vietnamese.id, mod.id], bot) });
   const modChat = await channel('mod-chat', TEXT, staff, { permission_overwrites: only(everyone, [mod.id], bot) });
   const modLog = await channel('mod-log', TEXT, staff, { topic: 'AutoMod alerts and Discord updates', permission_overwrites: only(everyone, [mod.id], bot) });
 
-  // What Discord made with the server: its voice channel into Community, its own categories gone once empty.
-  const defaults = channels.filter(c => c.type === CATEGORY && ['Text Channels', 'Voice Channels'].includes(c.name));
+  // Discord's voice channel into Community, its categories gone once empty.
   for (const v of channels.filter(c => c.type === VOICE && defaults.some(d => d.id === c.parent_id)))
     await step(`move ${v.name}`, async () => Object.assign(v, await call('PATCH', `/channels/${v.id}`, { parent_id: community.id })));
   for (const d of defaults) {
@@ -146,24 +154,16 @@ export async function setupServer(env, guildId, bot, runner) {
   await step('order', () => call('PATCH', `${g}/channels`, [
     [info, community, support, staff],
     [trap, welcome, rules, announcements, updates],
-    [general, showcase, offTopic, viet, ...channels.filter(c => c.type === VOICE && c.parent_id === community.id)],
+    [general, showcase, offTopic, ...channels.filter(c => c.type === VOICE && c.parent_id === community.id)],
     [help, bugs, ideas],
     [modChat, modLog],
   ].flatMap(list => list.filter(Boolean).map((c, position) => ({ id: c.id, position })))));
 
-  // Onboarding: everyone sees the main channels; a language to pick (Tiếng Việt opens #tiếng-việt), and a ping when
-  // Roblox updates for those who want it.
+  // Onboarding: everyone sees the main channels, and picks a ping when Roblox updates if they want it.
   await step('onboarding', () => call('PUT', `${g}/onboarding`, {
     enabled: true, mode: 0,
     default_channel_ids: [welcome, rules, announcements, updates, general, showcase, offTopic, help, bugs, ideas].filter(Boolean).map(c => c.id),
     prompts: [
-      {
-        type: 0, title: 'Which language do you speak?', single_select: true, required: true, in_onboarding: true,
-        options: [
-          { title: 'English', description: 'Chat in English', role_ids: [english.id], channel_ids: [] },
-          { title: 'Tiếng Việt', description: 'Mở thêm kênh #tiếng-việt', role_ids: [vietnamese.id], channel_ids: [] },
-        ],
-      },
       {
         type: 0, title: 'Want a ping when Roblox updates?', single_select: true, required: false, in_onboarding: true,
         options: [{ title: 'Yes, ping me', description: 'Roblox builds coming and live, outages, new Bloxkeep versions', role_ids: [pings.id], channel_ids: [] }],
@@ -239,7 +239,7 @@ export async function setupServer(env, guildId, bot, runner) {
       `**Start here:** ${rules ? `<#${rules.id}>` : '#rules'}, then download Bloxkeep below.`,
       `**Need help?** Post in ${help ? `<#${help.id}>` : '#help'}. **Found a bug?** ${bugs ? `<#${bugs.id}>` : '#bug-reports'}. **An idea?** ${ideas ? `<#${ideas.id}>` : '#ideas'}.`,
       `**Roblox updates:** ${updates ? `<#${updates.id}>` : '#roblox-updates'} says when a Roblox build is coming, and whether Multi-Roblox still works on it.`,
-      '-# Nói tiếng Việt? Chọn Tiếng Việt khi vào server (hoặc trong Channels & Roles) để mở kênh #tiếng-việt.',
+      '-# This server is in English, so everyone can follow along.',
     ].join('\n\n'), 0x5865F2)],
     components: [links],
   });
