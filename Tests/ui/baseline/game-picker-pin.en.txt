@@ -345,11 +345,11 @@ html [data-theme="dark" lang="en"]
               svg.i #sy1lqp
           div.picker [id="picker"]
             div.picker-tabs [role="tablist"]
-              button.on.ptab [role="tab"] "Recent"
-              button.ptab [role="tab"] "Pinned"
-              button.ptab [role="tab"] "Saved"
-              button.ptab [role="tab"] "Roblox favorites"
-              button.ptab [role="tab"] "Popular"
+              button.on.ptab [role="tab" tabindex="-1"] "Recent"
+              button.ptab [role="tab" tabindex="-1"] "Pinned"
+              button.ptab [role="tab" tabindex="-1"] "Saved"
+              button.ptab [role="tab" tabindex="-1"] "Roblox favorites"
+              button.ptab [role="tab" tabindex="-1"] "Popular"
             div.picker-list [id="picker-list" role="listbox"]
               div.game-row [id="pk-0" role="option" aria-selected="false"]
                 span.gph
@@ -357,7 +357,7 @@ html [data-theme="dark" lang="en"]
                 div.gtxt
                   b [title="Blox Fruits"] "Blox Fruits"
                   small "412,873 playing"
-                button.icon-btn.pin [title="Pin"]
+                button.icon-btn.pin [title="Pin" tabindex="-1"]
                   svg.i #19cjsv1
               div.game-row [id="pk-1" role="option" aria-selected="false"]
                 span.gph
@@ -365,7 +365,7 @@ html [data-theme="dark" lang="en"]
                 div.gtxt
                   b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                   small "186,204 playing"
-                button.icon-btn.pin [title="Pin"]
+                button.icon-btn.pin [title="Pin" tabindex="-1"]
                   svg.i #19cjsv1
               div.game-row [id="pk-2" role="option" aria-selected="false"]
                 span.gph
@@ -373,7 +373,7 @@ html [data-theme="dark" lang="en"]
                 div.gtxt
                   b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                   small "655,120 playing"
-                button.icon-btn.pin [title="Pin"]
+                button.icon-btn.pin [title="Pin" tabindex="-1"]
                   svg.i #19cjsv1
           div.dock-mid
             div.dock-inputs

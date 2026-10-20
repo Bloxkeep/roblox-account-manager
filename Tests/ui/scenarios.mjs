@@ -220,6 +220,15 @@ export default [
     await s.snap('popular');
     await s.key('Escape');
   }),
+  // A game already in the box: a click opens the list anyway, with the box's text selected, so typing a name replaces
+  // the link and searches instead of being added to it.
+  S('game-box-with-game', '', async s => {
+    await s.click(key('dock.place'));
+    await s.wait(600);
+    await s.snap('tabs');
+    await s.type('adopt');
+    await s.wait(800);
+  }),
   // Saved servers: the Saved tab, picking one with a code (the game goes in the box, the code is copied), and saving a
   // private server's link, then a game with a code.
   S('saved-servers', '', async s => {

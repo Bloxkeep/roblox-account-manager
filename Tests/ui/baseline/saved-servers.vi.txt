@@ -345,11 +345,11 @@ html [data-theme="dark" lang="vi"]
               svg.i #sy1lqp
           div.picker [id="picker"]
             div.picker-tabs [role="tablist"]
-              button.ptab [role="tab"] "Gần đây"
-              button.ptab [role="tab"] "Đã ghim"
-              button.on.ptab [role="tab"] "Đã lưu"
-              button.ptab [role="tab"] "Yêu thích trên Roblox"
-              button.ptab [role="tab"] "Phổ biến"
+              button.ptab [role="tab" tabindex="-1"] "Gần đây"
+              button.ptab [role="tab" tabindex="-1"] "Đã ghim"
+              button.on.ptab [role="tab" tabindex="-1"] "Đã lưu"
+              button.ptab [role="tab" tabindex="-1"] "Yêu thích trên Roblox"
+              button.ptab [role="tab" tabindex="-1"] "Phổ biến"
             div.picker-list [id="picker-list" role="listbox"]
               div.game-row.saved [id="pk-0" role="option" aria-selected="false"]
                 span.gph
@@ -357,7 +357,7 @@ html [data-theme="dark" lang="vi"]
                 div.gtxt
                   b [title="VIP farm"] "VIP farm"
                   small "Blox Fruits · Link server riêng"
-                button.icon-btn [title="Xóa" aria-label="Xóa"]
+                button.icon-btn [title="Xóa" tabindex="-1" aria-label="Xóa"]
                   svg.i #1tyq039
               div.game-row.saved [id="pk-1" role="option" aria-selected="false"]
                 span.gph
@@ -365,9 +365,9 @@ html [data-theme="dark" lang="vi"]
                 div.gtxt
                   b [title="Phòng trade"] "Phòng trade"
                   small "[🎃] Adopt Me! · Code 4F7K2Q"
-                button.icon-btn [title="Sao chép code" aria-label="Sao chép code"]
+                button.icon-btn [title="Sao chép code" tabindex="-1" aria-label="Sao chép code"]
                   svg.i #2s24cy
-                button.icon-btn [title="Xóa" aria-label="Xóa"]
+                button.icon-btn [title="Xóa" tabindex="-1" aria-label="Xóa"]
                   svg.i #1tyq039
           div.dock-mid
             div.dock-inputs

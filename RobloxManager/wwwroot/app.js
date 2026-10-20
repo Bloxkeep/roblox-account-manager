@@ -558,7 +558,23 @@
       searchTimer = setTimeout(pageChanged, 120);
     });
     $('#place').addEventListener('input', onPlaceInput);
-    $('#place').addEventListener('focus', () => { if (!$('#place').value.trim()) openPicker('browse'); });
+    // Into the box, the list opens whatever is in it, like a browser's address bar: a game or link already there gets
+    // the tabs (recent, pinned, saved…) with its text selected, so typing replaces it and searches; words typed earlier
+    // get their results again. No more emptying the box to reach the list.
+    let selectOnUp = false;
+    $('#place').addEventListener('mousedown', () => { selectOnUp = document.activeElement !== $('#place'); });
+    // The click that focused the box would put the caret where it landed; a drag that selected part of it stays.
+    $('#place').addEventListener('mouseup', e => {
+      const box = $('#place');
+      if (selectOnUp && box.value && box.selectionStart === box.selectionEnd) { e.preventDefault(); box.select(); }
+      selectOnUp = false;
+    });
+    $('#place').addEventListener('focus', () => {
+      const value = $('#place').value.trim();
+      if (value && !looksLikeTarget(value)) return onPlaceInput();
+      openPicker('browse');
+      if (value && !selectOnUp) $('#place').select();
+    });
     $('#place').addEventListener('keydown', onPlaceKey);
     // Tab on to the Job ID box (or anywhere else on the page) closes the list; clicks are handled on mousedown below.
     $('#place').addEventListener('focusout', e => {
@@ -1143,7 +1159,8 @@
   }
 
   /* ───────────────────────── game picker ─────────────────────────
-     Typing a name searches Roblox; an empty box offers recent, pinned, favourite and popular games. */
+     Typing a name searches Roblox; going into the box (empty, or with a game or link in it) offers recent, pinned,
+     saved, favourite and popular games. */
   const P = { open: false, mode: 'browse', tab: 'recent', lists: null, results: [], query: '', index: -1, seq: 0, loading: false };
   const TABS = ['recent', 'pinned', 'saved', 'favorites', 'popular'];
   const looksLikeTarget = v => /^\d+$/.test(v) || /roblox\.com|roblox:\/\//i.test(v);
@@ -1153,11 +1170,13 @@
   const pickerRows = () => (P.mode === 'search' ? P.results : tabRows(P.tab)) || [];
 
   function openPicker(mode) {
+    // Already showing the lists (the box emptied right after a click opened them): not asked for again.
+    const showing = P.open && P.mode === 'browse';
     P.open = true;
     P.mode = mode;
     P.index = -1;
     pageChanged();
-    if (mode === 'browse') loadGameLists();
+    if (mode === 'browse' && !showing) loadGameLists();
   }
   function closePicker() {
     if (!P.open) return;
@@ -1249,6 +1268,8 @@
     } else if (e.key === 'Escape' && P.open) {
       e.stopPropagation();
       closePicker();
+    } else if (e.key === 'Tab' && P.open) {
+      closePicker(); // leaving the box (to the Job ID box, or back to the thumbnail): the list goes with it
     }
   }
   function pickGame(g) {
@@ -1307,6 +1328,9 @@
             if (!r) return;
             close();
             toast(t('sv.saved', { name: r.name }), 'ok');
+            // Where it went, at once: the game box's list on its Saved tab.
+            P.tab = 'saved';
+            if (document.activeElement === $('#place')) openPicker('browse'); else $('#place').focus();
           },
         },
       ],

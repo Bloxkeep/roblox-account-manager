@@ -748,11 +748,47 @@ html [data-theme="dark" lang="vi"]
           button.game-thumb [id="game-thumb" title="Chọn game"]
             span.gph
               svg.i #sy1lqp
+          div.picker [id="picker"]
+            div.picker-tabs [role="tablist"]
+              button.ptab [role="tab" tabindex="-1"] "Gần đây"
+              button.ptab [role="tab" tabindex="-1"] "Đã ghim"
+              button.on.ptab [role="tab" tabindex="-1"] "Đã lưu"
+              button.ptab [role="tab" tabindex="-1"] "Yêu thích trên Roblox"
+              button.ptab [role="tab" tabindex="-1"] "Phổ biến"
+            div.picker-list [id="picker-list" role="listbox"]
+              div.game-row.saved [id="pk-0" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #1c3gvph
+                div.gtxt
+                  b [title="Blox Fruits"] "Blox Fruits"
+                  small "Blox Fruits · Code ZX81"
+                button.icon-btn [title="Sao chép code" tabindex="-1" aria-label="Sao chép code"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" tabindex="-1" aria-label="Xóa"]
+                  svg.i #1tyq039
+              div.game-row.saved [id="pk-1" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #1c3gvph
+                div.gtxt
+                  b [title="VIP farm"] "VIP farm"
+                  small "Blox Fruits · Link server riêng"
+                button.icon-btn [title="Xóa" tabindex="-1" aria-label="Xóa"]
+                  svg.i #1tyq039
+              div.game-row.saved [id="pk-2" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #1c3gvph
+                div.gtxt
+                  b [title="Phòng trade"] "Phòng trade"
+                  small "[🎃] Adopt Me! · Code 4F7K2Q"
+                button.icon-btn [title="Sao chép code" tabindex="-1" aria-label="Sao chép code"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Xóa" tabindex="-1" aria-label="Xóa"]
+                  svg.i #1tyq039
           div.dock-mid
             div.dock-inputs
               label.grow.inwrap [title="Place ID, link game hoặc link server riêng (Ctrl+L)"]
                 svg.i #1u22jvi
-                input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+                input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="true" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits" FOCUSED]
               label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
                 svg.i #ej9lod
                 input [id="job" placeholder="Job ID (tùy chọn)" maxlength="60" aria-label="Job ID (tùy chọn)" value=""]
@@ -764,7 +800,7 @@ html [data-theme="dark" lang="vi"]
               button.srv-open
                 svg.i #ej9lod
                 span "Server"
-              button.srv-open.srv-save [title="Lưu server này để vào lại từ tab Đã lưu: link server riêng, hoặc code mà game yêu cầu." aria-label="Lưu server" FOCUSED]
+              button.srv-open.srv-save [title="Lưu server này để vào lại từ tab Đã lưu: link server riêng, hoặc code mà game yêu cầu." aria-label="Lưu server"]
                 svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
@@ -791,4 +827,5 @@ html [data-theme="dark" lang="vi"]
     svg.i #14iobj
     span "Đã lưu “Blox Fruits”. Xem ở tab Đã lưu của ô game."
 -- commands
+  gameLists {}
   saveServer {"code":"ZX81","gameName":"Blox Fruits","link":"","name":"Blox Fruits","placeId":2753915549,"universeId":0}

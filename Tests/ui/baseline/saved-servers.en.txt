@@ -345,11 +345,11 @@ html [data-theme="dark" lang="en"]
               svg.i #sy1lqp
           div.picker [id="picker"]
             div.picker-tabs [role="tablist"]
-              button.ptab [role="tab"] "Recent"
-              button.ptab [role="tab"] "Pinned"
-              button.on.ptab [role="tab"] "Saved"
-              button.ptab [role="tab"] "Roblox favorites"
-              button.ptab [role="tab"] "Popular"
+              button.ptab [role="tab" tabindex="-1"] "Recent"
+              button.ptab [role="tab" tabindex="-1"] "Pinned"
+              button.on.ptab [role="tab" tabindex="-1"] "Saved"
+              button.ptab [role="tab" tabindex="-1"] "Roblox favorites"
+              button.ptab [role="tab" tabindex="-1"] "Popular"
             div.picker-list [id="picker-list" role="listbox"]
               div.game-row.saved [id="pk-0" role="option" aria-selected="false"]
                 span.gph
@@ -357,7 +357,7 @@ html [data-theme="dark" lang="en"]
                 div.gtxt
                   b [title="VIP farm"] "VIP farm"
                   small "Blox Fruits · Private server link"
-                button.icon-btn [title="Delete" aria-label="Delete"]
+                button.icon-btn [title="Delete" tabindex="-1" aria-label="Delete"]
                   svg.i #1tyq039
               div.game-row.saved [id="pk-1" role="option" aria-selected="false"]
                 span.gph
@@ -365,9 +365,9 @@ html [data-theme="dark" lang="en"]
                 div.gtxt
                   b [title="Trade room"] "Trade room"
                   small "[🎃] Adopt Me! · Code 4F7K2Q"
-                button.icon-btn [title="Copy the code" aria-label="Copy the code"]
+                button.icon-btn [title="Copy the code" tabindex="-1" aria-label="Copy the code"]
                   svg.i #2s24cy
-                button.icon-btn [title="Delete" aria-label="Delete"]
+                button.icon-btn [title="Delete" tabindex="-1" aria-label="Delete"]
                   svg.i #1tyq039
           div.dock-mid
             div.dock-inputs

@@ -345,11 +345,11 @@ html [data-theme="dark" lang="vi"]
               svg.i #sy1lqp
           div.picker [id="picker"]
             div.picker-tabs [role="tablist"]
-              button.on.ptab [role="tab"] "Gần đây"
-              button.ptab [role="tab"] "Đã ghim"
-              button.ptab [role="tab"] "Đã lưu"
-              button.ptab [role="tab"] "Yêu thích trên Roblox"
-              button.ptab [role="tab"] "Phổ biến"
+              button.on.ptab [role="tab" tabindex="-1"] "Gần đây"
+              button.ptab [role="tab" tabindex="-1"] "Đã ghim"
+              button.ptab [role="tab" tabindex="-1"] "Đã lưu"
+              button.ptab [role="tab" tabindex="-1"] "Yêu thích trên Roblox"
+              button.ptab [role="tab" tabindex="-1"] "Phổ biến"
             div.picker-list [id="picker-list" role="listbox"]
               div.game-row [id="pk-0" role="option" aria-selected="false"]
                 span.gph
@@ -357,7 +357,7 @@ html [data-theme="dark" lang="vi"]
                 div.gtxt
                   b [title="Blox Fruits"] "Blox Fruits"
                   small "412.873 đang chơi"
-                button.icon-btn.pin [title="Ghim"]
+                button.icon-btn.pin [title="Ghim" tabindex="-1"]
                   svg.i #19cjsv1
               div.game-row [id="pk-1" role="option" aria-selected="false"]
                 span.gph
@@ -365,7 +365,7 @@ html [data-theme="dark" lang="vi"]
                 div.gtxt
                   b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                   small "186.204 đang chơi"
-                button.icon-btn.pin [title="Ghim"]
+                button.icon-btn.pin [title="Ghim" tabindex="-1"]
                   svg.i #19cjsv1
               div.game-row [id="pk-2" role="option" aria-selected="false"]
                 span.gph
@@ -373,7 +373,7 @@ html [data-theme="dark" lang="vi"]
                 div.gtxt
                   b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                   small "655.120 đang chơi"
-                button.icon-btn.pin [title="Ghim"]
+                button.icon-btn.pin [title="Ghim" tabindex="-1"]
                   svg.i #19cjsv1
           div.dock-mid
             div.dock-inputs

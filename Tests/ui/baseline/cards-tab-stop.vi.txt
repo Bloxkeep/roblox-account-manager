@@ -385,6 +385,7 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
+  gameLists {}
   getState {}
   monitorArea {"hidden":true}
   pageShown {}

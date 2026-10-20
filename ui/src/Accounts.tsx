@@ -502,6 +502,8 @@ const TABS = ['recent', 'pinned', 'saved', 'favorites', 'popular'];
  * once typed in. Saved servers come with the app's state (they change as they are saved), the rest with gameLists.
  */
 function Picker({ P }: { P: PageState['picker'] }) {
+  // The game box drives the list (arrow keys, Enter, Esc), as a combobox's list is: its buttons take no Tab stop, so Tab
+  // and Shift+Tab leave the box for what is next to it.
   const { t, fmtNum } = useHost();
   const app = useAppState();
   const saved = P.mode === 'browse' && P.tab === 'saved';
@@ -514,7 +516,7 @@ function Picker({ P }: { P: PageState['picker'] }) {
   return <>
     {P.mode === 'browse'
       ? <div className="picker-tabs" role="tablist">{TABS.filter(k => k !== 'popular' || P.lists?.popular?.length).map(k =>
-        <button key={k} className={`ptab ${P.tab === k ? 'on' : ''}`} role="tab" data-act="picker-tab" data-tab={k}>{t(`picker.${k}`)}</button>)}</div>
+        <button key={k} className={`ptab ${P.tab === k ? 'on' : ''}`} role="tab" tabIndex={-1} data-act="picker-tab" data-tab={k}>{t(`picker.${k}`)}</button>)}</div>
       : <div className="picker-head">{t('picker.results', { q: P.query })}</div>}
     <div className={`picker-list ${P.refreshing ? 'refreshing' : ''}`} role="listbox" id="picker-list" ref={list}>{P.loading
       ? [0, 1, 2, 3, 4].map(i => <Fragment key={i}>{skeleton}</Fragment>)
@@ -522,13 +524,13 @@ function Picker({ P }: { P: PageState['picker'] }) {
       : saved ? rows.map((s, i) => <div key={s.id} className={`game-row saved ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={s.iconUrl || ''} url={s.iconUrl} holder={() => <span className="gph"><Icon name="bookmark" /></span>} />
         <div className="gtxt"><b title={s.name}>{s.name}</b><small>{[s.gameName || (s.placeId ? `Place ${s.placeId}` : ''), s.link ? t('sv.kindLink') : '', s.code ? t('sv.kindCode', { code: s.code }) : ''].filter(Boolean).join(' · ')}</small></div>
-        {s.code ? <button className="icon-btn" data-act="copy-server-code" data-i={i} title={t('sv.copyCode')} aria-label={t('sv.copyCode')}><Icon name="copy" /></button> : null}
-        <button className="icon-btn" data-act="delete-server" data-i={i} title={t('sv.delete')} aria-label={t('sv.delete')}><Icon name="x" /></button>
+        {s.code ? <button className="icon-btn" tabIndex={-1} data-act="copy-server-code" data-i={i} title={t('sv.copyCode')} aria-label={t('sv.copyCode')}><Icon name="copy" /></button> : null}
+        <button className="icon-btn" tabIndex={-1} data-act="delete-server" data-i={i} title={t('sv.delete')} aria-label={t('sv.delete')}><Icon name="x" /></button>
       </div>)
       : rows.map((g, i) => <div key={`${g.placeId}-${i}`} className={`game-row ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={g.iconUrl || ''} url={g.iconUrl} holder={() => <span className="gph"><Icon name="gamepad" /></span>} />
         <div className="gtxt"><b title={g.name}>{g.name}</b><small>{g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : `Place ${g.placeId}`}</small></div>
-        <button className={`icon-btn pin ${g.pinned ? 'on' : ''}`} data-act="pin-game" data-i={i} title={t(g.pinned ? 'picker.unpin' : 'picker.pin')}><Icon name={g.pinned ? 'starFill' : 'star'} /></button>
+        <button className={`icon-btn pin ${g.pinned ? 'on' : ''}`} tabIndex={-1} data-act="pin-game" data-i={i} title={t(g.pinned ? 'picker.unpin' : 'picker.pin')}><Icon name={g.pinned ? 'starFill' : 'star'} /></button>
       </div>)}</div>
   </>;
 }

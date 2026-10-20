@@ -344,11 +344,43 @@ html [data-theme="dark" lang="en"]
           button.game-thumb [id="game-thumb" title="Choose a game"]
             span.gph
               svg.i #sy1lqp
+          div.picker [id="picker"]
+            div.picker-tabs [role="tablist"]
+              button.on.ptab [role="tab" tabindex="-1"] "Recent"
+              button.ptab [role="tab" tabindex="-1"] "Pinned"
+              button.ptab [role="tab" tabindex="-1"] "Saved"
+              button.ptab [role="tab" tabindex="-1"] "Roblox favorites"
+              button.ptab [role="tab" tabindex="-1"] "Popular"
+            div.picker-list [id="picker-list" role="listbox"]
+              div.game-row [id="pk-0" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #sy1lqp
+                div.gtxt
+                  b [title="Blox Fruits"] "Blox Fruits"
+                  small "412,873 playing"
+                button.icon-btn.pin [title="Pin" tabindex="-1"]
+                  svg.i #19cjsv1
+              div.game-row [id="pk-1" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #sy1lqp
+                div.gtxt
+                  b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                  small "186,204 playing"
+                button.icon-btn.pin [title="Pin" tabindex="-1"]
+                  svg.i #19cjsv1
+              div.game-row [id="pk-2" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #sy1lqp
+                div.gtxt
+                  b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                  small "655,120 playing"
+                button.icon-btn.pin [title="Pin" tabindex="-1"]
+                  svg.i #19cjsv1
           div.dock-mid
             div.dock-inputs
               label.grow.inwrap [title="Place ID, game link or private server link (Ctrl+L)"]
                 svg.i #1u22jvi
-                input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits" FOCUSED]
+                input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="true" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits" FOCUSED]
               label.inwrap.job [title="Job ID of a specific server, to put several accounts in the same server."]
                 svg.i #ej9lod
                 input [id="job" placeholder="Job ID (optional)" maxlength="60" aria-label="Job ID (optional)" value=""]
@@ -385,6 +417,7 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
+  gameLists {}
   getState {}
   monitorArea {"hidden":true}
   pageShown {}

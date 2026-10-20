@@ -749,11 +749,45 @@ html [data-theme="dark" lang="en"]
           button.game-thumb [id="game-thumb" title="Choose a game"]
             span.gph
               svg.i #sy1lqp
+          div.picker [id="picker"]
+            div.picker-tabs [role="tablist"]
+              button.ptab [role="tab" tabindex="-1"] "Recent"
+              button.ptab [role="tab" tabindex="-1"] "Pinned"
+              button.on.ptab [role="tab" tabindex="-1"] "Saved"
+              button.ptab [role="tab" tabindex="-1"] "Roblox favorites"
+              button.ptab [role="tab" tabindex="-1"] "Popular"
+            div.picker-list [id="picker-list" role="listbox"]
+              div.game-row.saved [id="pk-0" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #1c3gvph
+                div.gtxt
+                  b [title="Blox Fruits"] "Blox Fruits"
+                  small "Blox Fruits · Private server link"
+                button.icon-btn [title="Delete" tabindex="-1" aria-label="Delete"]
+                  svg.i #1tyq039
+              div.game-row.saved [id="pk-1" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #1c3gvph
+                div.gtxt
+                  b [title="VIP farm"] "VIP farm"
+                  small "Blox Fruits · Private server link"
+                button.icon-btn [title="Delete" tabindex="-1" aria-label="Delete"]
+                  svg.i #1tyq039
+              div.game-row.saved [id="pk-2" role="option" aria-selected="false"]
+                span.gph
+                  svg.i #1c3gvph
+                div.gtxt
+                  b [title="Trade room"] "Trade room"
+                  small "[🎃] Adopt Me! · Code 4F7K2Q"
+                button.icon-btn [title="Copy the code" tabindex="-1" aria-label="Copy the code"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" tabindex="-1" aria-label="Delete"]
+                  svg.i #1tyq039
           div.dock-mid
             div.dock-inputs
               label.grow.inwrap [title="Place ID, game link or private server link (Ctrl+L)"]
                 svg.i #1u22jvi
-                input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits?privateServerLinkCode=99999999999999999999"]
+                input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="true" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits?privateServerLinkCode=99999999999999999999" FOCUSED]
               label.inwrap.job [title="Job ID of a specific server, to put several accounts in the same server."]
                 svg.i #ej9lod
                 input [id="job" placeholder="Job ID (optional)" maxlength="60" aria-label="Job ID (optional)" value=""]
@@ -763,7 +797,7 @@ html [data-theme="dark" lang="en"]
               span.gname [title="Blox Fruits"] "Blox Fruits"
               span.kind "Private server"
               span.players "412,873 playing"
-              button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server" FOCUSED]
+              button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
                 svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
@@ -790,4 +824,5 @@ html [data-theme="dark" lang="en"]
     svg.i #14iobj
     span "Saved “Blox Fruits”. It’s in the game box’s Saved tab."
 -- commands
+  gameLists {}
   saveServer {"code":"","gameName":"Blox Fruits","link":"https://www.roblox.com/games/2753915549/Blox-Fruits?privateServerLinkCode=99999999999999999999","name":"Blox Fruits","placeId":2753915549,"universeId":0}

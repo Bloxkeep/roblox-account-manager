@@ -351,7 +351,7 @@ html [data-theme="dark" lang="vi"]
                 div.gtxt
                   b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                   small "186.204 đang chơi"
-                button.icon-btn.pin [title="Ghim"]
+                button.icon-btn.pin [title="Ghim" tabindex="-1"]
                   svg.i #19cjsv1
           div.dock-mid
             div.dock-inputs
