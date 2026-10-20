@@ -454,7 +454,7 @@ public static class L
         ["Choose a Bloxkeep backup"] = "Chọn bản sao lưu của Bloxkeep",
         ["Bloxkeep backups"] = "Bản sao lưu Bloxkeep",
         ["Couldn't restore: {0}"] = "Không khôi phục được: {0}",
-        ["Couldn't start over: {0}"] = "Không làm lại từ đầu được: {0}",
+        ["Couldn't start over: {0}"] = "Chưa đặt được mật khẩu mới: {0}",
         ["Backup restored. Unlock it with the master password it was saved with."] = "Đã khôi phục bản sao lưu. Hãy mở khóa bằng mật khẩu chủ dùng lúc sao lưu.",
         ["This account has no Roblox window open."] = "Tài khoản này không có cửa sổ Roblox nào đang mở.",
         ["Enter the start time as HH:mm."] = "Nhập giờ bắt đầu theo dạng HH:mm.",

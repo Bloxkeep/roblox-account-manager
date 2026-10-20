@@ -21,7 +21,7 @@ html [data-theme="dark" lang="vi"]
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
         span.sep "·"
-        button.link [type="button"] "Làm lại từ đầu"
+        button.link [type="button"] "Đặt mật khẩu mới"
 #layer
 #toasts
   div.ok.toast [role="status"]
