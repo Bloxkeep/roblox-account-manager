@@ -1,0 +1,21 @@
+# Built by Cloudflare from this repository, like Feedback/worker (Workers & Pages › bloxkeep-bot, root directory
+# DiscordBot/worker). Its secret DISCORD_TOKEN (the bot's token from the Discord Developer Portal) is set in the worker's
+# settings. Keeps Bloxkeep's Discord bot online around the clock: worker.js. How it is doing:
+# https://bloxkeep-bot.bloxkeep-app.workers.dev/status
+name = "bloxkeep-bot"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+# Every minute: connected, or connecting again (the object's own alarm usually has already).
+[triggers]
+crons = ["* * * * *"]
+
+[[durable_objects.bindings]]
+name = "GATEWAY"
+class_name = "Gateway"
+
+# The free plan only has objects stored in SQLite.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Gateway"]
