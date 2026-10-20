@@ -61,6 +61,23 @@ static class Program
             e.SetObserved();
         };
 
+        // Clicked open while an update installs in the background (Bloxkeep is gone for a few seconds): this start waits
+        // for the run the update starts and brings that one to the front. Taking its place made that run, which carries
+        // the unlocked vault over, give way as a second launch, and Bloxkeep came back locked (seen 2026-10-20, 8:43).
+        if (!Relaunch.IsUpdateRun(args) && Relaunch.HandOverWaiting())
+        {
+            var waiting = System.Diagnostics.Stopwatch.StartNew();
+            while (waiting.Elapsed < UpdateRunWait && Relaunch.HandOverWaiting())
+            {
+                if (Mutex.TryOpenExisting(SingleInstanceMutex, out var running))
+                {
+                    running.Dispose(); // that run is up: this one hands over below, like any second launch
+                    break;
+                }
+                Thread.Sleep(200);
+            }
+        }
+
         // A second launch just brings the running window to the front.
         using var activate = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEvent);
         using var quit = new EventWaitHandle(false, EventResetMode.ManualReset, QuitEvent);
@@ -111,6 +128,8 @@ static class Program
     const string ActivateEvent = @"Local\Bloxkeep.Activate";
     const string QuitEvent = @"Local\Bloxkeep.Quit";
     const string SingleInstanceMutex = @"Local\Bloxkeep.SingleInstance";
+    /// <summary>How long a start by hand waits for the run an update is starting; after that it starts as usual.</summary>
+    static readonly TimeSpan UpdateRunWait = TimeSpan.FromSeconds(90);
     const uint ASFW_ANY = unchecked((uint)-1);
 
     [DllImport("user32.dll")]

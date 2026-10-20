@@ -57,6 +57,25 @@ public static class Relaunch
         return [Arg, Convert.ToHexString(entropy)];
     }
 
+    /// <summary>
+    /// An update is installing right now: the last run handed over to the one Velopack is about to start (the hand-over
+    /// is fresh and not taken yet). A start by hand meanwhile waits for that run instead of taking its place (Program).
+    /// </summary>
+    public static bool HandOverWaiting()
+    {
+        try
+        {
+            return File.Exists(FilePath) && DateTime.UtcNow - File.GetLastWriteTimeUtc(FilePath) < Life;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>This run is the one an update started (with its hand-over, or by the watch over it).</summary>
+    public static bool IsUpdateRun(string[] args) => args.Contains(Arg) || args.Contains(AfterUpdateArg);
+
     /// <summary>Removes what <see cref="Write"/> wrote when the quit it was for didn't happen after all.</summary>
     public static void Discard()
     {

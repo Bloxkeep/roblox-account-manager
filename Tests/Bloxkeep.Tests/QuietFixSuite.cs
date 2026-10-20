@@ -39,6 +39,19 @@ static class QuietFixSuite
         c.Check("from a quiet fix to the version it leads to: that version's notes",
             Versions("1.0.6-alpha.3", "1.0.6").SequenceEqual(["1.0.6"]), string.Join(", ", Versions("1.0.6-alpha.3", "1.0.6")));
         c.Check("all the notes, as Settings' What's new lists them", Versions(null, "1.0.6").FirstOrDefault() == "1.0.6");
+
+        // Bloxkeep clicked open while an update installs (2026-10-20, 8:43): that start waits for the update's run, which
+        // carries the unlocked vault over, rather than taking its place. It knows by the fresh hand-over on disk.
+        Harness.UseDataFolder(dir);
+        string handOver = Path.Combine(Vault.DataDir, "resume.bin");
+        c.Check("no update under way: a start goes ahead", !Relaunch.HandOverWaiting());
+        Relaunch.Write(new Relaunch.State { WrittenAt = DateTime.UtcNow, To = "1.0.7-alpha.3", Window = "minimized" });
+        c.Check("an update handing over right now: a start by hand waits for its run", Relaunch.HandOverWaiting());
+        c.Check("the update's own run (and the watch's) doesn't wait for itself",
+            Relaunch.IsUpdateRun(["--resume", "ab12"]) && Relaunch.IsUpdateRun(["--after-update", "1.0.7-alpha.3"]) && !Relaunch.IsUpdateRun([]));
+        File.SetLastWriteTimeUtc(handOver, DateTime.UtcNow.AddMinutes(-10));
+        c.Check("a hand-over left from long ago doesn't hold a start back", !Relaunch.HandOverWaiting());
+        File.Delete(handOver);
         return Task.CompletedTask;
     }
 }
