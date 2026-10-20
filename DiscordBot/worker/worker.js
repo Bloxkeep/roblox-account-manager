@@ -11,7 +11,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
 import { newer, readLatestTag, readRelease, readStatus, readWatch, release } from './sources.js';
-import { boardEmbed, buildEmbed, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, releaseMessage, replies, statusEmbed } from './texts.js';
+import { boardEmbed, buildEmbed, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, presenceLines, releaseMessage, replies, statusEmbed } from './texts.js';
 
 const GATEWAY = 'wss://gateway.discord.gg';
 const QUERY = '/?v=10&encoding=json';
@@ -25,6 +25,12 @@ const MAX_BACKOFF = 60_000;
 const RELEASE_EVERY = 10 * 60_000;
 // An outage counts once two looks in a row say so, and is over after two that say all is well (no posts for a blip).
 const OUTAGE_LOOKS = 2;
+// The bot's object, kept in eastern North America, next to Discord: slash commands come from Discord's servers there,
+// and the posts go back to them. The first object ("bot") was made where the first look at /status came from (Asia),
+// which put about 200 ms of ocean on every command; this one takes over its servers' choices and boards (migrate()).
+const OBJECT = 'bot-na', OLD_OBJECT = 'bot', PLACE = 'enam';
+// The custom status under the bot's name changes this often, through what's true right now (texts.js presenceLines).
+const PRESENCE_EVERY = 20_000;
 
 export class Gateway extends DurableObject {
   constructor(ctx, env) {
@@ -45,18 +51,19 @@ export class Gateway extends DurableObject {
         locale TEXT, shown TEXT)`);
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
       this.stopped = (await ctx.storage.get('stopped')) ?? null;
+      this.retired = (await ctx.storage.get('retired')) ?? false; // handed over to the object that replaced it
       // A new instance: the first one, or Cloudflare restarted the object (the connection went with it). The time of the
       // old one's last heartbeat answer marks when it stopped being online.
       this.log('woke', String((await ctx.storage.get('lastBeat')) ?? ''));
       // Woken by anything (a deploy, a restart, a look at /status): connect in a moment rather than at the next cron.
-      if (env.DISCORD_TOKEN && !this.stopped && (await ctx.storage.getAlarm()) == null)
+      if (env.DISCORD_TOKEN && !this.stopped && !this.retired && (await ctx.storage.getAlarm()) == null)
         await ctx.storage.setAlarm(Date.now() + 1000);
     });
   }
 
   /** From the cron, every minute: connected, or connecting now. Stopped by a refused token, it starts over once the token is another. */
   async ensure() {
-    if (!this.env.DISCORD_TOKEN)
+    if (!this.env.DISCORD_TOKEN || this.retired)
       return; // not set yet (the worker's settings): nothing to connect with
     if (this.stopped && this.stopped.token !== await tokenHash(this.env.DISCORD_TOKEN))
       await this.restart();
@@ -66,8 +73,83 @@ export class Gateway extends DurableObject {
       await this.connect();
     else if ((await this.ctx.storage.getAlarm()) == null)
       await this.ctx.storage.setAlarm(Date.now() + this.interval);
+    // No news posted before the old object handed over its servers' choices (it then posts nothing more).
+    if (!await this.migrate())
+      return;
     await this.registerCommands();
     await this.poll();
+  }
+
+  // ───────────────────────────── moving ─────────────────────────────
+
+  /**
+   * Once: the old object's servers' choices, boards, news state and log copied here, and the old one told to stop (it
+   * drops its connection and never connects again). Tried again every minute until the old one answers: just after a
+   * deploy it may still run code from before this existed. True once done (or when there is nothing to take over).
+   */
+  async migrate() {
+    if (await this.ctx.storage.get('migrated'))
+      return true;
+    const name = this.env.OLD_OBJECT_NAME ?? OLD_OBJECT;
+    const oldId = name ? this.env.GATEWAY.idFromName(name) : null;
+    if (oldId && !oldId.equals(this.ctx.id)) {
+      let data;
+      try {
+        data = await this.env.GATEWAY.get(oldId).retire();
+      } catch (e) {
+        this.log('migrate failed', String(e?.message ?? e).slice(0, 200));
+        return false;
+      }
+      const sql = this.ctx.storage.sql;
+      // Choices made here meanwhile win over the old ones.
+      for (const s of data.subs)
+        sql.exec('INSERT OR IGNORE INTO subs (guild, channel, role, roblox, outages, bloxkeep, locale) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          s.guild, s.channel, s.role, s.roblox, s.outages, s.bloxkeep, s.locale);
+      for (const b of data.boards)
+        sql.exec('INSERT OR IGNORE INTO boards (guild, channel, message, locale, shown) VALUES (?, ?, ?, ?, ?)', b.guild, b.channel, b.message, b.locale, b.shown);
+      for (const e of data.events)
+        sql.exec('INSERT INTO events (at, kind, detail) VALUES (?, ?, ?)', e.at, e.kind, e.detail);
+      if (data.snap && !(await this.ctx.storage.get('snap')))
+        await this.ctx.storage.put('snap', data.snap);
+      this.log('migrated', `${data.subs.length} subscriptions, ${data.boards.length} boards`);
+    }
+    await this.ctx.storage.put('migrated', true);
+    return true;
+  }
+
+  /** The old object's side: everything it holds, handed over, and it stops for good. */
+  async retire() {
+    this.retired = true;
+    await this.ctx.storage.put('retired', true);
+    await this.ctx.storage.deleteAlarm();
+    this.drop(1000);
+    this.log('retired', 'handed over');
+    const sql = this.ctx.storage.sql;
+    return {
+      subs: [...sql.exec('SELECT * FROM subs')],
+      boards: [...sql.exec('SELECT * FROM boards')],
+      events: [...sql.exec('SELECT at, kind, detail FROM events ORDER BY at, rowid')],
+      snap: (await this.ctx.storage.get('snap')) ?? null,
+    };
+  }
+
+  /** How long a slash command took between Cloudflare's edge and this object, and where it entered (for /status). */
+  noteInteraction(colo, name, ms) {
+    (this.timings ??= []).push({ at: new Date().toISOString(), colo, name, ms });
+    this.timings.splice(0, Math.max(0, this.timings.length - 20));
+  }
+
+  /** Where this object runs (Cloudflare's code for the place, "IAD", "SIN"…), asked once per instance. */
+  async place() {
+    if (this.colo === undefined) {
+      try {
+        const trace = await (await fetch(this.env.TRACE_URL || 'https://www.cloudflare.com/cdn-cgi/trace')).text();
+        this.colo = /^colo=(\w+)/m.exec(trace)?.[1] ?? null;
+      } catch {
+        this.colo = null;
+      }
+    }
+    return this.colo;
   }
 
   // ───────────────────────────── commands ─────────────────────────────
@@ -263,7 +345,7 @@ export class Gateway extends DurableObject {
 
   /** Heartbeats, and connecting again after a drop (after a pause that grows while it keeps failing). */
   async alarm() {
-    if (this.stopped)
+    if (this.stopped || this.retired)
       return;
     if (!this.ws) {
       await this.connect();
@@ -368,6 +450,22 @@ export class Gateway extends DurableObject {
     this.ready = true;
     this.backoff = 0;
     this.log(kind, detail);
+    this.rotatePresence();
+  }
+
+  /** The custom status under the bot's name, moving through what's true right now; stops with the connection. */
+  rotatePresence() {
+    clearInterval(this.presenceTimer);
+    let n = 0;
+    const show = async () => {
+      if (!this.ws || !this.ready) {
+        clearInterval(this.presenceTimer);
+        return;
+      }
+      const lines = presenceLines(await this.ctx.storage.get('snap'));
+      this.send({ op: 3, d: { since: null, activities: [{ type: 4, name: 'Custom Status', state: lines[n++ % lines.length] }], status: 'online', afk: false } });
+    };
+    this.presenceTimer = setInterval(show, Number(this.env.PRESENCE_EVERY_MS) || PRESENCE_EVERY);
   }
 
   async onClose(ws, code, reason) {
@@ -399,6 +497,7 @@ export class Gateway extends DurableObject {
     const ws = this.ws;
     this.ws = null;
     this.ready = false;
+    clearInterval(this.presenceTimer);
     try {
       ws?.close(code, 'reconnect');
     } catch {
@@ -416,7 +515,7 @@ export class Gateway extends DurableObject {
       token: this.env.DISCORD_TOKEN,
       intents: 0, // nothing to listen to yet: the bot only has to be there
       properties: { os: 'linux', browser: 'bloxkeep', device: 'bloxkeep' },
-      presence: { since: null, activities: [{ name: 'Roblox updates', type: 3 }], status: 'online', afk: false },
+      presence: { since: null, activities: [{ type: 4, name: 'Custom Status', state: presenceLines(null)[0] }], status: 'online', afk: false },
     };
   }
 
@@ -474,8 +573,10 @@ export class Gateway extends DurableObject {
       longestOffMs = Math.max(longestOffMs, now - offSince);
     const spanMs = events.length ? now - events[0].at : 0;
     return {
-      state: !this.env.DISCORD_TOKEN ? 'no token' : this.stopped ? 'stopped' : this.ready ? 'online' : this.ws ? 'connecting' : 'offline',
+      state: !this.env.DISCORD_TOKEN ? 'no token' : this.retired ? 'retired' : this.stopped ? 'stopped' : this.ready ? 'online' : this.ws ? 'connecting' : 'offline',
       stopped: this.stopped,
+      place: await this.place(),
+      interactions: this.timings ?? [],
       heartbeatMs: this.interval,
       lastBeat: (await this.ctx.storage.get('lastBeat')) ?? null,
       log: {
@@ -513,10 +614,13 @@ function boardShown(l, snap) {
   return rest.fields;
 }
 
+/** The bot's object: made in eastern North America the first time, then wherever it is. */
+const bot = env => env.GATEWAY.get(env.GATEWAY.idFromName(env.OBJECT_NAME || OBJECT), { locationHint: PLACE });
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const gateway = env.GATEWAY.get(env.GATEWAY.idFromName('bot'));
+    const gateway = bot(env);
     if (url.pathname === '/status')
       return Response.json(await gateway.status(), { headers: { 'Cache-Control': 'no-store' } });
     if (url.pathname === '/interactions' && request.method === 'POST') {
@@ -526,15 +630,17 @@ export default {
       const i = JSON.parse(body);
       if (i.type === 1) // Discord checking the address
         return Response.json({ type: 1 });
-      if (i.type === 2)
-        return Response.json(await gateway.interaction(i));
+      if (i.type === 2) {
+        const started = Date.now(), reply = await gateway.interaction(i);
+        ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.name ?? '', Date.now() - started));
+        return Response.json(reply);
+      }
       return Response.json({ error: 'unsupported' }, { status: 400 });
     }
     return Response.json({ error: 'not found' }, { status: 404 });
   },
 
   async scheduled(event, env, ctx) {
-    const gateway = env.GATEWAY.get(env.GATEWAY.idFromName('bot'));
-    ctx.waitUntil(gateway.ensure());
+    ctx.waitUntil(bot(env).ensure());
   },
 };

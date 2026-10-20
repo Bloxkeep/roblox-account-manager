@@ -62,7 +62,8 @@ function startDev(token) {
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV_PORT), '--test-scheduled', '--persist-to', PERSIST,
     '--var', `GATEWAY_URL:ws://127.0.0.1:${GW_PORT}`, '--var', `DISCORD_TOKEN:${token}`,
     // Nothing leaves this PC: no commands put with Discord, the news sources unreachable (features.mjs tests those).
-    '--var', 'DISCORD_APP_ID:', '--var', 'WATCH_URL:http://127.0.0.1:9/', '--var', 'STATUS_URL:http://127.0.0.1:9/', '--var', 'LATEST_URL:http://127.0.0.1:9/', '--show-interactive-dev-session=false'],
+    '--var', 'DISCORD_APP_ID:', '--var', 'WATCH_URL:http://127.0.0.1:9/', '--var', 'STATUS_URL:http://127.0.0.1:9/', '--var', 'LATEST_URL:http://127.0.0.1:9/',
+    '--var', 'OLD_OBJECT_NAME:', '--var', 'TRACE_URL:http://127.0.0.1:9/', '--show-interactive-dev-session=false'],
   { cwd: WORKER, stdio: ['ignore', out, out], env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' } });
 }
 function stopDev() {

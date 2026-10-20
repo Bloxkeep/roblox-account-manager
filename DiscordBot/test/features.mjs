@@ -24,12 +24,17 @@ let failures = 0;
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  [${String(detail).slice(0, 300)}]`}`); if (!ok) failures++; };
 const waitFor = async (cond, ms) => { const end = Date.now() + ms; while (Date.now() < end) { if (cond()) return true; await sleep(50); } return cond(); };
 
-// ── the fake Gateway: hello, ready, heartbeats answered ──
+// ── the fake Gateway: hello, ready, heartbeats answered; the custom statuses sent kept, open connections counted ──
 const gw = new WebSocketServer({ port: GW });
+const statuses = [];
+let open = 0;
 gw.on('connection', ws => {
+  open++;
+  ws.on('close', () => { open--; });
   ws.send(JSON.stringify({ op: 10, d: { heartbeat_interval: 30000 } }));
   ws.on('message', raw => {
     const m = JSON.parse(raw);
+    if (m.op === 3) statuses.push(m.d.activities?.[0]);
     if (m.op === 1) ws.send(JSON.stringify({ op: 11 }));
     if (m.op === 2 || m.op === 6) ws.send(JSON.stringify({ op: 0, t: 'READY', s: 1, d: { session_id: 's1', resume_gateway_url: `ws://127.0.0.1:${GW}`, user: { username: 'TestBot' } } }));
   });
@@ -94,12 +99,13 @@ const opt = (name, value, type = 7) => ({ name, value, type });
 
 // ── wrangler dev ──
 let dev;
-function startDev() {
+function startDev(extra = {}) {
   const out = fs.openSync(path.join(PERSIST, 'wrangler-dev.log'), 'a');
   const vars = {
+    OBJECT_NAME: 'bot-test', OLD_OBJECT_NAME: '', PRESENCE_EVERY_MS: '300', TRACE_URL: 'http://127.0.0.1:9/',
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
-    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1',
+    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -133,6 +139,13 @@ try {
   check('…and the first look announces nothing', calls.filter(c => c.method === 'POST').length === 0, calls.length);
   await minute();
   check('…nor are the commands put again when unchanged', calls.filter(c => c.method === 'PUT').length === 1);
+
+  // The custom status under the bot's name moves through what's true now.
+  await sleep(1500);
+  const lines = [...new Set(statuses.map(a => a?.state))];
+  check('the custom status changes, a custom status (type 4) each time', statuses.length >= 3 && statuses.every(a => a?.type === 4) && lines.length >= 3, JSON.stringify(lines));
+  check('…with Roblox and Multi-Roblox now, Roblox\'s status, the newest Bloxkeep and the commands',
+    ['Roblox 0.744 · Multi-Roblox: No change', 'Roblox status: Working', 'Bloxkeep 1.0.7 · /download', '/help · /notify · /board'].every(l => lines.includes(l)), JSON.stringify(lines));
 
   // Commands anyone can use; English whatever the server's language (texts.js lang).
   let r = await interact(command('help', { locale: 'vi' }));
@@ -226,9 +239,31 @@ try {
   await minute();
   check('/notify off: no more posts there, the others still get theirs', posts('c1').length === before.c1 && posts('c3').length === before.c3 + 1, `${posts('c1').length - before.c1} ${posts('c3').length - before.c3}`);
 
-  const s = await (await fetch(`http://127.0.0.1:${DEV}/status`)).json();
+  let s = await (await fetch(`http://127.0.0.1:${DEV}/status`)).json();
   check('the bot stayed online throughout', s.state === 'online', s.state);
+  check('/status keeps how long each command took and where it came in', s.interactions?.length > 5 && s.interactions.every(t => typeof t.ms === 'number' && t.name), JSON.stringify(s.interactions?.slice(-2)));
   check('no token in what /status shows', !JSON.stringify(s).includes('test-token'));
+
+  // The move to a new object (as from "bot" in Asia to "bot-na" by Discord): it takes over the servers' choices and
+  // boards, the old one stops for good, and the news goes on from the new one.
+  stopDev();
+  await waitFor(() => open === 0, 5000);
+  startDev({ OBJECT_NAME: 'bot-next', OLD_OBJECT_NAME: 'bot-test' });
+  check('wrangler dev back, with the new object', await devUp());
+  await minute(3500);
+  s = await (await fetch(`http://127.0.0.1:${DEV}/status`)).json();
+  check('the new object took over 1 server\'s choices and 1 board', s.recent.some(e => e.kind === 'migrated' && e.detail === '1 subscriptions, 1 boards'), JSON.stringify(s.recent.slice(-6)));
+  r = await interact(command('notify', { guild: 'g3', locale: 'en-US', sub: 'show' }));
+  check('…so /notify show answers from it as before', /<#c3>/.test(r.json?.data.content ?? ''), r.json?.data.content);
+  await sleep(2000);
+  check('…and only one connection to Discord is left (the old object stopped)', open === 1, open);
+  watch = { ...watch, builds: [...watch.builds, build('0.747.0.7470001', 'h747', 'same', 'beta')], beta: { version: '0.747.0.7470001', hash: 'h747' } };
+  before = base();
+  await minute();
+  check('…and the news goes on from the new object, once', posts('c3').length === before.c3 + 1 && embedOf(posts('c3').at(-1))?.title === 'Roblox 0.747.0.7470001 is coming'
+    && patches().length === before.patches + 1, `${posts('c3').length - before.c3} ${patches().length - before.patches}`);
+  await minute();
+  check('…the old one never connects again', open === 1, open);
 } finally {
   stopDev();
   gw.close();
