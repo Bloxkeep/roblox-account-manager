@@ -71,7 +71,7 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 **Đ:** Không lấy lại được, và cũng không cần gỡ cài đặt. Ngay dưới nút **Mở khóa** có hai lựa chọn:
 
 - **Khôi phục từ bản sao lưu**: mở một bản sao lưu mà bạn còn nhớ mật khẩu. File đang không mở được vẫn được giữ lại.
-- **Đặt mật khẩu mới**: các tài khoản và preset đang lưu sẽ không mở được nữa, nhưng Bloxkeep vẫn giữ lại file cũ chứ không xóa. Tài khoản Roblox không bị ảnh hưởng gì, chỉ cần đăng nhập lại để thêm vào. Sau này nhớ ra mật khẩu cũ thì bấm **Khôi phục từ bản sao lưu** và chọn file `vault-before-start-over-….rmv` trong thư mục dữ liệu của Bloxkeep.
+- **Làm lại từ đầu**: các tài khoản và preset đang lưu sẽ không mở được nữa và Bloxkeep bắt đầu trống, với mật khẩu chủ mới. File cũ vẫn được giữ lại chứ không bị xóa. Tài khoản Roblox không bị ảnh hưởng gì, chỉ cần đăng nhập lại để thêm vào. Sau này nhớ ra mật khẩu cũ thì bấm **Khôi phục từ bản sao lưu** và chọn file `vault-before-start-over-….rmv` trong thư mục dữ liệu của Bloxkeep.
 
 ## Hẹn giờ và trạng thái
 
