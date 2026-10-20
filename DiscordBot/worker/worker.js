@@ -35,6 +35,8 @@ export class Gateway extends DurableObject {
 
   /** From the cron, every minute: connected, or connecting now. Stopped by a refused token, it starts over once the token is another. */
   async ensure() {
+    if (!this.env.DISCORD_TOKEN)
+      return; // not set yet (the worker's settings): nothing to connect with
     if (this.stopped && this.stopped.token !== await tokenHash(this.env.DISCORD_TOKEN))
       await this.restart();
     if (this.stopped)
@@ -71,7 +73,7 @@ export class Gateway extends DurableObject {
   }
 
   async open() {
-    if (this.stopped || this.ws)
+    if (this.stopped || this.ws || !this.env.DISCORD_TOKEN)
       return;
     const resume = !!(this.session?.id && this.session?.url);
     const base = this.env.GATEWAY_URL || (resume ? this.session.url : GATEWAY);
@@ -253,7 +255,7 @@ export class Gateway extends DurableObject {
       longestOffMs = Math.max(longestOffMs, now - offSince);
     const spanMs = events.length ? now - events[0].at : 0;
     return {
-      state: this.stopped ? 'stopped' : this.ready ? 'online' : this.ws ? 'connecting' : 'offline',
+      state: !this.env.DISCORD_TOKEN ? 'no token' : this.stopped ? 'stopped' : this.ready ? 'online' : this.ws ? 'connecting' : 'offline',
       stopped: this.stopped,
       heartbeatMs: this.interval,
       lastBeat: (await this.ctx.storage.get('lastBeat')) ?? null,
