@@ -1,5 +1,71 @@
 [
   {
+    "version": "1.0.7",
+    "date": "2026-10-20",
+    "highlights": [
+      {
+        "icon": "users",
+        "go": "settings:vault",
+        "en": [
+          "Several vaults, picked like Steam's accounts",
+          "Keep accounts apart in vaults of their own, each with its own master password. Pick one on the lock screen, or switch from the sidebar.",
+          "See the vault"
+        ],
+        "vi": [
+          "Nhiều vault, chọn như tài khoản Steam",
+          "Tách tài khoản ra nhiều vault, mỗi vault một mật khẩu chủ riêng. Chọn vault ở màn hình khóa, hoặc đổi ngay ở thanh bên.",
+          "Xem vault"
+        ]
+      },
+      {
+        "icon": "palette",
+        "go": "settings:appearance",
+        "en": [
+          "A theme of your own",
+          "Pick a background color and an accent color, and put a picture from your PC behind the page if you like.",
+          "Make one"
+        ],
+        "vi": [
+          "Theme của riêng bạn",
+          "Chọn màu nền, màu nhấn, và đặt một ảnh trên máy làm nền nếu muốn.",
+          "Tạo theme"
+        ]
+      }
+    ],
+    "new": {
+      "en": [
+        "Several vaults: the lock screen asks “Who’s using Bloxkeep?” with a tile per vault (its picture or first letter). + adds a vault with its own name and master password, × takes one off the list (its file is kept). Switch vault is in the sidebar and in Settings › Security, where you also name the vault, give it a picture and can have Bloxkeep ask at every start.",
+        "Custom theme (Settings › Appearance › Your own): a background color and an accent color, the words adjusted to stay readable, and a picture from your PC behind the page if you like.",
+        "Lock screen: Restore from a backup and Create a new vault are right under Unlock, for a forgotten master password (it can't be recovered). The old vault stays on the list."
+      ],
+      "vi": [
+        "Nhiều vault: màn hình khóa hỏi “Ai đang dùng Bloxkeep?”, mỗi vault một ô (ảnh hoặc chữ cái đầu). Nút + để thêm vault với tên và mật khẩu chủ riêng, nút × để gỡ vault khỏi danh sách (file vẫn được giữ). Nút Đổi vault nằm ở thanh bên và trong Cài đặt › Bảo mật, cũng là chỗ đặt tên, chọn ảnh cho vault và bật hỏi chọn vault mỗi lần mở Bloxkeep.",
+        "Theme tùy chỉnh (Cài đặt › Giao diện › Của bạn): chọn màu nền và màu nhấn, chữ tự đổi sáng tối cho dễ đọc, và đặt một ảnh trên máy làm nền nếu muốn.",
+        "Màn hình khóa: ngay dưới nút Mở khóa có Khôi phục từ bản sao lưu và Tạo vault mới, cho lúc quên mật khẩu chủ (mật khẩu này không lấy lại được). Vault cũ vẫn nằm trong danh sách."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Game box: a click opens its list even with a game or link in it, with the text selected so typing searches. Saving a server opens the list on the Saved tab.",
+        "Small fixes between versions install by themselves while you're not using Bloxkeep, without Restart to update or What's new, and the version number stays the same."
+      ],
+      "vi": [
+        "Ô game: bấm vào là danh sách hiện ra ngay cả khi ô đang có game hay link, chữ trong ô được bôi đen sẵn nên gõ là tìm luôn. Lưu server xong thì danh sách mở sẵn tab Đã lưu.",
+        "Các bản vá nhỏ giữa hai phiên bản tự cài lúc bạn không dùng Bloxkeep, không hiện nút Khởi động lại để cập nhật hay bảng Có gì mới, và số phiên bản giữ nguyên."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Show on my Discord profile no longer shows a game after you leave it for Roblox's home screen, or after a disconnect.",
+        "Opening Bloxkeep while it installs an update no longer leaves it locked once the update is in."
+      ],
+      "vi": [
+        "Hiện trên hồ sơ Discord không còn ghi tên game sau khi bạn đã thoát ra màn hình chính của Roblox, hoặc khi bị rớt mạng.",
+        "Mở Bloxkeep đúng lúc nó đang cài bản cập nhật không còn khiến app bị khóa sau khi cập nhật xong."
+      ]
+    }
+  },
+  {
     "version": "1.0.6",
     "date": "2026-10-20",
     "new": {
