@@ -3,7 +3,15 @@
 // the plan includes. Heartbeats run on the object's alarm rather than a timer, so they survive Cloudflare restarting it;
 // after a restart the next alarm, or the minute's cron at the latest, connects again and resumes the session. Every
 // connect, close and restart is logged, and /status says how long the bot has been online, to prove it holds up.
+//
+// The same object reads the news every minute (sources.js): a Roblox build coming (from the Roblox watch, before release)
+// or live, Roblox having problems or working again, a new public Bloxkeep version. Each is posted once to the channels
+// servers chose with /notify, and every board (/board) is edited when what it shows changes. Slash commands come over
+// HTTP (/interactions, signed by Discord), so they work even while the object reconnects.
 import { DurableObject } from 'cloudflare:workers';
+import { COMMANDS, api, inviteUrl, verify } from './discord.js';
+import { newer, readLatestTag, readRelease, readStatus, readWatch, release } from './sources.js';
+import { boardEmbed, buildEmbed, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, releaseMessage, replies, statusEmbed } from './texts.js';
 
 const GATEWAY = 'wss://gateway.discord.gg';
 const QUERY = '/?v=10&encoding=json';
@@ -13,6 +21,10 @@ const FATAL = { 4004: 'token refused', 4010: 'bad shard', 4011: 'sharding requir
 const SESSION_GONE = new Set([4007, 4009]);
 const MAX_EVENTS = 2000;
 const MAX_BACKOFF = 60_000;
+// Bloxkeep's releases are looked at every ten minutes (the others every minute).
+const RELEASE_EVERY = 10 * 60_000;
+// An outage counts once two looks in a row say so, and is over after two that say all is well (no posts for a blip).
+const OUTAGE_LOOKS = 2;
 
 export class Gateway extends DurableObject {
   constructor(ctx, env) {
@@ -25,6 +37,12 @@ export class Gateway extends DurableObject {
     this.connecting = null;
     ctx.blockConcurrencyWhile(async () => {
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS events (at INTEGER NOT NULL, kind TEXT NOT NULL, detail TEXT)');
+      // Where each server wants its news, and which kinds; its language for the posts.
+      ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS subs (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, role TEXT,
+        roblox INTEGER NOT NULL, outages INTEGER NOT NULL, bloxkeep INTEGER NOT NULL, locale TEXT)`);
+      // Each server's board: the message edited in place, and a fingerprint of what it shows now.
+      ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS boards (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, message TEXT NOT NULL,
+        locale TEXT, shown TEXT)`);
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
       this.stopped = (await ctx.storage.get('stopped')) ?? null;
       // A new instance: the first one, or Cloudflare restarted the object (the connection went with it). The time of the
@@ -48,6 +66,199 @@ export class Gateway extends DurableObject {
       await this.connect();
     else if ((await this.ctx.storage.getAlarm()) == null)
       await this.ctx.storage.setAlarm(Date.now() + this.interval);
+    await this.registerCommands();
+    await this.poll();
+  }
+
+  // ───────────────────────────── commands ─────────────────────────────
+
+  /** The slash commands, put in place with Discord again whenever their list (discord.js) changes. */
+  async registerCommands() {
+    if (!this.env.DISCORD_APP_ID)
+      return;
+    const want = await tokenHash(JSON.stringify(COMMANDS));
+    if ((await this.ctx.storage.get('commands')) === want)
+      return;
+    const res = await api(this.env, 'PUT', `/applications/${this.env.DISCORD_APP_ID}/commands`, COMMANDS);
+    if (res.ok)
+      await this.ctx.storage.put('commands', want);
+    this.log('commands', res.ok ? 'registered' : `HTTP ${res.status}`);
+  }
+
+  /** A slash command (worker.js checked Discord's signature): the reply Discord shows. */
+  async interaction(i) {
+    const l = lang(i.locale ?? i.guild_locale), r = replies(l), name = i.data?.name;
+    const reply = (data, mine = false) => ({ type: 4, data: { ...data, allowed_mentions: { parse: [] }, ...(mine ? { flags: 64 } : {}) } });
+    const snap = await this.snapshot();
+    switch (name) {
+      case 'help':
+        return reply(helpMessage(l, inviteUrl(this.env)));
+      case 'download':
+        return reply(downloadMessage(l, snap.bloxkeep?.version, inviteUrl(this.env)));
+      case 'multi':
+        return reply({ embeds: [multiEmbed(l, snap.watch)] });
+      case 'robloxstatus':
+        return reply({ embeds: [statusEmbed(l, snap.status ?? { code: 100, parts: [], incident: null })] });
+    }
+    if (!i.guild_id)
+      return reply({ content: r.guildOnly }, true);
+    // Discord shows these to people who can manage the server only; checked again here all the same.
+    if (!(BigInt(i.member?.permissions ?? 0) & (1n << 5n)))
+      return reply({ content: r.noRight }, true);
+    const sub = i.data.options?.[0], opt = n => sub?.options?.find(o => o.name === n)?.value;
+    const sql = this.ctx.storage.sql, guild = i.guild_id, locale = i.guild_locale ?? i.locale ?? 'en-US';
+    if (name === 'notify' && sub?.name === 'set') {
+      const channel = opt('channel'), role = opt('role') ?? null;
+      const kinds = { roblox: opt('roblox') ?? true, outages: opt('outages') ?? true, bloxkeep: opt('bloxkeep') ?? true };
+      if (!kinds.roblox && !kinds.outages && !kinds.bloxkeep)
+        return reply({ content: r.noKinds }, true);
+      // A first post there says what will come, and proves the bot may post in that channel.
+      const hello = await api(this.env, 'POST', `/channels/${channel}/messages`, { content: replies(lang(locale)).hello, allowed_mentions: { parse: [] } });
+      if (!hello.ok)
+        return reply({ content: r.cantPost(channel) }, true);
+      sql.exec('INSERT OR REPLACE INTO subs (guild, channel, role, roblox, outages, bloxkeep, locale) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        guild, channel, role, +kinds.roblox, +kinds.outages, +kinds.bloxkeep, locale);
+      const muted = role && i.data.resolved?.roles?.[role]?.mentionable === false;
+      const list = Object.entries(kinds).filter(([, on]) => on).map(([k]) => r.kinds[k]).join(', ');
+      return reply({ content: r.notifyOn(channel, role, list) + (muted ? r.roleMuted(role) : '') }, true);
+    }
+    if (name === 'notify' && sub?.name === 'off') {
+      sql.exec('DELETE FROM subs WHERE guild = ?', guild);
+      return reply({ content: r.notifyOff }, true);
+    }
+    if (name === 'notify' && sub?.name === 'show') {
+      const s = [...sql.exec('SELECT * FROM subs WHERE guild = ?', guild)][0];
+      if (!s)
+        return reply({ content: r.notifyNone }, true);
+      const list = ['roblox', 'outages', 'bloxkeep'].filter(k => s[k]).map(k => r.kinds[k]).join(', ');
+      return reply({ content: r.notifyOn(s.channel, s.role, list) }, true);
+    }
+    if (name === 'board' && sub?.name === 'set') {
+      const channel = opt('channel'), board = { embeds: [boardEmbed(lang(locale), snap)], allowed_mentions: { parse: [] } };
+      const res = await api(this.env, 'POST', `/channels/${channel}/messages`, board);
+      if (!res.ok)
+        return reply({ content: r.cantPost(channel) }, true);
+      const message = (await res.json()).id;
+      sql.exec('INSERT OR REPLACE INTO boards (guild, channel, message, locale, shown) VALUES (?, ?, ?, ?, ?)',
+        guild, channel, message, locale, await tokenHash(JSON.stringify(boardShown(lang(locale), snap))));
+      return reply({ content: r.boardOn(channel) }, true);
+    }
+    if (name === 'board' && sub?.name === 'off') {
+      sql.exec('DELETE FROM boards WHERE guild = ?', guild);
+      return reply({ content: r.boardOff }, true);
+    }
+    return reply({ content: '?' }, true);
+  }
+
+  // ───────────────────────────── news ─────────────────────────────
+
+  /** What the sources said last; read now if never yet (a first command before the first minute's look). */
+  async snapshot() {
+    return (await this.ctx.storage.get('snap')) ?? await this.poll();
+  }
+
+  /**
+   * Every minute: the sources read again, each change posted once to the servers that want that kind of news, and the
+   * boards edited where what they show has changed. The first look only takes note (nothing old is announced).
+   */
+  async poll() {
+    const prev = (await this.ctx.storage.get('snap')) ?? null, now = Date.now();
+    const snap = prev ? structuredClone(prev) : { announced: {}, outage: { down: false, bad: 0, good: 0, since: null } };
+    const releaseDue = !prev || now - (prev.releaseAt ?? 0) >= (Number(this.env.RELEASE_EVERY_MS) || RELEASE_EVERY);
+    const [watch, status, tag] = await Promise.all([
+      readWatch(this.env).catch(() => null),
+      readStatus(this.env).catch(() => null),
+      releaseDue ? readLatestTag(this.env).catch(() => null) : Promise.resolve(null),
+    ]);
+    const posts = [];
+    let changed = false;
+    if (watch) {
+      changed ||= JSON.stringify(watch) !== JSON.stringify(prev?.watch);
+      snap.watch = watch;
+      const a = snap.announced;
+      // A build coming, once the watch has checked it; a build gone live. A new weekly release always, a build within
+      // the same release (a fix Roblox pushes) only when it changes something for Multi-Roblox.
+      const worth = (build, before) => !before || release(build.version) !== release(before) || (build.verdict && build.verdict !== 'same');
+      if (watch.next?.verdict && a.coming !== watch.next.version && (!a.live || newer(watch.next.version, a.live))) {
+        if (prev && worth(watch.next, a.coming ?? a.live))
+          posts.push({ kind: 'roblox', make: l => ({ embeds: [buildEmbed(l, 'coming', watch.next)] }) });
+        a.coming = watch.next.version;
+      }
+      if (watch.live && a.live !== watch.live.version && (!a.live || newer(watch.live.version, a.live))) {
+        if (prev && worth(watch.live, a.live))
+          posts.push({ kind: 'roblox', make: l => ({ embeds: [buildEmbed(l, 'live', watch.live)] }) });
+        a.live = watch.live.version;
+      }
+    }
+    if (status) {
+      changed ||= JSON.stringify(status) !== JSON.stringify(prev?.status);
+      snap.status = status;
+      const o = snap.outage, bad = status.code >= 300;
+      o.bad = bad ? o.bad + 1 : 0;
+      o.good = bad ? 0 : o.good + 1;
+      if (!o.down && o.bad >= OUTAGE_LOOKS) {
+        o.down = true;
+        o.since = now;
+        if (prev)
+          posts.push({ kind: 'outages', make: l => ({ embeds: [outageEmbed(l, 'down', status)] }) });
+      } else if (o.down && o.good >= OUTAGE_LOOKS) {
+        const since = o.since;
+        o.down = false;
+        o.since = null;
+        posts.push({ kind: 'outages', make: l => ({ embeds: [outageEmbed(l, 'up', status, since)] }) });
+      }
+    }
+    if (releaseDue)
+      snap.releaseAt = now;
+    if (tag && tag !== snap.announced.release && !/-/.test(tag)) {
+      const rel = await readRelease(this.env, tag);
+      changed = true;
+      snap.bloxkeep = { version: rel.version, url: rel.url };
+      if (prev && (!snap.announced.release || newer(tag, snap.announced.release)))
+        posts.push({ kind: 'bloxkeep', make: l => releaseMessage(l, rel) });
+      snap.announced.release = tag;
+    }
+    if (changed || !snap.changedAt)
+      snap.changedAt = now;
+    await this.ctx.storage.put('snap', snap);
+    for (const p of posts)
+      await this.broadcast(p.kind, p.make);
+    await this.updateBoards(snap);
+    return snap;
+  }
+
+  /** One post to every server that wants this kind of news, in its language, pinging its role if it chose one. */
+  async broadcast(kind, make) {
+    if (!this.env.DISCORD_TOKEN)
+      return;
+    const sql = this.ctx.storage.sql;
+    for (const s of [...sql.exec(`SELECT * FROM subs WHERE ${kind} = 1`)]) {
+      const body = make(lang(s.locale));
+      const res = await api(this.env, 'POST', `/channels/${s.channel}/messages`, {
+        ...body,
+        ...(s.role ? { content: `<@&${s.role}>`, allowed_mentions: { roles: [s.role] } } : { allowed_mentions: { parse: [] } }),
+      });
+      if (res.status === 404) // the channel is gone: so is the subscription
+        sql.exec('DELETE FROM subs WHERE guild = ?', s.guild);
+      this.log('posted', `${kind} ${s.guild} ${res.status}`);
+    }
+  }
+
+  /** Each board edited when what it shows has changed; one whose message was deleted is forgotten. */
+  async updateBoards(snap) {
+    if (!this.env.DISCORD_TOKEN)
+      return;
+    const sql = this.ctx.storage.sql;
+    for (const b of [...sql.exec('SELECT * FROM boards')]) {
+      const l = lang(b.locale), shown = await tokenHash(JSON.stringify(boardShown(l, snap)));
+      if (shown === b.shown)
+        continue;
+      const res = await api(this.env, 'PATCH', `/channels/${b.channel}/messages/${b.message}`, { embeds: [boardEmbed(l, snap)] });
+      if (res.ok)
+        sql.exec('UPDATE boards SET shown = ? WHERE guild = ?', shown, b.guild);
+      else if (res.status === 404)
+        sql.exec('DELETE FROM boards WHERE guild = ?', b.guild);
+    }
   }
 
   /** Heartbeats, and connecting again after a drop (after a pause that grows while it keeps failing). */
@@ -296,12 +507,29 @@ async function tokenHash(token) {
   return [...new Uint8Array(digest)].slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** What a board shows, without its timestamp: the board is edited only when this changes. */
+function boardShown(l, snap) {
+  const { timestamp, ...rest } = boardEmbed(l, snap);
+  return rest.fields;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const gateway = env.GATEWAY.get(env.GATEWAY.idFromName('bot'));
     if (url.pathname === '/status')
       return Response.json(await gateway.status(), { headers: { 'Cache-Control': 'no-store' } });
+    if (url.pathname === '/interactions' && request.method === 'POST') {
+      const body = await request.text();
+      if (!await verify(env.DISCORD_PUBLIC_KEY, request.headers.get('X-Signature-Ed25519'), request.headers.get('X-Signature-Timestamp'), body))
+        return new Response('bad signature', { status: 401 });
+      const i = JSON.parse(body);
+      if (i.type === 1) // Discord checking the address
+        return Response.json({ type: 1 });
+      if (i.type === 2)
+        return Response.json(await gateway.interaction(i));
+      return Response.json({ error: 'unsupported' }, { status: 400 });
+    }
     return Response.json({ error: 'not found' }, { status: 404 });
   },
 

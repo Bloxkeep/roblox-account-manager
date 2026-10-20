@@ -60,7 +60,9 @@ function startDev(token) {
   fs.mkdirSync(PERSIST, { recursive: true });
   const out = fs.openSync(path.join(PERSIST, 'wrangler-dev.log'), 'a'); // what wrangler said, if a check fails
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV_PORT), '--test-scheduled', '--persist-to', PERSIST,
-    '--var', `GATEWAY_URL:ws://127.0.0.1:${GW_PORT}`, '--var', `DISCORD_TOKEN:${token}`, '--show-interactive-dev-session=false'],
+    '--var', `GATEWAY_URL:ws://127.0.0.1:${GW_PORT}`, '--var', `DISCORD_TOKEN:${token}`,
+    // Nothing leaves this PC: no commands put with Discord, the news sources unreachable (features.mjs tests those).
+    '--var', 'DISCORD_APP_ID:', '--var', 'WATCH_URL:http://127.0.0.1:9/', '--var', 'STATUS_URL:http://127.0.0.1:9/', '--var', 'LATEST_URL:http://127.0.0.1:9/', '--show-interactive-dev-session=false'],
   { cwd: WORKER, stdio: ['ignore', out, out], env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' } });
 }
 function stopDev() {

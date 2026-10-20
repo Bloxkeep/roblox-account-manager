@@ -11,6 +11,11 @@ workers_dev = true
 [triggers]
 crons = ["* * * * *"]
 
+# Public: the application's id and the key its interactions are signed with (Developer Portal › General Information).
+[vars]
+DISCORD_APP_ID = "1561788269933498408"
+DISCORD_PUBLIC_KEY = "fafc7af8a87571963ebe66f46a4941279b2aee309c28d1b7ddc0b88d565c7a08"
+
 [[durable_objects.bindings]]
 name = "GATEWAY"
 class_name = "Gateway"
