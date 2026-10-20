@@ -1,8 +1,9 @@
 <!doctype html>
 <!-- The Discord bot's profile banner (Developer Portal › Bot › Banner): docs/brand/bot-banner.png, 1360×480 (Discord's
-     680×240 at twice the size). Made from the logo's own shapes and colours (RobloxManager/wwwroot/logo.svg), solid, no
-     gradients. Discord puts the bot's picture over the bottom-left corner, so the words sit high and nothing else is
-     there. To make it again: open this page at 1360×480 and take a screenshot (see the note at the bottom). -->
+     680×240 at twice the size). What Bloxkeep is about, shown rather than said: a wall of Roblox windows, one account
+     each, every face its own, cut by a slanted edge; the name and one line beside it. The logo's shapes and colours
+     (RobloxManager/wwwroot/logo.svg), all solid, no gradients or glows. Discord puts the bot's picture over the
+     bottom-left corner, so the words sit high. To make it again: see the note at the bottom. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -10,28 +11,78 @@
 <style>
   html, body { margin: 0; }
   body { width: 1360px; height: 480px; overflow: hidden; position: relative; background: #15181e; font-family: 'Segoe UI', system-ui, sans-serif; }
-  .words { position: absolute; left: 110px; top: 112px; }
-  .name { color: #fff; font-size: 124px; font-weight: 700; letter-spacing: -2px; line-height: 1; }
-  .what { color: #aab2bf; font-size: 40px; font-weight: 400; margin-top: 22px; }
-  .what b { color: #f5c933; font-weight: 600; }
-  svg { position: absolute; left: 790px; top: -50px; width: 704px; height: 704px; }
+  .words { position: absolute; left: 96px; top: 98px; z-index: 2; }
+  .name { color: #fff; font-size: 132px; font-weight: 800; letter-spacing: -3px; line-height: .92; }
+  .line { color: #c4cad4; font-size: 44px; font-weight: 600; margin-top: 26px; letter-spacing: -.5px; }
+  .line b { color: #f5c933; font-weight: 700; }
+  /* The wall: its own slanted edge, parallel to the tilt. */
+  .wall { position: absolute; inset: 0; clip-path: polygon(55% 0, 100% 0, 100% 100%, 45% 100%); background: #1b1f27; }
+  .grid { position: absolute; left: 600px; top: -170px; transform: rotate(-12deg); transform-origin: 0 0; }
+  .win { position: absolute; width: 216px; height: 158px; border-radius: 18px; background: #232832; box-shadow: inset 0 0 0 2px #2e3440; overflow: hidden; }
+  .bar { height: 30px; background: #2a303b; display: flex; align-items: center; gap: 7px; padding-left: 14px; }
+  .bar i { width: 9px; height: 9px; border-radius: 50%; background: #4a5263; }
+  .face { position: absolute; left: 22px; top: 48px; width: 82px; height: 82px; }
+  .tag { position: absolute; left: 116px; top: 62px; color: #dfe3ea; font-size: 19px; font-weight: 600; line-height: 1.25; }
+  .tag span { display: block; color: #8a93a3; font-size: 15px; font-weight: 500; margin-top: 3px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+  .win.me { background: #f5c933; box-shadow: none; }
+  .win.me .bar { background: #e2b62a; }
+  .win.me .bar i { background: #b98f17; }
+  .win.me .tag { color: #15181e; }
+  .win.me .tag span { color: #5b4a12; }
 </style>
 </head>
 <body>
+  <div class="wall"><div class="grid" id="grid"></div></div>
   <div class="words">
     <div class="name">Bloxkeep</div>
-    <div class="what">Roblox account manager <b>·</b> Multi-Roblox</div>
+    <div class="line">Every account. <b>One PC.</b></div>
   </div>
-  <!-- The logo's blocks, eleven times larger, cut by the edges. -->
-  <svg viewBox="0 0 64 64" aria-hidden="true">
-    <g transform="rotate(-8 32 32)">
-      <rect x="25" y="10" width="28" height="28" rx="6" fill="#3b4250"/>
-      <rect x="12" y="20" width="32" height="32" rx="7" fill="#f5c933"/>
-      <rect x="19.5" y="30" width="4.2" height="6.5" rx="2.1" fill="#15181e"/>
-      <rect x="32.3" y="30" width="4.2" height="6.5" rx="2.1" fill="#15181e"/>
-      <path d="M20.5 41.5c4.6 4.2 10.4 4.2 15 0" fill="none" stroke="#15181e" stroke-width="2.6" stroke-linecap="round"/>
-    </g>
-  </svg>
+  <script>
+    // A block face (the logo's), in a colour and a mood.
+    function face(color, mood, ink = '#15181e') {
+      const eyes = {
+        happy: `<rect x="19.5" y="30" width="4.2" height="6.5" rx="2.1" fill="${ink}"/><rect x="32.3" y="30" width="4.2" height="6.5" rx="2.1" fill="${ink}"/>`,
+        wink: `<rect x="19.5" y="30" width="4.2" height="6.5" rx="2.1" fill="${ink}"/><path d="M31.5 33.5h5.8" stroke="${ink}" stroke-width="2.6" stroke-linecap="round"/>`,
+        joy: `<path d="M18.8 34l2.8-2.8 2.8 2.8M31.6 34l2.8-2.8 2.8 2.8" fill="none" stroke="${ink}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+        cool: `<rect x="17" y="29.5" width="22" height="6" rx="2" fill="${ink}"/>`,
+      };
+      const mouths = {
+        smile: `<path d="M20.5 41.5c4.6 4.2 10.4 4.2 15 0" fill="none" stroke="${ink}" stroke-width="2.6" stroke-linecap="round"/>`,
+        grin: `<path d="M20 40.5h16c0 4.6-3.6 7.2-8 7.2s-8-2.6-8-7.2z" fill="${ink}"/>`,
+        oh: `<circle cx="28" cy="43" r="2.9" fill="${ink}"/>`,
+        flat: `<path d="M22.5 43h11" stroke="${ink}" stroke-width="2.6" stroke-linecap="round"/>`,
+      };
+      const [e, m] = mood.split(' ');
+      return `<svg class="face" viewBox="10 18 36 36"><g transform="rotate(-6 28 36)"><rect x="12" y="20" width="32" height="32" rx="7" fill="${color}"/>${eyes[e]}${mouths[m]}</g></svg>`;
+    }
+    // Accounts, each in its own window: colour, mood, what it's doing (and a dot for it).
+    const G = '#3ccf7a', Y = '#f5c933', B = '#4f8df5';
+    const accounts = [
+      ['#4f8df5', 'happy smile', 'Playing', 'Blox Fruits', G], ['#ef5da8', 'joy grin', 'Rejoined', 'auto-rejoin', Y],
+      ['#3ccf7a', 'cool flat', 'Anti-AFK', '6 h 12 min', G], ['#f59e3b', 'wink smile', 'Playing', 'Adopt Me!', G],
+      ['#9b7bf2', 'happy oh', 'Joining', 'server 12/40', B], ['#3cc7d9', 'joy smile', 'Playing', 'Pet Sim 99', G],
+      ['#ef5da8', 'cool smile', 'Playing', 'Brookhaven', G], ['#4f8df5', 'wink grin', 'Rejoined', 'after a kick', Y],
+      ['#f59e3b', 'happy flat', 'Anti-AFK', '3 h 40 min', G], ['#3ccf7a', 'joy oh', 'Joining', 'private server', B],
+      ['#9b7bf2', 'happy smile', 'Playing', 'MM2', G], ['#3cc7d9', 'cool grin', 'Playing', 'Grand Piece', G],
+    ];
+    const W = 216, H = 158, GAP = 26, grid = document.getElementById('grid');
+    let n = 0;
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 4; col++) {
+        const [color, mood, what, sub, dot] = accounts[n++ % accounts.length];
+        const me = row === 2 && col === 1; // the one in the logo's own yellow
+        const el = document.createElement('div');
+        el.className = 'win' + (me ? ' me' : '');
+        el.style.left = `${col * (W + GAP) + (row % 2) * ((W + GAP) / 2)}px`;
+        el.style.top = `${row * (H + GAP)}px`;
+        el.innerHTML = `<div class="bar"><i></i><i></i><i></i></div>` +
+          (me ? face('#15181e', 'happy smile', '#f5c933') + `<div class="tag">Bloxkeep<span>every account</span></div>`
+              : face(color, mood) + `<div class="tag"><span class="dot" style="background:${dot}"></span>${what}<span>${sub}</span></div>`);
+        grid.appendChild(el);
+      }
+    }
+  </script>
   <!-- msedge --headless=new --hide-scrollbars --force-device-scale-factor=1 --window-size=1360,480
        --screenshot=docs/brand/bot-banner.png docs/brand/bot-banner.html -->
 </body>
