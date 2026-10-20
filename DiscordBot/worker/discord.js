@@ -25,10 +25,10 @@ export async function verify(publicKey, signature, timestamp, body) {
 }
 
 /** A REST call with the bot's token; one 429 is waited out (up to 5 s) and tried again. */
-export async function api(env, method, path, body) {
+export async function api(env, method, path, body, headers = {}) {
   const send = () => fetch((env.DISCORD_API || API) + path, {
     method,
-    headers: { Authorization: `Bot ${env.DISCORD_TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': UA },
+    headers: { Authorization: `Bot ${env.DISCORD_TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': UA, ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   let res = await send();
@@ -69,6 +69,11 @@ export const COMMANDS = [
       { type: 1, name: 'off', description: 'Stop posting news in this server', description_localizations: vi('Ngừng đăng tin trong server này') },
       { type: 1, name: 'show', description: 'Where news goes now', description_localizations: vi('Tin đang được đăng ở đâu') },
     ],
+  },
+  {
+    // Seen by server admins only, and refused unless Bloxkeep's developers ask (worker.js runSetup).
+    name: 'setup', description: "Set up Bloxkeep's community server (Bloxkeep's developers only)",
+    default_member_permissions: String(1 << 3), contexts: [0],
   },
   {
     name: 'board', description: 'A message that keeps itself up to date: Roblox, Multi-Roblox, outages, Bloxkeep',

@@ -84,7 +84,7 @@ try {
   await cron();
   check('cron connects and identifies', await waitFor(() => conns.length === 1 && conns[0].identify, 8000), conns.length);
   const id = conns[0]?.identify;
-  check('…with the token, no intents and an online presence', id?.token === 'test-token' && id?.intents === 0 && id?.presence?.status === 'online', JSON.stringify(id));
+  check('…with the token, the messages intent only and an online presence', id?.token === 'test-token' && id?.intents === 512 && id?.presence?.status === 'online', JSON.stringify(id));
   await sleep(3500);
   const beats = conns[0].ops.filter(o => o.op === 1);
   check('heartbeats keep coming, about one a second (the alarm)', beats.length >= 2, beats.length);

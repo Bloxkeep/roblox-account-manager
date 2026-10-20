@@ -10,6 +10,7 @@
 // HTTP (/interactions, signed by Discord), so they work even while the object reconnects.
 import { DurableObject } from 'cloudflare:workers';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
+import { setupServer } from './setup.js';
 import { newer, readLatestTag, readRelease, readStatus, readWatch, release } from './sources.js';
 import { boardEmbed, buildEmbed, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, presenceLines, releaseMessage, replies, statusEmbed } from './texts.js';
 
@@ -31,6 +32,9 @@ const OUTAGE_LOOKS = 2;
 const OBJECT = 'bot-na', OLD_OBJECT = 'bot', PLACE = 'enam';
 // The custom status under the bot's name changes this often, through what's true right now (texts.js presenceLines).
 const PRESENCE_EVERY = 20_000;
+// What the bot hears from Discord: messages in servers (who posted where, not what: no privileged intent), for the trap.
+// A session made with other intents is not resumed but identified again.
+const INTENTS = 1 << 9;
 
 export class Gateway extends DurableObject {
   constructor(ctx, env) {
@@ -49,6 +53,9 @@ export class Gateway extends DurableObject {
       // Each server's board: the message edited in place, and a fingerprint of what it shows now.
       ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS boards (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, message TEXT NOT NULL,
         locale TEXT, shown TEXT)`);
+      // Each server's trap channel (/setup): who posts there is banned, unless an owner or one of these roles.
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS traps (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, exempt TEXT NOT NULL, owner TEXT, log TEXT)');
+      this.traps = new Map([...ctx.storage.sql.exec('SELECT * FROM traps')].map(t => [t.guild, { ...t, exempt: JSON.parse(t.exempt) }]));
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
       this.stopped = (await ctx.storage.get('stopped')) ?? null;
       this.retired = (await ctx.storage.get('retired')) ?? false; // handed over to the object that replaced it
@@ -232,6 +239,92 @@ export class Gateway extends DurableObject {
     return reply({ content: '?' }, true);
   }
 
+  // ───────────────────────────── the community server ─────────────────────────────
+
+  /** /setup: answered "thinking…" at once (worker.js); the work goes on here and the answer is edited when it's done. */
+  startSetup(i) {
+    const work = this.runSetup(i).catch(e => this.log('setup failed', String(e?.message ?? e).slice(0, 200)));
+    this.ctx.waitUntil?.(work);
+  }
+
+  async runSetup(i) {
+    const answer = content => api(this.env, 'PATCH', `/webhooks/${i.application_id}/${i.token}/messages/@original`, { content: content.slice(0, 2000), allowed_mentions: { parse: [] } });
+    // Only the application's owner (or its team's owner and admins), whoever else manages the server.
+    const app = await (await api(this.env, 'GET', '/oauth2/applications/@me')).json().catch(() => ({}));
+    const allowed = app.team
+      ? [app.team.owner_user_id, ...(app.team.members ?? []).filter(m => m.role === 'admin' && m.membership_state === 2).map(m => m.user.id)]
+      : [app.owner?.id];
+    const who = i.member?.user?.id ?? i.user?.id;
+    if (!who || !allowed.includes(who)) {
+      await answer("Only Bloxkeep's developers can set up a server with this.");
+      return;
+    }
+    const bot = (await (await api(this.env, 'GET', '/users/@me')).json()).id;
+    const result = await setupServer(this.env, i.guild_id, bot, who);
+    this.ctx.storage.sql.exec('INSERT OR REPLACE INTO traps (guild, channel, exempt, owner, log) VALUES (?, ?, ?, ?, ?)',
+      i.guild_id, result.trap.channel, JSON.stringify(result.trap.exempt), result.trap.owner, result.modLog);
+    this.traps.set(i.guild_id, { guild: i.guild_id, channel: result.trap.channel, exempt: result.trap.exempt, owner: result.trap.owner, log: result.modLog });
+    // The bot's own news in #roblox-updates, pinging @Roblox updates, and its board there, pinned.
+    if (result.updates) {
+      const sql = this.ctx.storage.sql;
+      sql.exec('INSERT OR REPLACE INTO subs (guild, channel, role, roblox, outages, bloxkeep, locale) VALUES (?, ?, ?, 1, 1, 1, ?)',
+        i.guild_id, result.updates, result.pings, 'en-US');
+      if (![...sql.exec('SELECT guild FROM boards WHERE guild = ?', i.guild_id)].length) {
+        const snap = await this.snapshot(), l = lang('en-US');
+        const res = await api(this.env, 'POST', `/channels/${result.updates}/messages`, { embeds: [boardEmbed(l, snap)], allowed_mentions: { parse: [] } });
+        if (res.ok) {
+          const message = (await res.json()).id;
+          sql.exec('INSERT OR REPLACE INTO boards (guild, channel, message, locale, shown) VALUES (?, ?, ?, ?, ?)',
+            i.guild_id, result.updates, message, 'en-US', await tokenHash(JSON.stringify(boardShown(l, snap))));
+          await api(this.env, 'PUT', `/channels/${result.updates}/pins/${message}`);
+          result.made.push('board in #roblox-updates');
+        } else {
+          result.failed.push(`board: HTTP ${res.status}`);
+        }
+      }
+    }
+    this.log('setup', `${result.made.length} made, ${result.failed.length} failed`);
+    await answer([
+      result.made.length ? `Done. Made: ${result.made.join(', ')}.` : 'Done: everything was already there.',
+      ...(result.failed.length ? [`Couldn't: ${result.failed.join('; ')}`] : []),
+    ].join('\n'));
+  }
+
+  /**
+   * A message in a server: posted in that server's trap channel by anyone but its owner, a moderator, an admin or a
+   * bot, it gets its sender banned, with their messages from the last hour deleted, and says so in #mod-log.
+   */
+  async trap(d) {
+    const t = d.guild_id ? this.traps.get(d.guild_id) : null;
+    if (!t || d.channel_id !== t.channel || d.author?.bot || d.webhook_id)
+      return;
+    const user = d.author?.id;
+    if (!user || user === t.owner || (d.member?.roles ?? []).some(r => t.exempt.includes(r)))
+      return;
+    const key = `${d.guild_id}/${user}`;
+    if ((this.banned ??= new Set()).has(key))
+      return; // several messages at once: one ban
+    this.banned.add(key);
+    setTimeout(() => this.banned.delete(key), 10 * 60_000);
+    const res = await api(this.env, 'PUT', `/guilds/${d.guild_id}/bans/${user}`, { delete_message_seconds: 3600 },
+      { 'X-Audit-Log-Reason': encodeURIComponent('Posted in #dont-type-here, the trap for scam bots and hacked accounts') });
+    this.log('trap', `${d.guild_id} HTTP ${res.status}`);
+    if (!t.log)
+      return;
+    const name = String(d.author?.username ?? '').replace(/[\\*_`~|>]/g, m => `\\${m}`);
+    await api(this.env, 'POST', `/channels/${t.log}/messages`, {
+      embeds: [{
+        title: res.ok ? 'Banned by the trap' : "The trap couldn't ban",
+        color: res.ok ? 0xED4245 : 0xFEE75C,
+        description: `<@${user}> (${name}) posted in <#${t.channel}>.` + (res.ok
+          ? ' Their messages from the last hour were deleted.'
+          : ` Discord answered HTTP ${res.status}: the bot needs Ban Members, and its role above the member's roles.`),
+        footer: { text: 'Bloxkeep · Trap' }, timestamp: new Date().toISOString(),
+      }],
+      allowed_mentions: { parse: [] },
+    });
+  }
+
   // ───────────────────────────── news ─────────────────────────────
 
   /** What the sources said last; read now if never yet (a first command before the first minute's look). */
@@ -371,7 +464,7 @@ export class Gateway extends DurableObject {
   async open() {
     if (this.stopped || this.ws || !this.env.DISCORD_TOKEN)
       return;
-    const resume = !!(this.session?.id && this.session?.url);
+    const resume = !!(this.session?.id && this.session?.url && this.session.intents === INTENTS);
     const base = this.env.GATEWAY_URL || (resume ? this.session.url : GATEWAY);
     try {
       const res = await fetch(base.replace(/^ws/, 'http').replace(/\/+$/, '') + QUERY, { headers: { Upgrade: 'websocket' } });
@@ -413,9 +506,11 @@ export class Gateway extends DurableObject {
           this.send({ op: 2, d: this.identity() });
         await this.ctx.storage.setAlarm(Date.now() + Math.floor(this.interval * Math.random()));
         break;
-      case 11: // Heartbeat answered.
+      case 11: // Heartbeat answered: the session (with its sequence number) saved now and then, not at every message.
         this.acked = true;
         this.ctx.storage.put('lastBeat', Date.now());
+        if (this.session)
+          this.ctx.storage.put('session', this.session);
         break;
       case 1: // Discord asks for a heartbeat now.
         this.send({ op: 1, d: this.session?.seq ?? null });
@@ -434,8 +529,13 @@ export class Gateway extends DurableObject {
         await this.ctx.storage.setAlarm(Date.now() + this.backoff);
         break;
       case 0:
+        if (msg.t === 'MESSAGE_CREATE') {
+          // Every message in every server the bot is in: kept cheap, and the session saved only now and then (below).
+          this.trap(msg.d).catch(() => {});
+          break;
+        }
         if (msg.t === 'READY') {
-          this.session = { id: msg.d.session_id, url: msg.d.resume_gateway_url, seq: msg.s };
+          this.session = { id: msg.d.session_id, url: msg.d.resume_gateway_url, seq: msg.s, intents: INTENTS };
           this.online('ready', msg.d.user?.username ?? '');
         } else if (msg.t === 'RESUMED') {
           this.online('resumed', '');
@@ -513,7 +613,7 @@ export class Gateway extends DurableObject {
   identity() {
     return {
       token: this.env.DISCORD_TOKEN,
-      intents: 0, // nothing to listen to yet: the bot only has to be there
+      intents: INTENTS,
       properties: { os: 'linux', browser: 'bloxkeep', device: 'bloxkeep' },
       presence: { since: null, activities: [{ type: 4, name: 'Custom Status', state: presenceLines(null)[0] }], status: 'online', afk: false },
     };
@@ -630,6 +730,11 @@ export default {
       const i = JSON.parse(body);
       if (i.type === 1) // Discord checking the address
         return Response.json({ type: 1 });
+      if (i.type === 2 && i.data?.name === 'setup') {
+        // Many calls to Discord: "thinking…" now (seen only by them), the result when it's done.
+        ctx.waitUntil(gateway.startSetup(i));
+        return Response.json({ type: 5, data: { flags: 64 } });
+      }
       if (i.type === 2) {
         const started = Date.now(), reply = await gateway.interaction(i);
         ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.name ?? '', Date.now() - started));

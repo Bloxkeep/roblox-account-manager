@@ -25,8 +25,11 @@ stored. The other files in Bloxkeep's data folder, and how they're protected, ar
 | The backup folder you choose | A copy of the encrypted vault; a OneDrive or Google Drive app may sync it |
 
 **Bloxkeep's Discord bot** (a Cloudflare Worker) runs apart from the app and knows nothing about your accounts. In the
-servers that add it, it reads nothing: it asks Discord for no messages, members or other events, and keeps only what
-it needs to stay connected (its own session, and when its connection started and ended).
+servers that add it, Discord tells it who posted a message in which channel, but not what the message says (the bot
+doesn't ask for message content). It uses that for one thing only: in a server that set up a trap channel with
+`/setup`, whoever posts there is banned. It keeps none of it, only what it needs to stay connected (its own session,
+and when its connection started and ended), each server's choices made with `/notify`, `/board` and `/setup`, and a
+note of each ban for that server's moderators.
 
 Each of these services has its own privacy policy: [Roblox](https://www.roblox.com/info/privacy),
 [GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),

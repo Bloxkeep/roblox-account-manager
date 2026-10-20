@@ -135,7 +135,7 @@ try {
   await minute(3500);
   const puts = calls.filter(c => c.method === 'PUT');
   check('the commands are put in place, with the bot token', puts.length === 1 && puts[0].url === '/applications/app1/commands' && puts[0].auth === 'Bot test-token'
-    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,board', JSON.stringify(puts.map(p => p.url)));
+    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,board', JSON.stringify(puts.map(p => p.url)));
   check('…and the first look announces nothing', calls.filter(c => c.method === 'POST').length === 0, calls.length);
   await minute();
   check('…nor are the commands put again when unchanged', calls.filter(c => c.method === 'PUT').length === 1);
