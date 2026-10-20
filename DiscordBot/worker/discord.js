@@ -40,7 +40,9 @@ export async function api(env, method, path, body) {
   return res;
 }
 
-const vi = text => ({ vi: text });
+// Command descriptions are English only for now (see texts.js lang()); the Vietnamese kept here restores the
+// per-locale descriptions when that option returns.
+const vi = () => undefined;
 const channelOption = { type: 7, name: 'channel', description: 'Where to post', description_localizations: vi('Kênh để đăng'), required: true, channel_types: [0, 5] };
 
 /** The bot's slash commands, put in place by the bot itself whenever this list changes (worker.js). */

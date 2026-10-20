@@ -10,8 +10,11 @@ const STATUS_PAGE = 'https://status.roblox.com';
 const SETUP = `${REPO}/releases/latest/download/Bloxkeep-Setup.exe`;
 export const COLOR = { green: 0x57F287, yellow: 0xFEE75C, red: 0xED4245, blurple: 0x5865F2, grey: 0x4E5058 };
 
-/** "vi" for a Vietnamese server or person, else "en". */
-export const lang = locale => String(locale ?? '').toLowerCase().startsWith('vi') ? 'vi' : 'en';
+/**
+ * The bot speaks English by default (Bloxkeep's own convention). The Vietnamese strings below are kept for a later
+ * per-server language option; to turn it on, return 'vi' from the server's locale here instead of always 'en'.
+ */
+export const lang = () => 'en';
 
 const VERDICT = {
   en: {
@@ -155,7 +158,7 @@ export function downloadMessage(l, version, inviteUrl) {
   const w = W[l];
   return {
     embeds: [embed(version ? w.bloxkeepIs(version) : 'Bloxkeep', COLOR.blurple, w.bloxkeepAbout, [], 'Download', { url: SITE })],
-    components: [buttons([[w.download, SETUP], [w.site, SITE], ...(inviteUrl ? [[w.addBot, inviteUrl]] : [])])],
+    components: [buttons([[w.download, SETUP], [w.site, SITE], ['GitHub', REPO], ...(inviteUrl ? [[w.addBot, inviteUrl]] : [])])],
   };
 }
 
@@ -194,7 +197,7 @@ export function helpMessage(l, inviteUrl) {
   const w = W[l];
   return {
     embeds: [embed(w.help, COLOR.blurple, w.cmds.map(([c, d]) => `**${c}**: ${d}`).join('\n'), [], 'Bot')],
-    components: [buttons([[w.download, SETUP], ...(inviteUrl ? [[w.addBot, inviteUrl]] : [])])],
+    components: [buttons([[w.download, SETUP], ['GitHub', REPO], ...(inviteUrl ? [[w.addBot, inviteUrl]] : [])])],
   };
 }
 

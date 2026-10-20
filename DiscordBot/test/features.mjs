@@ -1,6 +1,6 @@
 // The bot's commands and news (DiscordBot/worker) against a fake Discord (its REST API and Gateway) and fake sources (the
 // Roblox watch, Roblox's status page, Bloxkeep's releases), run by wrangler dev: each command's reply, a signature that
-// doesn't verify refused, and each kind of news posted once, in each server's language, only where it was asked for.
+// doesn't verify refused, and each kind of news posted once, in English, only where it was asked for.
 // No Discord account or token needed. In this folder: npm install, then node features.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -134,12 +134,15 @@ try {
   await minute();
   check('…nor are the commands put again when unchanged', calls.filter(c => c.method === 'PUT').length === 1);
 
-  // Commands anyone can use, in the person's language.
+  // Commands anyone can use; English whatever the server's language (texts.js lang).
   let r = await interact(command('help', { locale: 'vi' }));
-  check('/help in Vietnamese, with an add-to-server button', r.json?.type === 4 && r.json.data.embeds[0].title === 'Bot Bloxkeep làm được gì'
-    && r.json.data.components[0].components.some(b => b.url.includes('client_id=app1') && b.url.includes('permissions=19456')), JSON.stringify(r.json));
+  check('/help is in English, even for a Vietnamese server', r.json?.type === 4 && r.json.data.embeds[0].title === "What Bloxkeep's bot can do", JSON.stringify(r.json));
+  const helpButtons = r.json?.data.components[0].components ?? [];
+  check('…with Download, GitHub and add-to-server buttons', helpButtons.map(b => b.label).join() === 'Download,GitHub,Add to your server'
+    && helpButtons[1].url === 'https://github.com/minhhoang0122/Bloxkeep' && helpButtons[2].url.includes('client_id=app1') && helpButtons[2].url.includes('permissions=19456'), JSON.stringify(helpButtons));
   r = await interact(command('download', { locale: 'en-US' }));
   check('/download names the newest Bloxkeep', r.json?.data.embeds[0].title === 'Bloxkeep 1.0.7', JSON.stringify(r.json?.data.embeds[0]));
+  check('…with Download, Website, GitHub and add-to-server buttons', (r.json?.data.components[0].components ?? []).map(b => b.label).join() === 'Download,Website,GitHub,Add to your server', JSON.stringify(r.json?.data.components));
   r = await interact(command('multi', { locale: 'en-US' }));
   const mf = r.json?.data.embeds[0].fields ?? [];
   check('/multi: the live build, "No change", nothing coming', mf[0]?.value === '`0.744.0.7441080`' && mf[1]?.value === '**No change**' && mf[2]?.value === 'Nothing yet', JSON.stringify(mf));
@@ -148,16 +151,16 @@ try {
 
   // Settings: only for people who can manage the server, in a server.
   r = await interact(command('notify', { perms: '0', sub: 'set', options: [opt('channel', 'c1')] }));
-  check('/notify set without Manage Server is refused', r.json?.data.flags === 64 && /quyền quản lý server/.test(r.json.data.content), JSON.stringify(r.json?.data));
+  check('/notify set without Manage Server is refused', r.json?.data.flags === 64 && /manage the server/.test(r.json.data.content), JSON.stringify(r.json?.data));
   r = await interact(command('notify', { guild: null, sub: 'show' }));
-  check('/notify outside a server is refused', /chỉ dùng trong server/.test(r.json?.data.content ?? ''), JSON.stringify(r.json?.data));
+  check('/notify outside a server is refused', /in a server only/.test(r.json?.data.content ?? ''), JSON.stringify(r.json?.data));
 
-  // g1 (Vietnamese): everything to c1, pinging r1, a role nobody may mention.
+  // g1 (a Vietnamese server, answered in English all the same): everything to c1, pinging r1, a role nobody may mention.
   r = await interact(command('notify', { sub: 'set', options: [opt('channel', 'c1'), opt('role', 'r1', 8)], resolved: { roles: { r1: { id: 'r1', mentionable: false } } } }));
-  check('/notify set: a first post in the channel', posts('c1').length === 1 && /Bloxkeep sẽ đăng tin/.test(posts('c1')[0].body.content), JSON.stringify(posts('c1')));
-  check('…and the reply, seen only by them, says where and warns the role can\'t be pinged', r.json?.data.flags === 64 && r.json.data.content.includes('<#c1>') && r.json.data.content.includes('<@&r1>') && /không ping được/.test(r.json.data.content), r.json?.data.content);
+  check('/notify set: a first post in the channel', posts('c1').length === 1 && /Bloxkeep will post/.test(posts('c1')[0].body.content), JSON.stringify(posts('c1')));
+  check('…and the reply, seen only by them, says where and warns the role can\'t be pinged', r.json?.data.flags === 64 && r.json.data.content.includes('<#c1>') && r.json.data.content.includes('<@&r1>') && /can't ping it/.test(r.json.data.content), r.json?.data.content);
   r = await interact(command('notify', { sub: 'set', options: [opt('channel', 'nochan')] }));
-  check('a channel the bot may not post in: said, and the old choice kept', /không đăng được vào <#nochan>/.test(r.json?.data.content ?? '') && /<#c1>/.test((await interact(command('notify', { sub: 'show' }))).json?.data.content ?? ''), r.json?.data.content);
+  check('a channel the bot may not post in: said, and the old choice kept', /can't post in <#nochan>/.test(r.json?.data.content ?? '') && /<#c1>/.test((await interact(command('notify', { sub: 'show' }))).json?.data.content ?? ''), r.json?.data.content);
   // g3 (English): Roblox updates only, to c3.
   await interact(command('notify', { guild: 'g3', locale: 'en-US', sub: 'set', options: [opt('channel', 'c3'), opt('outages', false, 5), opt('bloxkeep', false, 5)] }));
   // g2 (English): a board in b1.
@@ -170,10 +173,10 @@ try {
   watch = { ...watch, builds: [...watch.builds, build('0.745.0.7451000', 'h745', 'changed', 'beta')], beta: { version: '0.745.0.7451000', hash: 'h745' } };
   await minute();
   const coming = posts('c1').at(-1);
-  check('a build coming: posted in Vietnamese, pinging the role', posts('c1').length === before.c1 + 1 && embedOf(coming)?.title === 'Roblox 0.745.0.7451000 sắp ra'
+  check('a build coming: posted in English, pinging the role', posts('c1').length === before.c1 + 1 && embedOf(coming)?.title === 'Roblox 0.745.0.7451000 is coming'
     && coming.body.content === '<@&r1>' && JSON.stringify(coming.body.allowed_mentions) === '{"roles":["r1"]}', JSON.stringify(coming?.body));
-  check('…with what it means for Multi-Roblox', embedOf(coming)?.fields?.[0]?.value === '**Có thể bị chặn**' && embedOf(coming)?.fields?.[2]?.value === 'Chưa', JSON.stringify(embedOf(coming)?.fields));
-  check('…in English where the server is English, and nobody pinged there', embedOf(posts('c3').at(-1))?.title === 'Roblox 0.745.0.7451000 is coming' && JSON.stringify(posts('c3').at(-1).body.allowed_mentions) === '{"parse":[]}', JSON.stringify(posts('c3').at(-1)?.body));
+  check('…with what it means for Multi-Roblox', embedOf(coming)?.fields?.[0]?.value === '**May be blocked**' && embedOf(coming)?.fields?.[2]?.value === 'Not yet', JSON.stringify(embedOf(coming)?.fields));
+  check('…the same in the other server, where nobody is pinged', embedOf(posts('c3').at(-1))?.title === 'Roblox 0.745.0.7451000 is coming' && JSON.stringify(posts('c3').at(-1).body.allowed_mentions) === '{"parse":[]}', JSON.stringify(posts('c3').at(-1)?.body));
   check('…and the board edited to show it', patches().length === before.patches + 1 && JSON.stringify(embedOf(patches().at(-1))).includes('0.745.0.7451000'), JSON.stringify(patches().at(-1)?.body));
   before = base();
   await minute();
@@ -183,7 +186,7 @@ try {
   watch = { ...watch, live: { version: '0.745.0.7451000', hash: 'h745' } };
   before = base();
   await minute();
-  check('the build goes live: posted once', posts('c1').length === before.c1 + 1 && embedOf(posts('c1').at(-1))?.title === 'Roblox 0.745.0.7451000 đã ra', embedOf(posts('c1').at(-1))?.title);
+  check('the build goes live: posted once', posts('c1').length === before.c1 + 1 && embedOf(posts('c1').at(-1))?.title === 'Roblox 0.745.0.7451000 is live', embedOf(posts('c1').at(-1))?.title);
   // A fix within the same release that changes nothing for Multi-Roblox: the board shows it, nobody is told.
   watch = { ...watch, builds: [...watch.builds, build('0.745.0.7451005', 'h7455', 'same')], live: { version: '0.745.0.7451005', hash: 'h7455' }, beta: { version: '0.745.0.7451005', hash: 'h7455' } };
   before = base();
@@ -197,21 +200,21 @@ try {
   check('one look at an outage: not posted yet', posts('c1').length === before.c1);
   await minute();
   const down = posts('c1').at(-1);
-  check('two looks: "Roblox is having problems" posted, with the incident', posts('c1').length === before.c1 + 1 && embedOf(down)?.title === 'Roblox đang gặp sự cố' && embedOf(down)?.description.includes("Players can't join"), JSON.stringify(embedOf(down)));
+  check('two looks: "Roblox is having problems" posted, with the incident', posts('c1').length === before.c1 + 1 && embedOf(down)?.title === 'Roblox is having problems' && embedOf(down)?.description.includes("Players can't join"), JSON.stringify(embedOf(down)));
   check('…not where outages were turned off', posts('c3').length === before.c3);
   status = { code: 100 };
   await minute();
   await minute();
   const up = posts('c1').at(-1);
-  check('working again: posted, with how long it was down', embedOf(up)?.title === 'Roblox đã hoạt động lại' && embedOf(up)?.fields.some(f => f.name === 'Lỗi trong'), JSON.stringify(embedOf(up)));
+  check('working again: posted, with how long it was down', embedOf(up)?.title === 'Roblox is working again' && embedOf(up)?.fields.some(f => f.name === 'Down for'), JSON.stringify(embedOf(up)));
 
-  // A new Bloxkeep: its Vietnamese highlights in the Vietnamese server, with Download and the full notes.
+  // A new Bloxkeep: its English highlights, with Download and the full notes.
   latest = 'v1.0.8';
   before = base();
   await minute();
   const rel = posts('c1').at(-1);
-  check('a new Bloxkeep: posted with its highlights in the server\'s language', posts('c1').length === before.c1 + 1 && embedOf(rel)?.title === 'Bloxkeep 1.0.8 đã ra'
-    && embedOf(rel)?.description === '- **Robux hiện ngay**: lúc mở khoá.' && rel.body.components?.[0]?.components?.length === 2, JSON.stringify(rel?.body));
+  check('a new Bloxkeep: posted with its English highlights', posts('c1').length === before.c1 + 1 && embedOf(rel)?.title === 'Bloxkeep 1.0.8 is out'
+    && embedOf(rel)?.description === '- **Robux at once**: shown as you unlock.' && rel.body.components?.[0]?.components?.length === 2, JSON.stringify(rel?.body));
   check('…not where Bloxkeep news was turned off', posts('c3').length === before.c3);
   r = await interact(command('download', { locale: 'en-US' }));
   check('/download now names 1.0.8', r.json?.data.embeds[0].title === 'Bloxkeep 1.0.8');
