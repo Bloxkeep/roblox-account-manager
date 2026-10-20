@@ -160,9 +160,9 @@ try {
   const cat = name => named(name, 4)?.id;
   const under = (cat, list) => list.every(([name, type]) => named(name, type)?.parent_id === cat);
   check('Info: the trap, welcome, rules, announcements, roblox-updates', under(cat('Info'), [['dont-type-here', 0], ['welcome', 0], ['rules', 0], ['announcements', 5], ['roblox-updates', 5]]), JSON.stringify(channels.map(c => [c.name, c.type, c.parent_id])));
-  check('Community: general (Discord\'s #chung, renamed), general-vn, showcase, off-topic, bot-commands, the voice channel (renamed General)',
-    under(cat('Community'), [['general', 0], ['general-vn', 0], ['showcase', 0], ['off-topic', 0], ['bot-commands', 0], ['General', 2]])
-    && named('general').id === 'c1' && named('General').id === 'v1');
+  check('Community: general (Discord\'s #chung, renamed), general-vn, bot-commands, the voice channel (renamed General), no showcase or off-topic',
+    under(cat('Community'), [['general', 0], ['general-vn', 0], ['bot-commands', 0], ['General', 2]])
+    && !named('showcase') && !named('off-topic') && named('general').id === 'c1' && named('General').id === 'v1');
   check('Support: the help, bug-reports and ideas forums, with tags', under(cat('Support'), [['help', 15], ['bug-reports', 15], ['ideas', 15]]) && named('help').available_tags.some(t => t.name === 'Solved'));
   check('Staff: mod-chat and mod-log, hidden from everyone else', under(cat('Staff'), [['mod-chat', 0], ['mod-log', 0]])
     && named('mod-log').permission_overwrites.some(o => o.id === G && BigInt(o.deny) & (1n << 10n)));

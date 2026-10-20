@@ -113,8 +113,6 @@ export async function setupServer(env, guildId, bot, runner) {
   const welcome = await channel('welcome', TEXT, info, { topic: 'What Bloxkeep is, and where to go here', permission_overwrites: readOnly(everyone, mod.id, bot) });
   const rules = await channel('rules', TEXT, info, { topic: 'Read these before you post', permission_overwrites: readOnly(everyone, mod.id, bot) });
   const general = await channel('general', TEXT, community, { topic: 'Anything about Bloxkeep and Roblox' });
-  const showcase = await channel('showcase', TEXT, community, { topic: 'Your window layouts, presets and setups' });
-  const offTopic = await channel('off-topic', TEXT, community, { topic: 'Everything else' });
   const generalVn = await channel('general-vn', TEXT, community, { topic: 'Trò chuyện bằng tiếng Việt' });
   const commands = await channel('bot-commands', TEXT, community, { topic: "Bot commands here: /help, /download, /robloxstatus and the other bots' commands" });
   const modChat = await channel('mod-chat', TEXT, staff, { permission_overwrites: only(everyone, [mod.id], bot) });
@@ -155,7 +153,7 @@ export async function setupServer(env, guildId, bot, runner) {
   await step('order', () => call('PATCH', `${g}/channels`, [
     [info, community, support, staff],
     [trap, welcome, rules, announcements, updates],
-    [general, generalVn, showcase, offTopic, commands, ...channels.filter(c => c.type === VOICE && c.parent_id === community.id)],
+    [general, generalVn, commands, ...channels.filter(c => c.type === VOICE && c.parent_id === community.id)],
     [help, bugs, ideas],
     [modChat, modLog],
   ].flatMap(list => list.filter(Boolean).map((c, position) => ({ id: c.id, position })))));
