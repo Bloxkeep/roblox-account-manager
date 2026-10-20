@@ -72,6 +72,18 @@ export default [
   // ── Settings: every page ──
   ...['launch', 'roblox', 'perf', 'notify', 'discord', 'appearance', 'security', 'backup', 'updates'].map(p => S(`settings-${p}`, `settings=${p}`)),
   S('settings-discord-on', 'settings=discord&discord=1'),
+  // The custom theme: picked from its swatch (its colours and picture rows show), a picture chosen (the page behind
+  // glass), and one with a picture already, on a light background too.
+  S('settings-custom-theme', 'settings=appearance', async s => {
+    await s.click({ css: '.swatch[data-id="custom"]' });
+    await s.wait(500);
+    await s.snap('picked');
+    await s.click({ key: 'ct.pick' });
+    await s.wait(500);
+  }),
+  S('settings-custom-picture', 'settings=appearance&theme=custom&ctpicture=1'),
+  S('settings-custom-light', 'settings=appearance&theme=custom&ctbg=f1e9da'),
+  S('accounts-custom-theme', 'theme=custom&ctpicture=1'),
   S('settings-backup-on', 'settings=backup&backup=1'),
   S('settings-update-ready', 'settings=updates&update=1'),
   S('settings-update-quiet', 'settings=updates&update=quiet'),

@@ -91,6 +91,7 @@ Every row is explained in [Sending to Discord](discord.md): **Show on my Discord
 | Row | What it does | Default |
 |---|---|---|
 | **Theme** | **Sync with Windows** (light or dark like Windows), or one of 74 themes in **Basic**, **Scenery**, **Colourful**, **Styles** and **Seasonal**. Arrow keys try them; the pick is saved once you stop. | Dark |
+| **Your own › Custom** | Pick a **Background color** and an **Accent color** (buttons, switches, what is selected); the words turn light or dark to stay readable. **Choose a picture…** puts a picture from your PC behind the page, and **Background color over the picture** sets how much it shows through. Bloxkeep keeps a copy of the picture in its data folder. | — |
 | **Language** | EN / VI. | EN |
 | **Hide account names** | Shows "Account 1", "Account 2"… everywhere instead of names. See [Backup and security](backup-and-security.md). | Off |
 

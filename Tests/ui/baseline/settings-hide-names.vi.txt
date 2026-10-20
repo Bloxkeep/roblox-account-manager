@@ -353,6 +353,12 @@ html [data-theme="dark" lang="vi"]
                           button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Giao thừa"]
                             span [data-theme="newyear"]
                               em
+                      div.tg
+                        span.tg-label "Của bạn"
+                        div.tg-list
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Tùy chỉnh"]
+                            span [data-theme="custom" data-tone="dark" style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--bg:#1b2a3a;--bg-2:#202e3e;--card:#233141;--card-hover:#293746;--dim:#828a93;--field:#131d29;--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:#2b3948;--surface:#263544;--surface-2:#2d3b4a;--surface-3:#394654;--text:#edeeef;--text-2:#bfc3c8"]
+                              em
                     div.set-row
                       div
                         div.t "Ngôn ngữ"

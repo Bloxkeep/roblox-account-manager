@@ -7,7 +7,8 @@
 [data-theme="frost"], [data-theme="ocean"], [data-theme="forest"], [data-theme="mocha"], [data-theme="grape"], [data-theme="terminal"],
 [data-theme="halloween"], [data-theme="lunar"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="macosdark"], [data-theme="kde"],
 [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="midnight"], [data-theme="indigo"], [data-theme="crimson"], [data-theme="teal"], [data-theme="amber"], [data-theme="chalkboard"], [data-theme="arcade"], [data-theme="cyberpunk"],
-[data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="lava"], [data-theme="neon"], [data-theme="blueprint"], [data-theme="contrast"] {
+[data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="lava"], [data-theme="neon"], [data-theme="blueprint"], [data-theme="contrast"],
+[data-theme="custom"] {
   --bg: #0a0c11;
   --bg-2: #0d1017;
   --surface: #11151e;
@@ -784,7 +785,10 @@
 /* Light is the base for the light themes. */
 [data-theme="light"], [data-theme="paper"], [data-theme="sakura"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="macos"], [data-theme="gnome"], [data-theme="ubuntu"],
 [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"], [data-theme="gray"], [data-theme="contrastlight"], [data-theme="sky"], [data-theme="lavender"], [data-theme="peach"], [data-theme="mint"], [data-theme="notebook"], [data-theme="brutal"], [data-theme="macclassic"],
-[data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="candy"], [data-theme="matcha"], [data-theme="newspaper"], [data-theme="retro"], [data-theme="gameboy"] {
+[data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="candy"], [data-theme="matcha"], [data-theme="newspaper"], [data-theme="retro"], [data-theme="gameboy"],
+/* The custom theme (Settings › Appearance) on a light background: Light's words and lines under its own colours, which
+   app.js sets on the page itself (customVars). */
+[data-theme="custom"][data-tone="light"] {
   --backdrop: var(--bg);
   --blur: none;
   --bg: #f3f4f7;
@@ -2217,6 +2221,10 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 }
 .swatch:hover::after, .swatch:focus-visible::after { opacity: 1; }
 .swatch.on { outline-color: var(--text); }
+/* Settings › Appearance › Custom: the colour wells, the size of a button. */
+.ct-color { width: 44px; height: 30px; padding: 2px; border: 1px solid var(--line-3); border-radius: 8px; background: var(--field); cursor: pointer; }
+.ct-color::-webkit-color-swatch-wrapper { padding: 0; }
+.ct-color::-webkit-color-swatch { border: none; border-radius: 5px; }
 .swatch:focus-visible { outline-color: var(--focus); outline-offset: 3px; }
 /* Background on the left, the theme's highlight colour on the right, its Play colour in the middle. */
 .swatch > span { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: linear-gradient(90deg, transparent 50%, var(--inv) 50%), var(--backdrop); }

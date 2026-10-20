@@ -15,6 +15,13 @@ public static class Prefs
     /// <summary>A theme id from <see cref="Themes"/>.</summary>
     public static string Theme { get; set; } = Themes.Default;
 
+    /// <summary>
+    /// Settings › Appearance › Custom: the page's colour and its accent (#rrggbb), how much of that colour lies over the
+    /// picture (0 to 90 %), and the picture's file in the data folder (theme-background-*.png…) when there is one.
+    /// </summary>
+    public sealed record CustomTheme(string Background, string Accent, int Fade, string? Picture);
+    public static CustomTheme Custom { get; set; } = new("#141a26", "#22c55e", 45, null);
+
     /// <summary>The close button hides the window to the notification area; the app quits from the tray icon.</summary>
     public static bool CloseToTray { get; set; } = true;
 
@@ -114,7 +121,7 @@ public static class Prefs
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
-        "multiRobloxAtStart", "discordPresence",
+        "multiRobloxAtStart", "discordPresence", "customTheme",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -139,6 +146,10 @@ public static class Prefs
                 Language = "vi";
             if (root.TryGetProperty("theme", out var theme) && theme.ValueKind == JsonValueKind.String)
                 Theme = Themes.Normalize(theme.GetString());
+            if (root.TryGetProperty("customTheme", out var custom) && custom.ValueKind == JsonValueKind.Object)
+                Custom = new(Themes.Hex(Text(custom, "background")) ?? Custom.Background, Themes.Hex(Text(custom, "accent")) ?? Custom.Accent,
+                    custom.TryGetProperty("fade", out var fade) && fade.ValueKind == JsonValueKind.Number && fade.TryGetInt32(out int f) ? Math.Clamp(f, 0, 90) : Custom.Fade,
+                    Text(custom, "picture") is { } picture && Themes.IsPictureName(picture) ? picture : null);
             if (root.TryGetProperty("closeToTray", out var tray) && tray.ValueKind == JsonValueKind.False)
                 CloseToTray = false;
             if (root.TryGetProperty("hideNames", out var hide) && hide.ValueKind == JsonValueKind.True)
@@ -239,6 +250,7 @@ public static class Prefs
                 ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
                 ["discordPresence"] = DiscordPresence,
+                ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture },
                 ["notifications"] = Notifications, ["notifyOff"] = NotifyOff.Order(StringComparer.Ordinal).ToArray(),
                 ["backupFolder"] = BackupFolder, ["backupEnabled"] = BackupEnabled, ["lastBackup"] = LastBackup,
                 ["backupPending"] = BackupPending,

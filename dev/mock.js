@@ -101,6 +101,8 @@
   let locked = params.has('locked') || params.has('new') || !!screenLock;
   let language = params.get('lang') || 'en';
   let theme = params.get('theme') || 'dark';
+  // Settings › Appearance › Custom (?theme=custom; ?ctpicture=1 with a picture, a scenery theme's standing in).
+  let customTheme = { background: params.has('ctbg') ? '#' + params.get('ctbg') : '#1b2a3a', accent: '#f59e0b', fade: 45, picture: params.has('ctpicture') ? 'scene-halong.svg' : null };
   let closeToTray = true;
   let hideNames = params.has('hide'); // ?hide=1: Settings › Appearance › Hide account names is on
   // A made-up authenticator code (not a real TOTP): six digits that change every 30 s, as the app's do.
@@ -239,7 +241,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    multiAtStart, language, theme, themeApplied: themeApplied(), closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked, screenLock,
+    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
       updater: settings.launchVia === 'store' ? null : 'Bloxstrap', updating: robloxUpdating },
@@ -323,6 +325,11 @@
         case 'lock': locked = true; screenLock = null; push(); return null;
         case 'setLanguage': language = a.language; push(); return null;
         case 'setTheme': theme = a.theme; push(); return null;
+        case 'setCustomTheme':
+          customTheme = { ...customTheme, background: a.background || customTheme.background, accent: a.accent || customTheme.accent, fade: a.fade ?? customTheme.fade };
+          theme = 'custom'; push(); return null;
+        case 'pickThemePicture': customTheme = { ...customTheme, picture: 'scene-halong.svg' }; theme = 'custom'; push(); return null;
+        case 'clearThemePicture': customTheme = { ...customTheme, picture: null }; theme = 'custom'; push(); return null;
         case 'setCloseToTray': closeToTray = a.enabled; push(); return null;
         case 'setHideNames': hideNames = a.enabled; push(); return null;
         // Authenticator codes: account 1 has a key; a typed key is checked like the app does (base32, long enough).

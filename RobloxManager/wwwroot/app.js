@@ -43,6 +43,7 @@
     globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
     cookie: '<path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/><path d="M8.5 8.5h.01M16 15.5h.01M12 12h.01M11 17h.01M7 14h.01"/>',
     chip: '<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
     palette: '<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.7 1.7-1.7h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z"/>',
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
     code: '<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
@@ -628,6 +629,88 @@
     uiListeners.forEach(f => f());
   }
 
+  /**
+   * Settings › Appearance › Custom: app.css's colour tokens worked out from the person's two colours. Dark or light by
+   * the background, as Themes.cs decides it (relative luminance under 0.179: white words read better); surfaces a step
+   * from it the way Dark and Light have theirs; words in its own hue; buttons and switches in the accent. With a
+   * picture the page goes behind glass like the scenery themes, the background colour lying over it as much as asked.
+   */
+  function customVars(ct) {
+    const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const hex = c => '#' + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+    const rgba = (c, a) => `rgba(${c.map(Math.round).join(', ')}, ${a})`;
+    const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+    const lum = c => {
+      const [r, g, b] = c.map(v => (v /= 255) <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
+      return .2126 * r + .7152 * g + .0722 * b;
+    };
+    const W = [255, 255, 255], K = [0, 0, 0];
+    const bg = rgb(ct.background), ac = rgb(ct.accent);
+    const dark = lum(bg) < .179, words = dark ? W : K;
+    const surface = dark ? mix(bg, W, .05) : mix(bg, W, .75);
+    const raised = dark ? mix(bg, W, .07) : mix(bg, W, .9);
+    const card = dark ? mix(bg, W, .035) : mix(bg, W, .8), cardHover = dark ? mix(bg, W, .06) : mix(bg, W, .92);
+    const accentHover = mix(ac, dark ? W : K, .14), accentInk = lum(ac) < .179 ? '#ffffff' : '#0b0d12';
+    const vars = {
+      '--bg': hex(bg), '--bg-2': hex(dark ? mix(bg, W, .02) : mix(bg, K, .03)),
+      '--surface': hex(surface), '--surface-2': hex(dark ? mix(bg, W, .08) : mix(bg, W, .5)),
+      '--surface-3': hex(dark ? mix(bg, W, .13) : mix(bg, K, .07)), '--raised': hex(raised),
+      '--field': hex(dark ? mix(bg, K, .3) : mix(bg, W, .9)), '--card': hex(card), '--card-hover': hex(cardHover),
+      '--text': hex(mix(words, bg, .08)), '--text-2': hex(mix(words, bg, .28)), '--muted': hex(mix(words, bg, .4)), '--dim': hex(mix(words, bg, .55)),
+      '--accent': hex(ac), '--accent-hover': hex(accentHover), '--accent-ink': accentInk,
+      '--inv': hex(ac), '--inv-hover': hex(accentHover), '--inv-ink': accentInk,
+    };
+    if (ct.picture) {
+      const fade = Math.max(0, Math.min(90, ct.fade ?? 45)) / 100;
+      Object.assign(vars, {
+        '--backdrop': `url("${ct.picture}") center / cover no-repeat, ${hex(bg)}`, '--blur': 'blur(18px) saturate(140%)',
+        '--bg': rgba(bg, fade), '--bg-2': rgba(bg, Math.min(.95, fade + .25)),
+        '--surface': rgba(surface, .72), '--surface-2': rgba(words, .08), '--surface-3': rgba(words, .15), '--raised': rgba(raised, .94),
+        '--field': dark ? 'rgba(0, 0, 0, .3)' : 'rgba(255, 255, 255, .6)', '--card': rgba(card, .62), '--card-hover': rgba(cardHover, .72),
+      });
+    }
+    return { tone: dark ? 'dark' : 'light', vars };
+  }
+  const CUSTOM_VARS = Object.keys(customVars({ background: '#000000', accent: '#000000', picture: 'x' }).vars);
+  const customNow = () => S.customPreview || S.app?.customTheme
+    || (() => { try { return JSON.parse(localStorage.getItem('customTheme')); } catch { return null; } })();
+  /** The custom theme on the page while it is the one shown (by data-theme, whoever set it); gone again when it isn't. */
+  function applyCustomTheme() {
+    const root = document.documentElement, ct = root.dataset.theme === 'custom' ? customNow() : null;
+    if (!ct) {
+      delete root.dataset.tone;
+      CUSTOM_VARS.forEach(k => root.style.removeProperty(k));
+      return;
+    }
+    const { tone, vars } = customVars(ct);
+    root.dataset.tone = tone;
+    CUSTOM_VARS.forEach(k => k in vars ? root.style.setProperty(k, vars[k]) : root.style.removeProperty(k));
+    // So the next start shows it from the first frame, before the app's state comes.
+    try { localStorage.setItem('customTheme', JSON.stringify(ct)); } catch { /* the page still shows it now */ }
+  }
+  new MutationObserver(applyCustomTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  applyCustomTheme();
+
+  /** A colour or the fade being changed in Settings: shown at once, saved once the changes rest. */
+  let customTimer = 0;
+  function previewCustom(change) {
+    S.customPreview = { ...customNow(), ...change };
+    clearTimeout(themeTimer);
+    setThemePending(null);
+    document.documentElement.dataset.theme = 'custom';
+    applyCustomTheme();
+    uiListeners.forEach(f => f());
+    clearTimeout(customTimer);
+    customTimer = setTimeout(async () => {
+      const c = S.customPreview;
+      await call('setCustomTheme', { background: c.background, accent: c.accent, fade: c.fade });
+      if (S.customPreview !== c) return;
+      S.customPreview = null;
+      applyCustomTheme();
+      uiListeners.forEach(f => f());
+    }, 300);
+  }
+
   function setView(view) {
     if (S.view === 'settings' && view !== 'settings') {
       clearPwForm();
@@ -972,6 +1055,7 @@
     t, tn, tIn: (l, key) => DICT[l]?.[key] ?? DICT.en[key] ?? key, lang, locale: locale(), logo: LOGO, iconPaths: name => ICONS[name] || '', call,
     busy, toast, saveView, setMulti, ago,
     themes: THEMES, themePending: () => S.themePending ?? null, previewTheme,
+    customTheme: () => S.customPreview || S.app?.customTheme || null, customVars, previewCustom,
     discordLink: thenTurnOn => discordLinkModal(thenTurnOn),
     on(name, f) {
       if (!uiSignals.has(name)) uiSignals.set(name, new Set());
@@ -1041,6 +1125,7 @@
     color: ['frost', 'ocean', 'teal', 'forest', 'mocha', 'amber', 'grape', 'indigo', 'crimson', 'lava', 'neon', 'candy', 'matcha', 'mint', 'sky', 'lavender', 'peach', 'sakura'],
     style: ['macos', 'macosdark', 'gnome', 'ubuntu', 'kde', 'retro', 'macclassic', 'terminal', 'gameboy', 'arcade', 'blueprint', 'newspaper', 'notebook', 'chalkboard', 'brutal', 'cyberpunk'],
     season: ['lunar', 'valentine', 'spring', 'flametree', 'summer', 'kites', 'rainy', 'school', 'midautumn', 'autumn', 'skylanterns', 'halloween', 'winter', 'christmas', 'newyear'],
+    custom: ['custom'],
   };
   function syncSettings() {
     const st = S.app.settings;
@@ -2409,6 +2494,9 @@
         return cardMenu(id, r.left, r.bottom + 6);
       }
       // The app answers with a state push in the new language.
+      // Settings › Appearance › Custom: a picture behind the page, or none.
+      case 'ct-pick': return busy(el, () => call('pickThemePicture'));
+      case 'ct-clear': return call('clearThemePicture');
       case 'theme':
         clearTimeout(themeTimer); // a click wins over a pick still waiting to be saved
         setThemePending(null);
@@ -2741,6 +2829,7 @@
     maskNames(st); // before anything renders a name
     uiListeners.forEach(f => f()); // the React parts (useAppState) draw again with it
     if (st.themeApplied && !S.themePending) document.documentElement.dataset.theme = st.themeApplied;
+    applyCustomTheme(); // new colours or picture, with the theme itself unchanged
     if (st.locked) {
       // Toasts from before the lock may name accounts: they don't stay on the lock screen.
       if (S.shell) toastUi?.api.clear();

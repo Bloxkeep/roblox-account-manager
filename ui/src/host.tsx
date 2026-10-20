@@ -5,6 +5,9 @@ import { createContext, useContext, useEffect, useState, useSyncExternalStore } 
 /** What the app last pushed (its state event: accounts, settings…), as app.js keeps it in S.app. */
 export type AppState = Record<string, any>;
 
+/** Settings › Appearance › Custom: the background and accent (#rrggbb), how much of the background lies over the picture (0 to 90), the picture to load. */
+export interface CustomTheme { background: string; accent: string; fade: number; picture: string | null }
+
 /** The live figures the app sends every few seconds (its metrics event): Roblox's windows and the PC's memory. */
 export type Metrics = {
   accounts: { id: string; ramMb: number }[]; robloxCount: number; monitorCount?: number;
@@ -61,6 +64,12 @@ export interface Host {
   themePending(): string | null;
   /** Shows a theme at once and saves it once the keys rest (app.js previewTheme). */
   previewTheme(id: string): void;
+  /** Settings › Appearance › Custom: its colours and picture as shown now (a change not saved yet included); subscribe tells when they change. */
+  customTheme(): CustomTheme | null;
+  /** The page's colour tokens for a custom theme, and whether it is dark or light (app.js customVars). */
+  customVars(theme: CustomTheme): { tone: 'dark' | 'light'; vars: Record<string, string> };
+  /** Shows a change to the custom theme at once and saves it once the changes rest (app.js previewCustom). */
+  previewCustom(change: Partial<CustomTheme>): void;
   /** The dialog asking for a Discord webhook link; thenTurnOn: sending goes on once it is saved. */
   discordLink(thenTurnOn: boolean): void;
   /**

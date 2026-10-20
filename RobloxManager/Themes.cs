@@ -95,12 +95,14 @@ public static class Themes
     /// <summary>Follows the Windows "app mode" (light or dark).</summary>
     public const string FollowWindows = "system";
     public const string Default = "dark";
+    /// <summary>The person's own colours and picture (<see cref="Prefs.Custom"/>); the page works out the rest (app.js customVars).</summary>
+    public const string Custom = "custom";
 
     static Color Rgb(int rgb) => Color.FromArgb((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
 
     /// <summary>A known theme id (or <see cref="FollowWindows"/>); anything else falls back to the default.</summary>
     public static string Normalize(string? id) =>
-        id == FollowWindows || All.Any(t => t.Id == id) ? id! : Default;
+        id == FollowWindows || id == Custom || All.Any(t => t.Id == id) ? id! : Default;
 
     /// <summary>The theme in use: the chosen one, or for <see cref="FollowWindows"/> light or dark like Windows apps.</summary>
     public static Theme Current
@@ -108,9 +110,40 @@ public static class Themes
         get
         {
             string id = Prefs.Theme == FollowWindows ? (WindowsUsesLight() ? "light" : "dark") : Prefs.Theme;
-            return All.FirstOrDefault(t => t.Id == id) ?? All.First(t => t.Id == Default);
+            return id == Custom ? FromCustom(Prefs.Custom) : All.FirstOrDefault(t => t.Id == id) ?? All.First(t => t.Id == Default);
         }
     }
+
+    /// <summary>
+    /// The custom theme for the window frame, the title bar, the tray menu and the mini window: dark or light by its
+    /// colour (as the page decides it), surfaces a step from it, the words and status colours of Dark or Light.
+    /// </summary>
+    static Theme FromCustom(Prefs.CustomTheme custom)
+    {
+        var bg = Rgb(Convert.ToInt32(custom.Background[1..], 16));
+        bool dark = IsDark(bg);
+        var basis = All.First(t => t.Id == (dark ? "dark" : "light"));
+        return new(Custom, dark, bg, Mix(bg, Color.White, dark ? .06 : .7), basis.Text, basis.Text2,
+            Mix(bg, dark ? Color.White : Color.Black, .2), basis.Good, basis.Bad);
+    }
+
+    /// <summary>White words read better on it than black ones (relative luminance under 0.179); app.js decides the same way.</summary>
+    public static bool IsDark(Color c)
+    {
+        static double Linear(int v) => v / 255.0 is var s && s <= .04045 ? s / 12.92 : Math.Pow((s + .055) / 1.055, 2.4);
+        return .2126 * Linear(c.R) + .7152 * Linear(c.G) + .0722 * Linear(c.B) < .179;
+    }
+
+    static Color Mix(Color a, Color b, double t) =>
+        Color.FromArgb((int)Math.Round(a.R + (b.R - a.R) * t), (int)Math.Round(a.G + (b.G - a.G) * t), (int)Math.Round(a.B + (b.B - a.B) * t));
+
+    /// <summary>"#rrggbb" in lower case, or null for anything else.</summary>
+    public static string? Hex(string? text) =>
+        text is { Length: 7 } && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit) ? text.ToLowerInvariant() : null;
+
+    /// <summary>The custom theme's picture as kept in the data folder: theme-background-&lt;time&gt;.&lt;picture type&gt;.</summary>
+    public static bool IsPictureName(string name) =>
+        System.Text.RegularExpressions.Regex.IsMatch(name, @"^theme-background-\d{1,20}\.(png|jpe?g|webp|gif|bmp)$");
 
     static bool WindowsUsesLight()
     {

@@ -1045,7 +1045,20 @@ public sealed class ShellForm : Form
     static void ServeAsset(CoreWebView2Environment env, CoreWebView2WebResourceRequestedEventArgs e)
     {
         string path = new Uri(e.Request.Uri).AbsolutePath.TrimStart('/');
-        var stream = typeof(ShellForm).Assembly.GetManifestResourceStream("wwwroot/" + path);
+        // The custom theme's picture, from the data folder (AppController.CustomTheme.cs): only a file of that name, read
+        // whole so no handle stays open on it (a new picture deletes the old one).
+        string? picture = path.StartsWith("user/", StringComparison.Ordinal) && Themes.IsPictureName(path[5..]) ? Path.Combine(Vault.DataDir, path[5..]) : null;
+        Stream? stream;
+        try
+        {
+            stream = path.StartsWith("user/", StringComparison.Ordinal)
+                ? picture is not null && File.Exists(picture) ? new MemoryStream(File.ReadAllBytes(picture)) : null
+                : typeof(ShellForm).Assembly.GetManifestResourceStream("wwwroot/" + path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            stream = null; // the picture went away meanwhile: the theme's colour shows instead
+        }
         if (stream is null)
         {
             e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", "");
@@ -1060,6 +1073,10 @@ public sealed class ShellForm : Form
             ".js" => "text/javascript; charset=utf-8",
             ".svg" => "image/svg+xml",
             ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
             _ => "application/octet-stream",
         };
         e.Response = env.CreateWebResourceResponse(stream, 200, "OK", $"Content-Type: {type}\r\nCache-Control: no-store");
@@ -1069,7 +1086,10 @@ public sealed class ShellForm : Form
     static Stream WithTheme(Stream page)
     {
         using var reader = new StreamReader(page);
-        string html = reader.ReadToEnd().Replace("<html ", $"<html data-theme=\"{Themes.Current.Id}\" ");
+        var theme = Themes.Current;
+        // A light custom theme takes Light's words and lines (app.css): from the first frame, not once its colours come.
+        string tone = theme is { Id: Themes.Custom, Dark: false } ? " data-tone=\"light\"" : "";
+        string html = reader.ReadToEnd().Replace("<html ", $"<html data-theme=\"{theme.Id}\"{tone} ");
         return new MemoryStream(Encoding.UTF8.GetBytes(html));
     }
 

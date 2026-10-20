@@ -1,0 +1,405 @@
+== end
+html [data-theme="custom" data-tone="light" lang="vi"] style="--accent:#f59e0b;--accent-hover:#d38809;--accent-ink:#0b0d12;--bg:#f1e9da;--bg-2:#eae2d3;--card:#fcfbf8;--card-hover:#fefdfc;--dim:#858078;--field:#fefdfb;--inv:#f59e0b;--inv-hover:#d38809;--inv-ink:#0b0d12;--muted:#605d57;--raised:#fefdfb;--surface:#fcfaf6;--surface-2:#f8f4ed;--surface-3:#e0d9cb;--text:#131311;--text-2:#43413d"
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav.on [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            svg.i #21scx0
+            span "Khóa app"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Cài đặt"
+        div.set-layout
+          nav.set-nav [aria-label="Cài đặt"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Khởi chạy"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản & đồ họa Roblox"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Treo game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Thông báo"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #d2zp05
+              span "Giao diện"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Bảo mật"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Sao lưu & dữ liệu"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Cập nhật Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-appearance" aria-labelledby="set-page-appearance-h"]
+                h2.set-page-title [id="set-page-appearance-h"] "Giao diện"
+                div.set-grp [id="sec-appearance"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Chủ đề"
+                        div.d
+                          span [id="s-theme-name"] "Tùy chỉnh"
+                      div.ctl
+                    div.themes [id="s-themes" role="radiogroup" aria-label="Chủ đề"]
+                      div.tg
+                        span.tg-label "Cơ bản"
+                        div.tg-list
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Theo Windows"]
+                            span [data-theme="light"]
+                            span [data-theme="dark"]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sáng"]
+                            span [data-theme="light"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Giấy"]
+                            span [data-theme="paper"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Xám"]
+                            span [data-theme="gray"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Tối nhẹ"]
+                            span [data-theme="dim"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Tối"]
+                            span [data-theme="dark"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Nửa đêm"]
+                            span [data-theme="midnight"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Đen"]
+                            span [data-theme="black"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Tương phản cao"]
+                            span [data-theme="contrast"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Tương phản sáng"]
+                            span [data-theme="contrastlight"]
+                              em
+                      div.tg
+                        span.tg-label "Phong cảnh"
+                        div.tg-list
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Cực quang"]
+                            span [data-theme="aurora"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Hoàng hôn"]
+                            span [data-theme="sunset"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Phố đêm"]
+                            span [data-theme="city"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Vũ trụ"]
+                            span [data-theme="space"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mặt trăng"]
+                            span [data-theme="moon"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Rừng sương"]
+                            span [data-theme="mist"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Núi tuyết"]
+                            span [data-theme="snow"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sa mạc"]
+                            span [data-theme="desert"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Đồng cỏ"]
+                            span [data-theme="meadow"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Vịnh Hạ Long"]
+                            span [data-theme="halong"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Ruộng bậc thang"]
+                            span [data-theme="terraces"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Phố cổ Hội An"]
+                            span [data-theme="hoian"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Núi Phú Sĩ"]
+                            span [data-theme="fuji"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Rừng nhiệt đới"]
+                            span [data-theme="jungle"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Đáy biển"]
+                            span [data-theme="underwater"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Đảo bay"]
+                            span [data-theme="skyislands"]
+                              em
+                      div.tg
+                        span.tg-label "Màu sắc"
+                        div.tg-list
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Băng giá"]
+                            span [data-theme="frost"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Biển sâu"]
+                            span [data-theme="ocean"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Xanh mòng két"]
+                            span [data-theme="teal"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Rừng thông"]
+                            span [data-theme="forest"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Cà phê"]
+                            span [data-theme="mocha"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Hổ phách"]
+                            span [data-theme="amber"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Nho tím"]
+                            span [data-theme="grape"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Chàm"]
+                            span [data-theme="indigo"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Đỏ thẫm"]
+                            span [data-theme="crimson"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Dung nham"]
+                            span [data-theme="lava"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Neon"]
+                            span [data-theme="neon"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Kẹo ngọt"]
+                            span [data-theme="candy"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Trà xanh"]
+                            span [data-theme="matcha"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Bạc hà"]
+                            span [data-theme="mint"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Trời xanh"]
+                            span [data-theme="sky"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Oải hương"]
+                            span [data-theme="lavender"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Đào"]
+                            span [data-theme="peach"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Hoa anh đào"]
+                            span [data-theme="sakura"]
+                              em
+                      div.tg
+                        span.tg-label "Phong cách"
+                        div.tg-list
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="macOS"]
+                            span [data-theme="macos"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="macOS tối"]
+                            span [data-theme="macosdark"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="GNOME"]
+                            span [data-theme="gnome"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Ubuntu"]
+                            span [data-theme="ubuntu"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="KDE Plasma"]
+                            span [data-theme="kde"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Cổ điển"]
+                            span [data-theme="retro"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mac cổ điển"]
+                            span [data-theme="macclassic"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Terminal"]
+                            span [data-theme="terminal"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Máy game cổ"]
+                            span [data-theme="gameboy"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Arcade"]
+                            span [data-theme="arcade"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Bản vẽ"]
+                            span [data-theme="blueprint"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Báo giấy"]
+                            span [data-theme="newspaper"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Vở ô li"]
+                            span [data-theme="notebook"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Bảng đen"]
+                            span [data-theme="chalkboard"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Neo-brutalism"]
+                            span [data-theme="brutal"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Cyberpunk"]
+                            span [data-theme="cyberpunk"]
+                              em
+                      div.tg
+                        span.tg-label "Theo mùa"
+                        div.tg-list
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Tết"]
+                            span [data-theme="lunar"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Valentine"]
+                            span [data-theme="valentine"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mùa xuân"]
+                            span [data-theme="spring"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Hoa phượng"]
+                            span [data-theme="flametree"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mùa hè"]
+                            span [data-theme="summer"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mùa diều"]
+                            span [data-theme="kites"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mùa mưa"]
+                            span [data-theme="rainy"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Khai giảng"]
+                            span [data-theme="school"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Trung thu"]
+                            span [data-theme="midautumn"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mùa thu"]
+                            span [data-theme="autumn"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Đèn trời"]
+                            span [data-theme="skylanterns"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Halloween"]
+                            span [data-theme="halloween"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Mùa đông"]
+                            span [data-theme="winter"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Giáng sinh"]
+                            span [data-theme="christmas"]
+                              em
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Giao thừa"]
+                            span [data-theme="newyear"]
+                              em
+                      div.tg
+                        span.tg-label "Của bạn"
+                        div.tg-list
+                          button.on.swatch [role="radio" tabindex="0" aria-checked="true" aria-label="Tùy chỉnh"]
+                            span [data-theme="custom" data-tone="light" style="--accent:#f59e0b;--accent-hover:#d38809;--accent-ink:#0b0d12;--bg:#f1e9da;--bg-2:#eae2d3;--card:#fcfbf8;--card-hover:#fefdfc;--dim:#858078;--field:#fefdfb;--inv:#f59e0b;--inv-hover:#d38809;--inv-ink:#0b0d12;--muted:#605d57;--raised:#fefdfb;--surface:#fcfaf6;--surface-2:#f8f4ed;--surface-3:#e0d9cb;--text:#131311;--text-2:#43413d"]
+                              em
+                    div.ct [id="s-custom"]
+                      div.set-row
+                        div
+                          div.t "Màu nền"
+                          div.d "Chữ sáng hay tối tự đổi theo màu này để luôn dễ đọc."
+                        div.ctl
+                          input.ct-color [id="s-ct-bg" type="color" aria-label="Màu nền" value="#f1e9da"]
+                      div.set-row
+                        div
+                          div.t "Màu nhấn"
+                          div.d "Màu của nút, công tắc và mục đang chọn."
+                        div.ctl
+                          input.ct-color [id="s-ct-accent" type="color" aria-label="Màu nhấn" value="#f59e0b"]
+                      div.set-row
+                        div
+                          div.t "Ảnh nền"
+                          div.d "Một ảnh trên máy đặt phía sau, các bảng sẽ trong mờ để thấy ảnh. Bloxkeep giữ một bản sao trong thư mục dữ liệu."
+                        div.ctl
+                          button.btn.sm "Chọn ảnh…"
+                            svg.i #16jqtkh
+                    div.set-row
+                      div
+                        div.t "Ngôn ngữ"
+                      div.ctl
+                        div.lang [role="group" aria-label="Language"]
+                          button [title="English" aria-pressed="false"] "EN"
+                          button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+                    div.set-row
+                      div
+                        div.t "Ẩn tên tài khoản"
+                        div.d "Hiện “Tài khoản 1”, “Tài khoản 2”… thay cho tên, tiện khi chụp màn hình hay livestream."
+                      div.ctl
+                        label.switch
+                          input [id="s-hidenames" type="checkbox" aria-label="Ẩn tên tài khoản" checked=false]
+                          span
+#layer
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

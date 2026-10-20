@@ -1,5 +1,5 @@
 == last
-html [data-theme="newyear" lang="en"]
+html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--bg:#1b2a3a;--bg-2:#202e3e;--card:#233141;--card-hover:#293746;--dim:#828a93;--field:#131d29;--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:#2b3948;--surface:#263544;--surface-2:#2d3b4a;--surface-3:#394654;--text:#edeeef;--text-2:#bfc3c8"
 #app
   div.shell
     aside.side
@@ -110,7 +110,7 @@ html [data-theme="newyear" lang="en"]
                       div
                         div.t "Theme"
                         div.d
-                          span [id="s-theme-name"] "New Year’s Eve"
+                          span [id="s-theme-name"] "Custom"
                       div.ctl
                     div.themes [id="s-themes" role="radiogroup" aria-label="Theme"]
                       div.tg
@@ -350,9 +350,35 @@ html [data-theme="newyear" lang="en"]
                           button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Christmas"]
                             span [data-theme="christmas"]
                               em
-                          button.on.swatch [role="radio" tabindex="0" aria-checked="true" aria-label="New Year’s Eve" FOCUSED]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="New Year’s Eve"]
                             span [data-theme="newyear"]
                               em
+                      div.tg
+                        span.tg-label "Your own"
+                        div.tg-list
+                          button.on.swatch [role="radio" tabindex="0" aria-checked="true" aria-label="Custom" FOCUSED]
+                            span [data-theme="custom" data-tone="dark" style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--bg:#1b2a3a;--bg-2:#202e3e;--card:#233141;--card-hover:#293746;--dim:#828a93;--field:#131d29;--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:#2b3948;--surface:#263544;--surface-2:#2d3b4a;--surface-3:#394654;--text:#edeeef;--text-2:#bfc3c8"]
+                              em
+                    div.ct [id="s-custom"]
+                      div.set-row
+                        div
+                          div.t "Background color"
+                          div.d "Light or dark words follow from it, so they stay easy to read."
+                        div.ctl
+                          input.ct-color [id="s-ct-bg" type="color" aria-label="Background color" value="#1b2a3a"]
+                      div.set-row
+                        div
+                          div.t "Accent color"
+                          div.d "Buttons, switches and what is selected."
+                        div.ctl
+                          input.ct-color [id="s-ct-accent" type="color" aria-label="Accent color" value="#f59e0b"]
+                      div.set-row
+                        div
+                          div.t "Background picture"
+                          div.d "A picture from this PC behind the page, which then shows through the panels. Bloxkeep keeps a copy in its data folder."
+                        div.ctl
+                          button.btn.sm "Choose a picture…"
+                            svg.i #16jqtkh
                     div.set-row
                       div
                         div.t "Language"
@@ -377,9 +403,9 @@ html [data-theme="newyear" lang="en"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
-  setTheme {"theme":"newyear"}
+  setTheme {"theme":"custom"}
 == wrapped
-html [data-theme="newyear" lang="en"]
+html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--bg:#1b2a3a;--bg-2:#202e3e;--card:#233141;--card-hover:#293746;--dim:#828a93;--field:#131d29;--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:#2b3948;--surface:#263544;--surface-2:#2d3b4a;--surface-3:#394654;--text:#edeeef;--text-2:#bfc3c8"
 #app
   div.shell
     aside.side
@@ -490,7 +516,7 @@ html [data-theme="newyear" lang="en"]
                       div
                         div.t "Theme"
                         div.d
-                          span [id="s-theme-name"] "New Year’s Eve"
+                          span [id="s-theme-name"] "Custom"
                       div.ctl
                     div.themes [id="s-themes" role="radiogroup" aria-label="Theme"]
                       div.tg
@@ -730,9 +756,35 @@ html [data-theme="newyear" lang="en"]
                           button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Christmas"]
                             span [data-theme="christmas"]
                               em
-                          button.on.swatch [role="radio" tabindex="0" aria-checked="true" aria-label="New Year’s Eve" FOCUSED]
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="New Year’s Eve"]
                             span [data-theme="newyear"]
                               em
+                      div.tg
+                        span.tg-label "Your own"
+                        div.tg-list
+                          button.on.swatch [role="radio" tabindex="0" aria-checked="true" aria-label="Custom" FOCUSED]
+                            span [data-theme="custom" data-tone="dark" style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--bg:#1b2a3a;--bg-2:#202e3e;--card:#233141;--card-hover:#293746;--dim:#828a93;--field:#131d29;--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:#2b3948;--surface:#263544;--surface-2:#2d3b4a;--surface-3:#394654;--text:#edeeef;--text-2:#bfc3c8"]
+                              em
+                    div.ct [id="s-custom"]
+                      div.set-row
+                        div
+                          div.t "Background color"
+                          div.d "Light or dark words follow from it, so they stay easy to read."
+                        div.ctl
+                          input.ct-color [id="s-ct-bg" type="color" aria-label="Background color" value="#1b2a3a"]
+                      div.set-row
+                        div
+                          div.t "Accent color"
+                          div.d "Buttons, switches and what is selected."
+                        div.ctl
+                          input.ct-color [id="s-ct-accent" type="color" aria-label="Accent color" value="#f59e0b"]
+                      div.set-row
+                        div
+                          div.t "Background picture"
+                          div.d "A picture from this PC behind the page, which then shows through the panels. Bloxkeep keeps a copy in its data folder."
+                        div.ctl
+                          button.btn.sm "Choose a picture…"
+                            svg.i #16jqtkh
                     div.set-row
                       div
                         div.t "Language"
@@ -751,7 +803,7 @@ html [data-theme="newyear" lang="en"]
 #layer
 #toasts
 -- commands
-  setTheme {"theme":"newyear"}
+  setTheme {"theme":"custom"}
   setTheme {"theme":"system"}
 == end
 html [data-theme="paper" lang="en"]
@@ -1107,6 +1159,12 @@ html [data-theme="paper" lang="en"]
                               em
                           button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="New Year’s Eve"]
                             span [data-theme="newyear"]
+                              em
+                      div.tg
+                        span.tg-label "Your own"
+                        div.tg-list
+                          button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Custom"]
+                            span [data-theme="custom" data-tone="dark" style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--bg:#1b2a3a;--bg-2:#202e3e;--card:#233141;--card-hover:#293746;--dim:#828a93;--field:#131d29;--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:#2b3948;--surface:#263544;--surface-2:#2d3b4a;--surface-3:#394654;--text:#edeeef;--text-2:#bfc3c8"]
                               em
                     div.set-row
                       div
