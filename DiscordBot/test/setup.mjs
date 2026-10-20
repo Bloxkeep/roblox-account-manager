@@ -1,6 +1,6 @@
 // /setup (DiscordBot/worker/setup.js) against a fake Discord server, run by wrangler dev: refused to anyone but
-// Bloxkeep's developers; then the roles, channels, Community, onboarding, AutoMod, icon and posts made, Discord's own
-// categories tidied away, nothing made twice when run again; and #dont-type-here banning whoever posts in it (not
+// Bloxkeep's developers; then the roles, channels, Community, AutoMod, icon and posts made (no onboarding), Discord's
+// own categories tidied away, nothing made twice when run again, its roles renamed or not; and #dont-type-here banning whoever posts in it (not
 // moderators, not bots, once per person). No Discord account or token needed. In this folder: npm install, then
 // node setup.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';
@@ -106,6 +106,7 @@ const rest = http.createServer((req, res) => {
   });
 }).listen(REST);
 const named = (name, type) => channels.find(c => c.name === name && (type === undefined || c.type === type));
+const role = name => roles.find(x => x.name === name || x.name.startsWith(`${name} `));
 
 // ── signing like Discord ──
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
@@ -153,14 +154,14 @@ try {
   await setup(OWNER, 'tok2');
   check('the owner\'s /setup finishes, with nothing it couldn\'t do', await waitFor(() => answers.length === 2, 20000) && /^Done\. Made: /.test(answers[1]) && !/Couldn't/.test(answers[1]), answers[1]);
   const names = roles.filter(x => x.id !== G).sort((a, b) => b.position - a.position).map(x => x.name).join(', ');
-  check('roles, top to bottom: Admin, Moderator, Roblox updates (the server is English only)', names === 'Admin, Moderator, Roblox updates', names);
-  check('…Admin for whoever ran it', memberRoles.some(([u, role]) => u === OWNER && role === roles.find(x => x.name === 'Admin').id));
-  check('…"Roblox updates" may be pinged', roles.find(x => x.name === 'Roblox updates')?.mentionable === true);
+  check('roles, top to bottom, each with its emoji: Admin, Moderator, Roblox updates', names === 'Admin 👑, Moderator 🛡️, Roblox updates 🔔', names);
+  check('…Admin for whoever ran it', memberRoles.some(([u, r]) => u === OWNER && r === role('Admin').id));
+  check('…"Roblox updates" may be pinged', role('Roblox updates')?.mentionable === true);
   const cat = name => named(name, 4)?.id;
   const under = (cat, list) => list.every(([name, type]) => named(name, type)?.parent_id === cat);
   check('Info: the trap, welcome, rules, announcements, roblox-updates', under(cat('Info'), [['dont-type-here', 0], ['welcome', 0], ['rules', 0], ['announcements', 5], ['roblox-updates', 5]]), JSON.stringify(channels.map(c => [c.name, c.type, c.parent_id])));
-  check('Community: general (Discord\'s #chung, renamed), showcase, off-topic, the voice channel (renamed General), nothing in Vietnamese', under(cat('Community'), [['general', 0], ['showcase', 0], ['off-topic', 0], ['General', 2]])
-    && !named('tiếng-việt')
+  check('Community: general (Discord\'s #chung, renamed), general-vn, showcase, off-topic, bot-commands, the voice channel (renamed General)',
+    under(cat('Community'), [['general', 0], ['general-vn', 0], ['showcase', 0], ['off-topic', 0], ['bot-commands', 0], ['General', 2]])
     && named('general').id === 'c1' && named('General').id === 'v1');
   check('Support: the help, bug-reports and ideas forums, with tags', under(cat('Support'), [['help', 15], ['bug-reports', 15], ['ideas', 15]]) && named('help').available_tags.some(t => t.name === 'Solved'));
   check('Staff: mod-chat and mod-log, hidden from everyone else', under(cat('Staff'), [['mod-chat', 0], ['mod-log', 0]])
@@ -170,25 +171,28 @@ try {
     && named(n).permission_overwrites.some(o => o.id === BOT && o.type === 1 && BigInt(o.allow) & (1n << 11n))));
   check('Community on: rules channel, updates to #mod-log, verification, media scanned', guild.features.includes('COMMUNITY') && guild.rules_channel_id === named('rules').id
     && guild.public_updates_channel_id === named('mod-log').id && guild.verification_level === 2 && guild.explicit_content_filter === 2);
-  check('onboarding: the Roblox ping to pick, the trap not shown to newcomers', onboarding?.enabled === true && onboarding.prompts.length === 1
-    && onboarding.prompts[0].options[0].role_ids[0] === roles.find(x => x.name === 'Roblox updates').id && !onboarding.default_channel_ids.includes(named('dont-type-here').id)
-    && onboarding.default_channel_ids.includes(named('help').id), JSON.stringify(onboarding?.default_channel_ids));
+  check('no onboarding (newcomers get in through Captcha.bot\'s #verify)', onboarding === null && !calls.some(c => c.u.endsWith('/onboarding')));
   const cookie = automod.find(a => a.name === 'Roblox cookies and scams');
   check('AutoMod: four rules, a pasted Roblox cookie blocked and reported in #mod-log', automod.length === 4 && cookie?.trigger_metadata.regex_patterns.includes('_\\|WARNING:-DO-NOT-SHARE-THIS')
     && cookie.actions.some(a => a.type === 2 && a.metadata.channel_id === named('mod-log').id), JSON.stringify(automod.map(a => a.name)));
   check('the server\'s icon', /^data:image\/png;base64,/.test(guild.icon ?? ''));
   check('posts in #dont-type-here, #rules and #welcome', ['dont-type-here', 'rules', 'welcome'].every(n => messages[named(n).id]?.length === 1)
     && messages[named('welcome').id][0].components[0].components.map(b => b.label).join() === 'Download,GitHub,Website');
+  const rulesText = messages[named('rules').id]?.[0]?.embeds[0].description ?? '';
+  check('…the rules: six, bot commands in #bot-commands, nothing about exploits', (rulesText.match(/^\*\*\d+\.\*\*/gm) ?? []).length === 6
+    && rulesText.includes('#bot-commands') && !/exploit/i.test(rulesText), rulesText);
+  check('…the welcome post points Vietnamese speakers to #general-vn', messages[named('welcome').id][0].embeds[0].description.includes(`<#${named('general-vn').id}>`));
   check('the board in #roblox-updates, pinned', messages[named('roblox-updates').id]?.some(p => p.embeds?.[0]?.title === 'Roblox and Bloxkeep now') && calls.some(c => c.m === 'PUT' && c.u.startsWith(`/channels/${named('roblox-updates').id}/pins/`)));
 
-  // Again: nothing new.
+  // Again, one role's emoji taken off by hand: nothing new.
   const counts = () => [roles.length, channels.length, automod.length, Object.values(messages).flat().length].join();
   const before = counts();
+  role('Moderator').name = 'Moderator';
   await setup(OWNER, 'tok3');
   check('run again: nothing made twice, its posts updated in place', await waitFor(() => answers.length === 3, 20000) && /everything was already there/.test(answers[2]) && counts() === before, `${answers[2]} ${before} → ${counts()}`);
 
   // The trap.
-  const trap = named('dont-type-here').id, modRole = roles.find(x => x.name === 'Moderator').id;
+  const trap = named('dont-type-here').id, modRole = role('Moderator').id;
   message(trap, '444');
   check('a message in #dont-type-here: its sender banned, the last hour of their messages deleted', await waitFor(() => bans.length === 1, 5000)
     && bans[0].user === '444' && bans[0].delete_message_seconds === 3600 && /dont-type-here/.test(bans[0].reason), JSON.stringify(bans));

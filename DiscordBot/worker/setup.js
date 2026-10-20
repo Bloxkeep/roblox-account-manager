@@ -1,5 +1,5 @@
 // Bloxkeep's community server, set up by the bot itself with /setup (Bloxkeep's developers only): its roles, categories
-// and channels, who may post where, Community on, onboarding (a ping when Roblox updates), AutoMod
+// and channels, who may post where, Community on, AutoMod
 // (spam, mention raids, bad words, and a Roblox cookie or a free-Robux scam pasted in chat), #dont-type-here (a trap:
 // whoever posts there is banned, worker.js trap), its icon, the rules and welcome posts. Run again, it only adds what is missing and updates its own posts: nothing is made twice. A step
 // Discord refuses is reported, and the others still run.
@@ -33,8 +33,7 @@ const RULES = [
   '**Be kind.** No harassment, hate or NSFW.',
   "**Never share your Roblox cookie, password or 2-step codes**, not even with staff. Nobody from Bloxkeep will ever ask. A cookie pasted here is blocked.",
   '**No scams.** No free-Robux or Nitro offers, and no selling or buying accounts or items for real money.',
-  "**No exploits.** No executors, cheats or scripts that break Roblox's rules: Bloxkeep keeps to Roblox's Terms of Use.",
-  '**Right place.** Questions in #help, bugs in #bug-reports, ideas in #ideas.',
+  '**Right place.** Questions in #help, bugs in #bug-reports, ideas in #ideas, bot commands in #bot-commands.',
   "**Don't post in #dont-type-here.** It bans you on the spot: it's a trap for scam bots and hacked accounts.",
   "Keep to [Discord's Terms](https://discord.com/terms) and [Roblox's Terms of Use](https://www.roblox.com/info/terms). Moderators may remove anything that breaks these.",
 ];
@@ -61,10 +60,11 @@ export async function setupServer(env, guildId, bot, runner) {
   const roles = await call('GET', `${g}/roles`);
   const channels = await call('GET', `${g}/channels`);
 
-  async function role(name, body) {
-    let r = roles.find(x => x.name === name);
+  // A role by its name, with or without an emoji after it: made with ours, found with whichever the server gave it.
+  async function role(name, icon, body) {
+    let r = roles.find(x => x.name === name || x.name.startsWith(`${name} `));
     if (!r) {
-      r = await call('POST', `${g}/roles`, { name, ...body });
+      r = await call('POST', `${g}/roles`, { name: `${name} ${icon}`, ...body });
       roles.push(r);
       made.push(`@${name}`);
     }
@@ -82,14 +82,13 @@ export async function setupServer(env, guildId, bot, runner) {
     return c;
   }
 
-  // Roles, top to bottom: Admin (everything), Moderator, then the one members pick when they join. The server is in
-  // English, one language for everyone.
-  const admin = await role('Admin', { permissions: String(P.ADMIN), color: 0xED4245, hoist: true });
-  const mod = await role('Moderator', {
+  // Roles, top to bottom: Admin (everything), Moderator, then the one members take for a ping when Roblox updates.
+  const admin = await role('Admin', '👑', { permissions: String(P.ADMIN), color: 0xED4245, hoist: true });
+  const mod = await role('Moderator', '🛡️', {
     permissions: String(P.KICK | P.BAN | P.AUDIT_LOG | P.MANAGE_MESSAGES | P.MANAGE_NICKNAMES | P.MANAGE_THREADS | P.MODERATE),
     color: 0x5865F2, hoist: true,
   });
-  const pings = await role('Roblox updates', { permissions: '0', color: 0xF5C933, mentionable: true });
+  const pings = await role('Roblox updates', '🔔', { permissions: '0', color: 0xF5C933, mentionable: true });
   const top = Math.max(...[admin, mod, pings].map(r => r.position ?? 1));
   await step('role order', () => call('PATCH', `${g}/roles`, [admin, mod, pings].map((r, i) => ({ id: r.id, position: top - i }))));
   if (runner)
@@ -116,6 +115,8 @@ export async function setupServer(env, guildId, bot, runner) {
   const general = await channel('general', TEXT, community, { topic: 'Anything about Bloxkeep and Roblox' });
   const showcase = await channel('showcase', TEXT, community, { topic: 'Your window layouts, presets and setups' });
   const offTopic = await channel('off-topic', TEXT, community, { topic: 'Everything else' });
+  const generalVn = await channel('general-vn', TEXT, community, { topic: 'Trò chuyện bằng tiếng Việt' });
+  const commands = await channel('bot-commands', TEXT, community, { topic: "Bot commands here: /help, /download, /robloxstatus and the other bots' commands" });
   const modChat = await channel('mod-chat', TEXT, staff, { permission_overwrites: only(everyone, [mod.id], bot) });
   const modLog = await channel('mod-log', TEXT, staff, { topic: 'AutoMod alerts and Discord updates', permission_overwrites: only(everyone, [mod.id], bot) });
 
@@ -130,7 +131,7 @@ export async function setupServer(env, guildId, bot, runner) {
       });
   }
 
-  // Community: announcement channels, forums, onboarding. Members verified (an account older than 5 minutes), media
+  // Community: announcement channels and forums. Members verified (an account older than 5 minutes), media
   // scanned for everyone, notifications for mentions only.
   if (!guild.features.includes('COMMUNITY')) {
     await step('Community', async () => {
@@ -154,25 +155,13 @@ export async function setupServer(env, guildId, bot, runner) {
   await step('order', () => call('PATCH', `${g}/channels`, [
     [info, community, support, staff],
     [trap, welcome, rules, announcements, updates],
-    [general, showcase, offTopic, ...channels.filter(c => c.type === VOICE && c.parent_id === community.id)],
+    [general, generalVn, showcase, offTopic, commands, ...channels.filter(c => c.type === VOICE && c.parent_id === community.id)],
     [help, bugs, ideas],
     [modChat, modLog],
   ].flatMap(list => list.filter(Boolean).map((c, position) => ({ id: c.id, position })))));
 
-  // Onboarding: everyone sees the main channels, and picks a ping when Roblox updates if they want it. Discord wants an
-  // id on each question and answer, even new ones: any snowflake of ours (Discord keeps them).
-  let n = 0n;
-  const snowflake = () => String(((BigInt(Date.now()) - 1420070400000n) << 22n) + n++);
-  await step('onboarding', () => call('PUT', `${g}/onboarding`, {
-    enabled: true, mode: 0,
-    default_channel_ids: [welcome, rules, announcements, updates, general, showcase, offTopic, help, bugs, ideas].filter(Boolean).map(c => c.id),
-    prompts: [
-      {
-        id: snowflake(), type: 0, title: 'Want a ping when Roblox updates?', single_select: true, required: false, in_onboarding: true,
-        options: [{ id: snowflake(), title: 'Yes, ping me', description: 'Roblox builds coming and live, outages, new Bloxkeep versions', role_ids: [pings.id], channel_ids: [] }],
-      },
-    ],
-  }));
+  // No onboarding: newcomers get in through Captcha.bot's captcha in #verify (set up by hand, its Keeper role sees the
+  // server), and Discord's onboarding wants channels open to everyone.
 
   // AutoMod, alerts to #mod-log.
   await step('AutoMod', async () => {
@@ -242,7 +231,7 @@ export async function setupServer(env, guildId, bot, runner) {
       `**Start here:** ${rules ? `<#${rules.id}>` : '#rules'}, then download Bloxkeep below.`,
       `**Need help?** Post in ${help ? `<#${help.id}>` : '#help'}. **Found a bug?** ${bugs ? `<#${bugs.id}>` : '#bug-reports'}. **An idea?** ${ideas ? `<#${ideas.id}>` : '#ideas'}.`,
       `**Roblox updates:** ${updates ? `<#${updates.id}>` : '#roblox-updates'} says when a Roblox build is coming, and whether Multi-Roblox still works on it.`,
-      '-# This server is in English, so everyone can follow along.',
+      `-# English in every channel; Vietnamese in ${generalVn ? `<#${generalVn.id}>` : '#general-vn'}.`,
     ].join('\n\n'), 0x5865F2)],
     components: [links],
   });
