@@ -30,6 +30,9 @@ export class Gateway extends DurableObject {
       // A new instance: the first one, or Cloudflare restarted the object (the connection went with it). The time of the
       // old one's last heartbeat answer marks when it stopped being online.
       this.log('woke', String((await ctx.storage.get('lastBeat')) ?? ''));
+      // Woken by anything (a deploy, a restart, a look at /status): connect in a moment rather than at the next cron.
+      if (env.DISCORD_TOKEN && !this.stopped && (await ctx.storage.getAlarm()) == null)
+        await ctx.storage.setAlarm(Date.now() + 1000);
     });
   }
 
@@ -220,9 +223,14 @@ export class Gateway extends DurableObject {
     sql.exec('DELETE FROM events WHERE rowid IN (SELECT rowid FROM events ORDER BY at DESC LIMIT -1 OFFSET ?)', MAX_EVENTS);
   }
 
-  /** How the bot is doing, and how long it has been online since the log began (to judge the green dot over days). */
+  /**
+   * How the bot is doing, and how long it has been online since it first connected (to judge the green dot over days;
+   * the time before, without a token, isn't counted).
+   */
   async status() {
-    const events = [...this.ctx.storage.sql.exec('SELECT at, kind, detail FROM events ORDER BY at, rowid')];
+    const all = [...this.ctx.storage.sql.exec('SELECT at, kind, detail FROM events ORDER BY at, rowid')];
+    const first = all.findIndex(e => e.kind === 'connect');
+    const events = first < 0 ? [] : all.slice(first);
     const now = Date.now();
     let onlineMs = 0, since = null, restarts = 0, connects = 0, longestOffMs = 0, offSince = events[0]?.at ?? now;
     const goOffline = at => {
@@ -264,10 +272,10 @@ export class Gateway extends DurableObject {
         hours: Math.round(spanMs / 36e4) / 10,
         onlinePct: spanMs ? Math.round(onlineMs / spanMs * 10000) / 100 : null,
         longestOfflineSec: Math.round(longestOffMs / 1000),
-        restarts: Math.max(0, restarts - 1), // the first wake is the start, not a restart
+        restarts, // Cloudflare starting the object again since the first connect
         connects,
       },
-      recent: events.slice(-40).map(e => ({ at: new Date(e.at).toISOString(), kind: e.kind, detail: e.kind === 'woke' ? undefined : e.detail || undefined })),
+      recent: all.slice(-40).map(e => ({ at: new Date(e.at).toISOString(), kind: e.kind, detail: e.kind === 'woke' ? undefined : e.detail || undefined })),
     };
   }
 
