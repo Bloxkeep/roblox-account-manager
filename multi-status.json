@@ -127,15 +127,15 @@
     "hash": "version-11f155f3450f4c8e"
   },
   "future": {
-    "version": "0.744.0.7441077",
-    "uploadedAt": "10/19/2026 3:48:20 PM"
+    "version": "0.744.0.7441080",
+    "uploadedAt": "10/20/2026 8:52:00 AM"
   },
   "flags": {
     "DFFlagEnableWindowsAppReloadCheck": "True",
     "DFIntWindowsAppReloadTrackingThrottleHundredthsPercent": "50",
     "FFlagRemoveSingleInstanceSempahore": "True"
   },
-  "changedAt": "2026-10-19T23:44:43Z",
+  "changedAt": "2026-10-20T15:52:41Z",
   "beta": {
     "version": "0.744.0.7441077",
     "hash": "version-117ad38284844374"
