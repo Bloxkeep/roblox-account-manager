@@ -23,8 +23,7 @@ export function Sidebar() {
     <button className={`nav ${view === v ? 'on' : ''}`} data-act="view" data-view={v} title={t(`nav.${v}`)}><Icon name={icon} /><span>{t(`nav.${v}`)}</span>{extra}</button>;
   const u = app.update;
   // The open vault, for Switch vault (once there is a list of them).
-  const vault: VaultInfo | null = app.vaults?.current && app.vaults?.name
-    ? { id: app.vaults.current, name: app.vaults.name, picture: app.vaults.picture || null } : null;
+  const vault: VaultInfo | null = (app.vaults?.list || []).find((v: VaultInfo) => v.id === app.vaults?.open) || null;
   return <aside className="side">
     <div className="lights">{(['close', 'min', 'zoom'] as const).map(w =>
       <button key={w} className={`light l-${w}`} data-act={`win-${w}`} title={t(`win.${w}`)} aria-label={t(`win.${w}`)} />)}</div>

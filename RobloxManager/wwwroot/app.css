@@ -1422,6 +1422,9 @@ b, strong { font-weight: 650; }
 .vp-remove { position: absolute; top: -9px; right: -9px; width: 28px; height: 28px; border: 1px solid var(--line-3); border-radius: 50%; background: var(--raised); opacity: 0; transition: opacity .15s; }
 .vp-item:hover .vp-remove, .vp-remove:focus-visible { opacity: 1; }
 .vp-ask { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: 14px; cursor: pointer; }
+.vp-back { position: absolute; top: 18px; left: 18px; z-index: 1; }
+/* Over the open vault (Switch vault, a new vault's form): the lock screen's look, above the page, under its dialogs. */
+.vault-layer .lock { z-index: 49; }
 /* The sidebar's Switch vault, next to Lock app: the vault's face. */
 .side-lock { display: flex; gap: 8px; }
 .side-lock .btn.w { flex: 1; min-width: 0; }

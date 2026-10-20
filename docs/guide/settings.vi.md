@@ -101,7 +101,7 @@ Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **H
 |---|---|---|
 | **Tên vault** và **Ảnh** | Thứ vault này hiện ở màn hình khóa và màn hình chọn vault. Ai ngồi vào máy cũng thấy, kể cả khi chưa mở khóa. | Vault 1, chữ cái đầu |
 | **Hỏi chọn vault mỗi lần mở Bloxkeep** | Khi có từ 2 vault trở lên, mở Bloxkeep sẽ hiện màn hình chọn vault (giống "Who's playing?" của Steam) thay vì vào thẳng vault dùng lần trước. | Tắt |
-| **Đổi vault** | Khóa vault này rồi hiện màn hình chọn vault. Các cửa sổ Roblox của nó vẫn chạy; tự vào lại game, preset hẹn giờ và Discord của nó chờ tới lúc mở khóa lại. | — |
+| **Đổi vault** | Mở màn hình chọn vault. Bấm **Quay lại** (hoặc chọn lại chính vault này) là về như cũ, không cần nhập mật khẩu; chọn vault khác thì vault này mới bị khóa. Các cửa sổ Roblox của nó vẫn chạy; tự vào lại game, preset hẹn giờ và Discord của nó chờ tới lúc mở khóa lại. | — |
 | **Mật khẩu chủ** | **Mật khẩu hiện tại**, **Mật khẩu mới (ít nhất 6 ký tự)**, **Nhập lại mật khẩu mới**, rồi bấm **Đổi mật khẩu**. | Đặt lúc mở app lần đầu |
 
 Mỗi vault có tài khoản, preset, cài đặt, bản sao lưu và mật khẩu chủ riêng. Thêm vault bằng nút **+** ở màn hình chọn vault, hoặc **Tạo vault mới** ở màn hình khóa. Nút **×** trên một ô sẽ gỡ vault đó khỏi danh sách; file của nó vẫn nằm trong thư mục dữ liệu của Bloxkeep, và **Khôi phục từ bản sao lưu** có thể mở lại.

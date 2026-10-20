@@ -37,22 +37,34 @@ static class VaultsSuite
         c.Check("it opens as before", Harness.Get<Vault>(app, "_vault").Data.Accounts.Any(a => a.Username == "MainOne"));
 
         await Harness.Call(app, "pickVault", new { });
-        c.Check("Switch vault locks the open one and shows the picker", Harness.Get<Vault?>(app, "_vault") is null && Harness.Get<bool>(app, "_vaultPick"));
+        c.Check("Switch vault shows the picker over the open vault, which stays open", Harness.Get<Vault?>(app, "_vault") is not null && Harness.Get<bool>(app, "_vaultPick"));
+        await Harness.Call(app, "closeVaultPicker", new { });
+        c.Check("Back returns to it without the password", Harness.Get<Vault?>(app, "_vault") is not null && !Harness.Get<bool>(app, "_vaultPick"));
+        await Harness.Call(app, "pickVault", new { });
+        await Harness.Call(app, "selectVault", new { id = main!.Id });
+        c.Check("picking the open vault in the picker returns to it as well", Harness.Get<Vault?>(app, "_vault") is not null && !Harness.Get<bool>(app, "_vaultPick"));
 
+        await Harness.Call(app, "pickVault", new { });
         await Harness.Call(app, "addVault", new { });
-        c.Check("adding one: a file of its own, not on the list until it is set up",
-            Vault.ActiveFile.StartsWith("vault-") && Prefs.VaultList.Count == 1 && !Vault.Exists, Vault.ActiveFile);
+        c.Check("adding one: the open vault stays open behind the form, the new one isn't on the list yet",
+            Harness.Get<Vault?>(app, "_vault") is not null && Vault.ActiveFile == "vault.rmv" && Prefs.VaultList.Count == 1);
+        await Harness.Call(app, "cancelAddVault", new { });
+        c.Check("Cancel goes back to the picker, the open vault still open", Harness.Get<Vault?>(app, "_vault") is not null && Harness.Get<bool>(app, "_vaultPick"));
+        await Harness.Call(app, "addVault", new { });
+        bool shortRefused = await Harness.Try(app, "createVault", new { password = "short", name = "Farm" }) is UserError;
+        c.Check("a password too short is refused before the open vault locks", shortRefused && Harness.Get<Vault?>(app, "_vault") is not null && Vault.ActiveFile == "vault.rmv");
         await Harness.Call(app, "createVault", new { password = FarmPassword, name = "  Farm  " });
         var farm = Prefs.VaultList.FirstOrDefault(v => v.Name == "Farm");
         c.Check("set up with its name and its own master password, it joins the list and opens empty",
-            farm is not null && Vaults.Current == farm && Prefs.LastVault == farm.Id && Harness.Get<Vault>(app, "_vault").Data.Accounts.Count == 0,
+            farm is not null && Vaults.Current == farm && Prefs.LastVault == farm.Id && Harness.Get<Vault>(app, "_vault").Data.Accounts.Count == 0
+            && Path.GetFileName(Harness.Get<Vault>(app, "_vault").FilePath) == farm.File,
             string.Join(", ", Prefs.VaultList.Select(v => $"{v.Name} {v.File}")));
         Harness.Get<Vault>(app, "_vault").Data.Accounts.Add(new Account { Username = "FarmOne", UserId = 52 });
         Harness.Get<Vault>(app, "_vault").Save();
         c.Check("a new vault has no backup yet (each has its own)", Prefs.LastBackup is null);
 
         byte[] farmBytes = File.ReadAllBytes(Path.Combine(data, farm!.File));
-        await Harness.Call(app, "selectVault", new { id = main!.Id });
+        await Harness.Call(app, "selectVault", new { id = main.Id });
         c.Check("picking the other one locks this one and offers that one", Harness.Get<Vault?>(app, "_vault") is null && Vault.ActiveFile == "vault.rmv");
         bool refused = await Harness.Try(app, "unlock", new { password = FarmPassword }) is UserError;
         c.Check("each vault has its own master password", refused && Harness.Get<Vault?>(app, "_vault") is null);

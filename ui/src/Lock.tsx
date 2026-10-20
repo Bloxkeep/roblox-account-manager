@@ -95,8 +95,10 @@ export function Lock({ mode, notice, kept, opened }: {
   const typing = { onInput: () => setError(''), onKeyDown: (e: React.KeyboardEvent) => setCaps(!!e.getModifierState?.('CapsLock')), onKeyUp: (e: React.KeyboardEvent) => setCaps(!!e.getModifierState?.('CapsLock')) };
   const eye = t(shown ? 'lock.hidePw' : 'lock.showPw');
 
+  // Back: to the open vault (the picker is over it), or to the password of the vault the lock screen offers.
   if (mode === 'pick') return <div className="lock vault-pick">
     <div className="dots" />
+    {vaults.current ? <button type="button" className="btn ghost vp-back" data-act="vault-back"><Icon name="chevronLeft" /><span>{t('vault.back')}</span></button> : null}
     <div className="lock-lang"><LangSwitch /></div>
     <VaultPicker />
   </div>;

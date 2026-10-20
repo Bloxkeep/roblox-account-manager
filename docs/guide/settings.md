@@ -101,7 +101,7 @@ Every row is explained in [Sending to Discord](discord.md): **Show on my Discord
 |---|---|---|
 | **Vault name** and **Picture** | What this vault shows on the lock screen and in the picker. Anyone at the PC sees them before unlocking. | Vault 1, its first letter |
 | **Ask which vault to use each time Bloxkeep starts** | With two vaults or more, Bloxkeep starts on the picker (like Steam's "Who's playing?") instead of the last vault used. | Off |
-| **Switch vault** | Locks this vault and shows the picker. Its Roblox windows keep running; its auto-rejoin, scheduled presets and Discord wait until it is unlocked again. | — |
+| **Switch vault** | Shows the picker over this vault. **Back** (or picking this vault) returns to it as it was; picking another locks this one. Its Roblox windows keep running; its auto-rejoin, scheduled presets and Discord wait until it is unlocked again. | — |
 | **Master password** | **Current password**, **New password (6+ characters)**, **Confirm new password**, then **Change password**. | Set on first run |
 
 Each vault has its own accounts, presets, settings, backups and master password. Add one with **+** in the picker or **Create a new vault** on the lock screen. **×** on a tile takes a vault off the list; its file stays in Bloxkeep's data folder, and **Restore from a backup** opens it again.

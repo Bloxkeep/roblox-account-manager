@@ -3,6 +3,9 @@ html [data-theme="dark" lang="en"]
 #app
   div.lock.vault-pick
     div.dots
+    button.btn.ghost.vp-back [type="button"]
+      svg.i #10tf97k
+      span "Back"
     div.lock-lang
       div.lang [role="group" aria-label="Language"]
         button.on [title="English" aria-pressed="true"] "EN"

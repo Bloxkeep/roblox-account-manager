@@ -3,75 +3,106 @@ namespace RobloxManager;
 /// <summary>
 /// Several vaults (<see cref="Vaults"/>): the lock screen's picker, Steam-like ("Who's using Bloxkeep?"), shown at
 /// start when asked for (<see cref="Prefs.AskVault"/>) or from Switch vault; adding, naming, a picture, taking one off
-/// the list. Switching locks the open vault first: its Roblox windows keep running, its auto-rejoin, schedules and
-/// Discord wait for it like when it is locked.
+/// the list. Opening the picker (or the form for a new vault) over an open vault leaves it open, so Back returns to it
+/// without the password; only picking or setting up another vault locks it. Its Roblox windows keep running then, its
+/// auto-rejoin, schedules and Discord wait for it like when it is locked.
 /// </summary>
 public sealed partial class AppController
 {
     /// <summary>The picker is up instead of the password (start, or Switch vault).</summary>
     bool _vaultPick = Prefs.AskVault && Prefs.VaultList.Count > 1;
 
-    /// <summary>A vault being added: the lock screen sets it up (name and master password) before it joins the list.</summary>
+    /// <summary>
+    /// A vault being added: the form sets it up (name and master password) before it joins the list. The vault the
+    /// lock screen offers (or the one open) stays the active one until then.
+    /// </summary>
     Prefs.VaultEntry? _newVault;
+
+    /// <summary>Adding started from the picker: Cancel goes back to it, else to the screen it came from.</summary>
+    bool _addFromPicker;
 
     object VaultsDto() => new
     {
         list = Prefs.VaultList.Select(v => new { id = v.Id, name = v.Name, picture = v.Picture is { } p ? "user/" + p : null }).ToArray(),
-        current = (Vaults.Current ?? _newVault)?.Id,
-        name = (Vaults.Current ?? _newVault)?.Name,
-        picture = Vaults.Current?.Picture is { } own ? "user/" + own : null,
+        // The vault the lock screen (or the form over the open vault) is about: the one being added, or the one offered.
+        current = (_newVault ?? Vaults.Current)?.Id,
+        name = (_newVault ?? Vaults.Current)?.Name,
+        picture = _newVault is null && Vaults.Current?.Picture is { } own ? "user/" + own : null,
+        // The vault open right now (none while locked): the sidebar's Switch vault, Settings › Security.
+        open = _vault is null ? null : Vaults.Current?.Id,
         pick = _vaultPick,
         adding = _newVault is not null,
         ask = Prefs.AskVault,
     };
 
-    /// <summary>"Switch vault" (in the app or on the lock screen): the open vault locks and the picker shows.</summary>
+    /// <summary>"Switch vault" (in the app or on the lock screen): the picker shows; an open vault stays open behind it.</summary>
     object? ShowVaultPicker()
     {
-        if (_vault is not null)
-            Lock();
-        if (_newVault is not null)
-            CancelAddVault(showPicker: false);
+        _newVault = null;
         _vaultPick = true;
         PushState();
         return null;
     }
 
-    /// <summary>A vault chosen in the picker: the lock screen asks for its master password.</summary>
+    /// <summary>The picker's Back: to the open vault as it was, or to the password of the vault the lock screen offers.</summary>
+    object? CloseVaultPicker()
+    {
+        _vaultPick = false;
+        PushState();
+        return null;
+    }
+
+    /// <summary>
+    /// A vault chosen in the picker. The one open right now: back to it as it was. Another: the open one locks and
+    /// the lock screen asks for the chosen one's master password.
+    /// </summary>
     object? SelectVault(string id)
     {
         var entry = Prefs.VaultList.FirstOrDefault(v => v.Id == id) ?? throw new UserError(L.T("That vault is no longer on this PC."));
+        _newVault = null;
         if (_vault is not null && entry != Vaults.Current)
             Lock();
-        _newVault = null;
         Vaults.Use(entry);
-        Prefs.LastVault = entry.Id;
-        Prefs.Save();
+        if (Prefs.LastVault != entry.Id)
+        {
+            Prefs.LastVault = entry.Id;
+            Prefs.Save();
+        }
         _vaultPick = false;
         PushState();
         return null;
     }
 
-    /// <summary>"Add a vault" (the picker's +, or the lock screen's Create a new vault): set up with a name and its own master password.</summary>
+    /// <summary>
+    /// "Add a vault" (the picker's +, or the lock screen's Create a new vault): a form for its name and own master
+    /// password. An open vault stays open until the new one is set up (Cancel goes back to it).
+    /// </summary>
     object? AddVault()
     {
-        if (_vault is not null)
-            Lock();
+        _addFromPicker = _vaultPick;
         _newVault = Vaults.New();
-        Vaults.Use(_newVault);
         _vaultPick = false;
         PushState();
         return null;
     }
 
-    /// <summary>Adding cancelled: back to the picker (or the vault there was, when it is the only one).</summary>
-    object? CancelAddVault(bool showPicker = true)
+    /// <summary>Adding cancelled: back to the picker, or to the screen it came from (an open vault still open).</summary>
+    object? CancelAddVault()
     {
         _newVault = null;
-        Vaults.Use(Prefs.VaultList.FirstOrDefault(v => v.Id == Prefs.LastVault) ?? Prefs.VaultList.FirstOrDefault());
-        _vaultPick = showPicker && Prefs.VaultList.Count > 1;
+        _vaultPick = _addFromPicker && Prefs.VaultList.Count > 0;
         PushState();
         return null;
+    }
+
+    /// <summary>The vault being added is about to be set up: the open one locks (saved first) and the new one becomes the active vault.</summary>
+    void SwitchToNewVault()
+    {
+        if (_newVault is null)
+            return;
+        if (_vault is not null)
+            Lock();
+        Vaults.Use(_newVault);
     }
 
     /// <summary>A vault just set up (the first one, or one being added) joins the list under the name typed.</summary>

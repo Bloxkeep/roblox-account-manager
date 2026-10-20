@@ -185,7 +185,7 @@ public sealed partial class AppController
         _savedHash = null;
         _backupDirty = Prefs.LastBackup is null || Prefs.BackupPending;
         _backedUpSaves = 0;
-        _vaultSaves = Prefs.LastBackup is { } last && File.GetLastWriteTimeUtc(Vault.VaultPath) > last ? 1 : 0;
+        _vaultSaves = Prefs.LastBackup is { } last && File.GetLastWriteTimeUtc(OpenVaultPath) > last ? 1 : 0;
         if (!_backupDirty && BackupReady)
             _backupHash = SavedHash();
         BackupWhenDue();
@@ -204,7 +204,7 @@ public sealed partial class AppController
     /// <summary>On lock and exit: whatever changed since the last copy goes out now, before the vault goes away.</summary>
     void BackupIfDirty()
     {
-        if (_backupDirty && BackupReady && File.Exists(Vault.VaultPath))
+        if (_backupDirty && BackupReady && File.Exists(OpenVaultPath))
             TryBackup(push: false);
     }
 
@@ -227,12 +227,15 @@ public sealed partial class AppController
         _backupTimer.Start();
     }
 
+    /// <summary>The open vault's own file (the active one may be another while a vault is being added).</summary>
+    string OpenVaultPath => _vault?.FilePath ?? Vault.VaultPath;
+
     /// <summary>The vault's bytes, read on the UI thread so no save can run meanwhile; null (and noted) when unreadable.</summary>
     byte[]? ReadVaultForBackup()
     {
         try
         {
-            return File.ReadAllBytes(Vault.VaultPath);
+            return File.ReadAllBytes(OpenVaultPath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

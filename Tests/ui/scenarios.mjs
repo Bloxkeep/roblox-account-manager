@@ -616,6 +616,13 @@ export default [
   }),
   S('vault-new-from-lock', 'locked=1', async s => { await s.click(key('vault.new')); await s.wait(400); }),
   S('vault-switch-sidebar', 'vaults=1', async s => { await s.click({ css: '.vault-btn' }); await s.wait(400); }),
+  // Switch vault over the open vault: Back returns to it as it was, no password asked.
+  S('vault-switch-back', 'vaults=1', async s => {
+    await s.click({ css: '.vault-btn' });
+    await s.wait(400);
+    await s.click({ key: 'vault.back' });
+    await s.wait(400);
+  }),
   S('vault-remove', 'locked=1&vaults=1&vaultpick=1', async s => {
     await s.click({ css: '.vp-remove[data-id="c3d4e5f6"]' });
     await s.wait(300);

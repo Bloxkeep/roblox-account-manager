@@ -36,7 +36,7 @@ export function SecurityPage({ title }: { title: string }) {
 
   // This vault: its name and picture (shown on the lock screen, before unlocking), the picker at every start, Switch vault.
   const vaults = app.vaults || {};
-  const vault = vaults.current ? { id: vaults.current, name: vaults.name || '', picture: vaults.picture || null } : null;
+  const vault = (vaults.list || []).find((v: { id: string }) => v.id === vaults.open) || null;
   const [vaultName, setVaultName] = useLocal(vault?.name || '');
   const [askVault, setAskVault] = useLocal(!!vaults.ask);
   const saveName = () => { if (vault && vaultName.trim() && vaultName.trim() !== vault.name) call('renameVault', { id: vault.id, name: vaultName }); };

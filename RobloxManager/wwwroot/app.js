@@ -31,6 +31,7 @@
     external: '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     chevronDown: '<path d="m6 9 6 6 6-6"/>',
     chevronRight: '<path d="m9 6 6 6-6 6"/>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
     userGo: '<circle cx="9" cy="7" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9"/><path d="M15 18h7M19 15l3 3-3 3"/>',
@@ -506,7 +507,7 @@
   function renderLock() {
     // The picker (several vaults), or the password for the vault it offers (a new one for a vault being set up).
     const v = S.app.vaults || {};
-    const mode = v.pick ? 'pick' : S.app.vaultExists ? 'unlock' : 'create';
+    const mode = v.pick ? 'pick' : v.adding || !S.app.vaultExists ? 'create' : 'unlock';
     const screen = `${mode}:${v.current || ''}:${v.adding ? 'new' : ''}`;
     if (S.lockMode === screen) return; // keep what the user is typing
     // Rebuilt in another language (same screen): what was typed stays.
@@ -525,6 +526,30 @@
     const notice = mode === 'create' ? '' : S.app.screenLock ? t('lock.auto', { t: autoLockText(S.app.screenLock.minutes) }) : S.lockedInUse ? t('lock.paused') : '';
     $('#app').innerHTML = '';
     uiParts.push(window.BloxkeepUI.lock($('#app'), uiHost(), { mode, notice, kept }, applyState));
+  }
+
+  /**
+   * The picker (Switch vault) or the form for a new vault over the open vault, which stays open behind them: Back (or
+   * picking the open vault, or Cancel) returns to it without the password. Picking or setting up another vault locks
+   * it (the app does), and the lock screen takes over from here.
+   */
+  function syncVaultOverlay() {
+    const v = S.app.vaults || {};
+    const mode = S.app.locked ? null : v.pick ? 'pick' : v.adding ? 'create' : null;
+    const key = mode && `${mode}:${v.current || ''}`;
+    if (S.vaultOverlay?.key === key) return;
+    if (S.vaultOverlay) {
+      S.vaultOverlay.unmount();
+      S.vaultOverlay.el.remove();
+      S.vaultOverlay = null;
+    }
+    if (!mode) return;
+    closeMenu();
+    // In the dialogs' layer, under them: Remove's question shows over the picker.
+    const el = document.createElement('div');
+    el.className = 'vault-layer';
+    $('#layer').prepend(el);
+    S.vaultOverlay = { key, el, unmount: window.BloxkeepUI.lock(el, uiHost(), { mode, notice: '', kept: null }, applyState) };
   }
 
   /* ───────────────────────── shell ───────────────────────── */
@@ -2647,6 +2672,7 @@
       case 'vault-select': return call('selectVault', { id: el.dataset.id });
       case 'vault-add': return call('addVault');
       case 'vault-cancel-add': return call('cancelAddVault');
+      case 'vault-back': return call('closeVaultPicker');
       case 'vault-remove': return (async () => {
         const name = (S.app.vaults?.list || []).find(x => x.id === el.dataset.id)?.name || '';
         if (!await confirmBox(t('vault.removeText'), { title: t('vault.removeTitle', { name }), ok: t('vault.removeOk'), danger: true })) return;
@@ -2855,9 +2881,11 @@
       S.selected.clear();
       S.metrics = { accounts: [], robloxCount: 0, totalMb: 0, systemMb: 0 };
       metricsListeners.forEach(f => f());
+      syncVaultOverlay(); // the lock screen shows the picker itself
       renderLock();
       return;
     }
+    syncVaultOverlay();
     // The list's look is kept with the other settings (the browser's own storage is lost when GPU drawing is switched
     // or the app is reinstalled). Older versions kept it in the browser: carry that over once.
     if (st.settings && !S.viewPrefsLoaded) {

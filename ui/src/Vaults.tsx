@@ -40,8 +40,9 @@ export function VaultPicker() {
         <button className={`vp-tile ${v.id === vaults.current ? 'last' : ''}`} data-act="vault-select" data-id={v.id} title={v.name}>
           <VaultFace vault={v} /></button>
         <span className="vp-name" title={v.name}>{v.name}</span>
-        <button className="icon-btn vp-remove" data-act="vault-remove" data-id={v.id} title={t('vault.remove')} aria-label={`${t('vault.remove')}: ${v.name}`}>
-          <Icon name="x" /></button>
+        {/* Not the vault open behind the picker: switch away from it first. */}
+        {v.id === vaults.open ? null : <button className="icon-btn vp-remove" data-act="vault-remove" data-id={v.id} title={t('vault.remove')}
+          aria-label={`${t('vault.remove')}: ${v.name}`}><Icon name="x" /></button>}
       </li>)}
       <li className="vp-item">
         <button className="vp-tile vp-add" data-act="vault-add" title={t('vault.add')} aria-label={t('vault.add')}><Icon name="plus" /></button>

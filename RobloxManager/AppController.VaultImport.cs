@@ -71,7 +71,7 @@ public sealed partial class AppController
             throw new UserError(L.T("This file is too large to be a Bloxkeep data file."));
         // The id comes from the salt: vault.rmv itself, its .bak and its backups all carry this vault's.
         string? id = Vault.IdOf(path);
-        if (SamePath(path, Vault.VaultPath) || id == vault.Id)
+        if (SamePath(path, vault.FilePath) || id == vault.Id)
             throw new UserError(L.T("This is the vault you're using."));
         if (id is null)
             throw new UserError(L.T("This file is not a Bloxkeep data file (.rmv)."));

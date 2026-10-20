@@ -423,6 +423,7 @@ public sealed partial class AppController : IDisposable
         "backupNow" => BackupNowAsync(),
         "restoreBackup" => Done(RestoreBackup()),
         "pickVault" => Done(ShowVaultPicker()),
+        "closeVaultPicker" => Done(CloseVaultPicker()),
         "selectVault" => Done(SelectVault(Str(a, "id"))),
         "addVault" => Done(AddVault()),
         "cancelAddVault" => Done(CancelAddVault()),
@@ -997,13 +998,15 @@ public sealed partial class AppController : IDisposable
 
     async Task<object?> CreateVaultAsync(string password, string name = "")
     {
-        if (Vault.Exists)
-            throw new UserError(L.T("Bloxkeep is already set up."));
         if (password.Length < 6)
             throw new UserError(L.T("The master password needs at least 6 characters."));
         // Six spaces pass the length check but are no password at all.
         if (string.IsNullOrWhiteSpace(password))
             throw new UserError(L.T("The master password can't be only spaces."));
+        // A vault being added: the one open locks only now, once the new one's password is fine.
+        SwitchToNewVault();
+        if (Vault.Exists)
+            throw new UserError(L.T("Bloxkeep is already set up."));
         var created = await Task.Run(() => Vault.Create(password));
         // Another create or an unlock finished first (two commands at once): that vault stays the open one, and the
         // file on disk is made its own again (this one may have been written over it).

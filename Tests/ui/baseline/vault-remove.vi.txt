@@ -3,6 +3,9 @@ html [data-theme="dark" lang="vi"]
 #app
   div.lock.vault-pick
     div.dots
+    button.btn.ghost.vp-back [type="button"]
+      svg.i #10tf97k
+      span "Quay lại"
     div.lock-lang
       div.lang [role="group" aria-label="Language"]
         button [title="English" aria-pressed="false"] "EN"
@@ -61,6 +64,9 @@ html [data-theme="dark" lang="vi"]
 #app
   div.lock.vault-pick
     div.dots
+    button.btn.ghost.vp-back [type="button"]
+      svg.i #10tf97k
+      span "Quay lại"
     div.lock-lang
       div.lang [role="group" aria-label="Language"]
         button [title="English" aria-pressed="false"] "EN"

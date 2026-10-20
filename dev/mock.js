@@ -107,10 +107,11 @@
   let vaultList = params.has('new') ? [] : params.has('vaults')
     ? [{ id: 'a1b2c3d4', name: 'Main', picture: null }, { id: 'b2c3d4e5', name: 'Farm', picture: 'scene-halong.svg' }, { id: 'c3d4e5f6', name: 'Alt', picture: null }]
     : [{ id: 'a1b2c3d4', name: 'Vault 1', picture: null }];
-  let vaultCurrent = vaultList[0]?.id || null, vaultPick = params.has('vaultpick'), vaultAdding = null, askVault = params.has('vaultpick');
+  let vaultCurrent = vaultList[0]?.id || null, vaultPick = params.has('vaultpick'), vaultAdding = null, askVault = params.has('vaultpick'), vaultAddFromPick = false;
   const vaultsState = () => {
     const cur = vaultAdding || vaultList.find(v => v.id === vaultCurrent);
-    return { list: vaultList, current: cur?.id || null, name: cur?.name || null, picture: vaultAdding ? null : cur?.picture || null, pick: vaultPick, adding: !!vaultAdding, ask: askVault };
+    return { list: vaultList, current: cur?.id || null, name: cur?.name || null, picture: vaultAdding ? null : cur?.picture || null,
+      open: locked ? null : vaultCurrent, pick: vaultPick, adding: !!vaultAdding, ask: askVault };
   };
   // Settings › Appearance › Custom (?theme=custom; ?ctpicture=1 with a picture, a scenery theme's standing in).
   let customTheme = { background: params.has('ctbg') ? '#' + params.get('ctbg') : '#1b2a3a', accent: '#f59e0b', fade: 45, picture: params.has('ctpicture') ? 'scene-halong.svg' : null };
@@ -428,13 +429,17 @@
           discord = { ...discord, lastSent: new Date().toISOString(), error: null };
           push();
           return null;
-        case 'pickVault': locked = true; screenLock = null; vaultAdding = null; vaultExists = true; vaultPick = true; push(); return null;
-        case 'selectVault': locked = true; vaultCurrent = a.id; vaultAdding = null; vaultExists = true; vaultPick = false; push(); return null;
+        // Like the app: the picker and a new vault's form go over the open vault, which locks only for another one.
+        case 'pickVault': vaultAdding = null; vaultPick = true; push(); return null;
+        case 'closeVaultPicker': vaultPick = false; push(); return null;
+        case 'selectVault':
+          if (locked || a.id !== vaultCurrent) { locked = true; screenLock = null; }
+          vaultCurrent = a.id; vaultAdding = null; vaultExists = true; vaultPick = false; push(); return null;
         case 'addVault':
-          locked = true; vaultPick = false; vaultExists = false;
+          vaultAddFromPick = vaultPick; vaultPick = false;
           vaultAdding = { id: 'd4e5f6a7', name: `Vault ${vaultList.length + 1}`, picture: null };
           push(); return null;
-        case 'cancelAddVault': vaultAdding = null; vaultExists = true; vaultPick = vaultList.length > 1; push(); return null;
+        case 'cancelAddVault': vaultAdding = null; vaultPick = vaultAddFromPick && vaultList.length > 0; push(); return null;
         case 'removeVault':
           vaultList = vaultList.filter(v => v.id !== a.id);
           if (vaultCurrent === a.id) vaultCurrent = vaultList[0]?.id || null;
