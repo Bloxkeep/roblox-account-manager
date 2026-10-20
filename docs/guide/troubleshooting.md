@@ -68,7 +68,10 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 
 ### **Q:** I forgot my master password
 
-**A:** It can't be recovered. Restore a backup whose password you remember (**Restore from a backup** on the first screen, or **Settings › Backup & data › Restore…**), or delete `vault.rmv` and `vault.rmv.bak` and start over, losing the saved accounts.
+**A:** It can't be recovered, and there's no need to reinstall. Right under **Unlock** are two ways on:
+
+- **Restore from a backup**: open a backup whose password you remember. The vault you're locked out of is kept beside it.
+- **Start over**: Bloxkeep sets the old vault aside (it doesn't delete it) and asks for a new master password. The saved accounts and presets are no longer in Bloxkeep; your Roblox accounts are fine, so sign in to add them again. Remember the old password later? Use **Restore from a backup** and pick the `vault-before-start-over-….rmv` file in Bloxkeep's data folder.
 
 ## Schedules and status
 

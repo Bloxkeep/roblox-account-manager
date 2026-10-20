@@ -600,6 +600,14 @@ export default [
   // ── Lock screen and first run ──
   S('unlock-wrong', 'locked=1', async s => { await s.type('wrong-one', key('lock.pw')); await s.key('Enter'); await s.wait(800); }),
   S('unlock-ok', 'locked=1', async s => { await s.type('demo', key('lock.pw')); await s.key('Enter'); await s.wait(2600); }),
+  // A forgotten master password: Start over asks first (what goes, what stays), then the lock screen sets up afresh.
+  S('unlock-start-over', 'locked=1', async s => {
+    await s.click(key('lock.startOver'));
+    await s.wait(300);
+    await s.snap('asked');
+    await s.click({ key: 'lock.startOverOk', within: '.modal' });
+    await s.wait(800);
+  }),
   S('first-run-create', 'new=1', async s => {
     await s.type('short', key('lock.pw'));
     await s.snap('weak');

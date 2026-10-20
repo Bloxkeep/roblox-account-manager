@@ -18,6 +18,10 @@ html [data-theme="dark" lang="en"]
             svg.i #1pcfgz
       div.lock-error [id="lock-error" role="alert"] "Enter your master password."
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Unlock"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+        span.sep "·"
+        button.link [type="button"] "Start over"
 #layer
 #toasts
 -- commands
@@ -44,6 +48,10 @@ html [data-theme="dark" lang="en"]
             svg.i #1pcfgz
       div.lock-error [id="lock-error" role="alert"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Unlock"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+        span.sep "·"
+        button.link [type="button"] "Start over"
 #layer
 #toasts
 -- commands
@@ -68,6 +76,10 @@ html [data-theme="dark" lang="en"]
             svg.i #1xzadie
       div.lock-error [id="lock-error" role="alert"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Unlock"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+        span.sep "·"
+        button.link [type="button"] "Start over"
 #layer
 #toasts
 -- commands
@@ -92,6 +104,10 @@ html [data-theme="dark" lang="en"]
             svg.i #1pcfgz
       div.lock-error [id="lock-error" role="alert"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Unlock"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+        span.sep "·"
+        button.link [type="button"] "Start over"
 #layer
 #toasts
 -- commands

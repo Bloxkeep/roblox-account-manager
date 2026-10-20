@@ -455,14 +455,12 @@ public sealed partial class AppController
     }
 
     /// <summary>
-    /// Before a vault exists (first-run screen) the backup simply becomes the vault. With one open, it is locked and
-    /// saved first, a copy of it kept beside the new one, and the person unlocks the restored vault with its own
-    /// master password.
+    /// Before a vault exists (first-run screen) the backup simply becomes the vault. Otherwise (Settings, or the lock
+    /// screen for someone who forgot the master password) an open one is locked and saved first, a copy of the vault
+    /// kept beside the new one, and the person unlocks the restored vault with its own master password.
     /// </summary>
     object? RestoreBackup()
     {
-        if (_vault is null && Vault.Exists)
-            throw new UserError(L.T("Unlock Bloxkeep first, then restore from Settings › Backup & data."));
         if (_launchCts is not null)
             throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
         using var dialog = new OpenFileDialog
@@ -476,14 +474,14 @@ public sealed partial class AppController
             PushState();
             return null;
         }
-        bool replace = _vault is not null;
+        bool replace = _vault is not null || Vault.Exists;
         try
         {
             // Checked before locking, so picking a wrong file doesn't cost the person their session. Whether it
             // opens is only known with its password, once they unlock it.
             if (!Vault.LooksLikeVault(dialog.FileName))
                 throw new UserError(L.T("This file is not a Bloxkeep backup."));
-            if (replace)
+            if (_vault is not null)
                 Lock();
             Backup.Restore(dialog.FileName, replace);
         }
@@ -495,6 +493,35 @@ public sealed partial class AppController
         Prefs.BackupPending = false;
         Prefs.Save();
         Toast(L.T("Backup restored. Unlock it with the master password it was saved with."), "ok");
+        PushState();
+        return null;
+    }
+
+    /// <summary>
+    /// The lock screen's "Start over", for a forgotten master password (it can't be recovered): the vault is set aside,
+    /// not deleted (<see cref="Vault.SetAside"/>), and the lock screen asks for a new master password. Saved accounts and
+    /// presets stay in the set-aside file; settings outside the vault (theme, language, backups) stay as they are.
+    /// </summary>
+    object? StartOver()
+    {
+        if (_launchCts is not null)
+            throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
+        if (_vault is not null)
+            Lock();
+        if (Vault.Exists)
+        {
+            try
+            {
+                Log.Note($"Started over from the lock screen; the vault was set aside as {Path.GetFileName(Vault.SetAside())}.");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw new UserError(L.F("Couldn't start over: {0}", ErrorText(ex)));
+            }
+        }
+        _backupDirty = false;
+        Prefs.BackupPending = false;
+        Prefs.Save();
         PushState();
         return null;
     }

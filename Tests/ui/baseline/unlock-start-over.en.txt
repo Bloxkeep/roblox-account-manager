@@ -1,0 +1,78 @@
+== asked
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [title="English" aria-pressed="true"] "EN"
+        button [title="Tiếng Việt" aria-pressed="false"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Welcome back"
+      p "Enter your master password to unlock."
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value=""]
+          button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Unlock"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+        span.sep "·"
+        button.link [type="button"] "Start over"
+#layer
+  div.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Start over with a new master password?"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        p.modal-text.pre "A forgotten master password can’t be recovered. Bloxkeep sets the saved accounts and presets aside (it doesn’t delete them) and asks for a new master password. Your Roblox accounts themselves are fine: add them again by signing in. Remember the old password later? Restore the set-aside file from Bloxkeep’s data folder with Restore from a backup."
+      div.modal-foot
+        button.btn [FOCUSED] "Cancel"
+        button.btn.danger "Start over"
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [title="English" aria-pressed="true"] "EN"
+        button [title="Tiếng Việt" aria-pressed="false"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Set a master password"
+      p "You’ll use it to unlock Bloxkeep. It if you forget it."
+        b "can’t be recovered"
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value="" FOCUSED]
+          button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [id="pw2" type="password" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value=""]
+        div.strength-row
+          div.strength
+            i [id="pw-meter"]
+          span [id="pw-strength" aria-live="polite"]
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Just use Multi-Roblox, without accounts"
+#layer
+#toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "Set a new master password to carry on. The old data is kept aside in Bloxkeep’s data folder."
+-- commands
+  startOver {}

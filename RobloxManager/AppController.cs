@@ -422,6 +422,7 @@ public sealed partial class AppController : IDisposable
         "backupSuggestions" => Done(RefreshBackupSuggestions()),
         "backupNow" => BackupNowAsync(),
         "restoreBackup" => Done(RestoreBackup()),
+        "startOver" => Done(StartOver()),
         "pickLauncher" => Done(PickLauncher()),
         "playStats" => PlayStatsAsync((int)Long(a, "days")),
         "activity" => Done(ActivityList(a)),

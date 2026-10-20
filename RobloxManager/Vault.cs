@@ -60,7 +60,9 @@ public sealed class Vault : IDisposable
         var own = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             { "vault.rmv", "vault.rmv.bak", "vault.rmv.tmp", "prefs.json", "prefs.json.tmp", "error.log", "roblox-settings.json", "starting.flag", "resume.bin" };
         bool Own(string name) => own.Contains(name) || name.StartsWith("vault.rmv.damaged-", StringComparison.OrdinalIgnoreCase)
-            || (name.StartsWith("vault-before-restore-", StringComparison.OrdinalIgnoreCase) && name.EndsWith(".rmv", StringComparison.OrdinalIgnoreCase));
+            || ((name.StartsWith("vault-before-restore-", StringComparison.OrdinalIgnoreCase) || name.StartsWith("vault-before-start-over-", StringComparison.OrdinalIgnoreCase))
+                && name.EndsWith(".rmv", StringComparison.OrdinalIgnoreCase))
+            || Themes.IsPictureName(name); // the custom theme's picture
         foreach (string file in Directory.EnumerateFiles(DataDir).Where(f => Own(Path.GetFileName(f))).ToList())
         {
             try
@@ -376,6 +378,27 @@ public sealed class Vault : IDisposable
     {
         lock (FileGate)
             WriteAtomic(bytes);
+    }
+
+    /// <summary>
+    /// The lock screen's "Start over", for a master password nobody remembers: the vault and its spare copies are moved
+    /// aside as vault-before-start-over-&lt;time&gt;.rmv (never deleted: remembered later, it is restored like a backup), so
+    /// Bloxkeep sets up afresh. Nothing is left that would bring the old vault back on the next start (RestoreIfMissing).
+    /// </summary>
+    /// <returns>The file the vault now is.</returns>
+    public static string SetAside()
+    {
+        lock (FileGate)
+        {
+            string stamp = Stamp(), kept = Path.Combine(DataDir, $"vault-before-start-over-{stamp}.rmv");
+            File.Move(VaultPath, kept);
+            foreach (var (from, what) in new[] { (BackupPath, "spare"), (TempPath, "unsaved") })
+            {
+                if (File.Exists(from))
+                    File.Move(from, Path.Combine(DataDir, $"vault-before-start-over-{stamp}-{what}.rmv"));
+            }
+            return kept;
+        }
     }
 
     static string Stamp() => DateTime.Now.ToString("yyyyMMdd-HHmmss");

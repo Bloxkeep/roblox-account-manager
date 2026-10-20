@@ -1398,6 +1398,7 @@ b, strong { font-weight: 650; }
 .lock-error { min-height: 20px; margin: 10px 0 8px; color: var(--bad-ink); font-size: 13px; overflow-wrap: anywhere; }
 .lock-alt { margin-top: 16px; font-size: 13px; }
 .lock-alt .link { color: var(--text-2); }
+.lock-alt .sep { margin: 0 8px; color: var(--dim); }
 .lock-caps { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; color: var(--warn-ink); font-size: 12.5px; }
 .lock-caps[hidden] { display: none; }
 .lock-caps .i { width: 14px; height: 14px; }

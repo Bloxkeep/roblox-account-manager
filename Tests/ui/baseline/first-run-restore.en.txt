@@ -9,25 +9,19 @@ html [data-theme="dark" lang="en"]
         button [title="Tiếng Việt" aria-pressed="false"] "VI"
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
-      h2 "Set a master password"
-      p "You’ll use it to unlock Bloxkeep. It if you forget it."
-        b "can’t be recovered"
+      h2 "Welcome back"
+      p "Enter your master password to unlock."
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value=""]
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value="" FOCUSED]
           button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
             svg.i #1pcfgz
-        input.field [id="pw2" type="password" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value=""]
-        div.strength-row
-          div.strength
-            i [id="pw-meter"]
-          span [id="pw-strength" aria-live="polite"]
       div.lock-error [id="lock-error" role="alert"]
-      button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Unlock"
       div.lock-alt
-        button.link [type="button" FOCUSED] "Restore from a backup"
-      div.lock-alt.lock-multi
-        button.link [type="button"] "Just use Multi-Roblox, without accounts"
+        button.link [type="button"] "Restore from a backup"
+        span.sep "·"
+        button.link [type="button"] "Start over"
 #layer
 #toasts
   div.ok.toast [role="status"]

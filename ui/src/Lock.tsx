@@ -106,7 +106,10 @@ export function Lock({ mode, notice, kept, opened }: {
       <div className="lock-caps" id="lock-caps" hidden={!caps}><Icon name="alert" />{t('lock.caps')}</div>
       <div className="lock-error" id="lock-error" role="alert">{error}</div>
       <button className="btn primary big w" type="submit" id="lock-btn" ref={btn}>{t(create ? 'lock.create' : 'lock.unlock')}</button>
-      {create ? <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button></div> : null}
+      {/* Set up: a backup instead. Unlock: for a forgotten master password (it can't be recovered), a backup whose
+          password is remembered, or a fresh start with the old vault set aside (app.js asks first). */}
+      <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button>
+        {create ? null : <><span className="sep">·</span><button type="button" className="link" data-act="start-over">{t('lock.startOver')}</button></>}</div>
       {/* For someone who signs in to Roblox only in their own browser: Multi-Roblox without a vault or accounts. */}
       {create ? <div className="lock-alt lock-multi">{multiOnly
         ? <><span id="lock-multi-on">{t('lock.multiOnlyOn')}</span> <button type="button" className="link" data-act="multi-only-off">{t('lock.multiOnlyOff')}</button></>

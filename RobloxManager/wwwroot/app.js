@@ -2638,6 +2638,12 @@
       case 'bk-import': return importVault();
       // First-run screen: the chosen file becomes the vault; the app then shows the unlock screen.
       case 'restore-backup': return busy(el, () => call('restoreBackup'));
+      // The lock screen's "Start over" (a forgotten master password): what goes and what stays, asked first.
+      case 'start-over': return (async () => {
+        if (!await confirmBox(t('lock.startOverText'), { title: t('lock.startOverTitle'), ok: t('lock.startOverOk'), danger: true })) return;
+        if (await call('startOver') === undefined) return;
+        toast(t('lock.startOverDone'), 'ok');
+      })();
       // First start without a vault: Multi-Roblox only, for someone who signs in to Roblox in their own browser. It
       // asks the same as the sidebar's switch, then Bloxkeep goes to the tray.
       case 'multi-only': return (async () => {

@@ -19,6 +19,10 @@ html [data-theme="dark" lang="vi"]
             svg.i #1pcfgz
       div.lock-error [id="lock-error" role="alert"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Mở khóa"
+      div.lock-alt
+        button.link [type="button"] "Khôi phục từ bản sao lưu"
+        span.sep "·"
+        button.link [type="button"] "Làm lại từ đầu"
 #layer
 #toasts
 -- commands

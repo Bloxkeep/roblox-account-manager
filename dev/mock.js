@@ -101,6 +101,8 @@
   let locked = params.has('locked') || params.has('new') || !!screenLock;
   let language = params.get('lang') || 'en';
   let theme = params.get('theme') || 'dark';
+  // Set up yet (?new=1: not); "Start over" on the lock screen sets the vault aside.
+  let vaultExists = !params.has('new');
   // Settings › Appearance › Custom (?theme=custom; ?ctpicture=1 with a picture, a scenery theme's standing in).
   let customTheme = { background: params.has('ctbg') ? '#' + params.get('ctbg') : '#1b2a3a', accent: '#f59e0b', fade: 45, picture: params.has('ctpicture') ? 'scene-halong.svg' : null };
   let closeToTray = true;
@@ -241,7 +243,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists: !params.has('new'), locked, screenLock,
+    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
       updater: settings.launchVia === 'store' ? null : 'Bloxstrap', updating: robloxUpdating },
@@ -411,7 +413,8 @@
           discord = { ...discord, lastSent: new Date().toISOString(), error: null };
           push();
           return null;
-        case 'restoreBackup': await wait(500); locked = true; push(); emit('toast', { text: 'Backup restored. Unlock it with the master password it was saved with.', kind: 'ok' }); return null;
+        case 'startOver': await wait(300); vaultExists = false; locked = true; push(); return null;
+        case 'restoreBackup': await wait(500); vaultExists = true; locked = true; push(); emit('toast', { text: 'Backup restored. Unlock it with the master password it was saved with.', kind: 'ok' }); return null;
         case 'resolveGame': {
           const m = /(\d{5,})/.exec(a.input);
           if (!m) return { ok: false, error: 'Không đọc được Place ID từ link này.' };

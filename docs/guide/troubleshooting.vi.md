@@ -68,7 +68,10 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 
 ### **H:** Tôi quên mật khẩu chủ
 
-**Đ:** Không lấy lại được. Hãy khôi phục một bản sao lưu mà bạn còn nhớ mật khẩu (**Khôi phục từ bản sao lưu** ở màn hình đầu, hoặc **Cài đặt › Sao lưu & dữ liệu › Khôi phục…**), hoặc xóa `vault.rmv` và `vault.rmv.bak` để làm lại từ đầu, chấp nhận mất các tài khoản đã lưu.
+**Đ:** Không lấy lại được, và cũng không cần gỡ cài đặt. Ngay dưới nút **Mở khóa** có hai lựa chọn:
+
+- **Khôi phục từ bản sao lưu**: mở một bản sao lưu mà bạn còn nhớ mật khẩu. Vault đang kẹt được giữ lại bên cạnh.
+- **Làm lại từ đầu**: Bloxkeep cất vault cũ sang một bên (không xóa) rồi cho đặt mật khẩu chủ mới. Các tài khoản và preset đã lưu không còn trong Bloxkeep; tài khoản Roblox vẫn nguyên, chỉ cần đăng nhập để thêm lại. Nhớ ra mật khẩu cũ thì dùng **Khôi phục từ bản sao lưu** chọn file `vault-before-start-over-….rmv` trong thư mục dữ liệu của Bloxkeep.
 
 ## Hẹn giờ và trạng thái
 
