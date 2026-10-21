@@ -328,7 +328,7 @@ More in the user guide: [The Multi-Roblox check](docs/guide/multi-roblox.md#the-
 
 ### Anti-AFK
 
-Roblox kicks an account after 20 minutes without input. With **Settings › Staying in game › Anti-AFK** on (a preset can override it), Bloxkeep brings each Roblox window that is in a game to the front for a moment, moves the mouse a few pixels over it and back, and returns you to the window you were in. No key is pressed and nothing is clicked.
+Roblox kicks an account after 20 minutes without input. With **Settings › Staying in game › Anti-AFK** on (a preset can override it), Bloxkeep switches to each Roblox window that is in a game for a moment without you seeing it: the window turns invisible and lets clicks through (a click at that moment still lands in the window you're in), gets one press of F15 (a key regular keyboards don't have, so games don't use it), and you're back in the window you were in. The mouse doesn't move, nothing is clicked, and a minimized window stays minimized.
 
 - It steps in from 12 minutes after a window's last input, at the first minute nobody uses the PC.
 - A window two minutes from its kick gets it even while you use the PC, in a 2-second pause, but never over a full-screen app.

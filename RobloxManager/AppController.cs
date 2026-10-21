@@ -3881,6 +3881,9 @@ public sealed partial class AppController : IDisposable
         foreach (int gone in _afkHeld.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
             _afkHeld.Remove(gone);
         _idleKickReported.RemoveWhere(pid => !windows.ContainsKey(pid));
+        // A nudge cut short (Bloxkeep closed in the middle of one) left its window unseen and click-through.
+        if (!_nudging)
+            AntiAfk.Recover(windows.Values.SelectMany(w => w));
         if (_vault is null || windows.Count == 0)
             return;
         var on = windows.Keys.Where(AntiAfkOn).ToHashSet();

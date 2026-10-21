@@ -59,11 +59,14 @@ public static class WhatsNew
     public static bool IsQuietFix(string? version) =>
         (version ?? "").Split('+')[0].Split('-', 2) is [_, var label] && label.StartsWith("alpha.", StringComparison.Ordinal);
 
-    /// <summary>Whether <paramref name="a"/> is older than <paramref name="b"/>: a quiet fix before the version it leads to, an earlier quiet fix before a later one.</summary>
+    /// <summary>
+    /// Whether <paramref name="a"/> is older than <paramref name="b"/>: a quiet fix before the version it leads to, an
+    /// earlier quiet fix before a later one. A test build between two fixes (1.0.8-alpha.3.1) counts as the first.
+    /// </summary>
     public static bool Older(string a, string b)
     {
         static (Version Version, int Fix) Key(string v) =>
-            (Parse(v), IsQuietFix(v) && int.TryParse(v.Split('+')[0].Split("-alpha.")[1], out int n) ? n : int.MaxValue);
+            (Parse(v), IsQuietFix(v) && int.TryParse(v.Split('+')[0].Split("-alpha.")[1].Split('.')[0], out int n) ? n : int.MaxValue);
         var (x, y) = (Key(a), Key(b));
         return x.Version < y.Version || (x.Version == y.Version && x.Fix < y.Fix);
     }

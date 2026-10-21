@@ -29,6 +29,9 @@ static class QuietFixSuite
         c.Check("versions in order: the fixed version, its quiet fixes, the next version",
             WhatsNew.Older("1.0.6", "1.0.7-alpha.1") && WhatsNew.Older("1.0.7-alpha.1", "1.0.7-alpha.2")
             && WhatsNew.Older("1.0.7-alpha.2", "1.0.7") && !WhatsNew.Older("1.0.7", "1.0.7-alpha.2"));
+        c.Check("a test build between two fixes counts as the first: the next fix and the next version are newer",
+            WhatsNew.Older("1.0.8-alpha.3.1", "1.0.8-alpha.4") && WhatsNew.Older("1.0.8-alpha.3.1", "1.0.8")
+            && !WhatsNew.Older("1.0.8-alpha.3", "1.0.8-alpha.3.1"));
         c.Check("a beta and its version stay as they were (no notes again after the betas)",
             !WhatsNew.Older("1.0.6-beta.8", "1.0.6") && !WhatsNew.Older("1.0.6", "1.0.6-beta.8"));
 

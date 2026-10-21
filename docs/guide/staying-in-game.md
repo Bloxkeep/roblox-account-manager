@@ -54,7 +54,7 @@ When an account's Roblox disconnects, gets kicked or loses the connection, Bloxk
 
 ## Anti-AFK
 
-**Settings › Staying in game › Anti-AFK** (a preset can override it). Roblox kicks an account after 20 minutes without input. Bloxkeep brings each Roblox window that is in a game to the front for a moment, moves the mouse a few pixels over it and back, and returns you to your window. No key is pressed and nothing is clicked.
+**Settings › Staying in game › Anti-AFK** (a preset can override it). Roblox kicks an account after 20 minutes without input. Bloxkeep switches to each Roblox window that is in a game for a moment without you seeing it: the window turns invisible and lets clicks through (a click at that moment still lands in your window), gets one press of F15 (a key regular keyboards don't have, so games don't use it), and you're back in your window. The mouse doesn't move, nothing is clicked, and a minimized window stays minimized.
 
 - It steps in from 12 minutes after a window's last input, at the first minute nobody uses the PC.
 - A window two minutes from its kick gets it even while you use the PC, in a 2-second pause, but never over a full-screen app.

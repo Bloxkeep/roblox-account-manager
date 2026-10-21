@@ -322,7 +322,7 @@ Xem thêm trong hướng dẫn: [Kiểm tra Multi-Roblox](docs/guide/multi-roblo
 
 ### Chống AFK
 
-Roblox kick tài khoản sau 20 phút không có thao tác. Khi bật **Cài đặt › Treo game › Chống AFK** (preset có thể ghi đè), Bloxkeep đưa từng cửa sổ Roblox đang ở trong game lên trước trong chốc lát, nhích chuột vài pixel rồi trả về, và đưa bạn lại cửa sổ đang dùng. Không bấm phím, không click gì.
+Roblox kick tài khoản sau 20 phút không có thao tác. Khi bật **Cài đặt › Treo game › Chống AFK** (preset có thể ghi đè), Bloxkeep lần lượt chuyển sang từng cửa sổ Roblox đang ở trong game trong chốc lát mà bạn không thấy: cửa sổ được làm trong suốt và cho bấm xuyên qua (lỡ bấm chuột lúc đó thì vẫn trúng cửa sổ bạn đang dùng), được bấm phím F15 một lần (bàn phím thường không có phím này nên game cũng không dùng), rồi bạn về lại cửa sổ đang dùng. Chuột không di chuyển, không click gì, cửa sổ đang thu nhỏ vẫn thu nhỏ.
 
 - Bắt đầu từ phút thứ 12 kể từ thao tác cuối của cửa sổ, vào phút đầu tiên không ai dùng máy.
 - Cửa sổ còn 2 phút nữa là bị kick thì được xử lý ngay cả khi bạn đang dùng máy, trong một khoảng dừng 2 giây, nhưng không bao giờ chen ngang ứng dụng toàn màn hình.

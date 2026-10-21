@@ -87,6 +87,10 @@ static class AntiAfk
     const int GWL_EXSTYLE = -20, WS_EX_TOPMOST = 0x8, WS_EX_TRANSPARENT = 0x20, WS_EX_LAYERED = 0x80000;
     const uint LWA_ALPHA = 0x2, GW_HWNDPREV = 3;
     const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
+    // Not async (SWP_ASYNCWINDOWPOS): each move must be done before the next, or a window put back under yours while
+    // yours is still always-on-top would become always-on-top itself. A window that has stopped answering isn't moved
+    // (the move waits for its answer).
+    const uint Restack = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
     static readonly IntPtr HWND_TOPMOST = -1, HWND_NOTOPMOST = -2;
     const uint RDW_INVALIDATE = 0x1, RDW_ERASE = 0x4, RDW_ALLCHILDREN = 0x80, RDW_FRAME = 0x400;
     const int DWMWA_TRANSITIONS_FORCEDISABLED = 3;
@@ -250,7 +254,9 @@ static class AntiAfk
                 _ownInput = baseline;
                 _personInput = person;
             }
-            GiveBack(previous);
+            // Nothing touched (turned off, a person back, no window answering): the window you're in is left alone.
+            if (hidden.Count > 0)
+                GiveBack(previous);
             // Each window back to its place, the one highest in the stack first (one that goes under another finds it
             // there); a minimized one once it is minimized again; only then is it seen again.
             foreach (var before in hidden.OrderBy(b => b.Depth))
@@ -264,15 +270,16 @@ static class AntiAfk
     }
 
     /// <summary>
-    /// The nearest window above <paramref name="hWnd"/> that isn't always on top (the one it goes back under), and how
-    /// many windows are above it.
+    /// The nearest shown window above <paramref name="hWnd"/> that isn't always on top (the one it goes back under), and
+    /// how many windows are above it. Hidden ones don't count: each program's hidden input-method window rides along
+    /// with that program's window in front, so going back under one would leave the window where it was put.
     /// </summary>
     static (IntPtr Above, int Depth) Place(IntPtr hWnd)
     {
         IntPtr above = IntPtr.Zero;
         int depth = 0;
         for (IntPtr w = GetWindow(hWnd, GW_HWNDPREV); w != IntPtr.Zero && depth < 5000; w = GetWindow(w, GW_HWNDPREV), depth++)
-            if (above == IntPtr.Zero && (GetWindowLong(w, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0)
+            if (above == IntPtr.Zero && IsWindowVisible(w) && (GetWindowLong(w, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0)
                 above = w;
         return (above, depth);
     }
@@ -295,10 +302,13 @@ static class AntiAfk
         return before;
     }
 
-    /// <summary>Seen and clickable again: its own style and opacity back (only the bits <see cref="Hide"/> set are touched).</summary>
+    /// <summary>
+    /// Seen and clickable again: its own style and opacity back (only the bits <see cref="Hide"/> set are touched). One
+    /// that has stopped answering is left to <see cref="Recover"/>: a change of style waits for the window's answer.
+    /// </summary>
     internal static void Show(Before b)
     {
-        if (!IsWindow(b.Window))
+        if (!IsWindow(b.Window) || IsHungAppWindow(b.Window))
             return;
         const int ours = WS_EX_LAYERED | WS_EX_TRANSPARENT;
         SetWindowLong(b.Window, GWL_EXSTYLE, (GetWindowLong(b.Window, GWL_EXSTYLE) & ~ours) | (b.ExStyle & ours));
@@ -318,9 +328,9 @@ static class AntiAfk
     /// <summary>Back under the window it was under, without taking the keyboard (a minimized one stays minimized).</summary>
     internal static void PutBack(Before b)
     {
-        if (b.Minimized || b.Above == IntPtr.Zero || !IsWindow(b.Window) || !IsWindow(b.Above))
+        if (b.Minimized || b.Above == IntPtr.Zero || !IsWindow(b.Window) || !IsWindow(b.Above) || IsHungAppWindow(b.Window))
             return;
-        SetWindowPos(b.Window, b.Above, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        SetWindowPos(b.Window, b.Above, 0, 0, 0, 0, Restack | SWP_NOOWNERZORDER);
     }
 
     /// <summary>
@@ -331,13 +341,15 @@ static class AntiAfk
     {
         if (previous == IntPtr.Zero || !IsWindow(previous))
             return;
-        // Not the desktop, a hidden or minimized window, or one always on top anyway: those only get the keyboard back.
-        bool lift = !IsDesktop(previous) && IsWindowVisible(previous) && !IsIconic(previous) && (GetWindowLong(previous, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0;
+        // Not the desktop, a hidden or minimized window, one always on top anyway, or one not answering: those only get
+        // the keyboard back.
+        bool lift = !IsDesktop(previous) && IsWindowVisible(previous) && !IsIconic(previous) && (GetWindowLong(previous, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0
+            && !IsHungAppWindow(previous);
         if (lift)
-            SetWindowPos(previous, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            SetWindowPos(previous, HWND_TOPMOST, 0, 0, 0, 0, Restack);
         Focus(previous);
         if (lift)
-            SetWindowPos(previous, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE); // first of the usual windows
+            SetWindowPos(previous, HWND_NOTOPMOST, 0, 0, 0, 0, Restack); // first of the usual windows
     }
 
     /// <summary>The desktop (its icons, or the wallpaper behind them): never lifted over the windows.</summary>
@@ -369,7 +381,8 @@ static class AntiAfk
         foreach (var w in windows)
         {
             int ex = GetWindowLong(w, GWL_EXSTYLE);
-            if ((ex & ours) != ours || !GetLayeredWindowAttributes(w, out _, out byte alpha, out uint flags) || (flags & LWA_ALPHA) == 0 || alpha != HiddenAlpha)
+            if ((ex & ours) != ours || !GetLayeredWindowAttributes(w, out _, out byte alpha, out uint flags) || (flags & LWA_ALPHA) == 0 || alpha != HiddenAlpha
+                || IsHungAppWindow(w))
                 continue;
             SetWindowLong(w, GWL_EXSTYLE, ex & ~ours);
             Animations(w, true);

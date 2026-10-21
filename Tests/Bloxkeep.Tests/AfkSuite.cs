@@ -93,5 +93,131 @@ static class AfkSuite
         var rw = (List<int>)plan.Invoke(app, [t1, new HashSet<int> { B, C }, wins, false, TimeSpan.FromSeconds(3), Other, (Func<bool>)(() => false)])!;
         c.Check("last-chance window still waiting: not tried yet", rw.Count == 0, string.Join(",", rw));
         c.Check("in use clears the other windows' waits only", !retry.ContainsKey(B) && retry.ContainsKey(C), string.Join(",", retry.Keys));
+
+        Unseen(c, afk);
     }
+
+    /// <summary>
+    /// The nudge's parts on this process's own windows, off-screen and never activated: made unseen and click-through and
+    /// back, put back in their place among the windows, and left unseen by a nudge cut short. No key is pressed and no
+    /// window is brought to the front. All on one thread, with no await in between: a style change on another thread's
+    /// window would wait for that thread to answer.
+    /// </summary>
+    static void Unseen(Checks c, Type afk)
+    {
+        c.Check("INPUT is the size SendInput expects (40 bytes in a 64-bit process)",
+            (int)afk.GetProperty("InputSize", Harness.F)!.GetValue(null)! == (Environment.Is64BitProcess ? 40 : 28));
+        var hide = afk.GetMethod("Hide", Harness.F)!;
+        var show = afk.GetMethod("Show", Harness.F)!;
+        var putBack = afk.GetMethod("PutBack", Harness.F)!;
+        var place = afk.GetMethod("Place", Harness.F)!;
+        var recover = afk.GetMethod("Recover", Harness.F)!;
+        var nudge = afk.GetMethod("NudgeAsync", Harness.F)!;
+        byte hidden = (byte)afk.GetField("HiddenAlpha", Harness.F)!.GetValue(null)!;
+        const int ours = WS_EX_LAYERED | WS_EX_TRANSPARENT;
+
+        using var x = new OffScreen();
+        using var y = new OffScreen();
+        using var z = new OffScreen();
+        using var faded = new OffScreen { Opacity = 0.8 };
+        using var top = new OffScreen();
+        using var ghost = new OffScreen(); // never shown
+        foreach (var f in new[] { x, y, z, faded, top })
+            f.Show();
+        Application.DoEvents(); // a window whose thread hasn't looked at its messages for 5 s counts as not answering
+        IntPtr X = x.Handle, Y = y.Handle, Z = z.Handle, Faded = faded.Handle, Top = top.Handle;
+        (byte Alpha, uint Flags) Alpha(IntPtr w) => GetLayeredWindowAttributes(w, out _, out byte a, out uint fl) ? (a, fl) : ((byte)0, 0u);
+        object Hide(IntPtr w, bool minimized = false) => hide.Invoke(null, [w, place.Invoke(null, [w]), minimized])!;
+
+        // Unseen and click-through, then back as it was.
+        int plain = GetWindowLong(X, GWL_EXSTYLE);
+        var before = Hide(X);
+        c.Check("hidden: layered and click-through", (GetWindowLong(X, GWL_EXSTYLE) & ours) == ours, GetWindowLong(X, GWL_EXSTYLE).ToString("x"));
+        c.Check("hidden: all but invisible", Alpha(X) is var ha && ha.Alpha == hidden && (ha.Flags & LWA_ALPHA) != 0, Alpha(X));
+        show.Invoke(null, [before]);
+        c.Check("shown again: its own style back", GetWindowLong(X, GWL_EXSTYLE) == plain, $"{GetWindowLong(X, GWL_EXSTYLE):x} vs {plain:x}");
+
+        // A window that has an opacity of its own keeps it.
+        var own = Alpha(Faded);
+        int fadedStyle = GetWindowLong(Faded, GWL_EXSTYLE);
+        before = Hide(Faded);
+        c.Check("own opacity: hidden all the same", Alpha(Faded).Alpha == hidden, Alpha(Faded));
+        show.Invoke(null, [before]);
+        c.Check("own opacity: back to its own, still layered, not click-through",
+            Alpha(Faded) == own && GetWindowLong(Faded, GWL_EXSTYLE) == fadedStyle, $"{Alpha(Faded)} vs {own}, {GetWindowLong(Faded, GWL_EXSTYLE):x} vs {fadedStyle:x}");
+
+        // Back in its place: x over y over z, with a hidden window between y and z (like the input-method window each
+        // program has, which comes along to the front with it); z comes to the front for its nudge, then goes back under y.
+        IntPtr Ghost = ghost.Handle;
+        SetWindowPos(X, HWND_TOP, 0, 0, 0, 0, Keep);
+        SetWindowPos(Y, X, 0, 0, 0, 0, Keep);
+        SetWindowPos(Ghost, Y, 0, 0, 0, 0, Keep);
+        SetWindowPos(Z, Ghost, 0, 0, 0, 0, Keep);
+        var zPlace = place.Invoke(null, [Z])!;
+        c.Check("its place: under the shown window that was above it", (IntPtr)zPlace.GetType().GetField("Item1")!.GetValue(zPlace)! == Y,
+            zPlace.GetType().GetField("Item1")!.GetValue(zPlace));
+        before = Hide(Z);
+        SetWindowPos(Z, HWND_TOP, 0, 0, 0, 0, Keep);
+        SetWindowPos(Ghost, HWND_TOP, 0, 0, 0, 0, Keep);
+        putBack.Invoke(null, [before]);
+        show.Invoke(null, [before]);
+        c.Check("put back under the same window", GetWindow(Z, GW_HWNDPREV) == Y && GetWindow(Y, GW_HWNDPREV) == X,
+            $"above z {GetWindow(Z, GW_HWNDPREV)}, y {Y}");
+        // Never under a window that is always on top: it would become always on top too.
+        SetWindowPos(Top, HWND_TOPMOST, 0, 0, 0, 0, Keep);
+        SetWindowPos(X, HWND_TOP, 0, 0, 0, 0, Keep);
+        var xPlace = place.Invoke(null, [X])!;
+        c.Check("first of the usual windows: goes under none of the always-on-top ones",
+            (IntPtr)xPlace.GetType().GetField("Item1")!.GetValue(xPlace)! == IntPtr.Zero, xPlace);
+        SetWindowPos(Top, HWND_NOTOPMOST, 0, 0, 0, 0, Keep);
+
+        // Left unseen by a nudge cut short (Bloxkeep closed): seen again; a window faded by its own app is left alone.
+        Hide(Y);
+        int fadedAndThrough = fadedStyle | WS_EX_TRANSPARENT;
+        SetWindowLong(Faded, GWL_EXSTYLE, fadedAndThrough);
+        recover.Invoke(null, [new[] { Y, Faded }]);
+        c.Check("recovered: neither layered nor click-through", (GetWindowLong(Y, GWL_EXSTYLE) & ours) == 0, GetWindowLong(Y, GWL_EXSTYLE).ToString("x"));
+        c.Check("another app's faded window untouched", GetWindowLong(Faded, GWL_EXSTYLE) == fadedAndThrough && Alpha(Faded) == own);
+
+        // A nudge that touches nothing: turned off, or no window that answers. Nothing pressed, nothing changed.
+        int pressed = 0;
+        Func<IntPtr, Task> press = _ => { pressed++; return Task.CompletedTask; };
+        int xStyle = GetWindowLong(X, GWL_EXSTYLE);
+        var off = ((Task<List<IntPtr>>)nudge.Invoke(null, [new List<IntPtr> { X }, (Func<bool>)(() => false), press])!).GetAwaiter().GetResult();
+        c.Check("turned off: no window reached, its style untouched", off.Count == 0 && GetWindowLong(X, GWL_EXSTYLE) == xStyle);
+        var dead = new IntPtr(0x7FFFFFF0);
+        if (!IsWindow(dead))
+        {
+            var none = ((Task<List<IntPtr>>)nudge.Invoke(null, [new List<IntPtr> { dead }, (Func<bool>)(() => true), press])!).GetAwaiter().GetResult();
+            c.Check("a window that's gone: skipped", none.Count == 0);
+        }
+        c.Check("no key pressed", pressed == 0, pressed);
+    }
+
+    /// <summary>A window off-screen, out of the taskbar, that never takes the keyboard when shown.</summary>
+    sealed class OffScreen : Form
+    {
+        public OffScreen()
+        {
+            ShowInTaskbar = false;
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.Manual;
+            Location = new Point(-3000, -3000);
+            Size = new Size(120, 80);
+        }
+
+        protected override bool ShowWithoutActivation => true;
+    }
+
+    const int GWL_EXSTYLE = -20, WS_EX_TRANSPARENT = 0x20, WS_EX_LAYERED = 0x80000;
+    const uint LWA_ALPHA = 0x2, GW_HWNDPREV = 3;
+    const uint Keep = 0x1 | 0x2 | 0x10; // SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+    static readonly IntPtr HWND_TOP = 0, HWND_TOPMOST = -1, HWND_NOTOPMOST = -2;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLongW")] static extern int GetWindowLong(IntPtr hWnd, int index);
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLongW")] static extern int SetWindowLong(IntPtr hWnd, int index, int value);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool GetLayeredWindowAttributes(IntPtr hWnd, out uint key, out byte alpha, out uint flags);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hWnd, uint command);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool IsWindow(IntPtr hWnd);
 }
