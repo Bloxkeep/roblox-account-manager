@@ -1126,6 +1126,7 @@
       else if (target === 'web') call('openWebsiteBlank');
       else if (target === 'feedback') feedbackModal();
       else if (target === 'github') call('openGitHub');
+      else if (target === 'discord') call('openDiscord');
     },
   });
 

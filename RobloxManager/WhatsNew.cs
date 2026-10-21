@@ -20,7 +20,7 @@ public static class WhatsNew
 
     /// <summary>
     /// A headline feature: an icon (one of the page's), [title, one or two sentences, button] in each language, and where
-    /// the button leads ("settings:&lt;page or group&gt;", "guide", "web", "feedback"; none = no button).
+    /// the button leads ("settings:&lt;page or group&gt;", "guide", "web", "feedback", "discord"; none = no button).
     /// </summary>
     public sealed record Highlight(string Icon, string? Go, string[] En, string[] Vi);
 

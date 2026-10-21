@@ -186,55 +186,61 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.7 · October 20, 2026"
+              small "Bloxkeep 1.0.8-beta.1 · October 21, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
         ul.wn-cards
           li.wn-card
             span.wn-ic
-              svg.i #v823bm
-            b "Several vaults, picked like Steam's accounts"
-            p "Keep accounts apart in vaults of their own, each with its own master password. Pick one on the lock screen, or switch from the sidebar."
-            button.wn-go [type="button" FOCUSED] "See the vault"
+              svg.i #1xzadie
+            b "Anti-AFK out of sight"
+            p "Roblox windows no longer pop up to keep your accounts in game. Each gets a key press while it stays unseen, and your clicks go to the window you're using."
+            button.wn-go [type="button" FOCUSED] "See Anti-AFK"
               svg.i #1g7f83q
           li.wn-card
             span.wn-ic
-              svg.i #d2zp05
-            b "A theme of your own"
-            p "Pick a background color and an accent color, and put a picture from your PC behind the page if you like."
-            button.wn-go [type="button"] "Make one"
+              svg.i #1crx2f1
+            b "Bloxkeep on Discord"
+            p "The Discord button beside the logo opens Bloxkeep's community: ask for help, share ideas, and get a ping whenever Roblox updates."
+            button.wn-go [type="button"] "Join"
               svg.i #1g7f83q
         h4.new.wn-kind.wn-sub "New"
           svg.i #u7ty99
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Several vaults: the lock screen asks “Who’s using Bloxkeep?” with a tile per vault (its picture or first letter). + adds a vault with its own name and master password, × takes one off the list (its file is kept). Switch vault is in the sidebar and in Settings › Security, where you also name the vault, give it a picture and can have Bloxkeep ask at every start."
+            span "Anti-AFK no longer brings Roblox windows to the front: a window is made invisible and lets clicks through while it gets one press of F15 (a key no game uses), then your window is back in front and the Roblox window goes back to its place. A minimized one stays minimized, and the mouse no longer moves."
           li
             svg.i #u7ty99
-            span "Custom theme (Settings › Appearance › Your own): a background color and an accent color, the words adjusted to stay readable, and a picture from your PC behind the page if you like."
+            span "A Discord button beside the logo, a row in Settings › Help & feedback and \"Bloxkeep on Discord\" in Quick search (Ctrl+K) open Bloxkeep's community server."
           li
             svg.i #u7ty99
-            span "Lock screen: Restore from a backup and Create a new vault are right under Unlock, for a forgotten master password (it can't be recovered). The old vault stays on the list."
+            span "The account list shows how long each account has been playing on this PC, after its game, as the cards do."
+          li
+            svg.i #u7ty99
+            span "Settings › Bloxkeep updates › Privacy › Add me to the online count: while Bloxkeep is open it says so every 10 minutes, so its maker can see how many people use it. Only a random code, the version and the language are sent; turn it off there."
         h4.improved.wn-kind.wn-sub "Improved"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
-            span "Game box: a click opens its list even with a game or link in it, with the text selected so typing searches. Saving a server opens the list on the Saved tab."
+            span "The account list lines up like a table: VNG, Robux, group, auto-rejoin, PID and memory each stay in their own column on every row."
           li
             svg.i #1l5qw3q
-            span "Small fixes between versions install by themselves while you're not using Bloxkeep, without Restart to update or What's new, and the version number stays the same."
+            span "Robux shows on the cards right as you unlock, instead of 20-30 seconds later."
+          li
+            svg.i #1l5qw3q
+            span "Bloxkeep comes back from the tray at once."
+          li
+            svg.i #1l5qw3q
+            span "Switch vault opens the vault picker over the open vault: Back returns to it without the password."
         h4.fixed.wn-kind.wn-sub "Fixed"
           svg.i #yqrnd9
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
-            span "Show on my Discord profile no longer shows a game after you leave it for Roblox's home screen, or after a disconnect."
-          li
-            svg.i #yqrnd9
-            span "Opening Bloxkeep while it installs an update no longer leaves it locked once the update is in."
+            span "\"Windows' virtual memory is almost full\" no longer appears while the page file can still grow to its largest size."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

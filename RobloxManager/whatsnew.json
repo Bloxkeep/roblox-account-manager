@@ -1,5 +1,75 @@
 [
   {
+    "version": "1.0.8-beta.1",
+    "date": "2026-10-21",
+    "highlights": [
+      {
+        "icon": "eyeOff",
+        "go": "settings:perf",
+        "en": [
+          "Anti-AFK out of sight",
+          "Roblox windows no longer pop up to keep your accounts in game. Each gets a key press while it stays unseen, and your clicks go to the window you're using.",
+          "See Anti-AFK"
+        ],
+        "vi": [
+          "Chống AFK không còn che màn hình",
+          "Cửa sổ Roblox không còn bật lên để giữ tài khoản trong game. Mỗi cửa sổ được bấm một phím trong lúc vẫn ẩn, còn chuột của bạn vẫn bấm vào đúng cửa sổ bạn đang dùng.",
+          "Xem Chống AFK"
+        ]
+      },
+      {
+        "icon": "discord",
+        "go": "discord",
+        "en": [
+          "Bloxkeep on Discord",
+          "The Discord button beside the logo opens Bloxkeep's community: ask for help, share ideas, and get a ping whenever Roblox updates.",
+          "Join"
+        ],
+        "vi": [
+          "Bloxkeep trên Discord",
+          "Nút Discord cạnh logo mở cộng đồng Bloxkeep: hỏi khi cần giúp, góp ý tưởng, và nhận ping mỗi khi Roblox cập nhật.",
+          "Tham gia"
+        ]
+      }
+    ],
+    "new": {
+      "en": [
+        "Anti-AFK no longer brings Roblox windows to the front: a window is made invisible and lets clicks through while it gets one press of F15 (a key no game uses), then your window is back in front and the Roblox window goes back to its place. A minimized one stays minimized, and the mouse no longer moves.",
+        "A Discord button beside the logo, a row in Settings › Help & feedback and \"Bloxkeep on Discord\" in Quick search (Ctrl+K) open Bloxkeep's community server.",
+        "The account list shows how long each account has been playing on this PC, after its game, as the cards do.",
+        "Settings › Bloxkeep updates › Privacy › Add me to the online count: while Bloxkeep is open it says so every 10 minutes, so its maker can see how many people use it. Only a random code, the version and the language are sent; turn it off there."
+      ],
+      "vi": [
+        "Chống AFK không còn đưa cửa sổ Roblox lên trước: cửa sổ được làm ẩn và cho chuột bấm xuyên qua trong lúc nhận một lần bấm phím F15 (phím không game nào dùng), rồi cửa sổ bạn đang dùng trở lại phía trước và cửa sổ Roblox về đúng chỗ cũ. Cửa sổ đang thu nhỏ vẫn thu nhỏ, và chuột không còn bị di chuyển.",
+        "Nút Discord cạnh logo, một dòng trong Cài đặt › Hướng dẫn & góp ý, và mục \"Bloxkeep trên Discord\" trong Tìm nhanh (Ctrl+K) đều mở server cộng đồng của Bloxkeep.",
+        "Danh sách tài khoản hiện mỗi tài khoản đã chơi trên máy này được bao lâu, ngay sau tên game, giống như ở thẻ.",
+        "Cài đặt › Cập nhật Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng: khi Bloxkeep đang mở, cứ 10 phút app báo một lần để người làm Bloxkeep biết có bao nhiêu người đang dùng. Chỉ gửi một mã ngẫu nhiên, phiên bản và ngôn ngữ; tắt ở đó nếu không muốn."
+      ]
+    },
+    "improved": {
+      "en": [
+        "The account list lines up like a table: VNG, Robux, group, auto-rejoin, PID and memory each stay in their own column on every row.",
+        "Robux shows on the cards right as you unlock, instead of 20-30 seconds later.",
+        "Bloxkeep comes back from the tray at once.",
+        "Switch vault opens the vault picker over the open vault: Back returns to it without the password."
+      ],
+      "vi": [
+        "Danh sách tài khoản thẳng hàng như một bảng: VNG, Robux, nhóm, tự vào lại, PID và RAM mỗi thứ nằm đúng một cột trên mọi dòng.",
+        "Robux hiện trên thẻ ngay lúc mở khóa, thay vì 20-30 giây sau.",
+        "Bloxkeep mở lại từ khay hệ thống ngay lập tức.",
+        "Đổi vault mở bảng chọn vault ngay trên vault đang mở: bấm Quay lại là về vault cũ, không cần nhập lại mật khẩu."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "\"Windows' virtual memory is almost full\" no longer appears while the page file can still grow to its largest size."
+      ],
+      "vi": [
+        "Cảnh báo \"bộ nhớ ảo của Windows gần đầy\" không còn hiện khi file trang vẫn còn nới thêm được tới kích thước tối đa."
+      ]
+    }
+  },
+  {
     "version": "1.0.7",
     "date": "2026-10-20",
     "highlights": [

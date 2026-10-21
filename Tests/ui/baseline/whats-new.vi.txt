@@ -186,55 +186,61 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.7 · 20 tháng 10, 2026"
+              small "Bloxkeep 1.0.8-beta.1 · 21 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         ul.wn-cards
           li.wn-card
             span.wn-ic
-              svg.i #v823bm
-            b "Nhiều vault, chọn như tài khoản Steam"
-            p "Tách tài khoản ra nhiều vault, mỗi vault một mật khẩu chủ riêng. Chọn vault ở màn hình khóa, hoặc đổi ngay ở thanh bên."
-            button.wn-go [type="button" FOCUSED] "Xem vault"
+              svg.i #1xzadie
+            b "Chống AFK không còn che màn hình"
+            p "Cửa sổ Roblox không còn bật lên để giữ tài khoản trong game. Mỗi cửa sổ được bấm một phím trong lúc vẫn ẩn, còn chuột của bạn vẫn bấm vào đúng cửa sổ bạn đang dùng."
+            button.wn-go [type="button" FOCUSED] "Xem Chống AFK"
               svg.i #1g7f83q
           li.wn-card
             span.wn-ic
-              svg.i #d2zp05
-            b "Theme của riêng bạn"
-            p "Chọn màu nền, màu nhấn, và đặt một ảnh trên máy làm nền nếu muốn."
-            button.wn-go [type="button"] "Tạo theme"
+              svg.i #1crx2f1
+            b "Bloxkeep trên Discord"
+            p "Nút Discord cạnh logo mở cộng đồng Bloxkeep: hỏi khi cần giúp, góp ý tưởng, và nhận ping mỗi khi Roblox cập nhật."
+            button.wn-go [type="button"] "Tham gia"
               svg.i #1g7f83q
         h4.new.wn-kind.wn-sub "Mới"
           svg.i #u7ty99
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Nhiều vault: màn hình khóa hỏi “Ai đang dùng Bloxkeep?”, mỗi vault một ô (ảnh hoặc chữ cái đầu). Nút + để thêm vault với tên và mật khẩu chủ riêng, nút × để gỡ vault khỏi danh sách (file vẫn được giữ). Nút Đổi vault nằm ở thanh bên và trong Cài đặt › Bảo mật, cũng là chỗ đặt tên, chọn ảnh cho vault và bật hỏi chọn vault mỗi lần mở Bloxkeep."
+            span "Chống AFK không còn đưa cửa sổ Roblox lên trước: cửa sổ được làm ẩn và cho chuột bấm xuyên qua trong lúc nhận một lần bấm phím F15 (phím không game nào dùng), rồi cửa sổ bạn đang dùng trở lại phía trước và cửa sổ Roblox về đúng chỗ cũ. Cửa sổ đang thu nhỏ vẫn thu nhỏ, và chuột không còn bị di chuyển."
           li
             svg.i #u7ty99
-            span "Theme tùy chỉnh (Cài đặt › Giao diện › Của bạn): chọn màu nền và màu nhấn, chữ tự đổi sáng tối cho dễ đọc, và đặt một ảnh trên máy làm nền nếu muốn."
+            span "Nút Discord cạnh logo, một dòng trong Cài đặt › Hướng dẫn & góp ý, và mục \"Bloxkeep trên Discord\" trong Tìm nhanh (Ctrl+K) đều mở server cộng đồng của Bloxkeep."
           li
             svg.i #u7ty99
-            span "Màn hình khóa: ngay dưới nút Mở khóa có Khôi phục từ bản sao lưu và Tạo vault mới, cho lúc quên mật khẩu chủ (mật khẩu này không lấy lại được). Vault cũ vẫn nằm trong danh sách."
+            span "Danh sách tài khoản hiện mỗi tài khoản đã chơi trên máy này được bao lâu, ngay sau tên game, giống như ở thẻ."
+          li
+            svg.i #u7ty99
+            span "Cài đặt › Cập nhật Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng: khi Bloxkeep đang mở, cứ 10 phút app báo một lần để người làm Bloxkeep biết có bao nhiêu người đang dùng. Chỉ gửi một mã ngẫu nhiên, phiên bản và ngôn ngữ; tắt ở đó nếu không muốn."
         h4.improved.wn-kind.wn-sub "Cải thiện"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
-            span "Ô game: bấm vào là danh sách hiện ra ngay cả khi ô đang có game hay link, chữ trong ô được bôi đen sẵn nên gõ là tìm luôn. Lưu server xong thì danh sách mở sẵn tab Đã lưu."
+            span "Danh sách tài khoản thẳng hàng như một bảng: VNG, Robux, nhóm, tự vào lại, PID và RAM mỗi thứ nằm đúng một cột trên mọi dòng."
           li
             svg.i #1l5qw3q
-            span "Các bản vá nhỏ giữa hai phiên bản tự cài lúc bạn không dùng Bloxkeep, không hiện nút Khởi động lại để cập nhật hay bảng Có gì mới, và số phiên bản giữ nguyên."
+            span "Robux hiện trên thẻ ngay lúc mở khóa, thay vì 20-30 giây sau."
+          li
+            svg.i #1l5qw3q
+            span "Bloxkeep mở lại từ khay hệ thống ngay lập tức."
+          li
+            svg.i #1l5qw3q
+            span "Đổi vault mở bảng chọn vault ngay trên vault đang mở: bấm Quay lại là về vault cũ, không cần nhập lại mật khẩu."
         h4.fixed.wn-kind.wn-sub "Đã sửa"
           svg.i #yqrnd9
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
-            span "Hiện trên hồ sơ Discord không còn ghi tên game sau khi bạn đã thoát ra màn hình chính của Roblox, hoặc khi bị rớt mạng."
-          li
-            svg.i #yqrnd9
-            span "Mở Bloxkeep đúng lúc nó đang cài bản cập nhật không còn khiến app bị khóa sau khi cập nhật xong."
+            span "Cảnh báo \"bộ nhớ ảo của Windows gần đầy\" không còn hiện khi file trang vẫn còn nới thêm được tới kích thước tối đa."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q
