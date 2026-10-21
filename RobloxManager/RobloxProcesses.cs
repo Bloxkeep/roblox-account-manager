@@ -13,7 +13,8 @@ public static class RobloxProcesses
 {
     const string PlayerProcessName = "RobloxPlayerBeta";
     const uint WM_SETTEXT = 0x000C, WM_CLOSE = 0x0010, SMTO_ABORTIFHUNG = 0x0002, GW_OWNER = 4;
-    const uint SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_NOSENDCHANGING = 0x0400, SWP_ASYNCWINDOWPOS = 0x4000;
+    const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_NOSENDCHANGING = 0x0400,
+        SWP_ASYNCWINDOWPOS = 0x4000;
     const int SW_RESTORE = 9, SW_SHOWMINNOACTIVE = 7, SW_SHOWMAXIMIZED = 3, GWL_STYLE = -16, WS_CAPTION = 0x00C00000;
     const uint SYNCHRONIZE = 0x00100000, PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
@@ -594,8 +595,11 @@ public static class RobloxProcesses
     /// <summary>Tiles the clients' windows over a screen area, in the given order. Window messages only.</summary>
     /// <param name="layout">"fill" spreads them over the whole area; "small" / "medium" / "large" are fixed tiles from the top-left.</param>
     /// <param name="skipMinimized">Leave minimised windows as they are (and give them no tile).</param>
-    public static Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false) =>
-        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !(skipMinimized && IsIconic(h))).ToList(), area, layout);
+    /// <param name="app">Bloxkeep's window, when Arrange windows was clicked in it: the windows come over every other app
+    /// (<see cref="RaiseAsync"/>). Zero leaves the order of the PC's windows as it is (tiling after a launch).</param>
+    public static Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false,
+        IntPtr app = default) =>
+        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !(skipMinimized && IsIconic(h))).ToList(), area, layout, app);
 
     /// <summary>
     /// Tiles these windows (see <see cref="ArrangeGridAsync"/>). Roblox keeps its window at least 800 × 600 in its own
@@ -606,7 +610,7 @@ public static class RobloxProcesses
     /// spread evenly over the area instead (<see cref="OverlapSpots"/>), each over the one before it, so every title bar
     /// shows.
     /// </summary>
-    static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout)
+    static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout, IntPtr app = default)
     {
         if (windows.Count == 0)
             return 0;
@@ -628,19 +632,41 @@ public static class RobloxProcesses
             SetWindowPos(windows[i], IntPtr.Zero, area.X + i % cols * width, area.Y + i / cols * height, width, height,
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
         }
-        if (await KeptSizeAsync(windows, new Size(width, height)) is not { } size)
-            return windows.Count;
-        var spots = OverlapSpots(windows.Count, area, size);
-        // The last one keeps its place among the PC's other windows; each one before it goes just under the next, in
-        // turn (each moves on its own window's thread), so a later one lies over an earlier one's body, not its title bar.
+        if (await KeptSizeAsync(windows, new Size(width, height)) is { } size)
+        {
+            var spots = OverlapSpots(windows.Count, area, size);
+            // The last one keeps its place among the PC's other windows; each one before it goes just under the next, in
+            // turn (each moves on its own window's thread), so a later one lies over an earlier one's body, not its title bar.
+            for (int i = windows.Count - 1; i >= 0; i--)
+            {
+                bool last = i == windows.Count - 1;
+                SetWindowPos(windows[i], last ? IntPtr.Zero : windows[i + 1], spots[i].X, spots[i].Y, size.Width, size.Height,
+                    SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | (last ? SWP_NOZORDER : 0));
+                await Task.Delay(40);
+            }
+        }
+        if (app != IntPtr.Zero)
+            await RaiseAsync(windows, app);
+        return windows.Count;
+    }
+
+    /// <summary>
+    /// The windows over every other app at once (clicking each grouped taskbar button in turn was the only way,
+    /// 2026-10-21): each just under the next, the last just under <paramref name="app"/>, Bloxkeep's window (Windows
+    /// lets an app stack windows under the one in front, never over it: tried on the owner's PC), then that window under
+    /// them all and the last one in front (Bloxkeep, in front as it was clicked, may hand that on).
+    /// </summary>
+    static async Task RaiseAsync(List<IntPtr> windows, IntPtr app)
+    {
+        IntPtr above = app;
         for (int i = windows.Count - 1; i >= 0; i--)
         {
-            bool last = i == windows.Count - 1;
-            SetWindowPos(windows[i], last ? IntPtr.Zero : windows[i + 1], spots[i].X, spots[i].Y, size.Width, size.Height,
-                SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | (last ? SWP_NOZORDER : 0));
-            await Task.Delay(40);
+            SetWindowPos(windows[i], above, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+            await Task.Delay(40); // each in its turn: each moves on its own window's thread
+            above = windows[i];
         }
-        return windows.Count;
+        SetWindowPos(app, windows[0], 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        SetForegroundWindow(windows[^1]);
     }
 
     [StructLayout(LayoutKind.Sequential)]

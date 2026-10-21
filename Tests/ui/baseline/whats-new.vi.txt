@@ -185,19 +185,16 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.8-beta.7 · 21 tháng 10, 2026"
+              small "Bloxkeep 1.0.8-beta.8 · 21 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        h4.fixed.wn-kind.wn-sub "Đã sửa"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+        h4.improved.wn-kind.wn-sub "Cải thiện"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #yqrnd9
-            span "Xếp cửa sổ giờ xếp vừa 5 cửa sổ Roblox trở lên cạnh nhau trên màn hình laptop: cửa sổ Roblox không còn bị giữ ở cỡ nhỏ nhất 800 × 600 rồi đè lên nhau và tràn ra ngoài màn hình. Bloxkeep thu chúng vừa đúng ô, game vẫn hiện bình thường ở cỡ đó."
-          li
-            svg.i #yqrnd9
-            span "Khi bật Nhường nhân mạnh cho cửa sổ đang chơi, bấm vào cửa sổ Roblox nào là cửa sổ đó có nhân mạnh ngay, nên nắm cửa sổ nền để kéo không còn bị khựng lúc đầu."
+            svg.i #1l5qw3q
+            span "Xếp cửa sổ giờ đưa luôn mọi cửa sổ Roblox lên trên các app khác, cửa sổ Bloxkeep lùi xuống dưới: bấm một lần thay vì bấm từng cái trên taskbar."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.8-beta.8",
+    "date": "2026-10-21",
+    "improved": {
+      "en": [
+        "Arrange windows also brings every Roblox window over your other apps, with Bloxkeep's window under them: one click instead of clicking each one on the taskbar."
+      ],
+      "vi": [
+        "Xếp cửa sổ giờ đưa luôn mọi cửa sổ Roblox lên trên các app khác, cửa sổ Bloxkeep lùi xuống dưới: bấm một lần thay vì bấm từng cái trên taskbar."
+      ]
+    }
+  },
+  {
     "version": "1.0.8-beta.7",
     "date": "2026-10-21",
     "fixed": {

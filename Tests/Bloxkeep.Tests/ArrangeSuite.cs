@@ -67,12 +67,18 @@ static class ArrangeSuite
                         return opened;
                     }
                     var arrange = typeof(RobloxProcesses).GetMethod("ArrangeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
-                    async Task<List<Rectangle>> Arrange(List<Form> these)
+                    async Task<List<Rectangle>> Arrange(List<Form> these, Form? app = null)
                     {
                         await Task.Delay(200);
-                        int count = await (Task<int>)arrange.Invoke(null, [these.Select(w => w.Handle).ToList(), area, "fill"])!;
+                        int count = await (Task<int>)arrange.Invoke(null, [these.Select(w => w.Handle).ToList(), area, "fill", app?.Handle ?? IntPtr.Zero])!;
                         await Task.Delay(300);
                         return count == these.Count ? these.Select(w => w.Bounds).ToList() : [];
+                    }
+                    int Rank(Form f)
+                    {
+                        var order = new List<IntPtr>();
+                        EnumWindows((h, _) => { order.Add(h); return true; }, IntPtr.Zero);
+                        return order.IndexOf(f.Handle);
                     }
                     // Tiles of 300 × 350 for 3 and 2 in 900 × 700, 100 narrower than these windows' least size, as Roblox's
                     // window has one: given all the same, side by side.
@@ -93,6 +99,27 @@ static class ArrangeSuite
                     EnumWindows((h, _) => { order.Add(h); return true; }, IntPtr.Zero);
                     var rank = stubborn.Select(w => order.IndexOf(w.Handle)).ToList();
                     c.Check("…each over the one before it, so every title bar shows", rank.Zip(rank.Skip(1)).All(p => p.First > p.Second), string.Join(",", rank));
+                    foreach (var w in stubborn)
+                        w.Close();
+
+                    // Another app's window over them, Bloxkeep's over that: tiled after a launch, the order stays; clicked in
+                    // Bloxkeep, they come over every app, each over the one before it, and Bloxkeep's window goes under them.
+                    var raised = Open(() => new Form());
+                    Form Other(string name) => new() { Text = name, ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(area.X + 300, area.Y + 200), Size = new Size(400, 300) };
+                    var other = Other("Arrange check other app");
+                    var app = Other("Arrange check Bloxkeep");
+                    windows.Add(other);
+                    windows.Add(app);
+                    other.Show();
+                    app.Show();
+                    await Arrange(raised);
+                    c.Check("tiled after a launch: another app's window stays over them", raised.All(w => Rank(w) > Rank(other)),
+                        $"{string.Join(",", raised.Select(Rank))} other {Rank(other)}");
+                    await Arrange(raised, app);
+                    var ranks = raised.Select(Rank).ToList();
+                    c.Check("clicked in Bloxkeep: over every other app, each over the one before it, Bloxkeep's window under them",
+                        ranks.All(r => r < Rank(other) && r < Rank(app)) && ranks.Zip(ranks.Skip(1)).All(p => p.First > p.Second),
+                        $"{string.Join(",", ranks)} other {Rank(other)} Bloxkeep {Rank(app)}");
                 }
                 catch (Exception ex)
                 {

@@ -185,19 +185,16 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.8-beta.7 · October 21, 2026"
+              small "Bloxkeep 1.0.8-beta.8 · October 21, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        h4.fixed.wn-kind.wn-sub "Fixed"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+        h4.improved.wn-kind.wn-sub "Improved"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #yqrnd9
-            span "Arrange windows fits 5 or more Roblox windows side by side on a laptop screen: Roblox's windows no longer stay at their smallest size of 800 × 600 and run over each other and past the screen's edge. Bloxkeep makes them as small as the tiles, and the game shows at that size."
-          li
-            svg.i #yqrnd9
-            span "With Fast cores for the window you play on, a Roblox window you click gets the fast cores at once, so grabbing one in the background to drag it no longer stutters for a moment."
+            svg.i #1l5qw3q
+            span "Arrange windows also brings every Roblox window over your other apps, with Bloxkeep's window under them: one click instead of clicking each one on the taskbar."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

@@ -3279,8 +3279,11 @@ public sealed partial class AppController : IDisposable
         var others = RobloxProcesses.GetPlayerPids().Where(p => !tracked.Contains(p)).OrderBy(p => p);
         // After a launch, a light-AFK preset's windows get no tile: they are minimised once in their game.
         var afk = auto ? AfkClients() : [];
+        // Clicked in Bloxkeep: the windows come over every other app too (not after a launch: the person may be busy
+        // elsewhere by then).
+        var app = !auto && _owner.IsHandleCreated && _owner.Visible && _owner.WindowState != FormWindowState.Minimized ? _owner.Handle : IntPtr.Zero;
         return await RobloxProcesses.ArrangeGridAsync(tracked.Concat(others).Where(p => !afk.Contains(p)).ToList(), screen.WorkingArea,
-            _vault?.Data.Settings.WindowLayout ?? "fill", skipMinimized: auto);
+            _vault?.Data.Settings.WindowLayout ?? "fill", skipMinimized: auto, app: app);
     }
 
     /// <summary>The clients a light-AFK preset opened (by process id).</summary>
