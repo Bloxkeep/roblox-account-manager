@@ -6,9 +6,10 @@ namespace Bloxkeep.Tests;
 
 /// <summary>
 /// The fast cores for the window played (CpuCores, AppController.Cores.cs), on a stand-in process (ping.exe), no
-/// Roblox: a window in the background goes to the efficiency cores in power-saving mode, the one in front gets every
-/// core at full speed, and turning it off (or Bloxkeep closing) gives Windows its own choice back. On a CPU with one
-/// kind of core only the power-saving part applies.
+/// Roblox: a window in the background goes into Windows' efficiency mode (power saving, below-normal priority) on every
+/// core, never pinned to the efficiency cores (pinned, they filled up while the fast ones idled and windows starved,
+/// 2026-10-21); the one in front gets full speed at normal priority, and turning it off (or Bloxkeep closing) gives
+/// Windows its own choice back.
 /// </summary>
 static class CoresSuite
 {
@@ -33,12 +34,12 @@ static class CoresSuite
         return priority;
     }
 
-    static (ulong Affinity, uint Control, uint State) Read(Process p)
+    static (ulong Affinity, uint Control, uint State, ProcessPriorityClass Priority) Read(Process p)
     {
         p.Refresh();
         var t = new PowerThrottling { Version = 1 };
         GetProcessInformation(p.Handle, 4, ref t, Marshal.SizeOf<PowerThrottling>());
-        return ((ulong)(long)p.ProcessorAffinity, t.ControlMask, t.StateMask);
+        return ((ulong)(long)p.ProcessorAffinity, t.ControlMask, t.StateMask, p.PriorityClass);
     }
 
     public static async Task Run(Checks c, string dir)
@@ -56,17 +57,27 @@ static class CoresSuite
         {
             c.Check("a process in the background can be moved", Set(stand.Id, "Background"));
             var bg = Read(stand);
-            c.Check("…to the efficiency cores", !hybrid || bg.Affinity == eff, $"0x{bg.Affinity:X}");
+            c.Check("…not pinned to the efficiency cores: every core, so a fast one that is free still serves it", bg.Affinity == all, $"0x{bg.Affinity:X}");
             c.Check("…in power-saving mode", bg.Control == 1 && bg.State == 1, $"control {bg.Control} state {bg.State}");
+            c.Check("…at below-normal priority (it gives way to the one in front)", bg.Priority == ProcessPriorityClass.BelowNormal, bg.Priority);
+            // A window pinned by an older Bloxkeep (efficiency cores only) is unpinned.
+            if (hybrid)
+            {
+                stand.ProcessorAffinity = (IntPtr)(long)eff;
+                Set(stand.Id, "Background");
+                c.Check("…and one an older Bloxkeep pinned to the efficiency cores is unpinned", Read(stand).Affinity == all, $"0x{Read(stand).Affinity:X}");
+            }
 
             Set(stand.Id, "Front");
             var front = Read(stand);
             c.Check("in front: every core again", front.Affinity == all, $"0x{front.Affinity:X}");
-            c.Check("…at full speed (power saving explicitly off)", front.Control == 1 && front.State == 0, $"control {front.Control} state {front.State}");
+            c.Check("…at full speed (power saving explicitly off), normal priority", front.Control == 1 && front.State == 0 && front.Priority == ProcessPriorityClass.Normal,
+                $"control {front.Control} state {front.State} {front.Priority}");
 
             Set(stand.Id, "Default");
             var back = Read(stand);
-            c.Check("given back: every core, Windows deciding the speed", back.Affinity == all && back.Control == 0 && back.State == 0, $"0x{back.Affinity:X} control {back.Control}");
+            c.Check("given back: every core, Windows deciding the speed, normal priority", back.Affinity == all && back.Control == 0 && back.State == 0 && back.Priority == ProcessPriorityClass.Normal,
+                $"0x{back.Affinity:X} control {back.Control} {back.Priority}");
 
             // Through the app: the setting on puts a client that isn't in front in the background; off gives it back.
             var seed = Vault.Create(Harness.Password);
@@ -79,10 +90,11 @@ static class CoresSuite
             void Split() => typeof(AppController).GetMethod("SplitCores", Harness.F)!.Invoke(app, [new List<int> { stand.Id }]);
             Split();
             var on = Read(stand);
-            c.Check("the setting on: a client not in front goes to the background cores", on.State == 1 && (!hybrid || on.Affinity == eff), $"0x{on.Affinity:X} state {on.State}");
+            c.Check("the setting on: a client not in front goes into efficiency mode", on.State == 1 && on.Priority == ProcessPriorityClass.BelowNormal && on.Affinity == all,
+                $"0x{on.Affinity:X} state {on.State} {on.Priority}");
             await Harness.Call(app, "setSettings", new { splitCores = false });
             var off = Read(stand);
-            c.Check("turned off: Windows' own choice at once", off.Affinity == all && off.Control == 0, $"0x{off.Affinity:X} control {off.Control}");
+            c.Check("turned off: Windows' own choice at once", off.Affinity == all && off.Control == 0 && off.Priority == ProcessPriorityClass.Normal, $"0x{off.Affinity:X} control {off.Control} {off.Priority}");
             await Harness.Call(app, "setSettings", new { splitCores = true });
             c.Check("on again: back to the background cores", Read(stand).State == 1);
 

@@ -67,7 +67,7 @@ Chi tiết từng dòng nằm ở [Giữ tài khoản trong game](staying-in-gam
 | **Kiểm tra đăng nhập mỗi ngày** | Tìm các tài khoản Roblox đã đăng xuất, để bạn biết trước khi bấm Vào game. Ghi "Lần kiểm tra gần nhất: …". | Bật |
 | **Báo khi sắp hết RAM** | Hỏi trước khi mở nếu thiếu RAM hoặc bộ nhớ ảo của Windows, và cảnh báo khi đang chơi. | Bật |
 | **Tiết kiệm RAM cho cửa sổ chạy nền** | Cửa sổ Roblox bạn không chơi bị hạ mức ưu tiên bộ nhớ, nên Windows lấy RAM của chúng trước. | Tắt |
-| **Nhường nhân mạnh cho cửa sổ đang chơi** | Cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện; cửa sổ bạn đang chơi giữ các nhân mạnh. | Tắt |
+| **Nhường nhân mạnh cho cửa sổ đang chơi** | Cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm của CPU. | Tắt |
 | **Chạy ẩn dưới khay hệ thống khi đóng** | Nút ✕ thu Bloxkeep xuống khay hệ thống thay vì thoát. | Bật |
 | **Tăng tốc phần cứng** | Vẽ cửa sổ Bloxkeep bằng card đồ họa. Tắt đi thì cửa sổ đỡ tốn RAM (khoảng 90 MB trên máy dùng card NVIDIA). Tự tắt nếu driver card đồ họa bị lỗi. Bật hay tắt thì cửa sổ được tải lại. | Bật |
 

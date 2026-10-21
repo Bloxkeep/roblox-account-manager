@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.8-beta.10",
+    "date": "2026-10-21",
+    "improved": {
+      "en": [
+        "Fast cores for the window you play is smooth with many windows: Roblox windows in the background now run in Windows' own efficiency mode, as Task Manager's, giving way to the window you play and leaning on the efficiency cores, instead of being locked to them. Locked, the efficiency cores filled up while the fast ones sat idle, and some windows stuttered."
+      ],
+      "vi": [
+        "Nhường nhân mạnh cho cửa sổ đang chơi giờ mượt cả khi mở nhiều cửa sổ: cửa sổ Roblox chạy nền dùng chế độ hiệu quả của chính Windows (như trong Task Manager), nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, thay vì bị khoá cứng vào đó. Khi bị khoá, nhân tiết kiệm đầy ứ trong lúc nhân mạnh ngồi chơi, nên vài cửa sổ bị giật."
+      ]
+    }
+  },
+  {
     "version": "1.0.8-beta.9",
     "date": "2026-10-21",
     "fixed": {

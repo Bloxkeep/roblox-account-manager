@@ -89,7 +89,7 @@ Cửa sổ ở phía trước được trả lại mức ưu tiên bình thườ
 
 ## Nhường nhân mạnh cho cửa sổ đang chơi
 
-**Cài đặt › Treo game › Nhường nhân mạnh cho cửa sổ đang chơi** (tắt sẵn). Phần lớn CPU đời mới có hai loại nhân: nhân mạnh và nhân tiết kiệm (Intel đời 12 trở lên, nhiều laptop đời mới). Khi bật, mọi cửa sổ Roblox chạy nền chỉ dùng nhân tiết kiệm, ở chế độ tiết kiệm điện của Windows; cửa sổ bạn đang chơi và phần còn lại của máy giữ các nhân mạnh. Bấm sang cửa sổ Roblox khác thì cửa sổ đó được trả nhân mạnh trong vòng một giây.
+**Cài đặt › Treo game › Nhường nhân mạnh cho cửa sổ đang chơi** (tắt sẵn). Phần lớn CPU đời mới có hai loại nhân: nhân mạnh và nhân tiết kiệm (Intel đời 12 trở lên, nhiều laptop đời mới). Khi bật, mọi cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows, giống trong Task Manager: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, chỉ dùng nhân mạnh khi có nhân đang rảnh, nên không cửa sổ nào bị thiếu CPU. Bấm sang cửa sổ Roblox khác thì cửa sổ đó chạy hết tốc lực ngay.
 
 - Treo nhiều acc mà cửa sổ đang chơi vẫn mượt, laptop mát hơn.
 - CPU chỉ có một loại nhân thì cửa sổ nền chỉ được đặt chế độ tiết kiệm điện.

@@ -79,8 +79,8 @@ public sealed class AppSettings
     public bool MemoryWarnings { get; set; } = true;
     public bool TrimBackground { get; set; }
     /// <summary>
-    /// Roblox windows in the background run on the CPU's efficiency cores in power-saving mode; the one in front gets
-    /// every core (AppController.Cores.cs). Off until the person turns it on.
+    /// Roblox windows in the background run in Windows' efficiency mode (power saving, below-normal priority, leaning on
+    /// the efficiency cores); the one in front at full speed (AppController.Cores.cs). Off until the person turns it on.
     /// </summary>
     public bool SplitCores { get; set; }
     /// <summary>Off until the user opts in: it briefly brings Roblox windows to the front while the PC is idle.</summary>

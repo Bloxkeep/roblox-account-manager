@@ -159,7 +159,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Fast cores for the window you play"
-                        div.d "Roblox windows in the background run on your CPU’s 16 efficiency cores, in power-saving mode; the window you’re playing, and everything else on the PC, keeps the fast ones. Smoother with many accounts open, and a cooler laptop."
+                        div.d "Roblox windows in the background run in Windows’ efficiency mode, as in Task Manager: they give way to the window you’re playing and lean on your CPU’s 16 efficiency cores, using a fast one only when it’s free. The window you click runs at full speed at once. Smoother with many accounts open, and a cooler laptop."
                       div.ctl
                         label.switch
                           input [id="s-cores" type="checkbox" aria-label="Fast cores for the window you play" checked=true FOCUSED]

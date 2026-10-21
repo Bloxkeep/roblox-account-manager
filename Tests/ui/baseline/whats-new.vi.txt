@@ -185,16 +185,16 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.8-beta.9 · 21 tháng 10, 2026"
+              small "Bloxkeep 1.0.8-beta.10 · 21 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        h4.fixed.wn-kind.wn-sub "Đã sửa"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+        h4.improved.wn-kind.wn-sub "Cải thiện"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #yqrnd9
-            span "Khi bật Tiết kiệm RAM cho cửa sổ chạy nền và mở từ 5 cửa sổ Roblox trở lên, vài cửa sổ không còn bị giật (nhất là lúc kéo): Bloxkeep không còn ép chúng nhả hết RAM mỗi 2 phút khi máy dùng tới 85% RAM. Windows vẫn lấy RAM của cửa sổ nền trước khi máy thiếu, và bấm vào cửa sổ nào thì cửa sổ đó được trả lại RAM như bình thường ngay."
+            svg.i #1l5qw3q
+            span "Nhường nhân mạnh cho cửa sổ đang chơi giờ mượt cả khi mở nhiều cửa sổ: cửa sổ Roblox chạy nền dùng chế độ hiệu quả của chính Windows (như trong Task Manager), nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, thay vì bị khoá cứng vào đó. Khi bị khoá, nhân tiết kiệm đầy ứ trong lúc nhân mạnh ngồi chơi, nên vài cửa sổ bị giật."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

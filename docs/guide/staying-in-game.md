@@ -89,7 +89,7 @@ The window in front gets its normal priority back. Roblox may refuse; Bloxkeep t
 
 ## Fast cores for the window you play
 
-**Settings › Staying in game › Fast cores for the window you play** (off by default). Most recent CPUs have two kinds of cores: fast ones and efficiency ones (Intel 12th gen and later, many recent laptops). With this on, every Roblox window in the background runs on the efficiency cores, in Windows' power-saving mode; the window you're playing, and the rest of the PC, keep the fast cores. Click another Roblox window and it gets the fast cores back within a second.
+**Settings › Staying in game › Fast cores for the window you play** (off by default). Most recent CPUs have two kinds of cores: fast ones and efficiency ones (Intel 12th gen and later, many recent laptops). With this on, every Roblox window in the background runs in Windows' efficiency mode, the same as Task Manager's: it gives way to the window you're playing and runs mostly on the efficiency cores, using a fast core only when one is free, so no window is left without CPU. Click another Roblox window and it runs at full speed at once.
 
 - Many accounts open stay smooth where you play, and a laptop runs cooler.
 - On a CPU with one kind of core, background windows only get the power-saving mode.

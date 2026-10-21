@@ -3,10 +3,12 @@ using System.Runtime.InteropServices;
 namespace RobloxManager;
 
 /// <summary>
-/// The fast cores for the window being played: a Roblox window in the background runs on the CPU's efficiency cores
-/// (on CPUs that have two kinds: Intel 12th gen and later, recent laptop Ryzens) and in Windows' power-saving mode
-/// (EcoQoS), and the one in front gets every core back. Only Windows' own switches, as Task Manager's "Set affinity"
-/// and its efficiency mode use: nothing in Roblox is touched.
+/// The fast cores for the window being played: a Roblox window in the background runs in Windows' efficiency mode, as
+/// Task Manager's: power saving (EcoQoS), which leans it on the CPU's efficiency cores (on CPUs that have two kinds:
+/// Intel 12th gen and later, recent laptop Ryzens), and a below-normal priority, so it gives way to the one in front,
+/// which runs on every core at full speed. Never pinned to the efficiency cores: pinned, 4 windows filled them while
+/// the fast cores idled, and a window got 2-5 % of a core at times (the owner's PC, 2026-10-21); in efficiency mode
+/// Windows still gives them a fast core that is free. Only Windows' own switches: nothing in Roblox is touched.
 /// </summary>
 static class CpuCores
 {
@@ -28,6 +30,10 @@ static class CpuCores
     static extern bool SetProcessAffinityMask(IntPtr process, UIntPtr mask);
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool SetProcessInformation(IntPtr process, int infoClass, ref PROCESS_POWER_THROTTLING_STATE info, int size);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool SetPriorityClass(IntPtr process, uint priorityClass);
+
+    const uint NORMAL_PRIORITY_CLASS = 0x20, BELOW_NORMAL_PRIORITY_CLASS = 0x4000;
 
     const uint PROCESS_SET_INFORMATION = 0x0200, PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
     const int ProcessPowerThrottling = 4;
@@ -89,9 +95,10 @@ static class CpuCores
     public enum Role { Background, Front, Default }
 
     /// <summary>
-    /// A client in the background: on the efficiency cores (when there are) and in power-saving mode. In front: every
-    /// core, at full speed. Default (the setting turned off, Bloxkeep closing): every core, Windows deciding the speed,
-    /// as before Bloxkeep touched it. False when Windows refused the handle.
+    /// A client in the background: Windows' efficiency mode (power saving, below-normal priority). In front: full speed,
+    /// normal priority. Default (the setting turned off, Bloxkeep closing): Windows deciding the speed, as before Bloxkeep
+    /// touched it. Every core in all three (also undoing the efficiency-cores-only of 1.0.8-beta.9 and before). False
+    /// when Windows refused the handle.
     /// </summary>
     public static bool Set(int pid, Role role)
     {
@@ -100,9 +107,9 @@ static class CpuCores
             return false;
         try
         {
-            bool ok = true;
-            if (EfficientMask != 0 && GetProcessAffinityMask(handle, out _, out UIntPtr all))
-                ok &= SetProcessAffinityMask(handle, new UIntPtr(role == Role.Background ? EfficientMask & all.ToUInt64() : all.ToUInt64()));
+            bool ok = SetPriorityClass(handle, role == Role.Background ? BELOW_NORMAL_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS);
+            if (GetProcessAffinityMask(handle, out UIntPtr mine, out UIntPtr all) && mine != all)
+                ok &= SetProcessAffinityMask(handle, all);
             var state = new PROCESS_POWER_THROTTLING_STATE
             {
                 Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION,

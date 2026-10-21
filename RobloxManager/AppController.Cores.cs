@@ -4,8 +4,7 @@ namespace RobloxManager;
 
 /// <summary>
 /// Settings › Staying in game › Fast cores for the window you play (<see cref="AppSettings.SplitCores"/>): every Roblox
-/// window in the background runs on the efficiency cores in power-saving mode, the one in front on every core
-/// (<see cref="CpuCores"/>). Followed at once when another window comes to the front (a WinEvent hook), and at every
+/// window in the background runs in Windows' efficiency mode, the one in front at full speed (<see cref="CpuCores"/>). Followed at once when another window comes to the front (a WinEvent hook), and at every
 /// tick; a client is touched only when its role changes. Turned off or Bloxkeep closing: Windows' own choice again.
 /// </summary>
 public sealed partial class AppController
