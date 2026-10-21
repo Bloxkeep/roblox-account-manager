@@ -52,12 +52,15 @@ const rest = http.createServer((req, res) => {
     const send = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
     if (req.method === 'POST' && req.url === '/channels/nochan/messages') return send(403, { message: 'Missing Access', code: 50001 });
     if (req.method === 'PATCH' && /\/messages\/gone$/.test(req.url)) return send(404, { message: 'Unknown Message', code: 10008 });
+    // c3 is a text channel: nothing there can be published.
+    if (req.method === 'POST' && /^\/channels\/c3\/messages\/\w+\/crosspost$/.test(req.url)) return send(400, { message: 'Cannot execute action on this channel type', code: 50024 });
     if (req.method === 'POST') return send(200, { id: `m${++msgNo}` });
     send(200, req.method === 'PUT' ? [] : {});
   });
 }).listen(REST);
 const posts = channel => calls.filter(c => c.method === 'POST' && c.url === `/channels/${channel}/messages`);
 const patches = () => calls.filter(c => c.method === 'PATCH');
+const published = channel => calls.filter(c => c.method === 'POST' && new RegExp(`^/channels/${channel}/messages/m\\d+/crosspost$`).test(c.url));
 
 // ── the fake sources ──
 const build = (version, hash, verdict, channel = 'live') => ({ version, hash, verdict, channel, seenAt: '2026-10-20T16:26:42Z' });
@@ -190,6 +193,8 @@ try {
     && coming.body.content === '<@&r1>' && JSON.stringify(coming.body.allowed_mentions) === '{"roles":["r1"]}', JSON.stringify(coming?.body));
   check('…with what it means for Multi-Roblox', embedOf(coming)?.fields?.[0]?.value === '**May be blocked**' && embedOf(coming)?.fields?.[2]?.value === 'Not yet', JSON.stringify(embedOf(coming)?.fields));
   check('…the same in the other server, where nobody is pinged', embedOf(posts('c3').at(-1))?.title === 'Roblox 0.745.0.7451000 is coming' && JSON.stringify(posts('c3').at(-1).body.allowed_mentions) === '{"parse":[]}', JSON.stringify(posts('c3').at(-1)?.body));
+  check('…published, so servers following the channel get it too (in a text channel Discord refuses: tried once, nothing more)',
+    published('c1').length === 1 && published('c3').length === 1, `${published('c1').length} ${published('c3').length}`);
   check('…and the board edited to show it', patches().length === before.patches + 1 && JSON.stringify(embedOf(patches().at(-1))).includes('0.745.0.7451000'), JSON.stringify(patches().at(-1)?.body));
   before = base();
   await minute();

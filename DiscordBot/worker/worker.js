@@ -422,6 +422,8 @@ export class Gateway extends DurableObject {
       });
       if (res.status === 404) // the channel is gone: so is the subscription
         sql.exec('DELETE FROM subs WHERE guild = ?', s.guild);
+      else if (res.ok) // published, for the servers following an announcement channel (a text channel: Discord says no)
+        await api(this.env, 'POST', `/channels/${s.channel}/messages/${(await res.json()).id}/crosspost`);
       this.log('posted', `${kind} ${s.guild} ${res.status}`);
     }
   }
