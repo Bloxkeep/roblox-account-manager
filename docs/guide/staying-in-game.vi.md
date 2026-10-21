@@ -31,7 +31,7 @@ Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết n�
 |---|---|
 | Roblox bị văng | Mở lại game sau 10 giây. |
 | Không vào được server (server được chọn đã đầy hoặc đã đóng) | Sau một phút vẫn chưa vào được, đóng cửa sổ đó và mở lại đúng game, vào server nào cũng được. Game bạn tự mở trong cửa sổ thì Bloxkeep để bạn tự lo. |
-| Cứ bị văng liên tục | Từ lần thứ ba, chờ 2, 5, 10 rồi 15 phút giữa các lần thử. Thẻ tài khoản hiện thời gian chờ và nút **Hủy**. |
+| Cứ bị văng liên tục | Vẫn tự vào lại sau mỗi 10 giây, và báo một lần. Bị game ban thì dừng hẳn (Bloxkeep có báo). |
 | Ở trong game 10 phút, kể cả khi game chuyển bạn qua server khác | Đếm lại từ đầu. |
 | Mất mạng | Thử lại mỗi 30 giây, tối đa 20 lần. |
 | Máy vừa thức dậy | Chờ có mạng rồi mới vào lại. |

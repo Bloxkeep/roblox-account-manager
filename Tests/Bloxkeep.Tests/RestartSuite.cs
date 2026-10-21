@@ -134,6 +134,46 @@ static class RestartSuite
             bool Stale(Account a) => (bool)Harness.Invoke(app, "IsStaleInGame", a, p)!;
             c.Check("…and after unlocking (as after an update) its server's \"in game\" is still the late report",
                 ended.Contains(kicked.Id) && Stale(kicked) && !Stale(nolog), $"{ended.Count} {Stale(kicked)} {Stale(nolog)}");
+
+            // A rejoin waiting its turn (auto-rejoin's wait after failed tries): it holds no update back, and an update's
+            // restart (or a lock) doesn't lose it. On 2026-10-21 one kept "Restart to update" refused while nothing opened.
+            var queue = Harness.Get<System.Collections.IList>(app, "_rejoinQueue");
+            var requestType = t.GetNestedType("RejoinRequest", Harness.F)!;
+            object Waiting(TimeSpan inA) => Activator.CreateInstance(requestType, fresh.Id, new GameTarget(2753915549), DateTime.UtcNow + inA, 0, null, false)!;
+            bool Opening() => (bool)t.GetProperty("OpeningRoblox", Harness.F)!.GetValue(app)!;
+            queue.Clear();
+            queue.Add(Waiting(TimeSpan.FromMinutes(5)));
+            c.Check("a rejoin waiting 5 minutes isn't \"opening Roblox\": updating goes ahead", !Opening());
+            queue[0] = Waiting(TimeSpan.FromSeconds(10));
+            c.Check("…one due in 10 seconds is", Opening());
+            queue[0] = Waiting(TimeSpan.FromMinutes(5));
+            // With another window open, as at an update: picking the open windows up again saves the vault, which must
+            // not wipe the lists before they are read (it did on the first try of this).
+            Run(nolog.Id, 999_993, DateTime.UtcNow);
+            Harness.Invoke(app, "NoteOpenSessions");
+            await Harness.Call(app, "lock", new { });
+            await Harness.Unlock(app);
+            queue = Harness.Get<System.Collections.IList>(app, "_rejoinQueue");
+            var back = queue.Cast<object>().SingleOrDefault();
+            var due = back?.GetType().GetProperty("Due")!.GetValue(back) as DateTime?;
+            c.Check("…and kept through a lock and unlock (as through an update's restart, with a window open), at its time",
+                back is not null && back.GetType().GetProperty("AccountId")!.GetValue(back) is Guid id && id == fresh.Id
+                && due is { } d && d > DateTime.UtcNow.AddMinutes(4), $"{queue.Count} {due}");
+            ended = Harness.Get<System.Collections.IDictionary>(app, "_endedHere");
+            c.Check("…the client that ended lately too", ended.Contains(kicked.Id), ended.Count);
+            Harness.Get<System.Collections.IDictionary>(app, "_running").Clear();
+            queue.Clear();
+            // As the vault holds them when it is opened: one due long ago (Bloxkeep closed with a rejoin waiting, opened
+            // the next day) isn't done by itself; one due a minute ago is, shortly.
+            vault = Harness.Get<Vault>(app, "_vault");
+            vault.Data.WaitingRejoins = [new WaitingRejoin { AccountId = fresh.Id, Target = new GameTarget(2753915549), Due = DateTime.UtcNow.AddHours(-9) }];
+            Harness.Invoke(app, "RestoreWaitingRejoins", vault, vault.Data.WaitingRejoins);
+            c.Check("…but one from hours ago isn't done after an unlock (no Roblox opening by itself the next day)", queue.Count == 0, queue.Count);
+            vault.Data.WaitingRejoins = [new WaitingRejoin { AccountId = fresh.Id, Target = new GameTarget(2753915549), Due = DateTime.UtcNow.AddMinutes(-1) }];
+            Harness.Invoke(app, "RestoreWaitingRejoins", vault, vault.Data.WaitingRejoins);
+            c.Check("…one due a minute ago is, shortly", queue.Count == 1, queue.Count);
+            queue.Clear();
+            vault.Data.WaitingRejoins = [];
         }
         finally
         {

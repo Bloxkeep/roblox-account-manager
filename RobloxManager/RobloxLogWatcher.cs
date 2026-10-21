@@ -368,7 +368,9 @@ public sealed class RobloxLogWatcher
             {
                 if (state.Status != "joining" && !joinedSince)
                     tail.State = state with { Status = "joining", At = at };
+                // The old server's kick words go with it, not with the next server's disconnect.
                 tail.PendingReason = null;
+                (tail.PendingKickMessage, tail.PendingBan) = (null, false);
                 return;
             }
             tail.State = tail.Leaving

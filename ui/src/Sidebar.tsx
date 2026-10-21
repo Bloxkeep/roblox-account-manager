@@ -29,9 +29,7 @@ export function Sidebar() {
     <div className="lights">{(['close', 'min', 'zoom'] as const).map(w =>
       <button key={w} className={`light l-${w}`} data-act={`win-${w}`} title={t(`win.${w}`)} aria-label={t(`win.${w}`)} />)}</div>
     <div className="brand"><img src={logo} alt="" /><div className="brand-text">
-      <div className="brand-top"><div className="brand-name">Bloxkeep</div>
-        <button className="icon-btn brand-discord" data-act="open-discord" title={t('dc.title')} aria-label={t('dc.title')}><Icon name="discord" /></button></div>
-      <div className="brand-sub">{t('brand.sub')}</div></div></div>
+      <div className="brand-name">Bloxkeep</div><div className="brand-sub">{t('brand.sub')}</div></div></div>
     <div className="side-nav">
       {nav('accounts', 'users', <em id="nav-count">{accounts.length}</em>)}
       {nav('presets', 'layers')}
@@ -48,11 +46,13 @@ export function Sidebar() {
         <div id="update-slot">{u?.status === 'ready' && !u.quiet
           ? <button className="btn primary w update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
             <Icon name="refresh" /><span><b>{t('upd.restart')}</b><small>{t('upd.versionN', { v: u.version })}</small></span></button> : null}</div>
-        {/* Switch vault (its face): the open vault locks and the lock screen's picker shows (Vaults.tsx). */}
+        {/* Switch vault (its face): the open vault locks and the lock screen's picker shows (Vaults.tsx). Then
+            Bloxkeep's Discord server, with the app's other buttons rather than beside its name. */}
         <div className="side-lock">
           <button className="btn ghost w" data-act="lock" title={t('side.lockTip')}><Icon name="lock" /><span>{t('side.lock')}</span></button>
-          {vault ? <button className="btn ghost vault-btn" data-act="vault-pick" title={t('vault.switchTip', { name: vault.name })} aria-label={t('vault.switchTip', { name: vault.name })}>
+          {vault ? <button className="btn ghost side-sq vault-btn" data-act="vault-pick" title={t('vault.switchTip', { name: vault.name })} aria-label={t('vault.switchTip', { name: vault.name })}>
             <VaultFace vault={vault} className="xs" /></button> : null}
+          <button className="btn ghost side-sq side-discord" data-act="open-discord" title={t('dc.title')} aria-label={t('dc.title')}><Icon name="discord" /></button>
         </div>
       </div>
     </div>

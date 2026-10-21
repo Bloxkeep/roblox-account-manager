@@ -98,7 +98,7 @@ export default [
   S('settings-updates-beta', 'settings=updates', async s => { await s.click({ css: 'label.switch:has(#s-betaupd)' }); }),
   S('settings-updates-online', 'settings=updates', async s => { await s.click({ css: 'label.switch:has(#s-online)' }); }),
   // Bloxkeep's Discord server: the button by the logo, and the row in Help & feedback (both open the bot's /discord).
-  S('sidebar-discord', '', async s => { await s.click({ css: '.brand-discord' }); }),
+  S('sidebar-discord', '', async s => { await s.click({ css: '.side-discord' }); }),
   S('settings-updates-discord', 'settings=updates', async s => { await s.click(key('dc.open')); }),
   S('settings-search', 'settings=1', async s => { await s.type('rejoin', key('set.search')); }),
   S('whats-new', 'settings=updates', async s => { await s.click(key('wn.link')); }),

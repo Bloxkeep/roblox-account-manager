@@ -6,10 +6,7 @@ html [data-theme="dark" lang="en"]
       div.brand
         img [alt="" src="logo.svg"]
         div.brand-text
-          div.brand-top
-            div.brand-name "Bloxkeep"
-            button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
-              svg.i #1crx2f1
+          div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
       div.side-nav
         button.nav [title="Accounts"]
@@ -66,8 +63,10 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
               svg.i #21scx0
               span "Lock app"
-            button.btn.ghost.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+            button.btn.ghost.side-discord.side-sq [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -186,7 +185,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.8-beta.5 · October 21, 2026"
+              small "Bloxkeep 1.0.8-beta.6 · October 21, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
@@ -195,7 +194,37 @@ html [data-theme="dark" lang="en"]
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
-            span "On a beta, the next beta installs by itself while you're not using Bloxkeep, without Restart to update, as small fixes do."
+            span "A ban met when joining is told sooner: Bloxkeep asks Roblox after 40 seconds without getting in (after 5 seconds in a game that banned the account before) instead of a minute. The card then says Banned by the game instead of Joining, and the Discord alert goes right away."
+          li
+            svg.i #1l5qw3q
+            span "Auto-rejoin tries again every 10 seconds, however often the account drops, instead of waiting longer and longer. A ban by the game stops it."
+          li
+            svg.i #1l5qw3q
+            span "Discord alerts go out within a few seconds; they used to wait up to 10 seconds to be grouped."
+          li
+            svg.i #1l5qw3q
+            span "The Discord button sits at the bottom of the sidebar, next to Lock app."
+        h4.fixed.wn-kind.wn-sub "Fixed"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
+          li
+            svg.i #yqrnd9
+            span "A rejoin waiting its turn no longer holds back Restart to update (\"Wait until Bloxkeep finishes opening Roblox\" while nothing was opening). It carries on after the restart."
+          li
+            svg.i #yqrnd9
+            span "Opening a game for an account that is only on Roblox's home screen, or stuck on Join Error 600, no longer asks whether it should leave what it's playing."
+          li
+            svg.i #yqrnd9
+            span "A preset, also when run from the tray or on its schedule, leaves out an account the game banned and says so, instead of stopping at a question nobody answers."
+          li
+            svg.i #yqrnd9
+            span "A game's ban is no longer told a second time when Bloxkeep restarts (for an update) with the window still open, and its Discord alert no longer adds that the account was kicked."
+          li
+            svg.i #yqrnd9
+            span "A ban in a game picked in the Roblox window is kept for that game, not for the one Bloxkeep opened. The window of a banned account is no longer closed for a rejoin that wasn't coming."
+          li
+            svg.i #yqrnd9
+            span "In a narrow window, Switch vault no longer runs past the sidebar's edge, and shows its letter again."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

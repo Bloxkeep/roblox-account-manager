@@ -1425,10 +1425,12 @@ b, strong { font-weight: 650; }
 .vp-back { position: absolute; top: 18px; left: 18px; z-index: 1; }
 /* Over the open vault (Switch vault, a new vault's form): the lock screen's look, above the page, under its dialogs. */
 .vault-layer .lock { z-index: 49; }
-/* The sidebar's Switch vault, next to Lock app: the vault's face. */
+/* Square buttons next to Lock app: Switch vault (the vault's face), then Bloxkeep's Discord server (Discord's own blue
+   on hover). */
 .side-lock { display: flex; gap: 8px; }
 .side-lock .btn.w { flex: 1; min-width: 0; }
-.vault-btn { flex: none; width: 40px; padding: 0; display: grid; place-items: center; }
+.side-sq { flex: none; width: 40px; padding: 0; display: grid; place-items: center; }
+.side-discord:hover:not(:disabled) { color: #5865f2; }
 .lock-caps { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; color: var(--warn-ink); font-size: 12.5px; }
 .lock-caps[hidden] { display: none; }
 .lock-caps .i { width: 14px; height: 14px; }
@@ -1634,12 +1636,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .brand img { width: 38px; height: 38px; }
 .brand-name { font: 700 15.5px/1.15 var(--font-display); letter-spacing: -.01em; }
 .brand-sub { font-size: 11.5px; color: var(--muted); }
-/* Bloxkeep's Discord server, at the end of the name's line (so the line under it keeps the whole width), without making
-   that line taller; Discord's own blue on hover. */
 .brand-text { flex: 1; min-width: 0; }
-.brand-top { display: flex; align-items: center; gap: 6px; }
-.brand-discord { flex: none; width: 30px; height: 30px; margin: -6px -4px -6px auto; }
-.brand-discord:hover:not(:disabled) { color: #5865f2; }
 .nav { display: flex; align-items: center; gap: 11px; height: 40px; padding: 0 12px; border: 0; border-radius: 11px; background: transparent; color: var(--text-2); font-weight: 600; text-align: left; transition: background .15s, color .15s; }
 .nav:hover { background: var(--hover); color: var(--text); }
 .nav.on { background: var(--active); color: var(--text); }
@@ -2649,11 +2646,13 @@ body:has(.lock) #toasts { bottom: 24px; }
 /* Narrow windows: the sidebar collapses to icons. */
 @media (max-width: 1180px) {
   .shell { grid-template-columns: 76px minmax(0, 1fr); }
-  .brand-name, .brand-sub, .nav span, .nav em, .side-card, .multi div, .multi .switch, .side-foot .btn span, .warn-card span { display: none; }
+  .brand-name, .brand-sub, .nav span, .nav em, .side-card, .multi div, .multi .switch, .side-foot .btn span:not(.vault-face), .warn-card span { display: none; }
   .warn-card { justify-content: center; padding: 10px 0; }
-  .brand { justify-content: center; padding: 2px 0 18px; flex-direction: column; gap: 8px; } /* the Discord button under the logo */
-  .brand-text { flex: none; }
-  .brand-discord { margin: 0; }
+  .brand { justify-content: center; padding: 2px 0 18px; }
+  .brand-text { display: none; }
+  /* Lock and the square buttons beside it, one under another: side by side they ran past the sidebar's edge. */
+  .side-lock { flex-direction: column; align-items: center; }
+  .side-lock .btn.w { flex: none; width: 40px; }
   .nav { justify-content: center; padding: 0; }
   /* The mini window opens a window, it isn't a tab: a hairline and a gap set it apart from the tabs above. */
   .nav.nav-mini { display: flex; position: relative; margin-top: 12px; }

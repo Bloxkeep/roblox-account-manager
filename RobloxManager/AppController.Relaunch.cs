@@ -84,10 +84,15 @@ public sealed partial class AppController
 
     /// <summary>
     /// Roblox being opened or rejoined: a launch, a window still awaited (a late one too, whose account a restart
-    /// would forget), a rejoin queued or under way.
+    /// would forget), a rejoin under way or due within <see cref="RejoinSoon"/>. One waiting longer is kept with the
+    /// vault and picked up after the restart, so it holds no update back: on 2026-10-21 auto-rejoin's wait of the time
+    /// (minutes after failed tries; 10 seconds since), for an account a game had banned, kept "Restart to update"
+    /// refused while nothing was opening.
     /// </summary>
     bool OpeningRoblox => _openingHome || _launchCts is not null || _pending.Count > 0 || _late.Count > 0 || _handedOver.Count > 0
-        || _rejoinQueue.Count > 0 || _rejoining || _closingForRejoin.Count > 0;
+        || _rejoinQueue.Any(r => r.Due - DateTime.UtcNow < RejoinSoon) || _rejoining || _closingForRejoin.Count > 0;
+
+    static readonly TimeSpan RejoinSoon = TimeSpan.FromSeconds(30);
 
     /// <param name="startup">Right after Bloxkeep was opened: the "Updating" window shows, as for the button.</param>
     async Task RelaunchAsync(bool startup = false)

@@ -95,6 +95,17 @@ public sealed partial class AppController : IDisposable
     /// "Joining game" line, until Bloxkeep's presence check closed them.
     /// </summary>
     static readonly TimeSpan GetInTimeout = TimeSpan.FromSeconds(60);
+    /// <summary>How long past its time a rejoin kept with the vault is still done after an unlock (see OnUnlocked).</summary>
+    static readonly TimeSpan WaitingRejoinKept = TimeSpan.FromMinutes(10);
+    /// <summary>
+    /// When a join not in a server yet is asked about (<see cref="CheckJoinAsync"/>). Most joins name their server
+    /// within 1-2 s, but a join waiting for room logs nothing just as a refused one does: on 2026-10-16 four accounts
+    /// sent to one server waited 17-38 s, silent, then got in. Asking Roblox in that wait might upset it (not known), so
+    /// a first-time refusal is asked about after the longest wait seen; an account the game is known to have banned
+    /// (opened anyway) at once, so its ban is told right away (the owner's wish, 2026-10-21).
+    /// </summary>
+    static TimeSpan JoinCheckAfter(Account account, GameTarget target) =>
+        GameBanOf(account, target.PlaceId) is not null ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(40);
     readonly Dictionary<long, string> _avatarUrls = new();
     readonly Dictionary<long, GameInfo?> _games = new();
     readonly Dictionary<long, DateTime> _gameFetchedAt = new();
@@ -135,7 +146,7 @@ public sealed partial class AppController : IDisposable
     bool _nudging;
     readonly HashSet<Guid> _userClosed = new();
     readonly List<RejoinRequest> _rejoinQueue = new();
-    /// <summary>Rejoins of each account since its client last stayed in a game a while (see <see cref="RejoinWait"/>).</summary>
+    /// <summary>Rejoins of each account since its client last stayed in a game a while (see <see cref="KeepsDropping"/>).</summary>
     readonly Dictionary<Guid, int> _rejoinsInARow = new();
     readonly Dictionary<Guid, int> _offlineStrikes = new();
     readonly AppUpdater _updater = new();
@@ -785,9 +796,11 @@ public sealed partial class AppController : IDisposable
                 game = SessionGameDto(run.Pid, run.Launch),
                 connection = Connection(a, run.Pid, run.Launch),
                 reason = _logs.StateOf(run.Pid) is { Status: "disconnected" } kicked ? kicked.Reason : null,
-                // The game's words with a kick or ban, and whether it was a ban (both come with Roblox's code 267).
-                kickMessage = _logs.StateOf(run.Pid) is { Status: "disconnected" } said ? said.KickMessage : null,
-                bannedByGame = _logs.StateOf(run.Pid) is { Status: "disconnected", BannedByGame: true },
+                // The game's words with a kick or ban, and whether it was a ban (both come with Roblox's code 267), or
+                // the window is stuck on Roblox's Join Error 600 for a game that banned the account (its log says nothing).
+                kickMessage = _logs.StateOf(run.Pid) is { Status: "disconnected" } said ? said.KickMessage
+                    : BannedWindow(a, run) is { } stuck ? stuck.Message : null,
+                bannedByGame = _logs.StateOf(run.Pid) is { Status: "disconnected", BannedByGame: true } || BannedWindow(a, run) is not null,
                 jobId = _logs.StateOf(run.Pid)?.JobId,
                 jobPlaceId = _logs.StateOf(run.Pid)?.PlaceId,
                 // The preset that opened it may turn auto-rejoin on or off for this client.
@@ -1145,10 +1158,13 @@ public sealed partial class AppController : IDisposable
             MultiInstance.Enable();
         _lastArmed = MultiInstance.Armed;
         KeepMultiAtStart(s.MultiInstance);
-        AdoptOpenSessions(vault);
+        // Read before AdoptOpenSessions: its save writes these lists from memory, still empty then.
         foreach (var e in vault.Data.EndedSessions)
             if (DateTime.UtcNow - e.At < StalePresence)
                 _endedHere.TryAdd(e.AccountId, (e.JobId, e.PlaceId, e.At));
+        var waiting = vault.Data.WaitingRejoins.ToList();
+        AdoptOpenSessions(vault);
+        RestoreWaitingRejoins(vault, waiting);
         ResumePlaySessions(vault);
         ResumeSchedules(vault);
         // The loading screen's steps: accounts and open clients are ready now; Roblox status and avatars follow.
@@ -1185,6 +1201,13 @@ public sealed partial class AppController : IDisposable
         bool endedChanged = !vault.Data.EndedSessions.Select(e => (e.AccountId, e.At)).SequenceEqual(ended.Select(e => (e.AccountId, e.At)));
         if (endedChanged)
             vault.Data.EndedSessions = ended;
+        // The rejoins waiting their turn, for after a restart (an update's) or a lock.
+        var waiting = _rejoinQueue.Select(r => new WaitingRejoin { AccountId = r.AccountId, Target = r.Target, Due = r.Due, PresetId = r.PresetId, Restart = r.Restart }).ToList();
+        if (!vault.Data.WaitingRejoins.Select(w => (w.AccountId, w.Due)).SequenceEqual(waiting.Select(w => (w.AccountId, w.Due))))
+        {
+            vault.Data.WaitingRejoins = waiting;
+            endedChanged = true;
+        }
         var sessions = _running
             .Select(r => new OpenSession { AccountId = r.Key, Pid = r.Value.Pid, StartedAt = r.Value.Launch.StartedAt, Target = r.Value.Launch.Target, PresetId = r.Value.Launch.PresetId })
             .ToList();
@@ -1193,6 +1216,19 @@ public sealed partial class AppController : IDisposable
             return endedChanged;
         vault.Data.OpenSessions = sessions;
         return true;
+    }
+
+    /// <summary>
+    /// Rejoins that were waiting their turn when Bloxkeep restarted (an update) or locked: on, at their time (one due
+    /// meanwhile shortly), unless the account is gone or open again. Not one from long ago: Bloxkeep opened the next
+    /// day must not start opening Roblox by itself.
+    /// </summary>
+    void RestoreWaitingRejoins(Vault vault, List<WaitingRejoin> waiting)
+    {
+        foreach (var w in waiting)
+            if (w.Target is { } target && DateTime.UtcNow - w.Due < WaitingRejoinKept && vault.Data.Accounts.Any(a => a.Id == w.AccountId) && !_running.ContainsKey(w.AccountId)
+                && _rejoinQueue.All(r => r.AccountId != w.AccountId))
+                _rejoinQueue.Add(new RejoinRequest(w.AccountId, target, w.Due > DateTime.UtcNow ? w.Due : DateTime.UtcNow + RejoinDelay, PresetId: w.PresetId, Restart: w.Restart));
     }
 
     /// <summary>Leeway between a launch's time and its client's start, for picking saved clients up again.</summary>
@@ -2698,6 +2734,15 @@ public sealed partial class AppController : IDisposable
                 target = target with { PlaceId = placeId, LinkCode = linkCode, ShareCode = null };
                 Progress(null);
             }
+            // A preset (from the tray or its schedule too, where nobody answers a question) leaves out the accounts this
+            // game banned, as Bloxkeep saw it, like the ones Roblox banned: a question would stop the whole preset.
+            if (presetId is not null && target is not null && accounts.Where(acc => GameBanOf(acc, target.PlaceId) is not null).ToList() is { Count: > 0 } gameBanned)
+            {
+                errors.AddRange(gameBanned.Select(acc => L.F("{0} was banned from this game, so the preset didn't open it. Play it on its own to try anyway.", Name(acc))));
+                if (gameBanned.Count == accounts.Count)
+                    throw new UserError(string.Join("\n", errors));
+                accounts = accounts.Except(gameBanned).ToList();
+            }
             // Things worth a second look before opening more windows.
             var players = RobloxProcesses.GetPlayers();
             ApplyWatchNames();
@@ -2709,19 +2754,23 @@ public sealed partial class AppController : IDisposable
             {
                 // "Open Roblox" (home screen): clients in a game go back to the home screen; ones already there stay.
                 switching = accounts.Where(acc => _running.TryGetValue(acc.Id, out var run) && InGameHere(run)).ToList();
-                if (switching.Count > 0)
-                    warnings.Add(("switch", L.F("{0} will leave the game and go to the Roblox home screen.", Names(switching))));
+                if (switching.Where(acc => PlayingHere(_running[acc.Id])).ToList() is { Count: > 0 } leavingGame)
+                    warnings.Add(("switch", L.F("{0} will leave the game and go to the Roblox home screen.", Names(leavingGame))));
             }
             else if (accounts.Any(acc => _running.ContainsKey(acc.Id)))
             {
                 await LoadGamesAsync(accounts.Where(acc => _running.ContainsKey(acc.Id)).Select(acc => (CurrentPlace(acc.Id), 0L))
                     .Append((target.PlaceId, 0L)).Where(p => p.Item1 > 0).ToList());
                 switching = accounts.Where(acc => _running.TryGetValue(acc.Id, out var run) && NeedsSwitch(run, target)).ToList();
-                if (switching.Count > 0)
+                // Asked only for the ones in a game: one on Roblox's home screen (or an error screen) loses nothing by
+                // giving way to the game asked for, so it simply does.
+                var leaving = switching.Where(acc => LeavesAGame(_running[acc.Id], target)).ToList();
+                if (leaving.Count > 0)
                     warnings.Add(("switch", L.F("{0} will leave what they're playing now and open this game instead.",
-                        Names(switching))));
+                        Names(leaving))));
             }
-            // Accounts this game banned, as Bloxkeep saw it: Roblox would most likely show Join Error 600.
+            // Accounts this game banned, as Bloxkeep saw it: Roblox would most likely show Join Error 600. Asked when
+            // opened by hand; a preset left them out above.
             if (target is not null && accounts.Where(acc => GameBanOf(acc, target.PlaceId) is not null).ToList() is { Count: > 0 } bannedHere)
                 warnings.Add(("gameBan", L.P(bannedHere.Count,
                     "{0} was banned from this game, so Roblox will most likely not let them in (Join Error 600).",
@@ -3047,9 +3096,23 @@ public sealed partial class AppController : IDisposable
     /// </summary>
     bool InGameNow(int pid) => _logs.StateOf(pid)?.Status is "ingame" or "joining";
 
+    /// <summary>
+    /// Opening <paramref name="target"/> takes this client out of a game it is playing: worth asking first. One on
+    /// Roblox's home screen gives way without a word (on 2026-10-21 "will leave what they're playing now" was asked of
+    /// an account only on the home screen), as does one stuck on a join (a game's ban, Join Error 600).
+    /// </summary>
+    bool LeavesAGame((int Pid, PendingLaunch Launch) run, GameTarget target) => NeedsSwitch(run, target) && PlayingHere(run);
+
     /// <summary>In a game (or joining one), as opposed to the home screen; without a log, by what it was opened with.</summary>
     bool InGameHere((int Pid, PendingLaunch Launch) run) =>
         _logs.StateOf(run.Pid) is { } log ? log.Status is "ingame" or "joining" : run.Launch.Target is not null;
+
+    /// <summary>
+    /// Playing here: in a server, or on the way into one it was given; not a join still without a server (one stuck on
+    /// a game's ban among them). Without a log, by what it was opened with.
+    /// </summary>
+    bool PlayingHere((int Pid, PendingLaunch Launch) run) =>
+        _logs.StateOf(run.Pid) is { } log ? log is { Status: "ingame" } or { Status: "joining", JobId: not null } : run.Launch.Target is not null;
 
     /// <summary>Two places of the same game (a game moves players between its places) count as the same.</summary>
     bool SameGame(long a, long b) =>
@@ -3772,18 +3835,16 @@ public sealed partial class AppController : IDisposable
         }
         int inARow = _rejoinsInARow.GetValueOrDefault(accountId);
         _rejoinsInARow[accountId] = inARow + 1;
-        var wait = RejoinWait(inARow);
+        var wait = RejoinDelay;
         // Rejoin the same game or private server rather than the exact server, which may be gone. A game the person
         // picked in the Roblox window since is the one they were playing: that one (any server), not the one opened.
         var target = lastLog?.ChosenPlace is { } chosen && chosen != launch.Target!.PlaceId ? new GameTarget(chosen) : launch.Target! with { JobId = null };
         _rejoinQueue.Add(new RejoinRequest(accountId, target, DateTime.UtcNow + wait, PresetId: launch.PresetId));
-        if (inARow < QuickRejoins)
-            Notify(L.F("{0} left the game — rejoining in {1}s…", Name(account), (int)wait.TotalSeconds), "info", "drop", account.Id);
-        else if (inARow == QuickRejoins)
-            // Something keeps failing (a ban, a broken game, a bad connection): said once, then it waits between tries.
-            Notify(L.F("{0} keeps getting disconnected — trying again every few minutes.", Name(account)), "warn", "rejoinSlow", account.Id);
+        if (inARow == KeepsDropping)
+            // Something keeps failing (a broken game, a bad connection): said once. It goes on trying all the same.
+            Notify(L.F("{0} keeps getting disconnected — Bloxkeep keeps rejoining every {1}s.", Name(account), (int)wait.TotalSeconds), "warn", "rejoinSlow", account.Id);
         else
-            Toast(L.F("{0} left the game again — rejoining in {1} min.", Name(account), (int)wait.TotalMinutes));
+            Notify(L.F("{0} left the game — rejoining in {1}s…", Name(account), (int)wait.TotalSeconds), "info", "drop", account.Id);
         return true;
     }
 
@@ -3803,7 +3864,7 @@ public sealed partial class AppController : IDisposable
         if (found.Banned == true)
             return false;
         // Banned by the game (its kick line said so, or a join was refused with its ban): only Join Error 600 again.
-        if (lastLog is { BannedByGame: true } || GameBanOf(found, launch.Target.PlaceId) is not null)
+        if (lastLog is { BannedByGame: true } || GameBanOf(found, RejoinPlace(launch, lastLog)) is not null)
             return false;
         if (restart)
             return true;
@@ -3813,16 +3874,14 @@ public sealed partial class AppController : IDisposable
         return lastLog is not ({ Status: "left" or "signedout" } or { Status: "disconnected", Reason: SameAccountElsewhere });
     }
 
-    /// <summary>Rejoins in a row that go at once (after <see cref="RejoinDelay"/>); the ones after wait <see cref="RejoinBackoff"/>.</summary>
-    const int QuickRejoins = 2;
-    /// <summary>The waits after the quick rejoins; the last one repeats for as long as auto-rejoin stays on.</summary>
-    static readonly TimeSpan[] RejoinBackoff = [TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(15)];
+    /// <summary>
+    /// Rejoins in a row (no real stay between them) after which "keeps getting disconnected" is said, once. Every rejoin
+    /// waits <see cref="RejoinDelay"/>, however many came before (the owner's choice, 2026-10-21; until then the waits
+    /// grew to 2, 5, 10 and 15 minutes): a game's ban stops them instead (see ShouldRejoin).
+    /// </summary>
+    const int KeepsDropping = 2;
     /// <summary>A client in its game this long is fine again: its next drop counts from one.</summary>
     static readonly TimeSpan StayResetsRejoins = TimeSpan.FromMinutes(10);
-
-    /// <summary>How long a rejoin waits, given how many came right before it without a real stay in between.</summary>
-    static TimeSpan RejoinWait(int inARow) =>
-        inARow < QuickRejoins ? RejoinDelay : RejoinBackoff[Math.Min(inARow - QuickRejoins, RejoinBackoff.Length - 1)];
 
     /// <summary>Clients that have stayed in their game <see cref="StayResetsRejoins"/>: their earlier drops no longer count.</summary>
     void ForgetSettledRejoins(DateTime now)
@@ -3862,50 +3921,73 @@ public sealed partial class AppController : IDisposable
     /// </summary>
     void RejoinFromLogs()
     {
-        if (_vault is null || _running.Count == 0 || Settling)
-            return;
-        var now = DateTime.UtcNow;
+        // First, also with nothing open: a process id Windows gives a later client mustn't come with an old one's answer.
         foreach (int gone in _joinChecks.Keys.Where(pid => _running.Values.All(r => r.Pid != pid)).ToList())
             _joinChecks.Remove(gone);
         _gameBanNoted.RemoveWhere(pid => _running.Values.All(r => r.Pid != pid));
+        if (_vault is null || _running.Count == 0 || Settling)
+            return;
+        var now = DateTime.UtcNow;
         foreach (var (id, info) in _running.ToList())
         {
             if (_logs.StateOf(info.Pid) is not { } state || _closingForRejoin.Contains(info.Pid))
                 continue;
+            // A window held as banned that got a server since (the person picked another game in it): not held any more.
+            if (state is { Status: "ingame" } or { Status: "joining", JobId: not null })
+            {
+                _gameBanNoted.Remove(info.Pid);
+                _joinChecks.Remove(info.Pid);
+            }
             // Banned by the game (its kick line says so; the code is 267 as for any kick): a new window would only meet
-            // Join Error 600. The window stays, with Roblox's message.
+            // Join Error 600. The window stays, with Roblox's message. The game is the one a rejoin would open: one the
+            // person picked in the window, else the one opened (not the place it was in, maybe another place of it).
             if (state is { Status: "disconnected", BannedByGame: true })
             {
                 if (_gameBanNoted.Add(info.Pid) && FindAccount(id) is { } banned)
-                    NoteGameBan(banned, info.Launch.Target?.PlaceId ?? state.PlaceId, state.KickMessage);
+                    NoteGameBan(banned, state.ChosenPlace ?? info.Launch.Target?.PlaceId ?? state.PlaceId, state.KickMessage, info.Launch.StartedAt);
                 continue;
             }
+            // Not in after JoinCheckAfter (5 s for a game known to have banned the account, else 40 s): Roblox says why only in the
+            // window (a game's ban is Join Error 600) and logs nothing, so its join API is asked, as the window asked it.
+            // A ban then shows at once, and stops auto-rejoin; any other answer leaves it to GetInTimeout.
+            if (state is { Status: "joining", JobId: null, PersonStarted: false } && info.Launch.Target is { } wanted
+                && FindAccount(id) is { Cookie.Length: > 0 } asking && now - state.At >= JoinCheckAfter(asking, wanted) && !_gameBanNoted.Contains(info.Pid))
+            {
+                if (!_joinChecks.TryGetValue(info.Pid, out var check))
+                {
+                    _joinChecks[info.Pid] = CheckJoinAsync(asking, wanted);
+                    continue;
+                }
+                if (check is { IsCompletedSuccessfully: true, Result.Banned: true })
+                {
+                    _gameBanNoted.Add(info.Pid);
+                    NoteGameBan(asking, wanted.PlaceId, check.Result.Reason, info.Launch.StartedAt);
+                    continue;
+                }
+                // Roblox would let the account in (status 2, a join under way): a ban noted for this game is over.
+                if (check is { IsCompletedSuccessfully: true, Result: { Banned: false, Status: 2 } } && GameBanOf(asking, wanted.PlaceId) is { } over)
+                {
+                    asking.GameBans.Remove(over);
+                    PersistSoon();
+                    PushState();
+                }
+            }
+            // A window stuck on a game's ban (Join Error 600) is left as it is: nothing to try again (on the way, the
+            // minute's timeout below closed it with "trying again").
+            if (_gameBanNoted.Contains(info.Pid))
+                continue;
             bool dropped = state is { Status: "disconnected" } && state.Reason != SameAccountElsewhere && now - state.At >= TimeSpan.FromSeconds(3);
             // A game start logs "joining" without a server; the server comes with the "Joining game" line. One the person
             // started in the window is theirs to watch: closing it would reopen the game Bloxkeep opened instead.
             bool neverGotIn = state is { Status: "joining", JobId: null, PersonStarted: false } && now - state.At >= GetInTimeout;
             if ((!dropped && !neverGotIn)
                 || FindAccount(id) is not { } account || !RejoinOn(account, info.Launch.PresetId) || info.Launch.Target is not { } target
-                || account.Banned == true) // no rejoin follows (see ShouldRejoin): the window stays, with Roblox's reason
+                // No rejoin follows (see ShouldRejoin): the window stays, with Roblox's reason, rather than closing for nothing.
+                || account.Banned == true || GameBanOf(account, RejoinPlace(info.Launch, state)) is not null)
                 continue;
-            // Never got in: Roblox says why only in the window (a game's ban is Join Error 600) and logs nothing, so its
-            // join API is asked, as the window asked it, before trying again.
-            if (neverGotIn && account.Cookie.Length > 0)
-            {
-                if (!_joinChecks.TryGetValue(info.Pid, out var check))
-                {
-                    _joinChecks[info.Pid] = CheckJoinAsync(account, target);
-                    continue;
-                }
-                if (!check.IsCompleted)
-                    continue;
-                if (check.Result is { Banned: true } refused)
-                {
-                    if (_gameBanNoted.Add(info.Pid))
-                        NoteGameBan(account, target.PlaceId, refused.Reason);
-                    continue;
-                }
-            }
+            // Not trying again before Roblox's answer is in (asked at JoinCheckAfter, above).
+            if (neverGotIn && _joinChecks.TryGetValue(info.Pid, out var asked) && !asked.IsCompleted)
+                continue;
             _closingForRejoin.Add(info.Pid);
             Notify(dropped ? L.F("{0} seems disconnected — restarting Roblox…", Name(account))
                 : target.JobId is not null ? L.F("{0} couldn't get into that server (full or closed) — joining another one…", Name(account))
@@ -3932,8 +4014,9 @@ public sealed partial class AppController : IDisposable
                 + (answer.Data is { } data ? $" · statusData {data}" : "") + (answer.Banned ? " (a ban by the game)" : ""));
             return answer;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or RobloxApiException or System.Text.Json.JsonException)
+        catch (Exception ex)
         {
+            // Whatever failed (no network, an answer of another shape): no answer, and the usual try again goes on.
             Log.Note($"A join that never got in, asked again: no answer ({ex.GetType().Name}).");
             return null;
         }
@@ -3944,10 +4027,25 @@ public sealed partial class AppController : IDisposable
     /// account, so auto-rejoin stops trying that game, said as a notification (Discord too), and kept in the activity log.
     /// Getting into that game again later drops it (<see cref="ForgetLiftedGameBans"/>).
     /// </summary>
-    void NoteGameBan(Account account, long? placeId, string? message)
+    /// <param name="since">When the window it was seen in opened: a ban noted since then is this one, seen again after
+    /// Bloxkeep restarted (an update) with the window still open, and isn't told again.</param>
+    void NoteGameBan(Account account, long? placeId, string? message, DateTime since)
     {
         if (placeId is not long place || place <= 0)
             return;
+        var known = GameBanOf(account, place);
+        if (known is not null && known.At >= since)
+        {
+            if (known.Message is null && message is not null)
+            {
+                known.Message = message;
+                PersistSoon();
+                PushState();
+            }
+            return;
+        }
+        // Roblox's join answer carries no words of the game's: the ones from its ban before are kept.
+        message ??= known?.Message;
         string game = _games.GetValueOrDefault(place)?.Name is { Length: > 0 } name ? name : L.F("Place {0}", place);
         account.GameBans.RemoveAll(b => b.PlaceId == place);
         account.GameBans.Add(new GameBan { PlaceId = place, GameName = _games.GetValueOrDefault(place)?.Name, At = DateTime.UtcNow, Message = message });
@@ -3958,6 +4056,17 @@ public sealed partial class AppController : IDisposable
         PushState();
     }
 
+    /// <summary>
+    /// A window that Roblox's join answer showed stuck on the game's ban (Join Error 600): that ban. Not every window
+    /// opened into a game that banned the account once, which may well get in (the ban may be over).
+    /// </summary>
+    GameBan? BannedWindow(Account account, (int Pid, PendingLaunch Launch) run) =>
+        _gameBanNoted.Contains(run.Pid) && _logs.StateOf(run.Pid) is { Status: "joining", JobId: null } ? GameBanOf(account, run.Launch.Target?.PlaceId) : null;
+
+    /// <summary>The game a rejoin of this window opens: one the person picked in it since, else the one opened.</summary>
+    static long RejoinPlace(PendingLaunch launch, RobloxLogWatcher.ClientState? lastLog) =>
+        lastLog?.ChosenPlace ?? launch.Target?.PlaceId ?? 0;
+
     /// <summary>The account's ban from this game, as noted (<see cref="NoteGameBan"/>); null when none.</summary>
     static GameBan? GameBanOf(Account account, long? placeId) =>
         placeId is long place ? account.GameBans.FirstOrDefault(b => b.PlaceId == place) : null;
@@ -3967,9 +4076,10 @@ public sealed partial class AppController : IDisposable
     {
         foreach (var (id, info) in _running)
         {
-            if (_logs.StateOf(info.Pid) is not { Status: "ingame" } state || FindAccount(id) is not { GameBans.Count: > 0 } account)
+            if (_logs.StateOf(info.Pid) is not { Status: "ingame", PlaceId: long here } || FindAccount(id) is not { GameBans.Count: > 0 } account)
                 continue;
-            if (account.GameBans.RemoveAll(b => b.PlaceId == info.Launch.Target?.PlaceId || b.PlaceId == state.PlaceId) > 0)
+            // The game it is in now (any place of it): not the one it was opened into, which the person may have left.
+            if (account.GameBans.RemoveAll(b => SameGame(b.PlaceId, here)) > 0)
             {
                 PersistSoon();
                 PushState();
@@ -4307,7 +4417,10 @@ public sealed partial class AppController : IDisposable
             // A status hidden by privacy settings or a failed request proves nothing; wait for a clear answer.
             if (account is not null && !reliable.Contains(account.UserId))
                 continue;
+            // Nor one a game banned (stuck on Join Error 600, its log silent): on 2026-10-21 that one was closed here as
+            // "Lost connection, restarting Roblox" two minutes after its ban was told.
             if (account is null || !RejoinOn(account, info.Launch.PresetId) || account.Banned == true || info.Launch.Target is null || DateTime.UtcNow - info.Launch.StartedAt < DisconnectGrace
+                || GameBanOf(account, RejoinPlace(info.Launch, _logs.StateOf(info.Pid))) is not null
                 || !_presence.TryGetValue(account.UserId, out var presence) || presence.Type is 2 or 4)
             {
                 _offlineStrikes.Remove(id);

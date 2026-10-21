@@ -1,5 +1,41 @@
 [
   {
+    "version": "1.0.8-beta.6",
+    "date": "2026-10-21",
+    "improved": {
+      "en": [
+        "A ban met when joining is told sooner: Bloxkeep asks Roblox after 40 seconds without getting in (after 5 seconds in a game that banned the account before) instead of a minute. The card then says Banned by the game instead of Joining, and the Discord alert goes right away.",
+        "Auto-rejoin tries again every 10 seconds, however often the account drops, instead of waiting longer and longer. A ban by the game stops it.",
+        "Discord alerts go out within a few seconds; they used to wait up to 10 seconds to be grouped.",
+        "The Discord button sits at the bottom of the sidebar, next to Lock app."
+      ],
+      "vi": [
+        "Bị ban lúc vào game giờ được báo sớm hơn: chưa vào được sau 40 giây là Bloxkeep hỏi Roblox (5 giây nếu game này từng ban tài khoản đó), thay vì chờ một phút. Thẻ khi đó ghi Bị game ban thay vì Đang vào game, và thông báo Discord gửi đi liền.",
+        "Tự vào lại giờ thử lại sau mỗi 10 giây, dù tài khoản bị văng bao nhiêu lần, thay vì chờ lâu dần. Bị game ban thì dừng hẳn.",
+        "Thông báo Discord gửi đi trong vài giây, trước đây có thể chờ tới 10 giây để gom lại.",
+        "Nút Discord chuyển xuống cuối thanh bên, cạnh Khóa app."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "A rejoin waiting its turn no longer holds back Restart to update (\"Wait until Bloxkeep finishes opening Roblox\" while nothing was opening). It carries on after the restart.",
+        "Opening a game for an account that is only on Roblox's home screen, or stuck on Join Error 600, no longer asks whether it should leave what it's playing.",
+        "A preset, also when run from the tray or on its schedule, leaves out an account the game banned and says so, instead of stopping at a question nobody answers.",
+        "A game's ban is no longer told a second time when Bloxkeep restarts (for an update) with the window still open, and its Discord alert no longer adds that the account was kicked.",
+        "A ban in a game picked in the Roblox window is kept for that game, not for the one Bloxkeep opened. The window of a banned account is no longer closed for a rejoin that wasn't coming.",
+        "In a narrow window, Switch vault no longer runs past the sidebar's edge, and shows its letter again."
+      ],
+      "vi": [
+        "Một lần tự vào lại đang chờ không còn chặn nút Khởi động lại để cập nhật (hiện \"Chờ Bloxkeep mở Roblox xong đã\" dù chẳng có gì đang mở). Lần vào lại đó tiếp tục sau khi khởi động lại.",
+        "Mở game cho tài khoản chỉ đang ở màn hình chính của Roblox, hoặc đang kẹt ở lỗi 600, không còn hỏi có thoát game đang chơi không.",
+        "Preset, kể cả khi chạy từ khay hay theo lịch, giờ bỏ qua tài khoản bị game ban và ghi rõ lý do, thay vì dừng lại ở một câu hỏi không ai trả lời.",
+        "Khi Bloxkeep khởi động lại (để cập nhật) mà cửa sổ vẫn mở, lệnh ban của game không còn bị báo lần nữa, và thông báo Discord không còn ghi kèm là bị kick.",
+        "Bị ban trong game chọn ngay trong cửa sổ Roblox thì được ghi cho đúng game đó, không phải game Bloxkeep đã mở. Cửa sổ của tài khoản bị ban không còn bị đóng để chờ một lần vào lại không bao giờ tới.",
+        "Khi cửa sổ hẹp, nút Đổi vault không còn lấn ra ngoài thanh bên và hiện lại chữ cái của vault."
+      ]
+    }
+  },
+  {
     "version": "1.0.8-beta.5",
     "date": "2026-10-21",
     "improved": {

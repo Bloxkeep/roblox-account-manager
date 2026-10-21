@@ -14,7 +14,12 @@ namespace RobloxManager;
 /// </summary>
 public sealed partial class AppController
 {
-    static readonly TimeSpan DiscordBatch = TimeSpan.FromSeconds(10);
+    /// <summary>
+    /// Alerts that come together (windows closed by a Roblox update, a preset's accounts) go as one message: each waits
+    /// this long for others. 3 s, not 10 as before (the owner found a ban's alert slow, 2026-10-21): such events come
+    /// within a second or two of each other.
+    /// </summary>
+    static readonly TimeSpan DiscordBatch = TimeSpan.FromSeconds(3);
     /// <summary>A summary for a scheduled preset's stop waits for its clients to close, so their stays are counted whole.</summary>
     static readonly TimeSpan DiscordAfterStop = TimeSpan.FromSeconds(30);
     static readonly TimeSpan DiscordMaxBackoff = TimeSpan.FromMinutes(10);
@@ -303,6 +308,9 @@ public sealed partial class AppController
         _discordNotified[key] = now;
         if (_discordEvents.Count == 0)
             _discordBatchDue = now + DiscordBatch;
+        // A game's ban goes at once (the owner wants it told right away), with whatever is waiting already.
+        if (type == "gameBan")
+            _discordBatchDue = now;
         // A ban goes with the sign-in events (their switch and ping) under a title of its own.
         _discordEvents.Add((type == "banned" ? type : kind, AlertFor(type, account, made, DiscordText(text), now), PingFor(d, kind), RouteFor(preset)));
     }

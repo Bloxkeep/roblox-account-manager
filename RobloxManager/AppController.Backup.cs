@@ -73,7 +73,7 @@ public sealed partial class AppController
     /// </summary>
     static readonly Dictionary<Type, string[]> Bookkeeping = new()
     {
-        [typeof(VaultData)] = ["OpenSessions", "EndedSessions", "PlaySessions", "Activity", "ScheduledRuns"],
+        [typeof(VaultData)] = ["OpenSessions", "EndedSessions", "WaitingRejoins", "PlaySessions", "Activity", "ScheduledRuns"],
         [typeof(DiscordSettings)] = ["LastDaily", "LastWeekly", "BoardMessageId"],
         [typeof(AppSettings)] = ["LastPlaceInput", "LastJobId", "Layout", "Sort", "RecentGames", "RecentPlayers"],
         [typeof(LaunchPreset)] = ["LastRunAt"],

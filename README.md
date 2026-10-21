@@ -32,7 +32,7 @@ Each item is explained in [Using Bloxkeep](#using-bloxkeep) and, step by step, i
 - **Games and servers**: pick a game by name, link or Place ID; a server by most players, fewest, lowest ping, room for N accounts or random; join friends, or the exact server a player is in. [Choosing a game and server](#choosing-a-game-and-server)
 - **Presets**: accounts, a game and a server choice saved to start in one click, with a schedule to start and stop, and options of their own. [Presets](#presets)
 - **Multi-Roblox**: several Roblox windows at once, opened windowed and tiled, with a check of every new Roblox build. Off until you turn it on. [Multi-Roblox](#multi-roblox), [Roblox updates](#roblox-updates)
-- **Staying in game**: [Anti-AFK](#anti-afk) keeps a window from being kicked for idling, and [Auto-rejoin](#auto-rejoin) goes back in after a disconnect, retrying with longer waits instead of giving up.
+- **Staying in game**: [Anti-AFK](#anti-afk) keeps a window from being kicked for idling, and [Auto-rejoin](#auto-rejoin) goes back in after a disconnect, every 10 seconds until it gets in, stopping only for a ban by the game.
 - **Roblox settings per account** (graphics, frame rate, volume), and a choice of what opens Roblox: Roblox, Bloxstrap, Fishstrap, RobloxPlayerBeta directly, Roblox from the Microsoft Store (being tested) or your own launcher. [Roblox settings per account](#roblox-settings-per-account), [Open Roblox with](#open-roblox-with)
 - **Windows and RAM**: live pictures of every Roblox window in the Game monitor, a mini window, tiling, warnings before RAM or Windows' virtual memory runs out. [Windows, RAM and the game monitor](#windows-ram-and-the-game-monitor)
 - **Statistics and an activity log**: play time, sessions and disconnects per account, game and preset. [Statistics and activity](#statistics-and-activity)
@@ -344,7 +344,7 @@ The **Staying in game** page (called **Performance** before 1.0.3) holds the swi
 Turn it on for one account in its ⋯ menu › **Auto-rejoin**, for every account at once in **Settings › Staying in game › Auto-rejoin** (it reads "On for 3 of 10" when mixed), or for a preset's windows with the preset's own option (see [Presets](#presets)).
 
 - When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. After the PC wakes up, it waits for the connection first.
-- If it keeps dropping, from the third time Bloxkeep waits 2, 5, 10, then 15 minutes between tries. The card shows the wait ("In 2 min") with a **Cancel** button; 10 minutes in the game resets the count. Without a network, it retries every 30 seconds, up to 20 times.
+- If it keeps dropping, Bloxkeep keeps rejoining every 10 seconds and says so once. A ban by the game stops it: the card says **Banned by the game**, Bloxkeep asks before opening that account in that game again, and a preset leaves it out. Without a network, it retries every 30 seconds, up to 20 times.
 - It doesn't rejoin when you leave the game yourself, when the account signed in on another device, when it's banned, when Roblox itself closed the window because another one opened, or while Bloxkeep is locked. Closing the Roblox window by hand counts as leaving, so use **Close** in the app.
 - If Roblox ended an account's sign-in, auto-rejoin turns itself off for it, and back on once the account is signed in again. With Multi-Roblox not ready, a rejoin is skipped (a new window would close the open one) and you're told.
 

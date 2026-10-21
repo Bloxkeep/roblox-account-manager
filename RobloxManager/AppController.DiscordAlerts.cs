@@ -49,13 +49,14 @@ public sealed partial class AppController
                     "drop" when en.StartsWith("{0} couldn't get into that server", StringComparison.Ordinal) => (DT("Couldn't get into the server, joining another"), null, DiscordWebhook.Yellow),
                     "drop" when en.StartsWith("{0} couldn't get into the game", StringComparison.Ordinal) => (DT("Couldn't get into the game, trying again"), null, DiscordWebhook.Yellow),
                     "drop" => (DT("Disconnected, rejoining"), null, DiscordWebhook.Yellow),
-                    "rejoinSlow" => (DT("Keeps getting disconnected"), DT("Bloxkeep now tries to rejoin every few minutes."), DiscordWebhook.Red),
+                    "rejoinSlow" => (DT("Keeps getting disconnected"), DT("Bloxkeep keeps rejoining every 10 seconds."), DiscordWebhook.Red),
                     "rejoinFail" => (DT("Couldn't rejoin"), why is null ? null : DiscordWebhook.Escape(why), DiscordWebhook.Red),
                     _ => (DT("Kicked for being AFK"), why is null ? null : DiscordWebhook.Escape(why), DiscordWebhook.Yellow),
                 };
                 return AccountAlert(who, title, description, color, now);
             case "gameBan" when SubjectOf(subject, now) is { } who:
-                return AccountAlert(who, DT("Banned by the game"), why is null ? DT("Bloxkeep won't rejoin this game for this account.")
+                // The game's words are the description: no "Reason" field saying "Kicked by the game" with them again.
+                return AccountAlert(who with { Reason = null }, DT("Banned by the game"), why is null ? DT("Bloxkeep won't rejoin this game for this account.")
                     : DiscordWebhook.Escape(why) + "\n-# " + DT("Bloxkeep won't rejoin this game for this account."), DiscordWebhook.Red, now);
             case "banned" when SubjectOf(subject, now) is { } who:
                 return AccountAlert(who, DT("Banned on Roblox"), DT("Bloxkeep won't open this account. Once the ban is over, Check sign-in clears it."),

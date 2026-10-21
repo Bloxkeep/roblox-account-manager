@@ -28,7 +28,7 @@ Mỗi mục đều được giải thích ở phần [Sử dụng](#sử-dụng)
 - **Game và server**: chọn game theo tên, link hoặc Place ID; chọn server (đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho N tài khoản, ngẫu nhiên); vào cùng bạn bè, hoặc vào đúng server của một người chơi. [Chọn game và server](#chọn-game-và-server)
 - **Preset**: lưu sẵn tài khoản, game và cách chọn server để chạy bằng một lần bấm, có hẹn giờ chạy và dừng, và tùy chọn riêng. [Preset](#preset)
 - **Multi-Roblox**: chạy nhiều cửa sổ Roblox cùng lúc, mở ở chế độ cửa sổ và xếp thành lưới, kèm kiểm tra từng bản Roblox mới. Tắt sẵn, bạn tự bật khi cần. [Multi-Roblox](#multi-roblox), [Cập nhật Roblox](#cập-nhật-roblox)
-- **Treo game**: [Chống AFK](#chống-afk) giữ cửa sổ khỏi bị kick vì đứng yên, còn [Tự vào lại game](#tự-vào-lại-game) vào lại sau khi bị văng, thử lại giãn dần chứ không bỏ cuộc.
+- **Treo game**: [Chống AFK](#chống-afk) giữ cửa sổ khỏi bị kick vì đứng yên, còn [Tự vào lại game](#tự-vào-lại-game) vào lại sau khi bị văng, cứ 10 giây thử một lần, chỉ dừng khi bị game ban.
 - **Cấu hình Roblox theo tài khoản** (đồ họa, FPS, âm lượng), và chọn chương trình dùng để mở Roblox: Roblox, Bloxstrap, Fishstrap, RobloxPlayerBeta trực tiếp, Roblox bản Microsoft Store (đang thử nghiệm) hoặc launcher của riêng bạn. [Cấu hình Roblox theo tài khoản](#cấu-hình-roblox-theo-tài-khoản), [Mở Roblox bằng](#mở-roblox-bằng)
 - **Cửa sổ và RAM**: hình trực tiếp của mọi cửa sổ Roblox trong tab Theo dõi game, cửa sổ nhỏ, xếp cửa sổ, cảnh báo trước khi hết RAM hoặc bộ nhớ ảo của Windows. [Cửa sổ, RAM và màn hình theo dõi](#cửa-sổ-ram-và-màn-hình-theo-dõi)
 - **Thống kê và nhật ký hoạt động**: thời gian chơi, số lượt và số lần mất kết nối theo tài khoản, game và preset. [Thống kê và hoạt động](#thống-kê-và-hoạt-động)
@@ -338,7 +338,7 @@ Trang **Treo game** (trước bản 1.0.3 tên là **Hiệu năng**) có công t
 Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game**, cho mọi tài khoản cùng lúc ở **Cài đặt › Treo game › Tự vào lại game** (khi chỗ bật chỗ tắt sẽ ghi "Bật cho 3/10 tài khoản"), hoặc cho cửa sổ của một preset bằng tùy chọn riêng của preset (xem [Preset](#preset)).
 
 - Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Máy vừa thức dậy thì Bloxkeep chờ có mạng rồi mới vào lại.
-- Nếu cứ bị văng liên tục, từ lần thứ ba Bloxkeep chờ 2, 5, 10 rồi 15 phút giữa các lần thử. Thẻ tài khoản hiện thời gian chờ ("Sau 2 phút") và nút **Hủy**; ở lại trong game 10 phút thì đếm lại từ đầu. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
+- Nếu cứ bị văng liên tục, Bloxkeep vẫn tự vào lại sau mỗi 10 giây và báo một lần. Bị game ban thì dừng hẳn: thẻ ghi **Bị game ban**, Bloxkeep hỏi lại trước khi mở tài khoản đó vào game ấy, còn Preset thì bỏ qua tài khoản này. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
 - Bloxkeep không vào lại khi bạn tự thoát game, khi tài khoản đăng nhập ở thiết bị khác, khi tài khoản bị ban, khi chính Roblox đóng cửa sổ vì có cửa sổ khác mở, hoặc khi Bloxkeep đang khóa. Tự tay đóng cửa sổ Roblox cũng tính là thoát game, nên hãy dùng nút **Đóng** trong app.
 - Nếu Roblox kết thúc phiên đăng nhập của một tài khoản, tự vào lại game tự tắt cho tài khoản đó, và tự bật lại khi tài khoản được đăng nhập lại. Khi Multi-Roblox chưa sẵn sàng, Bloxkeep không vào lại (vì cửa sổ mới sẽ đóng mất cửa sổ đang mở) và báo cho bạn.
 

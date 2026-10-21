@@ -198,6 +198,8 @@ public sealed class VaultData
     public List<OpenSession> OpenSessions { get; set; } = new();
     /// <summary>Clients that ended here in the last minutes (see AppController.IsStaleInGame); missing in older vaults.</summary>
     public List<EndedSession> EndedSessions { get; set; } = new();
+    /// <summary>Rejoins waiting their turn, picked up again by the next unlock (an update's restart, a lock); missing in older vaults.</summary>
+    public List<WaitingRejoin> WaitingRejoins { get; set; } = new();
     /// <summary>Stays in games for the Statistics view (see AppController.Stats.cs); missing in older vaults.</summary>
     public List<PlaySession> PlaySessions { get; set; } = new();
     /// <summary>Statistics › Activity, oldest first (see AppController.Activity.cs); missing in older vaults.</summary>
@@ -368,6 +370,16 @@ public sealed class EndedSession
     public string? JobId { get; set; }
     public long? PlaceId { get; set; }
     public DateTime At { get; set; }
+}
+
+/// <summary>A rejoin that was waiting its turn when Bloxkeep closed or locked (auto-rejoin's wait, a preset's restart).</summary>
+public sealed class WaitingRejoin
+{
+    public Guid AccountId { get; set; }
+    public GameTarget? Target { get; set; }
+    public DateTime Due { get; set; }
+    public Guid? PresetId { get; set; }
+    public bool Restart { get; set; }
 }
 
 /// <summary>A Roblox client that was still open when Bloxkeep closed; the next unlock picks it up again.</summary>

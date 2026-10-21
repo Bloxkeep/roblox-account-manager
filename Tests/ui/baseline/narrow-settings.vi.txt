@@ -5,10 +5,6 @@ html [data-theme="dark" lang="vi"]
     aside.side
       div.brand
         img [alt="" src="logo.svg"]
-        div.brand-text
-          div.brand-top
-            button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
       div.side-nav
         button.nav [title="Tài khoản"]
           svg.i #v823bm
@@ -33,7 +29,10 @@ html [data-theme="dark" lang="vi"]
           div.side-lock
             button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
               svg.i #21scx0
-            button.btn.ghost.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+            button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
