@@ -159,7 +159,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Nhường nhân mạnh cho cửa sổ đang chơi"
-                        div.d "Cửa sổ Roblox chạy nền chỉ dùng 16 nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện; cửa sổ bạn đang chơi và các ứng dụng khác giữ các nhân mạnh. Treo nhiều acc vẫn mượt, laptop mát hơn."
+                        div.d "Cửa sổ Roblox chạy nền chỉ dùng 16 nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện; cửa sổ bạn đang chơi và các ứng dụng khác giữ các nhân mạnh. Treo nhiều tài khoản vẫn mượt, laptop mát hơn."
                       div.ctl
                         label.switch
                           input [id="s-cores" type="checkbox" aria-label="Nhường nhân mạnh cho cửa sổ đang chơi" checked=true FOCUSED]

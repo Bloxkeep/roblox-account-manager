@@ -594,9 +594,17 @@ public static class RobloxProcesses
     /// <summary>Tiles the clients' windows over a screen area, in the given order. Window messages only.</summary>
     /// <param name="layout">"fill" spreads them over the whole area; "small" / "medium" / "large" are fixed tiles from the top-left.</param>
     /// <param name="skipMinimized">Leave minimised windows as they are (and give them no tile).</param>
-    public static async Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false)
+    public static Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false) =>
+        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !(skipMinimized && IsIconic(h))).ToList(), area, layout);
+
+    /// <summary>
+    /// Tiles these windows (see <see cref="ArrangeGridAsync"/>). Roblox keeps its window at least 800 × 600 in its own
+    /// units (1224 × 957 pixels on a 150 % screen): tiles smaller than that left the windows at that size, over each
+    /// other and past the screen's edge (5 windows on a 150 % laptop screen, 2026-10-21). Then they are spread evenly
+    /// over the area instead (<see cref="OverlapSpots"/>), each over the one before it, so every title bar shows.
+    /// </summary>
+    static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout)
     {
-        var windows = pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !(skipMinimized && IsIconic(h))).ToList();
         if (windows.Count == 0)
             return 0;
         bool restored = false;
@@ -617,7 +625,67 @@ public static class RobloxProcesses
             SetWindowPos(windows[i], IntPtr.Zero, area.X + i % cols * width, area.Y + i / cols * height, width, height,
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
         }
+        if (await KeptSizeAsync(windows, new Size(width, height)) is not { } size)
+            return windows.Count;
+        var spots = OverlapSpots(windows.Count, area, size);
+        // The last one keeps its place among the PC's other windows; each one before it goes just under the next, in
+        // turn (each moves on its own window's thread), so a later one lies over an earlier one's body, not its title bar.
+        for (int i = windows.Count - 1; i >= 0; i--)
+        {
+            bool last = i == windows.Count - 1;
+            SetWindowPos(windows[i], last ? IntPtr.Zero : windows[i + 1], spots[i].X, spots[i].Y, size.Width, size.Height,
+                SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | (last ? SWP_NOZORDER : 0));
+            await Task.Delay(40);
+        }
         return windows.Count;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct RECT { public int Left, Top, Right, Bottom; }
+
+    [DllImport("user32.dll")]
+    static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+
+    /// <summary>
+    /// The size the windows kept when they were given <paramref name="cell"/>, when they refused to get that small (a
+    /// window's least size); null when they took it. Read until it holds (each window moves on its own thread): the
+    /// smallest of them, as one still moving is larger, never smaller.
+    /// </summary>
+    static async Task<Size?> KeptSizeAsync(List<IntPtr> windows, Size cell)
+    {
+        const int Slack = 2;
+        Size? last = null;
+        for (int tries = 0; tries < 10; tries++)
+        {
+            await Task.Delay(100);
+            var sizes = windows.Select(h => GetWindowRect(h, out var r) ? new Size(r.Right - r.Left, r.Bottom - r.Top) : Size.Empty)
+                .Where(s => !s.IsEmpty).ToList();
+            if (sizes.Count == 0)
+                return null;
+            var least = new Size(sizes.Min(s => s.Width), sizes.Min(s => s.Height));
+            if (least.Width <= cell.Width + Slack && least.Height <= cell.Height + Slack)
+                return null;
+            var kept = new Size(Math.Max(least.Width, cell.Width), Math.Max(least.Height, cell.Height));
+            if (kept == last)
+                return kept;
+            last = kept;
+        }
+        return last;
+    }
+
+    /// <summary>
+    /// Where <paramref name="count"/> windows of <paramref name="size"/> go when they don't fit side by side: a
+    /// near-square grid's columns and rows spread evenly from the top-left to the bottom-right of <paramref name="area"/>
+    /// (never further apart than side by side), so every window stays on the screen and overlaps the next ones evenly.
+    /// </summary>
+    public static List<Point> OverlapSpots(int count, Rectangle area, Size size)
+    {
+        int cols = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(count)));
+        int rows = Math.Max(1, (int)Math.Ceiling(count / (double)cols));
+        int w = Math.Min(size.Width, area.Width), h = Math.Min(size.Height, area.Height);
+        int stepX = cols > 1 ? Math.Min(w, (area.Width - w) / (cols - 1)) : 0;
+        int stepY = rows > 1 ? Math.Min(h, (area.Height - h) / (rows - 1)) : 0;
+        return Enumerable.Range(0, count).Select(i => new Point(area.X + i % cols * stepX, area.Y + i / cols * stepY)).ToList();
     }
 
     /// <summary>

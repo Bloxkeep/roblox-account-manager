@@ -975,7 +975,7 @@ window.I18N = {
     'set.trim': 'Tiết kiệm RAM cho cửa sổ chạy nền',
     'set.trimDesc': 'Khi máy sắp hết RAM, cửa sổ chạy nền nhường RAM cho cửa sổ bạn đang chơi.',
     'set.cores': 'Nhường nhân mạnh cho cửa sổ đang chơi',
-    'set.coresDesc': 'Cửa sổ Roblox chạy nền chỉ dùng {e} nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện; cửa sổ bạn đang chơi và các ứng dụng khác giữ các nhân mạnh. Treo nhiều acc vẫn mượt, laptop mát hơn.',
+    'set.coresDesc': 'Cửa sổ Roblox chạy nền chỉ dùng {e} nhân tiết kiệm của CPU, ở chế độ tiết kiệm điện; cửa sổ bạn đang chơi và các ứng dụng khác giữ các nhân mạnh. Treo nhiều tài khoản vẫn mượt, laptop mát hơn.',
     'set.coresDescOne': 'Cửa sổ Roblox chạy nền ở chế độ tiết kiệm điện của Windows; cửa sổ bạn đang chơi chạy hết tốc lực. (CPU này chỉ có một loại nhân nên các cửa sổ dùng chung.)',
     'set.multiConfirmTitle': 'Bật Multi-Roblox?', 'set.multiOk': 'Bật',
     'set.multiConfirm': 'Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc. Bạn tự chịu rủi ro khi dùng.',
