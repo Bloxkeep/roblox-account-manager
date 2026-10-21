@@ -425,10 +425,23 @@ public sealed class Vault : IDisposable
     /// <summary>One write to the vault file at a time: a save in the background and one made now never interleave.</summary>
     static readonly object FileGate = new();
     /// <summary>A background save waiting for the worker: the vault as it was then, and the key it goes under.</summary>
-    sealed record Pending(byte[] Plain, byte[] Key, byte[] Salt, int Iterations, string Path);
+    sealed record Pending(long Number, byte[] Plain, byte[] Key, byte[] Salt, int Iterations, string Path);
     readonly object _queueGate = new();
     Pending? _queued;
     Task _background = Task.CompletedTask;
+    /// <summary>
+    /// Every save is numbered as it takes the vault (under _sync), and the file gate keeps the number of the newest one
+    /// written: a background save that took the vault before a save made now but reaches the file after it (its worker
+    /// had taken it from the queue, so the save made now had nothing to drop) is left out, so the file never goes back
+    /// to an older vault, nor to an old password.
+    /// </summary>
+    long _taken, _written;
+
+    /// <summary>
+    /// The checks' pause (Tests/Bloxkeep.Tests): when set, a background save calls it once it has taken the vault to
+    /// write and before it reaches the file, as a busy PC may hold it there. The app never sets it.
+    /// </summary>
+    internal static Action? BeforeBackgroundWrite { get; set; }
 
     /// <summary>
     /// Takes the vault as it is now (on the caller's thread, so nothing changes under it) and has it encrypted, written
@@ -442,7 +455,7 @@ public sealed class Vault : IDisposable
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_key.Length == 0, this);
-            next = new Pending(JsonSerializer.SerializeToUtf8Bytes(Data), _key.ToArray(), _salt.ToArray(), _iterations, _path);
+            next = new Pending(++_taken, JsonSerializer.SerializeToUtf8Bytes(Data), _key.ToArray(), _salt.ToArray(), _iterations, _path);
         }
         lock (_queueGate)
         {
@@ -462,10 +475,16 @@ public sealed class Vault : IDisposable
         }
         if (p is null)
             return; // written already, by the save before this one or by one made now
+        BeforeBackgroundWrite?.Invoke();
         try
         {
             lock (FileGate)
+            {
+                if (p.Number < _written)
+                    return; // a newer save took the file first: one made now, while this was on its way
                 WriteEncrypted(p.Plain, p.Key, p.Salt, p.Iterations, p.Path);
+                _written = p.Number;
+            }
         }
         catch
         {
@@ -533,12 +552,14 @@ public sealed class Vault : IDisposable
     void Write(byte[] key, byte[] salt, int iterations)
     {
         byte[] plain = JsonSerializer.SerializeToUtf8Bytes(Data);
+        long number = ++_taken; // callers hold _sync
         try
         {
             lock (FileGate)
             {
                 DropQueued(); // older than this, and possibly under the old password (ChangePassword)
                 WriteEncrypted(plain, key, salt, iterations, _path);
+                _written = number;
             }
         }
         finally
