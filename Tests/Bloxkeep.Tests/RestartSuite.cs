@@ -161,6 +161,8 @@ static class RestartSuite
                 && due is { } d && d > DateTime.UtcNow.AddMinutes(4), $"{queue.Count} {due}");
             ended = Harness.Get<System.Collections.IDictionary>(app, "_endedHere");
             c.Check("…the client that ended lately too", ended.Contains(kicked.Id), ended.Count);
+            c.Check("…and the vault is saved again soon (picking the open windows up saved it without the rejoin)",
+                Harness.Get<DateTime?>(app, "_saveDue") is not null);
             Harness.Get<System.Collections.IDictionary>(app, "_running").Clear();
             queue.Clear();
             // As the vault holds them when it is opened: one due long ago (Bloxkeep closed with a rejoin waiting, opened

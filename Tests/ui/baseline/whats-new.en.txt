@@ -215,7 +215,10 @@ html [data-theme="dark" lang="en"]
             span "Opening a game for an account that is only on Roblox's home screen, or stuck on Join Error 600, no longer asks whether it should leave what it's playing."
           li
             svg.i #yqrnd9
-            span "A preset, also when run from the tray or on its schedule, leaves out an account the game banned and says so, instead of stopping at a question nobody answers."
+            span "A preset, also when run from the tray or on its schedule, leaves out an account the game banned and says so, instead of stopping at a question nobody answers. Before that, Roblox is asked whether the ban still stands, so one that has ended no longer keeps the account out."
+          li
+            svg.i #yqrnd9
+            span "A game's ban is also caught when Roblox didn't answer the first time (no network right after the PC wakes, too many requests), when the window was closed right away, and in the game's other places."
           li
             svg.i #yqrnd9
             span "A game's ban is no longer told a second time when Bloxkeep restarts (for an update) with the window still open, and its Discord alert no longer adds that the account was kicked."

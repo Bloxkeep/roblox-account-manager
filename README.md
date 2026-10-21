@@ -344,7 +344,7 @@ The **Staying in game** page (called **Performance** before 1.0.3) holds the swi
 Turn it on for one account in its ⋯ menu › **Auto-rejoin**, for every account at once in **Settings › Staying in game › Auto-rejoin** (it reads "On for 3 of 10" when mixed), or for a preset's windows with the preset's own option (see [Presets](#presets)).
 
 - When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. After the PC wakes up, it waits for the connection first.
-- If it keeps dropping, Bloxkeep keeps rejoining every 10 seconds and says so once. A ban by the game stops it: the card says **Banned by the game**, Bloxkeep asks before opening that account in that game again, and a preset leaves it out. Without a network, it retries every 30 seconds, up to 20 times.
+- If it keeps dropping, Bloxkeep keeps rejoining every 10 seconds and says so once. A ban by the game stops it: the card says **Banned by the game**, Bloxkeep asks before opening that account in that game again, and a preset leaves it out, unless Roblox says the ban is over. Without a network, it retries every 30 seconds, up to 20 times.
 - It doesn't rejoin when you leave the game yourself, when the account signed in on another device, when it's banned, when Roblox itself closed the window because another one opened, or while Bloxkeep is locked. Closing the Roblox window by hand counts as leaving, so use **Close** in the app.
 - If Roblox ended an account's sign-in, auto-rejoin turns itself off for it, and back on once the account is signed in again. With Multi-Roblox not ready, a rejoin is skipped (a new window would close the open one) and you're told.
 

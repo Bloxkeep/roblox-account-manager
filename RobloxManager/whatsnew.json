@@ -20,7 +20,8 @@
       "en": [
         "A rejoin waiting its turn no longer holds back Restart to update (\"Wait until Bloxkeep finishes opening Roblox\" while nothing was opening). It carries on after the restart.",
         "Opening a game for an account that is only on Roblox's home screen, or stuck on Join Error 600, no longer asks whether it should leave what it's playing.",
-        "A preset, also when run from the tray or on its schedule, leaves out an account the game banned and says so, instead of stopping at a question nobody answers.",
+        "A preset, also when run from the tray or on its schedule, leaves out an account the game banned and says so, instead of stopping at a question nobody answers. Before that, Roblox is asked whether the ban still stands, so one that has ended no longer keeps the account out.",
+        "A game's ban is also caught when Roblox didn't answer the first time (no network right after the PC wakes, too many requests), when the window was closed right away, and in the game's other places.",
         "A game's ban is no longer told a second time when Bloxkeep restarts (for an update) with the window still open, and its Discord alert no longer adds that the account was kicked.",
         "A ban in a game picked in the Roblox window is kept for that game, not for the one Bloxkeep opened. The window of a banned account is no longer closed for a rejoin that wasn't coming.",
         "In a narrow window, Switch vault no longer runs past the sidebar's edge, and shows its letter again."
@@ -28,7 +29,8 @@
       "vi": [
         "Một lần tự vào lại đang chờ không còn chặn nút Khởi động lại để cập nhật (hiện \"Chờ Bloxkeep mở Roblox xong đã\" dù chẳng có gì đang mở). Lần vào lại đó tiếp tục sau khi khởi động lại.",
         "Mở game cho tài khoản chỉ đang ở màn hình chính của Roblox, hoặc đang kẹt ở lỗi 600, không còn hỏi có thoát game đang chơi không.",
-        "Preset, kể cả khi chạy từ khay hay theo lịch, giờ bỏ qua tài khoản bị game ban và ghi rõ lý do, thay vì dừng lại ở một câu hỏi không ai trả lời.",
+        "Preset, kể cả khi chạy từ khay hay theo lịch, giờ bỏ qua tài khoản bị game ban và ghi rõ lý do, thay vì dừng lại ở một câu hỏi không ai trả lời. Trước đó Bloxkeep hỏi Roblox xem lệnh ban còn không, nên ban đã hết thì tài khoản được mở như thường.",
+        "Bị game ban giờ vẫn được nhận ra khi lần hỏi đầu Roblox không trả lời (mất mạng ngay sau khi máy thức dậy, hỏi quá nhiều), khi cửa sổ bị đóng ngay, và ở các place khác của cùng game.",
         "Khi Bloxkeep khởi động lại (để cập nhật) mà cửa sổ vẫn mở, lệnh ban của game không còn bị báo lần nữa, và thông báo Discord không còn ghi kèm là bị kick.",
         "Bị ban trong game chọn ngay trong cửa sổ Roblox thì được ghi cho đúng game đó, không phải game Bloxkeep đã mở. Cửa sổ của tài khoản bị ban không còn bị đóng để chờ một lần vào lại không bao giờ tới.",
         "Khi cửa sổ hẹp, nút Đổi vault không còn lấn ra ngoài thanh bên và hiện lại chữ cái của vault."

@@ -338,7 +338,7 @@ Trang **Treo game** (trước bản 1.0.3 tên là **Hiệu năng**) có công t
 Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game**, cho mọi tài khoản cùng lúc ở **Cài đặt › Treo game › Tự vào lại game** (khi chỗ bật chỗ tắt sẽ ghi "Bật cho 3/10 tài khoản"), hoặc cho cửa sổ của một preset bằng tùy chọn riêng của preset (xem [Preset](#preset)).
 
 - Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Máy vừa thức dậy thì Bloxkeep chờ có mạng rồi mới vào lại.
-- Nếu cứ bị văng liên tục, Bloxkeep vẫn tự vào lại sau mỗi 10 giây và báo một lần. Bị game ban thì dừng hẳn: thẻ ghi **Bị game ban**, Bloxkeep hỏi lại trước khi mở tài khoản đó vào game ấy, còn Preset thì bỏ qua tài khoản này. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
+- Nếu cứ bị văng liên tục, Bloxkeep vẫn tự vào lại sau mỗi 10 giây và báo một lần. Bị game ban thì dừng hẳn: thẻ ghi **Bị game ban**, Bloxkeep hỏi lại trước khi mở tài khoản đó vào game ấy, còn Preset thì bỏ qua tài khoản này, trừ khi Roblox cho biết lệnh ban đã hết. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
 - Bloxkeep không vào lại khi bạn tự thoát game, khi tài khoản đăng nhập ở thiết bị khác, khi tài khoản bị ban, khi chính Roblox đóng cửa sổ vì có cửa sổ khác mở, hoặc khi Bloxkeep đang khóa. Tự tay đóng cửa sổ Roblox cũng tính là thoát game, nên hãy dùng nút **Đóng** trong app.
 - Nếu Roblox kết thúc phiên đăng nhập của một tài khoản, tự vào lại game tự tắt cho tài khoản đó, và tự bật lại khi tài khoản được đăng nhập lại. Khi Multi-Roblox chưa sẵn sàng, Bloxkeep không vào lại (vì cửa sổ mới sẽ đóng mất cửa sổ đang mở) và báo cho bạn.
 

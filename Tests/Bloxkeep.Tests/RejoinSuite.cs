@@ -365,7 +365,7 @@ static class RejoinSuite
             // When a join not in yet is asked about: at once for a game known to have banned the account, else only after
             // the longest silent wait a good join was seen to take (38 s on 2026-10-16).
             var checkAfter = t.GetMethod("JoinCheckAfter", Harness.F)!;
-            TimeSpan After(long place) => (TimeSpan)checkAfter.Invoke(null, [account, new GameTarget(place)])!;
+            TimeSpan After(long place) => (TimeSpan)checkAfter.Invoke(app, [account, new GameTarget(place)])!;
             c.Check("a join not in yet is asked about after 5 s for a game that banned the account, after 40 s otherwise",
                 After(Gpo) == TimeSpan.FromSeconds(5) && After(920587237) == TimeSpan.FromSeconds(40), $"{After(Gpo)} {After(920587237)}");
             // Roblox's answer to a join it refuses (Join Error 600 in the window, nothing in the log).
@@ -505,19 +505,28 @@ static class RejoinSuite
             var held = running[account.Id];
             running.Clear();
             noted.Add(me);
-            checks[me] = Task.FromResult<RobloxApi.JoinAnswer?>(null);
+            checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(null), DateTime.UtcNow);
             Tick();
             c.Check("…and once nothing is open, nothing is held about its process id", noted.Count == 0 && checks.Count == 0, $"{noted.Count} {checks.Count}");
             running[account.Id] = held;
-            // Roblox's join question failed (an exception of any kind): the check of every window goes on.
+            // Roblox's join question failed (an exception of any kind): the check of every window goes on. Roblox's join API
+            // answers from here (questions counts them): nothing goes to Roblox.
             account.Cookie = "test";
+            var realAsk = Harness.Get<object>(app, "_askJoin");
+            int questions = 0;
+            RobloxApi.JoinAnswer reply = new(200, 12, "Unable to join Game 211");
+            Harness.Set(app, "_askJoin", (Func<Account, GameTarget, CancellationToken, Task<RobloxApi.JoinAnswer>>)((_, _, _) =>
+            {
+                questions++;
+                return Task.FromResult(reply);
+            }));
             try
             {
                 NewWindow();
                 Run(new GameTarget(920587237));
                 Write(Line(DateTime.UtcNow.AddSeconds(-45), Launch));
                 Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(42));
-                checks[me] = Task.FromException<RobloxApi.JoinAnswer?>(new InvalidOperationException("test"));
+                checks[me] = (Task.FromException<RobloxApi.JoinAnswer?>(new InvalidOperationException("test")), DateTime.UtcNow);
                 Exception? thrown = null;
                 try { Tick(); } catch (Exception ex) { thrown = ex.InnerException ?? ex; }
                 c.Check("a join question that failed doesn't stop the check of the windows", thrown is null, thrown?.GetType().Name);
@@ -528,23 +537,114 @@ static class RejoinSuite
                 account.GameBans.Add(new GameBan { PlaceId = 920587237, At = DateTime.UtcNow.AddHours(-1) });
                 Write(Line(DateTime.UtcNow.AddSeconds(-70), Launch));
                 Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(65));
-                checks[me] = Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 6, "The game you requested is currently full."));
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 6, "The game you requested is currently full.")), DateTime.UtcNow);
                 closing.Clear();
                 Tick();
                 c.Check("a window into a game that banned the account, not in a minute on: not closed when no rejoin follows",
                     !closing.Contains(me) && account.GameBans.Any(b => b.PlaceId == 920587237));
                 // Roblox would let it in now (status 2): the ban is over, and it is tried again as any other.
-                checks[me] = Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 2, null));
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 2, null)), DateTime.UtcNow);
                 Tick();
                 c.Check("…but once Roblox would let it in, the ban is forgotten and it is tried again",
                     closing.Contains(me) && account.GameBans.All(b => b.PlaceId != 920587237), string.Join(",", account.GameBans.Select(b => b.PlaceId)));
                 closing.Clear();
+                // A join question that got no answer (no network, often right after the PC wakes): asked again half a minute
+                // on, not never; a ban in that answer is then told. Before, a window known banned stayed on "Joining".
+                NewWindow();
+                Run(new GameTarget(Gpo));
+                account.GameBans = [new GameBan { PlaceId = Gpo, At = DateTime.UtcNow.AddHours(-1) }];
+                Write(Line(DateTime.UtcNow.AddSeconds(-20), Launch));
+                Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(15));
+                reply = new(200, 12, "Unable to join Game 211");
+                questions = 0;
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(null), DateTime.UtcNow.AddSeconds(-10));
+                Tick();
+                c.Check("a join question without an answer isn't asked again at once", questions == 0 && !noted.Contains(me), questions);
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(null), DateTime.UtcNow.AddSeconds(-40));
+                Tick();
+                Tick();
+                c.Check("…but half a minute on, and the ban in that answer is then noted", questions == 1 && noted.Contains(me), $"{questions} {noted.Contains(me)}");
+                // A refused request (too many requests: an answer without a status) is no answer either.
+                NewWindow();
+                Run(new GameTarget(Gpo));
+                Write(Line(DateTime.UtcNow.AddSeconds(-20), Launch));
+                Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(15));
+                reply = new(429, null, "Too many requests");
+                questions = 0;
+                Tick();
+                var refusedAsk = ((Task<RobloxApi.JoinAnswer?> Answer, DateTime At))checks[me]!;
+                checks[me] = (refusedAsk.Answer, DateTime.UtcNow.AddSeconds(-40));
+                Tick();
+                c.Check("a join question Roblox refused (too many requests) is asked again too", questions == 2, questions);
+                // The person starts a game in a window held as banned (another, or the same again): the card no longer
+                // says the ban, and the window isn't held as banned.
+                NewWindow();
+                Run(new GameTarget(Gpo));
+                Write(Line(DateTime.UtcNow.AddSeconds(-20), Launch));
+                Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(15));
+                noted.Add(me);
+                bool bannedBefore = CardBanned();
+                Write(Line(DateTime.UtcNow, Launch));
+                Poll(s => s is { Status: "joining", PersonStarted: true });
+                c.Check("the person starts a game in a window held as banned: the card no longer says the ban", bannedBefore && !CardBanned());
+                Tick();
+                c.Check("…nor is the window held as banned", !noted.Contains(me));
+                // A ban noted before is asked about before opening (a game's ban may last a day): one Roblox would let in now
+                // is forgotten, so the account opens as any other; one it still refuses is kept.
+                var recheck = t.GetMethod("RecheckGameBansAsync", Harness.F)!;
+                async Task Recheck() => await (Task)recheck.Invoke(app, [new List<Account> { account }, new GameTarget(Gpo), CancellationToken.None])!;
+                reply = new(200, 2, null);
+                account.GameBans = [new GameBan { PlaceId = Gpo, At = DateTime.UtcNow.AddDays(-1) }];
+                await Recheck();
+                c.Check("a ban noted before that Roblox no longer holds: forgotten before opening", account.GameBans.Count == 0);
+                reply = new(200, 12, "Unable to join Game 211");
+                account.GameBans = [new GameBan { PlaceId = Gpo, At = DateTime.UtcNow.AddDays(-1) }];
+                await Recheck();
+                c.Check("…one Roblox still holds: kept", account.GameBans.Count == 1);
+                // …and a preset asks before leaving the account out (here Roblox still holds it: nothing opens).
+                var openNow = running[account.Id];
+                running.Clear();
+                questions = 0;
+                string? leftOutSaid = null;
+                try { await Open(Guid.NewGuid()); } catch (UserError ex) { leftOutSaid = ex.Message; }
+                c.Check("…a preset asks Roblox before leaving out an account a game banned", questions == 1 && leftOutSaid is not null, $"{questions} {leftOutSaid}");
+                running[account.Id] = openNow;
             }
             finally
             {
                 account.Cookie = "";
                 checks.Clear();
+                Harness.Set(app, "_askJoin", realAsk);
             }
+            // A rejoin waiting its turn for an account a game banned since it was queued: not done (no question to Roblox,
+            // no window: it returns at once).
+            account.GameBans = [new GameBan { PlaceId = Gpo, At = DateTime.UtcNow }];
+            var queuedOpen = running[account.Id];
+            running.Clear();
+            var requestType = t.GetNestedType("RejoinRequest", Harness.F)!;
+            var waitingRejoin = Activator.CreateInstance(requestType, account.Id, new GameTarget(Gpo), DateTime.UtcNow, 0, null, false)!;
+            var rejoinTask = (Task)t.GetMethod("RejoinAsync", Harness.F)!.Invoke(app, [waitingRejoin])!;
+            bool returnedAtOnce = rejoinTask.IsCompleted;
+            await rejoinTask;
+            c.Check("a rejoin waiting its turn for an account the game banned since: not done", returnedAtOnce);
+            running[account.Id] = queuedOpen;
+            account.GameBans.Clear();
+            // A ban in the last lines of a window that closed before the logs were looked at: noted (and told) all the same.
+            Told();
+            var closedAtOnce = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-2), new GameTarget(Gpo), false, null)!;
+            var lastLines = new RobloxLogWatcher.ClientState("disconnected", Gpo, "e403336e-5756-44c9-b029-0ae6873a3d03", 267, DateTime.UtcNow, null, false, null, true);
+            Harness.Invoke(app, "OnSessionEnded", account.Id, closedAtOnce, lastLines);
+            c.Check("a ban in the last lines of a window closed at once: noted and told all the same",
+                account.GameBans.SingleOrDefault()?.PlaceId == Gpo && Told() is not null && queue.Count == 0, string.Join(",", account.GameBans.Select(b => b.PlaceId)));
+            // A game's ban holds in all its places: one noted for one place counts for another of the same game.
+            var games = Harness.Get<System.Collections.IDictionary>(app, "_games");
+            const long GpoOther = 1730877807;
+            games[Gpo] = new GameInfo(Gpo, 648454481, "Grand Piece Online", "", 0, null);
+            games[GpoOther] = new GameInfo(GpoOther, 648454481, "Grand Piece Online", "", 0, null);
+            c.Check("a game's ban noted for one of its places counts for another", Harness.Invoke(app, "GameBanOf", account, (long?)GpoOther) is not null);
+            games.Remove(Gpo);
+            games.Remove(GpoOther);
+            account.GameBans.Clear();
             // A game started in the window while still on a server, its old server's kick (a ban) logged after the new join:
             // that ban goes with the old server, not with the next server's disconnect.
             NewWindow();

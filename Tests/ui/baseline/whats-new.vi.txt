@@ -215,7 +215,10 @@ html [data-theme="dark" lang="vi"]
             span "Mở game cho tài khoản chỉ đang ở màn hình chính của Roblox, hoặc đang kẹt ở lỗi 600, không còn hỏi có thoát game đang chơi không."
           li
             svg.i #yqrnd9
-            span "Preset, kể cả khi chạy từ khay hay theo lịch, giờ bỏ qua tài khoản bị game ban và ghi rõ lý do, thay vì dừng lại ở một câu hỏi không ai trả lời."
+            span "Preset, kể cả khi chạy từ khay hay theo lịch, giờ bỏ qua tài khoản bị game ban và ghi rõ lý do, thay vì dừng lại ở một câu hỏi không ai trả lời. Trước đó Bloxkeep hỏi Roblox xem lệnh ban còn không, nên ban đã hết thì tài khoản được mở như thường."
+          li
+            svg.i #yqrnd9
+            span "Bị game ban giờ vẫn được nhận ra khi lần hỏi đầu Roblox không trả lời (mất mạng ngay sau khi máy thức dậy, hỏi quá nhiều), khi cửa sổ bị đóng ngay, và ở các place khác của cùng game."
           li
             svg.i #yqrnd9
             span "Khi Bloxkeep khởi động lại (để cập nhật) mà cửa sổ vẫn mở, lệnh ban của game không còn bị báo lần nữa, và thông báo Discord không còn ghi kèm là bị kick."
