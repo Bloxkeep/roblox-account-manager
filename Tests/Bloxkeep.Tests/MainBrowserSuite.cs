@@ -69,17 +69,19 @@ static class MainBrowserSuite
         // Windows short of memory: the browser in the background goes, looked at every half minute; otherwise it stays, asleep.
         bool Tight(long commitLimit, long commitFree, int load) =>
             AppController.MemoryTight(new MemoryStatus(32_000, 8_000, load, commitLimit, commitFree));
-        c.Check("memory counts as short when another Roblox (2 GB) and a margin wouldn't fit in the virtual memory left", Tight(50_000, 2_500, 60));
+        c.Check("memory counts as short when another Roblox (3 GB) and a margin wouldn't fit in the virtual memory left", Tight(50_000, 2_500, 60));
         c.Check("…or when RAM is nearly all used", Tight(50_000, 20_000, 93));
         c.Check("…but not with room to spare", !Tight(50_000, 10_000, 60));
         c.Check("…nor when Windows didn't say how much virtual memory is left", !Tight(0, 0, 60));
         c.Check("…nor when the page file may still grow enough",
             !AppController.MemoryTight(new MemoryStatus(32_000, 8_000, 60, 51_500, 500, PageFileRoomMb: 15_000)));
 
-        // How much the page files may still grow: up to each one's largest size, within its drive's free space less 1 GB.
-        long Room(string[] files, long nowMb, long freeC = 64_000, long freeE = 900_000) =>
+        // How much the page files may still grow: up to each one's largest size, within its drive's free space less 1 GB,
+        // counting only the page files Windows made (made: the drives with one, "ce" for both).
+        long Room(string[] files, long nowMb, long freeC = 64_000, long freeE = 900_000, string made = "ce") =>
             (long)typeof(SystemMemory).GetMethod("PageFileRoomMb", Harness.F)!.Invoke(null, [files, nowMb,
-                (Func<string, long>)(root => root.StartsWith("c", StringComparison.OrdinalIgnoreCase) ? freeC : freeE)])!;
+                (Func<string, long>)(root => root.StartsWith("c", StringComparison.OrdinalIgnoreCase) ? freeC : freeE),
+                (Func<string, bool>)(root => made.Contains(char.ToLowerInvariant(root[0])))])!;
         string[] set = [@"c:\pagefile.sys 1024 4096", @"e:\pagefile.sys 16348 32768"];
         c.Check("page files set to at most 4 + 32 GB, 18.9 GB now: 17.9 GB still to grow", Room(set, 18_942) == 36_864 - 18_942, Room(set, 18_942));
         c.Check("…only as far as the drives' free space allows (less 1 GB each)", Room(set, 18_942, 1_500, 2_000) == 476 + 976, Room(set, 18_942, 1_500, 2_000));
@@ -87,6 +89,13 @@ static class MainBrowserSuite
         c.Check("a page file Windows sizes by itself counts for nothing (its limits aren't known)",
             Room([@"c:\pagefile.sys 0 0"], 4_000) == 0 && Room([@"?:\pagefile.sys"], 4_000) == 0 && Room([@"c:\pagefile.sys 1024 4096", @"e:\pagefile.sys"], 4_000) == 0);
         c.Check("…nor does no page file at all", Room([], 0) == 0);
+        // 2026-10-22: E:'s page file set to 16–32 GB but never made, C:'s at its largest 4 GB, the commit limit full.
+        c.Check("a page file set but never made by Windows counts for nothing: E: set to 16–32 GB, only C: (4 GB, at its largest) made",
+            Room(set, 4_096, made: "c") == 0, Room(set, 4_096, made: "c"));
+        c.Check("…and C:'s room still counts while it can grow", Room(set, 1_024, made: "c") == 3_072, Room(set, 1_024, made: "c"));
+        var drives = typeof(SystemMemory).GetMethod("PageFileDrives", Harness.F)!.Invoke(null, null) as HashSet<string>;
+        c.Check("the drives Windows made a page file on are read from Windows itself", drives is { Count: > 0 } && drives.All(d => d.Length == 3 && d[1] == ':' && d[2] == '\\'),
+            drives is null ? "null" : string.Join(",", drives));
         var now = SystemMemory.Read();
         c.Check("this PC's virtual memory is read, with the page files' room to grow", now.CommitLimitMb > 0 && now.PageFileRoomMb >= 0 && now.CommitRoomMb >= now.CommitAvailableMb,
             $"limit {now.CommitLimitMb}, left {now.CommitAvailableMb}, room {now.PageFileRoomMb}");

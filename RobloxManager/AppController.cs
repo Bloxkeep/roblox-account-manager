@@ -59,8 +59,11 @@ public sealed partial class AppController : IDisposable
     static readonly TimeSpan BackgroundSweep = TimeSpan.FromSeconds(15);
     const int MemoryWarningLoad = 92;
     const long DefaultClientMb = 900;
-    /// <summary>What a Roblox client holds of Windows' commit limit once in a game (2.1–2.4 GB seen on 0.743), when none runs to go by.</summary>
-    const long DefaultClientCommitMb = 2048;
+    /// <summary>
+    /// What a Roblox client holds of Windows' commit limit once in a game, when none runs to go by: 2.1–2.4 GB seen on 0.743,
+    /// 3.05–3.16 GB on 0.744 (the three biggest in Windows' low-virtual-memory event of 2026-10-22).
+    /// </summary>
+    const long DefaultClientCommitMb = 3072;
     /// <summary>Below this much of the commit limit left, programs start failing; Windows itself warns at about this point.</summary>
     const long CommitMarginMb = 1024;
     const long MB = 1024 * 1024;
