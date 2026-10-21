@@ -81,6 +81,8 @@
       hasPassword: false, cookieValid: null, lastUsed: null, avatarUrl: null, state: 'launching',
       presence: { type: 'offline' }, session: { pid: 0, since: minsAgo(0), game: g(4924922222) } },
   ];
+  // ?vng=1: Trade is a Roblox VNG account (the VNG tag on its card and in its list row).
+  if (params.has('vng')) accounts.find(a => a.id === id(6)).realm = 'vng';
   // ?accounts=300: that many accounts (copies of the ones above), for timing the page with a big list.
   if (params.has('accounts')) {
     const want = Math.min(1000, Number(params.get('accounts')) || 0), base = accounts.slice();

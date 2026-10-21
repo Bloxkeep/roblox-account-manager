@@ -17,6 +17,8 @@ export default [
   // ── Accounts ──
   S('accounts-cards', ''),
   S('accounts-list', '', async s => { await s.click(key('layout.list')); }),
+  // A VNG account in the list: its tag whole, and every row's columns still in line.
+  S('accounts-list-vng', 'vng=1', async s => { await s.click(key('layout.list')); }),
   S('accounts-select', 'select=1'),
   S('account-menu', 'menu=1'),
   S('account-edit', 'edit=1'),

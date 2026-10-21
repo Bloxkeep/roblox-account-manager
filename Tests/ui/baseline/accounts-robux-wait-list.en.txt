@@ -129,7 +129,7 @@ html [data-theme="dark" lang="en"]
             span "Sort: Name"
         div.scroll [id="scroll"]
           div [id="grid"]
-            div.grid.list [role="listbox" aria-label="Accounts" aria-multiselectable="true" style="--col-group:min(138px, calc(4ch + 26px));--col-live:150px;--col-rejoin:24px;--col-robux:calc(1ch + 26px);--col-vng:0px"]
+            div.grid.list [role="listbox" aria-label="Accounts" aria-multiselectable="true"]
               article.card.row [role="option" tabindex="0" aria-label="Alt" aria-selected="false"]
                 span.check
                   svg.i #14iobj
@@ -141,9 +141,14 @@ html [data-theme="dark" lang="en"]
                   small [title="@lananh_2010"] "@lananh_2010"
                 div.row-status.studio [title="Roblox Studio"] "Roblox Studio"
                 div.row-meta
-                  span.robux.wait [title="Robux on this account, checked every 30 minutes"] "…"
-                    svg.i #hpg3hu
+                  span.cell.end
+                    span.robux.wait [title="Robux on this account, checked every 30 minutes"] "…"
+                      svg.i #hpg3hu
+                  span.cell
+                  span.cell
                 div.row-live
+                  span.cell.end
+                  span.cell.end
                 div.row-actions
                   button.icon-btn.play [title="Play" tabindex="0" aria-label="Play"]
                     svg.i #1ewcuky
@@ -164,13 +169,18 @@ html [data-theme="dark" lang="en"]
                     svg.i #ktpp14
                     b.up "1 min"
                 div.row-meta
-                  span.robux.wait [title="Robux on this account, checked every 30 minutes"] "…"
-                    svg.i #hpg3hu
-                  span.tag [title="Farm"] "Farm"
+                  span.cell.end
+                    span.robux.wait [title="Robux on this account, checked every 30 minutes"] "…"
+                      svg.i #hpg3hu
+                  span.cell
+                    span.tag [title="Farm"] "Farm"
+                  span.cell
                 div.row-live
-                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 2222"
-                  span.row-ram [title="RAM in use"]
-                    b.ram "935 MB"
+                  span.cell.end
+                    button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 2222"
+                  span.cell.end
+                    span.row-ram [title="RAM in use"]
+                      b.ram "935 MB"
                 div.row-actions
                   button.icon-btn.stop [title="Close" tabindex="-1" aria-label="Close"]
                     svg.i #16z0s1r
@@ -188,8 +198,13 @@ html [data-theme="dark" lang="en"]
                 div.row-status.signedout [title=""]
                   span.bad.badge "Needs sign-in"
                 div.row-meta
-                  span.tag [title="Farm"] "Farm"
+                  span.cell.end
+                  span.cell
+                    span.tag [title="Farm"] "Farm"
+                  span.cell
                 div.row-live
+                  span.cell.end
+                  span.cell.end
                 div.row-actions
                   button.icon-btn.relogin [title="Sign in" tabindex="-1" aria-label="Sign in"]
                     svg.i #kqqqno
@@ -210,15 +225,20 @@ html [data-theme="dark" lang="en"]
                     svg.i #ktpp14
                     b.up "47 min"
                 div.row-meta
-                  span.robux.wait [title="Robux on this account, checked every 30 minutes"] "…"
-                    svg.i #hpg3hu
-                  span.tag [title="Main"] "Main"
-                  span.rejoin [title="Auto-rejoin is on"]
-                    svg.i #1ap9cll
+                  span.cell.end
+                    span.robux.wait [title="Robux on this account, checked every 30 minutes"] "…"
+                      svg.i #hpg3hu
+                  span.cell
+                    span.tag [title="Main"] "Main"
+                  span.cell
+                    span.rejoin [title="Auto-rejoin is on"]
+                      svg.i #1ap9cll
                 div.row-live
-                  button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 1111"
-                  span.row-ram [title="RAM in use"]
-                    b.ram "795 MB"
+                  span.cell.end
+                    button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 1111"
+                  span.cell.end
+                    span.row-ram [title="RAM in use"]
+                      b.ram "795 MB"
                 div.row-actions
                   button.icon-btn.stop [title="Close" tabindex="-1" aria-label="Close"]
                     svg.i #16z0s1r
@@ -235,10 +255,15 @@ html [data-theme="dark" lang="en"]
                   small [title="@night_owl_rb"] "@night_owl_rb"
                 div.ingame.row-status [title="Playing · another device · [🎃] Adopt Me!"] "Playing · another device · [🎃] Adopt Me!"
                 div.row-meta
-                  span.robux.wait [title="Robux on this account, checked every 30 minutes"] "…"
-                    svg.i #hpg3hu
-                  span.tag [title="Farm"] "Farm"
+                  span.cell.end
+                    span.robux.wait [title="Robux on this account, checked every 30 minutes"] "…"
+                      svg.i #hpg3hu
+                  span.cell
+                    span.tag [title="Farm"] "Farm"
+                  span.cell
                 div.row-live
+                  span.cell.end
+                  span.cell.end
                 div.row-actions
                   button.icon-btn.play [title="Play" tabindex="-1" aria-label="Play"]
                     svg.i #1ewcuky
@@ -255,7 +280,12 @@ html [data-theme="dark" lang="en"]
                   small [title="@noavatar_user"] "@noavatar_user"
                 div.launching.row-status [title="Opening Roblox…"] "Opening Roblox…"
                 div.row-meta
+                  span.cell.end
+                  span.cell
+                  span.cell
                 div.row-live
+                  span.cell.end
+                  span.cell.end
                 div.row-actions
                   button.icon-btn.stop [title="Close" tabindex="-1" aria-label="Close"]
                     svg.i #16z0s1r
@@ -273,7 +303,12 @@ html [data-theme="dark" lang="en"]
                 div.row-status.unknown [title="Offline"] "Offline"
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                 div.row-meta
+                  span.cell.end
+                  span.cell
+                  span.cell
                 div.row-live
+                  span.cell.end
+                  span.cell.end
                 div.row-actions
                   button.icon-btn.play [title="Play" tabindex="-1" aria-label="Play"]
                     svg.i #1ewcuky

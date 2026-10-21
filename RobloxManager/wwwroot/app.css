@@ -1763,14 +1763,17 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .row-status.kicked { color: var(--warn-ink); }
 .row-status.signedout { color: var(--bad-ink); }
 .row-status.offline, .row-status.unknown { color: var(--muted); }
-/* The list's columns after the status, as wide as the rows shown need (Accounts.tsx listColumns), none when no row has
-   it: VNG, Robux (right-aligned), the group, auto-rejoin, each at the same place on every row. */
-.row-meta { flex: none; display: grid; grid-template-columns: var(--col-vng, auto) var(--col-robux, auto) var(--col-group, auto) var(--col-rejoin, auto); align-items: center; }
-.row-meta .vng { grid-column: 1; justify-self: start; }
-.row-meta .robux { grid-column: 2; justify-self: end; }
-.row-meta .tag:not(.vng) { grid-column: 3; justify-self: start; margin-left: 10px; max-width: min(130px, calc(100% - 10px)); }
-.row-meta .rejoin { grid-column: 4; justify-self: end; display: inline-flex; }
+/* The list's columns after the status (VNG, Robux, the group, auto-rejoin; then PID and memory), only those the list
+   has: each a cell holding what the row shows over an unseen copy of the longest in its column (Accounts.tsx Sizer),
+   so every row's cell is as wide, whatever the font, and the columns stand straight. */
+.row-meta { flex: none; display: flex; align-items: center; gap: 8px; }
+.row-meta .tag { max-width: 130px; }
+.row-meta .rejoin { display: inline-flex; }
 .row-meta .rejoin .i { width: 14px; height: 14px; color: var(--muted); }
+.cell { display: inline-grid; align-items: center; justify-items: start; }
+.cell.end { justify-items: end; }
+.cell > * { grid-area: 1 / 1; }
+.sizer { visibility: hidden; display: inline-flex; align-items: center; }
 .row-status .badge { height: 20px; margin-right: 8px; padding: 0 7px; font-size: 11px; vertical-align: 1px; } /* the card's red pill: banned / needs sign-in */
 .sort-btn.on { border-color: var(--line-3); color: var(--text); } /* a group chosen in the Group menu */
 .row-live { flex: none; width: 64px; text-align: right; font-size: 12px; color: var(--ok-ink); font-variant-numeric: tabular-nums; }
@@ -1846,8 +1849,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* Gives way first on a narrow card (a six-digit PID next to "12 giờ 5 phút"): the RAM and time chips keep their text. */
 .pid { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; height: 26px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 8px; background: transparent; font: 600 11.5px var(--font); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: copy; }
 .pid:hover { color: var(--text); border-color: var(--line-3); background: var(--hover); }
-.row-live { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: var(--col-live, auto); }
-.row-ram { min-width: 7ch; text-align: right; } /* so every PID ends at the same place */
+.row-live { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: auto; min-width: 0; }
 .row-live .pid { height: 24px; padding: 0 7px; }
 /* Playing here: how long, after the game's name, which gives way first when the row is short of room. */
 .row-status.timed { display: flex; align-items: center; gap: 10px; }

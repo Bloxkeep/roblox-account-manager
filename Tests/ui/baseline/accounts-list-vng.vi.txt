@@ -1,0 +1,373 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-top
+            div.brand-name "Bloxkeep"
+            button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+              svg.i #1crx2f1
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav.on [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+        header.top
+          div.top-title
+            h1 "Tài khoản"
+            p [id="acc-sub"] "tài khoản đang chơi online"
+              b "7"
+              span.sep "·"
+              b "3"
+              span.sep "·"
+              b "4"
+              span.sep "·"
+              button.link [type="button"] "Chọn tất cả"
+          div.top-tools
+            label.search
+              svg.i #1u22jvi
+              input [id="q" placeholder="Tìm tài khoản, nhóm, ghi chú…" maxlength="100" aria-label="Tìm tài khoản, nhóm, ghi chú…" value=""]
+            button.icon-btn [title="Làm mới trạng thái online"]
+              svg.i #e464bo
+            button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu"]
+              svg.i #1e3omv2
+            div.split
+              button.btn.primary
+                svg.i #puf41w
+                span "Thêm tài khoản"
+              button.btn.primary [title="Cách thêm khác" aria-haspopup="menu"]
+                svg.i #u1ag9u
+        div.bar
+          div.chips.fade-r [id="chips"]
+            button.chip.on [aria-pressed="true"] "Tất cả"
+              em "7"
+            button.chip [aria-pressed="false"] "Cần đăng nhập lại"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "1"
+            button.chip [aria-pressed="false"] "Bị ban"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "1"
+            button.chip [aria-pressed="false"] "Đang chơi"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "3"
+            button.chip [aria-pressed="false"] "Online"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "4"
+            button.chip [aria-pressed="false"] "Offline"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "3"
+            button.chip [aria-pressed="false"] "Trên máy này"
+              em "2"
+          div.seg [id="layout-seg"]
+            button [title="Dạng thẻ" aria-label="Dạng thẻ" aria-pressed="false"]
+              svg.i #19k0rtd
+            button.on [title="Dạng danh sách" aria-label="Dạng danh sách" aria-pressed="true" FOCUSED]
+              svg.i #uj30io
+          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+            svg.i #1mp3g6t
+            span "Nhóm: Tất cả"
+          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+            svg.i #1ui218d
+            span "Sắp xếp: Tên"
+        div.scroll [id="scroll"]
+          div [id="grid"]
+            div.grid.list [role="listbox" aria-label="Tài khoản" aria-multiselectable="true"]
+              article.card.local.row [role="option" tabindex="0" aria-label="Farm 1" aria-selected="false"]
+                span.check
+                  svg.i #14iobj
+                div.avatar.ingame.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                  i.ingame.pdot
+                div.row-name
+                  b [title="Farm 1"] "Farm 1"
+                  small [title="@pixelfarmer01"] "@pixelfarmer01"
+                div.ingame.row-status.timed [title="Đang vào game · Blox Fruits"]
+                  span.row-st "Đang vào game · Blox Fruits"
+                  span.row-up [title="Thời gian đã chơi"]
+                    svg.i #ktpp14
+                    b.up "1 phút"
+                div.row-meta
+                  span.cell
+                  span.cell.end
+                    span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "80"
+                      svg.i #hpg3hu
+                  span.cell
+                    span.tag [title="Farm"] "Farm"
+                  span.cell
+                div.row-live
+                  span.cell.end
+                    button.pid [title="Mã tiến trình Roblox (PID), bấm để sao chép" tabindex="0"] "PID 2222"
+                  span.cell.end
+                    span.row-ram [title="RAM đang dùng"]
+                      b.ram "935 MB"
+                div.row-actions
+                  button.icon-btn.stop [title="Đóng" tabindex="0" aria-label="Đóng"]
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu" aria-label="Tùy chọn khác"]
+                    svg.i #1e3omv2
+              article.card.row [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
+                span.check
+                  svg.i #14iobj
+                div.avatar.invalid.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                  i.offline.pdot
+                div.row-name
+                  b [title="Farm 2"] "Farm 2"
+                  small [title="@pixelfarmer02"] "@pixelfarmer02"
+                div.row-status.signedout [title=""]
+                  span.bad.badge "Cần đăng nhập lại"
+                div.row-meta
+                  span.cell
+                  span.cell.end
+                  span.cell
+                    span.tag [title="Farm"] "Farm"
+                  span.cell
+                div.row-live
+                  span.cell.end
+                  span.cell.end
+                div.row-actions
+                  button.icon-btn.relogin [title="Đăng nhập" tabindex="-1" aria-label="Đăng nhập"]
+                    svg.i #kqqqno
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
+                    svg.i #1e3omv2
+              article.card.row [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
+                span.check
+                  svg.i #14iobj
+                div.avatar.ingame.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                  i.ingame.pdot
+                div.row-name
+                  b [title="Night Owl"] "Night Owl"
+                  small [title="@night_owl_rb"] "@night_owl_rb"
+                div.ingame.row-status [title="Đang chơi · thiết bị khác · [🎃] Adopt Me!"] "Đang chơi · thiết bị khác · [🎃] Adopt Me!"
+                div.row-meta
+                  span.cell
+                  span.cell.end
+                    span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "0"
+                      svg.i #hpg3hu
+                  span.cell
+                    span.tag [title="Farm"] "Farm"
+                  span.cell
+                div.row-live
+                  span.cell.end
+                  span.cell.end
+                div.row-actions
+                  button.icon-btn.play [title="Vào game" tabindex="-1" aria-label="Vào game"]
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
+                    svg.i #1e3omv2
+              article.card.local.row [role="option" tabindex="-1" aria-label="Tài khoản chính" aria-selected="false"]
+                span.check
+                  svg.i #14iobj
+                div.avatar.ingame.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                  i.ingame.pdot
+                div.row-name
+                  b [title="Tài khoản chính"] "Tài khoản chính"
+                  small [title="@sunny_builds"] "@sunny_builds"
+                div.ingame.row-status.timed [title="Đang chơi · Blox Fruits"]
+                  span.row-st "Đang chơi · Blox Fruits"
+                  span.row-up [title="Thời gian đã chơi"]
+                    svg.i #ktpp14
+                    b.up "47 phút"
+                div.row-meta
+                  span.cell
+                  span.cell.end
+                    span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "12.450"
+                      svg.i #hpg3hu
+                  span.cell
+                    span.tag [title="Main"] "Main"
+                  span.cell
+                    span.rejoin [title="Đang bật tự vào lại game"]
+                      svg.i #1ap9cll
+                div.row-live
+                  span.cell.end
+                    button.pid [title="Mã tiến trình Roblox (PID), bấm để sao chép" tabindex="-1"] "PID 1111"
+                  span.cell.end
+                    span.row-ram [title="RAM đang dùng"]
+                      b.ram "795 MB"
+                div.row-actions
+                  button.icon-btn.stop [title="Đóng" tabindex="-1" aria-label="Đóng"]
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
+                    svg.i #1e3omv2
+              article.card.row [role="option" tabindex="-1" aria-label="Tài khoản phụ" aria-selected="false"]
+                span.check
+                  svg.i #14iobj
+                div.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                  i.pdot.studio
+                div.row-name
+                  b [title="Tài khoản phụ"] "Tài khoản phụ"
+                  small [title="@lananh_2010"] "@lananh_2010"
+                div.row-status.studio [title="Roblox Studio"] "Roblox Studio"
+                div.row-meta
+                  span.cell
+                  span.cell.end
+                    span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "1.300"
+                      svg.i #hpg3hu
+                  span.cell
+                  span.cell
+                div.row-live
+                  span.cell.end
+                  span.cell.end
+                div.row-actions
+                  button.icon-btn.play [title="Vào game" tabindex="-1" aria-label="Vào game"]
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
+                    svg.i #1e3omv2
+              article.card.row [role="option" tabindex="-1" aria-label="Thử nghiệm" aria-selected="false"]
+                span.check
+                  svg.i #14iobj
+                div.avatar.sm
+                  span.initials [style="--h:217"] "TH"
+                  i.offline.pdot
+                div.row-name
+                  b [title="Thử nghiệm"] "Thử nghiệm"
+                  small [title="@noavatar_user"] "@noavatar_user"
+                div.launching.row-status [title="Đang mở Roblox…"] "Đang mở Roblox…"
+                div.row-meta
+                  span.cell
+                  span.cell.end
+                  span.cell
+                  span.cell
+                div.row-live
+                  span.cell.end
+                  span.cell.end
+                div.row-actions
+                  button.icon-btn.stop [title="Đóng" tabindex="-1" aria-label="Đóng"]
+                    svg.i #16z0s1r
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
+                    svg.i #1e3omv2
+              article.card.row [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
+                span.check
+                  svg.i #14iobj
+                div.avatar.invalid.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+                  i.pdot
+                div.row-name
+                  b [title="Trade"] "Trade"
+                  small [title="@tradepost_vn"] "@tradepost_vn"
+                div.row-status.unknown [title="Offline"] "Offline"
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua tài khoản này."] "Bị ban"
+                div.row-meta
+                  span.cell
+                    span.tag.vng [title="Tài khoản Roblox VNG (Việt Nam)"] "VNG"
+                  span.cell.end
+                  span.cell
+                  span.cell
+                div.row-live
+                  span.cell.end
+                  span.cell.end
+                div.row-actions
+                  button.icon-btn.play [title="Vào game" tabindex="-1" aria-label="Vào game"]
+                    svg.i #1ewcuky
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
+                    svg.i #1e3omv2
+        div.dock
+          button.game-thumb [id="game-thumb" title="Chọn game"]
+            span.gph
+              svg.i #sy1lqp
+          div.dock-mid
+            div.dock-inputs
+              label.grow.inwrap [title="Place ID, link game hoặc link server riêng (Ctrl+L)"]
+                svg.i #1u22jvi
+                input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+              label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
+                svg.i #ej9lod
+                input [id="job" placeholder="Job ID (tùy chọn)" maxlength="60" aria-label="Job ID (tùy chọn)" value=""]
+              button.dock-join [title="Vào cùng người chơi: các tài khoản đã chọn vào đúng server người đó đang ở" aria-label="Vào cùng người chơi…" disabled]
+                svg.i #145pp0l
+            div.dock-info [id="dock-info" aria-live="polite"]
+              span.gname [title="Blox Fruits"] "Blox Fruits"
+              span.players "412.873 đang chơi"
+              button.srv-open
+                svg.i #ej9lod
+                span "Server"
+              button.srv-open.srv-save [title="Lưu server này để vào lại từ tab Đã lưu: link server riêng, hoặc code mà game yêu cầu." aria-label="Lưu server"]
+                svg.i #1c3gvph
+              div.recents
+                div.recent [title="[🎃] Adopt Me!"]
+                  button.recent-pick
+                    i.ph
+                    span "[🎃] Adopt Me!"
+                  button.rm [title="Xóa khỏi danh sách gần đây" aria-label="Xóa khỏi danh sách gần đây"]
+                    svg.i #1tyq039
+          div.dock-actions [id="dock-actions"]
+            button.btn.ghost [title="Xếp tất cả cửa sổ Roblox thành lưới" aria-label="Xếp tất cả cửa sổ Roblox thành lưới"]
+              svg.i #1e3syqr
+            button.btn.ghost [title="Mở Roblox mà không vào game" aria-label="Mở Roblox mà không vào game" disabled]
+              svg.i #1y8kmj1
+            button.btn.ghost [title="Đóng Roblox của các tài khoản đã chọn" aria-label="Đóng Roblox của các tài khoản đã chọn" disabled]
+              svg.i #16z0s1r
+            button.btn.ghost [title="Preset" aria-haspopup="menu" aria-label="Preset"]
+              svg.i #1pvni8o
+            button.play-btn [disabled]
+              svg.i #1ewcuky
+              span "Chọn tài khoản"
+#layer
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  setSettings {"layout":"list"}

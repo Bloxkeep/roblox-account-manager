@@ -3,7 +3,7 @@
 // game found, recent games, and the buttons that open the selected accounts). What is selected, the filters and the
 // game are app.js's (S, P), read through host.page(); what the buttons do is app.js's too (its click handler by
 // data-act, its keys), so the elements keep the same data-* it looks for.
-import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, useAppState, useHost, useMetrics, usePage, type PageState } from './host';
 import { richNodes } from './rich';
 import { Avatar } from './Avatar';
@@ -191,32 +191,40 @@ export function AccountGrid() {
         <div className="row"><button className="btn" data-act="clear-search">{t(page.query.trim() ? 'nores.clear' : 'nores.all')}</button></div></div>
       : <div className="empty"><img className="art" src={logo} alt="" /><h2>{t('empty.title')}</h2><p>{t('empty.text')}</p><AddOptions /></div>}</div>;
   }
+  const cols = asList ? listColumns(shown, host.fmtNum) : '';
   return <div id="grid">
-    <GridBox key={asList ? 'list' : 'cards'} asList={asList} intro={!page.introShown} label={t('acc.title')} box={grid}
-      style={asList ? listColumns(shown, host.fmtNum) : undefined}>
-      {shown.map(a => <AccountItem key={a.id} a={a} asList={asList} sel={page.selected.has(a.id)} lang={host.lang} minute={minute} />)}
+    <GridBox key={asList ? 'list' : 'cards'} asList={asList} intro={!page.introShown} label={t('acc.title')} box={grid}>
+      {shown.map(a => <AccountItem key={a.id} a={a} asList={asList} sel={page.selected.has(a.id)} lang={host.lang} minute={minute} cols={cols} />)}
     </GridBox>
   </div>;
 }
 
 /**
- * The list's columns after the status (VNG, Robux, group, auto-rejoin; PID and memory), each as wide as the widest of
- * its kind among the rows shown and none at all when no row has it, so the figures stand in straight lines row to row.
+ * The list's columns after the status, and the longest thing each shows among the rows shown: VNG, Robux, the group,
+ * auto-rejoin, PID and memory ("" or false: no row has it, no column). As text, so the rows drawn again only when it changes.
  */
-function listColumns(shown: Account[], fmtNum: (n: number) => string): CSSProperties {
-  const robux = Math.max(0, ...shown.map(a => typeof a.robux === 'number' ? fmtNum(a.robux).length : a.robuxWait ? 1 : 0));
-  const group = Math.max(0, ...shown.map(a => a.group?.length ?? 0));
-  return {
-    '--col-vng': shown.some(a => a.realm === 'vng') ? '46px' : '0px',
-    '--col-robux': robux ? `calc(${robux}ch + 26px)` : '0px',
-    '--col-group': group ? `min(138px, calc(${group}ch + 26px))` : '0px',
-    '--col-rejoin': shown.some(rejoinOn) ? '24px' : '0px',
-    '--col-live': shown.some(isLocal) ? '150px' : '0px',
-  } as CSSProperties;
+type Cols = { vng: boolean; robux: string; group: string; rejoin: boolean; pid: string; live: boolean };
+function listColumns(shown: Account[], fmtNum: (n: number) => string): string {
+  const longest = (list: string[]) => list.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const cols: Cols = {
+    vng: shown.some(a => a.realm === 'vng'),
+    robux: longest(shown.map(a => typeof a.robux === 'number' ? fmtNum(a.robux) : a.robuxWait ? '…' : '')),
+    group: longest(shown.map(a => a.group || '')),
+    rejoin: shown.some(rejoinOn),
+    pid: longest(shown.filter(isLocal).map(a => a.session?.pid > 0 ? `PID ${a.session.pid}` : '')),
+    live: shown.some(isLocal),
+  };
+  return JSON.stringify(cols);
 }
 
+/**
+ * An unseen copy of the longest thing in a list column, under what the row shows: every row's cell is then as wide,
+ * whatever the font, so the columns stand straight.
+ */
+const Sizer = ({ children }: { children: ReactNode }) => <span className="sizer" aria-hidden="true">{children}</span>;
+
 /** The list's box: cards fade in only the first time it is drawn, not on every update. */
-function GridBox({ asList, intro, label, box, style, children }: { asList: boolean; intro: boolean; label: string; box: React.RefObject<HTMLDivElement | null>; style?: CSSProperties; children: ReactNode }) {
+function GridBox({ asList, intro, label, box, children }: { asList: boolean; intro: boolean; label: string; box: React.RefObject<HTMLDivElement | null>; children: ReactNode }) {
   const [fading, setFading] = useState(intro);
   useEffect(() => {
     if (!fading) return;
@@ -225,15 +233,15 @@ function GridBox({ asList, intro, label, box, style, children }: { asList: boole
   }, []);
   // A card, or a button on it, that gets the focus (a click, Shift+Tab) becomes the list's one Tab stop.
   const { setTabStop } = useHost();
-  return <div ref={box} className={`grid ${asList ? 'list' : ''} ${fading ? 'intro' : ''}`} style={style} role="listbox" aria-multiselectable="true" aria-label={label}
+  return <div ref={box} className={`grid ${asList ? 'list' : ''} ${fading ? 'intro' : ''}`} role="listbox" aria-multiselectable="true" aria-label={label}
     onFocus={e => {
       const card = (e.target as HTMLElement).closest<HTMLElement>('.card');
       if (card && card.tabIndex !== 0 && card.parentElement) setTabStop(card.parentElement, card);
     }}>{children}</div>;
 }
 
-const AccountItem = memo(function AccountItem({ a, asList, sel }: { a: Account; asList: boolean; sel: boolean; lang: string; minute: number }) {
-  return asList ? <AccountRow a={a} sel={sel} /> : <AccountCard a={a} sel={sel} />;
+const AccountItem = memo(function AccountItem({ a, asList, sel, cols }: { a: Account; asList: boolean; sel: boolean; lang: string; minute: number; cols: string }) {
+  return asList ? <AccountRow a={a} sel={sel} cols={cols} /> : <AccountCard a={a} sel={sel} />;
 });
 
 /** "5 min ago" in a sentence ("Opened {t}"), as of now. */
@@ -306,6 +314,26 @@ function Live({ a, row }: { a: Account; row?: boolean }) {
 function Pid({ a }: { a: Account }) {
   const { t } = useHost();
   return a.session?.pid > 0 ? <button className="pid" data-act="copy-pid" title={t('card.pidTip')}>{`PID ${a.session.pid}`}</button> : null;
+}
+/** A list row's columns after the status: each column the list has, in every row, as wide as its longest (Sizer). */
+function RowColumns({ a, c, local }: { a: Account; c: Cols; local: boolean }) {
+  const { t, fmtNum, fmtMb } = useHost();
+  const cell = (on: unknown, shown: ReactNode, longest: ReactNode, end = false) =>
+    on ? <span className={`cell${end ? ' end' : ''}`}>{shown}<Sizer>{longest}</Sizer></span> : null;
+  return <>
+    <div className="row-meta">
+      {cell(c.vng, a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null, <span className="tag vng">VNG</span>)}
+      {cell(c.robux, typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span>
+        : a.robuxWait ? <span className="robux wait" title={t('card.robuxTip')}><Icon name="robux" />…</span> : null,
+        <span className="robux"><Icon name="robux" />{c.robux}</span>, true)}
+      {cell(c.group, a.group ? <span className="tag" title={a.group}>{a.group}</span> : null, <span className="tag">{c.group}</span>)}
+      {cell(c.rejoin, rejoinOn(a) ? <span className="rejoin" title={t('card.rejoinTip')}><Icon name="repeat" /></span> : null, <span className="rejoin"><Icon name="repeat" /></span>)}
+    </div>
+    <div className="row-live">
+      {cell(c.live && c.pid, local ? <Pid a={a} /> : null, <span className="pid">{c.pid}</span>, true)}
+      {cell(c.live, local ? <Live a={a} row /> : null, <b className="ram">{fmtMb(1023)}</b>, true)}
+    </div>
+  </>;
 }
 function Meta({ a }: { a: Account }) {
   const { t, fmtNum } = useHost();
@@ -383,7 +411,7 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
 }
 
 /** One line per account for the compact list; the same actions as a card (select, right-click menu, play). */
-function AccountRow({ a, sel }: { a: Account; sel: boolean }) {
+function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }) {
   const { t, duration } = useHost();
   const until = useUntil();
   const local = isLocal(a), pType = presenceType(a);
@@ -407,8 +435,7 @@ function AccountRow({ a, sel }: { a: Account; sel: boolean }) {
       ? <div className={`row-status timed ${st.cls}`} title={st.text}><span className="row-st">{st.text}</span>
         <span className="row-up" title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span></div>
       : <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}</div>}
-    <div className="row-meta"><Meta a={a} /></div>
-    <div className="row-live">{local ? <><Pid a={a} /><Live a={a} row /></> : null}</div>
+    <RowColumns a={a} c={JSON.parse(cols)} local={local} />
     <div className="row-actions">{action}<button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button></div>
   </article>;
 }
