@@ -48,10 +48,10 @@ The badge in the card's corner is **On this PC** (Roblox is open for it here; po
 
 | Dot | Text under the name | Meaning |
 |---|---|---|
-| Green | **Playing**, **Joining**, **Playing · another device** | In a game, on this PC or another device. |
-| Blue | **Online**, **Roblox open** · Not in a game | On the Roblox website or app, or Roblox is on its home screen on this PC. |
+| Green | **Playing**, **Joining**, **Waiting for a server**, **Server full, waiting**, **Teleporting**, **Playing · another device** | In a game or on the way in, on this PC or another device. **Server full** shows the place in line when Roblox gives one. |
+| Blue | **Online**, **Roblox open** · Not in a game, **Didn't get into the game** | On the Roblox website or app, or Roblox is on its home screen on this PC (after a join that failed, or a wait given up, it says so). |
 | Orange | **Roblox Studio** | Building a game. |
-| Yellow | **Disconnected** | The window is open but out of the server, with a reason such as **Kicked for being idle**. |
+| Yellow | The reason, such as **Kicked by the game** or **Server shut down** | The window is open but out of the server. When Roblox didn't log why, it says **Disconnected** · **Reason unknown**. |
 | Grey | **Offline**, **Signed out**, **Status unknown** | Not active; Roblox is open here without this account; or not loaded yet. |
 
 A red ring around the avatar means **Needs sign-in** or **Banned**. While Bloxkeep is working you also see **Opening Roblox…**, **Rejoining · this PC** (**Cancel** stops it) and **Restarting · this PC** (a preset's planned restart).

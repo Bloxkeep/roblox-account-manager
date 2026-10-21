@@ -236,7 +236,13 @@ html [data-theme="dark" lang="vi"]
             span "Tự vào lại giờ thử lại sau mỗi 10 giây, dù tài khoản bị văng bao nhiêu lần, thay vì chờ lâu dần. Bị game ban thì dừng hẳn."
           li
             svg.i #1l5qw3q
+            span "Tự vào lại không còn thử lại sau những lỗi mà chính Roblox không cho kết nối lại (mất quyền vào server riêng, Roblox cần cập nhật, tài khoản đang ở game khác…): cửa sổ giữ nguyên thông báo của Roblox và Bloxkeep báo lý do. Bị game kick thì vẫn tự vào lại như cũ."
+          li
+            svg.i #1l5qw3q
             span "Bị kick thì hiện lời của chính game, trên thẻ và trong thông báo Discord, và thông báo Discord gửi đi trong vài giây."
+          li
+            svg.i #1l5qw3q
+            span "Mỗi cửa sổ Roblox báo rõ đang làm gì lúc vào game: đang chờ server, server đầy (kèm vị trí trong hàng chờ nếu Roblox cho biết), đang dịch chuyển, hay không vào được game. Cửa sổ bị văng thì ghi đúng lý do: bị game kick, đăng nhập ở thiết bị khác, server tắt, mất kết nối, hoặc chưa rõ lý do. Hiện trên thẻ, trong danh sách và trên bảng Discord."
           li
             svg.i #1l5qw3q
             span "Danh sách tài khoản thẳng hàng như một bảng: VNG, Robux, nhóm, tự vào lại, PID và RAM nằm đúng cột của mình ở mọi dòng, rộng vừa với thứ dài nhất trong cột."
@@ -255,6 +261,12 @@ html [data-theme="dark" lang="vi"]
         h4.fixed.wn-kind.wn-sub "Đã sửa"
           svg.i #yqrnd9
         ul.fixed.wn-also
+          li
+            svg.i #yqrnd9
+            span "Bị game kick, hay tài khoản đăng nhập ở thiết bị khác, không còn bị báo nhầm là \"Mất kết nối\": khi log của Roblox không ghi mã lỗi, Bloxkeep đọc chính lời Roblox ghi. Tài khoản đăng nhập ở thiết bị khác thì không tự vào lại nữa (vào lại sẽ đẩy thiết bị kia ra), server tắt thì báo đúng là server đã tắt, còn lần văng mà Roblox không ghi lý do thì báo là chưa rõ lý do."
+          li
+            svg.i #yqrnd9
+            span "Bị kick vì AFK lại được nhận ra trên Roblox 0.744 (bản này chỉ ghi lý do bằng chữ): thông báo AFK lại báo khi chống AFK không kịp can thiệp."
           li
             svg.i #yqrnd9
             span "Khi bật Tiết kiệm RAM cho cửa sổ chạy nền và mở từ 5 cửa sổ Roblox trở lên, vài cửa sổ không còn bị giật (nhất là lúc kéo): Bloxkeep không còn ép chúng nhả hết RAM mỗi 2 phút khi máy dùng tới 85% RAM."

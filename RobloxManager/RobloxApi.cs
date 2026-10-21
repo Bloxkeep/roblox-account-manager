@@ -214,8 +214,15 @@ public static class RobloxApi
     /// its HTTP status, its own status number, its message, and its statusData (raw, cut short), whatever that holds.
     /// The join ticket a successful answer holds is left unread.
     /// </summary>
-    public sealed record JoinAnswer(int Http, int? Status, string? Message, string? Data = null)
+    /// <param name="QueuePosition">The account's place in a full game's line, when Roblox gives one (its client shows "Position in queue is N").</param>
+    public sealed record JoinAnswer(int Http, int? Status, string? Message, string? Data = null, int? QueuePosition = null)
     {
+        /// <summary>
+        /// The server or game is full (status 6: Roblox's client says "Requested experience is full" for it, and its
+        /// ConnectionError 518 is PlacelaunchGameFull, 512 + the status, as 524 is for 12).
+        /// </summary>
+        public bool Full => Status == 6;
+
         /// <summary>The number in "Unable to join Game 211": what the window turns into its own error.</summary>
         public int? Code => Message is { } m && System.Text.RegularExpressions.Regex.Match(m, @"Unable to join Game (\d+)") is { Success: true } found
             && int.TryParse(found.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code) ? code : null;
@@ -269,7 +276,7 @@ public static class RobloxApi
             : new { placeId, gameId = jobId, isTeleport = false, gameJoinAttemptId = Guid.NewGuid().ToString() };
         using var res = await PostWithCsrfAsync(url, cookie, JsonSerializer.Serialize(body), null, ct, realm);
         string text = await res.Content.ReadAsStringAsync(ct);
-        int? status = null;
+        int? status = null, queue = null;
         string? message = null, data = null;
         if (text.TrimStart().StartsWith('{'))
         {
@@ -277,6 +284,8 @@ public static class RobloxApi
             var root = doc.RootElement;
             if (root.TryGetProperty("status", out var s) && s.ValueKind == JsonValueKind.Number)
                 status = s.GetInt32();
+            if (root.TryGetProperty("queuePosition", out var q) && q.ValueKind == JsonValueKind.Number && q.TryGetInt32(out int place) && place > 0)
+                queue = place;
             if (root.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String)
                 message = m.GetString();
             // A refusal of the request itself: {"errors":[{"code":…,"message":…}]}.
@@ -287,7 +296,7 @@ public static class RobloxApi
             if (status != 2 && root.TryGetProperty("statusData", out var d) && d.ValueKind is JsonValueKind.Object or JsonValueKind.String)
                 data = d.GetRawText() is { Length: > 400 } raw ? raw[..400] : d.GetRawText();
         }
-        return new JoinAnswer((int)res.StatusCode, status, message, data);
+        return new JoinAnswer((int)res.StatusCode, status, message, data, queue);
     }
 
     static readonly ConcurrentDictionary<(string Realm, int Session), string> CsrfTokens = new();

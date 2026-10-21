@@ -24,6 +24,13 @@ export default [
   S('account-edit', 'edit=1'),
   S('accounts-empty', 'empty=1'),
   S('accounts-kicked', 'kicked=1'),
+  S('accounts-kicked-unknown', 'kicked=unknown'),
+  // On the way in, as the client's log and Roblox's join answer say it.
+  S('accounts-waiting', 'phase=waiting'),
+  S('accounts-full', 'phase=full&queue=3'),
+  S('accounts-teleporting', 'phase=teleporting'),
+  S('accounts-join-failed', 'phase=joinFailed'),
+  S('accounts-full-list', 'phase=full&queue=3', async s => { await s.click(key('layout.list')); }),
   S('accounts-rejoin-wait', 'rejoin=1'),
   S('accounts-long-names', 'long=1'),
   S('accounts-many', 'accounts=40'),

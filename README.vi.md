@@ -140,7 +140,8 @@ Chấm trên ảnh đại diện cho biết tài khoản đang ở đâu:
 | Viền đỏ | Cần đăng nhập lại, hoặc đã bị ban |
 
 - Dòng trạng thái nói rõ hơn: **Đang mở Roblox…**, **Đang chơi** kèm tên game, **Chờ vào lại · máy này** (tự vào lại game đang chờ tới lượt, có nút **Hủy**), **Đang mở lại · máy này** (preset sắp mở lại cửa sổ theo lịch), **Đang chơi · thiết bị khác**, **Online**, **Roblox Studio**, **Offline**. Nhãn ở góc thẻ là **Trên máy này**, **Đang mở**, **Bị ban** hoặc **Cần đăng nhập lại**.
-- Khi cửa sổ bị văng, thẻ ghi lý do, đọc từ log của chính Roblox: **Bị kick vì AFK**, **Bị game kick**, **Đã đăng nhập ở thiết bị khác**, **Rớt mạng**, **Không vào được server**, hoặc mã lỗi của Roblox.
+- Lúc đang vào game, thẻ ghi **Đang chờ server**, **Server đầy, đang chờ** (kèm vị trí trong hàng chờ nếu Roblox cho biết), **Đang dịch chuyển**, hoặc **Không vào được game**.
+- Khi cửa sổ bị văng, thẻ ghi lý do, đọc từ log của chính Roblox: **Bị kick vì AFK**, **Bị game kick**, **Đã đăng nhập ở thiết bị khác**, **Server đã tắt**, **Rớt mạng**, **Không vào được server**, mã lỗi của Roblox, hoặc **Chưa rõ lý do** khi Roblox không ghi.
 - Tài khoản đang mở trên máy này còn hiện **RAM đang dùng**, **Thời gian đã chơi** và **PID** (bấm vào PID để sao chép). Bên dưới là nhóm, biểu tượng vòng lặp khi đang bật tự vào lại game, lần cuối Bloxkeep mở tài khoản này, và ghi chú.
 - Trạng thái tự làm mới mỗi 30 giây, hoặc làm ngay bằng **Làm mới trạng thái online**. Trạng thái Roblox báo cho thiết bị khác có thể trễ vài phút; với cửa sổ chạy trên máy này, Bloxkeep đọc theo log của chính Roblox.
 
@@ -339,7 +340,7 @@ Bật cho từng tài khoản trong menu ⋯ › **Tự vào lại game**, cho m
 
 - Khi Roblox của tài khoản đó bị văng, bị kick hoặc mất kết nối, Bloxkeep vào lại cùng game (hoặc cùng server riêng) sau 10 giây, nhưng không chắc vào đúng server cũ. Máy vừa thức dậy thì Bloxkeep chờ có mạng rồi mới vào lại.
 - Nếu cứ bị văng liên tục, Bloxkeep vẫn tự vào lại sau mỗi 10 giây và báo một lần. Bị game ban thì dừng hẳn: thẻ ghi **Bị game ban**, Bloxkeep hỏi lại trước khi mở tài khoản đó vào game ấy, còn Preset thì bỏ qua tài khoản này, trừ khi Roblox cho biết lệnh ban đã hết. Nếu mất mạng, Bloxkeep thử lại mỗi 30 giây, tối đa 20 lần.
-- Bloxkeep không vào lại khi bạn tự thoát game, khi tài khoản đăng nhập ở thiết bị khác, khi tài khoản bị ban, khi chính Roblox đóng cửa sổ vì có cửa sổ khác mở, hoặc khi Bloxkeep đang khóa. Tự tay đóng cửa sổ Roblox cũng tính là thoát game, nên hãy dùng nút **Đóng** trong app.
+- Bloxkeep không vào lại khi bạn tự thoát game, khi tài khoản đăng nhập ở thiết bị khác, khi chính Roblox không cho kết nối lại sau lỗi đó (Bloxkeep báo lý do), khi tài khoản bị ban, khi chính Roblox đóng cửa sổ vì có cửa sổ khác mở, hoặc khi Bloxkeep đang khóa. Tự tay đóng cửa sổ Roblox cũng tính là thoát game, nên hãy dùng nút **Đóng** trong app.
 - Nếu Roblox kết thúc phiên đăng nhập của một tài khoản, tự vào lại game tự tắt cho tài khoản đó, và tự bật lại khi tài khoản được đăng nhập lại. Khi Multi-Roblox chưa sẵn sàng, Bloxkeep không vào lại (vì cửa sổ mới sẽ đóng mất cửa sổ đang mở) và báo cho bạn.
 
 <img src="docs/screenshots/vi/card-rejoin.png" width="800" alt="Các thẻ tài khoản: một thẻ đang chờ vào lại game (Sau 5 phút) với nút Hủy, và một thẻ bị văng khỏi server vì bị kick vì AFK">

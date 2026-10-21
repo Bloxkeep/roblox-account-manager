@@ -362,6 +362,172 @@ static class RejoinSuite
             c.Check("…Discord's alert says the ban, without a \"Reason\" (kicked) beside it",
                 banAlert.GetType().GetProperty("Title")!.GetValue(banAlert) as string == "Banned by the game" && !banFields.Contains("Reason") && banText?.Contains("Reason:") != true,
                 $"{string.Join(",", banFields)} | {banText}");
+            // Roblox 0.744 often logs why in words only, without the code: the owner's lines of 2026-10-21, a game's kick
+            // that went out as "Lost connection", then on the rejoin a sign-in on another device that was rejoined again.
+            var notBanned = new GameTarget(107778070777162);
+            object? droppedLaunch = null;
+            DateTime Dropped(params string[] why) => DroppedAt(DateTime.UtcNow.AddSeconds(-10), why);
+            DateTime DroppedAt(DateTime at, params string[] why)
+            {
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(at, Launch));
+                Write(Line(at, Join));
+                Write(Line(at, "[FLog::Network] serverId: 128.116.46.33|52353"));
+                foreach (string line in why)
+                    Write(Line(at.AddSeconds(1), line));
+                Write(Line(at.AddSeconds(2), "[FLog::Network] Time to disconnect replication data: 7.910900"));
+                return at;
+            }
+            var wordsAt = Dropped("Error [FLog::CreatorError] Error: Server Kick Message: DataStore lock lost, please rejoin the game.; Metadata: ",
+                "[FLog::Network] Disconnect from 1",
+                "[FLog::Network] Client has been disconnected with reason: You have been kicked from the game",
+                "Warning [FLog::Network] Lost connection with reason : You have been kicked from the game");
+            state = Poll(s => s.Status == "disconnected" && s.At > wordsAt);
+            c.Check("a game's kick logged in words only, no code: 267, with the game's words",
+                state is { Reason: 267, KickMessage: "DataStore lock lost, please rejoin the game.", BannedByGame: false }, state);
+            closing.Clear();
+            Told();
+            Tick();
+            string? kickSaid = Told();
+            c.Check("…rejoined, said as the game's kick with its words, not as a lost connection",
+                closing.Contains(me) && kickSaid == $"{account.Label} was kicked by the game, rejoining: DataStore lock lost, please rejoin the game.", kickSaid);
+            var kickAlert = Harness.Invoke(app, "AlertFor", "drop", account.Id,
+                ("{0} was kicked by the game, rejoining: {1}", new object?[] { account.Label, "DataStore lock lost, please rejoin the game." }), kickSaid ?? "", DateTime.UtcNow)!;
+            var kickFields = ((System.Collections.IEnumerable)kickAlert.GetType().GetProperty("Fields")!.GetValue(kickAlert)!).Cast<object>()
+                .Select(f => f.GetType().GetProperty("Name")!.GetValue(f) as string).ToList();
+            string? kickTitle = kickAlert.GetType().GetProperty("Title")!.GetValue(kickAlert) as string, kickText = kickAlert.GetType().GetProperty("Text")!.GetValue(kickAlert) as string;
+            c.Check("…Discord's alert: \"Kicked by the game, rejoining\", the game's words as its text, no \"Reason\" field",
+                kickTitle == "Kicked by the game, rejoining" && kickText?.StartsWith("DataStore lock lost") == true && !kickFields.Contains("Reason"),
+                $"{kickTitle} | {kickText} | {string.Join(",", kickFields)}");
+            var elsewhereAt = Dropped("[FLog::Network] Client has been disconnected with reason: Disconnected from game, possibly due to game joined from another device",
+                "Warning [FLog::Network] Lost connection with reason : Disconnected from game, possibly due to game joined from another device");
+            state = Poll(s => s.Status == "disconnected" && s.At > elsewhereAt);
+            closing.Clear();
+            Told();
+            Tick();
+            c.Check("signed in on another device, in words only: 273, its window left as it is and no rejoin (it would take the other device's place)",
+                state is { Reason: 273 } && !closing.Contains(me) && Told() is null && !(bool)shouldRejoin.Invoke(app, [account.Id, droppedLaunch, state, false, null])!, state);
+            // Words logged after the disconnect line complete it; a server that shut down is said as that.
+            var lateAt = Dropped();
+            state = Poll(s => s.Status == "disconnected" && s.At > lateAt);
+            bool noReasonFirst = state is { Reason: null };
+            Write(Line(lateAt.AddSeconds(3), "Warning [FLog::Network] Lost connection with reason : The server has shut down"));
+            state = Poll(s => s is { Status: "disconnected", Reason: not null });
+            closing.Clear();
+            Told();
+            Tick();
+            string? shutSaid = Told();
+            c.Check("words logged after the disconnect line complete it: a server that shut down, said as that",
+                noReasonFirst && state is { Reason: 288 } && closing.Contains(me) && shutSaid == $"{account.Label}'s server shut down — joining another one…", $"{state} | {shutSaid}");
+            // Words Roblox has no code for change nothing.
+            c.Check("…and words not in Roblox's list read as no code", typeof(RobloxLogWatcher).GetMethod("ReasonOfWords", Harness.F)!.Invoke(null,
+                ["[FLog::Network] Client has been disconnected with reason: Something else entirely"]) is null);
+            // A code logged as a number wins over one read from words, even logged after the disconnect line (a log of
+            // 2026-10-16 has "Disconnection Notification. Reason: 285" after it).
+            var numberAt = Dropped("[FLog::Network] Client has been disconnected with reason: You have been kicked from the game");
+            Poll(s => s.Status == "disconnected" && s.At > numberAt);
+            Write(Line(numberAt.AddSeconds(3), "[FLog::Network] Disconnection Notification. Reason: 277"));
+            state = Poll(s => s is { Status: "disconnected", Reason: 277 });
+            c.Check("a code logged as a number after the disconnect line wins over the one read from words", state is { Reason: 277 }, state);
+            closing.Clear();
+            Told();
+            Tick();
+            string? lostSaid = Told();
+            c.Check("…and a failed connection's code is said as a lost connection", lostSaid == $"{account.Label} lost connection — restarting Roblox…", lostSaid);
+            // Roblox's words printed by the game itself (its output, even quoting Roblox's tag) aren't Roblox's reason.
+            var printAt = Dropped("[FLog::Output] Client has been disconnected with reason: You have been kicked from the game",
+                "[FLog::Output] [FLog::Network] Lost connection with reason : Disconnected from game, possibly due to game joined from another device");
+            state = Poll(s => s.Status == "disconnected" && s.At > printAt);
+            c.Check("Roblox's words printed by the game aren't Roblox's reason", state is { Reason: null }, state);
+            closing.Clear();
+            Told();
+            Tick();
+            string? unknownSaid = Told();
+            c.Check("…a disconnect without a reason is said as one whose reason isn't known, not as a lost connection",
+                closing.Contains(me) && unknownSaid == $"{account.Label} dropped out of the game, reason unknown — restarting Roblox…", unknownSaid);
+            var unknownAlert = Harness.Invoke(app, "AlertFor", "drop", account.Id,
+                ("{0} dropped out of the game, reason unknown — restarting Roblox…", new object?[] { account.Label }), unknownSaid ?? "", DateTime.UtcNow)!;
+            string? unknownTitle = unknownAlert.GetType().GetProperty("Title")!.GetValue(unknownAlert) as string;
+            c.Check("…Discord's alert too", unknownTitle == "Disconnected, reason unknown", unknownTitle);
+            var codeAt = Dropped("[FLog::Network] Disconnection Notification. Reason: 299");
+            Poll(s => s.Status == "disconnected" && s.At > codeAt);
+            closing.Clear();
+            Told();
+            Tick();
+            string? codeSaid = Told();
+            c.Check("…one with a code Bloxkeep has no words for is said with that code", codeSaid == $"{account.Label} was disconnected (Roblox code 299) — restarting Roblox…", codeSaid);
+            // The client's own disconnect (285), which its notification line can repeat, never over a reason known; the
+            // server's code as received is.
+            var ownAt = Dropped("[FLog::Network] Client has been disconnected with reason: You have been kicked from the game");
+            Poll(s => s.Status == "disconnected" && s.At > ownAt);
+            Write(Line(ownAt.AddSeconds(3), "[FLog::Network] Disconnection Notification. Reason: 285"));
+            state = Poll(_ => true); // one read takes in the line just written
+            c.Check("the client's own disconnect (285) after a kick's words: still the kick", state is { Reason: 267 }, state);
+            var receivedAt = Dropped("[FLog::Network] Client has been disconnected with reason: You have been kicked from the game",
+                "[FLog::Network] Disconnect reason received: 288");
+            state = Poll(s => s.Status == "disconnected" && s.At > receivedAt);
+            c.Check("…while the server's code as received wins over the words", state is { Reason: 288 }, state);
+            // Roblox 0.744's idle kick, in words with its minutes (the client's DisconnectIdle prompt reads the same): 278, so
+            // anti-AFK's misses are told again.
+            var idleAt = Dropped("[FLog::Network] Client has been disconnected with reason: You were disconnected for being idle 20 minutes");
+            state = Poll(s => s.Status == "disconnected" && s.At > idleAt);
+            c.Check("an idle kick in words, with its minutes: 278", state is { Reason: 278 }, state);
+            // DisconnectRejoin (276): the client says the same as for 273, the same account launched from another device.
+            var rejoinAt = Dropped("[FLog::Network] Disconnection Notification. Reason: 276");
+            state = Poll(s => s.Status == "disconnected" && s.At > rejoinAt);
+            closing.Clear();
+            Told();
+            Tick();
+            c.Check("276 (the same account launched elsewhere, as 273): left as it is, no rejoin",
+                state is { Reason: 276 } && !closing.Contains(me) && Told() is null && !(bool)shouldRejoin.Invoke(app, [account.Id, droppedLaunch, state, false, null])!, state);
+            // A code Roblox's own error box has no Reconnect for (its Connection.lua): no rejoin, said once, why. Here no
+            // access to the private server any more, in Roblox 0.744's words.
+            var privateAt = DroppedAt(DateTime.UtcNow.AddSeconds(-2), "[FLog::Network] Client has been disconnected with reason: You have been disconnected because you no longer have access to this private server");
+            state = Poll(s => s.Status == "disconnected" && s.At > privateAt);
+            closing.Clear();
+            Told();
+            Tick();
+            string? refusedSaid = Told();
+            Tick();
+            c.Check("a code Roblox gives no Reconnect for (286, no access to the private server): no rejoin, and why, once",
+                state is { Reason: 286 } && !closing.Contains(me) && !(bool)shouldRejoin.Invoke(app, [account.Id, droppedLaunch, state, false, null])!
+                && refusedSaid == $"{account.Label} isn't rejoined (no access to the private server any more): Roblox doesn't allow reconnecting after this."
+                && Told() is null, $"{state} | {refusedSaid}");
+            var refusedAlert = Harness.Invoke(app, "AlertFor", "drop", account.Id,
+                ("{0} isn't rejoined ({1}): Roblox doesn't allow reconnecting after this.", new object?[] { account.Label, "no access to the private server any more" }), refusedSaid ?? "", DateTime.UtcNow)!;
+            string? refusedTitle = refusedAlert.GetType().GetProperty("Title")!.GetValue(refusedAlert) as string;
+            c.Check("…Discord's alert: \"Disconnected, not rejoining\"", refusedTitle == "Disconnected, not rejoining", refusedTitle);
+            // On the way in: waiting for a server, teleporting, or left before any server took it.
+            string? Phase() => Harness.Invoke(app, "Phase", me) as string;
+            NewWindow();
+            Run(notBanned);
+            var wayAt = DateTime.UtcNow.AddSeconds(-5);
+            Write(Line(wayAt, Launch));
+            Poll(s => s is { Status: "joining", JobId: null } && s.At >= wayAt.AddSeconds(-1));
+            c.Check("started, no server yet: waiting for a server", Phase() == "waiting", Phase());
+            Write(Line(wayAt.AddSeconds(1), Join));
+            Write(Line(wayAt.AddSeconds(1), "[FLog::Network] serverId: 128.116.46.33|52353"));
+            Poll(s => s.Status == "ingame" && s.At > wayAt);
+            c.Check("…in its server: none", Phase() is null, Phase());
+            Write(Line(wayAt.AddSeconds(2), "[FLog::SingleSurfaceApp] launchUGCGameInternal: deferred download complete"));
+            Write(Line(wayAt.AddSeconds(2), "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url https://gamejoin.roblox.com/v1/join-reserved-game"));
+            state = Poll(s => s.TeleportStarted is not null);
+            c.Check("Roblox's other launchUGCGameInternal lines aren't a game start, and a teleport is shown as one",
+                state is { Status: "ingame", PersonStarted: false, TeleportStarted: not null } && Phase() == "teleporting", state);
+            Write(Line(wayAt.AddSeconds(3), "[FLog::Output] ! Joining game '22222222-2222-3333-4444-555555555555' place 107778070777162 at 10.0.0.2"));
+            Write(Line(wayAt.AddSeconds(3), "[FLog::Network] serverId: 128.116.46.34|52353"));
+            state = Poll(s => s is { Status: "ingame", TeleportStarted: null });
+            c.Check("…until the next server is reached", state is { JobId: "22222222-2222-3333-4444-555555555555" } && Phase() is null, state);
+            NewWindow();
+            Run(notBanned);
+            var failAt = DateTime.UtcNow.AddSeconds(-70);
+            Write(Line(failAt, Launch));
+            Write(Line(failAt.AddSeconds(62), Leave));
+            state = Poll(s => s.Status == "left" && s.At > failAt);
+            c.Check("left before any server took it (a join error's Leave, or a wait given up): told apart from a game left",
+                state is { NeverJoined: true } && Phase() == "joinFailed", state);
+            closing.Clear();
             // When a join not in yet is asked about: at once for a game known to have banned the account, else only after
             // the longest silent wait a good join was seen to take (38 s on 2026-10-16).
             var checkAfter = t.GetMethod("JoinCheckAfter", Harness.F)!;

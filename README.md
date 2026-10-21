@@ -146,7 +146,8 @@ The dot on an account's picture shows where it is:
 | Red ring | Needs to sign in again, or is banned |
 
 - The status line says more: **Opening Roblox…**, **Playing** with the game's name, **Rejoining · this PC** (auto-rejoin waiting its turn, with a **Cancel** button), **Restarting · this PC** (a preset's planned restart), **Playing · another device**, **Online**, **Roblox Studio**, **Offline**. A badge in the corner says **On this PC**, **Launching**, **Banned** or **Needs sign-in**.
-- A disconnected window says why, read from Roblox's own log: **Kicked for being idle**, **Kicked by the game**, **Signed in on another device**, **Connection lost**, **Couldn't join the server**, or Roblox's error code.
+- On the way in it says **Waiting for a server**, **Server full, waiting** (with the place in line when Roblox gives one), **Teleporting**, or **Didn't get into the game**.
+- A disconnected window says why, read from Roblox's own log: **Kicked for being idle**, **Kicked by the game**, **Signed in on another device**, **Server shut down**, **Connection lost**, **Couldn't join the server**, Roblox's error code, or **Reason unknown** when Roblox didn't log one.
 - An account open on this PC also shows its **RAM in use**, **Play time** and **PID** (click the PID to copy it). Below that: its group, a loop icon when auto-rejoin is on, when Bloxkeep last opened it, and its note.
 - Status refreshes every 30 seconds, or at once with **Refresh online status**. Roblox's status for other devices can lag a few minutes; for windows on this PC, Bloxkeep follows Roblox's own log instead.
 
@@ -345,7 +346,7 @@ Turn it on for one account in its ⋯ menu › **Auto-rejoin**, for every accoun
 
 - When that account's Roblox disconnects, gets kicked or loses its connection, Bloxkeep rejoins the same game (or the same private server) after 10 seconds, though not necessarily the same server. After the PC wakes up, it waits for the connection first.
 - If it keeps dropping, Bloxkeep keeps rejoining every 10 seconds and says so once. A ban by the game stops it: the card says **Banned by the game**, Bloxkeep asks before opening that account in that game again, and a preset leaves it out, unless Roblox says the ban is over. Without a network, it retries every 30 seconds, up to 20 times.
-- It doesn't rejoin when you leave the game yourself, when the account signed in on another device, when it's banned, when Roblox itself closed the window because another one opened, or while Bloxkeep is locked. Closing the Roblox window by hand counts as leaving, so use **Close** in the app.
+- It doesn't rejoin when you leave the game yourself, when the account signed in on another device, when Roblox itself doesn't allow reconnecting after that disconnect (Bloxkeep says why), when it's banned, when Roblox itself closed the window because another one opened, or while Bloxkeep is locked. Closing the Roblox window by hand counts as leaving, so use **Close** in the app.
 - If Roblox ended an account's sign-in, auto-rejoin turns itself off for it, and back on once the account is signed in again. With Multi-Roblox not ready, a rejoin is skipped (a new window would close the open one) and you're told.
 
 <img src="docs/screenshots/card-rejoin.png" width="800" alt="Account cards: one waiting to rejoin (In 5 min) with a Cancel button, and one disconnected because it was kicked for being idle">

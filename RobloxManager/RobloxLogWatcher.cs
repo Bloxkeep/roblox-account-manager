@@ -23,8 +23,13 @@ public sealed class RobloxLogWatcher
     /// <param name="PersonStarted">This join comes from a game start the person made in the window, not Bloxkeep's.</param>
     /// <param name="KickMessage">The game's own words when it kicked or banned the player (null when it gave none).</param>
     /// <param name="BannedByGame">The game banned the player (Roblox's ban API), rather than kicked: Roblox gives both code 267.</param>
+    /// <param name="TeleportStarted">When the teleport under way started (Roblox's doTeleport), until the next server is reached.</param>
+    /// <param name="NeverJoined">
+    /// Left before any server took it: Roblox's join failed and its error's Leave was clicked, or the wait was given up
+    /// (2026-10-21: ten such launches, none logging why; Roblox's join error lines are switched off).
+    /// </param>
     public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At, long? ChosenPlace = null,
-        bool PersonStarted = false, string? KickMessage = null, bool BannedByGame = false);
+        bool PersonStarted = false, string? KickMessage = null, bool BannedByGame = false, DateTime? TeleportStarted = null, bool NeverJoined = false);
 
     sealed class Tail(string path, int pid)
     {
@@ -37,6 +42,8 @@ public sealed class RobloxLogWatcher
         /// <summary>When the last teleport line was logged; only a disconnect soon after it belongs to that teleport.</summary>
         public DateTime? TeleportAt;
         public int? PendingReason;
+        public int PendingReasonRank;
+        public int ShownReasonRank;
         /// <summary>The game's kick line, logged before the disconnect it explains.</summary>
         public string? PendingKickMessage;
         public bool PendingBan;
@@ -72,6 +79,54 @@ public sealed class RobloxLogWatcher
     // A second source of the reason, used only when the replicator line gave none (285: the player left). Not yet
     // seen on a real kick, so it may come before or after the disconnect line.
     static readonly Regex NotificationReasonLine = new(@"Disconnection Notification\. Reason: (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // The server's own code, as the client got it ("[FLog::Network] Disconnect reason received: %d" in the 0.744 client;
+    // not seen in a log yet).
+    static readonly Regex ReceivedReasonLine = new(@"\[FLog::Network\] Disconnect reason received: (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    /// <summary>
+    /// Roblox's DisconnectClientRequest: the client's own disconnect, which its notification line can repeat after the
+    /// server's reason (a teleport's or a close's); never over a reason already known.
+    /// </summary>
+    const int ClientRequest = 285;
+    // A third source, the reason in words: "[FLog::Network] Client has been disconnected with reason: You have been kicked
+    // from the game" (also "Lost connection with reason : …"). Roblox 0.744 often logs only these words, no code (2026-10-21:
+    // a game's kick and a sign-in on another device), so a kick read as a lost connection and a sign-in elsewhere was
+    // rejoined over.
+    const string ReasonWordsMark = "[FLog::Network] Client has been disconnected with reason: ",
+        LostWithReasonMark = "[FLog::Network] Lost connection with reason : ";
+    /// <summary>
+    /// Roblox's words after "disconnected with reason:", with their code in Roblox's Enum.ConnectionError: the words as
+    /// the client holds them (RobloxPlayerBeta.exe 0.744, next to that log line's own format), each matched to the code
+    /// its name describes. Words not listed leave the reason unknown, as before.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, int> ReasonWords = new Dictionary<string, int>(StringComparer.Ordinal)
+    {
+        ["Protocol mismatch, please reconnect"] = 259, // DisconnectProtocolMismatch
+        ["Error while receiving data, please reconnect"] = 260, // DisconnectReceivePacketError
+        ["Error while streaming data, please reconnect"] = 261, // DisconnectReceivePacketStreamError
+        ["Error while sending data, please reconnect"] = 262, // DisconnectSendPacketError
+        ["Invalid teleport destination"] = 263, // DisconnectIllegalTeleport
+        ["You are already playing a game. Please shut down the other game and try again"] = 264, // DisconnectDuplicatePlayer
+        ["Lost connection to server due to timeout"] = 266, // DisconnectTimeout
+        ["Disconnected due to timeout, please reconnect"] = 266,
+        ["You have been kicked from the game"] = 267, // DisconnectLuaKick: a game's Player:Kick
+        ["Disconnected from game, possibly due to game joined from another device"] = 273, // DisconnectEvicted
+        ["This game has been disconnected because you have joined a game from another device"] = 273,
+        ["Developer has shut down this game server for maintenance"] = 274, // DisconnectDevMaintenance
+        ["Roblox has shut down this game server for maintenance"] = 275, // DisconnectRobloxMaintenance
+        ["Lost connection to the game server, please reconnect"] = 277, // DisconnectConnectionLost
+        ["Disconnected due to unsupported version. Please upgrade to the latest version of Roblox"] = 280, // DisconnectWrongVersion
+        ["Client initiated disconnect"] = 285, // DisconnectClientRequest
+        ["You have been disconnected because you no longer have access to this private server"] = 286, // DisconnectPrivateServerKickout
+        ["The server has shut down"] = 288, // ServerShutdown
+        ["Developer has shut down all game servers or game server has shut down for other reasons, please reconnect"] = 288,
+        ["Replication has timed out"] = 290, // ReplicatorTimeout
+        ["Player has been removed from the DataModel"] = 291, // PlayerRemoved
+        ["Disconnected due to internal network failure"] = 296, // NetworkInternal
+        ["Disconnected due to send failure"] = 297, // NetworkSend
+        ["Disconnected due to network timeout"] = 298, // NetworkTimeout
+        ["Disconnected due to network misbehavior"] = 299, // NetworkMisbehavior
+        ["Disconnected due to security failure"] = 300, // NetworkSecurity
+    };
     const string ConnectedMark = "[FLog::Network] serverId:";
     // The game's words when it kicks a player, logged right before the disconnect (seen 2026-10-21 in 0.743):
     // "[FLog::CreatorError] Error: Server Kick Message: A fatal error occured. This may be from an internet issue.; Metadata: "
@@ -297,10 +352,11 @@ public sealed class RobloxLogWatcher
             (tail.PendingKickMessage, tail.PendingBan) = (null, false);
             long? place = long.TryParse(join.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long id) ? id : null;
             tail.State = new ClientState("joining", place, join.Groups[1].Value, null, TimeOf(line), tail.OwnStart ? place : tail.State?.ChosenPlace,
-                tail.State?.PersonStarted == true);
+                tail.State?.PersonStarted == true, TeleportStarted: tail.State?.TeleportStarted);
             tail.OwnStart = false;
         }
-        else if (line.Contains(LaunchMark, StringComparison.Ordinal))
+        // The line itself: Roblox's client also has "launchUGCGameInternal: deferred download complete" and the like, no game start.
+        else if (line.Contains(LaunchMark, StringComparison.Ordinal) && line.AsSpan().TrimEnd().EndsWith(LaunchMark, StringComparison.Ordinal))
         {
             tail.Leaving = false;
             tail.TeleportAt = null;
@@ -316,7 +372,7 @@ public sealed class RobloxLogWatcher
         {
             tail.Connections++;
             if (tail.State is { Status: "joining" } joining)
-                tail.State = joining with { Status = "ingame", At = TimeOf(line), PersonStarted = false };
+                tail.State = joining with { Status = "ingame", At = TimeOf(line), PersonStarted = false, TeleportStarted = null };
         }
         else if (line.Contains(LeavingMark, StringComparison.Ordinal))
         {
@@ -324,12 +380,23 @@ public sealed class RobloxLogWatcher
             tail.TeleportAt = null; // leaving, not moving: the disconnect line that follows is the leave's
             // Left while the game was still loading (or before anything was logged): no disconnect line follows.
             if (tail.State is null or { Status: "joining" })
-                tail.State = (tail.State ?? new ClientState("left", null, null, null, TimeOf(line))) with { Status = "left", Reason = null, At = TimeOf(line) };
+                tail.State = (tail.State ?? new ClientState("left", null, null, null, TimeOf(line))) with
+                {
+                    Status = "left", Reason = null, At = TimeOf(line), TeleportStarted = null, NeverJoined = tail.State is { Status: "joining", JobId: null },
+                };
         }
         else if (line.Contains(SignedOutMark, StringComparison.Ordinal))
-            tail.State = (tail.State ?? new ClientState("signedout", null, null, null, TimeOf(line))) with { Status = "signedout", Reason = null, At = TimeOf(line) };
+            tail.State = (tail.State ?? new ClientState("signedout", null, null, null, TimeOf(line))) with
+            {
+                Status = "signedout", Reason = null, At = TimeOf(line), TeleportStarted = null,
+            };
         else if (line.Contains(TeleportMark, StringComparison.Ordinal))
+        {
             tail.TeleportAt = TimeOf(line);
+            // Shown as teleporting until the next server is reached (its three doTeleport lines keep the first time).
+            if (tail.State is { Status: "ingame" or "joining", TeleportStarted: null } moving)
+                tail.State = moving with { TeleportStarted = tail.TeleportAt };
+        }
         else if (line.Contains(KickMark, StringComparison.Ordinal) && KickLine.Match(line) is { Success: true } kick)
         {
             string? message = kick.Groups[1].Value.Trim() is { Length: > 0 } words ? words : null;
@@ -340,18 +407,18 @@ public sealed class RobloxLogWatcher
             else
                 (tail.PendingKickMessage, tail.PendingBan) = (message, ban);
         }
-        else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine.Match(line) is { Success: true } reason)
-            tail.PendingReason = int.TryParse(reason.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int why) ? why : null;
+        else if ((line.Contains(ReasonWordsMark, StringComparison.Ordinal) || line.Contains(LostWithReasonMark, StringComparison.Ordinal))
+                 && ReasonOfWords(line) is int worded)
+            RememberReason(tail, worded, 1);
+        else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine.Match(line) is { Success: true } reason
+                 && int.TryParse(reason.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int why))
+            RememberReason(tail, why, 3);
+        else if (line.Contains("Disconnect reason received", StringComparison.Ordinal) && ReceivedReasonLine.Match(line) is { Success: true } received
+                 && int.TryParse(received.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int sent))
+            RememberReason(tail, sent, 3);
         else if (line.Contains("Disconnection Notification", StringComparison.Ordinal) && NotificationReasonLine.Match(line) is { Success: true } notified
                  && int.TryParse(notified.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code))
-        {
-            // Never over the replicator's reason: after the disconnect line it completes one shown without a reason,
-            // before it waits for that line like the replicator's does.
-            if (tail.State is { Status: "disconnected", Reason: null } shown)
-                tail.State = shown with { Reason = code };
-            else
-                tail.PendingReason ??= code;
-        }
+            RememberReason(tail, code, code == ClientRequest ? 0 : 2);
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.State is { } state)
         {
             var at = TimeOf(line);
@@ -373,9 +440,14 @@ public sealed class RobloxLogWatcher
                 (tail.PendingKickMessage, tail.PendingBan) = (null, false);
                 return;
             }
+            tail.ShownReasonRank = tail.Leaving ? 0 : tail.PendingReasonRank;
             tail.State = tail.Leaving
-                ? state with { Status = "left", Reason = null, At = at }
-                : state with { Status = "disconnected", Reason = tail.PendingReason, KickMessage = tail.PendingKickMessage, BannedByGame = tail.PendingBan, At = at };
+                ? state with { Status = "left", Reason = null, At = at, TeleportStarted = null }
+                : state with
+                {
+                    Status = "disconnected", Reason = tail.PendingReason, KickMessage = tail.PendingKickMessage, BannedByGame = tail.PendingBan, At = at,
+                    TeleportStarted = null,
+                };
             tail.Leaving = false;
             tail.PendingReason = null;
             (tail.PendingKickMessage, tail.PendingBan) = (null, false);
@@ -383,6 +455,25 @@ public sealed class RobloxLogWatcher
         else if (line.Contains(WndCheckMark, StringComparison.Ordinal)
                  && (line.Contains(NewProcessEventMark, StringComparison.Ordinal) || line.Contains(NewProcessMutexMark, StringComparison.Ordinal)))
             tail.ClosedByNewWindow ??= TimeOf(line);
+    }
+
+    // Preserve the source's strength after showing the disconnect too: a numeric code can arrive later than words.
+    // Replicator (3) > numeric notification (2) > mapped words (1). Equal-strength repeats retain the first result.
+    static void RememberReason(Tail tail, int code, int rank)
+    {
+        if (tail.State is { Status: "disconnected" } shown)
+        {
+            if (shown.Reason is null || rank > tail.ShownReasonRank)
+            {
+                tail.State = shown with { Reason = code };
+                tail.ShownReasonRank = rank;
+            }
+        }
+        else if (tail.PendingReason is null || rank > tail.PendingReasonRank)
+        {
+            tail.PendingReason = code;
+            tail.PendingReasonRank = rank;
+        }
     }
 
     /// <summary>
@@ -404,6 +495,26 @@ public sealed class RobloxLogWatcher
             return metadata.Contains("\"moderatorType\"", StringComparison.Ordinal);
         }
     }
+
+    /// <summary>The code of the reason a disconnect line gives in words (<see cref="ReasonWords"/>); null for words not listed.</summary>
+    internal static int? ReasonOfWords(string line)
+    {
+        int tag = line.IndexOf('[');
+        if (tag < 0) return null;
+        var entry = line.AsSpan(tag);
+        int prefix = entry.StartsWith(ReasonWordsMark, StringComparison.Ordinal) ? ReasonWordsMark.Length
+            : entry.StartsWith(LostWithReasonMark, StringComparison.Ordinal) ? LostWithReasonMark.Length : -1;
+        if (prefix < 0)
+            return null;
+        string words = entry[prefix..].Trim().ToString();
+        return ReasonWords.TryGetValue(words, out int code) ? code : words.StartsWith(IdleWords, StringComparison.Ordinal) ? 278 : null;
+    }
+
+    /// <summary>
+    /// Roblox's idle kick in words, before its minutes ("You were disconnected for being idle 20 minutes"): the client's
+    /// own prompt for DisconnectIdle (278) reads the same, so anti-AFK's kicks are told on Roblox 0.744 too.
+    /// </summary>
+    const string IdleWords = "You were disconnected for being idle ";
 
     /// <summary>Lines start with an ISO UTC time ("2026-10-12T05:14:35.082Z,…").</summary>
     static DateTime TimeOf(string line)

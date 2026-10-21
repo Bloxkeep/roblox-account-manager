@@ -53,7 +53,9 @@
         "Arrange windows fits 5 or more Roblox windows side by side on a laptop screen, making them as small as the tiles (Roblox kept them at 800 × 600 at least, over each other and past the screen's edge), and brings them all over your other apps in one click.",
         "Fast cores for the window you play runs the windows in the background in Windows' own efficiency mode, as Task Manager's: they give way to the window you play and lean on the efficiency cores without being locked to them, and a window you click runs at full speed at once.",
         "Auto-rejoin tries again every 10 seconds, however often the account drops, instead of waiting longer and longer. A ban by the game stops it.",
+        "Auto-rejoin no longer tries again after a disconnect Roblox itself doesn't allow reconnecting after (no access to a private server any more, Roblox needs an update, the account already in another game…): the window keeps Roblox's message and Bloxkeep says why. A kick by the game is still rejoined.",
         "A kick shows the game's own words, on the card and in Discord alerts, and Discord alerts go out within a few seconds.",
+        "Each Roblox window says what it is doing on the way in: waiting for a server, server full (with its place in line when Roblox gives one), teleporting, or that it didn't get into the game. A window cut off says why: kicked by the game, signed in on another device, server shut down, lost connection, or that the reason isn't known. On its card, in the list and on the Discord board.",
         "The account list lines up like a table: VNG, Robux, group, auto-rejoin, PID and memory each stay in their own column on every row, as wide as the longest thing in it.",
         "Robux shows on the cards right as you unlock, instead of 20-30 seconds later, and a new or signed-in-again account gets it at the next look.",
         "Bloxkeep comes back from the tray at once, and the Statistics and Presets icons are ready before you open their tab.",
@@ -64,7 +66,9 @@
         "Xếp cửa sổ giờ xếp vừa 5 cửa sổ Roblox trở lên cạnh nhau trên màn hình laptop, thu chúng vừa đúng ô (Roblox từng giữ chúng ở tối thiểu 800 × 600, đè lên nhau và tràn ra ngoài màn hình), và đưa tất cả lên trên các app khác chỉ với một lần bấm.",
         "Nhường nhân mạnh cho cửa sổ đang chơi giờ cho cửa sổ chạy nền dùng chế độ hiệu quả của chính Windows (như trong Task Manager): nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm mà không bị khóa cứng vào đó, còn cửa sổ bạn bấm vào chạy hết tốc lực ngay.",
         "Tự vào lại giờ thử lại sau mỗi 10 giây, dù tài khoản bị văng bao nhiêu lần, thay vì chờ lâu dần. Bị game ban thì dừng hẳn.",
+        "Tự vào lại không còn thử lại sau những lỗi mà chính Roblox không cho kết nối lại (mất quyền vào server riêng, Roblox cần cập nhật, tài khoản đang ở game khác…): cửa sổ giữ nguyên thông báo của Roblox và Bloxkeep báo lý do. Bị game kick thì vẫn tự vào lại như cũ.",
         "Bị kick thì hiện lời của chính game, trên thẻ và trong thông báo Discord, và thông báo Discord gửi đi trong vài giây.",
+        "Mỗi cửa sổ Roblox báo rõ đang làm gì lúc vào game: đang chờ server, server đầy (kèm vị trí trong hàng chờ nếu Roblox cho biết), đang dịch chuyển, hay không vào được game. Cửa sổ bị văng thì ghi đúng lý do: bị game kick, đăng nhập ở thiết bị khác, server tắt, mất kết nối, hoặc chưa rõ lý do. Hiện trên thẻ, trong danh sách và trên bảng Discord.",
         "Danh sách tài khoản thẳng hàng như một bảng: VNG, Robux, nhóm, tự vào lại, PID và RAM nằm đúng cột của mình ở mọi dòng, rộng vừa với thứ dài nhất trong cột.",
         "Robux hiện trên thẻ ngay khi mở khóa thay vì 20-30 giây sau, và tài khoản mới thêm hay vừa đăng nhập lại có Robux ở lần xem kế tiếp.",
         "Bloxkeep mở lại từ khay hệ thống ngay lập tức, và biểu tượng ở Thống kê và Preset có sẵn trước khi bạn mở tab.",
@@ -74,6 +78,8 @@
     },
     "fixed": {
       "en": [
+        "A kick by the game, or the account signing in on another device, is no longer reported as \"Lost connection\": when Roblox's log has no error code, Bloxkeep reads Roblox's own words. An account signed in on another device is no longer rejoined (that would push the other device out), a server that shut down says so, and a drop whose reason Roblox didn't log says the reason is unknown.",
+        "A kick for being idle is recognized again on Roblox 0.744, which logs it only in words: the AFK alert says when anti-AFK couldn't step in.",
         "With Save RAM on background windows on and 5 or more Roblox windows open, some windows no longer stutter (dragging one most of all): their RAM is no longer emptied every 2 minutes once the PC uses 85 % of it.",
         "A rejoin waiting its turn no longer holds back Restart to update (\"Wait until Bloxkeep finishes opening Roblox\" while nothing was opening). It carries on after the restart.",
         "Accounts you closed right before Bloxkeep restarted (to update, say) no longer show as \"Playing · another device\" for a few minutes.",
@@ -82,6 +88,8 @@
         "In a narrow window, Switch vault no longer runs past the sidebar's edge, and shows its letter again."
       ],
       "vi": [
+        "Bị game kick, hay tài khoản đăng nhập ở thiết bị khác, không còn bị báo nhầm là \"Mất kết nối\": khi log của Roblox không ghi mã lỗi, Bloxkeep đọc chính lời Roblox ghi. Tài khoản đăng nhập ở thiết bị khác thì không tự vào lại nữa (vào lại sẽ đẩy thiết bị kia ra), server tắt thì báo đúng là server đã tắt, còn lần văng mà Roblox không ghi lý do thì báo là chưa rõ lý do.",
+        "Bị kick vì AFK lại được nhận ra trên Roblox 0.744 (bản này chỉ ghi lý do bằng chữ): thông báo AFK lại báo khi chống AFK không kịp can thiệp.",
         "Khi bật Tiết kiệm RAM cho cửa sổ chạy nền và mở từ 5 cửa sổ Roblox trở lên, vài cửa sổ không còn bị giật (nhất là lúc kéo): Bloxkeep không còn ép chúng nhả hết RAM mỗi 2 phút khi máy dùng tới 85% RAM.",
         "Một lần tự vào lại đang chờ không còn chặn nút Khởi động lại để cập nhật (hiện \"Chờ Bloxkeep mở Roblox xong đã\" dù chẳng có gì đang mở). Lần vào lại đó tiếp tục sau khi khởi động lại.",
         "Tài khoản vừa đóng ngay trước khi Bloxkeep khởi động lại (để cập nhật chẳng hạn) không còn hiện \"Đang chơi · thiết bị khác\" trong vài phút.",

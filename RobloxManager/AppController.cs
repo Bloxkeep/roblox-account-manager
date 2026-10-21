@@ -114,6 +114,32 @@ public sealed partial class AppController : IDisposable
     readonly HashSet<int> _closingForRejoin = new();
     /// <summary>Roblox's code for "the same account joined from another device": never fight that with a rejoin.</summary>
     const int SameAccountElsewhere = 273;
+    /// <summary>
+    /// Roblox's DisconnectRejoin (276): the client says the same as for <see cref="SameAccountElsewhere"/> ("Same account
+    /// launched experience from different device"), so it is taken the same way.
+    /// </summary>
+    static bool SignedInElsewhere(int? code) => code is SameAccountElsewhere or 276;
+    /// <summary>
+    /// Roblox's codes whose own error box has no Reconnect button (reconnectDisabledList in its Connection.lua, client
+    /// 0.744): a rejoin would only be refused again (no access to a private server any more, Roblox out of date, the same
+    /// player twice, security checks, Roblox's join refusals). Bloxkeep doesn't rejoin them either, except a game's kick
+    /// (267, also on Roblox's list), which games often ask for ("please rejoin the game") and auto-rejoin is for.
+    /// </summary>
+    static readonly HashSet<int> NoReconnect =
+    [
+        5, 6, 7, 8, 9, 257, 258, 259, 263, 264, 265, 268, 270, 272, 280, 281, 282, 284, 286, 294, 295, 304, 305, 306, 307,
+        317, 318, 320, 321, 522, 523, 524, 525, 526, 527, 533, 541, 542, 543, 544, 600, 601,
+    ];
+    static bool RobloxWontReconnect(int? code) => code is int c && NoReconnect.Contains(c);
+    /// <summary>Roblox's ServerShutdown: the game's server closed (an update, the developer's shutdown).</summary>
+    const int ServerShutdown = 288;
+    /// <summary>
+    /// Roblox's codes for a connection that failed on the way: the ones its own error screen reconnects by itself
+    /// (autoReconnectAllowedList in its Connection.lua: the packet errors 260-262, Timeout, HashTimeout, ConnectionLost,
+    /// RaknetErrors, ReplicatorTimeout, NetworkInternal/Send/Timeout). Only these are said as a lost connection; a
+    /// disconnect without a code is said as one whose reason isn't known.
+    /// </summary>
+    static bool LostConnection(int code) => code is 260 or 261 or 262 or 266 or 269 or 277 or 279 or 290 or 296 or 297 or 298;
     /// <summary>Roblox's code for "kicked for being idle 20 minutes".</summary>
     const int IdleKick = 278;
     /// <summary>Last time each client (by process id) got input: from the person playing it or from anti-AFK.</summary>
@@ -792,6 +818,8 @@ public sealed partial class AppController : IDisposable
                 since = run.Launch.StartedAt,
                 game = SessionGameDto(run.Pid, run.Launch),
                 connection = Connection(a, run.Pid, run.Launch),
+                phase = Phase(run.Pid),
+                queuePosition = Phase(run.Pid) == "full" ? JoinAnswerOf(run.Pid)?.QueuePosition : null,
                 reason = _logs.StateOf(run.Pid) is { Status: "disconnected" } kicked ? kicked.Reason : null,
                 // The game's words with a kick or ban, and whether it was a ban (both come with Roblox's code 267), or
                 // the window is stuck on Roblox's Join Error 600 for a game that banned the account (its log says nothing).
@@ -829,6 +857,28 @@ public sealed partial class AppController : IDisposable
             return "joining";
         return launch.Target is null ? "menu" : "disconnected";
     }
+
+    /// <summary>Roblox's answer about a window that hasn't got in (<see cref="CheckJoinAsync"/>), once it came.</summary>
+    RobloxApi.JoinAnswer? JoinAnswerOf(int pid) =>
+        _joinChecks.TryGetValue(pid, out var asked) && asked.Answer is { IsCompletedSuccessfully: true, Result: { } answer } ? answer : null;
+
+    /// <summary>How long a teleport is shown as one: Roblox's took 0.5-3.6 s here (2026-10-21); one that failed leaves the window where it was.</summary>
+    static readonly TimeSpan TeleportShown = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// What a client's log says beyond <see cref="Connection"/>: "teleporting" (on its way to another place or server),
+    /// "waiting" (started, no server yet: normally a second, longer in a full server's line or on a join error, which
+    /// Roblox's log doesn't tell apart), "full" (still waiting, and Roblox's join answer says the server is full),
+    /// "joinFailed" (left before any server took it), or null.
+    /// </summary>
+    string? Phase(int pid) => _logs.StateOf(pid) switch
+    {
+        { Status: "ingame" or "joining", TeleportStarted: { } t } when DateTime.UtcNow - t < TeleportShown => "teleporting",
+        { Status: "joining", JobId: null } when JoinAnswerOf(pid) is { Full: true } => "full",
+        { Status: "joining", JobId: null } => "waiting",
+        { Status: "left", NeverJoined: true } => "joinFailed",
+        _ => null,
+    };
 
     async Task NameLoggedPlacesAsync(List<long> placeIds)
     {
@@ -3873,8 +3923,10 @@ public sealed partial class AppController : IDisposable
             return true;
         if (!RejoinOn(found, launch.PresetId))
             return false;
-        // The person left the game themselves, or the same account joined from another device: not a drop.
-        return lastLog is not ({ Status: "left" or "signedout" } or { Status: "disconnected", Reason: SameAccountElsewhere });
+        // The person left the game themselves, or the same account joined from another device: not a drop. Nor one
+        // Roblox doesn't let reconnect after (RobloxWontReconnect).
+        return lastLog is not { Status: "left" or "signedout" }
+            && !(lastLog is { Status: "disconnected", Reason: var why } && (SignedInElsewhere(why) || RobloxWontReconnect(why)));
     }
 
     /// <summary>
@@ -3928,6 +3980,7 @@ public sealed partial class AppController : IDisposable
         foreach (int gone in _joinChecks.Keys.Where(pid => _running.Values.All(r => r.Pid != pid)).ToList())
             _joinChecks.Remove(gone);
         _gameBanNoted.RemoveWhere(pid => _running.Values.All(r => r.Pid != pid));
+        _noRejoinTold.RemoveWhere(pid => _running.Values.All(r => r.Pid != pid));
         if (_vault is null || _running.Count == 0 || Settling)
             return;
         var now = DateTime.UtcNow;
@@ -3978,7 +4031,15 @@ public sealed partial class AppController : IDisposable
             // minute's timeout below closed it with "trying again").
             if (_gameBanNoted.Contains(info.Pid))
                 continue;
-            bool dropped = state is { Status: "disconnected" } && state.Reason != SameAccountElsewhere && now - state.At >= TimeSpan.FromSeconds(3);
+            // Roblox's own error box has no Reconnect for this code: the window stays, with Roblox's message, and why no
+            // rejoin follows is said once (not for a drop from before this run: said back then).
+            if (state is { Status: "disconnected", Reason: int refused } && RobloxWontReconnect(refused))
+            {
+                if (_noRejoinTold.Add(info.Pid) && state.At >= _started && FindAccount(id) is { } kept && RejoinOn(kept, info.Launch.PresetId))
+                    Notify(L.F("{0} isn't rejoined ({1}): Roblox doesn't allow reconnecting after this.", Name(kept), KickReason(refused)), "warn", "drop", kept.Id);
+                continue;
+            }
+            bool dropped = state is { Status: "disconnected" } && !SignedInElsewhere(state.Reason) && now - state.At >= TimeSpan.FromSeconds(3);
             // A game start logs "joining" without a server; the server comes with the "Joining game" line. One the person
             // started in the window is theirs to watch: closing it would reopen the game Bloxkeep opened instead.
             bool neverGotIn = state is { Status: "joining", JobId: null, PersonStarted: false } && now - state.At >= GetInTimeout;
@@ -3991,15 +4052,24 @@ public sealed partial class AppController : IDisposable
             if (neverGotIn && _joinChecks.TryGetValue(info.Pid, out var pending) && !pending.Answer.IsCompleted)
                 continue;
             _closingForRejoin.Add(info.Pid);
-            Notify(dropped ? L.F("{0} seems disconnected — restarting Roblox…", Name(account))
-                : target.JobId is not null ? L.F("{0} couldn't get into that server (full or closed) — joining another one…", Name(account))
-                : L.F("{0} couldn't get into the game — trying again…", Name(account)), "info", "drop", account.Id);
+            // Said as what it was: a game's kick (with its words) or a server that shut down is no lost connection (on
+            // 2026-10-21 a game's "DataStore lock lost, please rejoin the game." went out as "Lost connection").
+            Notify(!dropped ? (target.JobId is not null ? L.F("{0} couldn't get into that server (full or closed) — joining another one…", Name(account))
+                    : L.F("{0} couldn't get into the game — trying again…", Name(account)))
+                : state.KickMessage is { Length: > 0 } words ? L.F("{0} was kicked by the game, rejoining: {1}", Name(account), words)
+                : state.Reason == 267 ? L.F("{0} was kicked by the game — rejoining…", Name(account))
+                : state.Reason == ServerShutdown ? L.F("{0}'s server shut down — joining another one…", Name(account))
+                : state.Reason is int lost && LostConnection(lost) ? L.F("{0} lost connection — restarting Roblox…", Name(account))
+                : state.Reason is int other ? L.F("{0} was disconnected ({1}) — restarting Roblox…", Name(account), KickReason(other))
+                : L.F("{0} dropped out of the game, reason unknown — restarting Roblox…", Name(account)), "info", "drop", account.Id);
             RobloxProcesses.Close(info.Pid);
         }
     }
 
     /// <summary>Clients whose game ban was noted (once each).</summary>
     readonly HashSet<int> _gameBanNoted = new();
+    /// <summary>Clients told once that Roblox doesn't let them reconnect (<see cref="RobloxWontReconnect"/>).</summary>
+    readonly HashSet<int> _noRejoinTold = new();
     /// <summary>Clients that never got into their game, Roblox's answer to why (<see cref="CheckJoinAsync"/>), and when it was asked.</summary>
     readonly Dictionary<int, (Task<RobloxApi.JoinAnswer?> Answer, DateTime At)> _joinChecks = new();
     /// <summary>A question about a join that got no answer is asked again after this.</summary>
@@ -4479,7 +4549,7 @@ public sealed partial class AppController : IDisposable
                 continue;
             _offlineStrikes.Remove(id);
             _closingForRejoin.Add(info.Pid); // Bloxkeep's own close: never taken for Roblox closing it
-            Notify(L.F("{0} seems disconnected — restarting Roblox…", Name(account)), "info", "drop", account.Id);
+            Notify(L.F("{0} dropped out of the game, reason unknown — restarting Roblox…", Name(account)), "info", "drop", account.Id);
             RobloxProcesses.Close(info.Pid);
         }
     }

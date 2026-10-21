@@ -40,6 +40,7 @@ When an account's Roblox disconnects, gets kicked or loses the connection, Bloxk
 
 - You left the game yourself, or closed the Roblox window yourself.
 - The account signed in on another device.
+- Roblox itself doesn't allow reconnecting after this disconnect (no access to a private server any more, Roblox needs an update, the account is already in another game…). The window keeps Roblox's message and Bloxkeep says why. A kick by the game is still rejoined.
 - The account is banned.
 - Roblox itself closed the window because another one opened.
 - Bloxkeep is locked. Auto-rejoin works again once you unlock.

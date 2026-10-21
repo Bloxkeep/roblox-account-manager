@@ -45,7 +45,13 @@ public sealed partial class AppController
             case "drop" or "rejoinSlow" or "rejoinFail" or "afk" when SubjectOf(subject, now) is { } who:
                 var (title, description, color) = type switch
                 {
-                    "drop" when en.StartsWith("{0} seems disconnected", StringComparison.Ordinal) => (DT("Lost connection, restarting Roblox"), (string?)null, DiscordWebhook.Yellow),
+                    "drop" when en.StartsWith("{0} lost connection", StringComparison.Ordinal) => (DT("Lost connection, restarting Roblox"), (string?)null, DiscordWebhook.Yellow),
+                    "drop" when en.StartsWith("{0} dropped out of the game, reason unknown", StringComparison.Ordinal) => (DT("Disconnected, reason unknown"), null, DiscordWebhook.Yellow),
+                    "drop" when en.StartsWith("{0} was kicked by the game", StringComparison.Ordinal) => (DT("Kicked by the game, rejoining"),
+                        why is null ? null : DiscordWebhook.Escape(why), DiscordWebhook.Yellow),
+                    "drop" when en.StartsWith("{0}'s server shut down", StringComparison.Ordinal) => (DT("Server shut down, joining another"), null, DiscordWebhook.Yellow),
+                    "drop" when en.StartsWith("{0} isn't rejoined", StringComparison.Ordinal) => (DT("Disconnected, not rejoining"),
+                        why is null ? null : DiscordWebhook.Escape(why), DiscordWebhook.Red),
                     "drop" when en.StartsWith("{0} couldn't get into that server", StringComparison.Ordinal) => (DT("Couldn't get into the server, joining another"), null, DiscordWebhook.Yellow),
                     "drop" when en.StartsWith("{0} couldn't get into the game", StringComparison.Ordinal) => (DT("Couldn't get into the game, trying again"), null, DiscordWebhook.Yellow),
                     "drop" => (DT("Disconnected, rejoining"), null, DiscordWebhook.Yellow),
@@ -53,7 +59,8 @@ public sealed partial class AppController
                     "rejoinFail" => (DT("Couldn't rejoin"), why is null ? null : DiscordWebhook.Escape(why), DiscordWebhook.Red),
                     _ => (DT("Kicked for being AFK"), why is null ? null : DiscordWebhook.Escape(why), DiscordWebhook.Yellow),
                 };
-                return AccountAlert(who, title, description, color, now);
+                // A kick says it in its title, with the game's words: no "Reason" field saying it again.
+                return AccountAlert(en.StartsWith("{0} was kicked by the game", StringComparison.Ordinal) ? who with { Reason = null } : who, title, description, color, now);
             case "gameBan" when SubjectOf(subject, now) is { } who:
                 // The game's words are the description: no "Reason" field saying "Kicked by the game" with them again.
                 return AccountAlert(who with { Reason = null }, DT("Banned by the game"), why is null ? DT("Bloxkeep won't rejoin this game for this account.")
@@ -182,19 +189,23 @@ public sealed partial class AppController
     string? GameIcon(long placeId, long universeId) => IconOf(placeId, universeId) is { } icon && DiscordWebhook.IsRobloxPicture(icon) ? icon : null;
 
     /// <summary>Roblox's disconnect code in plain words (as KickReason words them), with the code: "Connection lost `277`".</summary>
-    string KickText(int code)
-    {
-        string? words = code switch
+    string KickText(int code) =>
+        KickWords(code) is { } words ? $"{Capital(words)} `{code}`" : Capital(DF("Roblox code {0}", $"`{code}`"));
+
+    /// <summary>Roblox's disconnect code in Discord's words; null for a code without any.</summary>
+    string? KickWords(int code) => code switch
         {
             IdleKick => DT("kicked for being idle"),
             267 => DT("kicked by the game"),
-            SameAccountElsewhere => DT("signed in on another device"),
-            277 => DT("connection lost"),
+            SameAccountElsewhere or 276 => DT("signed in on another device"),
             279 => DT("couldn't join the server"),
+            int lost when LostConnection(lost) => DT("connection lost"),
+            286 => DT("no access to the private server any more"),
+            259 or 280 => DT("Roblox needs an update"),
+            264 or 265 => DT("already in another game"),
+            ServerShutdown => DT("server shut down"),
             _ => null,
         };
-        return words is null ? Capital(DF("Roblox code {0}", $"`{code}`")) : $"{Capital(words)} `{code}`";
-    }
 
     /// <summary>A sentence's values written out the way Discord's messages want them: names shown or hidden by its switch.</summary>
     string Written(string format, object?[] args)

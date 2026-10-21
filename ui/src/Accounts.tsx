@@ -17,7 +17,10 @@ const isStranded = (a: Account) => isLocal(a) && ['disconnected', 'menu', 'signe
 const inGame = (a: Account) => (isLocal(a) && !isStranded(a)) || a.presence?.type === 'ingame';
 const isOnline = (a: Account) => isLocal(a) || ['online', 'ingame', 'studio'].includes(a.presence?.type);
 /** Roblox's disconnect codes, as the client logs them (278 seen in practice; the others are Roblox's documented ones). */
-const KICK: Record<number, string> = { 278: 'kick.idle', 267: 'kick.game', 273: 'kick.elsewhere', 277: 'kick.network', 279: 'kick.connect' };
+const KICK: Record<number, string> = { 278: 'kick.idle', 267: 'kick.game', 273: 'kick.elsewhere', 276: 'kick.elsewhere', 277: 'kick.network', 279: 'kick.connect', 288: 'kick.shutdown',
+  286: 'kick.private', 259: 'kick.update', 280: 'kick.update', 264: 'kick.duplicate', 265: 'kick.duplicate',
+  // The other codes of a connection that failed on the way (LostConnection in AppController.cs).
+  260: 'kick.network', 261: 'kick.network', 262: 'kick.network', 266: 'kick.network', 269: 'kick.network', 290: 'kick.network', 296: 'kick.network', 297: 'kick.network', 298: 'kick.network' };
 /** The colour of the avatar ring and dot: a client here in the Roblox menu is online, not in a game. */
 const presenceType = (a: Account) => !isLocal(a) ? a.presence?.type || ''
   : a.session?.connection === 'disconnected' ? 'kicked' : a.session?.connection === 'menu' ? 'online'
@@ -279,12 +282,21 @@ function Activity({ a }: { a: Account }) {
     if (a.session?.bannedByGame)
       return box('kicked', iconBox('alert'), t('act.bannedByGame'), [a.session.kickMessage, game?.name].filter(Boolean).join(' · ') || t('act.stillOpen'));
     if (c === 'disconnected') {
-      const why = a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : '';
-      return box('kicked', iconBox('alert'), t('act.kicked'), [why, a.session.kickMessage, game?.name].filter(Boolean).join(' · ') || t('act.stillOpen'));
+      // Why is the status itself (kicked by the game, server shut down…); without a reason, it says the reason isn't known.
+      const r = a.session.reason;
+      const why = r ? (KICK[r] ? t(KICK[r]) : t('kick.code', { code: r })) : t('act.kicked');
+      return box('kicked', iconBox('alert'), why, [r ? '' : t('kick.unknown'), a.session.kickMessage, game?.name].filter(Boolean).join(' · ') || t('act.stillOpen'));
     }
+    // Left before any server took it (a join error's Leave, or a wait given up): Roblox's log doesn't say which.
+    if (c === 'menu' && a.session.phase === 'joinFailed')
+      return box('online', iconBox('monitor'), t('act.joinFailed'), [a.session.game?.name, t('act.stillOpen')].filter(Boolean).join(' · '));
     if (c === 'menu') return box('online', iconBox('monitor'), t('act.menuHere'), t('act.menuWhere'));
     if (c === 'signedout') return box('signedout', iconBox('logIn'), t('act.signedOutHere'), t('act.signedOutWhere'));
-    return box('ingame', gIcon(game?.iconUrl), t(c === 'ingame' ? 'act.playingHere' : 'act.joiningHere'), game?.name || t('act.gameLoading'));
+    // Roblox's join answer says the server is full: its place in line when Roblox gave one.
+    if (c === 'joining' && a.session.phase === 'full')
+      return box('launching', gIcon(game?.iconUrl), t('act.serverFull'),
+        [a.session.queuePosition ? t('act.inLine', { n: a.session.queuePosition }) : '', game?.name].filter(Boolean).join(' · ') || t('act.gameLoading'));
+    return box('ingame', gIcon(game?.iconUrl), t(onTheWay(a, c)), game?.name || t('act.gameLoading'));
   }
   switch (p?.type) {
     case 'ingame': return box('ingame', gIcon(p.iconUrl), t('act.playingElse'), p.game || t('act.hidden'));
@@ -386,6 +398,14 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
   </article>;
 }
 
+/** In a game or on the way: teleporting, waiting for a server (started, none yet), joining it, or playing. */
+function onTheWay(a: Account, c: string | undefined, at: 'act' | 'row' = 'act'): string {
+  const phase = a.session?.phase;
+  if (phase === 'teleporting') return 'act.teleporting';
+  if (phase === 'waiting' && c === 'joining') return 'act.waitServer';
+  return c === 'ingame' ? (at === 'row' ? 'row.playing' : 'act.playingHere') : (at === 'row' ? 'row.joining' : 'act.joiningHere');
+}
+
 /** The account's status in a few words, for the compact list. */
 function statusLine(t: (k: string, v?: Record<string, string | number>) => string, a: Account): { cls: string; text: string; until?: string | null } {
   const p = a.presence;
@@ -397,12 +417,15 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
     const withGame = (text: string) => game ? `${text} · ${game}` : text;
     if (c === 'disconnected' || a.session?.bannedByGame) {
       const why = a.session.bannedByGame ? t('act.bannedByGame')
-        : a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : t('row.kicked');
+        : a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : t('row.kickedUnknown');
       return { cls: 'kicked', text: withGame(a.session.kickMessage ? `${why}: ${a.session.kickMessage}` : why) };
     }
+    if (c === 'menu' && a.session.phase === 'joinFailed') return { cls: 'online', text: withGame(t('act.joinFailed')) };
+    if (c === 'joining' && a.session.phase === 'full')
+      return { cls: 'launching', text: withGame(a.session.queuePosition ? `${t('row.full')} · ${t('act.inLine', { n: a.session.queuePosition })}` : t('act.serverFull')) };
     if (c === 'menu') return { cls: 'online', text: t('act.menuHere') };
     if (c === 'signedout') return { cls: 'signedout', text: t('act.signedOutHere') };
-    return { cls: 'ingame', text: withGame(t(c === 'ingame' ? 'row.playing' : 'row.joining')) };
+    return { cls: 'ingame', text: withGame(t(onTheWay(a, c, 'row'))) };
   }
   // A ban or a lost sign-in is the red pill in front; a lost sign-in needs no words after it.
   switch (p?.type) {

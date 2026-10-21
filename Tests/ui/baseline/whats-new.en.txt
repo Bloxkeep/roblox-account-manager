@@ -236,7 +236,13 @@ html [data-theme="dark" lang="en"]
             span "Auto-rejoin tries again every 10 seconds, however often the account drops, instead of waiting longer and longer. A ban by the game stops it."
           li
             svg.i #1l5qw3q
+            span "Auto-rejoin no longer tries again after a disconnect Roblox itself doesn't allow reconnecting after (no access to a private server any more, Roblox needs an update, the account already in another game…): the window keeps Roblox's message and Bloxkeep says why. A kick by the game is still rejoined."
+          li
+            svg.i #1l5qw3q
             span "A kick shows the game's own words, on the card and in Discord alerts, and Discord alerts go out within a few seconds."
+          li
+            svg.i #1l5qw3q
+            span "Each Roblox window says what it is doing on the way in: waiting for a server, server full (with its place in line when Roblox gives one), teleporting, or that it didn't get into the game. A window cut off says why: kicked by the game, signed in on another device, server shut down, lost connection, or that the reason isn't known. On its card, in the list and on the Discord board."
           li
             svg.i #1l5qw3q
             span "The account list lines up like a table: VNG, Robux, group, auto-rejoin, PID and memory each stay in their own column on every row, as wide as the longest thing in it."
@@ -255,6 +261,12 @@ html [data-theme="dark" lang="en"]
         h4.fixed.wn-kind.wn-sub "Fixed"
           svg.i #yqrnd9
         ul.fixed.wn-also
+          li
+            svg.i #yqrnd9
+            span "A kick by the game, or the account signing in on another device, is no longer reported as \"Lost connection\": when Roblox's log has no error code, Bloxkeep reads Roblox's own words. An account signed in on another device is no longer rejoined (that would push the other device out), a server that shut down says so, and a drop whose reason Roblox didn't log says the reason is unknown."
+          li
+            svg.i #yqrnd9
+            span "A kick for being idle is recognized again on Roblox 0.744, which logs it only in words: the AFK alert says when anti-AFK couldn't step in."
           li
             svg.i #yqrnd9
             span "With Save RAM on background windows on and 5 or more Roblox windows open, some windows no longer stutter (dragging one most of all): their RAM is no longer emptied every 2 minutes once the PC uses 85 % of it."

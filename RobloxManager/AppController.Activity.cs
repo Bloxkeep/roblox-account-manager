@@ -335,9 +335,13 @@ public sealed partial class AppController
     {
         IdleKick => L.T("kicked for being idle"),
         267 => L.T("kicked by the game"),
-        SameAccountElsewhere => L.T("signed in on another device"),
-        277 => L.T("connection lost"),
+        SameAccountElsewhere or 276 => L.T("signed in on another device"),
         279 => L.T("couldn't join the server"),
+        int lost when LostConnection(lost) => L.T("connection lost"),
+        286 => L.T("no access to the private server any more"),
+        259 or 280 => L.T("Roblox needs an update"),
+        264 or 265 => L.T("already in another game"),
+        ServerShutdown => L.T("server shut down"),
         _ => L.F("Roblox code {0}", code),
     };
 

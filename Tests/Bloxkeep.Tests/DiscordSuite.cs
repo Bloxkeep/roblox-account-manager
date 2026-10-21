@@ -200,7 +200,8 @@ static class DiscordSuite
             var drop = Raise(() => Notify(L.F("{0} left the game — rejoining in {1}s…", Name(0), 5), "drop", accounts[0].Id));
             Add("Alert · disconnected, rejoining", drop.Message);
             Stay(1, 0, TimeSpan.FromMinutes(134), null, open: true);
-            Add("Alert · lost connection, restarting Roblox", Raise(() => Notify(L.F("{0} seems disconnected — restarting Roblox…", Name(1)), "drop", accounts[1].Id)).Message);
+            Add("Alert · disconnected, reason unknown", Raise(() => Notify(L.F("{0} dropped out of the game, reason unknown — restarting Roblox…", Name(1)), "drop", accounts[1].Id)).Message);
+            Add("Alert · lost connection, restarting Roblox", Raise(() => Notify(L.F("{0} lost connection — restarting Roblox…", Name(0)), "drop", accounts[0].Id)).Message);
             Add("Alert · couldn't get into the server", Raise(() => Notify(L.F("{0} couldn't get into that server (full or closed) — joining another one…", Name(1)), "drop", accounts[1].Id)).Message);
             Stay(2, 0, TimeSpan.FromMinutes(3), 279);
             Add("Alert · keeps getting disconnected", Raise(() => Notify(L.F("{0} keeps getting disconnected — Bloxkeep keeps rejoining every {1}s.", Name(2), 10), "rejoinSlow", accounts[2].Id)).Message);
@@ -248,17 +249,28 @@ static class DiscordSuite
             IList Rows(params (int Account, int? Game, string Status, int Minutes, int Pid, long Mb)[] rows)
             {
                 var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(rowType))!;
+                // "disconnected:267" is cut off with Roblox's code 267; "banned" is a ban by the game; "joining:waiting" a
+                // status with what its log says beyond it.
                 foreach (var r in rows)
+                {
+                    string[] parts = r.Status.Split(':');
                     list.Add(Activator.CreateInstance(rowType, accounts[r.Account].Label, r.Game is int g ? games[g].Place : (long?)null, r.Game is int n ? games[n].Name : null,
-                        r.Status, (long)r.Minutes * 60, r.Pid, r.Mb * 1024 * 1024));
+                        r.Status == "banned" ? "disconnected" : parts[0], (long)r.Minutes * 60, r.Pid, r.Mb * 1024 * 1024,
+                        parts is ["disconnected", var code] ? int.Parse(code) : (int?)null, r.Status == "banned", parts is [not "disconnected", var phase, ..] ? phase : null,
+                        parts is [_, "full", var line] ? int.Parse(line) : (int?)null));
+                }
                 return list;
             }
             var boardMethod = typeof(AppController).GetMethods(Harness.F).Single(m => m.Name == "BoardMessage" && m.GetParameters()[0].ParameterType == typeof(int));
             object Board(IList rows) => boardMethod.Invoke(app, [5, rows, DateTime.UtcNow])!;
             Add("Board · six open, one cut off", Board(Rows(
-                (0, 0, "ingame", 134, 14212, 812), (1, 0, "ingame", 131, 15880, 790), (2, 0, "disconnected", 128, 9932, 640),
+                (0, 0, "ingame", 134, 14212, 812), (1, 0, "ingame", 131, 15880, 790), (2, 0, "disconnected:267", 128, 9932, 640),
                 (3, 1, "ingame", 422, 20144, 455), (4, 1, "joining", 1, 21008, 210), (5, null, "menu", 6, 22540, 380))));
             Add("Board · all in game", Board(Rows((0, 0, "ingame", 72, 14212, 812), (1, 0, "ingame", 70, 15880, 790), (2, 0, "ingame", 69, 9932, 760))));
+            Add("Board · cut off for different reasons", Board(Rows((0, 0, "disconnected:288", 72, 14212, 812), (1, 0, "disconnected", 70, 15880, 790),
+                (2, 1, "banned", 3, 9932, 410), (3, 1, "disconnected:299", 41, 20144, 455))));
+            Add("Board · on the way in", Board(Rows((0, 0, "ingame", 72, 14212, 812), (1, 0, "joining:waiting", 1, 15880, 390),
+                (2, 1, "joining:teleporting", 41, 9932, 610), (3, 1, "menu:joinFailed", 2, 20144, 300), (4, 1, "joining:full:3", 1, 21008, 280))));
             Add("Board · nobody playing", Board(Rows()));
             Add("Board · Bloxkeep locked", Harness.Invoke(app, "FinalBoardMessage", false)!);
             Add("Board · Bloxkeep closed", Harness.Invoke(app, "FinalBoardMessage", true)!);
@@ -397,6 +409,16 @@ static class DiscordSuite
         c.Check("every message has its Vietnamese", untranslated.Count == 0, string.Join(", ", untranslated));
         var board = samples.First(s => s.Label.StartsWith("Board · six") && s.Language == "en").Payload.ToJsonString();
         c.Check("a name with * is escaped", board.Contains(@"Pixel\\*Knight"), board.Length);
+        // A window cut off says why on the board, as on its card: never a lost connection Roblox didn't say.
+        string Fields(string label) => string.Join("\n", samples.First(s => s.Label.StartsWith(label) && s.Language == "en").Payload["embeds"]![0]!["fields"]!.AsArray()
+            .Select(f => f!["value"]!.GetValue<string>()));
+        string cut = Fields("Board · cut off");
+        c.Check("the board says why a window was cut off: the game's kick, a server shut down, a ban, a code, or a reason not known",
+            Fields("Board · six").Contains("Kicked by the game") && cut.Contains("Server shut down") && cut.Contains("Banned by the game")
+            && cut.Contains("Disconnected · code 299") && cut.Contains("Disconnected, reason unknown") && !cut.Contains("Lost connection"), cut);
+        string way = Fields("Board · on the way in");
+        c.Check("…and the way in: waiting for a server, teleporting, or left before a server took it",
+            way.Contains("Waiting for a server") && way.Contains("Teleporting") && way.Contains("Didn't get into the game") && way.Contains("Server full · #3 in line"), way);
         var group = samples.First(s => s.Label == "Alerts · three at once" && s.Language == "en").Payload;
         c.Check("events at once: one embed, a field each", group["embeds"]!.AsArray().Count == 1 && group["embeds"]![0]!["fields"]!.AsArray().Count == 3);
         c.Check("events at once: each account's facts in its field", group["embeds"]![0]!["fields"]!.AsArray().Take(2).All(f => f!["value"]!.GetValue<string>().Contains("`277`")),

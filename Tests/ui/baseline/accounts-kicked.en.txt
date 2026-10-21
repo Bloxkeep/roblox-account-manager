@@ -171,8 +171,8 @@ html [data-theme="dark" lang="en"]
                   span.gicon
                     svg.i #42lb9l
                   div.txt
-                    div.k [title="Disconnected"] "Disconnected"
-                    div.v [title="Kicked for being idle · Blox Fruits"] "Kicked for being idle · Blox Fruits"
+                    div.k [title="Kicked for being idle"] "Kicked for being idle"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
                 div.live
                   span [title="RAM in use"]
                     svg.i #m3noxv

@@ -40,6 +40,7 @@ Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết n�
 
 - Bạn tự thoát game, hoặc tự tay đóng cửa sổ Roblox.
 - Tài khoản đăng nhập ở thiết bị khác.
+- Chính Roblox không cho kết nối lại sau lỗi này (mất quyền vào server riêng, Roblox cần cập nhật, tài khoản đang ở game khác…). Cửa sổ giữ nguyên thông báo của Roblox và Bloxkeep báo lý do. Bị game kick thì vẫn tự vào lại.
 - Tài khoản bị ban.
 - Chính Roblox đóng cửa sổ vì có cửa sổ khác mở ra.
 - Bloxkeep đang khóa. Mở khóa xong thì tính năng chạy lại.

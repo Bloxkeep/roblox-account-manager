@@ -144,8 +144,8 @@ html [data-theme="dark" lang="vi"]
                   span.gicon
                     svg.i #42lb9l
                   div.txt
-                    div.k [title="Bị văng khỏi server"] "Bị văng khỏi server"
-                    div.v [title="Bị kick vì AFK · Blox Fruits"] "Bị kick vì AFK · Blox Fruits"
+                    div.k [title="Bị kick vì AFK"] "Bị kick vì AFK"
+                    div.v [title="Blox Fruits"] "Blox Fruits"
                 div.live
                   span [title="RAM đang dùng"]
                     svg.i #m3noxv

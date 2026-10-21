@@ -397,7 +397,12 @@ public sealed partial class AppController
 
     /// <summary>An account on the status board: its name as Discord shows it, game, connection, time playing, PID and RAM.</summary>
     /// <param name="Status">"ingame", "joining", "menu", "disconnected" or "signedout" (see <see cref="Connection"/>).</param>
-    sealed record BoardRow(string Name, long? PlaceId, string? Game, string Status, long Seconds, int Pid, long Ram);
+    /// <param name="Reason">Roblox's code for why a window was cut off, when its log gave one.</param>
+    /// <param name="Banned">The game banned the account: put out of it, or stuck on Join Error 600 on the way in.</param>
+    /// <param name="Phase">What its log says beyond its status (see <see cref="Phase(int)"/>).</param>
+    /// <param name="Queue">Its place in a full server's line, when Roblox gave one.</param>
+    sealed record BoardRow(string Name, long? PlaceId, string? Game, string Status, long Seconds, int Pid, long Ram, int? Reason, bool Banned, string? Phase,
+        int? Queue);
 
     /// <summary>The status message: every account with a Roblox window open here, its game, time playing, PID and RAM.</summary>
     DiscordMessage BoardMessage(DiscordSettings d, List<RobloxProcesses.PlayerProcess> players)
@@ -410,8 +415,11 @@ public sealed partial class AppController
             {
                 long? placeId = _logs.StateOf(r.Pid)?.PlaceId ?? r.Launch.Target?.PlaceId;
                 var since = _playing.GetValueOrDefault(r.Key)?.StartedAt ?? r.Launch.StartedAt;
+                var log = _logs.StateOf(r.Pid);
                 return new BoardRow(DiscordName(r.Account!), placeId, placeId is long id ? GameName(id, null) : null, Connection(r.Account!, r.Pid, r.Launch),
-                    (long)Math.Max(0, (now - since).TotalSeconds), r.Pid, ram.GetValueOrDefault(r.Pid));
+                    (long)Math.Max(0, (now - since).TotalSeconds), r.Pid, ram.GetValueOrDefault(r.Pid), log is { Status: "disconnected" } ? log.Reason : null,
+                    log is { Status: "disconnected", BannedByGame: true } || BannedWindow(r.Account!, (r.Pid, r.Launch)) is not null, Phase(r.Pid),
+                    JoinAnswerOf(r.Pid)?.QueuePosition);
             }).ToList();
         return BoardMessage(d.BoardMinutes, rows, now);
     }
@@ -433,9 +441,18 @@ public sealed partial class AppController
             ("signedout", true) => DT("Signed out"), ("signedout", false) => DT("signed out"),
             (_, true) => DT("Disconnected"), _ => DT("disconnected"),
         };
+        // A window cut off says why, as its card does: never a lost connection when Roblox didn't say so.
+        string Said(BoardRow r) => r.Banned ? DT("Banned by the game")
+            : r.Phase == "teleporting" ? DT("Teleporting")
+            : r.Phase == "full" ? r.Queue is int place ? DF("Server full · #{0} in line", place) : DT("Server full, waiting")
+            : r.Phase == "waiting" ? DT("Waiting for a server")
+            : r.Phase == "joinFailed" ? DT("Didn't get into the game")
+            : r.Status != "disconnected" ? Status(r.Status, true)
+            : r.Reason is int code ? Capital(KickWords(code) ?? DF("Disconnected · code {0}", code))
+            : DT("Disconnected, reason unknown");
         var fields = rows.Take(MaxBoardAccounts).Select(r => new DiscordField(DiscordWebhook.Escape(r.Name),
             (r.PlaceId is long id ? DiscordWebhook.GameLink(r.Game ?? DF("Place {0}", id), id) : DT("No game"))
-            + $"\n{Status(r.Status, true)} · {Duration(r.Seconds)}\nPID `{r.Pid}`" + (r.Ram > 0 ? $" · {r.Ram / MB} MB" : ""), true)).ToList();
+            + $"\n{Said(r)} · {Duration(r.Seconds)}\nPID `{r.Pid}`" + (r.Ram > 0 ? $" · {r.Ram / MB} MB" : ""), true)).ToList();
         if (rows.Count > MaxBoardAccounts)
             fields.Add(new("…", DF("and {0} more", rows.Count - MaxBoardAccounts), true));
         int inGame = rows.Count(r => r.Status == "ingame");

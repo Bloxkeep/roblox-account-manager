@@ -48,10 +48,10 @@ Nhãn ở góc thẻ là **Trên máy này** (Roblox đang mở cho tài khoản
 
 | Chấm | Chữ dưới tên | Nghĩa là |
 |---|---|---|
-| Xanh lá | **Đang chơi**, **Đang vào game**, **Đang chơi · thiết bị khác** | Đang ở trong game, trên máy này hoặc thiết bị khác. |
-| Xanh dương | **Online**, **Roblox đang mở** · Chưa vào game | Đang trên web hoặc app Roblox, hoặc Roblox đang ở màn hình chính trên máy này. |
+| Xanh lá | **Đang chơi**, **Đang vào game**, **Đang chờ server**, **Server đầy, đang chờ**, **Đang dịch chuyển**, **Đang chơi · thiết bị khác** | Đang ở trong game hoặc đang vào, trên máy này hoặc thiết bị khác. **Server đầy** kèm vị trí trong hàng chờ nếu Roblox cho biết. |
+| Xanh dương | **Online**, **Roblox đang mở** · Chưa vào game, **Không vào được game** | Đang trên web hoặc app Roblox, hoặc Roblox đang ở màn hình chính trên máy này (sau một lần vào game không thành hoặc bỏ chờ thì ghi rõ như vậy). |
 | Cam | **Roblox Studio** | Đang làm game. |
-| Vàng | **Bị văng khỏi server** | Cửa sổ vẫn mở nhưng đã ra khỏi server, kèm lý do như **Bị kick vì AFK**. |
+| Vàng | Chính lý do, như **Bị game kick** hay **Server đã tắt** | Cửa sổ vẫn mở nhưng đã ra khỏi server. Khi Roblox không ghi lý do thì hiện **Bị văng khỏi server** · **Chưa rõ lý do**. |
 | Xám | **Offline**, **Đã đăng xuất**, **Chưa rõ trạng thái** | Không hoạt động; Roblox đang mở ở máy này nhưng không còn đăng nhập tài khoản này; hoặc chưa tải xong. |
 
 Vòng đỏ quanh avatar nghĩa là **Cần đăng nhập lại** hoặc **Bị ban**. Khi Bloxkeep đang xử lý, bạn còn thấy **Đang mở Roblox…**, **Chờ vào lại · máy này** (bấm **Hủy** để thôi) và **Đang mở lại · máy này** (preset sắp mở lại cửa sổ theo lịch).
