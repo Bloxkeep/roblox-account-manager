@@ -113,6 +113,27 @@ static class RestartSuite
             Harness.Invoke(app, "TrackPlay", freshStart.AddSeconds(50));
             var freshStay = vault.Data.PlaySessions.LastOrDefault(s => s.AccountId == fresh.Id);
             c.Check("client opened after the start: stay from its launch after 45 s", freshStay is not null && Math.Abs((freshStay.StartedAt - freshStart).TotalSeconds) < 1, freshStay?.StartedAt);
+
+            // Clients closed here just before a restart (an update's): Roblox still says "in game" for minutes, which
+            // after the restart must still read as that late report, not as playing on another device.
+            const string Server = "11111111-2222-3333-4444-555555555555";
+            var ended = Harness.Get<System.Collections.IDictionary>(app, "_endedHere");
+            var endedType = ended.GetType().GetGenericArguments()[1];
+            object End(DateTime at) => Activator.CreateInstance(endedType, Server, (long?)2753915549, at)!;
+            Harness.Get<System.Collections.IDictionary>(app, "_running").Clear();
+            ended[kicked.Id] = End(DateTime.UtcNow.AddSeconds(-25));
+            ended[nolog.Id] = End(DateTime.UtcNow.AddMinutes(-20)); // too long ago: Roblox has caught up by then
+            Harness.Invoke(app, "NoteOpenSessions");
+            c.Check("a client that ended here lately is kept in the vault, an old one isn't",
+                vault.Data.EndedSessions.Select(e => e.AccountId).SequenceEqual([kicked.Id]) && vault.Data.EndedSessions[0].JobId == Server, vault.Data.EndedSessions.Count);
+            await Harness.Call(app, "lock", new { });
+            c.Check("…locked: forgotten in memory", ended.Count == 0, ended.Count);
+            await Harness.Unlock(app);
+            ended = Harness.Get<System.Collections.IDictionary>(app, "_endedHere");
+            var p = new Presence(2, "Steal An Egg", 2753915549, 2753915549, Server, null, 1);
+            bool Stale(Account a) => (bool)Harness.Invoke(app, "IsStaleInGame", a, p)!;
+            c.Check("…and after unlocking (as after an update) its server's \"in game\" is still the late report",
+                ended.Contains(kicked.Id) && Stale(kicked) && !Stale(nolog), $"{ended.Count} {Stale(kicked)} {Stale(nolog)}");
         }
         finally
         {

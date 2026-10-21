@@ -845,7 +845,8 @@ public sealed partial class AppController : IDisposable
     /// that game long after the client left: on 2026-10-13 a clean leave logged at 00:02:19 UTC was still "in game"
     /// in every presence answer at 00:06, and answers flipped between in game and offline. Until Roblox reports
     /// something else, the same server (or the same game, when Roblox doesn't say which server) is taken as that
-    /// stale report instead of "playing elsewhere".
+    /// stale report instead of "playing elsewhere". Kept in the vault too (NoteOpenSessions), so a restart right after
+    /// (Restart to update: three clients closed at 09:13:21-33, the update at 09:13:46) or a lock doesn't forget them.
     /// </summary>
     readonly Dictionary<Guid, (string? JobId, long? PlaceId, DateTime At)> _endedHere = new();
     static readonly TimeSpan StalePresence = TimeSpan.FromMinutes(15);
@@ -1142,6 +1143,9 @@ public sealed partial class AppController : IDisposable
         _lastArmed = MultiInstance.Armed;
         KeepMultiAtStart(s.MultiInstance);
         AdoptOpenSessions(vault);
+        foreach (var e in vault.Data.EndedSessions)
+            if (DateTime.UtcNow - e.At < StalePresence)
+                _endedHere.TryAdd(e.AccountId, (e.JobId, e.PlaceId, e.At));
         ResumePlaySessions(vault);
         ResumeSchedules(vault);
         // The loading screen's steps: accounts and open clients are ready now; Roblox status and avatars follow.
@@ -1165,19 +1169,25 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>
     /// Remembers the clients that are open, so closing or restarting Bloxkeep (for example to update) doesn't lose
-    /// track of them: they keep running, and the next unlock picks them up again, auto-rejoin included.
+    /// track of them: they keep running, and the next unlock picks them up again, auto-rejoin included. And the ones
+    /// that ended here lately (<see cref="_endedHere"/>), for the next unlock too.
     /// </summary>
-    /// <returns>true when the list changed, i.e. the vault needs saving.</returns>
+    /// <returns>true when the lists changed, i.e. the vault needs saving.</returns>
     bool NoteOpenSessions()
     {
         if (_vault is not { } vault)
             return false;
+        var ended = _endedHere.Where(e => DateTime.UtcNow - e.Value.At < StalePresence).OrderBy(e => e.Value.At)
+            .Select(e => new EndedSession { AccountId = e.Key, JobId = e.Value.JobId, PlaceId = e.Value.PlaceId, At = e.Value.At }).ToList();
+        bool endedChanged = !vault.Data.EndedSessions.Select(e => (e.AccountId, e.At)).SequenceEqual(ended.Select(e => (e.AccountId, e.At)));
+        if (endedChanged)
+            vault.Data.EndedSessions = ended;
         var sessions = _running
             .Select(r => new OpenSession { AccountId = r.Key, Pid = r.Value.Pid, StartedAt = r.Value.Launch.StartedAt, Target = r.Value.Launch.Target, PresetId = r.Value.Launch.PresetId })
             .ToList();
         var noted = vault.Data.OpenSessions;
         if (noted.Count == sessions.Count && noted.Zip(sessions).All(p => p.First.AccountId == p.Second.AccountId && p.First.Pid == p.Second.Pid))
-            return false;
+            return endedChanged;
         vault.Data.OpenSessions = sessions;
         return true;
     }

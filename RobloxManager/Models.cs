@@ -194,6 +194,8 @@ public sealed class VaultData
     public List<Account> Accounts { get; set; } = new();
     public AppSettings Settings { get; set; } = new();
     public List<OpenSession> OpenSessions { get; set; } = new();
+    /// <summary>Clients that ended here in the last minutes (see AppController.IsStaleInGame); missing in older vaults.</summary>
+    public List<EndedSession> EndedSessions { get; set; } = new();
     /// <summary>Stays in games for the Statistics view (see AppController.Stats.cs); missing in older vaults.</summary>
     public List<PlaySession> PlaySessions { get; set; } = new();
     /// <summary>Statistics › Activity, oldest first (see AppController.Activity.cs); missing in older vaults.</summary>
@@ -338,6 +340,18 @@ public sealed class ActivityName
     public string Label { get; set; } = "";
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>
+/// A Roblox client that ended on this PC lately, and the server and game it was in: Roblox keeps reporting the account
+/// there for minutes, which must not read as "playing on another device" after Bloxkeep restarts (an update) either.
+/// </summary>
+public sealed class EndedSession
+{
+    public Guid AccountId { get; set; }
+    public string? JobId { get; set; }
+    public long? PlaceId { get; set; }
+    public DateTime At { get; set; }
 }
 
 /// <summary>A Roblox client that was still open when Bloxkeep closed; the next unlock picks it up again.</summary>
