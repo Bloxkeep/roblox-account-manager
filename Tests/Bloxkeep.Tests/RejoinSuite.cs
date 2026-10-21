@@ -931,6 +931,63 @@ static class RejoinSuite
             Write(Line(DateTime.UtcNow, Launch));
             Poll(s => s is { Status: "joining", JobId: null });
             c.Check("…nor for one stuck on a join without a server (a game's ban, Join Error 600)", !Asks(stuckOpen, new GameTarget(920587237)));
+
+            // Windows that end together right after another opened (Multi-Roblox on): Roblox closing them for the new one,
+            // unless they ran out of memory. 2026-10-22: 6 windows, Windows' commit limit at 99.7 %, two logging Roblox's
+            // own "cannot commit OS memory" before crashing, read as "Roblox closed 3 windows when another one opened".
+            var armed = typeof(MultiInstance).GetProperty("Armed")!;
+            bool wasArmed = MultiInstance.Armed;
+            armed.SetValue(null, true);
+            var starts = Harness.Get<Dictionary<int, DateTime>>(app, "_clientStarts");
+            var suspects = Harness.Get<System.Collections.IList>(app, "_suspectEnds");
+            var closedBy = Harness.Get<HashSet<Guid>>(app, "_closedByRoblox");
+            var check = t.GetMethod("CheckClosedByRoblox", Harness.F)!;
+            var shortAt = t.GetField("_memoryShortAt", Harness.F)!;
+            Func<int, List<int>> noChildren = _ => [];
+            bool Ended(Guid who, int pid, DateTime at) => (bool)check.Invoke(app, [who, pid, at.AddMinutes(-2), at, noChildren])!;
+            try
+            {
+                var now = DateTime.UtcNow;
+                Guid first = Guid.NewGuid(), second = Guid.NewGuid();
+                void Fresh()
+                {
+                    starts.Clear();
+                    starts[4_000_001] = now.AddSeconds(-5); // a new window, 5 s ago
+                    suspects.Clear();
+                    closedBy.Clear();
+                }
+                Fresh();
+                shortAt.SetValue(app, null);
+                bool firstSaid = Ended(first, 4_000_002, now), secondSaid = Ended(second, 4_000_003, now.AddSeconds(1));
+                c.Check("two windows ending together right after another opened: still taken for Roblox closing them", !firstSaid && secondSaid);
+                Fresh();
+                shortAt.SetValue(app, now.AddSeconds(-8));
+                firstSaid = Ended(first, 4_000_002, now);
+                secondSaid = Ended(second, 4_000_003, now.AddSeconds(1));
+                c.Check("…but not when Windows' virtual memory had just run out (they crashed for want of it)", !firstSaid && !secondSaid && closedBy.Count == 0);
+                // The window's own log saying Windows refused it memory, Roblox's real lines of 2026-10-22.
+                Fresh();
+                shortAt.SetValue(app, null);
+                NewWindow();
+                Run(notBanned);
+                var oomAt = DateTime.UtcNow.AddSeconds(-3);
+                Write(Line(oomAt, Launch));
+                Write(Line(oomAt, Join));
+                Write(Line(oomAt, "Critical [DFLog::Mimalloc] cannot commit OS memory (error: 1455 (0x5AF), address: 0x019D2C5C0000, size: 0x250000 bytes)"));
+                Write(Line(oomAt, "Critical [DFLog::Mimalloc] out-of-memory on OS allocation, try again... (attempt 1, 0x280000 bytes, error code: 0x5AF, address: 0x00000000, alignment: 0x10000, flags: 0x3000)"));
+                Write(Line(oomAt.AddSeconds(1), "[LOGCHANNELS + 1] RBXCRASH: OutOfMemoryGraphics"));
+                Poll(_ => watcher.OutOfMemoryAt(me) is not null);
+                c.Check("Roblox's own out-of-memory lines are read", watcher.OutOfMemoryAt(me) is not null);
+                Ended(second, 4_000_003, now);
+                c.Check("…and a window that logged them isn't taken for one Roblox closed", !Ended(first, me, now.AddSeconds(1)) && !closedBy.Contains(first));
+            }
+            finally
+            {
+                armed.SetValue(null, wasArmed);
+                shortAt.SetValue(app, null);
+                suspects.Clear();
+                closedBy.Clear();
+            }
         }
         finally
         {

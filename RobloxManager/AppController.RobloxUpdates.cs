@@ -32,6 +32,10 @@ public sealed partial class AppController
     /// <summary>Windows counted for the notice about to go out.</summary>
     int _closedPending;
     DateTime? _closedNoticeDue;
+    /// <summary>When Windows' commit limit was last all but used up (<see cref="GuardResources"/>): clients ending soon after it ran out of memory.</summary>
+    DateTime? _memoryShortAt;
+    /// <summary>How long after the commit limit was all but used up clients that end count as having run out of memory.</summary>
+    static readonly TimeSpan MemoryCrashWindow = TimeSpan.FromSeconds(30);
     /// <summary>Two clients in a game together this long, none closed by Roblox since: Multi-Roblox works again.</summary>
     static readonly TimeSpan WorkingAgain = TimeSpan.FromSeconds(10);
     /// <summary>Since when two or more clients have been in a game at once (Multi-Roblox armed); null after a close by Roblox or under two.</summary>
@@ -98,6 +102,11 @@ public sealed partial class AppController
             CountClosedByRoblox(1, now);
             return true;
         }
+        // Out of memory (its own log says Windows refused it memory, or the commit limit was all but used up just now):
+        // clients ending together then crashed for want of it, as on 2026-10-22 (6 windows, Windows' low-virtual-memory
+        // event at 99.7 %), not Roblox closing them for a new one, and Multi-Roblox is fine.
+        if (_logs.OutOfMemoryAt(pid) is not null || _memoryShortAt is { } shortAt && now >= shortAt && now - shortAt <= MemoryCrashWindow)
+            return false;
         _suspectEnds.RemoveAll(e => now - e.At > CloseBurst || now < e.At || e.Account == account);
         _suspectEnds.Add((account, now, false));
         if (_suspectEnds.Count < 2)

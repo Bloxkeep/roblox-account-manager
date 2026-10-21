@@ -3822,6 +3822,9 @@ public sealed partial class AppController : IDisposable
     void GuardResources(List<RobloxProcesses.PlayerProcess> players, MemoryStatus memory, DateTime now)
     {
         var s = _vault!.Data.Settings;
+        // The commit limit all but used up: clients that end now ran out of memory (see CheckClosedByRoblox).
+        if (memory.CommitLimitMb > 0 && memory.CommitRoomMb < CommitMarginMb)
+            _memoryShortAt = now;
         if (s.MemoryWarnings && players.Count > 0 && memory.LoadPercent >= MemoryWarningLoad
             && now - _lastMemoryWarning > MemoryWarningInterval)
         {

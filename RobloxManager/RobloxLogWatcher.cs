@@ -53,6 +53,8 @@ public sealed class RobloxLogWatcher
         public int Connections;
         /// <summary>When the client logged that another Roblox client's start told it to close (see <see cref="ClosedByNewWindowAt"/>).</summary>
         public DateTime? ClosedByNewWindow;
+        /// <summary>When the client first logged that Windows refused it memory (see <see cref="OutOfMemoryAt"/>).</summary>
+        public DateTime? OutOfMemory;
     }
 
     /// <summary>
@@ -153,6 +155,11 @@ public sealed class RobloxLogWatcher
     const string WndCheckMark = "[FLog::WndProcessCheck]";
     const string NewProcessEventMark = "WindowsAppReloadTelemetry EventWaitResultUpdate";
     const string NewProcessMutexMark = "waiting for mutex result is 0X000001";
+    // Windows refusing a client memory, its commit limit (RAM and page files) used up: "Critical [DFLog::Mimalloc] cannot
+    // commit OS memory (error: 1455 (0x5AF), …)", "… out-of-memory on OS allocation, try again…", and the crash it ends in,
+    // "RBXCRASH: OutOfMemoryGraphics" (2026-10-22, two windows of six, Windows' low-virtual-memory event at 99.7 %).
+    const string MimallocMark = "[DFLog::Mimalloc]";
+    const string CommitRefusedMark = "cannot commit OS memory", AllocationRefusedMark = "out-of-memory on OS allocation", OutOfMemoryCrashMark = "RBXCRASH: OutOfMemory";
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
@@ -175,6 +182,12 @@ public sealed class RobloxLogWatcher
     /// followed). Read after <see cref="LastStateOf"/>, which takes in the client's last lines.
     /// </summary>
     public DateTime? ClosedByNewWindowAt(int pid) => _tails.GetValueOrDefault(pid)?.ClosedByNewWindow;
+
+    /// <summary>
+    /// When this client's log first said Windows refused it memory (its commit limit used up); null when it didn't (or its
+    /// log isn't followed). Read after <see cref="LastStateOf"/>, which takes in the client's last lines.
+    /// </summary>
+    public DateTime? OutOfMemoryAt(int pid) => _tails.GetValueOrDefault(pid)?.OutOfMemory;
 
     /// <summary>
     /// What a client that has just quit logged last, including the lines written in its final moments (a leave by
@@ -455,6 +468,10 @@ public sealed class RobloxLogWatcher
         else if (line.Contains(WndCheckMark, StringComparison.Ordinal)
                  && (line.Contains(NewProcessEventMark, StringComparison.Ordinal) || line.Contains(NewProcessMutexMark, StringComparison.Ordinal)))
             tail.ClosedByNewWindow ??= TimeOf(line);
+        else if (line.Contains(MimallocMark, StringComparison.Ordinal)
+                     && (line.Contains(CommitRefusedMark, StringComparison.Ordinal) || line.Contains(AllocationRefusedMark, StringComparison.Ordinal))
+                 || line.Contains(OutOfMemoryCrashMark, StringComparison.Ordinal))
+            tail.OutOfMemory ??= TimeOf(line);
     }
 
     // Preserve the source's strength after showing the disconnect too: a numeric code can arrive later than words.
