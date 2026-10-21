@@ -51,26 +51,49 @@ export async function dashboardKey(token) {
   return btoa(String.fromCharCode(...mac.slice(0, 18))).replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-/** /online's answer, a card: online now, today's peak, the last 7 days' peaks, by version, and the dashboard's link. */
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * The last 7 days' peaks as a bar chart, drawn by QuickChart (quickchart.io, Chart.js) from those seven numbers alone:
+ * Discord's dark grey behind, each day's peak over its bar, today's bar the bright green.
+ */
+export function weekChart(days, today) {
+  const week = days.slice(-7);
+  const label = d => (d.day === today ? 'Today' : `${WEEKDAYS[new Date(`${d.day}T00:00:00Z`).getUTCDay()]} ${Number(d.day.slice(8))}`);
+  const chart = {
+    type: 'bar',
+    data: {
+      labels: week.map(label),
+      datasets: [{ data: week.map(d => d.peak), backgroundColor: week.map(d => (d.day === today ? '#23a55a' : '#3f6f52')), borderRadius: 6, barPercentage: 0.62 }],
+    },
+    options: {
+      layout: { padding: { top: 26, left: 8, right: 8, bottom: 4 } },
+      plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', color: '#f2f3f5', font: { size: 13, weight: 'bold' } } },
+      scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: '#949ba4', font: { size: 12 } } }, y: { display: false, beginAtZero: true } },
+    },
+  };
+  return `https://quickchart.io/chart?v=4&w=640&h=240&devicePixelRatio=2&bkg=${encodeURIComponent('#2b2d31')}&c=${encodeURIComponent(JSON.stringify(chart))}`;
+}
+
+/**
+ * /online's answer, a card: how many use Bloxkeep now as its heading with today's peak under it, the last 7 days'
+ * peaks as a chart, the versions in use, and the dashboard's link.
+ */
 export function onlineMessage(o, link) {
   const time = at => `<t:${Math.floor(at / 1000)}:t>`;
   const text = content => ({ type: 10, content });
-  // The last 7 days' peaks, oldest first, today's in bold.
-  const week = o.days.slice(-7).map((d, i, all) => (i === all.length - 1 ? `**${d.peak}**` : String(d.peak))).join(' · ');
-  const versions = o.apps.length
-    ? o.apps.map(r => `\`${r.name}\` **${r.n}** · ${Math.round(r.n / Math.max(1, o.now) * 100)}%`).join('\n') : '-# Nobody right now';
+  const peak = o.today.peak ? `Peak today **${o.today.peak}**, at ${time(o.today.at)}` : 'Nobody yet today';
+  const versions = o.apps.map(r => `${r.name} **${r.n}**`).join(' · ');
   return {
     flags: 1 << 15,
     components: [{
       type: 17, accent_color: o.now ? 0x57F287 : 0x4E5058, components: [
-        text(`## ${o.now} using Bloxkeep now\n-# Apps that said they're open in the last ${o.forMinutes} minutes`),
-        { type: 14, divider: true, spacing: 1 },
-        text([
-          `**Today's peak** ${o.today.peak ? `${o.today.peak}, at ${time(o.today.at)}` : 'nobody yet'}`,
-          `**Last 7 days** ${week}`,
-        ].join('\n')),
-        { type: 14, divider: true, spacing: 1 },
-        text(`**By version**\n${versions}`),
+        text(`## ${o.now} using Bloxkeep now\n${peak}`),
+        // No chart of seven empty days.
+        ...(o.days.slice(-7).some(d => d.peak)
+          ? [{ type: 12, items: [{ media: { url: weekChart(o.days, o.today.day) }, description: "Each day's peak, the last 7 days" }] }] : []),
+        text([...(versions ? [`**Versions** ${versions}`] : []),
+          `-# The chart: each day's highest, the last 7 days. An app counts while it said it's open within ${o.forMinutes} minutes.`].join('\n')),
         ...(link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : []),
       ],
     }],

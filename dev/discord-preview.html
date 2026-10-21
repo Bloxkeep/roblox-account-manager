@@ -53,6 +53,7 @@
   .section { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; align-items: start; }
   .section > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   .card-thumb { width: 85px; height: 85px; border-radius: 8px; object-fit: cover; }
+  .card-media { display: block; width: 100%; border-radius: 8px; }
   .text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; }
   .h1, .h2, .h3 { display: block; font-weight: 700; color: #f2f3f5; line-height: 1.25; }
   .h1 { font-size: 24px; } .h2 { font-size: 20px; } .h3 { font-size: 16px; }
@@ -153,6 +154,7 @@
       case 9: return `<div class="section"><div>${c.components.map(componentHtml).join('')}</div>${c.accessory ? componentHtml(c.accessory) : ''}</div>`;
       case 10: return `<div class="text">${md(c.content)}</div>`;
       case 11: return `<img class="card-thumb" src="${esc(c.media.url)}" alt="${esc(c.description)}">`;
+      case 12: return c.items.map(i => `<img class="card-media" src="${esc(i.media.url)}" alt="${esc(i.description)}">`).join('');
       case 14: return `<hr class="sep${c.spacing === 2 ? ' big' : ''}${c.divider === false ? ' none' : ''}">`;
       case 1: return `<div class="row">${c.components.map(componentHtml).join('')}</div>`;
       case 2: return `<a class="btn" href="${esc(c.url)}">${esc(c.label)}</a>`;

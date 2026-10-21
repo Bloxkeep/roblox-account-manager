@@ -309,8 +309,11 @@ try {
   const card = { body: r.json?.data }, said = textsOf(card).join('\n');
   check('/online from a developer, in a DM with the bot: a card saying 2 use Bloxkeep now, seen only by them',
     r.json?.data.flags === (64 | 1 << 15) && headingOf(card)?.startsWith('2 using Bloxkeep now'), JSON.stringify(r.json));
-  check('…with today\'s peak, the last 7 days\' and each version\'s share (no languages)', /\*\*Today's peak\*\* 2, at <t:\d+:t>/.test(said)
-    && /\*\*Last 7 days\*\* 0 · 0 · 0 · 0 · 0 · 0 · \*\*2\*\*/.test(said) && said.includes('`1.0.8` **1** · 50%\n`1.0.8-alpha.2` **1** · 50%') && !/vi|Language/.test(said), said);
+  const chart = parts(card).find(c => c.type === 12)?.items?.[0]?.media.url ?? '';
+  const drawn = JSON.parse(new URL(chart || 'https://x/?c={}').searchParams.get('c'));
+  check('…with today\'s peak, the versions (no languages), and the last 7 days\' peaks as a chart, today the last bar',
+    /Peak today \*\*2\*\*, at <t:\d+:t>/.test(said) && said.includes('**Versions** 1.0.8 **1** · 1.0.8-alpha.2 **1**') && !/Language|\bvi\b/.test(said)
+    && chart.startsWith('https://quickchart.io/chart?v=4&') && JSON.stringify(drawn.data?.datasets?.[0]?.data) === '[0,0,0,0,0,0,2]' && drawn.data.labels.at(-1) === 'Today', `${said} ${chart.slice(0, 200)}`);
   const dashboard = linksOf(card)[0] ?? '';
   check('…and a Dashboard button, its link carrying the key', /^http:\/\/127\.0\.0\.1:\d+\/online\?key=[\w-]{24}$/.test(dashboard), dashboard);
   let page = await fetch(dashboard);

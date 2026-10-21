@@ -37,7 +37,7 @@ doesn't ask for message content). It uses that for one thing only: in a server t
 and when its connection started and ended), each server's choices made with `/notify`, `/board`, `/setup` and
 `/verify`, and a note of each ban for that server's moderators. In a server that uses `/verify`, pressing **Verify**
 shows you a captcha; the bot remembers its code (for five minutes) and when you asked (for ten, to limit tries) with
-your Discord id, in memory only, and gives you the server's role once you type the code right.
+your Discord id, in memory only, and gives you the server's role once you type the code right. The chart in `/online` (for Bloxkeep's developers) is drawn by [QuickChart](https://quickchart.io) from the last seven days' highest numbers of Bloxkeep apps open at once, and nothing else.
 
 Each of these services has its own privacy policy: [Roblox](https://www.roblox.com/info/privacy),
 [GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),
