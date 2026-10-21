@@ -8,6 +8,8 @@ html [data-theme="dark" lang="en"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Accounts"]
           svg.i #v823bm
@@ -484,80 +486,86 @@ html [data-theme="dark" lang="en"]
               em.pal-cat "Action"
             div.pal-row [id="pal-15" role="option" aria-selected="false"]
               span.pal-ic
+                svg.i #1crx2f1
+              span.pal-txt
+                b "Bloxkeep on Discord"
+              em.pal-cat "Action"
+            div.pal-row [id="pal-16" role="option" aria-selected="false"]
+              span.pal-ic
                 svg.i #n87usa
               span.pal-txt
                 b "Export the activity log (CSV)"
               em.pal-cat "Action"
-            div.pal-row [id="pal-16" role="option" aria-selected="false"]
+            div.pal-row [id="pal-17" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #na2zgr
               span.pal-txt
                 b "Chuyển sang tiếng Việt"
               em.pal-cat "Action"
-            div.pal-row [id="pal-17" role="option" aria-selected="false"]
+            div.pal-row [id="pal-18" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #21scx0
               span.pal-txt
                 b "Lock app"
               em.pal-cat "Action"
-            div.pal-row [id="pal-18" role="option" aria-selected="false"]
+            div.pal-row [id="pal-19" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #v823bm
               span.pal-txt
                 b "Accounts"
               em.pal-cat "Go to"
-            div.pal-row [id="pal-19" role="option" aria-selected="false"]
+            div.pal-row [id="pal-20" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Presets"
               em.pal-cat "Go to"
-            div.pal-row [id="pal-20" role="option" aria-selected="false"]
+            div.pal-row [id="pal-21" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1e3syqr
               span.pal-txt
                 b "Game monitor"
               em.pal-cat "Go to"
-            div.pal-row [id="pal-21" role="option" aria-selected="false"]
+            div.pal-row [id="pal-22" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #ktpp14
               span.pal-txt
                 b "Statistics"
               em.pal-cat "Go to"
-            div.pal-row [id="pal-22" role="option" aria-selected="false"]
+            div.pal-row [id="pal-23" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #tbghvg
               span.pal-txt
                 b "Settings"
               em.pal-cat "Go to"
-            div.pal-row [id="pal-23" role="option" aria-selected="false"]
+            div.pal-row [id="pal-24" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #n87usa
               span.pal-txt
                 b "Activity"
               em.pal-cat "Go to"
-            div.pal-row [id="pal-24" role="option" aria-selected="false"]
+            div.pal-row [id="pal-25" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm Blox Fruits"
                 small "Blox Fruits · 3 accounts · Lowest ping · Next: Today 8:00 PM"
               em.pal-cat "Preset"
-            div.pal-row [id="pal-25" role="option" aria-selected="false"]
+            div.pal-row [id="pal-26" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Adopt Me trade"
                 small "[🎃] Adopt Me! · 1 account"
               em.pal-cat "Preset"
-            div.pal-row [id="pal-26" role="option" aria-selected="false"]
+            div.pal-row [id="pal-27" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Morning check-in"
                 small "Roblox home · 6 accounts"
               em.pal-cat "Preset"
-            div.pal-row [id="pal-27" role="option" aria-selected="false"]
+            div.pal-row [id="pal-28" role="option" aria-selected="false"]
               span.pal-ic
                 span.gph
                   svg.i #sy1lqp
@@ -565,7 +573,7 @@ html [data-theme="dark" lang="en"]
                 b "Blox Fruits"
                 small "Recent game · put it in the game box"
               em.pal-cat "Game"
-            div.pal-row [id="pal-28" role="option" aria-selected="false"]
+            div.pal-row [id="pal-29" role="option" aria-selected="false"]
               span.pal-ic
                 span.gph
                   svg.i #sy1lqp
@@ -573,7 +581,7 @@ html [data-theme="dark" lang="en"]
                 b "[🎃] Adopt Me!"
                 small "Recent game · put it in the game box"
               em.pal-cat "Game"
-            div.pal-row [id="pal-29" role="option" aria-selected="false"]
+            div.pal-row [id="pal-30" role="option" aria-selected="false"]
               span.pal-ic
                 span.gph
                   svg.i #sy1lqp
@@ -581,104 +589,104 @@ html [data-theme="dark" lang="en"]
                 b "Brookhaven 🏡RP"
                 small "Recent game · put it in the game box"
               em.pal-cat "Game"
-            div.pal-row [id="pal-30" role="option" aria-selected="false"]
+            div.pal-row [id="pal-31" role="option" aria-selected="false"]
               span.avatar.sm
                 img [alt="" style="--h:204" src=#1qk25wb]
               span.pal-txt
                 b "Main"
                 small "@sunny_builds · Main"
               em.pal-cat "Account"
-            div.pal-row [id="pal-31" role="option" aria-selected="false"]
+            div.pal-row [id="pal-32" role="option" aria-selected="false"]
               span.avatar.sm
                 img [alt="" style="--h:243" src=#uinvo6]
               span.pal-txt
                 b "Farm 1"
                 small "@pixelfarmer01 · Farm"
               em.pal-cat "Account"
-            div.pal-row [id="pal-32" role="option" aria-selected="false"]
+            div.pal-row [id="pal-33" role="option" aria-selected="false"]
               span.avatar.sm
                 img [alt="" style="--h:244" src=#n0d7cr]
               span.pal-txt
                 b "Farm 2"
                 small "@pixelfarmer02 · Farm"
               em.pal-cat "Account"
-            div.pal-row [id="pal-33" role="option" aria-selected="false"]
+            div.pal-row [id="pal-34" role="option" aria-selected="false"]
               span.avatar.sm
                 img [alt="" style="--h:297" src=#1u67et1]
               span.pal-txt
                 b "Night Owl"
                 small "@night_owl_rb · Farm"
               em.pal-cat "Account"
-            div.pal-row [id="pal-34" role="option" aria-selected="false"]
+            div.pal-row [id="pal-35" role="option" aria-selected="false"]
               span.avatar.sm
                 img [alt="" style="--h:83" src=#c108i9]
               span.pal-txt
                 b "Alt"
                 small "@lananh_2010"
               em.pal-cat "Account"
-            div.pal-row [id="pal-35" role="option" aria-selected="false"]
+            div.pal-row [id="pal-36" role="option" aria-selected="false"]
               span.avatar.sm
                 img [alt="" style="--h:218" src=#kgijcs]
               span.pal-txt
                 b "Trade"
                 small "@tradepost_vn"
               em.pal-cat "Account"
-            div.pal-row [id="pal-36" role="option" aria-selected="false"]
+            div.pal-row [id="pal-37" role="option" aria-selected="false"]
               span.avatar.sm
                 span.initials [style="--h:217"] "TE"
               span.pal-txt
                 b "Testing"
                 small "@noavatar_user"
               em.pal-cat "Account"
-            div.pal-row [id="pal-37" role="option" aria-selected="false"]
+            div.pal-row [id="pal-38" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1ewcuky
               span.pal-txt
                 b "Launching"
               em.pal-cat "Settings"
-            div.pal-row [id="pal-38" role="option" aria-selected="false"]
+            div.pal-row [id="pal-39" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #sy1lqp
               span.pal-txt
                 b "Roblox version & graphics"
               em.pal-cat "Settings"
-            div.pal-row [id="pal-39" role="option" aria-selected="false"]
+            div.pal-row [id="pal-40" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1l5qw3q
               span.pal-txt
                 b "Staying in game"
               em.pal-cat "Settings"
-            div.pal-row [id="pal-40" role="option" aria-selected="false"]
+            div.pal-row [id="pal-41" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1hupb3o
               span.pal-txt
                 b "Notifications"
               em.pal-cat "Settings"
-            div.pal-row [id="pal-41" role="option" aria-selected="false"]
+            div.pal-row [id="pal-42" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #13a5dgx
               span.pal-txt
                 b "Discord"
               em.pal-cat "Settings"
-            div.pal-row [id="pal-42" role="option" aria-selected="false"]
+            div.pal-row [id="pal-43" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #d2zp05
               span.pal-txt
                 b "Appearance"
               em.pal-cat "Settings"
-            div.pal-row [id="pal-43" role="option" aria-selected="false"]
+            div.pal-row [id="pal-44" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #fevui6
               span.pal-txt
                 b "Security"
               em.pal-cat "Settings"
-            div.pal-row [id="pal-44" role="option" aria-selected="false"]
+            div.pal-row [id="pal-45" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #gsei2o
               span.pal-txt
                 b "Backup & data"
               em.pal-cat "Settings"
-            div.pal-row [id="pal-45" role="option" aria-selected="false"]
+            div.pal-row [id="pal-46" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1uvtx1
               span.pal-txt
@@ -708,6 +716,8 @@ html [data-theme="dark" lang="en"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Accounts"]
           svg.i #v823bm
@@ -1145,6 +1155,8 @@ html [data-theme="dark" lang="en"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Accounts"]
           svg.i #v823bm

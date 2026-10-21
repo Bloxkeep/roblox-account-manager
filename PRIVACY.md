@@ -24,7 +24,9 @@ stored. The other files in Bloxkeep's data folder, and how they're protected, ar
 | Your Discord webhook (`discord.com`) | Only when you turn on **Settings › Discord**: account names (or **Account 1**, **Account 2**… when hidden), game names, play time, sessions, PID, RAM, and links to Roblox's own pictures of the games and of the accounts' avatars (no avatar when names are hidden). Never cookies or passwords |
 | The backup folder you choose | A copy of the encrypted vault; a OneDrive or Google Drive app may sync it |
 
-**Bloxkeep's Discord bot** (a Cloudflare Worker) runs apart from the app and knows nothing about your accounts. In the
+**Bloxkeep's Discord bot** (a Cloudflare Worker) runs apart from the app and knows nothing about your accounts. The
+app's Discord button only opens the bot's address in your browser, which sends you on to the community server's
+current invite; the app itself sends nothing. In the
 servers that add it, Discord tells it who posted a message in which channel, but not what the message says (the bot
 doesn't ask for message content). It uses that for one thing only: in a server that set up a trap channel with
 `/setup`, whoever posts there is banned. It keeps none of it, only what it needs to stay connected (its own session,

@@ -15,8 +15,8 @@ import { COMMANDS, api, inviteUrl, verify } from './discord.js';
 import { setupServer } from './setup.js';
 import { newer, readLatestTag, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
-  boardEmbed, buildEmbed, captchaMessage, codeForm, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, presenceLines, releaseMessage,
-  replies, statusEmbed, verifyPanel,
+  SITE, boardEmbed, buildEmbed, captchaMessage, codeForm, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, presenceLines,
+  releaseMessage, replies, statusEmbed, verifyPanel,
 } from './texts.js';
 
 const GATEWAY = 'wss://gateway.discord.gg';
@@ -42,6 +42,8 @@ const PRESENCE_EVERY = 20_000;
 const INTENTS = 1 << 9;
 // A captcha is good for this long, and once: a wrong answer means a new picture. Pictures a person may ask for, per window.
 const CAPTCHA_FOR = 5 * 60_000, CAPTCHAS_PER = 5, CAPTCHA_WINDOW = 10 * 60_000;
+// The community server's invite (/discord) is asked Discord whether it still works at most this often.
+const INVITE_RECHECK = 60_000;
 
 export class Gateway extends DurableObject {
   constructor(ctx, env) {
@@ -158,6 +160,43 @@ export class Gateway extends DurableObject {
       events: [...sql.exec('SELECT at, kind, detail FROM events ORDER BY at, rowid')],
       snap: (await this.ctx.storage.get('snap')) ?? null,
     };
+  }
+
+  /**
+   * Where the app's Discord button goes (/discord): an invite into Bloxkeep's community server that never expires, made
+   * by the bot in the channel newcomers see (the /verify channel). Made again whenever it stops working (someone deleted
+   * it, or Discord dropped it); while that can't be done, Bloxkeep's website.
+   */
+  async invite() {
+    const guild = this.env.COMMUNITY_GUILD;
+    if (!guild || !this.env.DISCORD_TOKEN)
+      return SITE;
+    const recheck = Number(this.env.INVITE_RECHECK_MS ?? INVITE_RECHECK);
+    const kept = await this.ctx.storage.get('invite'); // { code, checked }
+    if (kept && Date.now() - kept.checked < recheck)
+      return `https://discord.gg/${kept.code}`;
+    if (kept) {
+      // Only "unknown invite" means it's gone; Discord being slow or busy doesn't.
+      const check = await api(this.env, 'GET', `/invites/${kept.code}`);
+      if (check.status !== 404) {
+        if (check.ok)
+          await this.ctx.storage.put('invite', { code: kept.code, checked: Date.now() });
+        return `https://discord.gg/${kept.code}`;
+      }
+    }
+    const channel = [...this.ctx.storage.sql.exec('SELECT channel FROM verify WHERE guild = ?', guild)][0]?.channel;
+    if (!channel)
+      return SITE;
+    const res = await api(this.env, 'POST', `/channels/${channel}/invites`, { max_age: 0, max_uses: 0, unique: true },
+      { 'X-Audit-Log-Reason': encodeURIComponent("The invite behind the Bloxkeep app's Discord button") });
+    if (!res.ok) {
+      this.log('invite failed', `HTTP ${res.status}`);
+      return SITE;
+    }
+    const code = (await res.json()).code;
+    await this.ctx.storage.put('invite', { code, checked: Date.now() });
+    this.log('invite', kept ? `${kept.code} stopped working, made ${code}` : `made ${code}`);
+    return `https://discord.gg/${code}`;
   }
 
   /** How long a slash command took between Cloudflare's edge and this object, and where it entered (for /status). */
@@ -799,6 +838,8 @@ export default {
     const gateway = bot(env);
     if (url.pathname === '/status')
       return Response.json(await gateway.status(), { headers: { 'Cache-Control': 'no-store' } });
+    if (url.pathname === '/discord') // the app's Discord button
+      return new Response(null, { status: 302, headers: { Location: await gateway.invite(), 'Cache-Control': 'no-store' } });
     if (url.pathname === '/interactions' && request.method === 'POST') {
       const body = await request.text();
       if (!await verify(env.DISCORD_PUBLIC_KEY, request.headers.get('X-Signature-Ed25519'), request.headers.get('X-Signature-Timestamp'), body))

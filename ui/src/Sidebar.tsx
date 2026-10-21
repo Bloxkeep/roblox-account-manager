@@ -1,4 +1,5 @@
-// The sidebar: the window's buttons (macOS themes), the logo, the tabs, then at the bottom what is going on with Roblox
+// The sidebar: the window's buttons (macOS themes), the logo with the button to Bloxkeep's Discord server, the tabs,
+// then at the bottom what is going on with Roblox
 // on this PC (its windows and memory, the Roblox version), Multi-Roblox's card, the update waiting for a restart and
 // Lock. Buttons keep their data-act: app.js's one click handler does what they do.
 import { useLocal } from './settings/parts';
@@ -27,7 +28,8 @@ export function Sidebar() {
   return <aside className="side">
     <div className="lights">{(['close', 'min', 'zoom'] as const).map(w =>
       <button key={w} className={`light l-${w}`} data-act={`win-${w}`} title={t(`win.${w}`)} aria-label={t(`win.${w}`)} />)}</div>
-    <div className="brand"><img src={logo} alt="" /><div><div className="brand-name">Bloxkeep</div><div className="brand-sub">{t('brand.sub')}</div></div></div>
+    <div className="brand"><img src={logo} alt="" /><div><div className="brand-name">Bloxkeep</div><div className="brand-sub">{t('brand.sub')}</div></div>
+      <button className="icon-btn brand-discord" data-act="open-discord" title={t('dc.title')} aria-label={t('dc.title')}><Icon name="discord" /></button></div>
     <div className="side-nav">
       {nav('accounts', 'users', <em id="nav-count">{accounts.length}</em>)}
       {nav('presets', 'layers')}

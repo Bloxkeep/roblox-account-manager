@@ -8,6 +8,8 @@ html [data-theme="dark" lang="en"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav [title="Accounts"]
           svg.i #v823bm
@@ -290,6 +292,8 @@ html [data-theme="dark" lang="en"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav [title="Accounts"]
           svg.i #v823bm
@@ -570,6 +574,8 @@ html [data-theme="dark" lang="en"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav [title="Accounts"]
           svg.i #v823bm
@@ -850,6 +856,8 @@ html [data-theme="dark" lang="en"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav [title="Accounts"]
           svg.i #v823bm
@@ -1130,6 +1138,8 @@ html [data-theme="dark" lang="en"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav [title="Accounts"]
           svg.i #v823bm

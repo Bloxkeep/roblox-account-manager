@@ -72,6 +72,8 @@
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
     message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
     wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+    // Discord's own logo (filled, unlike the outlined icons around it), for the button to Bloxkeep's server.
+    discord: '<path fill="currentColor" stroke="none" d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.86-.61 1.25a18.27 18.27 0 0 0-5.49 0 12.64 12.64 0 0 0-.62-1.25.08.08 0 0 0-.08-.04 19.74 19.74 0 0 0-4.88 1.52.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.06 19.9 19.9 0 0 0 5.99 3.03.08.08 0 0 0 .08-.03c.46-.63.87-1.3 1.23-1.99a.08.08 0 0 0-.04-.11 13.1 13.1 0 0 1-1.87-.89.08.08 0 0 1-.01-.13c.13-.09.25-.19.37-.29a.07.07 0 0 1 .08-.01c3.93 1.79 8.18 1.79 12.06 0a.07.07 0 0 1 .08.01c.12.1.25.2.37.29a.08.08 0 0 1-.01.13c-.6.35-1.22.65-1.87.89a.08.08 0 0 0-.04.11c.36.7.77 1.36 1.23 1.99a.08.08 0 0 0 .08.03 19.84 19.84 0 0 0 6-3.03.08.08 0 0 0 .03-.06c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.15-1.08-2.15-2.42 0-1.33.95-2.42 2.15-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/>',
   };
   const LOGO = 'logo.svg';
 
@@ -2385,6 +2387,7 @@
       { id: 'feedback', icon: 'message', text: t('fb.title'), keywords: ['bug', 'report', 'idea', 'feedback', 'góp ý', 'báo lỗi'], run: () => feedbackModal() },
       { id: 'guide', icon: 'book', text: t('help.title'), keywords: ['help', 'guide', 'manual', 'how', 'hướng dẫn', 'trợ giúp'], run: () => call('openGuide') },
       { id: 'star', icon: 'star', text: t('star.title'), keywords: ['github', 'star', 'sao', 'open source', 'mã nguồn'], run: () => call('openGitHub') },
+      { id: 'discord', icon: 'discord', text: t('dc.title'), keywords: ['discord', 'community', 'server', 'chat', 'cộng đồng', 'hỏi đáp'], run: () => call('openDiscord') },
       { id: 'export', icon: 'history', text: t('pal.exportActivity'), keywords: ['csv', 'log'], run: () => { setView('stats'); statsUi?.api.showActivity(); statsUi?.api.exportActivity(); } }, // the list may not be loaded yet: the app knows
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
       { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => lockApp() },
@@ -2635,6 +2638,7 @@
       case 'rw-how': return call('openRobloxWatch');
       case 'open-guide': return call('openGuide');
       case 'open-github': return call('openGitHub');
+      case 'open-discord': return call('openDiscord');
       case 'feedback': return feedbackModal();
       case 'select-all': return selectAllVisible();
       case 'clear-search':

@@ -5,6 +5,8 @@ html [data-theme="dark" lang="en"]
     aside.side
       div.brand
         img [alt="" src="logo.svg"]
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav [title="Accounts"]
           svg.i #v823bm

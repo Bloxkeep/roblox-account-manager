@@ -1,7 +1,8 @@
 // The bot's commands and news (DiscordBot/worker) against a fake Discord (its REST API and Gateway) and fake sources (the
 // Roblox watch, Roblox's status page, Bloxkeep's releases), run by wrangler dev: each command's reply, a signature that
 // doesn't verify refused, each kind of news posted once, in English, only where it was asked for, and /verify's captcha
-// (a PNG only that person sees, the code typed into a form, the role given once it's right).
+// (a PNG only that person sees, the code typed into a form, the role given once it's right), and /discord (the app's
+// Discord button: an invite that never expires, made again once it stops working).
 // No Discord account or token needed. In this folder: npm install, then node features.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -41,9 +42,11 @@ gw.on('connection', ws => {
   });
 });
 
-// ── the fake REST API: every call kept; channel "nochan" refuses posts, message "gone" was deleted ──
+// ── the fake REST API: every call kept; channel "nochan" refuses posts, message "gone" was deleted, invites in
+//    deadInvites were deleted ──
 const calls = [];
-let msgNo = 0;
+const deadInvites = new Set();
+let msgNo = 0, inviteNo = 0;
 const rest = http.createServer((req, res) => {
   let body = '';
   req.on('data', c => { body += c; });
@@ -53,6 +56,8 @@ const rest = http.createServer((req, res) => {
     const send = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
     if (req.method === 'POST' && req.url === '/channels/nochan/messages') return send(403, { message: 'Missing Access', code: 50001 });
     if (req.method === 'PATCH' && /\/messages\/gone$/.test(req.url)) return send(404, { message: 'Unknown Message', code: 10008 });
+    if (req.method === 'POST' && /^\/channels\/\w+\/invites$/.test(req.url)) return send(200, { code: `inv${++inviteNo}` });
+    if (req.method === 'GET' && deadInvites.has(req.url.replace('/invites/', ''))) return send(404, { message: 'Unknown Invite', code: 10006 });
     // c3 is a text channel: nothing there can be published.
     if (req.method === 'POST' && /^\/channels\/c3\/messages\/\w+\/crosspost$/.test(req.url)) return send(400, { message: 'Cannot execute action on this channel type', code: 50024 });
     if (req.method === 'POST') return send(200, { id: `m${++msgNo}` });
@@ -126,7 +131,7 @@ function startDev(extra = {}) {
     OBJECT_NAME: 'bot-test', OLD_OBJECT_NAME: '', PRESENCE_EVERY_MS: '300', TRACE_URL: 'http://127.0.0.1:9/',
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
-    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', ...extra,
+    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -233,6 +238,19 @@ try {
   check('a sixth picture within ten minutes: refused', /Too many tries/.test(r.json?.data.content ?? '') && !r.file, JSON.stringify(r.json));
   r = await interact(press('verify', { guild: 'g3' }));
   check('a server without /verify: the button says verification is off', /Verification is off/.test(r.json?.data.content ?? ''), JSON.stringify(r.json));
+
+  // /discord, the app's Discord button: g1 is the community server, and its /verify channel (v1) where newcomers land.
+  const discord = async () => (await fetch(`http://127.0.0.1:${DEV}/discord`, { redirect: 'manual' })).headers.get('location');
+  const invitesMade = () => calls.filter(c => c.method === 'POST' && c.url === '/channels/v1/invites');
+  let link = await discord();
+  check('/discord: to a new invite into the verify channel, one that never expires', link === 'https://discord.gg/inv1' && invitesMade().length === 1
+    && invitesMade()[0].body.max_age === 0 && invitesMade()[0].body.max_uses === 0, `${link} ${JSON.stringify(invitesMade().map(c => c.body))}`);
+  link = await discord();
+  check('…the same invite next time, once Discord says it still works', link === 'https://discord.gg/inv1' && invitesMade().length === 1
+    && calls.some(c => c.method === 'GET' && c.url === '/invites/inv1'), link);
+  deadInvites.add('inv1');
+  link = await discord();
+  check('…and a new one once it has stopped working (deleted)', link === 'https://discord.gg/inv2' && invitesMade().length === 2, link);
 
   // A build on Roblox's test channel, checked by the watch: "coming", to both news channels, pinging r1 in g1.
   const base = () => ({ c1: posts('c1').length, c3: posts('c3').length, patches: patches().length });

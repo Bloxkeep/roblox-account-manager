@@ -1,0 +1,178 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+        button.brand-discord.icon-btn [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+          svg.i #1crx2f1
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-updates" aria-labelledby="set-page-updates-h"]
+                h2.set-page-title [id="set-page-updates-h"] "Bloxkeep updates"
+                div.set-grp [id="sec-updates"]
+                  div.set-card
+                    div [id="s-update"]
+                      div.set-row
+                        div
+                          div.t "Bloxkeep 1.0.0"
+                          div.d "Bloxkeep is up to date · checked at 11:37 AM"
+                        div.ctl
+                          button.btn.ghost.sm "What’s new"
+                          button.btn.sm "Check now"
+                            svg.i #e464bo
+                    div.set-row
+                      div
+                        div.t "Update automatically"
+                      div.ctl
+                        label.switch
+                          input [id="s-autoupd" type="checkbox" aria-label="Update automatically" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Get beta versions"
+                        div.d "Try new features early. Betas may still have bugs."
+                      div.ctl
+                        label.switch
+                          input [id="s-betaupd" type="checkbox" aria-label="Get beta versions" checked=false]
+                          span
+                div.set-grp [id="sec-feedback"]
+                  h3.set-grp-title "Help & feedback"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "User guide"
+                        div.d "Every feature explained: where to find it, what it does, and why an option may be greyed out."
+                      div.ctl
+                        button.btn.sm "Open"
+                          svg.i #4hphjr
+                    div.set-row
+                      div
+                        div.t "Send feedback"
+                        div.d "An idea, or something that doesn’t work? It goes straight to the person who makes Bloxkeep."
+                      div.ctl
+                        button.btn.sm "Write"
+                          svg.i #13a5dgx
+                    div.set-row
+                      div
+                        div.t "Bloxkeep on Discord"
+                        div.d "Ask for help, share ideas, and get a ping when Roblox updates."
+                      div.ctl
+                        button.btn.sm [FOCUSED] "Join"
+                          svg.i #1crx2f1
+                    div.set-row
+                      div
+                        div.t "Star Bloxkeep on GitHub"
+                        div.d "Bloxkeep is free and open source. A star helps other players find it."
+                      div.ctl
+                        button.btn.sm "Open GitHub"
+                          svg.i #19cjsv1
+#layer
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  openDiscord {}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}

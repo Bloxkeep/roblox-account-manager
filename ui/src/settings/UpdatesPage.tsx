@@ -1,6 +1,6 @@
 // Settings › Bloxkeep updates: the version and where the update check stands (with What's new, and Check now or
-// Restart to update), the automatic updates and beta versions switches, then Help & feedback (the guide, feedback, a
-// GitHub star).
+// Restart to update), the automatic updates and beta versions switches, then Help & feedback (the guide, feedback,
+// Bloxkeep's Discord server, a GitHub star).
 import { useEffect, useState } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch } from './parts';
@@ -49,6 +49,7 @@ export function UpdatesPage({ title }: { title: string }) {
     <Group id="feedback" title={t('fb.group')}>
       <Row title={t('help.title')} desc={t('help.desc')}><button className="btn sm" data-act="open-guide"><Icon name="book" />{t('help.open')}</button></Row>
       <Row title={t('fb.title')} desc={t('fb.rowDesc')}><button className="btn sm" data-act="feedback"><Icon name="message" />{t('fb.open')}</button></Row>
+      <Row title={t('dc.title')} desc={t('dc.desc')}><button className="btn sm" data-act="open-discord"><Icon name="discord" />{t('dc.open')}</button></Row>
       <Row title={t('star.title')} desc={t('star.desc')}><button className="btn sm" data-act="open-github"><Icon name="star" />{t('star.open')}</button></Row>
     </Group>
   </Page>;

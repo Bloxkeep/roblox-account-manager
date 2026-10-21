@@ -8,6 +8,8 @@ html [data-theme="dark" lang="vi"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Quản lý tài khoản Roblox"
+        button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Tài khoản"]
           svg.i #v823bm
@@ -413,6 +415,8 @@ html [data-theme="dark" lang="vi"]
         div
           div.brand-name "Bloxkeep"
           div.brand-sub "Quản lý tài khoản Roblox"
+        button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Tài khoản"]
           svg.i #v823bm
