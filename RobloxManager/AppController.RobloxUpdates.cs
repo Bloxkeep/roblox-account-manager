@@ -32,7 +32,7 @@ public sealed partial class AppController
     /// <summary>Windows counted for the notice about to go out.</summary>
     int _closedPending;
     DateTime? _closedNoticeDue;
-    /// <summary>When Windows' commit limit was last all but used up (<see cref="GuardResources"/>): clients ending soon after it ran out of memory.</summary>
+    /// <summary>When Windows' commit limit was last all but used up (read every tick, also while locked): clients ending soon after it ran out of memory.</summary>
     DateTime? _memoryShortAt;
     /// <summary>How long after the commit limit was all but used up clients that end count as having run out of memory.</summary>
     static readonly TimeSpan MemoryCrashWindow = TimeSpan.FromSeconds(30);
@@ -73,12 +73,14 @@ public sealed partial class AppController
     /// <summary>
     /// A tracked client ended (read before auto-rejoin decides): did Roblox close it because another client opened?
     /// Its log saying so, with another client started in the last 20 s, is enough. Without that line, two or more
-    /// tracked clients ending within 5 s of each other right after a new client started. Closes Bloxkeep made itself
-    /// (Close, a rejoin restart) never count.
+    /// tracked clients that closed in order (<paramref name="inOrder"/>) ending within 5 s of each other right after a new
+    /// client started. A crash or a killed process never counts: on 2026-10-22 three windows that ran out of memory at once
+    /// were taken for Roblox closing them. Closes Bloxkeep made itself (Close, a rejoin restart) never count.
     /// </summary>
+    /// <param name="inOrder">It closed in order: its log says it shut down, or it left its notification-area copy.</param>
     /// <param name="childrenOf">Child processes by parent: the ended client's own notification-area copy isn't a new window.</param>
     /// <returns>true when this one counts as closed by Roblox (auto-rejoin then leaves it closed).</returns>
-    bool CheckClosedByRoblox(Guid account, int pid, DateTime startedAt, DateTime now, Func<int, List<int>> childrenOf)
+    bool CheckClosedByRoblox(Guid account, int pid, DateTime startedAt, DateTime now, bool inOrder, Func<int, List<int>> childrenOf)
     {
         // Without Multi-Roblox holding Roblox's single-window lock, Roblox closing the older window is how it always works.
         if (!MultiInstance.Armed || _userClosed.Contains(account) || _closingForRejoin.Contains(pid))
@@ -105,7 +107,7 @@ public sealed partial class AppController
         // Out of memory (its own log says Windows refused it memory, or the commit limit was all but used up just now):
         // clients ending together then crashed for want of it, as on 2026-10-22 (6 windows, Windows' low-virtual-memory
         // event at 99.7 %), not Roblox closing them for a new one, and Multi-Roblox is fine.
-        if (_logs.OutOfMemoryAt(pid) is not null || _memoryShortAt is { } shortAt && now >= shortAt && now - shortAt <= MemoryCrashWindow)
+        if (!inOrder || _logs.OutOfMemoryAt(pid) is not null || _memoryShortAt is { } shortAt && now >= shortAt && now - shortAt <= MemoryCrashWindow)
             return false;
         _suspectEnds.RemoveAll(e => now - e.At > CloseBurst || now < e.At || e.Account == account);
         _suspectEnds.Add((account, now, false));

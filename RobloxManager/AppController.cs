@@ -3488,8 +3488,10 @@ public sealed partial class AppController : IDisposable
             // Read now, with the log's last lines (a leave by choice logged right before the client quit), before the
             // log watcher drops the pid below.
             var log = EndedState(info.Pid);
-            // Roblox closed it because another client opened: not a hand-over, and no auto-rejoin.
-            bool closedByRoblox = CheckClosedByRoblox(id, info.Pid, info.Launch.StartedAt, now, ChildrenOf);
+            // Roblox closed it because another client opened: not a hand-over, and no auto-rejoin. Only a window that closed
+            // in order can be that: its log says it shut down, or it left its notification-area copy behind.
+            bool inOrder = _logs.ClosedInOrderAt(info.Pid) is not null || ChildrenOf(info.Pid).Any(trays.Contains);
+            bool closedByRoblox = CheckClosedByRoblox(id, info.Pid, info.Launch.StartedAt, now, inOrder, ChildrenOf);
             // Its log not followed (not found in time), but it left its notification-area copy behind: Roblox starts
             // that when its window is closed (the person's X, or Bloxkeep's own close), never on a drop or a crash.
             // A window the person closed is a leave by choice, not a drop to rejoin.
@@ -3714,13 +3716,20 @@ public sealed partial class AppController : IDisposable
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
         Step(() => TickDiscordPresence(now)); // Settings › Discord › Show on my Discord profile, locked or not
         Step(() => TickOnline(now)); // Settings › Bloxkeep updates › Add me to the online count, locked or not
+        // Also while locked: windows go on running, and one that ends soon after the commit limit ran out ran out of memory.
+        MemoryStatus memory = default;
+        Step(() =>
+        {
+            memory = SystemMemory.Read();
+            if (memory.CommitLimitMb > 0 && memory.CommitRoomMb < CommitMarginMb)
+                _memoryShortAt = now;
+        });
         if (_vault is null)
             return;
         Step(() => CheckAutoLock(AntiAfk.IdleTime(), DateTime.UtcNow));
         Step(() => PersistIfDue(now));
         Step(() =>
         {
-            var memory = SystemMemory.Read();
             NoteClientMemory(players);
             EmitMetrics(players, windows, memory);
             GuardResources(players, memory, now);
@@ -3822,9 +3831,6 @@ public sealed partial class AppController : IDisposable
     void GuardResources(List<RobloxProcesses.PlayerProcess> players, MemoryStatus memory, DateTime now)
     {
         var s = _vault!.Data.Settings;
-        // The commit limit all but used up: clients that end now ran out of memory (see CheckClosedByRoblox).
-        if (memory.CommitLimitMb > 0 && memory.CommitRoomMb < CommitMarginMb)
-            _memoryShortAt = now;
         if (s.MemoryWarnings && players.Count > 0 && memory.LoadPercent >= MemoryWarningLoad
             && now - _lastMemoryWarning > MemoryWarningInterval)
         {

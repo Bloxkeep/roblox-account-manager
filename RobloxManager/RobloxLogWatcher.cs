@@ -55,6 +55,8 @@ public sealed class RobloxLogWatcher
         public DateTime? ClosedByNewWindow;
         /// <summary>When the client first logged that Windows refused it memory (see <see cref="OutOfMemoryAt"/>).</summary>
         public DateTime? OutOfMemory;
+        /// <summary>When the client logged closing its window in order (see <see cref="ClosedInOrderAt"/>).</summary>
+        public DateTime? ClosedInOrder;
     }
 
     /// <summary>
@@ -160,6 +162,11 @@ public sealed class RobloxLogWatcher
     // "RBXCRASH: OutOfMemoryGraphics" (2026-10-22, two windows of six, Windows' low-virtual-memory event at 99.7 %).
     const string MimallocMark = "[DFLog::Mimalloc]";
     const string CommitRefusedMark = "cannot commit OS memory", AllocationRefusedMark = "out-of-memory on OS allocation", OutOfMemoryCrashMark = "RBXCRASH: OutOfMemory";
+    // A window closed in order (the person's X, a close message, Roblox making room for a new window) logs Roblox starting
+    // its notification-area copy, then shutting down: "[FLog::Systray] Successfully launched new process in systray mode",
+    // "[FLog::SingleSurfaceApp] shutDown: (stage:UGCGame)." A crash or a killed process writes neither (2026-10-22: 7 of
+    // 40 logs on the owner's PC had both, the 2 crashes neither, each with Roblox's crash report instead).
+    const string ShutDownMark = "[FLog::SingleSurfaceApp] shutDown:", TrayRelaunchMark = "Successfully launched new process in systray mode";
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
@@ -188,6 +195,12 @@ public sealed class RobloxLogWatcher
     /// log isn't followed). Read after <see cref="LastStateOf"/>, which takes in the client's last lines.
     /// </summary>
     public DateTime? OutOfMemoryAt(int pid) => _tails.GetValueOrDefault(pid)?.OutOfMemory;
+
+    /// <summary>
+    /// When this client's log said it closed its window in order (shut down, its notification-area copy started); null
+    /// when it didn't: a crash, a killed process, or a log not followed. Read after <see cref="LastStateOf"/>.
+    /// </summary>
+    public DateTime? ClosedInOrderAt(int pid) => _tails.GetValueOrDefault(pid)?.ClosedInOrder;
 
     /// <summary>
     /// What a client that has just quit logged last, including the lines written in its final moments (a leave by
@@ -472,6 +485,8 @@ public sealed class RobloxLogWatcher
                      && (line.Contains(CommitRefusedMark, StringComparison.Ordinal) || line.Contains(AllocationRefusedMark, StringComparison.Ordinal))
                  || line.Contains(OutOfMemoryCrashMark, StringComparison.Ordinal))
             tail.OutOfMemory ??= TimeOf(line);
+        else if (line.Contains(ShutDownMark, StringComparison.Ordinal) || line.Contains(TrayRelaunchMark, StringComparison.Ordinal))
+            tail.ClosedInOrder ??= TimeOf(line);
     }
 
     // Preserve the source's strength after showing the disconnect too: a numeric code can arrive later than words.

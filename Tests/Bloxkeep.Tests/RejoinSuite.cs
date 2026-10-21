@@ -944,7 +944,7 @@ static class RejoinSuite
             var check = t.GetMethod("CheckClosedByRoblox", Harness.F)!;
             var shortAt = t.GetField("_memoryShortAt", Harness.F)!;
             Func<int, List<int>> noChildren = _ => [];
-            bool Ended(Guid who, int pid, DateTime at) => (bool)check.Invoke(app, [who, pid, at.AddMinutes(-2), at, noChildren])!;
+            bool Ended(Guid who, int pid, DateTime at, bool inOrder = true) => (bool)check.Invoke(app, [who, pid, at.AddMinutes(-2), at, inOrder, noChildren])!;
             try
             {
                 var now = DateTime.UtcNow;
@@ -965,6 +965,14 @@ static class RejoinSuite
                 firstSaid = Ended(first, 4_000_002, now);
                 secondSaid = Ended(second, 4_000_003, now.AddSeconds(1));
                 c.Check("…but not when Windows' virtual memory had just run out (they crashed for want of it)", !firstSaid && !secondSaid && closedBy.Count == 0);
+                // Only windows that closed in order (shut down, notification-area copy started) can be Roblox's close: a crash
+                // or a killed process writes neither, whatever the timing.
+                Fresh();
+                shortAt.SetValue(app, null);
+                firstSaid = Ended(first, 4_000_002, now, inOrder: false);
+                secondSaid = Ended(second, 4_000_003, now.AddSeconds(1), inOrder: false);
+                c.Check("two windows that crashed or were killed together right after another opened: never taken for Roblox closing them",
+                    !firstSaid && !secondSaid && closedBy.Count == 0);
                 // The window's own log saying Windows refused it memory, Roblox's real lines of 2026-10-22.
                 Fresh();
                 shortAt.SetValue(app, null);
@@ -978,8 +986,18 @@ static class RejoinSuite
                 Write(Line(oomAt.AddSeconds(1), "[LOGCHANNELS + 1] RBXCRASH: OutOfMemoryGraphics"));
                 Poll(_ => watcher.OutOfMemoryAt(me) is not null);
                 c.Check("Roblox's own out-of-memory lines are read", watcher.OutOfMemoryAt(me) is not null);
+                c.Check("…and a crash isn't read as a window closed in order", watcher.ClosedInOrderAt(me) is null);
                 Ended(second, 4_000_003, now);
                 c.Check("…and a window that logged them isn't taken for one Roblox closed", !Ended(first, me, now.AddSeconds(1)) && !closedBy.Contains(first));
+                NewWindow();
+                Run(notBanned);
+                var closedAt = DateTime.UtcNow.AddSeconds(-3);
+                Write(Line(closedAt, Launch));
+                Write(Line(closedAt, Join));
+                Write(Line(closedAt.AddSeconds(1), "[FLog::Systray] Successfully launched new process in systray mode"));
+                Write(Line(closedAt.AddSeconds(1), "[FLog::SingleSurfaceApp] shutDown: (stage:UGCGame)."));
+                Poll(_ => watcher.ClosedInOrderAt(me) is not null);
+                c.Check("a window closed in order is read so from its log (its shutDown and notification-area lines)", watcher.ClosedInOrderAt(me) is not null);
             }
             finally
             {
