@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.8-beta.2",
+    "date": "2026-10-21",
+    "fixed": {
+      "en": [
+        "The account list no longer cuts the VNG tag short (\"V..\"): each column is as wide as the longest thing in it, whatever font your PC uses.",
+        "Accounts you closed right before Bloxkeep restarted (to update, say) no longer show as \"Playing · another device\" for a few minutes."
+      ],
+      "vi": [
+        "Danh sách tài khoản không còn cắt chữ VNG thành \"V..\": mỗi cột rộng bằng thứ dài nhất trong cột, dù máy bạn dùng phông chữ nào.",
+        "Tài khoản bạn vừa đóng ngay trước khi Bloxkeep khởi động lại (ví dụ để cập nhật) không còn hiện \"Đang chơi · thiết bị khác\" trong vài phút."
+      ]
+    }
+  },
+  {
     "version": "1.0.8-beta.1",
     "date": "2026-10-21",
     "highlights": [
