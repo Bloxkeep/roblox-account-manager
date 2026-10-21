@@ -75,6 +75,21 @@ static class CoresSuite
             await Harness.Call(app, "setSettings", new { splitCores = true });
             c.Check("on again: back to the background cores", Read(stand).State == 1);
 
+            // Another window brought to the front by the person: this one, in front before, goes to the background at once
+            // (grabbing a window in the background to drag it was slow for its first 0.7 s, 2026-10-21). One anti-AFK
+            // brings forward for a moment: only a moment later.
+            var foreground = (Delegate)typeof(AppController).GetField("_foregroundProc", Harness.F)!.GetValue(app)!;
+            void BroughtForward() => foreground.DynamicInvoke(IntPtr.Zero, 3u, IntPtr.Zero, 0, 0, 0u, 0u);
+            var coreRoles = Harness.Get<System.Collections.IDictionary>(app, "_coreRoles");
+            Set(stand.Id, "Front");
+            coreRoles[stand.Id] = Role("Front");
+            Harness.Set(app, "_nudging", true);
+            BroughtForward();
+            c.Check("a window anti-AFK brings forward for a moment: the cores follow only a moment later", Read(stand).State == 0);
+            Harness.Set(app, "_nudging", false);
+            BroughtForward();
+            c.Check("another window brought forward by the person: this one goes to the background at once", Read(stand).State == 1);
+
             // A client in front that ended since the last scan (seen 2026-10-19: Bloxkeep closed a window to rejoin,
             // and another came to the front): it has nothing to move, and Windows refused nothing. Both ways it can
             // be gone: exited while a handle still holds it (Bloxkeep's close keeps one), and no longer there at all.

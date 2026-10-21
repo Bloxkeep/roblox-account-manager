@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.8-beta.7",
+    "date": "2026-10-21",
+    "fixed": {
+      "en": [
+        "Arrange windows fits 5 or more Roblox windows side by side on a laptop screen: Roblox's windows no longer stay at their smallest size of 800 × 600 and run over each other and past the screen's edge. Bloxkeep makes them as small as the tiles, and the game shows at that size.",
+        "With Fast cores for the window you play on, a Roblox window you click gets the fast cores at once, so grabbing one in the background to drag it no longer stutters for a moment."
+      ],
+      "vi": [
+        "Xếp cửa sổ giờ xếp vừa 5 cửa sổ Roblox trở lên cạnh nhau trên màn hình laptop: cửa sổ Roblox không còn bị giữ ở cỡ nhỏ nhất 800 × 600 rồi đè lên nhau và tràn ra ngoài màn hình. Bloxkeep thu chúng vừa đúng ô, game vẫn hiện bình thường ở cỡ đó.",
+        "Khi bật Nhường nhân mạnh cho cửa sổ đang chơi, bấm vào cửa sổ Roblox nào là cửa sổ đó có nhân mạnh ngay, nên nắm cửa sổ nền để kéo không còn bị khựng lúc đầu."
+      ]
+    }
+  },
+  {
     "version": "1.0.8-beta.6",
     "date": "2026-10-21",
     "improved": {

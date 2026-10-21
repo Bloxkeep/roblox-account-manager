@@ -185,49 +185,19 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.8-beta.6 · 21 tháng 10, 2026"
+              small "Bloxkeep 1.0.8-beta.7 · 21 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        h4.improved.wn-kind.wn-sub "Cải thiện"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "Bị ban lúc vào game giờ được báo sớm hơn: chưa vào được sau 40 giây là Bloxkeep hỏi Roblox (5 giây nếu game này từng ban tài khoản đó), thay vì chờ một phút. Thẻ khi đó ghi Bị game ban thay vì Đang vào game, và thông báo Discord gửi đi liền."
-          li
-            svg.i #1l5qw3q
-            span "Tự vào lại giờ thử lại sau mỗi 10 giây, dù tài khoản bị văng bao nhiêu lần, thay vì chờ lâu dần. Bị game ban thì dừng hẳn."
-          li
-            svg.i #1l5qw3q
-            span "Thông báo Discord gửi đi trong vài giây, trước đây có thể chờ tới 10 giây để gom lại."
-          li
-            svg.i #1l5qw3q
-            span "Nút Discord chuyển xuống cuối thanh bên, cạnh Khóa app."
         h4.fixed.wn-kind.wn-sub "Đã sửa"
           svg.i #yqrnd9
         ul.fixed.wn-also
           li
             svg.i #yqrnd9
-            span "Một lần tự vào lại đang chờ không còn chặn nút Khởi động lại để cập nhật (hiện \"Chờ Bloxkeep mở Roblox xong đã\" dù chẳng có gì đang mở). Lần vào lại đó tiếp tục sau khi khởi động lại."
+            span "Xếp cửa sổ giờ xếp vừa 5 cửa sổ Roblox trở lên cạnh nhau trên màn hình laptop: cửa sổ Roblox không còn bị giữ ở cỡ nhỏ nhất 800 × 600 rồi đè lên nhau và tràn ra ngoài màn hình. Bloxkeep thu chúng vừa đúng ô, game vẫn hiện bình thường ở cỡ đó."
           li
             svg.i #yqrnd9
-            span "Mở game cho tài khoản chỉ đang ở màn hình chính của Roblox, hoặc đang kẹt ở lỗi 600, không còn hỏi có thoát game đang chơi không."
-          li
-            svg.i #yqrnd9
-            span "Preset, kể cả khi chạy từ khay hay theo lịch, giờ bỏ qua tài khoản bị game ban và ghi rõ lý do, thay vì dừng lại ở một câu hỏi không ai trả lời. Trước đó Bloxkeep hỏi Roblox xem lệnh ban còn không, nên ban đã hết thì tài khoản được mở như thường."
-          li
-            svg.i #yqrnd9
-            span "Bị game ban giờ vẫn được nhận ra khi lần hỏi đầu Roblox không trả lời (mất mạng ngay sau khi máy thức dậy, hỏi quá nhiều), khi cửa sổ bị đóng ngay, và ở các place khác của cùng game."
-          li
-            svg.i #yqrnd9
-            span "Khi Bloxkeep khởi động lại (để cập nhật) mà cửa sổ vẫn mở, lệnh ban của game không còn bị báo lần nữa, và thông báo Discord không còn ghi kèm là bị kick."
-          li
-            svg.i #yqrnd9
-            span "Bị ban trong game chọn ngay trong cửa sổ Roblox thì được ghi cho đúng game đó, không phải game Bloxkeep đã mở. Cửa sổ của tài khoản bị ban không còn bị đóng để chờ một lần vào lại không bao giờ tới."
-          li
-            svg.i #yqrnd9
-            span "Khi cửa sổ hẹp, nút Đổi vault không còn lấn ra ngoài thanh bên và hiện lại chữ cái của vault."
+            span "Khi bật Nhường nhân mạnh cho cửa sổ đang chơi, bấm vào cửa sổ Roblox nào là cửa sổ đó có nhân mạnh ngay, nên nắm cửa sổ nền để kéo không còn bị khựng lúc đầu."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

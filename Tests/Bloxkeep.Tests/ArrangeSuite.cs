@@ -5,16 +5,27 @@ using RobloxManager;
 namespace Bloxkeep.Tests;
 
 /// <summary>
-/// Arrange windows with windows that won't get as small as their tiles, as Roblox's (at least 800 × 600 in its own units):
-/// 5 of them on a 150 % laptop screen ran over each other and past the screen's edge (2026-10-21). They are spread
-/// evenly over the area instead, each over the one before it. Real windows of the test's own, on a thread with a message
-/// loop as a Roblox window has, given a least size the tiles are under.
+/// Arrange windows with windows that have a least size bigger than their tiles, as Roblox's (800 × 600 in its own units):
+/// 5 of them on a 150 % laptop screen ran over each other and past the screen's edge (2026-10-21). They are given their
+/// tiles all the same now; windows that grow back whatever they are given are spread evenly over the area instead, each
+/// over the one before it. Real windows of the test's own, on a thread with a message loop as a Roblox window has.
 /// </summary>
 static class ArrangeSuite
 {
     delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     [DllImport("user32.dll")]
     static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+    /// <summary>A window that sizes itself back up to its least size whenever it is made smaller, however that was done.</summary>
+    sealed class GrowsBack : Form
+    {
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            if (IsHandleCreated && (Width < MinimumSize.Width || Height < MinimumSize.Height))
+                BeginInvoke(() => Size = new Size(Math.Max(Width, MinimumSize.Width), Math.Max(Height, MinimumSize.Height)));
+        }
+    }
 
     public static Task Run(Checks c, string dir)
     {
@@ -38,38 +49,50 @@ static class ArrangeSuite
                 {
                     var work = Screen.PrimaryScreen!.WorkingArea;
                     var area = new Rectangle(work.X + 20, work.Y + 20, 900, 700);
-                    for (int i = 0; i < 5; i++)
+                    List<Form> Open(Func<Form> make)
                     {
-                        var w = new Form
+                        var opened = new List<Form>();
+                        for (int i = 0; i < 5; i++)
                         {
-                            Text = $"Arrange check {i + 1}", ShowInTaskbar = false, StartPosition = FormStartPosition.Manual,
-                            Location = new Point(area.X + 40 * i, area.Y + 30 * i), Size = new Size(450, 330), MinimumSize = new Size(400, 300),
-                        };
-                        windows.Add(w);
-                        w.Show();
+                            var w = make();
+                            w.Text = $"Arrange check {i + 1}";
+                            w.ShowInTaskbar = false;
+                            w.StartPosition = FormStartPosition.Manual;
+                            w.Location = new Point(area.X + 40 * i, area.Y + 30 * i);
+                            w.Size = new Size(450, 330);
+                            opened.Add(w);
+                            w.Show();
+                        }
+                        windows.AddRange(opened);
+                        return opened;
                     }
-                    await Task.Delay(200);
-                    // Tiles of 300 × 350 for 3 and 2 in 900 × 700: 100 too narrow for these windows, so 400 × 350 each,
-                    // spread 250 apart across and 350 down.
                     var arrange = typeof(RobloxProcesses).GetMethod("ArrangeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
-                    int count = await (Task<int>)arrange.Invoke(null, [windows.Select(w => w.Handle).ToList(), area, "fill"])!;
-                    await Task.Delay(300);
-                    var want = new[] { (0, 0), (250, 0), (500, 0), (0, 350), (250, 350) }.Select(p => new Rectangle(area.X + p.Item1, area.Y + p.Item2, 400, 350)).ToList();
-                    var got = windows.Select(w => w.Bounds).ToList();
-                    c.Check("windows that won't get as small as their tiles: spread evenly over the area, none past its edge",
-                        count == 5 && got.SequenceEqual(want), string.Join(" ", got));
+                    async Task<List<Rectangle>> Arrange(List<Form> these)
+                    {
+                        await Task.Delay(200);
+                        int count = await (Task<int>)arrange.Invoke(null, [these.Select(w => w.Handle).ToList(), area, "fill"])!;
+                        await Task.Delay(300);
+                        return count == these.Count ? these.Select(w => w.Bounds).ToList() : [];
+                    }
+                    // Tiles of 300 × 350 for 3 and 2 in 900 × 700, 100 narrower than these windows' least size, as Roblox's
+                    // window has one: given all the same, side by side.
+                    var least = Open(() => new Form { MinimumSize = new Size(400, 300) });
+                    var tiles = new[] { (0, 0), (300, 0), (600, 0), (0, 350), (300, 350) }.Select(p => new Rectangle(area.X + p.Item1, area.Y + p.Item2, 300, 350)).ToList();
+                    var got = await Arrange(least);
+                    c.Check("windows with a least size bigger than their tiles, as Roblox's: given their tiles all the same, side by side",
+                        got.SequenceEqual(tiles), string.Join(" ", got));
+                    foreach (var w in least)
+                        w.Close();
+                    // Windows that grow back to their least size whatever they are given: 400 × 350 each, spread 250 apart
+                    // across and 350 down.
+                    var stubborn = Open(() => new GrowsBack { MinimumSize = new Size(400, 300) });
+                    var spread = new[] { (0, 0), (250, 0), (500, 0), (0, 350), (250, 350) }.Select(p => new Rectangle(area.X + p.Item1, area.Y + p.Item2, 400, 350)).ToList();
+                    got = await Arrange(stubborn);
+                    c.Check("windows that grow back to their least size: spread evenly over the area, none past its edge", got.SequenceEqual(spread), string.Join(" ", got));
                     var order = new List<IntPtr>();
                     EnumWindows((h, _) => { order.Add(h); return true; }, IntPtr.Zero);
-                    var rank = windows.Select(w => order.IndexOf(w.Handle)).ToList();
+                    var rank = stubborn.Select(w => order.IndexOf(w.Handle)).ToList();
                     c.Check("…each over the one before it, so every title bar shows", rank.Zip(rank.Skip(1)).All(p => p.First > p.Second), string.Join(",", rank));
-                    // Windows that do get as small as their tiles: tiled as before, side by side.
-                    foreach (var w in windows)
-                        w.MinimumSize = new Size(100, 100);
-                    await (Task<int>)arrange.Invoke(null, [windows.Select(w => w.Handle).ToList(), area, "fill"])!;
-                    await Task.Delay(300);
-                    var tiles = new[] { (0, 0), (300, 0), (600, 0), (0, 350), (300, 350) }.Select(p => new Rectangle(area.X + p.Item1, area.Y + p.Item2, 300, 350)).ToList();
-                    c.Check("windows that do get that small: tiled side by side, as before",
-                        windows.Select(w => w.Bounds).SequenceEqual(tiles), string.Join(" ", windows.Select(w => w.Bounds)));
                 }
                 catch (Exception ex)
                 {

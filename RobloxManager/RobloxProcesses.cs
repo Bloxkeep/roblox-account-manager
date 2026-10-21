@@ -13,7 +13,7 @@ public static class RobloxProcesses
 {
     const string PlayerProcessName = "RobloxPlayerBeta";
     const uint WM_SETTEXT = 0x000C, WM_CLOSE = 0x0010, SMTO_ABORTIFHUNG = 0x0002, GW_OWNER = 4;
-    const uint SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_ASYNCWINDOWPOS = 0x4000;
+    const uint SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_NOSENDCHANGING = 0x0400, SWP_ASYNCWINDOWPOS = 0x4000;
     const int SW_RESTORE = 9, SW_SHOWMINNOACTIVE = 7, SW_SHOWMAXIMIZED = 3, GWL_STYLE = -16, WS_CAPTION = 0x00C00000;
     const uint SYNCHRONIZE = 0x00100000, PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
@@ -599,9 +599,12 @@ public static class RobloxProcesses
 
     /// <summary>
     /// Tiles these windows (see <see cref="ArrangeGridAsync"/>). Roblox keeps its window at least 800 × 600 in its own
-    /// units (1224 × 957 pixels on a 150 % screen): tiles smaller than that left the windows at that size, over each
-    /// other and past the screen's edge (5 windows on a 150 % laptop screen, 2026-10-21). Then they are spread evenly
-    /// over the area instead (<see cref="OverlapSpots"/>), each over the one before it, so every title bar shows.
+    /// units (1224 × 957 pixels on a 150 % screen) by answering the "changing" message a move sends: tiles smaller than
+    /// that left the windows at that size, over each other and past the screen's edge (5 windows on a 150 % laptop
+    /// screen, 2026-10-21). The tiles are given without that message (SWP_NOSENDCHANGING), so Roblox takes them and draws
+    /// the game at that size (tried on the owner's PC, 853 × 764, the same day). A window that grows back all the same is
+    /// spread evenly over the area instead (<see cref="OverlapSpots"/>), each over the one before it, so every title bar
+    /// shows.
     /// </summary>
     static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout)
     {
@@ -623,7 +626,7 @@ public static class RobloxProcesses
         for (int i = 0; i < windows.Count; i++)
         {
             SetWindowPos(windows[i], IntPtr.Zero, area.X + i % cols * width, area.Y + i / cols * height, width, height,
-                SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
         }
         if (await KeptSizeAsync(windows, new Size(width, height)) is not { } size)
             return windows.Count;

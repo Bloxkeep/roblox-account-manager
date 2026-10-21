@@ -28,7 +28,11 @@ public sealed partial class AppController
     static extern bool UnhookWinEvent(IntPtr hook);
     const uint EVENT_SYSTEM_FOREGROUND = 3, WINEVENT_OUTOFCONTEXT = 0;
 
-    /// <summary>A window coming to the front gets its cores a moment later (not anti-AFK's own brief nudges).</summary>
+    /// <summary>
+    /// A window the person brings to the front gets its cores at once: grabbing one in the background to drag it was
+    /// slow for its first 0.7 s (2026-10-21). One anti-AFK brings forward for a moment (<see cref="_nudging"/>) only a
+    /// moment later, so a nudge doesn't move the windows back and forth.
+    /// </summary>
     void WatchForeground()
     {
         _coreCheck = new System.Windows.Forms.Timer { Interval = 700 };
@@ -42,7 +46,10 @@ public sealed partial class AppController
             if (!_splitCoresOn || _corePids.Count == 0 || _disposed)
                 return;
             _coreCheck.Stop();
-            _coreCheck.Start();
+            if (_nudging)
+                _coreCheck.Start();
+            else
+                Step(() => SplitCores(_corePids));
         };
         _foregroundHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, _foregroundProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     }
