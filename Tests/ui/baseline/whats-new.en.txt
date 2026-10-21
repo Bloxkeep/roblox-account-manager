@@ -269,6 +269,9 @@ html [data-theme="dark" lang="en"]
             span "A kick for being idle is recognized again on Roblox 0.744, which logs it only in words: the AFK alert says when anti-AFK couldn't step in."
           li
             svg.i #yqrnd9
+            span "Saved sign-ins keep working as Roblox renews them: when Roblox sends an account a new sign-in cookie, Bloxkeep saves it (after checking it is the same account), and it renews a sign-in Roblox hasn't renewed for a week. Before, an account could one day be signed out for no reason you could see."
+          li
+            svg.i #yqrnd9
             span "With Save RAM on background windows on and 5 or more Roblox windows open, some windows no longer stutter (dragging one most of all): their RAM is no longer emptied every 2 minutes once the PC uses 85 % of it."
           li
             svg.i #yqrnd9

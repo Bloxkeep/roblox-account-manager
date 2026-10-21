@@ -512,7 +512,7 @@ Thêm được tài khoản Roblox VNG bằng tab **Roblox VNG** (đăng nhập 
 
 | Nơi nhận | Khi nào, gửi gì |
 |---|---|
-| Máy chủ API của Roblox (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Đăng nhập (mật khẩu chỉ gửi tới `auth.roblox.com`), kiểm tra phiên và tình trạng ban, trạng thái mỗi 30 giây, tìm game, server, bạn bè, người chơi, vé vào game, phiên bản Roblox mới nhất |
+| Máy chủ API của Roblox (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Đăng nhập (mật khẩu chỉ gửi tới `auth.roblox.com`), kiểm tra phiên và tình trạng ban, làm mới phiên đăng nhập của tài khoản nào Roblox chưa làm mới trong một tuần, trạng thái mỗi 30 giây, tìm game, server, bạn bè, người chơi, vé vào game, phiên bản Roblox mới nhất |
 | `www.roblox.com` | Cửa sổ đăng nhập bằng trình duyệt, trang cá nhân, link vào game giao cho Roblox |
 | `*.rbxcdn.com` | Ảnh đại diện và ảnh game |
 | `*.robloxapp.vnggames.com` | Như trên, chỉ cho tài khoản Roblox VNG |

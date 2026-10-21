@@ -42,6 +42,15 @@ public sealed record ServerInfo(string JobId, int Playing, int MaxPlayers, int P
 /// <param name="Type">0 offline, 1 online (website/app), 2 in game, 3 in Studio, 4 invisible.</param>
 public sealed record Presence(int Type, string? Location, long? PlaceId, long? RootPlaceId, string? JobId, DateTime? LastOnline, long? UniverseId);
 
+/// <summary>
+/// A sign-in cookie Roblox replaced: a request carried <see cref="Sent"/>, and Roblox's answer set <see cref="Renewed"/>
+/// in its place. Both are secrets, so <see cref="ToString"/> leaves them out.
+/// </summary>
+public sealed record RenewedCookie(string Realm, string Sent, string Renewed)
+{
+    public override string ToString() => $"RenewedCookie ({(Realm == RobloxManager.Realm.Vng ? "Roblox VNG" : "Roblox")})";
+}
+
 public sealed class RobloxApiException(string message, bool cookieInvalid = false, bool rateLimited = false, bool serverError = false,
     bool attemptOver = false) : Exception(message)
 {
@@ -61,14 +70,15 @@ public sealed class RobloxApiException(string message, bool cookieInvalid = fals
 }
 
 /// <summary>
-/// Talks only to official roblox.com endpoints. The cookie is attached per request and never stored by the HTTP stack.
+/// Talks only to official roblox.com endpoints. The cookie is attached per request and never stored by the HTTP stack;
+/// a new one Roblox sets in an answer is queued for the app (<see cref="TryTakeRenewedCookie"/>), which saves it.
 /// </summary>
 public static class RobloxApi
 {
     const string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
     const string CookieName = ".ROBLOSECURITY";
 
-    static readonly HttpClient Http = new(new SocketsHttpHandler
+    static readonly HttpClient Http = new(new CookieWatch(new SocketsHttpHandler
     {
         UseCookies = false,
         AllowAutoRedirect = false,
@@ -77,10 +87,82 @@ public static class RobloxApi
         // Connect over IPv4 only. An auth ticket is bound to the IP that requested it; the Roblox client redeems it
         // over IPv4, so if this app fetched it over IPv6 the IPs wouldn't match and the redeem would be rejected.
         ConnectCallback = Ipv4ConnectAsync,
-    })
+    }))
     {
         Timeout = TimeSpan.FromSeconds(20),
     };
+
+    /// <summary>The checks' Roblox (Tests/Bloxkeep.Tests): when set, it answers every request instead of the network. The app never sets it.</summary>
+    internal static Func<HttpRequestMessage, Task<HttpResponseMessage>>? StandIn { get; set; }
+
+    /// <summary>
+    /// Cookies Roblox renewed, waiting for the app to save them to their accounts (AppController.SignIns.cs). Roblox
+    /// sends a new .ROBLOSECURITY in Set-Cookie every few hours to days, not on every request, and some months later
+    /// refuses the one it replaced (devforum.roblox.com/t/4328913, announced 2026-02-03, enforced from 2026-05-01).
+    /// </summary>
+    static readonly ConcurrentQueue<RenewedCookie> Renewals = new();
+
+    public static bool TryTakeRenewedCookie([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out RenewedCookie? renewed) =>
+        Renewals.TryDequeue(out renewed);
+
+    public static bool RenewedCookiesWaiting => !Renewals.IsEmpty;
+
+    /// <summary>Every answer from Roblox passes here: one to a request that carried a sign-in cookie may set a new one.</summary>
+    sealed class CookieWatch(HttpMessageHandler network) : DelegatingHandler(network)
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var res = StandIn is { } standIn ? await standIn(request) : await base.SendAsync(request, ct);
+            if (RenewedBy(request, res) is { } renewed)
+                Renewals.Enqueue(renewed);
+            return res;
+        }
+    }
+
+    /// <summary>
+    /// The cookie a Roblox answer sets in place of the one its request carried; null when no cookie went, none came
+    /// back, the same one came back, or the answer deletes it (signing out sets an empty one, expired in 1970).
+    /// </summary>
+    internal static RenewedCookie? RenewedBy(HttpRequestMessage request, HttpResponseMessage res)
+    {
+        if (request.RequestUri is not { } uri || !res.Headers.TryGetValues("Set-Cookie", out var setCookies)
+            || !request.Headers.TryGetValues("Cookie", out var cookies)
+            || cookies.FirstOrDefault(c => c.Contains(CookieName + "=", StringComparison.Ordinal)) is not { } carried)
+            return null;
+        // Only Roblox's own hosts set its sign-in cookie (and every request here goes to them anyway).
+        string? realm = uri.Host.EndsWith(".robloxapp.vnggames.com", StringComparison.OrdinalIgnoreCase) ? Realm.Vng
+            : uri.Host.EndsWith(".roblox.com", StringComparison.OrdinalIgnoreCase) ? Realm.Global : null;
+        string sent = NormalizeCookie(carried);
+        // The last one wins, as in a browser.
+        string? renewed = setCookies.Select(SetsCookie).LastOrDefault(v => v is not null);
+        return realm is not null && sent.Length > 0 && renewed is not null && renewed != sent ? new RenewedCookie(realm, sent, renewed) : null;
+    }
+
+    /// <summary>The value a Set-Cookie header gives .ROBLOSECURITY; null for another cookie, an empty value, or one already expired.</summary>
+    static string? SetsCookie(string header)
+    {
+        string[] parts = header.Split(';');
+        int eq = parts[0].IndexOf('=');
+        if (eq < 0 || parts[0][..eq].Trim() != CookieName)
+            return null;
+        foreach (string part in parts.Skip(1))
+        {
+            int at = part.IndexOf('=');
+            if (at < 0)
+                continue;
+            string name = part[..at].Trim(), value = part[(at + 1)..].Trim();
+            if (name.Equals("max-age", StringComparison.OrdinalIgnoreCase)
+                && long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long age) && age <= 0)
+                return null;
+            if (name.Equals("expires", StringComparison.OrdinalIgnoreCase)
+                && DateTime.TryParseExact(value, ["ddd, dd-MMM-yyyy HH:mm:ss 'GMT'", "ddd, dd MMM yyyy HH:mm:ss 'GMT'", "r"], CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var expires)
+                && expires <= DateTime.UtcNow)
+                return null;
+        }
+        string cookie = parts[0][(eq + 1)..].Trim().Trim('"');
+        return cookie.Length > 0 ? cookie : null;
+    }
 
     static async ValueTask<Stream> Ipv4ConnectAsync(SocketsHttpConnectionContext ctx, CancellationToken ct)
     {
@@ -1153,6 +1235,25 @@ public static class RobloxApi
         // A 5xx is Roblox's problem; anything else (a ban, a challenge, a bad request) won't change by retrying.
         throw new RobloxApiException(L.F("Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment.", (int)res.StatusCode),
             serverError: (int)res.StatusCode >= 500);
+    }
+
+    /// <summary>
+    /// Has Roblox swap the account's session for a new one (POST auth…/v1/session/refresh, no body): its answer sets the
+    /// new cookie, queued like any other renewal, and the one sent stops working ("Logs out user from the current
+    /// session and create a new one", the endpoint's own description). Roblox staff gave it on 2026-05-19 as the way to
+    /// get an up-to-date cookie while many endpoints don't send one (devforum.roblox.com/t/4328913/38).
+    /// </summary>
+    public static async Task RefreshSessionAsync(string cookie, string realm, CancellationToken ct = default)
+    {
+        realm = Realm.Normalize(realm);
+        using var res = await PostWithCsrfAsync(Realm.Api(realm, "auth") + "/v1/session/refresh", cookie, "", null, ct, realm);
+        if (res.IsSuccessStatusCode)
+            return;
+        if (res.StatusCode == HttpStatusCode.Unauthorized)
+            throw new RobloxApiException(L.T("This account was signed out — sign in to it again."), cookieInvalid: true);
+        if (res.StatusCode == HttpStatusCode.TooManyRequests)
+            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+        throw Refused($"Session refresh{(realm == Realm.Vng ? " (VNG)" : "")}", res.StatusCode, await res.Content.ReadAsStringAsync(ct));
     }
 
     /// <summary>Turns a "roblox.com/share?code=…&amp;type=Server" link into the place and private-server link code.</summary>

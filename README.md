@@ -518,7 +518,7 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone, conf
 
 | Where | When, and what |
 |---|---|
-| Roblox's API hosts (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Signing in (the password only goes to `auth.roblox.com`), session and ban checks, status every 30 seconds, game, server, friend and player lookups, join tickets, the newest Roblox version |
+| Roblox's API hosts (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Signing in (the password only goes to `auth.roblox.com`), session and ban checks, renewing each saved sign-in that Roblox hasn't renewed for a week, status every 30 seconds, game, server, friend and player lookups, join tickets, the newest Roblox version |
 | `www.roblox.com` | The browser sign-in window, profiles, and the join link handed to Roblox |
 | `*.rbxcdn.com` | Avatars and game pictures |
 | `*.robloxapp.vnggames.com` | The same as the Roblox API hosts, for Roblox VNG accounts only |
