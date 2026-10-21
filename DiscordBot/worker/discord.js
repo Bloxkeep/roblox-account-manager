@@ -76,6 +76,11 @@ export const COMMANDS = [
     default_member_permissions: String(1 << 3), contexts: [0],
   },
   {
+    // Seen by server admins (and in a DM with the bot), and refused unless Bloxkeep's developers ask (worker.js).
+    name: 'online', description: "How many people have Bloxkeep open right now (Bloxkeep's developers only)",
+    default_member_permissions: String(1 << 3), contexts: [0, 1],
+  },
+  {
     name: 'board', description: 'A message that keeps itself up to date: Roblox, Multi-Roblox, outages, Bloxkeep',
     description_localizations: vi('Một tin nhắn tự cập nhật: Roblox, Multi-Roblox, sự cố, Bloxkeep'),
     default_member_permissions: MANAGE_GUILD, contexts: [0],

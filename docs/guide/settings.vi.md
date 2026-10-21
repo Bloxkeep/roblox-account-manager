@@ -132,6 +132,7 @@ Chi tiết nằm ở [Sao lưu và bảo mật](backup-and-security.vi.md).
 | **Nhận bản beta** | Cập nhật cả lên bản beta: có tính năng mới sớm hơn mọi người, nhưng có thể còn lỗi. Đang dùng bản beta mà tắt đi thì bạn vẫn giữ bản đó tới khi có bản chính thức tiếp theo. Bị mờ với bản không tự cập nhật được. | Tắt |
 | **Hướng dẫn sử dụng › Mở** | Mở chính hướng dẫn này. | — |
 | **Gửi góp ý › Viết góp ý** | Một ý tưởng, hoặc lỗi gặp phải. Lời nhắn đi thẳng tới người làm Bloxkeep. Xem [Gỡ rối](troubleshooting.vi.md). | — |
+| **Quyền riêng tư › Tính vào số người đang dùng** | Khi Bloxkeep đang mở, cứ 10 phút app báo cho người làm Bloxkeep một lần (thưa hơn khi có nhiều người dùng), và một lần khi tắt app: chỉ gồm một mã ngẫu nhiên, phiên bản và ngôn ngữ. Nhờ vậy họ biết lúc này có bao nhiêu người đang dùng Bloxkeep. Tắt đi: app báo một lần là bạn đã rời, sau đó không gửi gì nữa, và mã kia bị xóa. Xem [Những gì rời khỏi máy](backup-and-security.vi.md#những-gì-rời-khỏi-máy). | Bật |
 
 Khi bản cập nhật đã sẵn sàng, nút **Khởi động lại để cập nhật** hiện ở thanh bên. Roblox vẫn chạy bình thường trong lúc Bloxkeep khởi động lại, và mục **Có gì mới** cho biết những gì đã thay đổi. Các bản vá nhỏ giữa hai phiên bản cũng tự cài như vậy, không hiện nút hay **Có gì mới**, và số phiên bản giữ nguyên.
 

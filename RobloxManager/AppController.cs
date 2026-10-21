@@ -392,6 +392,7 @@ public sealed partial class AppController : IDisposable
         "applyUpdate" => ApplyUpdateAsync(),
         "setAutoUpdate" => Done(SetAutoUpdate(Bool(a, "enabled"))),
         "setBetaUpdates" => Done(SetBetaUpdates(Bool(a, "enabled"))),
+        "setCountOnline" => Done(SetCountOnline(Bool(a, "enabled"))),
         "whatsNew" => Done(WhatsNew.Between(null, _updater.CurrentVersion)),
         "seenWhatsNew" => Done(SeenWhatsNew()),
         "setLanguage" => Done(SetLanguage(Str(a, "language"))),
@@ -629,6 +630,7 @@ public sealed partial class AppController : IDisposable
         discord = DiscordDto(),
         safeRendering = Prefs.SafeRendering,
         update = _updater.Dto(),
+        countOnline = Prefs.CountOnline,
         robloxVersion = RobloxVersionDto(),
         robloxUpdates = RobloxUpdatesDto(),
         whatsNew = _updatedFrom is not null && Open is not null
@@ -3559,6 +3561,7 @@ public sealed partial class AppController : IDisposable
 
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
         Step(() => TickDiscordPresence(now)); // Settings › Discord › Show on my Discord profile, locked or not
+        Step(() => TickOnline(now)); // Settings › Bloxkeep updates › Add me to the online count, locked or not
         if (_vault is null)
             return;
         Step(() => CheckAutoLock(AntiAfk.IdleTime(), DateTime.UtcNow));
@@ -4739,6 +4742,7 @@ public sealed partial class AppController : IDisposable
         NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
         _updater.Changed -= OnUpdaterChanged;
         _discordPresence.Dispose(); // the profile stops showing Bloxkeep
+        SayOfflineOnExit(); // no longer counted as open (not for an update in the background, back within seconds)
         _procTimer.Dispose();
         _homeSession?.Dispose();
         _homeSession = null;

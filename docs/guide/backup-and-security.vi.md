@@ -81,7 +81,7 @@ Preset nhập vào có hẹn giờ bị tắt, và tài khoản chưa có ở đ
 
 ## Những gì rời khỏi máy
 
-Bloxkeep không có máy chủ, tài khoản hay công cụ phân tích riêng. Tài khoản, cài đặt và lịch sử của bạn chỉ nằm trên máy, trong một kho dữ liệu được mã hóa bằng mật khẩu chủ, và mật khẩu chủ không được lưu ở đâu cả. Dữ liệu chỉ rời khỏi máy cho những việc bạn dùng:
+Bloxkeep không có tài khoản hay công cụ phân tích riêng. Tài khoản, cài đặt và lịch sử của bạn chỉ nằm trên máy, trong một kho dữ liệu được mã hóa bằng mật khẩu chủ, và mật khẩu chủ không được lưu ở đâu cả. Dữ liệu chỉ rời khỏi máy cho những việc bạn dùng:
 
 | Nơi nhận | Gửi gì |
 |---|---|
@@ -89,7 +89,8 @@ Bloxkeep không có máy chủ, tài khoản hay công cụ phân tích riêng. 
 | GitHub | Cập nhật Bloxkeep, không kèm dữ liệu tài khoản. |
 | Thư mục sao lưu bạn chọn | Kho dữ liệu đã mã hóa. |
 | Webhook Discord của bạn | Chỉ khi bạn bật. Không bao giờ có cookie hay mật khẩu. |
-| Người làm Bloxkeep | Chỉ những góp ý bạn tự gửi. |
+| Người làm Bloxkeep | Những góp ý bạn tự gửi. |
+| Bot Discord của Bloxkeep | Khi Bloxkeep đang mở, cứ 10 phút báo "đang mở" một lần mà không kèm danh tính (một mã ngẫu nhiên, phiên bản và ngôn ngữ), để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Tắt ở **Cài đặt › Cập nhật Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng**. |
 
 Danh sách đầy đủ có trong [chính sách quyền riêng tư](../../PRIVACY.md) (tiếng Anh).
 

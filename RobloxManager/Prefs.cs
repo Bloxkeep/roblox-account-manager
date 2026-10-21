@@ -43,6 +43,15 @@ public static class Prefs
     /// <summary>Settings › Discord › Show on my Discord profile: off until the person turns it on (AppController.DiscordPresence.cs).</summary>
     public static bool DiscordPresence { get; set; }
 
+    /// <summary>Settings › Bloxkeep updates › Add me to the online count: on until the person turns it off (AppController.Online.cs).</summary>
+    public static bool CountOnline { get; set; } = true;
+
+    /// <summary>
+    /// The random id that says "this Bloxkeep is open" (AppController.Online.cs), made at its first beat; linked to nothing
+    /// else. Forgotten when that is turned off, so turning it on again makes a new one.
+    /// </summary>
+    public static string? OnlineId { get; set; }
+
     /// <summary>The version that last ran here; a newer one means the app was updated (see <see cref="WhatsNew"/>).</summary>
     public static string? LastVersion { get; set; }
 
@@ -169,7 +178,7 @@ public static class Prefs
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
-        "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault",
+        "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -232,6 +241,10 @@ public static class Prefs
             if (root.TryGetProperty("lastVersion", out var last) && last.ValueKind == JsonValueKind.String)
                 LastVersion = last.GetString();
             DiscordPresence = root.TryGetProperty("discordPresence", out var presence) && presence.ValueKind == JsonValueKind.True;
+            if (root.TryGetProperty("countOnline", out var countOnline) && countOnline.ValueKind == JsonValueKind.False)
+                CountOnline = false;
+            if (Text(root, "onlineId") is { } onlineId && Guid.TryParseExact(onlineId, "N", out _))
+                OnlineId = onlineId;
             if (root.TryGetProperty("notifications", out var notify) && notify.ValueKind == JsonValueKind.False)
                 Notifications = false;
             if (root.TryGetProperty("notifyOff", out var off) && off.ValueKind == JsonValueKind.Array)
@@ -316,7 +329,7 @@ public static class Prefs
             {
                 ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
-                ["discordPresence"] = DiscordPresence,
+                ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId,
                 ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture },
                 ["notifications"] = Notifications, ["notifyOff"] = NotifyOff.Order(StringComparer.Ordinal).ToArray(),
                 // The first vault's backup state also where builds before several vaults read it.

@@ -204,10 +204,11 @@ export function boardEmbed(l, snap) {
  * The lines the bot's custom status moves through (Discord shows one under its name): Roblox and Multi-Roblox now, the
  * build coming, Roblox's status, the newest Bloxkeep, the commands. Only what is known; at least the commands.
  */
-export function presenceLines(snap) {
+export function presenceLines(snap, online = 0) {
   const live = snap?.watch?.live, next = snap?.watch?.next, status = snap?.status;
   const short = v => `0.${release(v)}`;
   return [
+    ...(online > 0 ? [online === 1 ? '1 person using Bloxkeep now' : `${online} people using Bloxkeep now`] : []),
     ...(live ? [`Roblox ${short(live.version)} · Multi-Roblox: ${verdict('en', live.verdict)[0]}`] : []),
     ...(next ? [`Coming: Roblox ${short(next.version)} · ${verdict('en', next.verdict)[0]}`] : []),
     ...(status ? [`Roblox status: ${state('en', status.code)}`] : []),

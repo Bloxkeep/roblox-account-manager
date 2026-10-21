@@ -1,8 +1,9 @@
 // The bot's commands and news (DiscordBot/worker) against a fake Discord (its REST API and Gateway) and fake sources (the
 // Roblox watch, Roblox's status page, Bloxkeep's releases), run by wrangler dev: each command's reply, a signature that
 // doesn't verify refused, each kind of news posted once, in English, only where it was asked for, and /verify's captcha
-// (a PNG only that person sees, the code typed into a form, the role given once it's right), and /discord (the app's
-// Discord button: an invite that never expires, made again once it stops working).
+// (a PNG only that person sees, the code typed into a form, the role given once it's right), /discord (the app's
+// Discord button: an invite that never expires, made again once it stops working), and how many people have Bloxkeep
+// open now (the apps' beats, /online and its dashboard for Bloxkeep's developers only, the line in the bot's status).
 // No Discord account or token needed. In this folder: npm install, then node features.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -55,6 +56,8 @@ const rest = http.createServer((req, res) => {
     calls.push(call);
     const send = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
     if (req.method === 'POST' && req.url === '/channels/nochan/messages') return send(403, { message: 'Missing Access', code: 50001 });
+    // u1 owns the application: one of Bloxkeep's developers.
+    if (req.method === 'GET' && req.url === '/oauth2/applications/@me') return send(200, { id: 'app1', owner: { id: 'u1' } });
     if (req.method === 'PATCH' && /\/messages\/gone$/.test(req.url)) return send(404, { message: 'Unknown Message', code: 10008 });
     if (req.method === 'POST' && /^\/channels\/\w+\/invites$/.test(req.url)) return send(200, { code: `inv${++inviteNo}` });
     if (req.method === 'GET' && deadInvites.has(req.url.replace('/invites/', ''))) return send(404, { message: 'Unknown Invite', code: 10006 });
@@ -131,7 +134,8 @@ function startDev(extra = {}) {
     OBJECT_NAME: 'bot-test', OLD_OBJECT_NAME: '', PRESENCE_EVERY_MS: '300', TRACE_URL: 'http://127.0.0.1:9/',
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
-    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0', ...extra,
+    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
+    ONLINE_FOR_MS: '8000', BEAT_BUDGET: '200', PUBLIC_URL: `http://127.0.0.1:${DEV}`, ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -161,7 +165,7 @@ try {
   await minute(3500);
   const puts = calls.filter(c => c.method === 'PUT');
   check('the commands are put in place, with the bot token', puts.length === 1 && puts[0].url === '/applications/app1/commands' && puts[0].auth === 'Bot test-token'
-    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,board,verify', JSON.stringify(puts[0]?.body.map(c => c.name)));
+    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,online,board,verify', JSON.stringify(puts[0]?.body.map(c => c.name)));
   check('…and the first look announces nothing', calls.filter(c => c.method === 'POST').length === 0, calls.length);
   await minute();
   check('…nor are the commands put again when unchanged', calls.filter(c => c.method === 'PUT').length === 1);
@@ -251,6 +255,48 @@ try {
   deadInvites.add('inv1');
   link = await discord();
   check('…and a new one once it has stopped working (deleted)', link === 'https://discord.gg/inv2' && invitesMade().length === 2, link);
+
+  // Online now: two Bloxkeep apps say they're open (online for 8 s here; for real, one and a half gaps between beats). The
+  // bot takes 200 beats a day here (40,000 for real): one app online beats every ten minutes, two every 864 s.
+  const beat = async body => {
+    const res = await fetch(`http://127.0.0.1:${DEV}/online/ping`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+    return { status: res.status, json: await res.json().catch(() => null) };
+  };
+  const A = 'a'.repeat(32), B = 'B'.repeat(32);
+  let b = await beat({ id: A, app: '1.0.8', language: 'vi' });
+  check('a beat from a Bloxkeep app: taken, the answer says to send the next in ten minutes', b.status === 200 && b.json?.next === 600, JSON.stringify(b));
+  check("…one that isn't a beat is refused (an id that isn't 32 hex digits, a version that isn't one)",
+    (await beat({ id: 'me', app: '1.0.8' })).status === 400 && (await beat({ id: B, app: 'x' })).status === 400 && (await beat({ id: B })).status === 400);
+  await beat({ id: B, app: '1.0.8-alpha.2', language: 'en' });
+  b = await beat({ id: A, app: '1.0.8', language: 'vi' }); // the same app again: still one
+  check('…and with more online, beats further apart, so that they stay within the day\'s budget', b.json?.next === 864, JSON.stringify(b));
+  const asDeveloper = command('online', { guild: null, locale: 'en-US' });
+  const asSomeoneElse = { ...command('online', { locale: 'en-US', perms: '8' }), member: { permissions: '8', user: { id: 'u2' } } };
+  r = await interact(asSomeoneElse);
+  check('/online from someone who is not one of Bloxkeep\'s developers (a server admin): refused, seen only by them',
+    r.json?.data.flags === 64 && /developers/.test(r.json.data.content ?? '') && !r.json.data.embeds, JSON.stringify(r.json));
+  r = await interact(asDeveloper);
+  const oe = r.json?.data.embeds?.[0], field = name => oe?.fields?.find(f => f.name === name)?.value ?? '';
+  check('/online from a developer, in a DM with the bot: 2 online now, seen only by them', r.json?.data.flags === 64 && oe?.title === '2 online now', JSON.stringify(r.json));
+  check('…with today\'s peak, and who by version and language', /^\*\*2\*\*, at <t:\d+:t>$/.test(field('Peak today'))
+    && field('Version') === '1.0.8: **1**\n1.0.8-alpha.2: **1**' && field('Language') === 'en: **1**\nvi: **1**', JSON.stringify(oe?.fields));
+  const dashboard = r.json?.data.components?.[0]?.components?.[0]?.url ?? '';
+  check('…and a Dashboard button, its link carrying the key', /^http:\/\/127\.0\.0\.1:\d+\/online\?key=[\w-]{24}$/.test(dashboard), dashboard);
+  let page = await fetch(dashboard);
+  check('the dashboard opens with that key', page.status === 200 && /text\/html/.test(page.headers.get('content-type')) && (await page.text()).includes('<title>Bloxkeep online</title>'), page.status);
+  const numbers = async (key = new URL(dashboard).search) => { const res = await fetch(`http://127.0.0.1:${DEV}/online.json${key}`); return res.ok ? res.json() : res.status; };
+  let o = await numbers();
+  check('…and its numbers: 2 now, today\'s peak 2, the last 30 days', o.now === 2 && o.today?.peak === 2 && o.days?.length === 30 && o.days.at(-1).day === o.today.day, JSON.stringify(o).slice(0, 300));
+  check('…but not without the key, or with another', (await fetch(`http://127.0.0.1:${DEV}/online`)).status === 404 && await numbers('?key=nope') === 404 && await numbers('') === 404);
+  check('no ids in what the dashboard reads', !JSON.stringify(o).includes(A) && !JSON.stringify(o).toLowerCase().includes(B.toLowerCase()));
+  await sleep(1500);
+  check('the bot\'s status says how many are using Bloxkeep now', statuses.some(a => a?.state === '2 people using Bloxkeep now'), JSON.stringify([...new Set(statuses.map(a => a?.state))]));
+  b = await beat({ id: B, gone: true });
+  o = await numbers();
+  check('an app closing says goodbye: gone at once, the peak stays', b.status === 200 && o.now === 1 && o.today.peak === 2 && o.languages.map(l => l.name).join() === 'vi', JSON.stringify(o).slice(0, 300));
+  await sleep(8500);
+  o = await numbers();
+  check('an app that stopped saying so (crashed, PC asleep) is no longer online once its time is up', o.now === 0 && o.today.peak === 2 && o.apps.length === 0, JSON.stringify(o).slice(0, 300));
 
   // A build on Roblox's test channel, checked by the watch: "coming", to both news channels, pinging r1 in g1.
   const base = () => ({ c1: posts('c1').length, c3: posts('c3').length, patches: patches().length });

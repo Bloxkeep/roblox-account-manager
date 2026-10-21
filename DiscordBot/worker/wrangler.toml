@@ -23,6 +23,12 @@ COMMUNITY_GUILD = "1562230857152856264"
 [version_metadata]
 binding = "CF_VERSION"
 
+# Beats from Bloxkeep apps (/online/ping): a few dozen a minute from one address at most.
+[[ratelimits]]
+name = "PING_LIMITER"
+namespace_id = "1201"
+simple = { limit = 60, period = 60 }
+
 [[durable_objects.bindings]]
 name = "GATEWAY"
 class_name = "Gateway"

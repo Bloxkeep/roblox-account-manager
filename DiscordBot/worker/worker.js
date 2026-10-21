@@ -8,10 +8,12 @@
 // or live, Roblox having problems or working again, a new public Bloxkeep version. Each is posted once to the channels
 // servers chose with /notify, and every board (/board) is edited when what it shows changes. Slash commands come over
 // HTTP (/interactions, signed by Discord), so they work even while the object reconnects; so do the Verify button and
-// its form (/verify: a captcha drawn by captcha.js, solved in Discord, for a role).
+// its form (/verify: a captcha drawn by captcha.js, solved in Discord, for a role). It also counts how many people have
+// Bloxkeep open right now (online.js): the app says so to /online/ping while it's open.
 import { DurableObject } from 'cloudflare:workers';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
+import { DAYS_SHOWN, GRACE, beatEvery, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { setupServer } from './setup.js';
 import { newer, readLatestTag, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -35,6 +37,8 @@ const OUTAGE_LOOKS = 2;
 // and the posts go back to them. The first object ("bot") was made where the first look at /status came from (Asia),
 // which put about 200 ms of ocean on every command; this one takes over its servers' choices and boards (migrate()).
 const OBJECT = 'bot-na', OLD_OBJECT = 'bot', PLACE = 'enam';
+// The worker's own address: the dashboard's link (/online) points here.
+const PUBLIC_URL = 'https://bloxkeep-bot.bloxkeep-app.workers.dev';
 // The custom status under the bot's name changes this often, through what's true right now (texts.js presenceLines).
 const PRESENCE_EVERY = 20_000;
 // What the bot hears from Discord: messages in servers (who posted where, not what: no privileged intent), for the trap.
@@ -44,6 +48,8 @@ const INTENTS = 1 << 9;
 const CAPTCHA_FOR = 5 * 60_000, CAPTCHAS_PER = 5, CAPTCHA_WINDOW = 10 * 60_000;
 // The community server's invite (/discord) is asked Discord whether it still works at most this often.
 const INVITE_RECHECK = 60_000;
+// Who Bloxkeep's developers are (the application's owner, or its team's owner and admins) is asked Discord this often.
+const DEVELOPERS_RECHECK = 10 * 60_000;
 
 export class Gateway extends DurableObject {
   constructor(ctx, env) {
@@ -71,6 +77,13 @@ export class Gateway extends DurableObject {
       // pressing Verify again is all it takes).
       this.captchas = new Map();
       this.asked = new Map();
+      // The Bloxkeep apps open now (online.js): each one's id, until when it counts as online (its next beat is due well
+      // before), its version and language. Kept on disk only so that a restart doesn't make everyone vanish until their
+      // next beat; a row goes once it's stale.
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS online (id TEXT PRIMARY KEY, until INTEGER NOT NULL, app TEXT NOT NULL, lang TEXT NOT NULL)');
+      // The most online at once on each day (Vietnam time), and when.
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS peaks (day TEXT PRIMARY KEY, peak INTEGER NOT NULL, at INTEGER NOT NULL)');
+      this.here = new Map([...ctx.storage.sql.exec('SELECT * FROM online')].map(r => [r.id, { until: r.until, app: r.app, lang: r.lang }]));
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
       this.stopped = (await ctx.storage.get('stopped')) ?? null;
       this.retired = (await ctx.storage.get('retired')) ?? false; // handed over to the object that replaced it
@@ -92,6 +105,7 @@ export class Gateway extends DurableObject {
       this.ctx.abort('a newer version of the bot was deployed');
       return;
     }
+    this.countHere(); // the apps that stopped saying they're open, forgotten
     if (!this.env.DISCORD_TOKEN || this.retired)
       return; // not set yet (the worker's settings): nothing to connect with
     if (this.stopped && this.stopped.token !== await tokenHash(this.env.DISCORD_TOKEN))
@@ -247,6 +261,12 @@ export class Gateway extends DurableObject {
         return reply({ embeds: [multiEmbed(l, snap.watch)] });
       case 'robloxstatus':
         return reply({ embeds: [statusEmbed(l, snap.status ?? { code: 100, parts: [], incident: null })] });
+      case 'online': { // Bloxkeep's developers only, wherever they ask; seen only by them
+        if (!await this.isDeveloper(i.member?.user?.id ?? i.user?.id))
+          return reply({ content: "Only Bloxkeep's developers can see this." }, true);
+        const key = await dashboardKey(this.env.DISCORD_TOKEN);
+        return reply(onlineMessage(this.onlineNow(), key ? `${this.env.PUBLIC_URL || PUBLIC_URL}/online?key=${key}` : null), true);
+      }
     }
     if (!i.guild_id)
       return reply({ content: r.guildOnly }, true);
@@ -352,6 +372,89 @@ export class Gateway extends DurableObject {
     return { reply: mine({ content: '?' }) };
   }
 
+  /** Bloxkeep's developers: the application's owner, or its team's owner and admins (asked Discord now and then). */
+  async isDeveloper(who) {
+    if (!who)
+      return false;
+    if (!this.developers || Date.now() - this.developers.at > DEVELOPERS_RECHECK) {
+      const app = await (await api(this.env, 'GET', '/oauth2/applications/@me')).json().catch(() => ({}));
+      const ids = app.team
+        ? [app.team.owner_user_id, ...(app.team.members ?? []).filter(m => m.role === 'admin' && m.membership_state === 2).map(m => m.user.id)]
+        : [app.owner?.id];
+      this.developers = { ids: ids.filter(Boolean), at: Date.now() };
+    }
+    return this.developers.ids.includes(who);
+  }
+
+  // ───────────────────────────── online now ─────────────────────────────
+
+  /**
+   * A beat from a Bloxkeep app (online.js readBeat): open now, or closing. The answer says when to send the next: later
+   * the more are online, so that all the beats together stay within the bot's daily budget (online.js beatEvery).
+   */
+  beat(b) {
+    const now = Date.now();
+    if (b.gone) {
+      if (this.here.delete(b.id))
+        this.ctx.storage.sql.exec('DELETE FROM online WHERE id = ?', b.id);
+      return {};
+    }
+    this.here.set(b.id, { until: now, app: b.app, lang: b.lang });
+    const count = this.countHere(now), next = this.beatEvery(count), until = now + this.onlineFor(next);
+    this.here.get(b.id).until = until;
+    this.ctx.storage.sql.exec(`INSERT INTO online (id, until, app, lang) VALUES (?, ?, ?, ?)
+      ON CONFLICT (id) DO UPDATE SET until = excluded.until, app = excluded.app, lang = excluded.lang`, b.id, until, b.app, b.lang);
+    this.notePeak(count, now);
+    return { next };
+  }
+
+  beatEvery(count) {
+    return beatEvery(count, Number(this.env.BEAT_BUDGET) || undefined);
+  }
+
+  /** How long a beat that says the next comes in `next` seconds keeps its app online (shorter in the checks). */
+  onlineFor(next) {
+    return Number(this.env.ONLINE_FOR_MS) || next * 1000 * GRACE;
+  }
+
+  /** How many are online now; the ones that stopped saying so are forgotten on the way. */
+  countHere(now = Date.now()) {
+    for (const [id, h] of this.here) {
+      if (now > h.until) {
+        this.here.delete(id);
+        this.ctx.storage.sql.exec('DELETE FROM online WHERE id = ?', id);
+      }
+    }
+    return this.here.size;
+  }
+
+  /** Today's peak, raised when more are online than ever before today. */
+  notePeak(count, now) {
+    const day = dayOf(now);
+    if (this.peak?.day !== day)
+      this.peak = [...this.ctx.storage.sql.exec('SELECT * FROM peaks WHERE day = ?', day)][0] ?? { day, peak: 0, at: now };
+    if (count <= this.peak.peak)
+      return;
+    this.peak = { day, peak: count, at: now };
+    this.ctx.storage.sql.exec('INSERT OR REPLACE INTO peaks (day, peak, at) VALUES (?, ?, ?)', day, count, now);
+  }
+
+  /** What /online and the dashboard show: online now, by version and language, today's peak and the last days' peaks. */
+  onlineNow() {
+    const now = Date.now(), count = this.countHere(now);
+    const tally = key => [...[...this.here.values()].reduce((m, h) => m.set(h[key], (m.get(h[key]) ?? 0) + 1), new Map())]
+      .map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n || String(a.name).localeCompare(String(b.name), 'en', { numeric: true }));
+    const days = [];
+    for (let n = DAYS_SHOWN - 1; n >= 0; n--)
+      days.push(dayOf(now - n * 86_400_000));
+    const peaks = new Map([...this.ctx.storage.sql.exec('SELECT * FROM peaks WHERE day >= ?', days[0])].map(p => [p.day, p]));
+    const shown = days.map(day => ({ day, peak: peaks.get(day)?.peak ?? 0, at: peaks.get(day)?.at ?? null }));
+    return {
+      now: count, at: new Date(now).toISOString(), forMinutes: Math.round(this.onlineFor(this.beatEvery(count)) / 60_000),
+      today: shown.at(-1), days: shown, apps: tally('app'), languages: tally('lang'),
+    };
+  }
+
   // ───────────────────────────── the community server ─────────────────────────────
 
   /** /setup: answered "thinking…" at once (worker.js); the work goes on here and the answer is edited when it's done. */
@@ -362,13 +465,9 @@ export class Gateway extends DurableObject {
 
   async runSetup(i) {
     const answer = content => api(this.env, 'PATCH', `/webhooks/${i.application_id}/${i.token}/messages/@original`, { content: content.slice(0, 2000), allowed_mentions: { parse: [] } });
-    // Only the application's owner (or its team's owner and admins), whoever else manages the server.
-    const app = await (await api(this.env, 'GET', '/oauth2/applications/@me')).json().catch(() => ({}));
-    const allowed = app.team
-      ? [app.team.owner_user_id, ...(app.team.members ?? []).filter(m => m.role === 'admin' && m.membership_state === 2).map(m => m.user.id)]
-      : [app.owner?.id];
+    // Only Bloxkeep's developers, whoever else manages the server.
     const who = i.member?.user?.id ?? i.user?.id;
-    if (!who || !allowed.includes(who)) {
+    if (!await this.isDeveloper(who)) {
       await answer("Only Bloxkeep's developers can set up a server with this.");
       return;
     }
@@ -677,7 +776,7 @@ export class Gateway extends DurableObject {
         clearInterval(this.presenceTimer);
         return;
       }
-      const lines = presenceLines(await this.ctx.storage.get('snap'));
+      const lines = presenceLines(await this.ctx.storage.get('snap'), this.countHere());
       this.send({ op: 3, d: { since: null, activities: [{ type: 4, name: 'Custom Status', state: lines[n++ % lines.length] }], status: 'online', afk: false } });
     };
     this.presenceTimer = setInterval(show, Number(this.env.PRESENCE_EVERY_MS) || PRESENCE_EVERY);
@@ -829,6 +928,31 @@ function boardShown(l, snap) {
   return rest.fields;
 }
 
+/**
+ * A Bloxkeep app saying it's open (or closing). Small bodies only, and a few dozen a minute from one address at most
+ * (an internet café's PCs share one); the address is only the rate limit's key, never kept.
+ */
+async function ping(request, env, gateway) {
+  if (env.PING_LIMITER && !(await env.PING_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' })).success)
+    return Response.json({ error: 'rate' }, { status: 429 });
+  const raw = await request.text();
+  if (raw.length > 1000)
+    return Response.json({ error: 'too large' }, { status: 413 });
+  let beat;
+  try {
+    beat = readBeat(JSON.parse(raw));
+  } catch {
+    beat = null;
+  }
+  if (!beat)
+    return Response.json({ error: 'bad beat' }, { status: 400 });
+  try {
+    return Response.json(await gateway.beat(beat));
+  } catch {
+    return Response.json({ error: 'busy' }, { status: 503 }); // the object starting over (a deploy): the next beat counts
+  }
+}
+
 /** The bot's object: made in eastern North America the first time, then wherever it is. */
 const bot = env => env.GATEWAY.get(env.GATEWAY.idFromName(env.OBJECT_NAME || OBJECT), { locationHint: PLACE });
 
@@ -840,6 +964,17 @@ export default {
       return Response.json(await gateway.status(), { headers: { 'Cache-Control': 'no-store' } });
     if (url.pathname === '/discord') // the app's Discord button
       return new Response(null, { status: 302, headers: { Location: await gateway.invite(), 'Cache-Control': 'no-store' } });
+    if (url.pathname === '/online/ping' && request.method === 'POST') // a Bloxkeep app, open now (online.js)
+      return ping(request, env, gateway);
+    if (url.pathname === '/online' || url.pathname === '/online.json') { // the dashboard, with the key /online gives
+      const key = await dashboardKey(env.DISCORD_TOKEN);
+      if (!key || url.searchParams.get('key') !== key)
+        return Response.json({ error: 'not found' }, { status: 404 });
+      const noStore = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' };
+      return url.pathname === '/online'
+        ? new Response(dashboardPage(), { headers: { 'Content-Type': 'text/html; charset=utf-8', ...noStore } })
+        : Response.json(await gateway.onlineNow(), { headers: noStore });
+    }
     if (url.pathname === '/interactions' && request.method === 'POST') {
       const body = await request.text();
       if (!await verify(env.DISCORD_PUBLIC_KEY, request.headers.get('X-Signature-Ed25519'), request.headers.get('X-Signature-Timestamp'), body))

@@ -171,6 +171,17 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         button.btn.sm "Mở GitHub"
                           svg.i #19cjsv1
+                div.set-grp [id="sec-privacy"]
+                  h3.set-grp-title "Quyền riêng tư"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Tính vào số người đang dùng"
+                        div.d "Khi Bloxkeep đang mở, cứ 10 phút app báo một lần để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Chỉ gửi một mã ngẫu nhiên, phiên bản và ngôn ngữ."
+                      div.ctl
+                        label.switch
+                          input [id="s-online" type="checkbox" aria-label="Tính vào số người đang dùng" checked=true]
+                          span
 #layer
 #toasts
 -- commands

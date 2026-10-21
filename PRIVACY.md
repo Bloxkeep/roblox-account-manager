@@ -1,7 +1,9 @@
 # Privacy policy
 
-Bloxkeep runs on your PC and has no accounts, servers or analytics of its own. It collects no telemetry and sends
-nothing about you or your Roblox accounts to its developer, except a feedback message you choose to send.
+Bloxkeep runs on your PC and has no accounts or analytics of its own. It sends nothing about you or your Roblox
+accounts to its developer. What reaches the developer is a feedback message you choose to send and, while Bloxkeep is
+open, an anonymous "open now" note so they can see how many people use it right now. You can turn that note off in
+**Settings › Bloxkeep updates › Privacy › Add me to the online count**.
 
 ## What stays on your PC
 
@@ -21,12 +23,14 @@ stored. The other files in Bloxkeep's data folder, and how they're protected, ar
 | GitHub (`github.com`, `raw.githubusercontent.com`) | Checking for and downloading Bloxkeep updates (can be turned off in **Settings › Bloxkeep updates**), and reading the Roblox watch's findings about Roblox builds (`multi-status.json`). No account data is sent |
 | Microsoft (`go.microsoft.com`) | Only when WebView2 has to be installed |
 | Bloxkeep's feedback service (a Cloudflare Worker that forwards to the developer's Discord) | Only when you press **Send** in **Send feedback**: your message, a contact if you give one, Bloxkeep's and Windows' versions, the app's language and, if ticked, the end of `error.log` with account names, ids, passwords, cookies and similar details removed. **See exactly what will be sent** shows all of it first ([details](docs/feedback.md)) |
+| Bloxkeep's Discord bot (`bloxkeep-bot.bloxkeep-app.workers.dev`, a Cloudflare Worker) | While Bloxkeep is open, unless **Settings › Bloxkeep updates › Privacy › Add me to the online count** is off: every 10 minutes (further apart when many people have Bloxkeep open), and once as it closes, a random id made for your Bloxkeep (linked to no account, vault, Roblox or Discord, and replaced by a new one if you turn the switch off and on again), Bloxkeep's version and the app's language. Nothing else. The bot keeps an id only while that Bloxkeep counts as open (until a while after its last note, or until it says it's closing), then deletes it. It never keeps your IP address and keeps no history of who was open when, only the highest number open at once on each day. Turning the switch off sends one last note that you've gone, and nothing after |
 | Your Discord webhook (`discord.com`) | Only when you turn on **Settings › Discord**: account names (or **Account 1**, **Account 2**… when hidden), game names, play time, sessions, PID, RAM, and links to Roblox's own pictures of the games and of the accounts' avatars (no avatar when names are hidden). Never cookies or passwords |
 | The backup folder you choose | A copy of the encrypted vault; a OneDrive or Google Drive app may sync it |
 
-**Bloxkeep's Discord bot** (a Cloudflare Worker) runs apart from the app and knows nothing about your accounts. The
-app's Discord button only opens the bot's address in your browser, which sends you on to the community server's
-current invite; the app itself sends nothing. In the
+**Bloxkeep's Discord bot** (a Cloudflare Worker) runs apart from the app and knows nothing about your accounts. Apart
+from the "open now" notes above, the app talks to it in one way only: its Discord button opens the bot's address in your
+browser, which sends you on to the community server's current invite, and sends nothing itself. How many people have
+Bloxkeep open shows in the bot's status in Discord; its developers also see it by version and language. In the
 servers that add it, Discord tells it who posted a message in which channel, but not what the message says (the bot
 doesn't ask for message content). It uses that for one thing only: in a server that set up a trap channel with
 `/setup`, whoever posts there is banned. It keeps none of it, only what it needs to stay connected (its own session,

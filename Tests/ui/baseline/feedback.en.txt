@@ -166,6 +166,17 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         button.btn.sm "Open GitHub"
                           svg.i #19cjsv1
+                div.set-grp [id="sec-privacy"]
+                  h3.set-grp-title "Privacy"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Add me to the online count"
+                        div.d "While Bloxkeep is open, it says so every 10 minutes, so the person who makes it can see how many people use it right now. Only a random code, the version and the language are sent."
+                      div.ctl
+                        label.switch
+                          input [id="s-online" type="checkbox" aria-label="Add me to the online count" checked=true]
+                          span
 #layer
   div.at-top.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]

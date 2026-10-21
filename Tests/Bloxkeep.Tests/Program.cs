@@ -17,6 +17,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("window", false, WindowSuite.Run),
     ("watch", false, WatchSuite.Run),
     ("feedback", false, FeedbackSuite.Run),
+    ("online", false, OnlineSuite.Run),
     ("discord", false, DiscordSuite.Run),
     ("website", false, WebsiteSuite.Run),
     ("tray", false, TraySuite.Run),

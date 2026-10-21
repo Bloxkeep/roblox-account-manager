@@ -482,6 +482,7 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone, conf
 - **User guide**: ⋯ menu above the list › **User guide**, or **Settings › Bloxkeep updates › Help & feedback › User guide › Open**. It opens the [user guide](docs/guide.md).
 - **Send feedback** (**Settings › Bloxkeep updates › Help & feedback › Send feedback**, or `Ctrl+K`, "feedback"): choose **Something doesn't work** or **An idea**, write a message, and add how to reach you if you'd like an answer. For a bug it can add Bloxkeep's error log, with account names, cookies and passwords taken out (Bloxkeep must be unlocked), and **See exactly what will be sent** shows everything before it goes. One message a minute ([how it works](docs/feedback.md)).
 - **What's new** shows the headline features of each version as cards, then a short list of the rest. It opens after an update, and from **Settings › Bloxkeep updates**.
+- **Online count** (**Settings › Bloxkeep updates › Privacy › Add me to the online count**, on by default): while Bloxkeep is open it tells its developer so every 10 minutes, with only a random code, the version and the language, so they can see how many people use it right now. Turned off, it says once that you've gone and sends nothing more ([privacy policy](PRIVACY.md)).
 
 <details>
 <summary>More pictures</summary>
@@ -512,7 +513,7 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone, conf
 > [!WARNING]
 > If you forget the master password, your saved accounts can't be recovered. A backup also only opens with the password it was saved with.
 
-**What leaves your PC.** Bloxkeep has no telemetry or analytics. Data only goes to (also in the [privacy policy](PRIVACY.md)):
+**What leaves your PC.** Bloxkeep has no analytics: apart from an anonymous "open now" note, which you can turn off, nothing about you or how you use it is sent. Data only goes to (also in the [privacy policy](PRIVACY.md)):
 
 | Where | When, and what |
 |---|---|
@@ -523,6 +524,7 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone, conf
 | Roblox's captcha providers (Arkose Labs, HUMAN Security) | Only in the puzzle window, when Roblox asks for a captcha during password sign-in |
 | GitHub | Checking for and downloading updates, with no account data (can be turned off), and reading the [Roblox watch](docs/roblox-watch.md)'s findings |
 | Bloxkeep's feedback service (a Cloudflare Worker that forwards to the developer's Discord) | Only when you press **Send** in **Send feedback**, and only what **See exactly what will be sent** shows ([details](docs/feedback.md)) |
+| Bloxkeep's Discord bot (`bloxkeep-bot.bloxkeep-app.workers.dev`, a Cloudflare Worker) | While Bloxkeep is open, unless **Settings › Bloxkeep updates › Privacy › Add me to the online count** is off: every 10 minutes (further apart when many people have it open), and once as it closes, a random id made for your Bloxkeep (linked to nothing else), its version and the app's language. The bot counts how many are open now and keeps each id only while that Bloxkeep is open; never your IP address |
 | Microsoft (`go.microsoft.com`) | Only when WebView2 has to be installed |
 | The backup folder you choose | A copy of the encrypted vault; your OneDrive / Google Drive app may sync it |
 | Your Discord webhook (`discord.com`) | Only when **Settings › Discord** is on (off by default): account names (or **Account 1**, **Account 2**… with **Hide account names in messages**), game names, play time, sessions, PID, RAM, and links to Roblox's own pictures of the games and of the accounts' avatars (no avatar when names are hidden). Never cookies, passwords or the webhook link itself; the link is kept in the encrypted vault |

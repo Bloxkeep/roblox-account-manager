@@ -132,6 +132,7 @@ Details are in [Backup and security](backup-and-security.md).
 | **Get beta versions** | Updates also bring beta versions: new features before everyone else, which may still have bugs. Turned off on a beta, you keep it until the next regular version. Greyed out on a copy that can't update itself. | Off |
 | **User guide › Open** | Opens this guide. | — |
 | **Send feedback › Write** | An idea, or something that doesn't work. It goes to Bloxkeep's developer. See [Troubleshooting](troubleshooting.md). | — |
+| **Privacy › Add me to the online count** | While Bloxkeep is open, it tells Bloxkeep's developer so every 10 minutes (further apart when many people use it), and once as it closes: only a random code, the version and the language. That's how they see how many people use Bloxkeep right now. Off: one last note that you've gone, nothing after, and the code is forgotten. See [What leaves the PC](backup-and-security.md#what-leaves-the-pc). | On |
 
 When an update is ready, **Restart to update** shows in the sidebar. Roblox keeps running while Bloxkeep restarts, and **What's new** then shows what changed. Small fixes between versions install by themselves the same way, without the button or **What's new**, and the version number stays the same.
 

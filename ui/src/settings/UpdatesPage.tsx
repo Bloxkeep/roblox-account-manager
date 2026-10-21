@@ -1,6 +1,6 @@
 // Settings › Bloxkeep updates: the version and where the update check stands (with What's new, and Check now or
-// Restart to update), the automatic updates and beta versions switches, then Help & feedback (the guide, feedback,
-// Bloxkeep's Discord server, a GitHub star).
+// Restart to update), the automatic updates and beta versions switches, Help & feedback (the guide, feedback,
+// Bloxkeep's Discord server, a GitHub star), then Privacy (being counted among the people using Bloxkeep now).
 import { useEffect, useState } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch } from './parts';
@@ -13,6 +13,9 @@ export function UpdatesPage({ title }: { title: string }) {
   useEffect(() => setAuto(!!u.auto), [u.auto]);
   const [beta, setBeta] = useState(!!u.beta);
   useEffect(() => setBeta(!!u.beta), [u.beta]);
+  const counted = useAppState().countOnline !== false;
+  const [online, setOnline] = useState(counted);
+  useEffect(() => setOnline(counted), [counted]);
 
   // "Up to date" as of the last check, which can be up to an hour old: it says when.
   const at = u.checkedAt ? new Date(u.checkedAt) : null;
@@ -51,6 +54,11 @@ export function UpdatesPage({ title }: { title: string }) {
       <Row title={t('fb.title')} desc={t('fb.rowDesc')}><button className="btn sm" data-act="feedback"><Icon name="message" />{t('fb.open')}</button></Row>
       <Row title={t('dc.title')} desc={t('dc.desc')}><button className="btn sm" data-act="open-discord"><Icon name="discord" />{t('dc.open')}</button></Row>
       <Row title={t('star.title')} desc={t('star.desc')}><button className="btn sm" data-act="open-github"><Icon name="star" />{t('star.open')}</button></Row>
+    </Group>
+    <Group id="privacy" title={t('onl.group')}>
+      <Row title={t('onl.title')} desc={t('onl.desc')}>
+        <Switch id="s-online" checked={online} onChange={on => { setOnline(on); call('setCountOnline', { enabled: on }); }} />
+      </Row>
     </Group>
   </Page>;
 }
