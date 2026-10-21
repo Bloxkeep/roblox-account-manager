@@ -185,23 +185,101 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.8-beta.10 · October 21, 2026"
+              small "Bloxkeep 1.0.8 · October 21, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
+        ul.wn-cards
+          li.wn-card
+            span.wn-ic
+              svg.i #1xzadie
+            b "Anti-AFK out of sight"
+            p "Roblox windows no longer pop up to keep your accounts in game. Each gets a key press while it stays unseen, and your clicks go to the window you're using."
+            button.wn-go [type="button" FOCUSED] "See Anti-AFK"
+              svg.i #1g7f83q
+          li.wn-card
+            span.wn-ic
+              svg.i #1crx2f1
+            b "Bloxkeep on Discord"
+            p "The Discord button at the bottom of the sidebar opens Bloxkeep's community: ask for help, share ideas, and get a ping whenever Roblox updates."
+            button.wn-go [type="button"] "Join"
+              svg.i #1g7f83q
+        h4.new.wn-kind.wn-sub "New"
+          svg.i #u7ty99
+        ul.new.wn-also
+          li
+            svg.i #u7ty99
+            span "Anti-AFK no longer brings Roblox windows to the front: a window is made invisible and lets clicks through while it gets one press of F15 (a key no game uses), then goes back to its place. A minimized one stays minimized, and the mouse no longer moves."
+          li
+            svg.i #u7ty99
+            span "A ban by a game is told apart from a kick (Roblox gives both the same code 267): the card says Banned by the game with the game's words, Bloxkeep stops rejoining that game with that account, asks before you open the account in it again, and a preset leaves it out. A ban met while joining (Join Error 600) is caught too, within 40 seconds (5 in a game that banned the account before). Before leaving an account out, Roblox is asked whether the ban still stands."
+          li
+            svg.i #u7ty99
+            span "A Discord button at the bottom of the sidebar, a row in Settings › Help & feedback and \"Bloxkeep on Discord\" in Quick search (Ctrl+K) open Bloxkeep's community server."
+          li
+            svg.i #u7ty99
+            span "The account list shows how long each account has been playing on this PC, after its game, as the cards do."
+          li
+            svg.i #u7ty99
+            span "Settings › Bloxkeep updates › Privacy › Add me to the online count: while Bloxkeep is open it says so every 10 minutes, so its maker can see how many people use it. Only a random code, the version and the language are sent; turn it off there."
         h4.improved.wn-kind.wn-sub "Improved"
           svg.i #1l5qw3q
         ul.improved.wn-also
           li
             svg.i #1l5qw3q
-            span "Fast cores for the window you play is smooth with many windows: Roblox windows in the background now run in Windows' own efficiency mode, as Task Manager's, giving way to the window you play and leaning on the efficiency cores, instead of being locked to them. Locked, the efficiency cores filled up while the fast ones sat idle, and some windows stuttered."
+            span "Arrange windows fits 5 or more Roblox windows side by side on a laptop screen, making them as small as the tiles (Roblox kept them at 800 × 600 at least, over each other and past the screen's edge), and brings them all over your other apps in one click."
+          li
+            svg.i #1l5qw3q
+            span "Fast cores for the window you play runs the windows in the background in Windows' own efficiency mode, as Task Manager's: they give way to the window you play and lean on the efficiency cores without being locked to them, and a window you click runs at full speed at once."
+          li
+            svg.i #1l5qw3q
+            span "Auto-rejoin tries again every 10 seconds, however often the account drops, instead of waiting longer and longer. A ban by the game stops it."
+          li
+            svg.i #1l5qw3q
+            span "A kick shows the game's own words, on the card and in Discord alerts, and Discord alerts go out within a few seconds."
+          li
+            svg.i #1l5qw3q
+            span "The account list lines up like a table: VNG, Robux, group, auto-rejoin, PID and memory each stay in their own column on every row, as wide as the longest thing in it."
+          li
+            svg.i #1l5qw3q
+            span "Robux shows on the cards right as you unlock, instead of 20-30 seconds later, and a new or signed-in-again account gets it at the next look."
+          li
+            svg.i #1l5qw3q
+            span "Bloxkeep comes back from the tray at once, and the Statistics and Presets icons are ready before you open their tab."
+          li
+            svg.i #1l5qw3q
+            span "Switch vault opens the vault picker over the open vault: Back returns to it without the password, and a vault being added doesn't lock the open one until it is set up."
+          li
+            svg.i #1l5qw3q
+            span "On a beta, the next beta of the same version installs by itself while you're not using Bloxkeep, as small fixes do."
+        h4.fixed.wn-kind.wn-sub "Fixed"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
+          li
+            svg.i #yqrnd9
+            span "With Save RAM on background windows on and 5 or more Roblox windows open, some windows no longer stutter (dragging one most of all): their RAM is no longer emptied every 2 minutes once the PC uses 85 % of it."
+          li
+            svg.i #yqrnd9
+            span "A rejoin waiting its turn no longer holds back Restart to update (\"Wait until Bloxkeep finishes opening Roblox\" while nothing was opening). It carries on after the restart."
+          li
+            svg.i #yqrnd9
+            span "Accounts you closed right before Bloxkeep restarted (to update, say) no longer show as \"Playing · another device\" for a few minutes."
+          li
+            svg.i #yqrnd9
+            span "Opening a game for an account that is only on Roblox's home screen no longer asks whether it should leave what it's playing."
+          li
+            svg.i #yqrnd9
+            span "\"Windows' virtual memory is almost full\" no longer appears while the page file can still grow to its largest size."
+          li
+            svg.i #yqrnd9
+            span "In a narrow window, Switch vault no longer runs past the sidebar's edge, and shows its letter again."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
         p.wn-star
           svg.i #19cjsv1
           span "Like Bloxkeep? A star on GitHub helps other players find it."
-          button.wn-go [type="button" FOCUSED] "Open GitHub"
+          button.wn-go [type="button"] "Open GitHub"
             svg.i #1g7f83q
       div.modal-foot
         button.btn.primary "Got it"

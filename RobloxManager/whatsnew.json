@@ -1,152 +1,6 @@
 [
   {
-    "version": "1.0.8-beta.10",
-    "date": "2026-10-21",
-    "improved": {
-      "en": [
-        "Fast cores for the window you play is smooth with many windows: Roblox windows in the background now run in Windows' own efficiency mode, as Task Manager's, giving way to the window you play and leaning on the efficiency cores, instead of being locked to them. Locked, the efficiency cores filled up while the fast ones sat idle, and some windows stuttered."
-      ],
-      "vi": [
-        "Nhường nhân mạnh cho cửa sổ đang chơi giờ mượt cả khi mở nhiều cửa sổ: cửa sổ Roblox chạy nền dùng chế độ hiệu quả của chính Windows (như trong Task Manager), nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, thay vì bị khoá cứng vào đó. Khi bị khoá, nhân tiết kiệm đầy ứ trong lúc nhân mạnh ngồi chơi, nên vài cửa sổ bị giật."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.9",
-    "date": "2026-10-21",
-    "fixed": {
-      "en": [
-        "With Save RAM on background windows on and 5 or more Roblox windows open, some windows no longer stutter (dragging one most of all): Bloxkeep no longer empties their RAM every 2 minutes once the PC uses 85 % of it. Windows still takes RAM from them first when it runs short, and a window you click gets its normal share back at once."
-      ],
-      "vi": [
-        "Khi bật Tiết kiệm RAM cho cửa sổ chạy nền và mở từ 5 cửa sổ Roblox trở lên, vài cửa sổ không còn bị giật (nhất là lúc kéo): Bloxkeep không còn ép chúng nhả hết RAM mỗi 2 phút khi máy dùng tới 85% RAM. Windows vẫn lấy RAM của cửa sổ nền trước khi máy thiếu, và bấm vào cửa sổ nào thì cửa sổ đó được trả lại RAM như bình thường ngay."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.8",
-    "date": "2026-10-21",
-    "improved": {
-      "en": [
-        "Arrange windows also brings every Roblox window over your other apps, with Bloxkeep's window under them: one click instead of clicking each one on the taskbar."
-      ],
-      "vi": [
-        "Xếp cửa sổ giờ đưa luôn mọi cửa sổ Roblox lên trên các app khác, cửa sổ Bloxkeep lùi xuống dưới: bấm một lần thay vì bấm từng cái trên taskbar."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.7",
-    "date": "2026-10-21",
-    "fixed": {
-      "en": [
-        "Arrange windows fits 5 or more Roblox windows side by side on a laptop screen: Roblox's windows no longer stay at their smallest size of 800 × 600 and run over each other and past the screen's edge. Bloxkeep makes them as small as the tiles, and the game shows at that size.",
-        "With Fast cores for the window you play on, a Roblox window you click gets the fast cores at once, so grabbing one in the background to drag it no longer stutters for a moment."
-      ],
-      "vi": [
-        "Xếp cửa sổ giờ xếp vừa 5 cửa sổ Roblox trở lên cạnh nhau trên màn hình laptop: cửa sổ Roblox không còn bị giữ ở cỡ nhỏ nhất 800 × 600 rồi đè lên nhau và tràn ra ngoài màn hình. Bloxkeep thu chúng vừa đúng ô, game vẫn hiện bình thường ở cỡ đó.",
-        "Khi bật Nhường nhân mạnh cho cửa sổ đang chơi, bấm vào cửa sổ Roblox nào là cửa sổ đó có nhân mạnh ngay, nên nắm cửa sổ nền để kéo không còn bị khựng lúc đầu."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.6",
-    "date": "2026-10-21",
-    "improved": {
-      "en": [
-        "A ban met when joining is told sooner: Bloxkeep asks Roblox after 40 seconds without getting in (after 5 seconds in a game that banned the account before) instead of a minute. The card then says Banned by the game instead of Joining, and the Discord alert goes right away.",
-        "Auto-rejoin tries again every 10 seconds, however often the account drops, instead of waiting longer and longer. A ban by the game stops it.",
-        "Discord alerts go out within a few seconds; they used to wait up to 10 seconds to be grouped.",
-        "The Discord button sits at the bottom of the sidebar, next to Lock app."
-      ],
-      "vi": [
-        "Bị ban lúc vào game giờ được báo sớm hơn: chưa vào được sau 40 giây là Bloxkeep hỏi Roblox (5 giây nếu game này từng ban tài khoản đó), thay vì chờ một phút. Thẻ khi đó ghi Bị game ban thay vì Đang vào game, và thông báo Discord gửi đi liền.",
-        "Tự vào lại giờ thử lại sau mỗi 10 giây, dù tài khoản bị văng bao nhiêu lần, thay vì chờ lâu dần. Bị game ban thì dừng hẳn.",
-        "Thông báo Discord gửi đi trong vài giây, trước đây có thể chờ tới 10 giây để gom lại.",
-        "Nút Discord chuyển xuống cuối thanh bên, cạnh Khóa app."
-      ]
-    },
-    "fixed": {
-      "en": [
-        "A rejoin waiting its turn no longer holds back Restart to update (\"Wait until Bloxkeep finishes opening Roblox\" while nothing was opening). It carries on after the restart.",
-        "Opening a game for an account that is only on Roblox's home screen, or stuck on Join Error 600, no longer asks whether it should leave what it's playing.",
-        "A preset, also when run from the tray or on its schedule, leaves out an account the game banned and says so, instead of stopping at a question nobody answers. Before that, Roblox is asked whether the ban still stands, so one that has ended no longer keeps the account out.",
-        "A game's ban is also caught when Roblox didn't answer the first time (no network right after the PC wakes, too many requests), when the window was closed right away, and in the game's other places.",
-        "A game's ban is no longer told a second time when Bloxkeep restarts (for an update) with the window still open, and its Discord alert no longer adds that the account was kicked.",
-        "A ban in a game picked in the Roblox window is kept for that game, not for the one Bloxkeep opened. The window of a banned account is no longer closed for a rejoin that wasn't coming.",
-        "In a narrow window, Switch vault no longer runs past the sidebar's edge, and shows its letter again."
-      ],
-      "vi": [
-        "Một lần tự vào lại đang chờ không còn chặn nút Khởi động lại để cập nhật (hiện \"Chờ Bloxkeep mở Roblox xong đã\" dù chẳng có gì đang mở). Lần vào lại đó tiếp tục sau khi khởi động lại.",
-        "Mở game cho tài khoản chỉ đang ở màn hình chính của Roblox, hoặc đang kẹt ở lỗi 600, không còn hỏi có thoát game đang chơi không.",
-        "Preset, kể cả khi chạy từ khay hay theo lịch, giờ bỏ qua tài khoản bị game ban và ghi rõ lý do, thay vì dừng lại ở một câu hỏi không ai trả lời. Trước đó Bloxkeep hỏi Roblox xem lệnh ban còn không, nên ban đã hết thì tài khoản được mở như thường.",
-        "Bị game ban giờ vẫn được nhận ra khi lần hỏi đầu Roblox không trả lời (mất mạng ngay sau khi máy thức dậy, hỏi quá nhiều), khi cửa sổ bị đóng ngay, và ở các place khác của cùng game.",
-        "Khi Bloxkeep khởi động lại (để cập nhật) mà cửa sổ vẫn mở, lệnh ban của game không còn bị báo lần nữa, và thông báo Discord không còn ghi kèm là bị kick.",
-        "Bị ban trong game chọn ngay trong cửa sổ Roblox thì được ghi cho đúng game đó, không phải game Bloxkeep đã mở. Cửa sổ của tài khoản bị ban không còn bị đóng để chờ một lần vào lại không bao giờ tới.",
-        "Khi cửa sổ hẹp, nút Đổi vault không còn lấn ra ngoài thanh bên và hiện lại chữ cái của vault."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.5",
-    "date": "2026-10-21",
-    "improved": {
-      "en": [
-        "On a beta, the next beta installs by itself while you're not using Bloxkeep, without Restart to update, as small fixes do."
-      ],
-      "vi": [
-        "Đang dùng bản beta thì bản beta kế tiếp tự cài lúc bạn không dùng Bloxkeep, không hiện nút Khởi động lại để cập nhật, giống các bản vá nhỏ."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.4",
-    "date": "2026-10-21",
-    "fixed": {
-      "en": [
-        "A ban met when joining (Join Error 600) is now caught: Roblox answers it as \"Unable to join Game 211\", not with the word \"banned\", so 1.0.8-beta.3 kept trying."
-      ],
-      "vi": [
-        "Bị ban ngay lúc vào game (lỗi 600) giờ đã được nhận ra: Roblox trả lời là \"Unable to join Game 211\" chứ không có chữ \"banned\", nên bản 1.0.8-beta.3 vẫn cứ thử vào lại."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.3",
-    "date": "2026-10-21",
-    "new": {
-      "en": [
-        "A ban by a game is told apart from a kick (Roblox gives both the same code 267): the card says Banned by the game, with the game's words, Bloxkeep stops rejoining that game with that account, and asks before you open the account in it again. When a join never gets in, Bloxkeep asks Roblox why, so a ban met while joining (Join Error 600) is caught too."
-      ],
-      "vi": [
-        "Bị game ban giờ được phân biệt với bị kick (Roblox đưa cả hai cùng mã 267): thẻ ghi Bị game ban kèm lời nhắn của game, Bloxkeep thôi tự vào lại game đó bằng tài khoản đó, và hỏi lại trước khi bạn mở tài khoản đó vào game ấy. Khi vào game mãi không được, Bloxkeep hỏi Roblox lý do, nên bị ban ngay lúc vào (lỗi 600) cũng nhận ra."
-      ]
-    },
-    "improved": {
-      "en": [
-        "A kick shows the game's own words, on the card and in Discord alerts."
-      ],
-      "vi": [
-        "Bị kick thì hiện cả lời nhắn của game, trên thẻ và trong thông báo Discord."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.2",
-    "date": "2026-10-21",
-    "fixed": {
-      "en": [
-        "The account list no longer cuts the VNG tag short (\"V..\"): each column is as wide as the longest thing in it, whatever font your PC uses.",
-        "Accounts you closed right before Bloxkeep restarted (to update, say) no longer show as \"Playing · another device\" for a few minutes."
-      ],
-      "vi": [
-        "Danh sách tài khoản không còn cắt chữ VNG thành \"V..\": mỗi cột rộng bằng thứ dài nhất trong cột, dù máy bạn dùng phông chữ nào.",
-        "Tài khoản bạn vừa đóng ngay trước khi Bloxkeep khởi động lại (ví dụ để cập nhật) không còn hiện \"Đang chơi · thiết bị khác\" trong vài phút."
-      ]
-    }
-  },
-  {
-    "version": "1.0.8-beta.1",
+    "version": "1.0.8",
     "date": "2026-10-21",
     "highlights": [
       {
@@ -168,50 +22,72 @@
         "go": "discord",
         "en": [
           "Bloxkeep on Discord",
-          "The Discord button beside the logo opens Bloxkeep's community: ask for help, share ideas, and get a ping whenever Roblox updates.",
+          "The Discord button at the bottom of the sidebar opens Bloxkeep's community: ask for help, share ideas, and get a ping whenever Roblox updates.",
           "Join"
         ],
         "vi": [
           "Bloxkeep trên Discord",
-          "Nút Discord cạnh logo mở cộng đồng Bloxkeep: hỏi khi cần giúp, góp ý tưởng, và nhận ping mỗi khi Roblox cập nhật.",
+          "Nút Discord ở cuối thanh bên mở cộng đồng Bloxkeep: hỏi khi cần giúp, góp ý tưởng, và nhận ping mỗi khi Roblox cập nhật.",
           "Tham gia"
         ]
       }
     ],
     "new": {
       "en": [
-        "Anti-AFK no longer brings Roblox windows to the front: a window is made invisible and lets clicks through while it gets one press of F15 (a key no game uses), then your window is back in front and the Roblox window goes back to its place. A minimized one stays minimized, and the mouse no longer moves.",
-        "A Discord button beside the logo, a row in Settings › Help & feedback and \"Bloxkeep on Discord\" in Quick search (Ctrl+K) open Bloxkeep's community server.",
+        "Anti-AFK no longer brings Roblox windows to the front: a window is made invisible and lets clicks through while it gets one press of F15 (a key no game uses), then goes back to its place. A minimized one stays minimized, and the mouse no longer moves.",
+        "A ban by a game is told apart from a kick (Roblox gives both the same code 267): the card says Banned by the game with the game's words, Bloxkeep stops rejoining that game with that account, asks before you open the account in it again, and a preset leaves it out. A ban met while joining (Join Error 600) is caught too, within 40 seconds (5 in a game that banned the account before). Before leaving an account out, Roblox is asked whether the ban still stands.",
+        "A Discord button at the bottom of the sidebar, a row in Settings › Help & feedback and \"Bloxkeep on Discord\" in Quick search (Ctrl+K) open Bloxkeep's community server.",
         "The account list shows how long each account has been playing on this PC, after its game, as the cards do.",
         "Settings › Bloxkeep updates › Privacy › Add me to the online count: while Bloxkeep is open it says so every 10 minutes, so its maker can see how many people use it. Only a random code, the version and the language are sent; turn it off there."
       ],
       "vi": [
-        "Chống AFK không còn đưa cửa sổ Roblox lên trước: cửa sổ được làm ẩn và cho chuột bấm xuyên qua trong lúc nhận một lần bấm phím F15 (phím không game nào dùng), rồi cửa sổ bạn đang dùng trở lại phía trước và cửa sổ Roblox về đúng chỗ cũ. Cửa sổ đang thu nhỏ vẫn thu nhỏ, và chuột không còn bị di chuyển.",
-        "Nút Discord cạnh logo, một dòng trong Cài đặt › Hướng dẫn & góp ý, và mục \"Bloxkeep trên Discord\" trong Tìm nhanh (Ctrl+K) đều mở server cộng đồng của Bloxkeep.",
-        "Danh sách tài khoản hiện mỗi tài khoản đã chơi trên máy này được bao lâu, ngay sau tên game, giống như ở thẻ.",
+        "Chống AFK không còn đưa cửa sổ Roblox lên trước: cửa sổ được làm ẩn và cho chuột bấm xuyên qua trong lúc nhận một lần bấm phím F15 (phím không game nào dùng), rồi trở về chỗ cũ. Cửa sổ đang thu nhỏ vẫn giữ nguyên, và chuột không còn bị di chuyển.",
+        "Phân biệt bị game ban với bị kick (Roblox dùng chung mã 267): thẻ ghi Bị game ban kèm lời của game, Bloxkeep thôi tự vào lại game đó với tài khoản đó, hỏi lại trước khi bạn mở tài khoản vào game ấy, và Preset bỏ qua tài khoản này. Bị ban lúc đang vào game (lỗi 600) cũng được nhận ra, trong vòng 40 giây (5 giây nếu game từng ban tài khoản đó). Trước khi bỏ qua một tài khoản, Bloxkeep hỏi Roblox xem lệnh ban còn không.",
+        "Nút Discord ở cuối thanh bên, một dòng trong Cài đặt › Hướng dẫn & góp ý và mục \"Bloxkeep trên Discord\" trong Tìm nhanh (Ctrl+K) mở server cộng đồng Bloxkeep.",
+        "Danh sách tài khoản hiện mỗi tài khoản đã chơi trên máy này được bao lâu, ngay sau tên game, giống trên thẻ.",
         "Cài đặt › Cập nhật Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng: khi Bloxkeep đang mở, cứ 10 phút app báo một lần để người làm Bloxkeep biết có bao nhiêu người đang dùng. Chỉ gửi một mã ngẫu nhiên, phiên bản và ngôn ngữ; tắt ở đó nếu không muốn."
       ]
     },
     "improved": {
       "en": [
-        "The account list lines up like a table: VNG, Robux, group, auto-rejoin, PID and memory each stay in their own column on every row.",
-        "Robux shows on the cards right as you unlock, instead of 20-30 seconds later.",
-        "Bloxkeep comes back from the tray at once.",
-        "Switch vault opens the vault picker over the open vault: Back returns to it without the password."
+        "Arrange windows fits 5 or more Roblox windows side by side on a laptop screen, making them as small as the tiles (Roblox kept them at 800 × 600 at least, over each other and past the screen's edge), and brings them all over your other apps in one click.",
+        "Fast cores for the window you play runs the windows in the background in Windows' own efficiency mode, as Task Manager's: they give way to the window you play and lean on the efficiency cores without being locked to them, and a window you click runs at full speed at once.",
+        "Auto-rejoin tries again every 10 seconds, however often the account drops, instead of waiting longer and longer. A ban by the game stops it.",
+        "A kick shows the game's own words, on the card and in Discord alerts, and Discord alerts go out within a few seconds.",
+        "The account list lines up like a table: VNG, Robux, group, auto-rejoin, PID and memory each stay in their own column on every row, as wide as the longest thing in it.",
+        "Robux shows on the cards right as you unlock, instead of 20-30 seconds later, and a new or signed-in-again account gets it at the next look.",
+        "Bloxkeep comes back from the tray at once, and the Statistics and Presets icons are ready before you open their tab.",
+        "Switch vault opens the vault picker over the open vault: Back returns to it without the password, and a vault being added doesn't lock the open one until it is set up.",
+        "On a beta, the next beta of the same version installs by itself while you're not using Bloxkeep, as small fixes do."
       ],
       "vi": [
-        "Danh sách tài khoản thẳng hàng như một bảng: VNG, Robux, nhóm, tự vào lại, PID và RAM mỗi thứ nằm đúng một cột trên mọi dòng.",
-        "Robux hiện trên thẻ ngay lúc mở khóa, thay vì 20-30 giây sau.",
-        "Bloxkeep mở lại từ khay hệ thống ngay lập tức.",
-        "Đổi vault mở bảng chọn vault ngay trên vault đang mở: bấm Quay lại là về vault cũ, không cần nhập lại mật khẩu."
+        "Xếp cửa sổ giờ xếp vừa 5 cửa sổ Roblox trở lên cạnh nhau trên màn hình laptop, thu chúng vừa đúng ô (Roblox từng giữ chúng ở tối thiểu 800 × 600, đè lên nhau và tràn ra ngoài màn hình), và đưa tất cả lên trên các app khác chỉ với một lần bấm.",
+        "Nhường nhân mạnh cho cửa sổ đang chơi giờ cho cửa sổ chạy nền dùng chế độ hiệu quả của chính Windows (như trong Task Manager): nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm mà không bị khóa cứng vào đó, còn cửa sổ bạn bấm vào chạy hết tốc lực ngay.",
+        "Tự vào lại giờ thử lại sau mỗi 10 giây, dù tài khoản bị văng bao nhiêu lần, thay vì chờ lâu dần. Bị game ban thì dừng hẳn.",
+        "Bị kick thì hiện lời của chính game, trên thẻ và trong thông báo Discord, và thông báo Discord gửi đi trong vài giây.",
+        "Danh sách tài khoản thẳng hàng như một bảng: VNG, Robux, nhóm, tự vào lại, PID và RAM nằm đúng cột của mình ở mọi dòng, rộng vừa với thứ dài nhất trong cột.",
+        "Robux hiện trên thẻ ngay khi mở khóa thay vì 20-30 giây sau, và tài khoản mới thêm hay vừa đăng nhập lại có Robux ở lần xem kế tiếp.",
+        "Bloxkeep mở lại từ khay hệ thống ngay lập tức, và biểu tượng ở Thống kê và Preset có sẵn trước khi bạn mở tab.",
+        "Đổi vault mở bảng chọn vault đè lên vault đang mở: bấm Quay lại là về vault đó mà không cần mật khẩu, và vault đang thêm chưa khóa vault đang mở cho tới khi thiết lập xong.",
+        "Đang dùng bản beta thì bản beta kế tiếp của cùng phiên bản tự cài lúc bạn không dùng Bloxkeep, giống các bản vá nhỏ."
       ]
     },
     "fixed": {
       "en": [
-        "\"Windows' virtual memory is almost full\" no longer appears while the page file can still grow to its largest size."
+        "With Save RAM on background windows on and 5 or more Roblox windows open, some windows no longer stutter (dragging one most of all): their RAM is no longer emptied every 2 minutes once the PC uses 85 % of it.",
+        "A rejoin waiting its turn no longer holds back Restart to update (\"Wait until Bloxkeep finishes opening Roblox\" while nothing was opening). It carries on after the restart.",
+        "Accounts you closed right before Bloxkeep restarted (to update, say) no longer show as \"Playing · another device\" for a few minutes.",
+        "Opening a game for an account that is only on Roblox's home screen no longer asks whether it should leave what it's playing.",
+        "\"Windows' virtual memory is almost full\" no longer appears while the page file can still grow to its largest size.",
+        "In a narrow window, Switch vault no longer runs past the sidebar's edge, and shows its letter again."
       ],
       "vi": [
-        "Cảnh báo \"bộ nhớ ảo của Windows gần đầy\" không còn hiện khi file trang vẫn còn nới thêm được tới kích thước tối đa."
+        "Khi bật Tiết kiệm RAM cho cửa sổ chạy nền và mở từ 5 cửa sổ Roblox trở lên, vài cửa sổ không còn bị giật (nhất là lúc kéo): Bloxkeep không còn ép chúng nhả hết RAM mỗi 2 phút khi máy dùng tới 85% RAM.",
+        "Một lần tự vào lại đang chờ không còn chặn nút Khởi động lại để cập nhật (hiện \"Chờ Bloxkeep mở Roblox xong đã\" dù chẳng có gì đang mở). Lần vào lại đó tiếp tục sau khi khởi động lại.",
+        "Tài khoản vừa đóng ngay trước khi Bloxkeep khởi động lại (để cập nhật chẳng hạn) không còn hiện \"Đang chơi · thiết bị khác\" trong vài phút.",
+        "Mở game cho tài khoản chỉ đang ở màn hình chính của Roblox không còn hỏi có thoát game đang chơi không.",
+        "Cảnh báo \"bộ nhớ ảo của Windows gần đầy\" không còn hiện khi file trang vẫn còn nới thêm được tới kích thước tối đa.",
+        "Khi cửa sổ hẹp, nút Đổi vault không còn lấn ra ngoài thanh bên và hiện lại chữ cái của vault."
       ]
     }
   },
