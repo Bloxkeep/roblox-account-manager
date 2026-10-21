@@ -211,17 +211,50 @@ public static class RobloxApi
     /// <summary>Last CSRF token per signed-in session (keyed by a hash of the cookie, never the cookie itself).</summary>
     /// <summary>
     /// Roblox's answer to letting an account into a game (gamejoin's join-game, what a Roblox window asks when it joins):
-    /// its HTTP status, its own status number, and the message the window shows (a game's ban: "You were banned by this
-    /// experience or its moderators. Moderation message: Exploiting", Join Error 600). The join ticket it may hold is left unread.
+    /// its HTTP status, its own status number, its message, and its statusData (raw, cut short), whatever that holds.
+    /// The join ticket a successful answer holds is left unread.
     /// </summary>
-    public sealed record JoinAnswer(int Http, int? Status, string? Message)
+    public sealed record JoinAnswer(int Http, int? Status, string? Message, string? Data = null)
     {
-        /// <summary>The game (or its moderators) banned the account, by Roblox's words.</summary>
-        public bool Banned => Message is { } m && (m.Contains("banned", StringComparison.OrdinalIgnoreCase) || m.Contains("bị cấm", StringComparison.OrdinalIgnoreCase));
+        /// <summary>The number in "Unable to join Game 211": what the window turns into its own error.</summary>
+        public int? Code => Message is { } m && System.Text.RegularExpressions.Regex.Match(m, @"Unable to join Game (\d+)") is { Success: true } found
+            && int.TryParse(found.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code) ? code : null;
 
-        /// <summary>The game's own words, after "Moderation message:" when Roblox gives them; else the whole message.</summary>
-        public string? Reason => Message is not { } m ? null
-            : m.IndexOf("Moderation message:", StringComparison.OrdinalIgnoreCase) is >= 0 and var at && m[(at + 19)..].Trim() is { Length: > 0 } words ? words : m.Trim();
+        /// <summary>
+        /// The game (or its moderators) banned the account. Seen 2026-10-21 for an account a game had banned (its window
+        /// showed Join Error 600, "You were banned by this experience or its moderators"): status 12, "Unable to join
+        /// Game 211". Words about a ban count too.
+        /// </summary>
+        public bool Banned => (Status == 12 && Code == 211)
+            || Message is { } m && (m.Contains("banned", StringComparison.OrdinalIgnoreCase) || m.Contains("bị cấm", StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// The game's own words when Roblox gives them: after "Moderation message:", or a message or reason in statusData;
+        /// null otherwise (the 211 answer carries none).
+        /// </summary>
+        public string? Reason
+        {
+            get
+            {
+                if (Message is { } m && m.IndexOf("Moderation message:", StringComparison.OrdinalIgnoreCase) is >= 0 and var at
+                    && m[(at + 19)..].Trim() is { Length: > 0 } words)
+                    return words;
+                if (Data is not { } data || !data.TrimStart().StartsWith('{'))
+                    return null;
+                try
+                {
+                    using var doc = JsonDocument.Parse(data);
+                    foreach (var p in doc.RootElement.EnumerateObject())
+                        if (p.Value.ValueKind == JsonValueKind.String && p.Value.GetString() is { Length: > 0 } said
+                            && (p.Name.Contains("message", StringComparison.OrdinalIgnoreCase) || p.Name.Contains("reason", StringComparison.OrdinalIgnoreCase)))
+                            return said;
+                }
+                catch (JsonException)
+                {
+                }
+                return null;
+            }
+        }
     }
 
     /// <summary>
@@ -237,7 +270,7 @@ public static class RobloxApi
         using var res = await PostWithCsrfAsync(url, cookie, JsonSerializer.Serialize(body), null, ct, realm);
         string text = await res.Content.ReadAsStringAsync(ct);
         int? status = null;
-        string? message = null;
+        string? message = null, data = null;
         if (text.TrimStart().StartsWith('{'))
         {
             using var doc = JsonDocument.Parse(text);
@@ -250,8 +283,11 @@ public static class RobloxApi
             else if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Array && errors.GetArrayLength() > 0
                      && errors[0].TryGetProperty("message", out var e) && e.ValueKind == JsonValueKind.String)
                 message = e.GetString();
+            // Never with a join ticket: only an answer that let the account in holds one, and that one is left unread.
+            if (status != 2 && root.TryGetProperty("statusData", out var d) && d.ValueKind is JsonValueKind.Object or JsonValueKind.String)
+                data = d.GetRawText() is { Length: > 400 } raw ? raw[..400] : d.GetRawText();
         }
-        return new JoinAnswer((int)res.StatusCode, status, message);
+        return new JoinAnswer((int)res.StatusCode, status, message, data);
     }
 
     static readonly ConcurrentDictionary<(string Realm, int Session), string> CsrfTokens = new();

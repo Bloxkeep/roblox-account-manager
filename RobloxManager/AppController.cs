@@ -3928,7 +3928,8 @@ public sealed partial class AppController : IDisposable
         try
         {
             var answer = await RobloxApi.JoinCheckAsync(account.Cookie, target.PlaceId, target.JobId, account.Realm);
-            Log.Note($"A join that never got in, asked again: Roblox answered {answer.Http}, status {answer.Status}: {answer.Message ?? "(no message)"}");
+            Log.Note($"A join that never got in, asked again: Roblox answered {answer.Http}, status {answer.Status}: {answer.Message ?? "(no message)"}"
+                + (answer.Data is { } data ? $" · statusData {data}" : "") + (answer.Banned ? " (a ban by the game)" : ""));
             return answer;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or RobloxApiException or System.Text.Json.JsonException)

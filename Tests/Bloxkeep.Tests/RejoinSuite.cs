@@ -354,6 +354,14 @@ static class RejoinSuite
             var refused = new RobloxApi.JoinAnswer(200, 12, "You were banned by this experience or its moderators. Moderation message: Exploiting");
             c.Check("Roblox's join answer for a game's ban: read as a ban, with the game's words", refused is { Banned: true, Reason: "Exploiting" }, refused.Reason);
             c.Check("…and one for a full server isn't", !new RobloxApi.JoinAnswer(200, 6, "The game you requested is currently full. Please try again later.").Banned);
+            // What Roblox really answered on 2026-10-21 for an account a game had banned (its window: Join Error 600).
+            var real = new RobloxApi.JoinAnswer(200, 12, "Unable to join Game 211");
+            c.Check("Roblox's real answer for a game's ban (status 12, \"Unable to join Game 211\"): a ban, without the game's words",
+                real is { Banned: true, Code: 211, Reason: null }, $"{real.Banned} {real.Code} {real.Reason}");
+            c.Check("…but not another refusal with status 12",
+                !new RobloxApi.JoinAnswer(200, 12, "Unable to join Game 524").Banned);
+            c.Check("…and the game's words when its statusData gives them",
+                new RobloxApi.JoinAnswer(200, 12, "Unable to join Game 211", """{"moderationMessage":"Exploiting"}""").Reason == "Exploiting");
             // In that game again later: the ban is over.
             NewWindow();
             Run(new GameTarget(Gpo));

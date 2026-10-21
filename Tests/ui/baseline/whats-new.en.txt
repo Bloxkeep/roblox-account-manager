@@ -186,22 +186,16 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.8-beta.3 · October 21, 2026"
+              small "Bloxkeep 1.0.8-beta.4 · October 21, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        h4.new.wn-kind.wn-sub "New"
-          svg.i #u7ty99
-        ul.new.wn-also
+        h4.fixed.wn-kind.wn-sub "Fixed"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
           li
-            svg.i #u7ty99
-            span "A ban by a game is told apart from a kick (Roblox gives both the same code 267): the card says Banned by the game, with the game's words, Bloxkeep stops rejoining that game with that account, and asks before you open the account in it again. When a join never gets in, Bloxkeep asks Roblox why, so a ban met while joining (Join Error 600) is caught too."
-        h4.improved.wn-kind.wn-sub "Improved"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "A kick shows the game's own words, on the card and in Discord alerts."
+            svg.i #yqrnd9
+            span "A ban met when joining (Join Error 600) is now caught: Roblox answers it as \"Unable to join Game 211\", not with the word \"banned\", so 1.0.8-beta.3 kept trying."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

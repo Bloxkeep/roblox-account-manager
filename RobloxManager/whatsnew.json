@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.8-beta.4",
+    "date": "2026-10-21",
+    "fixed": {
+      "en": [
+        "A ban met when joining (Join Error 600) is now caught: Roblox answers it as \"Unable to join Game 211\", not with the word \"banned\", so 1.0.8-beta.3 kept trying."
+      ],
+      "vi": [
+        "Bị ban ngay lúc vào game (lỗi 600) giờ đã được nhận ra: Roblox trả lời là \"Unable to join Game 211\" chứ không có chữ \"banned\", nên bản 1.0.8-beta.3 vẫn cứ thử vào lại."
+      ]
+    }
+  },
+  {
     "version": "1.0.8-beta.3",
     "date": "2026-10-21",
     "new": {
