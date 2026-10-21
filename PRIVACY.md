@@ -28,8 +28,10 @@ stored. The other files in Bloxkeep's data folder, and how they're protected, ar
 servers that add it, Discord tells it who posted a message in which channel, but not what the message says (the bot
 doesn't ask for message content). It uses that for one thing only: in a server that set up a trap channel with
 `/setup`, whoever posts there is banned. It keeps none of it, only what it needs to stay connected (its own session,
-and when its connection started and ended), each server's choices made with `/notify`, `/board` and `/setup`, and a
-note of each ban for that server's moderators.
+and when its connection started and ended), each server's choices made with `/notify`, `/board`, `/setup` and
+`/verify`, and a note of each ban for that server's moderators. In a server that uses `/verify`, pressing **Verify**
+shows you a captcha; the bot remembers its code (for five minutes) and when you asked (for ten, to limit tries) with
+your Discord id, in memory only, and gives you the server's role once you type the code right.
 
 Each of these services has its own privacy policy: [Roblox](https://www.roblox.com/info/privacy),
 [GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),

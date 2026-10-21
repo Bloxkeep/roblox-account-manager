@@ -67,7 +67,11 @@ const W = {
       ['/download', 'Get Bloxkeep'],
       ['/notify set', 'Post Roblox updates (also before release), outages and new Bloxkeep versions in a channel, pinging a role if you like'],
       ['/board set', 'A message in a channel that keeps itself up to date: Roblox, Multi-Roblox, outages, Bloxkeep'],
+      ['/verify set', 'A captcha newcomers solve right in Discord to get a role'],
     ],
+    verifyTitle: 'Verify to join', verifyAbout: 'Press **Verify**, then type the code from the picture. It takes a few seconds and keeps bots out.',
+    verify: 'Verify', codeTitle: 'Type this code', codeAbout: 'Press **Enter the code** and type the 5 letters and numbers in the picture (capitals or not).',
+    enterCode: 'Enter the code', codeLabel: 'The code in the picture',
   },
   vi: {
     multi: 'Multi-Roblox', version: 'Phiên bản', released: 'Phát hành', notYet: 'Chưa',
@@ -88,7 +92,11 @@ const W = {
       ['/download', 'Tải Bloxkeep'],
       ['/notify set', 'Đăng tin Roblox cập nhật (báo cả trước khi ra), Roblox lỗi và Bloxkeep ra bản mới vào một kênh, ping một role nếu muốn'],
       ['/board set', 'Một tin nhắn trong kênh tự cập nhật: Roblox, Multi-Roblox, sự cố, Bloxkeep'],
+      ['/verify set', 'Captcha người mới giải ngay trong Discord để nhận một vai trò'],
     ],
+    verifyTitle: 'Xác minh để vào server', verifyAbout: 'Bấm **Xác minh**, rồi gõ mã trong ảnh. Chỉ mất vài giây, và giúp chặn bot.',
+    verify: 'Xác minh', codeTitle: 'Gõ mã này', codeAbout: 'Bấm **Nhập mã** rồi gõ 5 chữ và số trong ảnh (viết hoa hay thường đều được).',
+    enterCode: 'Nhập mã', codeLabel: 'Mã trong ảnh',
   },
 };
 export const words = l => W[l];
@@ -221,6 +229,35 @@ function buttons(list) {
   return { type: 1, components: list.map(([label, url]) => ({ type: 2, style: 5, label, url })) };
 }
 
+/** /verify set: the message with the Verify button, posted in the channel newcomers see. */
+export function verifyPanel(l) {
+  const w = W[l];
+  return {
+    embeds: [embed(w.verifyTitle, COLOR.green, w.verifyAbout, [], 'Verification', { timestamp: undefined })],
+    components: [{ type: 1, components: [{ type: 2, style: 3, label: w.verify, custom_id: 'verify' }] }],
+    allowed_mentions: { parse: [] },
+  };
+}
+
+/** The captcha, seen only by who pressed Verify: its picture (attached as captcha.png) and the button to type the code. */
+export function captchaMessage(l) {
+  const w = W[l];
+  return {
+    embeds: [{ title: w.codeTitle, description: w.codeAbout, color: COLOR.blurple, image: { url: 'attachment://captcha.png' } }],
+    components: [{ type: 1, components: [{ type: 2, style: 1, label: w.enterCode, custom_id: 'verify-code' }] }],
+    attachments: [{ id: 0, filename: 'captcha.png' }],
+  };
+}
+
+/** The form the code is typed into. */
+export function codeForm(l, length) {
+  const w = W[l];
+  return {
+    custom_id: 'verify-form', title: w.verify,
+    components: [{ type: 1, components: [{ type: 4, custom_id: 'code', label: w.codeLabel, style: 1, min_length: length, max_length: length, required: true }] }],
+  };
+}
+
 /** Short replies only the person who used the command sees. */
 const R = {
   en: {
@@ -236,6 +273,15 @@ const R = {
     boardOn: c => `Done: the board is in <#${c}>, and keeps itself up to date.`,
     boardOff: 'Done: the board is no longer updated (you can delete its message).',
     noKinds: 'Choose at least one kind of news.',
+    verifyOn: (c, role) => `Done: the Verify button is in <#${c}>; whoever passes gets <@&${role}>.\n-# I need **Manage Roles**, and my role above <@&${role}> in the role list.`,
+    verifyOff: "Done: no more verification here (you can delete the button's message).",
+    verifyNotSet: 'Verification is off in this server.',
+    verifyAlready: "You're already verified.",
+    verifySlow: 'Too many tries. Wait a few minutes, then press **Verify** again.',
+    verifyExpired: 'That code has expired. Press **Verify** again for a new one.',
+    verifyWrong: 'Wrong code. Press **Verify** again for a new one.',
+    verifyDone: "You're in, welcome! The server's channels are open to you now.",
+    verifyCant: role => `You passed, but I couldn't give you <@&${role}>. Please tell a moderator.`,
   },
   vi: {
     guildOnly: 'Lệnh này chỉ dùng trong server.',
@@ -250,6 +296,15 @@ const R = {
     boardOn: c => `Xong: bảng đã nằm ở <#${c}> và sẽ tự cập nhật.`,
     boardOff: 'Xong: bảng không còn được cập nhật (bạn có thể xoá tin nhắn đó).',
     noKinds: 'Hãy chọn ít nhất một loại tin.',
+    verifyOn: (c, role) => `Xong: nút Xác minh đã ở <#${c}>, ai giải đúng sẽ nhận <@&${role}>.\n-# Bot cần quyền **Quản lý vai trò**, và vai trò của bot phải nằm trên <@&${role}> trong danh sách vai trò.`,
+    verifyOff: 'Xong: server này không xác minh nữa (bạn có thể xoá tin nhắn có nút).',
+    verifyNotSet: 'Server này đang tắt xác minh.',
+    verifyAlready: 'Bạn đã xác minh rồi.',
+    verifySlow: 'Bạn thử nhiều quá. Đợi vài phút rồi bấm **Xác minh** lại.',
+    verifyExpired: 'Mã này đã hết hạn. Bấm **Xác minh** lại để lấy mã mới.',
+    verifyWrong: 'Sai mã. Bấm **Xác minh** lại để lấy mã mới.',
+    verifyDone: 'Xong, chào mừng bạn! Giờ bạn đã xem được các kênh của server.',
+    verifyCant: role => `Bạn đã giải đúng, nhưng bot không cấp được <@&${role}>. Hãy báo cho moderator.`,
   },
 };
 export const replies = l => R[l];

@@ -158,8 +158,8 @@ export async function setupServer(env, guildId, bot, runner) {
     [modChat, modLog],
   ].flatMap(list => list.filter(Boolean).map((c, position) => ({ id: c.id, position })))));
 
-  // No onboarding: newcomers get in through Captcha.bot's captcha in #verify (set up by hand, its Keeper role sees the
-  // server), and Discord's onboarding wants channels open to everyone.
+  // No onboarding: newcomers get in through the bot's own captcha in #verify (/verify set, by hand: its Keeper role sees
+  // the server), and Discord's onboarding wants channels open to everyone.
 
   // AutoMod, alerts to #mod-log.
   await step('AutoMod', async () => {

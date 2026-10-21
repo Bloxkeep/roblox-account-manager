@@ -7,12 +7,17 @@
 // The same object reads the news every minute (sources.js): a Roblox build coming (from the Roblox watch, before release)
 // or live, Roblox having problems or working again, a new public Bloxkeep version. Each is posted once to the channels
 // servers chose with /notify, and every board (/board) is edited when what it shows changes. Slash commands come over
-// HTTP (/interactions, signed by Discord), so they work even while the object reconnects.
+// HTTP (/interactions, signed by Discord), so they work even while the object reconnects; so do the Verify button and
+// its form (/verify: a captcha drawn by captcha.js, solved in Discord, for a role).
 import { DurableObject } from 'cloudflare:workers';
+import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
 import { setupServer } from './setup.js';
 import { newer, readLatestTag, readRelease, readStatus, readWatch, release } from './sources.js';
-import { boardEmbed, buildEmbed, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, presenceLines, releaseMessage, replies, statusEmbed } from './texts.js';
+import {
+  boardEmbed, buildEmbed, captchaMessage, codeForm, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, presenceLines, releaseMessage,
+  replies, statusEmbed, verifyPanel,
+} from './texts.js';
 
 const GATEWAY = 'wss://gateway.discord.gg';
 const QUERY = '/?v=10&encoding=json';
@@ -35,6 +40,8 @@ const PRESENCE_EVERY = 20_000;
 // What the bot hears from Discord: messages in servers (who posted where, not what: no privileged intent), for the trap.
 // A session made with other intents is not resumed but identified again.
 const INTENTS = 1 << 9;
+// A captcha is good for this long, and once: a wrong answer means a new picture. Pictures a person may ask for, per window.
+const CAPTCHA_FOR = 5 * 60_000, CAPTCHAS_PER = 5, CAPTCHA_WINDOW = 10 * 60_000;
 
 export class Gateway extends DurableObject {
   constructor(ctx, env) {
@@ -56,6 +63,12 @@ export class Gateway extends DurableObject {
       // Each server's trap channel (/setup): who posts there is banned, unless an owner or one of these roles.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS traps (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, exempt TEXT NOT NULL, owner TEXT, log TEXT)');
       this.traps = new Map([...ctx.storage.sql.exec('SELECT * FROM traps')].map(t => [t.guild, { ...t, exempt: JSON.parse(t.exempt) }]));
+      // Each server's verification (/verify): the role whoever solves the captcha gets, and the button's message.
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS verify (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, role TEXT NOT NULL, message TEXT)');
+      // The captchas waiting for an answer, and when each person asked for theirs (kept in memory: after a restart,
+      // pressing Verify again is all it takes).
+      this.captchas = new Map();
+      this.asked = new Map();
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
       this.stopped = (await ctx.storage.get('stopped')) ?? null;
       this.retired = (await ctx.storage.get('retired')) ?? false; // handed over to the object that replaced it
@@ -243,7 +256,61 @@ export class Gateway extends DurableObject {
       sql.exec('DELETE FROM boards WHERE guild = ?', guild);
       return reply({ content: r.boardOff }, true);
     }
+    if (name === 'verify' && sub?.name === 'set') {
+      const channel = opt('channel'), role = opt('role');
+      const res = await api(this.env, 'POST', `/channels/${channel}/messages`, verifyPanel(lang(locale)));
+      if (!res.ok)
+        return reply({ content: r.cantPost(channel) }, true);
+      sql.exec('INSERT OR REPLACE INTO verify (guild, channel, role, message) VALUES (?, ?, ?, ?)', guild, channel, role, (await res.json()).id);
+      return reply({ content: r.verifyOn(channel, role) }, true);
+    }
+    if (name === 'verify' && sub?.name === 'off') {
+      sql.exec('DELETE FROM verify WHERE guild = ?', guild);
+      return reply({ content: r.verifyOff }, true);
+    }
     return reply({ content: '?' }, true);
+  }
+
+  /**
+   * A press on Verify (a new captcha, its picture in `png`), on "Enter the code" (the form), or the code typed in (the
+   * role, when right). Everything is seen only by that person; worker.js sends Discord the answer, with the picture.
+   */
+  async component(i) {
+    const l = lang(i.locale ?? i.guild_locale), r = replies(l), id = i.data?.custom_id;
+    const mine = data => ({ type: 4, data: { ...data, flags: 64, allowed_mentions: { parse: [] } } });
+    // After the form: the captcha's message itself is changed to say how it went (its picture and button gone).
+    const instead = content => ({ type: 7, data: { content, embeds: [], components: [], attachments: [] } });
+    const v = i.guild_id ? [...this.ctx.storage.sql.exec('SELECT * FROM verify WHERE guild = ?', i.guild_id)][0] : null;
+    const user = i.member?.user?.id, key = `${i.guild_id}:${user}`;
+    if (!v || !user)
+      return { reply: mine({ content: r.verifyNotSet }) };
+    if (i.member.roles?.includes(v.role))
+      return { reply: id === 'verify-form' ? instead(r.verifyAlready) : mine({ content: r.verifyAlready }) };
+    if (id === 'verify') {
+      const now = Date.now(), recent = (this.asked.get(key) ?? []).filter(t => now - t < CAPTCHA_WINDOW);
+      if (recent.length >= CAPTCHAS_PER)
+        return { reply: mine({ content: r.verifySlow }) };
+      this.asked.set(key, [...recent, now]);
+      const { code, png } = await captcha(this.env.CAPTCHA_CODE);
+      this.captchas.set(key, { code, until: now + CAPTCHA_FOR });
+      return { reply: mine(captchaMessage(l)), png };
+    }
+    if (id === 'verify-code')
+      return { reply: { type: 9, data: codeForm(l, CODE_LENGTH) } };
+    if (id === 'verify-form') {
+      const typed = String(i.data.components?.[0]?.components?.[0]?.value ?? '').replace(/\s/g, '').toUpperCase();
+      const waiting = this.captchas.get(key);
+      this.captchas.delete(key);
+      if (!waiting || Date.now() > waiting.until)
+        return { reply: instead(r.verifyExpired) };
+      if (typed !== waiting.code)
+        return { reply: instead(r.verifyWrong) };
+      const res = await api(this.env, 'PUT', `/guilds/${i.guild_id}/members/${user}/roles/${v.role}`, undefined,
+        { 'X-Audit-Log-Reason': encodeURIComponent('Solved the captcha (/verify)') });
+      this.log('verified', `${i.guild_id} ${res.status}`);
+      return { reply: instead(res.ok ? r.verifyDone : r.verifyCant(v.role)) };
+    }
+    return { reply: mine({ content: '?' }) };
   }
 
   // ───────────────────────────── the community server ─────────────────────────────
@@ -748,6 +815,17 @@ export default {
         const started = Date.now(), reply = await gateway.interaction(i);
         ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.name ?? '', Date.now() - started));
         return Response.json(reply);
+      }
+      if (i.type === 3 || i.type === 5) { // a button pressed, a form sent (/verify)
+        const started = Date.now(), { reply, png } = await gateway.component(i);
+        ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.custom_id ?? '', Date.now() - started));
+        if (!png)
+          return Response.json(reply);
+        // The captcha's picture goes with the answer, as the file its embed shows.
+        const form = new FormData();
+        form.append('payload_json', JSON.stringify(reply));
+        form.append('files[0]', new Blob([png], { type: 'image/png' }), 'captcha.png');
+        return new Response(form);
       }
       return Response.json({ error: 'unsupported' }, { status: 400 });
     }

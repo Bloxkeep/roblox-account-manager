@@ -84,4 +84,19 @@ export const COMMANDS = [
       { type: 1, name: 'off', description: 'Stop updating the board', description_localizations: vi('Ngừng cập nhật bảng') },
     ],
   },
+  {
+    name: 'verify', description: 'A captcha newcomers solve in Discord to get a role',
+    description_localizations: vi('Captcha người mới giải ngay trong Discord để nhận một vai trò'),
+    default_member_permissions: MANAGE_GUILD, contexts: [0],
+    options: [
+      {
+        type: 1, name: 'set', description: 'Post the Verify button in a channel', description_localizations: vi('Đăng nút Xác minh vào một kênh'),
+        options: [
+          channelOption,
+          { type: 8, name: 'role', description: 'Given to whoever passes', description_localizations: vi('Cấp cho người giải đúng'), required: true },
+        ],
+      },
+      { type: 1, name: 'off', description: 'Stop verifying in this server', description_localizations: vi('Ngừng xác minh trong server này') },
+    ],
+  },
 ];

@@ -1,6 +1,7 @@
 // The bot's commands and news (DiscordBot/worker) against a fake Discord (its REST API and Gateway) and fake sources (the
 // Roblox watch, Roblox's status page, Bloxkeep's releases), run by wrangler dev: each command's reply, a signature that
-// doesn't verify refused, and each kind of news posted once, in English, only where it was asked for.
+// doesn't verify refused, each kind of news posted once, in English, only where it was asked for, and /verify's captcha
+// (a PNG only that person sees, the code typed into a form, the role given once it's right).
 // No Discord account or token needed. In this folder: npm install, then node features.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -47,7 +48,7 @@ const rest = http.createServer((req, res) => {
   let body = '';
   req.on('data', c => { body += c; });
   req.on('end', () => {
-    const call = { method: req.method, url: req.url, auth: req.headers.authorization, body: body ? JSON.parse(body) : null };
+    const call = { method: req.method, url: req.url, auth: req.headers.authorization, body: body ? JSON.parse(body) : null, reason: req.headers['x-audit-log-reason'] };
     calls.push(call);
     const send = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
     if (req.method === 'POST' && req.url === '/channels/nochan/messages') return send(403, { message: 'Missing Access', code: 50001 });
@@ -91,8 +92,25 @@ async function interact(payload, { badSignature = false } = {}) {
     method: 'POST', body,
     headers: { 'Content-Type': 'application/json', 'X-Signature-Timestamp': ts, 'X-Signature-Ed25519': badSignature ? sig.replace(/^./, c => (c === 'a' ? 'b' : 'a')) : sig },
   });
-  return { status: res.status, json: res.status === 200 ? await res.json() : null };
+  if (res.status !== 200)
+    return { status: res.status, json: null };
+  // An answer with a file (the captcha's picture) comes as multipart: the JSON part, and the file's bytes.
+  if ((res.headers.get('content-type') ?? '').startsWith('multipart/form-data')) {
+    const form = await res.formData();
+    return { status: res.status, json: JSON.parse(form.get('payload_json')), file: new Uint8Array(await form.get('files[0]').arrayBuffer()) };
+  }
+  return { status: res.status, json: await res.json() };
 }
+// A button pressed in a server, and the captcha's form sent, by member u9 unless said otherwise.
+const press = (customId, { guild = 'g1', user = 'u9', roles = [] } = {}) => ({
+  type: 3, id: 'i', application_id: 'app1', token: 't', locale: 'en-US', guild_locale: 'en-US', guild_id: guild,
+  member: { permissions: '0', user: { id: user }, roles }, data: { custom_id: customId, component_type: 2 },
+});
+const typed = (code, { guild = 'g1', user = 'u9', roles = [] } = {}) => ({
+  type: 5, id: 'i', application_id: 'app1', token: 't', locale: 'en-US', guild_locale: 'en-US', guild_id: guild,
+  member: { permissions: '0', user: { id: user }, roles },
+  data: { custom_id: 'verify-form', components: [{ type: 1, components: [{ type: 4, custom_id: 'code', value: code }] }] },
+});
 const command = (name, { guild = 'g1', locale = 'vi', perms = '32', sub, options = [], resolved } = {}) => ({
   type: 2, id: 'i', application_id: 'app1', token: 't', locale, guild_locale: locale,
   ...(guild ? { guild_id: guild, member: { permissions: perms, user: { id: 'u1' } } } : { user: { id: 'u1' } }),
@@ -108,7 +126,7 @@ function startDev(extra = {}) {
     OBJECT_NAME: 'bot-test', OLD_OBJECT_NAME: '', PRESENCE_EVERY_MS: '300', TRACE_URL: 'http://127.0.0.1:9/',
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
-    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', ...extra,
+    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -138,7 +156,7 @@ try {
   await minute(3500);
   const puts = calls.filter(c => c.method === 'PUT');
   check('the commands are put in place, with the bot token', puts.length === 1 && puts[0].url === '/applications/app1/commands' && puts[0].auth === 'Bot test-token'
-    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,board', JSON.stringify(puts.map(p => p.url)));
+    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,board,verify', JSON.stringify(puts[0]?.body.map(c => c.name)));
   check('…and the first look announces nothing', calls.filter(c => c.method === 'POST').length === 0, calls.length);
   await minute();
   check('…nor are the commands put again when unchanged', calls.filter(c => c.method === 'PUT').length === 1);
@@ -182,6 +200,39 @@ try {
   // g2 (English): a board in b1.
   r = await interact(command('board', { guild: 'g2', locale: 'en-US', sub: 'set', options: [opt('channel', 'b1')] }));
   check('/board set posts the board', posts('b1').length === 1 && embedOf(posts('b1')[0])?.title === 'Roblox and Bloxkeep now' && /<#b1>/.test(r.json?.data.content ?? ''), JSON.stringify(posts('b1')[0]?.body));
+
+  // /verify in g1: the Verify button in v1, role rv for whoever solves the captcha (its code fixed for the test).
+  r = await interact(command('verify', { sub: 'set', options: [opt('channel', 'v1'), opt('role', 'rv', 8)] }));
+  const panel = posts('v1')[0];
+  check('/verify set posts the Verify button, and says the bot needs Manage Roles above the role', panel?.body.components?.[0]?.components?.[0]?.custom_id === 'verify'
+    && r.json?.data.flags === 64 && /<#v1>/.test(r.json.data.content) && /<@&rv>/.test(r.json.data.content) && /Manage Roles/.test(r.json.data.content), `${JSON.stringify(panel?.body)} ${r.json?.data.content}`);
+  r = await interact(press('verify'));
+  const PNG = [137, 80, 78, 71, 13, 10, 26, 10];
+  check('Verify: a captcha only they see, its picture a PNG attached to the embed, and a button to type the code',
+    r.json?.type === 4 && r.json.data.flags === 64 && r.json.data.embeds[0].image.url === 'attachment://captcha.png' && r.json.data.attachments?.[0]?.filename === 'captcha.png'
+    && r.json.data.components[0].components[0].custom_id === 'verify-code' && r.file?.length > 2000 && PNG.every((b, n) => r.file[n] === b), JSON.stringify(r.json));
+  if (r.file)
+    fs.writeFileSync(path.join(PERSIST, 'captcha.png'), r.file); // to look at
+  r = await interact(press('verify-code'));
+  check('"Enter the code": the form, for 5 characters', r.json?.type === 9 && r.json.data.custom_id === 'verify-form' && r.json.data.components[0].components[0].max_length === 5, JSON.stringify(r.json));
+  const roleGiven = () => calls.filter(c => c.method === 'PUT' && c.url === '/guilds/g1/members/u9/roles/rv');
+  r = await interact(typed('WRONG'));
+  check('a wrong code: said in place of the captcha (its picture gone), no role', r.json?.type === 7 && /Wrong code/.test(r.json.data.content)
+    && r.json.data.attachments?.length === 0 && roleGiven().length === 0, JSON.stringify(r.json));
+  r = await interact(typed('K7MXP'));
+  check('…and that captcha is used up: the right code now asks for a new one', r.json?.type === 7 && /expired/.test(r.json.data.content) && roleGiven().length === 0, JSON.stringify(r.json));
+  await interact(press('verify'));
+  r = await interact(typed('k7m xp'));
+  check('a new captcha and the right code (any case, spaces left out): the role given, the audit log saying why', r.json?.type === 7 && /welcome/.test(r.json.data.content)
+    && roleGiven().length === 1 && /captcha/.test(decodeURIComponent(roleGiven()[0].reason ?? '')), JSON.stringify(r.json));
+  r = await interact(press('verify', { roles: ['rv'] }));
+  check('someone who has the role already: told so, no captcha', /already verified/.test(r.json?.data.content ?? '') && !r.file, JSON.stringify(r.json));
+  for (let n = 0; n < 5; n++)
+    await interact(press('verify', { user: 'u8' }));
+  r = await interact(press('verify', { user: 'u8' }));
+  check('a sixth picture within ten minutes: refused', /Too many tries/.test(r.json?.data.content ?? '') && !r.file, JSON.stringify(r.json));
+  r = await interact(press('verify', { guild: 'g3' }));
+  check('a server without /verify: the button says verification is off', /Verification is off/.test(r.json?.data.content ?? ''), JSON.stringify(r.json));
 
   // A build on Roblox's test channel, checked by the watch: "coming", to both news channels, pinging r1 in g1.
   const base = () => ({ c1: posts('c1').length, c3: posts('c3').length, patches: patches().length });
