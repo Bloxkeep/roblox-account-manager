@@ -15,6 +15,9 @@ const ICON = { same: 'same', changed: 'changed', renamed: 'changed', gone: 'gone
 export const CARD = 1 << 15;
 const SETUP = `${REPO}/releases/latest/download/Bloxkeep-Setup.exe`;
 export const COLOR = { green: 0x57F287, yellow: 0xFEE75C, red: 0xED4245, blurple: 0x5865F2, grey: 0x4E5058 };
+/** The community server's voice channel whose name says how many have Bloxkeep open now (setup.js makes it, worker.js renames it). */
+export const countChannelName = n => `🟢 Using Bloxkeep: ${n}`;
+export const COUNT_CHANNEL = /^🟢 Using Bloxkeep: /u;
 
 /**
  * The bot speaks English by default (Bloxkeep's own convention). The Vietnamese strings below are kept for a later

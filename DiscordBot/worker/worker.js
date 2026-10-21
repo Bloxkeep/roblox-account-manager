@@ -18,8 +18,8 @@ import { DAYS_SHOWN, GRACE, beatEvery, dashboardKey, dashboardPage, dayOf, onlin
 import { setupServer } from './setup.js';
 import { newer, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
-  SITE, addressed, boardEmbed, buildMessage, captchaMessage, codeForm, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed,
-  presenceLines, releaseMessage, replies, statusEmbed, verifyPanel,
+  COUNT_CHANNEL, SITE, addressed, boardEmbed, buildMessage, captchaMessage, codeForm, countChannelName, downloadMessage, helpMessage, lang,
+  multiEmbed, outageEmbed, presenceLines, releaseMessage, replies, statusEmbed, verifyPanel,
 } from './texts.js';
 
 const GATEWAY = 'wss://gateway.discord.gg';
@@ -36,6 +36,9 @@ const RELEASE_EVERY = 10 * 60_000;
 const OUTAGE_LOOKS = 2;
 // A Roblox update posted before Roblox's notes were out: they're looked for this often, for this long, and edited in.
 const NOTES_EVERY = 10 * 60_000, NOTES_FOR = 14 * 24 * 3600_000;
+// The community server's channel that shows how many have Bloxkeep open: renamed at most this often (Discord allows two
+// renames of a channel in ten minutes), and looked for this often while there is none.
+const COUNT_EVERY = 6 * 60_000, COUNT_LOOK = 3600_000;
 // The bot's object, kept in eastern North America, next to Discord: slash commands come from Discord's servers there,
 // and the posts go back to them. The first object ("bot") was made where the first look at /status came from (Asia),
 // which put about 200 ms of ocean on every command; this one takes over its servers' choices and boards (migrate()).
@@ -482,6 +485,8 @@ export class Gateway extends DurableObject {
     this.ctx.storage.sql.exec('INSERT OR REPLACE INTO traps (guild, channel, exempt, owner, log) VALUES (?, ?, ?, ?, ?)',
       i.guild_id, result.trap.channel, JSON.stringify(result.trap.exempt), result.trap.owner, result.modLog);
     this.traps.set(i.guild_id, { guild: i.guild_id, channel: result.trap.channel, exempt: result.trap.exempt, owner: result.trap.owner, log: result.modLog });
+    if (result.count && i.guild_id === this.env.COMMUNITY_GUILD)
+      await this.ctx.storage.put('countChannel', { ...result.count, at: 0, looked: Date.now() });
     // The bot's own news in #roblox-updates, pinging @Roblox updates, and its board there, pinned.
     if (result.updates) {
       const sql = this.ctx.storage.sql;
@@ -623,7 +628,39 @@ export class Gateway extends DurableObject {
       await this.broadcast(p.kind, p.make, p.waiting);
     await this.addNotes(now);
     await this.updateBoards(snap);
+    await this.updateCountChannel(now);
     return snap;
+  }
+
+  /**
+   * The community server's channel that shows how many have Bloxkeep open now ("🟢 Using Bloxkeep: 3": /setup makes it,
+   * or one named so by hand that the bot may manage): renamed when the number changes, at most every six minutes, and
+   * looked for once an hour while there is none.
+   */
+  async updateCountChannel(now) {
+    if (!this.env.DISCORD_TOKEN || !this.env.COMMUNITY_GUILD)
+      return;
+    const was = (await this.ctx.storage.get('countChannel')) ?? { id: null, name: null, at: 0, looked: 0 }, c = { ...was };
+    if (!c.id && now - c.looked >= (Number(this.env.COUNT_LOOK_MS) || COUNT_LOOK)) {
+      c.looked = now;
+      const res = await api(this.env, 'GET', `/guilds/${this.env.COMMUNITY_GUILD}/channels`);
+      const list = res.ok ? await res.json() : [];
+      const found = Array.isArray(list) ? list.find(x => x.type === 2 && COUNT_CHANNEL.test(x.name ?? '')) : null;
+      if (found)
+        Object.assign(c, { id: found.id, name: found.name });
+    }
+    const want = countChannelName(this.countHere(now));
+    if (c.id && want !== c.name && now - c.at >= (Number(this.env.COUNT_EVERY_MS) || COUNT_EVERY)) {
+      c.at = now;
+      const res = await api(this.env, 'PATCH', `/channels/${c.id}`, { name: want });
+      if (res.ok)
+        c.name = want;
+      else if (res.status === 404) // deleted: looked for again within the hour
+        Object.assign(c, { id: null, name: null });
+      this.log('count channel', `${want} ${res.status}`);
+    }
+    if (JSON.stringify(c) !== JSON.stringify(was))
+      await this.ctx.storage.put('countChannel', c);
   }
 
   /**

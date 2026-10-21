@@ -5,13 +5,13 @@
 // Discord refuses is reported, and the others still run.
 import { api } from './discord.js';
 import { REPO } from './sources.js';
-import { LOGO, SITE } from './texts.js';
+import { COUNT_CHANNEL, LOGO, SITE, countChannelName } from './texts.js';
 
 const B = n => 1n << BigInt(n);
 const P = {
-  KICK: B(1), BAN: B(2), ADMIN: B(3), AUDIT_LOG: B(7), VIEW: B(10), SEND: B(11), MANAGE_MESSAGES: B(13), EMBED: B(14), HISTORY: B(16),
+  KICK: B(1), BAN: B(2), ADMIN: B(3), MANAGE_CHANNELS: B(4), AUDIT_LOG: B(7), VIEW: B(10), SEND: B(11), MANAGE_MESSAGES: B(13), EMBED: B(14), HISTORY: B(16),
   MANAGE_NICKNAMES: B(27), MANAGE_THREADS: B(34), PUBLIC_THREADS: B(35), PRIVATE_THREADS: B(36), SEND_IN_THREADS: B(38),
-  MODERATE: B(40),
+  CONNECT: B(20), MODERATE: B(40),
 };
 const TEXT = 0, VOICE = 2, CATEGORY = 4, NEWS = 5, FORUM = 15;
 // The categories Discord makes with a new server, in English and in Vietnamese (the creator's language decides).
@@ -109,6 +109,21 @@ export async function setupServer(env, guildId, bot, runner) {
   const support = await channel('Support', CATEGORY, null);
   const staff = await channel('Staff', CATEGORY, null, { permission_overwrites: only(everyone, [mod.id], bot) });
   // The trap: everyone may post, and whoever does is banned (scam bots and hacked accounts post in every channel).
+  // How many have Bloxkeep open now, as a voice channel's name at the top of Info: seen by everyone, joined by nobody,
+  // renamed by the bot (worker.js updateCountChannel), which may manage this channel alone.
+  let count = channels.find(x => x.type === VOICE && COUNT_CHANNEL.test(x.name));
+  if (!count)
+    count = await step('online count', async () => {
+      const c = await call('POST', `${g}/channels`, {
+        name: countChannelName(0), type: VOICE, parent_id: info.id,
+        permission_overwrites: [ow(everyone, 0, 0n, P.CONNECT), ow(bot, 1, P.VIEW | P.CONNECT | P.MANAGE_CHANNELS)],
+      });
+      channels.push(c);
+      made.push(c.name);
+      return c;
+    });
+  else if (count.parent_id !== info.id)
+    await step('move online count', async () => Object.assign(count, await call('PATCH', `/channels/${count.id}`, { parent_id: info.id })));
   const trap = await channel('dont-type-here', TEXT, info, { topic: "Don't type here: posting bans you at once. A trap for scam bots and hacked accounts." });
   const welcome = await channel('welcome', TEXT, info, { topic: 'What Bloxkeep is, and where to go here', permission_overwrites: readOnly(everyone, mod.id, bot) });
   const rules = await channel('rules', TEXT, info, { topic: 'Read these before you post', permission_overwrites: readOnly(everyone, mod.id, bot) });
@@ -152,7 +167,7 @@ export async function setupServer(env, guildId, bot, runner) {
   // The order people see.
   await step('order', () => call('PATCH', `${g}/channels`, [
     [info, community, support, staff],
-    [trap, welcome, rules, announcements, updates],
+    [count, trap, welcome, rules, announcements, updates],
     [general, generalVn, commands, ...channels.filter(c => c.type === VOICE && c.parent_id === community.id)],
     [help, bugs, ideas],
     [modChat, modLog],
@@ -235,7 +250,7 @@ export async function setupServer(env, guildId, bot, runner) {
   });
 
   return {
-    made, failed, updates: updates?.id ?? null, pings: pings.id, modLog: modLog.id,
+    made, failed, updates: updates?.id ?? null, pings: pings.id, modLog: modLog.id, count: count ? { id: count.id, name: count.name } : null,
     trap: { channel: trap.id, exempt: [admin.id, mod.id], owner: guild.owner_id ?? null },
   };
 }

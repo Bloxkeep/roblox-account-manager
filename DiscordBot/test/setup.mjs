@@ -160,6 +160,10 @@ try {
   const cat = name => named(name, 4)?.id;
   const under = (cat, list) => list.every(([name, type]) => named(name, type)?.parent_id === cat);
   check('Info: the trap, welcome, rules, announcements, roblox-updates', under(cat('Info'), [['dont-type-here', 0], ['welcome', 0], ['rules', 0], ['announcements', 5], ['roblox-updates', 5]]), JSON.stringify(channels.map(c => [c.name, c.type, c.parent_id])));
+  const count = named('🟢 Using Bloxkeep: 0', 2), ows = count?.permission_overwrites ?? [];
+  check('Info starts with a voice channel saying how many use Bloxkeep: seen by all, joined by nobody, renamed by the bot alone',
+    count?.parent_id === cat('Info') && count.position === 0 && named('dont-type-here').position === 1
+    && ows.some(o => o.id === G && BigInt(o.deny) & (1n << 20n)) && ows.some(o => o.id === BOT && o.type === 1 && BigInt(o.allow) & (1n << 4n)), JSON.stringify(count));
   check('Community: general (Discord\'s #chung, renamed), general-vn, bot-commands, the voice channel (renamed General), no showcase or off-topic',
     under(cat('Community'), [['general', 0], ['general-vn', 0], ['bot-commands', 0], ['General', 2]])
     && !named('showcase') && !named('off-topic') && named('general').id === 'c1' && named('General').id === 'v1');
@@ -184,10 +188,11 @@ try {
   check('…the welcome post points Vietnamese speakers to #general-vn', messages[named('welcome').id][0].embeds[0].description.includes(`<#${named('general-vn').id}>`));
   check('the board in #roblox-updates, pinned', messages[named('roblox-updates').id]?.some(p => p.embeds?.[0]?.title === 'Roblox and Bloxkeep now') && calls.some(c => c.m === 'PUT' && c.u.startsWith(`/channels/${named('roblox-updates').id}/pins/`)));
 
-  // Again, one role's emoji taken off by hand: nothing new.
+  // Again, one role's emoji taken off by hand and the count channel renamed by the bot since: nothing new.
   const counts = () => [roles.length, channels.length, automod.length, Object.values(messages).flat().length].join();
   const before = counts();
   role('Moderator').name = 'Moderator';
+  count.name = '🟢 Using Bloxkeep: 3';
   await setup(OWNER, 'tok3');
   check('run again: nothing made twice, its posts updated in place', await waitFor(() => answers.length === 3, 20000) && /everything was already there/.test(answers[2]) && counts() === before, `${answers[2]} ${before} → ${counts()}`);
 

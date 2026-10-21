@@ -61,6 +61,8 @@ const rest = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/oauth2/applications/@me') return send(200, { id: 'app1', owner: { id: 'u1' } });
     if (req.method === 'PATCH' && /\/messages\/gone$/.test(req.url)) return send(404, { message: 'Unknown Message', code: 10008 });
     if (req.method === 'POST' && /^\/channels\/\w+\/invites$/.test(req.url)) return send(200, { code: `inv${++inviteNo}` });
+    // The community server's channels: one shows how many have Bloxkeep open.
+    if (req.method === 'GET' && req.url === '/guilds/g1/channels') return send(200, [{ id: 'c1', type: 0, name: 'news' }, { id: 'cnt', type: 2, name: '🟢 Using Bloxkeep: 0' }]);
     if (req.method === 'GET' && deadInvites.has(req.url.replace('/invites/', ''))) return send(404, { message: 'Unknown Invite', code: 10006 });
     // c3 is a text channel: nothing there can be published.
     if (req.method === 'POST' && /^\/channels\/c3\/messages\/\w+\/crosspost$/.test(req.url)) return send(400, { message: 'Cannot execute action on this channel type', code: 50024 });
@@ -152,7 +154,7 @@ function startDev(extra = {}) {
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
     RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '200', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
-    NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', ...extra,
+    NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -319,9 +321,18 @@ try {
   check('no ids in what the dashboard reads', !JSON.stringify(o).includes(A) && !JSON.stringify(o).toLowerCase().includes(B.toLowerCase()));
   await sleep(1500);
   check('the bot\'s status says how many are using Bloxkeep now', statuses.some(a => a?.state === '2 people using Bloxkeep now'), JSON.stringify([...new Set(statuses.map(a => a?.state))]));
+  const renames = () => calls.filter(c => c.method === 'PATCH' && c.url === '/channels/cnt').map(c => c.body.name);
+  await minute();
+  check('the community server\'s count channel, found by its name, renamed: "🟢 Using Bloxkeep: 2"', JSON.stringify(renames()) === '["🟢 Using Bloxkeep: 2"]', JSON.stringify(renames()));
   b = await beat({ id: B, gone: true });
+  await beat({ id: A, app: '1.0.8', language: 'vi' });
   o = await numbers();
   check('an app closing says goodbye: gone at once, the peak stays', b.status === 200 && o.now === 1 && o.today.peak === 2 && o.languages.map(l => l.name).join() === 'vi', JSON.stringify(o).slice(0, 300));
+  await minute();
+  check('…the count channel not renamed again so soon (Discord allows two renames in ten minutes)', renames().length === 1, JSON.stringify(renames()));
+  await sleep(1500);
+  await minute();
+  check('…and once that time is up: "🟢 Using Bloxkeep: 1"', renames().at(-1) === '🟢 Using Bloxkeep: 1' && renames().length === 2, JSON.stringify(renames()));
   await sleep(8500);
   o = await numbers();
   check('an app that stopped saying so (crashed, PC asleep) is no longer online once its time is up', o.now === 0 && o.today.peak === 2 && o.apps.length === 0, JSON.stringify(o).slice(0, 300));
