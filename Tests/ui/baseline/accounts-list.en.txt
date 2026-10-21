@@ -129,7 +129,7 @@ html [data-theme="dark" lang="en"]
             span "Sort: Name"
         div.scroll [id="scroll"]
           div [id="grid"]
-            div.grid.list [role="listbox" aria-label="Accounts" aria-multiselectable="true"]
+            div.grid.list [role="listbox" aria-label="Accounts" aria-multiselectable="true" style="--col-group:min(138px, calc(4ch + 26px));--col-live:150px;--col-rejoin:24px;--col-robux:calc(6ch + 26px);--col-vng:0px"]
               article.card.row [role="option" tabindex="0" aria-label="Alt" aria-selected="false"]
                 span.check
                   svg.i #14iobj
@@ -158,14 +158,18 @@ html [data-theme="dark" lang="en"]
                 div.row-name
                   b [title="Farm 1"] "Farm 1"
                   small [title="@pixelfarmer01"] "@pixelfarmer01"
-                div.ingame.row-status [title="Joining · Blox Fruits"] "Joining · Blox Fruits"
+                div.ingame.row-status.timed [title="Joining · Blox Fruits"]
+                  span.row-st "Joining · Blox Fruits"
+                  span.row-up [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "1 min"
                 div.row-meta
                   span.robux [title="Robux on this account, checked every 30 minutes"] "80"
                     svg.i #hpg3hu
                   span.tag [title="Farm"] "Farm"
                 div.row-live
                   button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 2222"
-                  span [title="RAM in use"]
+                  span.row-ram [title="RAM in use"]
                     b.ram "935 MB"
                 div.row-actions
                   button.icon-btn.stop [title="Close" tabindex="-1" aria-label="Close"]
@@ -200,7 +204,11 @@ html [data-theme="dark" lang="en"]
                 div.row-name
                   b [title="Main"] "Main"
                   small [title="@sunny_builds"] "@sunny_builds"
-                div.ingame.row-status [title="Playing · Blox Fruits"] "Playing · Blox Fruits"
+                div.ingame.row-status.timed [title="Playing · Blox Fruits"]
+                  span.row-st "Playing · Blox Fruits"
+                  span.row-up [title="Play time"]
+                    svg.i #ktpp14
+                    b.up "47 min"
                 div.row-meta
                   span.robux [title="Robux on this account, checked every 30 minutes"] "12,450"
                     svg.i #hpg3hu
@@ -209,7 +217,7 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ap9cll
                 div.row-live
                   button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 1111"
-                  span [title="RAM in use"]
+                  span.row-ram [title="RAM in use"]
                     b.ram "795 MB"
                 div.row-actions
                   button.icon-btn.stop [title="Close" tabindex="-1" aria-label="Close"]

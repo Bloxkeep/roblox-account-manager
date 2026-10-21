@@ -3,7 +3,7 @@
 // game found, recent games, and the buttons that open the selected accounts). What is selected, the filters and the
 // game are app.js's (S, P), read through host.page(); what the buttons do is app.js's too (its click handler by
 // data-act, its keys), so the elements keep the same data-* it looks for.
-import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon, useAppState, useHost, useMetrics, usePage, type PageState } from './host';
 import { richNodes } from './rich';
 import { Avatar } from './Avatar';
@@ -192,14 +192,31 @@ export function AccountGrid() {
       : <div className="empty"><img className="art" src={logo} alt="" /><h2>{t('empty.title')}</h2><p>{t('empty.text')}</p><AddOptions /></div>}</div>;
   }
   return <div id="grid">
-    <GridBox key={asList ? 'list' : 'cards'} asList={asList} intro={!page.introShown} label={t('acc.title')} box={grid}>
+    <GridBox key={asList ? 'list' : 'cards'} asList={asList} intro={!page.introShown} label={t('acc.title')} box={grid}
+      style={asList ? listColumns(shown, host.fmtNum) : undefined}>
       {shown.map(a => <AccountItem key={a.id} a={a} asList={asList} sel={page.selected.has(a.id)} lang={host.lang} minute={minute} />)}
     </GridBox>
   </div>;
 }
 
+/**
+ * The list's columns after the status (VNG, Robux, group, auto-rejoin; PID and memory), each as wide as the widest of
+ * its kind among the rows shown and none at all when no row has it, so the figures stand in straight lines row to row.
+ */
+function listColumns(shown: Account[], fmtNum: (n: number) => string): CSSProperties {
+  const robux = Math.max(0, ...shown.map(a => typeof a.robux === 'number' ? fmtNum(a.robux).length : a.robuxWait ? 1 : 0));
+  const group = Math.max(0, ...shown.map(a => a.group?.length ?? 0));
+  return {
+    '--col-vng': shown.some(a => a.realm === 'vng') ? '46px' : '0px',
+    '--col-robux': robux ? `calc(${robux}ch + 26px)` : '0px',
+    '--col-group': group ? `min(138px, calc(${group}ch + 26px))` : '0px',
+    '--col-rejoin': shown.some(rejoinOn) ? '24px' : '0px',
+    '--col-live': shown.some(isLocal) ? '150px' : '0px',
+  } as CSSProperties;
+}
+
 /** The list's box: cards fade in only the first time it is drawn, not on every update. */
-function GridBox({ asList, intro, label, box, children }: { asList: boolean; intro: boolean; label: string; box: React.RefObject<HTMLDivElement | null>; children: ReactNode }) {
+function GridBox({ asList, intro, label, box, style, children }: { asList: boolean; intro: boolean; label: string; box: React.RefObject<HTMLDivElement | null>; style?: CSSProperties; children: ReactNode }) {
   const [fading, setFading] = useState(intro);
   useEffect(() => {
     if (!fading) return;
@@ -208,7 +225,7 @@ function GridBox({ asList, intro, label, box, children }: { asList: boolean; int
   }, []);
   // A card, or a button on it, that gets the focus (a click, Shift+Tab) becomes the list's one Tab stop.
   const { setTabStop } = useHost();
-  return <div ref={box} className={`grid ${asList ? 'list' : ''} ${fading ? 'intro' : ''}`} role="listbox" aria-multiselectable="true" aria-label={label}
+  return <div ref={box} className={`grid ${asList ? 'list' : ''} ${fading ? 'intro' : ''}`} style={style} role="listbox" aria-multiselectable="true" aria-label={label}
     onFocus={e => {
       const card = (e.target as HTMLElement).closest<HTMLElement>('.card');
       if (card && card.tabIndex !== 0 && card.parentElement) setTabStop(card.parentElement, card);
@@ -282,7 +299,7 @@ function Live({ a, row }: { a: Account; row?: boolean }) {
   const ram = mb ? fmtMb(mb) : '…';
   const up = a.session ? duration(a.session.since) : '';
   return row
-    ? <span title={t('card.ramTip')}><b className="ram">{ram}</b><b className="up" hidden>{up}</b></span>
+    ? <span className="row-ram" title={t('card.ramTip')}><b className="ram">{ram}</b></span>
     : <div className="live"><span title={t('card.ramTip')}><Icon name="chip" /><b className="ram">{ram}</b></span><span title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span><Pid a={a} /></div>;
 }
 /** The client's process id, for tools that pick a Roblox window by it; a click copies it. Nothing until the window is there. */
@@ -367,10 +384,11 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
 
 /** One line per account for the compact list; the same actions as a card (select, right-click menu, play). */
 function AccountRow({ a, sel }: { a: Account; sel: boolean }) {
-  const { t } = useHost();
+  const { t, duration } = useHost();
   const until = useUntil();
   const local = isLocal(a), pType = presenceType(a);
   const st = statusLine(t, a);
+  const up = local && st.cls === 'ingame' && a.session ? duration(a.session.since) : '';
   const action = local || a.state === 'launching' ? <button key="close-one" className="icon-btn stop" data-act="close-one" title={t('card.close')} aria-label={t('card.close')}><Icon name="power" /></button>
     : a.rejoin ? <button key="cancel-rejoin" className="icon-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')} aria-label={t('rj.cancelTip')}><Icon name="x" /></button>
     : a.cookieValid === false ? <button key="relogin" className="icon-btn relogin" data-act="relogin" title={t('card.relogin')} aria-label={t('card.relogin')}><Icon name="logIn" /></button>
@@ -384,7 +402,11 @@ function AccountRow({ a, sel }: { a: Account; sel: boolean }) {
     <span className="check"><Icon name="check" /></span>
     <div className={`avatar sm ${ringOf(a)}`}><Avatar a={a} /><i className={`pdot ${pType}`} /></div>
     <div className="row-name"><b title={a.label}>{a.label}</b>{a.username ? <small title={at}>{at}</small> : null}</div>
-    <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}</div>
+    {up
+      // Playing here: how long, right after the game (as on the card), never cut off by a long game name.
+      ? <div className={`row-status timed ${st.cls}`} title={st.text}><span className="row-st">{st.text}</span>
+        <span className="row-up" title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span></div>
+      : <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}</div>}
     <div className="row-meta"><Meta a={a} /></div>
     <div className="row-live">{local ? <><Pid a={a} /><Live a={a} row /></> : null}</div>
     <div className="row-actions">{action}<button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button></div>

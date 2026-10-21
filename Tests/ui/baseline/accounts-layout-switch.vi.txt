@@ -129,7 +129,7 @@ html [data-theme="dark" lang="vi"]
             span "Sắp xếp: Tên"
         div.scroll [id="scroll"]
           div [id="grid"]
-            div.grid.list [role="listbox" aria-label="Tài khoản" aria-multiselectable="true"]
+            div.grid.list [role="listbox" aria-label="Tài khoản" aria-multiselectable="true" style="--col-group:min(138px, calc(4ch + 26px));--col-live:150px;--col-rejoin:24px;--col-robux:calc(6ch + 26px);--col-vng:0px"]
               article.card.local.row [role="option" tabindex="0" aria-label="Farm 1" aria-selected="false"]
                 span.check
                   svg.i #14iobj
@@ -139,14 +139,18 @@ html [data-theme="dark" lang="vi"]
                 div.row-name
                   b [title="Farm 1"] "Farm 1"
                   small [title="@pixelfarmer01"] "@pixelfarmer01"
-                div.ingame.row-status [title="Đang vào game · Blox Fruits"] "Đang vào game · Blox Fruits"
+                div.ingame.row-status.timed [title="Đang vào game · Blox Fruits"]
+                  span.row-st "Đang vào game · Blox Fruits"
+                  span.row-up [title="Thời gian đã chơi"]
+                    svg.i #ktpp14
+                    b.up "1 phút"
                 div.row-meta
                   span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "80"
                     svg.i #hpg3hu
                   span.tag [title="Farm"] "Farm"
                 div.row-live
                   button.pid [title="Mã tiến trình Roblox (PID), bấm để sao chép" tabindex="0"] "PID 2222"
-                  span [title="RAM đang dùng"]
+                  span.row-ram [title="RAM đang dùng"]
                     b.ram "935 MB"
                 div.row-actions
                   button.icon-btn.stop [title="Đóng" tabindex="0" aria-label="Đóng"]
@@ -201,7 +205,11 @@ html [data-theme="dark" lang="vi"]
                 div.row-name
                   b [title="Tài khoản chính"] "Tài khoản chính"
                   small [title="@sunny_builds"] "@sunny_builds"
-                div.ingame.row-status [title="Đang chơi · Blox Fruits"] "Đang chơi · Blox Fruits"
+                div.ingame.row-status.timed [title="Đang chơi · Blox Fruits"]
+                  span.row-st "Đang chơi · Blox Fruits"
+                  span.row-up [title="Thời gian đã chơi"]
+                    svg.i #ktpp14
+                    b.up "47 phút"
                 div.row-meta
                   span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "12.450"
                     svg.i #hpg3hu
@@ -210,7 +218,7 @@ html [data-theme="dark" lang="vi"]
                     svg.i #1ap9cll
                 div.row-live
                   button.pid [title="Mã tiến trình Roblox (PID), bấm để sao chép" tabindex="-1"] "PID 1111"
-                  span [title="RAM đang dùng"]
+                  span.row-ram [title="RAM đang dùng"]
                     b.ram "795 MB"
                 div.row-actions
                   button.icon-btn.stop [title="Đóng" tabindex="-1" aria-label="Đóng"]

@@ -1753,19 +1753,24 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .avatar.sm .initials { font-size: 11px; }
 .avatar.sm .pdot { width: 10px; height: 10px; border-width: 2px; right: -1px; bottom: -1px; }
 /* When the line is tight the status gives way first, then the @username, and the name last. */
-.row-name { flex: 0 .3 280px; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.row-name { flex: 0 .3 240px; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .row-name b { font-size: 13.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-name small { flex-shrink: 4; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-status { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-status { flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-status.ingame { color: var(--ok-ink); }
 .row-status.online, .row-status.launching { color: var(--online-ink); }
 .row-status.studio { color: var(--studio-ink); }
 .row-status.kicked { color: var(--warn-ink); }
 .row-status.signedout { color: var(--bad-ink); }
 .row-status.offline, .row-status.unknown { color: var(--muted); }
-.row-meta { flex: none; display: flex; align-items: center; gap: 6px; }
+/* The list's columns after the status, as wide as the rows shown need (Accounts.tsx listColumns), none when no row has
+   it: VNG, Robux (right-aligned), the group, auto-rejoin, each at the same place on every row. */
+.row-meta { flex: none; display: grid; grid-template-columns: var(--col-vng, auto) var(--col-robux, auto) var(--col-group, auto) var(--col-rejoin, auto); align-items: center; }
+.row-meta .vng { grid-column: 1; justify-self: start; }
+.row-meta .robux { grid-column: 2; justify-self: end; }
+.row-meta .tag:not(.vng) { grid-column: 3; justify-self: start; margin-left: 10px; max-width: min(130px, calc(100% - 10px)); }
+.row-meta .rejoin { grid-column: 4; justify-self: end; display: inline-flex; }
 .row-meta .rejoin .i { width: 14px; height: 14px; color: var(--muted); }
-.row-meta .tag { max-width: 130px; }
 .row-status .badge { height: 20px; margin-right: 8px; padding: 0 7px; font-size: 11px; vertical-align: 1px; } /* the card's red pill: banned / needs sign-in */
 .sort-btn.on { border-color: var(--line-3); color: var(--text); } /* a group chosen in the Group menu */
 .row-live { flex: none; width: 64px; text-align: right; font-size: 12px; color: var(--ok-ink); font-variant-numeric: tabular-nums; }
@@ -1841,8 +1846,14 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* Gives way first on a narrow card (a six-digit PID next to "12 giờ 5 phút"): the RAM and time chips keep their text. */
 .pid { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; height: 26px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 8px; background: transparent; font: 600 11.5px var(--font); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: copy; }
 .pid:hover { color: var(--text); border-color: var(--line-3); background: var(--hover); }
-.row-live { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: auto; min-width: 64px; }
+.row-live { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: var(--col-live, auto); }
+.row-ram { min-width: 7ch; text-align: right; } /* so every PID ends at the same place */
 .row-live .pid { height: 24px; padding: 0 7px; }
+/* Playing here: how long, after the game's name, which gives way first when the row is short of room. */
+.row-status.timed { display: flex; align-items: center; gap: 10px; }
+.row-st { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row-up { flex: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.row-up .i { width: 12px; height: 12px; }
 
 .meta { display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-top: 11px; font-size: 12px; color: var(--muted); min-height: 22px; }
 .tag { max-width: 50%; padding: 2px 9px; border-radius: 20px; background: var(--hover); color: var(--text-2); font-weight: 650; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2517,10 +2528,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .tag.vng { flex: none; color: var(--warn-ink); background: var(--warn-soft); }
 .meta .robux, .row-meta .robux { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .robux .i { width: 14px; height: 14px; stroke-width: 2.2; }
-/* The first number on its way: its place kept, so the row doesn't move when it comes. In a row the number has room for
-   six figures, right-aligned, so the tags beside it stay put whatever it is. */
+/* The first number on its way: its place kept, so the row doesn't move when it comes. */
 .robux.wait { color: var(--muted); font-weight: 500; }
-.row-meta .robux { min-width: calc(18px + 6ch); justify-content: flex-end; }
 .sv-label { display: block; margin: 12px 0 6px; font-size: 12.5px; font-weight: 650; color: var(--text-2); }
 .game-row.saved .icon-btn { opacity: .55; }
 .game-row.saved:hover .icon-btn, .game-row.saved.on .icon-btn { opacity: 1; }
