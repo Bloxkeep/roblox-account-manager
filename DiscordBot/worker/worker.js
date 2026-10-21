@@ -6,7 +6,8 @@
 //
 // The same object reads the news every minute (sources.js): a Roblox build coming (from the Roblox watch, before release)
 // or live, Roblox having problems or working again, a new public Bloxkeep version. Each is posted once to the channels
-// servers chose with /notify, and every board (/board) is edited when what it shows changes. Slash commands come over
+// servers chose with /notify (a Roblox update as a card, edited once Roblox's release notes are out), and every board
+// (/board) is edited when what it shows changes. Slash commands come over
 // HTTP (/interactions, signed by Discord), so they work even while the object reconnects; so do the Verify button and
 // its form (/verify: a captcha drawn by captcha.js, solved in Discord, for a role). It also counts how many people have
 // Bloxkeep open right now (online.js): the app says so to /online/ping while it's open.
@@ -15,10 +16,10 @@ import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, beatEvery, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { setupServer } from './setup.js';
-import { newer, readLatestTag, readRelease, readStatus, readWatch, release } from './sources.js';
+import { newer, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
-  SITE, boardEmbed, buildEmbed, captchaMessage, codeForm, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed, presenceLines,
-  releaseMessage, replies, statusEmbed, verifyPanel,
+  SITE, addressed, boardEmbed, buildMessage, captchaMessage, codeForm, downloadMessage, helpMessage, lang, multiEmbed, outageEmbed,
+  presenceLines, releaseMessage, replies, statusEmbed, verifyPanel,
 } from './texts.js';
 
 const GATEWAY = 'wss://gateway.discord.gg';
@@ -33,6 +34,8 @@ const MAX_BACKOFF = 60_000;
 const RELEASE_EVERY = 10 * 60_000;
 // An outage counts once two looks in a row say so, and is over after two that say all is well (no posts for a blip).
 const OUTAGE_LOOKS = 2;
+// A Roblox update posted before Roblox's notes were out: they're looked for this often, for this long, and edited in.
+const NOTES_EVERY = 10 * 60_000, NOTES_FOR = 14 * 24 * 3600_000;
 // The bot's object, kept in eastern North America, next to Discord: slash commands come from Discord's servers there,
 // and the posts go back to them. The first object ("bot") was made where the first look at /status came from (Asia),
 // which put about 200 ms of ocean on every command; this one takes over its servers' choices and boards (migrate()).
@@ -68,6 +71,9 @@ export class Gateway extends DurableObject {
       // Each server's board: the message edited in place, and a fingerprint of what it shows now.
       ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS boards (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, message TEXT NOT NULL,
         locale TEXT, shown TEXT)`);
+      // Roblox updates posted before Roblox's notes were out, to edit them in: which release, which post, as it was made.
+      ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS waiting (release INTEGER NOT NULL, kind TEXT NOT NULL, build TEXT NOT NULL,
+        channel TEXT NOT NULL, message TEXT NOT NULL, locale TEXT, role TEXT, at INTEGER NOT NULL)`);
       // Each server's trap channel (/setup): who posts there is banned, unless an owner or one of these roles.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS traps (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, exempt TEXT NOT NULL, owner TEXT, log TEXT)');
       this.traps = new Map([...ctx.storage.sql.exec('SELECT * FROM traps')].map(t => [t.guild, { ...t, exempt: JSON.parse(t.exempt) }]));
@@ -566,14 +572,19 @@ export class Gateway extends DurableObject {
       // A build coming, once the watch has checked it; a build gone live. A new weekly release always, a build within
       // the same release (a fix Roblox pushes) only when it changes something for Multi-Roblox.
       const worth = (build, before) => !before || release(build.version) !== release(before) || (build.verdict && build.verdict !== 'same');
+      // With Roblox's notes when they're out already; else posted without, and the notes edited in later (addNotes).
+      const update = async (kind, build) => {
+        const notes = await readNotes(this.env, release(build.version)).catch(() => null);
+        posts.push({ kind: 'roblox', make: l => buildMessage(l, kind, build, { notes, liveAt: now }), waiting: !notes && { kind, build } });
+      };
       if (watch.next?.verdict && a.coming !== watch.next.version && (!a.live || newer(watch.next.version, a.live))) {
         if (prev && worth(watch.next, a.coming ?? a.live))
-          posts.push({ kind: 'roblox', make: l => ({ embeds: [buildEmbed(l, 'coming', watch.next)] }) });
+          await update('coming', watch.next);
         a.coming = watch.next.version;
       }
       if (watch.live && a.live !== watch.live.version && (!a.live || newer(watch.live.version, a.live))) {
         if (prev && worth(watch.live, a.live))
-          posts.push({ kind: 'roblox', make: l => ({ embeds: [buildEmbed(l, 'live', watch.live)] }) });
+          await update('live', watch.live);
         a.live = watch.live.version;
       }
     }
@@ -609,28 +620,62 @@ export class Gateway extends DurableObject {
       snap.changedAt = now;
     await this.ctx.storage.put('snap', snap);
     for (const p of posts)
-      await this.broadcast(p.kind, p.make);
+      await this.broadcast(p.kind, p.make, p.waiting);
+    await this.addNotes(now);
     await this.updateBoards(snap);
     return snap;
   }
 
-  /** One post to every server that wants this kind of news, in its language, pinging its role if it chose one. */
-  async broadcast(kind, make) {
+  /**
+   * One post to every server that wants this kind of news, in its language, pinging its role if it chose one. A Roblox
+   * update still `waiting` for Roblox's notes is kept, to edit them in once they're out.
+   */
+  async broadcast(kind, make, waiting) {
     if (!this.env.DISCORD_TOKEN)
       return;
     const sql = this.ctx.storage.sql;
     for (const s of [...sql.exec(`SELECT * FROM subs WHERE ${kind} = 1`)]) {
-      const body = make(lang(s.locale));
-      const res = await api(this.env, 'POST', `/channels/${s.channel}/messages`, {
-        ...body,
-        ...(s.role ? { content: `<@&${s.role}>`, allowed_mentions: { roles: [s.role] } } : { allowed_mentions: { parse: [] } }),
-      });
+      const res = await api(this.env, 'POST', `/channels/${s.channel}/messages`, addressed(make(lang(s.locale)), s.role));
       if (res.status === 404) // the channel is gone: so is the subscription
         sql.exec('DELETE FROM subs WHERE guild = ?', s.guild);
-      else if (res.ok) // published, for the servers following an announcement channel (a text channel: Discord says no)
-        await api(this.env, 'POST', `/channels/${s.channel}/messages/${(await res.json()).id}/crosspost`);
+      else if (res.ok) {
+        const id = (await res.json()).id;
+        if (waiting)
+          sql.exec('INSERT INTO waiting VALUES (?, ?, ?, ?, ?, ?, ?, ?)', release(waiting.build.version), waiting.kind, JSON.stringify(waiting.build),
+            s.channel, id, s.locale ?? null, s.role ?? null, Date.now());
+        // Published, for the servers following an announcement channel (a text channel: Discord says no). An edit
+        // reaches them too.
+        await api(this.env, 'POST', `/channels/${s.channel}/messages/${id}/crosspost`);
+      }
       this.log('posted', `${kind} ${s.guild} ${res.status}`);
     }
+  }
+
+  /**
+   * Roblox's notes looked for (every ten minutes, for two weeks) for each release posted without them; once they're out,
+   * each of its posts is edited to show them. A post that was deleted, or can't be edited any more, is let go.
+   */
+  async addNotes(now) {
+    const sql = this.ctx.storage.sql;
+    sql.exec('DELETE FROM waiting WHERE at < ?', now - NOTES_FOR);
+    const releases = [...sql.exec('SELECT DISTINCT release FROM waiting')].map(r => r.release);
+    const asked = Object.fromEntries(Object.entries((await this.ctx.storage.get('notesAsked')) ?? {}).filter(([n]) => releases.includes(Number(n))));
+    for (const n of releases) {
+      if (now - (asked[n] ?? 0) < (Number(this.env.NOTES_EVERY_MS) || NOTES_EVERY))
+        continue;
+      asked[n] = now;
+      const notes = await readNotes(this.env, n).catch(() => null);
+      if (!notes)
+        continue;
+      for (const p of [...sql.exec('SELECT rowid, * FROM waiting WHERE release = ?', n)]) {
+        const body = addressed(buildMessage(lang(p.locale), p.kind, JSON.parse(p.build), { notes, liveAt: p.at }), p.role);
+        const res = await api(this.env, 'PATCH', `/channels/${p.channel}/messages/${p.message}`, body);
+        if (res.ok || (res.status >= 400 && res.status < 500 && res.status !== 429))
+          sql.exec('DELETE FROM waiting WHERE rowid = ?', p.rowid);
+        this.log('notes', `${n} ${p.channel} ${res.status}`);
+      }
+    }
+    await this.ctx.storage.put('notesAsked', asked);
   }
 
   /** Each board edited when what it shows has changed; one whose message was deleted is forgotten. */

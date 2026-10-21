@@ -1,9 +1,10 @@
 // The bot's commands and news (DiscordBot/worker) against a fake Discord (its REST API and Gateway) and fake sources (the
-// Roblox watch, Roblox's status page, Bloxkeep's releases), run by wrangler dev: each command's reply, a signature that
-// doesn't verify refused, each kind of news posted once, in English, only where it was asked for, and /verify's captcha
-// (a PNG only that person sees, the code typed into a form, the role given once it's right), /discord (the app's
-// Discord button: an invite that never expires, made again once it stops working), and how many people have Bloxkeep
-// open now (the apps' beats, /online and its dashboard for Bloxkeep's developers only, the line in the bot's status).
+// Roblox watch, Roblox's status page, Bloxkeep's releases, Roblox's release notes), run by wrangler dev: each command's
+// reply, a signature that doesn't verify refused, each kind of news posted once, in English, only where it was asked for
+// (a Roblox update as a card, Roblox's notes edited in once they're out), and /verify's captcha (a PNG only that person
+// sees, the code typed into a form, the role given once it's right), /discord (the app's Discord button: an invite that
+// never expires, made again once it stops working), and how many people have Bloxkeep open now (the apps' beats,
+// /online and its dashboard for Bloxkeep's developers only, the line in the bot's status).
 // No Discord account or token needed. In this folder: npm install, then node features.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -68,7 +69,9 @@ const rest = http.createServer((req, res) => {
   });
 }).listen(REST);
 const posts = channel => calls.filter(c => c.method === 'POST' && c.url === `/channels/${channel}/messages`);
-const patches = () => calls.filter(c => c.method === 'PATCH');
+// Edits: the boards' (an embed), and Roblox updates given Roblox's notes later (a card).
+const patches = () => calls.filter(c => c.method === 'PATCH' && c.body?.embeds);
+const noteEdits = () => calls.filter(c => c.method === 'PATCH' && c.body?.flags === 1 << 15);
 const published = channel => calls.filter(c => c.method === 'POST' && new RegExp(`^/channels/${channel}/messages/m\\d+/crosspost$`).test(c.url));
 
 // ── the fake sources ──
@@ -79,6 +82,17 @@ let watch = {
 };
 let status = { code: 100 };
 let latest = 'v1.0.7';
+// Roblox's notes, per weekly release, as its Creator Hub page carries them; a release not here has no page yet.
+const notes = new Map();
+const CHANGES = [
+  { ReleaseNotesType: 'Improvements', Status: 'Pending', ReleaseNotesText: 'Adds `Class.RunService:BindToSimulation()|BindToSimulation` to the [API](https://create.roblox.com/docs).' },
+  { ReleaseNotesType: 'Improvements', Status: 'Live', ReleaseNotesText: 'Moved `Class.Workspace.GlobalWind|GlobalWind` to the AirProperties category.' },
+  { ReleaseNotesType: 'Improvements', Status: 'Pending', ReleaseNotesText: 'Improves frame rate stability when dense areas are streaming in.' },
+  { ReleaseNotesType: 'Improvements', Status: 'Pending', ReleaseNotesText: 'In the New Luau Type Solver, improves error messages.' },
+  { ReleaseNotesType: 'Fixes', Status: 'Pending', ReleaseNotesText: 'Fixes rare crash accessing networking Stats properties.' },
+  { ReleaseNotesType: 'Fixes', Status: 'Live', ReleaseNotesText: 'In Studio, fixes the Explorer losing its place.' },
+];
+const notesPage = list => `<html><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { data: { releaseNoteContents: { title: 'Release notes', content: list } } } } })}</script></body></html>`;
 const NOTES = '- **Robux at once**: shown as you unlock.\n\n#### New\n- details\n\n**Tiếng Việt**\n\n- **Robux hiện ngay**: lúc mở khoá.\n\n#### Mới\n- chi tiết';
 const src = http.createServer((req, res) => {
   const json = v => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(v)); };
@@ -87,6 +101,8 @@ const src = http.createServer((req, res) => {
   if (req.url === '/releases/latest') { res.writeHead(302, { Location: `http://127.0.0.1:${SRC}/releases/tag/${latest}` }); return res.end(); }
   const m = /^\/api\/tags\/(.+)$/.exec(req.url);
   if (m) return json({ html_url: `https://github.com/minhhoang0122/Bloxkeep/releases/tag/${m[1]}`, body: NOTES });
+  const n = /^\/notes\/release-notes-(\d+)$/.exec(req.url);
+  if (n && notes.has(Number(n[1]))) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(notesPage(notes.get(Number(n[1])))); }
   res.writeHead(404); res.end();
 }).listen(SRC);
 
@@ -135,7 +151,8 @@ function startDev(extra = {}) {
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
     RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
-    ONLINE_FOR_MS: '8000', BEAT_BUDGET: '200', PUBLIC_URL: `http://127.0.0.1:${DEV}`, ...extra,
+    ONLINE_FOR_MS: '8000', BEAT_BUDGET: '200', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
+    NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -152,6 +169,17 @@ async function minute(wait = 2500) {
   await sleep(wait);
 }
 const embedOf = call => call?.body?.embeds?.[0];
+// A card (a Roblox update): its texts in order, its picture, its buttons' links.
+const parts = call => {
+  const all = [];
+  const walk = c => { all.push(c); (c.components ?? []).forEach(walk); if (c.accessory) walk(c.accessory); };
+  (call?.body?.components ?? []).forEach(walk);
+  return all;
+};
+const textsOf = call => parts(call).filter(c => c.type === 10).map(c => c.content);
+const headingOf = call => textsOf(call).find(t => t.startsWith('## '))?.slice(3);
+const pictureOf = call => parts(call).find(c => c.type === 11)?.media.url.split('/').pop();
+const linksOf = call => parts(call).filter(c => c.type === 2).map(c => c.url);
 
 try {
   startDev();
@@ -304,10 +332,15 @@ try {
   watch = { ...watch, builds: [...watch.builds, build('0.745.0.7451000', 'h745', 'changed', 'beta')], beta: { version: '0.745.0.7451000', hash: 'h745' } };
   await minute();
   const coming = posts('c1').at(-1);
-  check('a build coming: posted in English, pinging the role', posts('c1').length === before.c1 + 1 && embedOf(coming)?.title === 'Roblox 0.745.0.7451000 is coming'
-    && coming.body.content === '<@&r1>' && JSON.stringify(coming.body.allowed_mentions) === '{"roles":["r1"]}', JSON.stringify(coming?.body));
-  check('…with what it means for Multi-Roblox', embedOf(coming)?.fields?.[0]?.value === '**May be blocked**' && embedOf(coming)?.fields?.[2]?.value === 'Not yet', JSON.stringify(embedOf(coming)?.fields));
-  check('…the same in the other server, where nobody is pinged', embedOf(posts('c3').at(-1))?.title === 'Roblox 0.745.0.7451000 is coming' && JSON.stringify(posts('c3').at(-1).body.allowed_mentions) === '{"parse":[]}', JSON.stringify(posts('c3').at(-1)?.body));
+  check('a build coming: a card in English, the role pinged above it', posts('c1').length === before.c1 + 1 && coming.body.flags === 1 << 15
+    && headingOf(coming) === 'Roblox 0.745 is coming' && textsOf(coming)[0] === '<@&r1>' && coming.body.content === undefined
+    && JSON.stringify(coming.body.allowed_mentions) === '{"roles":["r1"]}', JSON.stringify(coming?.body));
+  check('…with what it means for Multi-Roblox, its picture and the build', textsOf(coming).includes("Multi-Roblox · **May be blocked**\nRoblox changed the code that keeps it to one window. Try two windows before counting on Multi-Roblox.")
+    && pictureOf(coming) === 'update-changed.png' && textsOf(coming).includes("-# `0.745.0.7451000` · `h745` · on Roblox's test channel"), JSON.stringify(textsOf(coming)));
+  check("…and, Roblox's notes not out yet, a line saying they'll come", textsOf(coming).some(t => t.includes("Roblox hasn't posted its notes for 0.745 yet"))
+    && !linksOf(coming).some(u => u.includes('release-notes')), JSON.stringify(textsOf(coming)));
+  check('…the same in the other server, where nobody is pinged', headingOf(posts('c3').at(-1)) === 'Roblox 0.745 is coming' && textsOf(posts('c3').at(-1))[0].startsWith('## ')
+    && JSON.stringify(posts('c3').at(-1).body.allowed_mentions) === '{"parse":[]}', JSON.stringify(posts('c3').at(-1)?.body));
   check('…published, so servers following the channel get it too (in a text channel Discord refuses: tried once, nothing more)',
     published('c1').length === 1 && published('c3').length === 1, `${published('c1').length} ${published('c3').length}`);
   check('…and the board edited to show it', patches().length === before.patches + 1 && JSON.stringify(embedOf(patches().at(-1))).includes('0.745.0.7451000'), JSON.stringify(patches().at(-1)?.body));
@@ -319,12 +352,29 @@ try {
   watch = { ...watch, live: { version: '0.745.0.7451000', hash: 'h745' } };
   before = base();
   await minute();
-  check('the build goes live: posted once', posts('c1').length === before.c1 + 1 && embedOf(posts('c1').at(-1))?.title === 'Roblox 0.745.0.7451000 is live', embedOf(posts('c1').at(-1))?.title);
+  check('the build goes live: posted once', posts('c1').length === before.c1 + 1 && headingOf(posts('c1').at(-1)) === 'Roblox 0.745 is live'
+    && textsOf(posts('c1').at(-1)).some(t => /^-# `0\.745\.0\.7451000` · `h745` · live <t:\d+:R>$/.test(t)), JSON.stringify(textsOf(posts('c1').at(-1))));
   // A fix within the same release that changes nothing for Multi-Roblox: the board shows it, nobody is told.
   watch = { ...watch, builds: [...watch.builds, build('0.745.0.7451005', 'h7455', 'same')], live: { version: '0.745.0.7451005', hash: 'h7455' }, beta: { version: '0.745.0.7451005', hash: 'h7455' } };
   before = base();
   await minute();
   check('a fix build with no change for Multi-Roblox: no post, the board edited', posts('c1').length === before.c1 && patches().length === before.patches + 1, `${posts('c1').length - before.c1} ${patches().length - before.patches}`);
+
+  // Roblox posts its notes for 0.745: each 0.745 post (coming and live, in both servers) is edited to show them.
+  check("no notes yet: no post edited", noteEdits().length === 0, noteEdits().length);
+  notes.set(745, CHANGES);
+  await minute();
+  const edits = noteEdits(), edit = edits.find(c => c.url.startsWith('/channels/c1/') && headingOf(c) === 'Roblox 0.745 is live');
+  check("Roblox's notes out: the four 0.745 posts edited", edits.length === 4 && edits.filter(c => c.url.startsWith('/channels/c3/')).length === 2, edits.map(c => c.url).join(' '));
+  const whatsNew = textsOf(edit).find(t => t.startsWith("### What's new")) ?? '';
+  check('…with the changes a player notices first, links and API paths as plain words', whatsNew === [
+    "### What's new", '**Improvements**', '- Moved `GlobalWind` to the AirProperties category.', '- Improves frame rate stability when dense areas are streaming in.',
+    '- In the New Luau Type Solver, improves error messages.', '**Fixes**', '- Fixes rare crash accessing networking Stats properties.',
+    '- In Studio, fixes the Explorer losing its place.', '-# 5 of 6 changes'].join('\n'), whatsNew);
+  check("…a button to Roblox's own notes, the role still named, the time it went live kept", linksOf(edit).includes('https://create.roblox.com/docs/release-notes/release-notes-745')
+    && textsOf(edit)[0] === '<@&r1>' && textsOf(edit).some(t => /· live <t:\d+:R>$/.test(t)) && edit.body.flags === 1 << 15, JSON.stringify(edit?.body));
+  await minute();
+  check('…once only', noteEdits().length === 4, noteEdits().length);
 
   // Roblox down: posted after two looks say so; working again after two looks, with how long it was down.
   status = { code: 500 };
@@ -354,10 +404,16 @@ try {
 
   // Turned off: nothing more there.
   await interact(command('notify', { sub: 'off' }));
+  notes.set(746, CHANGES.slice(4));
   watch = { ...watch, builds: [...watch.builds, build('0.746.0.7460001', 'h746', 'same', 'beta')], beta: { version: '0.746.0.7460001', hash: 'h746' } };
   before = base();
   await minute();
   check('/notify off: no more posts there, the others still get theirs', posts('c1').length === before.c1 && posts('c3').length === before.c3 + 1, `${posts('c1').length - before.c1} ${posts('c3').length - before.c3}`);
+  const ready = posts('c3').at(-1);
+  check("a build whose notes are out already: posted with them, its picture for no change", textsOf(ready).some(t => t.startsWith("### What's new\n**Fixes**\n- Fixes rare crash"))
+    && pictureOf(ready) === 'update-same.png' && linksOf(ready).includes('https://create.roblox.com/docs/release-notes/release-notes-746'), JSON.stringify(textsOf(ready)));
+  await minute();
+  check('…and never edited', noteEdits().length === 4, noteEdits().length);
 
   let s = await (await fetch(`http://127.0.0.1:${DEV}/status`)).json();
   check('the bot stayed online throughout', s.state === 'online', s.state);
@@ -380,7 +436,7 @@ try {
   watch = { ...watch, builds: [...watch.builds, build('0.747.0.7470001', 'h747', 'same', 'beta')], beta: { version: '0.747.0.7470001', hash: 'h747' } };
   before = base();
   await minute();
-  check('…and the news goes on from the new object, once', posts('c3').length === before.c3 + 1 && embedOf(posts('c3').at(-1))?.title === 'Roblox 0.747.0.7470001 is coming'
+  check('…and the news goes on from the new object, once', posts('c3').length === before.c3 + 1 && headingOf(posts('c3').at(-1)) === 'Roblox 0.747 is coming'
     && patches().length === before.patches + 1, `${posts('c3').length - before.c3} ${patches().length - before.patches}`);
   await minute();
   check('…the old one never connects again', open === 1, open);

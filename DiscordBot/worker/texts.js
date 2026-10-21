@@ -1,12 +1,18 @@
 // What the bot says, in English and Vietnamese (a server's own language, from Discord), in Bloxkeep's Discord style
 // (docs/discord-style.md): one embed, the news in the title, the colour for how it went, short fields three to a row,
-// times as Discord timestamps, the Roblox watch's own words for what a build means for Multi-Roblox.
+// times as Discord timestamps, the Roblox watch's own words for what a build means for Multi-Roblox. A Roblox update is
+// a card instead (Discord's newer message layout): a heading, a picture for what it means, and what changed in it.
 import { REPO, release } from './sources.js';
 
 export const LOGO = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png';
 export const SITE = 'https://minhhoang0122.github.io/Bloxkeep/';
 const WATCH_DOCS = 'https://github.com/minhhoang0122/bloxkeep/blob/main/docs/roblox-watch.md';
 const STATUS_PAGE = 'https://status.roblox.com';
+// The pictures beside a Roblox update, one per verdict (docs/brand/bot/make-icons.py draws them).
+const ICONS = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bot';
+const ICON = { same: 'same', changed: 'changed', renamed: 'changed', gone: 'gone', first: 'first' };
+/** The flag that makes a message one of Discord's newer layouts (components only: no content, no embeds). */
+export const CARD = 1 << 15;
 const SETUP = `${REPO}/releases/latest/download/Bloxkeep-Setup.exe`;
 export const COLOR = { green: 0x57F287, yellow: 0xFEE75C, red: 0xED4245, blurple: 0x5865F2, grey: 0x4E5058 };
 
@@ -52,6 +58,9 @@ const W = {
     multi: 'Multi-Roblox', version: 'Version', released: 'Released', notYet: 'Not yet',
     coming: v => `Roblox ${v} is coming`, live: v => `Roblox ${v} is live`,
     testChannel: "Checked on Roblox's test channel", notes: 'Release notes', how: 'How the check works',
+    onTest: "on Roblox's test channel", wentLive: 'live', whatsNew: "What's new", better: 'Improvements', fixes: 'Fixes',
+    notesLater: v => `Roblox hasn't posted its notes for ${v} yet. They'll show up here once it does.`,
+    ofAll: (shown, all) => `${shown} of ${all} changes`, robloxNotes: "Roblox's notes",
     down: 'Roblox is having problems', downSaid: 'Roblox says some of its services are not working right now.',
     up: 'Roblox is working again', upSaid: 'All of Roblox is working again.', downFor: 'Down for',
     status: 'Roblox status', allGood: 'All of Roblox is working.', incident: 'Incident',
@@ -77,6 +86,9 @@ const W = {
     multi: 'Multi-Roblox', version: 'Phiên bản', released: 'Phát hành', notYet: 'Chưa',
     coming: v => `Roblox ${v} sắp ra`, live: v => `Roblox ${v} đã ra`,
     testChannel: 'Kiểm tra trên kênh thử nghiệm của Roblox', notes: 'Ghi chú phát hành', how: 'Cách kiểm tra',
+    onTest: 'trên kênh thử nghiệm của Roblox', wentLive: 'ra', whatsNew: 'Có gì mới', better: 'Cải tiến', fixes: 'Sửa lỗi',
+    notesLater: v => `Roblox chưa đăng ghi chú cho bản ${v}. Khi có, tin này sẽ tự cập nhật.`,
+    ofAll: (shown, all) => `${shown} trong ${all} thay đổi`, robloxNotes: 'Ghi chú của Roblox',
     down: 'Roblox đang gặp sự cố', downSaid: 'Roblox báo một số dịch vụ của họ đang không chạy bình thường.',
     up: 'Roblox đã hoạt động lại', upSaid: 'Mọi dịch vụ của Roblox đã chạy bình thường trở lại.', downFor: 'Lỗi trong',
     status: 'Trạng thái Roblox', allGood: 'Mọi dịch vụ của Roblox đều đang chạy bình thường.', incident: 'Sự cố',
@@ -104,7 +116,6 @@ export const words = l => W[l];
 /** Discord's timestamp, which each reader sees in their own time zone and language. */
 export const stamp = (ms, style = 'R') => `<t:${Math.floor(ms / 1000)}:${style}>`;
 const code = v => `\`${v}\``;
-const notesUrl = v => `https://create.roblox.com/docs/release-notes/release-notes-${release(v)}`;
 
 function embed(title, color, description, fields, footer, extra = {}) {
   return {
@@ -116,15 +127,74 @@ function embed(title, color, description, fields, footer, extra = {}) {
   };
 }
 
-/** A build before release (kind "coming") or as it went live ("live"). */
-export function buildEmbed(l, kind, build, liveAt = Date.now()) {
-  const w = W[l], [word, color, sentence] = verdict(l, build.verdict);
-  const small = [...(kind === 'coming' ? [w.testChannel] : []), `[${w.notes}](${notesUrl(build.version)})`, `[${w.how}](${WATCH_DOCS})`];
-  return embed(kind === 'coming' ? w.coming(build.version) : w.live(build.version), color, `${sentence}\n-# ${small.join(' · ')}`, [
-    { name: w.multi, value: `**${word}**`, inline: true },
-    { name: w.version, value: code(build.version), inline: true },
-    { name: w.released, value: kind === 'coming' ? w.notYet : stamp(liveAt), inline: true },
-  ], 'Roblox watch', { url: notesUrl(build.version) });
+/** One of Roblox's changes, short: its links and API paths as plain words, cut at a word near `max` characters. */
+export function change(text, max = 110) {
+  let s = text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    // `Class.Workspace.GlobalWind|GlobalWind` → `GlobalWind`, `Class.TeleportService:ReserveServer()` → `TeleportService:ReserveServer()`
+    .replace(/`([^`]*)`/g, (_, c) => `\`${c.includes('|') ? c.split('|').pop() : c.replace(/^(Class|Enum|Datatype|Library|Global)\./i, '')}\``)
+    .replace(/\s+/g, ' ').trim();
+  if (s.length <= max)
+    return s;
+  s = s.slice(0, max).replace(/\s+\S*$/, '');
+  if ((s.match(/`/g) ?? []).length % 2) // cut inside code: closed again
+    s = s.endsWith('`') ? s.slice(0, -1) : `${s}\``;
+  return `${s.replace(/[\s,.;:(]+$/, '')}…`;
+}
+
+// Changes for creators rather than players: Studio and its windows, Luau and its type checks, the API.
+const FOR_CREATORS = /\b(Studio|Luau|Type Solver|type checking|plugins?|Assistant|API|Properties window|Explorer|Input Action|StyleEditor|Avatar Settings)\b/i;
+
+/**
+ * The few changes shown of each kind: those a player notices first (not for creators, no API names, already on), in
+ * Roblox's own order.
+ */
+function pick(changes, kind, n) {
+  const forPlayers = c => (FOR_CREATORS.test(c.text) ? 0 : 4) + (c.text.includes('`') ? 0 : 2) + (c.live ? 1 : 0);
+  return changes.map((c, i) => ({ ...c, i })).filter(c => c.kind === kind)
+    .sort((a, b) => forPlayers(b) - forPlayers(a) || a.i - b.i).slice(0, n).sort((a, b) => a.i - b.i);
+}
+
+const text = content => ({ type: 10, content });
+const link = (label, url) => ({ type: 2, style: 5, label, url });
+
+/**
+ * A build before release (kind "coming") or as it went live ("live"), as a card: the news and what it means for
+ * Multi-Roblox beside its picture, the build, then what's new from Roblox's notes (`notes`, from readNotes), or a line
+ * saying they'll come (the bot edits them in once Roblox posts them).
+ */
+export function buildMessage(l, kind, build, { notes = null, liveAt = Date.now() } = {}) {
+  const w = W[l], [word, color, sentence] = verdict(l, build.verdict), v = `0.${release(build.version)}`;
+  const facts = [code(build.version), ...(build.hash ? [code(build.hash)] : []), kind === 'coming' ? w.onTest : `${w.wentLive} ${stamp(liveAt)}`];
+  let changes = `-# ${w.notesLater(v)}`;
+  if (notes) {
+    const list = [['better', w.better], ['fix', w.fixes]].map(([k, name]) => [name, pick(notes.changes, k, 3)]).filter(([, cs]) => cs.length);
+    const shown = list.reduce((n, [, cs]) => n + cs.length, 0);
+    changes = [...list.map(([name, cs]) => `**${name}**\n${cs.map(c => `- ${change(c.text)}`).join('\n')}`),
+      `-# ${w.ofAll(shown, notes.changes.length)}`].join('\n');
+  }
+  return {
+    flags: CARD,
+    components: [{
+      type: 17, accent_color: color, components: [
+        {
+          type: 9,
+          components: [text(`## ${kind === 'coming' ? w.coming(v) : w.live(v)}`), text(`${w.multi} · **${word}**\n${sentence}`), text(`-# ${facts.join(' · ')}`)],
+          accessory: { type: 11, media: { url: `${ICONS}/update-${ICON[build.verdict] ?? 'checking'}.png` }, description: `${w.multi}: ${word}` },
+        },
+        { type: 14, divider: true, spacing: 1 },
+        text(`### ${w.whatsNew}\n${changes}`),
+        { type: 1, components: [...(notes ? [link(w.robloxNotes, notes.url)] : []), link(w.how, WATCH_DOCS)] },
+      ],
+    }],
+  };
+}
+
+/** A post with the server's role named on top (pinged), or nobody pinged: in the content, or above a card. */
+export function addressed(body, role) {
+  const allowed_mentions = role ? { roles: [role] } : { parse: [] };
+  if (body.flags & CARD)
+    return { ...body, components: [...(role ? [text(`<@&${role}>`)] : []), ...body.components], allowed_mentions };
+  return { ...body, ...(role ? { content: `<@&${role}>` } : {}), allowed_mentions };
 }
 
 function partFields(l, status) {

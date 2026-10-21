@@ -27,6 +27,24 @@ field per item.
 | Image | Only for something to look at: the play-time summary's chart |
 | Footer | `Bloxkeep · <what sent it>` ("Roblox watch", "Feedback", "Alerts", "Summary") with the logo as `icon_url`, and the embed `timestamp` set to when it happened |
 
+## The Roblox update card
+
+The bot's Roblox update (`DiscordBot/worker/texts.js` `buildMessage`) is a card in Discord's newer layout (components,
+flag `1 << 15`) instead of an embed, so it can carry a heading, a list and buttons:
+
+- A container in the verdict's colour. Beside its picture, a `##` heading ("Roblox 0.744 is live", the weekly release
+  only), "Multi-Roblox · **No change**" with the watch's sentence, and a small line with the build, its hash and when it
+  went live (or "on Roblox's test channel").
+- The picture is the verdict's icon (`docs/brand/bot/update-*.png`, drawn by `make-icons.py`): an update arrow around a
+  check, `!`, `×`, a dot (first build seen) or three dots (not checked yet). Not the logo: the bot's avatar is the logo
+  already.
+- A divider, then "What's new" from Roblox's own notes: up to three improvements and three fixes, those a player notices
+  first (not about Studio, Luau or the API), each cut near 110 characters, and "6 of 33 changes". Until Roblox posts
+  its notes (usually after the build is live), a small line says they will show up; the bot edits them into each post
+  once they're out.
+- Link buttons: Roblox's notes (once out) and how the check works. The role, when a server pings one, is a line above
+  the card.
+
 ## Words
 
 - Short and plain, the way the reader would say it. "Multi-Roblox: no change", not "No change to Roblox's

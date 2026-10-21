@@ -1,6 +1,7 @@
 // Where the bot's news comes from, read every minute by its object (worker.js): Bloxkeep's Roblox watch (the build Roblox
 // serves, the one on its test channel before release, and what each means for Multi-Roblox), Roblox's own status page,
-// and Bloxkeep's newest public release. A source that can't be read is left as it was; nothing is announced from it.
+// and Bloxkeep's newest public release; Roblox's release notes once a release has been announced, until they're out.
+// A source that can't be read is left as it was; nothing is announced from it.
 export const REPO = 'https://github.com/minhhoang0122/Bloxkeep';
 const UA = 'BloxkeepBot (https://github.com/minhhoang0122/Bloxkeep)';
 // Each one's address can be pointed elsewhere (DiscordBot/test runs them against its own fakes).
@@ -9,6 +10,7 @@ const URLS = {
   STATUS_URL: 'https://api.status.io/1.0/status/59db90dbcdeb2f04dadcf16d', // status.roblox.com is a status.io page
   LATEST_URL: `${REPO}/releases/latest`,
   RELEASE_API_URL: 'https://api.github.com/repos/minhhoang0122/Bloxkeep/releases/tags/',
+  NOTES_URL: 'https://create.roblox.com/docs/release-notes/release-notes-',
 };
 const url = (env, key) => env[key] || URLS[key];
 
@@ -88,4 +90,28 @@ export async function readRelease(env, tag) {
   } catch {
     return { tag, version: tag.replace(/^v/, ''), url: page, en: '', vi: '' };
   }
+}
+
+/** Where Roblox's notes for a weekly release are read (744 → .../release-notes-744). */
+export const notesPage = (env, n) => url(env, 'NOTES_URL') + n;
+
+/**
+ * Roblox's release notes for a weekly release (744), each change with its kind ("Improvements" or "Fixes") and whether
+ * it is on already ("Live") or still waits behind a switch ("Pending"); null while Roblox hasn't posted them (the page
+ * is missing, or has no changes yet). They come from the data the Creator Hub page carries for its own drawing.
+ */
+export async function readNotes(env, n) {
+  const res = await fetch(notesPage(env, n), { headers: { 'User-Agent': UA, Accept: 'text/html' } });
+  if (res.status === 404)
+    return null;
+  if (!res.ok)
+    throw new Error(`HTTP ${res.status}`);
+  const m = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(await res.text());
+  const list = m ? JSON.parse(m[1])?.props?.pageProps?.data?.releaseNoteContents?.content : null;
+  if (!Array.isArray(list) || !list.length)
+    return null;
+  return {
+    url: notesPage({}, n),
+    changes: list.filter(c => c?.ReleaseNotesText).map(c => ({ kind: c.ReleaseNotesType === 'Fixes' ? 'fix' : 'better', live: c.Status === 'Live', text: String(c.ReleaseNotesText) })),
+  };
 }

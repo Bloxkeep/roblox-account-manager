@@ -8,7 +8,9 @@
   Shows webhook payloads (what Bloxkeep, the Roblox watch and the feedback Worker post) the way Discord draws them in
   its dark theme, to look at a message before it goes out. Open with ?src=<json file next to this page or a URL>; the
   file holds one payload or a list of them, each optionally {"label": "...", "payload": {...}}. Discord's markdown is
-  drawn in part: **bold**, *italic*, `code`, [links](url), -# small lines, > quotes, <t:unix:style> timestamps.
+  drawn in part: **bold**, *italic*, `code`, [links](url), -# small lines, > quotes, headings, lists, <t:unix:style>
+  timestamps; and Discord's newer layout (the bot's Roblox update cards: container, section, text, thumbnail, separator,
+  link buttons).
 -->
 <style>
   :root { color-scheme: dark; }
@@ -45,6 +47,23 @@
   .quote { display: block; border-left: 4px solid #4e5058; padding-left: 12px; }
   .ts { background: rgba(255, 255, 255, .06); border-radius: 3px; padding: 0 2px; }
   .err { color: #f23f43; }
+  /* Discord's newer message layout (flag 1 << 15): a container with an accent, sections, texts, separators, buttons. */
+  .card { max-width: 516px; margin-top: 4px; background: #2b2d31; border: 1px solid #3f4147; border-left: 4px solid #4e5058;
+    border-radius: 8px; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; }
+  .section { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; align-items: start; }
+  .section > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .card-thumb { width: 85px; height: 85px; border-radius: 8px; object-fit: cover; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; }
+  .h1, .h2, .h3 { display: block; font-weight: 700; color: #f2f3f5; line-height: 1.25; }
+  .h1 { font-size: 24px; } .h2 { font-size: 20px; } .h3 { font-size: 16px; }
+  .li { display: block; padding-left: 18px; text-indent: -12px; }
+  .li::before { content: '•'; display: inline-block; width: 12px; text-indent: 0; }
+  .sep { border: 0; border-top: 1px solid #3f4147; margin: 4px 0; width: 100%; }
+  .sep.big { margin: 12px 0; } .sep.none { border-top-color: transparent; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 8px; background: #4e5058;
+    color: #fff; font-size: 14px; font-weight: 500; }
+  .btn::after { content: '↗'; font-size: 13px; opacity: .8; }
 </style>
 </head>
 <body>
@@ -77,6 +96,9 @@
     const lines = esc(text).split('\n').map(line => {
       if (line.startsWith('-# ')) return `<span class="small">${line.slice(3)}</span><!--block-->`;
       if (line.startsWith('&gt; ')) return `<span class="quote">${line.slice(5)}</span><!--block-->`;
+      const h = /^(#{1,3}) (.*)$/.exec(line);
+      if (h) return `<span class="h${h[1].length}">${h[2]}</span><!--block-->`;
+      if (line.startsWith('- ')) return `<span class="li">${line.slice(2)}</span><!--block-->`;
       return line;
     });
     let h = lines.join('\n');
@@ -124,11 +146,25 @@
       ${e.footer || footerTime ? `<div class="footer">${e.footer?.icon_url ? `<img src="${esc(e.footer.icon_url)}">` : ''}<span>${esc(e.footer?.text || '')}${e.footer?.text && footerTime ? ' • ' : ''}${esc(footerTime)}</span></div>` : ''}
     </div>`;
   }
+  // A message in Discord's newer layout: each component as Discord draws it (the ones these messages use).
+  function componentHtml(c) {
+    switch (c.type) {
+      case 17: return `<div class="card" style="border-left-color:#${(c.accent_color ?? 0x4e5058).toString(16).padStart(6, '0')}">${c.components.map(componentHtml).join('')}</div>`;
+      case 9: return `<div class="section"><div>${c.components.map(componentHtml).join('')}</div>${c.accessory ? componentHtml(c.accessory) : ''}</div>`;
+      case 10: return `<div class="text">${md(c.content)}</div>`;
+      case 11: return `<img class="card-thumb" src="${esc(c.media.url)}" alt="${esc(c.description)}">`;
+      case 14: return `<hr class="sep${c.spacing === 2 ? ' big' : ''}${c.divider === false ? ' none' : ''}">`;
+      case 1: return `<div class="row">${c.components.map(componentHtml).join('')}</div>`;
+      case 2: return `<a class="btn" href="${esc(c.url)}">${esc(c.label)}</a>`;
+      default: return `<p class="err">component ${c.type}</p>`;
+    }
+  }
   function messageHtml(p, files = {}) {
     const now = new Intl.DateTimeFormat(navigator.language, { timeStyle: 'short' }).format(new Date());
     return `<div class="msg">
       <div class="avatar" style="${p.avatar_url ? `background-image:url('${esc(p.avatar_url)}')` : ''}"></div>
       <div><div class="head"><span class="name">${esc(p.username || 'Webhook')}</span><span class="app">APP</span><span class="time">${esc(now)}</span></div>
+        ${p.flags & (1 << 15) ? (p.components || []).map(componentHtml).join('') : ''}
         ${p.content ? `<div class="content">${md(p.content)}</div>` : ''}
         ${(p.embeds || []).map(e => embedHtml(e, files)).join('')}
       </div></div>`;
