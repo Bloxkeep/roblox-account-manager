@@ -221,6 +221,9 @@ html [data-theme="dark" lang="vi"]
             span "Danh sách tài khoản hiện mỗi tài khoản đã chơi trên máy này được bao lâu, ngay sau tên game, giống trên thẻ."
           li
             svg.i #u7ty99
+            span "Nút Vào game hỏi Roblox trước xem từng tài khoản có vào được game không, giống app Roblox vẫn làm, và trước khi mở sẽ báo tài khoản nào không vào được cùng lý do: cần xác minh tuổi, khu vực không có game, tài khoản bị hạn chế, phải mua game, game riêng tư hay chỉ cho bạn bè…"
+          li
+            svg.i #u7ty99
             span "Cài đặt › Cập nhật Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng: khi Bloxkeep đang mở, cứ 10 phút app báo một lần để người làm Bloxkeep biết có bao nhiêu người đang dùng. Chỉ gửi một mã ngẫu nhiên, phiên bản và ngôn ngữ; tắt ở đó nếu không muốn."
         h4.improved.wn-kind.wn-sub "Cải thiện"
           svg.i #1l5qw3q
@@ -269,7 +272,7 @@ html [data-theme="dark" lang="vi"]
             span "Bị kick vì AFK lại được nhận ra trên Roblox 0.744 (bản này chỉ ghi lý do bằng chữ): thông báo AFK lại báo khi chống AFK không kịp can thiệp."
           li
             svg.i #yqrnd9
-            span "Phiên đăng nhập đã lưu vẫn dùng được khi Roblox đổi mới: khi Roblox gửi cookie đăng nhập mới cho một tài khoản, Bloxkeep lưu lại (sau khi kiểm tra đúng là tài khoản đó), và tự làm mới phiên nào Roblox chưa đổi trong một tuần. Trước đây một tài khoản có thể bỗng dưng bị đăng xuất."
+            span "Phiên đăng nhập đã lưu vẫn dùng được khi Roblox đổi mới: khi Roblox gửi cookie đăng nhập mới cho một tài khoản, Bloxkeep lưu lại (sau khi kiểm tra đúng là tài khoản đó). Trước đây một tài khoản có thể bỗng dưng bị đăng xuất."
           li
             svg.i #yqrnd9
             span "Khi bật Tiết kiệm RAM cho cửa sổ chạy nền và mở từ 5 cửa sổ Roblox trở lên, vài cửa sổ không còn bị giật (nhất là lúc kéo): Bloxkeep không còn ép chúng nhả hết RAM mỗi 2 phút khi máy dùng tới 85% RAM."

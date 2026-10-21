@@ -219,6 +219,7 @@ Xem thêm trong hướng dẫn: [Mở trang web](docs/guide/playing.vi.md#mở-t
 - Nút ghi **Chọn tài khoản** (bị mờ) cho tới khi bạn chọn tài khoản; có game trong ô thì ghi **Vào game** kèm số tài khoản; ô game để trống thì ghi **Mở Roblox**: mỗi tài khoản đã chọn mở Roblox ở màn hình chính. Bên cạnh có **Mở Roblox mà không vào game**, và **Đóng**, đóng Roblox của các tài khoản đã chọn.
 - Các tài khoản mở lần lượt, cách nhau một khoảng **Chờ giữa các tài khoản** (mặc định 8 giây; preset có thể đặt riêng). Trong lúc đang mở, nút **Vào game** đổi thành **Dừng**.
 - Tài khoản đang ở đúng game này thì được giữ nguyên. Tài khoản đang ở game khác thì Bloxkeep hỏi trước, rồi đóng và mở lại vào game mới. Tài khoản bị ban và tài khoản Roblox VNG bị bỏ qua, có ghi trong kết quả; tài khoản nào không mở được thì hộp **Một số tài khoản chưa mở được** nói rõ lý do.
+- Trước khi mở, Bloxkeep hỏi Roblox xem từng tài khoản có vào được game không, giống app Roblox vẫn làm. Nếu Roblox bảo không (cần xác minh tuổi, khu vực không có game, tài khoản bị hạn chế, phải mua game, game riêng tư hay chỉ cho bạn bè…), Bloxkeep báo lý do và hỏi có mở luôn không. Sau 6 giây Roblox chưa trả lời thì vẫn mở như bình thường.
 
 Xem thêm trong hướng dẫn: [Vào game](docs/guide/playing.vi.md).
 
@@ -512,7 +513,7 @@ Thêm được tài khoản Roblox VNG bằng tab **Roblox VNG** (đăng nhập 
 
 | Nơi nhận | Khi nào, gửi gì |
 |---|---|
-| Máy chủ API của Roblox (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Đăng nhập (mật khẩu chỉ gửi tới `auth.roblox.com`), kiểm tra phiên và tình trạng ban, làm mới phiên đăng nhập của tài khoản nào Roblox chưa làm mới trong một tuần, trạng thái mỗi 30 giây, tìm game, server, bạn bè, người chơi, vé vào game, phiên bản Roblox mới nhất |
+| Máy chủ API của Roblox (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Đăng nhập (mật khẩu chỉ gửi tới `auth.roblox.com`), kiểm tra phiên và tình trạng ban, lưu phiên đăng nhập mới mà Roblox gửi về khi đổi mới, trạng thái mỗi 30 giây, tìm game, server, bạn bè, người chơi, vé vào game, phiên bản Roblox mới nhất |
 | `www.roblox.com` | Cửa sổ đăng nhập bằng trình duyệt, trang cá nhân, link vào game giao cho Roblox |
 | `*.rbxcdn.com` | Ảnh đại diện và ảnh game |
 | `*.robloxapp.vnggames.com` | Như trên, chỉ cho tài khoản Roblox VNG |

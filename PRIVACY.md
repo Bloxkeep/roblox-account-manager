@@ -16,7 +16,7 @@ stored. The other files in Bloxkeep's data folder, and how they're protected, ar
 
 | Where | When, and what |
 |---|---|
-| Roblox's API hosts (`*.roblox.com`, and `*.robloxapp.vnggames.com` for Roblox VNG accounts) | Only for accounts you added: signing in (the password only goes to `auth.roblox.com`), session and ban checks, renewing each saved sign-in that Roblox hasn't renewed for a week, status every 30 seconds, game, server, friend and player lookups, join tickets, the newest Roblox version |
+| Roblox's API hosts (`*.roblox.com`, and `*.robloxapp.vnggames.com` for Roblox VNG accounts) | Only for accounts you added: signing in (the password only goes to `auth.roblox.com`), session and ban checks, saving the new sign-in Roblox sends when it renews one, status every 30 seconds, game, server, friend and player lookups, join tickets, the newest Roblox version |
 | `www.roblox.com` | The browser sign-in window, profiles, and the join link handed to Roblox |
 | `*.rbxcdn.com` | Avatars and game pictures |
 | Roblox's captcha providers (Arkose Labs, HUMAN Security) | Only in the puzzle window, when Roblox asks for a captcha during password sign-in |

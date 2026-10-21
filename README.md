@@ -225,6 +225,7 @@ More in the user guide: [Open website](docs/guide/playing.md#open-website).
 - The button reads **Select accounts** (greyed out) until you choose some, **Play** and the number of accounts with a game in the box, or **Open Roblox** with the box empty: each chosen account opens Roblox on its home screen. Next to it: **Open Roblox without joining a game**, and **Close**, which closes Roblox for the selected accounts.
 - Accounts open one after another, with **Wait between accounts** in between (8 seconds by default; a preset can have its own). While they open, **Play** becomes **Stop**.
 - An account already in this game is left as it is. One in another game is asked about first, then closed and opened again in the new game. Banned and Roblox VNG accounts are skipped, with a line in the result, and **Some accounts didn't open** says why for any that failed.
+- Before opening, Bloxkeep asks Roblox whether each account can play the game, as Roblox's own app does. If Roblox says one can't (an age check, its region, a restricted account, a game to buy, a private or friends-only game…), you're told why and asked whether to open it anyway. With no answer within 6 seconds, Play goes on as usual.
 
 More in the user guide: [Playing](docs/guide/playing.md).
 
@@ -518,7 +519,7 @@ You can add Roblox VNG accounts on the **Roblox VNG** tab (with your phone, conf
 
 | Where | When, and what |
 |---|---|
-| Roblox's API hosts (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Signing in (the password only goes to `auth.roblox.com`), session and ban checks, renewing each saved sign-in that Roblox hasn't renewed for a week, status every 30 seconds, game, server, friend and player lookups, join tickets, the newest Roblox version |
+| Roblox's API hosts (`auth`, `users`, `presence`, `friends`, `games`… `.roblox.com`) | Signing in (the password only goes to `auth.roblox.com`), session and ban checks, saving the new sign-in Roblox sends when it renews one, status every 30 seconds, game, server, friend and player lookups, join tickets, the newest Roblox version |
 | `www.roblox.com` | The browser sign-in window, profiles, and the join link handed to Roblox |
 | `*.rbxcdn.com` | Avatars and game pictures |
 | `*.robloxapp.vnggames.com` | The same as the Roblox API hosts, for Roblox VNG accounts only |

@@ -82,6 +82,7 @@ Một lượt mở diễn ra thế này:
 
 - Các tài khoản mở lần lượt, cách nhau một khoảng **Chờ giữa các tài khoản** (**Cài đặt › Khởi chạy**, mặc định 8 giây; preset có thể đặt riêng).
 - Tài khoản đang ở đúng game này thì được giữ nguyên. Tài khoản đang ở game khác thì Bloxkeep hỏi trước, rồi đóng và mở lại vào game mới.
+- Trước khi mở, Bloxkeep hỏi Roblox xem từng tài khoản có vào được game không, giống app Roblox vẫn làm. Nếu Roblox bảo không (cần xác minh tuổi, khu vực không có game, tài khoản bị hạn chế, phải mua game, game riêng tư hay chỉ cho bạn bè…), Bloxkeep báo lý do và hỏi có mở luôn không. Sau 6 giây Roblox chưa trả lời thì vẫn mở như bình thường.
 - Tài khoản bị ban bị bỏ qua, có ghi trong kết quả. Nếu có tài khoản không mở được, hộp **Một số tài khoản chưa mở được** liệt kê lý do.
 - Mở xong, các cửa sổ có thể tự xếp: xem [Cửa sổ và thống kê](windows-and-stats.vi.md).
 

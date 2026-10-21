@@ -2822,6 +2822,17 @@ public sealed partial class AppController : IDisposable
                     warnings.Add(("switch", L.F("{0} will leave what they're playing now and open this game instead.",
                         Names(leaving))));
             }
+            // Accounts Roblox says can't play this game (an age check, its region, a restricted account, a game to buy…),
+            // as its own client asks before joining: asked first, with why, instead of a window that never gets in. Only on
+            // Play: a preset may run with nobody there to answer, and an answered question (force) isn't asked again.
+            if (target is not null && presetId is null && !force)
+            {
+                Progress(L.T("Asking Roblox whether the accounts can play this game…"));
+                var unplayable = await UnplayableAsync(accounts, target.PlaceId, ct);
+                Progress(null);
+                foreach (var why in unplayable.GroupBy(u => u.Why))
+                    warnings.Add(("playability", L.F("{0} can't play this game: {1}.", Names(why.Select(u => u.Account)), why.Key)));
+            }
             // Accounts this game banned, as Bloxkeep saw it: Roblox would most likely show Join Error 600. Asked when
             // opened by hand; a preset left them out above.
             if (target is not null && accounts.Where(acc => GameBanOf(acc, target.PlaceId) is not null).ToList() is { Count: > 0 } bannedHere)
@@ -3715,7 +3726,6 @@ public sealed partial class AppController : IDisposable
         Step(() => RestartDueClients(now));
         Step(() => RunSignInCheckIfDue(now));
         Step(SaveRenewedSignIns); // a cookie Roblox renewed in an answer goes to its account
-        Step(() => RenewSignInsIfDue(now));
         Step(() => RefreshRobuxIfDue(now));
         Step(() => TickDiscord(now, players));
         if (!_presenceBusy && now >= _nextPresence)
@@ -4067,6 +4077,83 @@ public sealed partial class AppController : IDisposable
             RobloxProcesses.Close(info.Pid);
         }
     }
+
+    /// <summary>Roblox's answer to whether an account can play a game (a field, so the checks can answer for Roblox).</summary>
+    Func<Account, long, CancellationToken, Task<Playability?>> _askPlayability =
+        (account, universeId, ct) => RobloxApi.GetPlayabilityAsync(account.Cookie, account.Realm, universeId, ct);
+    /// <summary>The longest Play waits for Roblox's word on whether the accounts can play the game; no word, no question.</summary>
+    static readonly TimeSpan PlayabilityLimit = TimeSpan.FromSeconds(6);
+
+    /// <summary>
+    /// The accounts Roblox says can't play the game, each with why, in the person's words. A game not known, an account
+    /// without a sign-in, or no answer in time (offline, too many requests) asks nothing: Play goes on as before.
+    /// </summary>
+    async Task<List<(Account Account, string Why)>> UnplayableAsync(List<Account> accounts, long placeId, CancellationToken ct)
+    {
+        var asking = accounts.Where(a => a.Cookie.Length > 0 && a.CookieValid != false).ToList();
+        if (asking.Count == 0)
+            return [];
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(PlayabilityLimit);
+        try
+        {
+            if (!HasGame(placeId, false))
+                await LoadGamesAsync([(placeId, 0L)]).WaitAsync(limit.Token);
+            if (_games.GetValueOrDefault(placeId)?.UniverseId is long universe && universe > 0)
+            {
+                using var gate = new SemaphoreSlim(8);
+                async Task<(Account Account, Playability? Answer)> Ask(Account account)
+                {
+                    try
+                    {
+                        await gate.WaitAsync(limit.Token);
+                        try
+                        {
+                            return (account, await _askPlayability(account, universe, limit.Token));
+                        }
+                        finally
+                        {
+                            gate.Release();
+                        }
+                    }
+                    catch (Exception ex) when (RobloxApi.IsExpectedError(ex) || ex is OperationCanceledException && !ct.IsCancellationRequested)
+                    {
+                        return (account, null);
+                    }
+                }
+                var answers = await Task.WhenAll(asking.Select(Ask));
+                return answers.Where(x => x.Answer is { Playable: false }).Select(x => (x.Account, PlayabilityWhy(x.Answer!))).ToList();
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+        }
+        return [];
+    }
+
+    /// <summary>Why Roblox says an account can't play a game, in the person's words; else Roblox's own, else its status.</summary>
+    static string PlayabilityWhy(Playability answer) => answer.Status switch
+    {
+        2 => L.T("Roblox doesn't take this account's sign-in"),
+        3 or 9 => L.T("the game is under review by Roblox"),
+        4 or 13 => L.T("the game isn't set up to be played"),
+        5 => L.T("the game is private"),
+        6 => L.T("only the creator's friends can play it"),
+        7 => L.T("only the group's members can play it"),
+        8 or 22 => L.T("it can't be played on this device"),
+        10 or 21 => L.T("the game has to be bought first"),
+        11 => L.T("Roblox has restricted this account"),
+        12 => L.T("the game is temporarily unavailable"),
+        14 or 15 or 16 => L.T("it isn't available in this region"),
+        17 or 18 or 27 => L.T("parental controls block it"),
+        19 or 20 or 24 or 26 => L.T("it needs an age check"),
+        23 => L.T("the game has no age rating yet"),
+        29 => L.T("it needs a trusted friend"),
+        30 => L.T("it needs Roblox Plus"),
+        31 or 32 or 33 => L.T("only the game's editors or testers can play it"),
+        _ when answer.Text is { } said => said.TrimEnd('.'),
+        _ => L.F("Roblox says no (status {0})", answer.Status?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?"),
+    };
 
     /// <summary>Clients whose game ban was noted (once each).</summary>
     readonly HashSet<int> _gameBanNoted = new();

@@ -31,6 +31,31 @@ public static class Realm
     public static string Website(string realm) => realm == Vng ? "https://www.robloxapp.vnggames.com" : "https://www.roblox.com";
 }
 
+/// <summary>
+/// Roblox's answer to whether an account can play a game (games' multiget-playability-status, which Roblox's own client
+/// asks before joining): <see cref="Status"/> is its PlayabilityStatus (1 playable, 11 account restricted, 26 age check
+/// required…), <see cref="Text"/> Roblox's own words for why not.
+/// </summary>
+public sealed record Playability(bool Playable, int? Status, string? Text)
+{
+    /// <summary>The names of Roblox's PlayabilityStatus numbers, as its games API documents them: its live answer gives the name.</summary>
+    static readonly string[] Names =
+    [
+        "UnplayableOtherReason", "Playable", "GuestProhibited", "GameUnapproved", "IncorrectConfiguration", "UniverseRootPlaceIsPrivate",
+        "InsufficientPermissionFriendsOnly", "InsufficientPermissionGroupOnly", "DeviceRestricted", "UnderReview", "PurchaseRequired",
+        "AccountRestricted", "TemporarilyUnavailable", "PlaceHasNoPublishedVersion", "ComplianceBlocked",
+        "ContextualPlayabilityRegionalAvailability", "ContextualPlayabilityRegionalCompliance",
+        "ContextualPlayabilityAgeRecommendationParentalControls", "ContextualPlayabilityExperienceBlockedParentalControls",
+        "ContextualPlayabilityAgeGated", "ContextualPlayabilityUnverifiedSeventeenPlusUser", "FiatPurchaseRequired",
+        "FiatPurchaseDeviceRestricted", "ContextualPlayabilityUnrated", "ContextualPlayabilityAgeGatedByDescriptor",
+        "ContextualPlayabilityGeneral", "ContextualPlayabilityAgeCheckRequired", "ContextualPlayabilityRequireParentApproval",
+        "ContextualPlayabilityCoreGated", "ContextualPlayabilityTrustedFriendRequired", "PlusSubscriptionRequired",
+        "ContextualPlayabilityPlaytestDisabled", "InsufficientPermissionEditorsOnly", "InsufficientPermissionPlayTestersOnly",
+    ];
+
+    public static int? StatusOf(string? name) => Array.IndexOf(Names, name) is >= 0 and var at ? at : null;
+}
+
 /// <summary>A Quick Login code. <see cref="PrivateKey"/> is a secret: it never leaves the app's memory.</summary>
 public sealed record QuickLoginCode(string Realm, string Code, string PrivateKey, DateTime ExpiresUtc, string? ImagePath);
 
@@ -1238,22 +1263,34 @@ public static class RobloxApi
     }
 
     /// <summary>
-    /// Has Roblox swap the account's session for a new one (POST auth…/v1/session/refresh, no body): its answer sets the
-    /// new cookie, queued like any other renewal, and the one sent stops working ("Logs out user from the current
-    /// session and create a new one", the endpoint's own description). Roblox staff gave it on 2026-05-19 as the way to
-    /// get an up-to-date cookie while many endpoints don't send one (devforum.roblox.com/t/4328913/38).
+    /// Whether Roblox lets the account play the game (universe), as its own client asks before joining: GET games'
+    /// /v1/games/multiget-playability-status with the account's cookie. Null when Roblox gave no answer for that game.
     /// </summary>
-    public static async Task RefreshSessionAsync(string cookie, string realm, CancellationToken ct = default)
+    public static async Task<Playability?> GetPlayabilityAsync(string cookie, string realm, long universeId, CancellationToken ct = default)
     {
         realm = Realm.Normalize(realm);
-        using var res = await PostWithCsrfAsync(Realm.Api(realm, "auth") + "/v1/session/refresh", cookie, "", null, ct, realm);
-        if (res.IsSuccessStatusCode)
-            return;
-        if (res.StatusCode == HttpStatusCode.Unauthorized)
-            throw new RobloxApiException(L.T("This account was signed out — sign in to it again."), cookieInvalid: true);
-        if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
-        throw Refused($"Session refresh{(realm == Realm.Vng ? " (VNG)" : "")}", res.StatusCode, await res.Content.ReadAsStringAsync(ct));
+        using var doc = await GetJsonAsync(Realm.Api(realm, "games") + "/v1/games/multiget-playability-status?universeIds="
+            + universeId.ToString(CultureInfo.InvariantCulture), ct, cookie);
+        if (doc is null || doc.RootElement.ValueKind != JsonValueKind.Array)
+            return null;
+        foreach (var e in doc.RootElement.EnumerateArray())
+        {
+            if (e.ValueKind != JsonValueKind.Object
+                || e.TryGetProperty("universeId", out var id) && id.ValueKind == JsonValueKind.Number && id.GetInt64() != universeId)
+                continue;
+            // The documented number, or the name Roblox's live answer gives (seen 2026-10-21: "GuestProhibited").
+            int? status = e.TryGetProperty("playabilityStatus", out var s) ? s.ValueKind switch
+            {
+                JsonValueKind.Number when s.TryGetInt32(out int n) => n,
+                JsonValueKind.String => Playability.StatusOf(s.GetString()),
+                _ => null,
+            } : null;
+            bool playable = e.TryGetProperty("isPlayable", out var p) ? p.ValueKind == JsonValueKind.True : status == 1;
+            string? text = e.TryGetProperty("unplayableDisplayText", out var w) && w.ValueKind == JsonValueKind.String
+                && w.GetString() is { Length: > 0 } said ? said.Trim() : null;
+            return new Playability(playable, status, text);
+        }
+        return null;
     }
 
     /// <summary>Turns a "roblox.com/share?code=…&amp;type=Server" link into the place and private-server link code.</summary>

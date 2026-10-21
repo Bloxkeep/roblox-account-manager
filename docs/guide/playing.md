@@ -82,6 +82,7 @@ How a launch goes:
 
 - Accounts open one after another, with **Wait between accounts** in between (**Settings › Launching**, 8 seconds by default; a preset can have its own).
 - An account already in this game is left as it is. An account in another game is asked about first, then closed and opened again in the new game.
+- Before opening, Bloxkeep asks Roblox whether each account can play the game, as Roblox's own app does. If Roblox says one can't (an age check, its region, a restricted account, a game to buy, a private or friends-only game…), you're told why and asked whether to open it anyway. With no answer within 6 seconds, Play goes on as usual.
 - Banned accounts are skipped, with a line in the result. If some accounts fail, **Some accounts didn't open** lists why.
 - Afterwards the windows can arrange themselves: see [Windows and statistics](windows-and-stats.md).
 

@@ -9,10 +9,9 @@ namespace Bloxkeep.Tests;
 /// Saved sign-ins kept up to date as Roblox renews them (AppController.SignIns.cs, RobloxApi's cookie watch): a new
 /// .ROBLOSECURITY in the answer to any request made with an account's cookie is saved to that account, on disk at once,
 /// but only when Roblox says it signs in that same user; a cookie deleted or already expired, or set in an answer to a
-/// request without a cookie, changes nothing. A sign-in not renewed for a week is renewed on purpose (POST
-/// auth…/v1/session/refresh), never for an account signed out, banned or open on the website, and not again within the
-/// week. Roblox here is a stand-in answering in this process (RobloxApi.StandIn), with made-up cookies: nothing is
-/// asked of Roblox's servers.
+/// request without a cookie, changes nothing. Bloxkeep never renews one on purpose (auth's /v1/session/refresh ends the
+/// session it renews). Roblox here is a stand-in answering in this process (RobloxApi.StandIn), with made-up cookies:
+/// nothing is asked of Roblox's servers.
 /// </summary>
 static class SignInsSuite
 {
@@ -136,43 +135,13 @@ static class SignInsSuite
         c.Check("…once Roblox VNG said whose it is", roblox.AskedWith(Cookie("V2")).Any(r => r.Host == "users.robloxapp.vnggames.com"),
             string.Join(", ", roblox.AskedWith(Cookie("V2")).Select(r => r.Host)));
 
-        // ── Renewed on purpose ──
-        // C was renewed 8 days ago, B never (saved before Bloxkeep watched), V lately but set back a week here; A was
-        // just renewed; S is signed out, X banned, W open on the website (its tab holds that same session); D's sign-in
-        // Roblox ended.
-        SetRenewed(cc, DateTime.Now.AddDays(-8));
-        SetRenewed(v, DateTime.Now.AddDays(-7.5));
-        SetRenewed(d, DateTime.Now.AddDays(-9));
-        var websites = Harness.Get<Dictionary<Guid, WebsiteTab>>(app, "_websites");
-        websites[w.Id] = null!; // only its presence counts here; taken out again before the app closes
-        string oldA = a.Cookie, oldB = b.Cookie, oldC = cc.Cookie, oldV = v.Cookie;
-        roblox.Clear();
-        await Round(app, DateTime.UtcNow);
-        var refreshes = roblox.Asked.Where(r => r.Path == "/v1/session/refresh").ToList();
-        c.Check("a sign-in not renewed for a week is renewed on purpose, its new cookie saved",
-            cc.Cookie == oldC + "_R" && OnDisk(cc) == cc.Cookie, cc.Cookie == oldC ? "kept the old one" : "another");
-        c.Check("…and one never renewed", b.Cookie == oldB + "_R", b.Cookie == oldB ? "kept the old one" : "another");
-        c.Check("…as Roblox's staff said: a POST with no body to auth.roblox.com/v1/session/refresh, through Roblox's CSRF check",
-            refreshes.Any(r => r.Cookie == oldC && r.Host == "auth.roblox.com" && r.Method == "POST" && r.Csrf && r.BodyLength == 0),
-            string.Join(", ", refreshes.Select(r => $"{r.Method} {r.Host} csrf={r.Csrf} body={r.BodyLength}")));
-        c.Check("a Roblox VNG account at Roblox VNG", v.Cookie == oldV + "_R" && refreshes.Any(r => r.Cookie == oldV && r.Host == "auth.robloxapp.vnggames.com"));
-        c.Check("a signed-out account is never asked", roblox.AskedWith(s.Cookie).Count == 0);
-        c.Check("a banned account is never asked", roblox.AskedWith(x.Cookie).Count == 0);
-        c.Check("an account open on the website is never asked", roblox.AskedWith(w.Cookie).Count == 0);
-        c.Check("an account renewed lately is not asked again", !refreshes.Any(r => r.Cookie == oldA) && a.Cookie == oldA, refreshes.Count);
-        c.Check("a sign-in Roblox refuses at the renewal is marked signed out (after the usual second ask)",
-            d.CookieValid == false && roblox.AskedWith(d.Cookie).Any(r => r.Path == "/v1/users/authenticated"), d.CookieValid);
-        websites.Remove(w.Id);
-
-        // Locked and opened again later that week (as after a restart): what was renewed is known from the vault.
-        await Harness.Call(app, "lock", new { });
-        await Harness.Unlock(app);
-        await Until(() => Field(app, "_boot") is null && Field(app, "_presenceBusy") is false && Field(app, "_robuxBusy") is false);
-        roblox.Clear();
-        await Round(app, DateTime.UtcNow.AddDays(3));
-        // W's tab didn't stay open through the lock: its renewal is due now, the others' not.
-        var again = roblox.Asked.Where(r => r.Path == "/v1/session/refresh" && r.Cookie != w.Cookie).ToList();
-        c.Check("opened again later the same week, nothing more is asked", again.Count == 0, again.Count);
+        // ── Never renewed on purpose ──
+        // Roblox's session refresh ends the session it renews: an account pasted from a browser, or shared with another
+        // app, would be signed out there. Only what Roblox sends on its own is saved (the owner's choice, 2026-10-22).
+        c.Check("Bloxkeep has no way to end a session to renew it (no call to auth's /v1/session/refresh)",
+            typeof(RobloxApi).GetMethod("RefreshSessionAsync", Harness.F) is null && typeof(AppController).GetMethod("RenewSignInsIfDue", Harness.F) is null);
+        c.Check("…and nothing in this run asked for one", roblox.Asked.All(r => r.Path != "/v1/session/refresh"),
+            roblox.Asked.Count(r => r.Path == "/v1/session/refresh"));
     }
 
     /// <summary>The renewals Roblox's answers brought, saved as the process timer saves them.</summary>
@@ -182,20 +151,7 @@ static class SignInsSuite
             await (Task)save.Invoke(app, null)!;
     }
 
-    /// <summary>The process timer's look for sign-ins due (the first look after unlocking only starts the wait), awaited.</summary>
-    static async Task Round(AppController app, DateTime now)
-    {
-        if (typeof(AppController).GetMethod("RenewSignInsIfDue", Harness.F) is not { } look)
-            return;
-        look.Invoke(app, [now]);
-        look.Invoke(app, [now.AddMinutes(3)]);
-        await Until(() => Field(app, "_renewing") is false, 90);
-        await Renewals(app);
-    }
-
     static DateTime? Renewed(Account account) => typeof(Account).GetProperty("CookieRenewed")?.GetValue(account) as DateTime?;
-
-    static void SetRenewed(Account account, DateTime when) => typeof(Account).GetProperty("CookieRenewed")?.SetValue(account, when);
 
     static object? Field(object owner, string name) => owner.GetType().GetField(name, Harness.F)?.GetValue(owner);
 
@@ -222,8 +178,8 @@ static class SignInsSuite
     sealed record Request(string Method, string Host, string Path, string? Cookie, bool Csrf, long BodyLength);
 
     /// <summary>
-    /// Roblox as far as these checks go: who each made-up cookie signs in, a new cookie to set in the next answer
-    /// to a request carrying a given one, and a session refresh that ends the session sent and starts "{cookie}_R".
+    /// Roblox as far as these checks go: who each made-up cookie signs in, and a new cookie to set in the next answer
+    /// to a request carrying a given one.
     /// </summary>
     sealed class StandIn
     {
@@ -265,9 +221,6 @@ static class SignInsSuite
                     "/v1/users/authenticated" => user is { } u
                         ? Json(HttpStatusCode.OK, new { id = u, name = $"user{u}", displayName = $"User {u}" })
                         : Refusal(HttpStatusCode.Unauthorized, "Authorization has been denied for this request."),
-                    "/v1/session/refresh" when user is null => Refusal(HttpStatusCode.Unauthorized, "Authorization has been denied for this request."),
-                    "/v1/session/refresh" when !csrf => Csrf(),
-                    "/v1/session/refresh" => Refreshed(cookie!, user!.Value),
                     "/v1/authentication-ticket/" when !csrf => Csrf(),
                     "/v1/authentication-ticket/" => Ticket(),
                     "/v1/join-game" when !csrf => Csrf(),
@@ -285,16 +238,6 @@ static class SignInsSuite
             if (Extra is { } extra)
                 res.Headers.TryAddWithoutValidation("Set-Cookie", extra);
             return res;
-
-            HttpResponseMessage Refreshed(string old, long u)
-            {
-                // A new session for the same user; the one sent ends.
-                Users.Remove(old);
-                Users[old + "_R"] = u;
-                var ok = Json(HttpStatusCode.OK, new { });
-                SetCookie(ok, old + "_R", uri.Host);
-                return ok;
-            }
         }
 
         static void SetCookie(HttpResponseMessage res, string value, string host)

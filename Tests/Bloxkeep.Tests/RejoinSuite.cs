@@ -775,6 +775,87 @@ static class RejoinSuite
                 try { await Open(Guid.NewGuid()); } catch (UserError ex) { leftOutSaid = ex.Message; }
                 c.Check("…a preset asks Roblox before leaving out an account a game banned", questions == 1 && leftOutSaid is not null, $"{questions} {leftOutSaid}");
                 running[account.Id] = openNow;
+                // Play asks Roblox whether each account can play the game, as Roblox's client does before joining
+                // (multiget-playability-status), and asks the person first, with why, when Roblox says no. Roblox answers
+                // from here (playabilityAsks counts them).
+                var gameCache = Harness.Get<System.Collections.IDictionary>(app, "_games");
+                const long Gated = 555, GatedUniverse = 5550;
+                gameCache[Gated] = new GameInfo(Gated, GatedUniverse, "Gated", "someone", 0, null);
+                var realPlayability = Harness.Get<object>(app, "_askPlayability");
+                int playabilityAsks = 0;
+                Func<Account, long, CancellationToken, Task<Playability?>> robloxSays = (_, _, _) => Task.FromResult<Playability?>(new Playability(false, 26, "Roblox's own words"));
+                Harness.Set(app, "_askPlayability", (Func<Account, long, CancellationToken, Task<Playability?>>)((who, universe, ct) =>
+                {
+                    playabilityAsks++;
+                    return universe == GatedUniverse ? robloxSays(who, universe, ct) : Task.FromResult<Playability?>(null);
+                }));
+                var playOpen = running[account.Id];
+                running.Clear();
+                var bansBeforePlay = account.GameBans;
+                // A ban noted too, so that nothing opens whatever the checks find.
+                account.GameBans = [new GameBan { PlaceId = Gated, At = DateTime.UtcNow }];
+                try
+                {
+                    var playTask = (Task)launchAccounts.Invoke(app, [vault, new List<Account> { account }, new GameTarget(Gated), false, 0, null, null])!;
+                    await playTask;
+                    var played = playTask.GetType().GetProperty("Result")!.GetValue(playTask);
+                    var playAsks = played?.GetType().GetProperty("Asks")!.GetValue(played) as List<string>;
+                    string? playSaid = played?.GetType().GetProperty("Message")!.GetValue(played) as string;
+                    c.Check("Play asks first when Roblox says the account can't play the game, with why",
+                        playAsks?.Contains("playability") == true && playSaid?.Contains($"{account.Label} can't play this game: it needs an age check.") == true,
+                        playSaid ?? played?.ToString());
+                    var unplayable = t.GetMethod("UnplayableAsync", Harness.F)!;
+                    async Task<int> Unplayable()
+                    {
+                        var task = (Task)unplayable.Invoke(app, [new List<Account> { account }, Gated, CancellationToken.None])!;
+                        await task;
+                        return ((System.Collections.ICollection)task.GetType().GetProperty("Result")!.GetValue(task)!).Count;
+                    }
+                    robloxSays = (_, _, _) => Task.FromResult<Playability?>(new Playability(true, 1, null));
+                    c.Check("…not when Roblox says it can", await Unplayable() == 0);
+                    robloxSays = (_, _, _) => Task.FromException<Playability?>(new HttpRequestException("offline"));
+                    c.Check("…nor when Roblox couldn't be asked", await Unplayable() == 0);
+                    robloxSays = async (_, _, ct) =>
+                    {
+                        await Task.Delay(Timeout.Infinite, ct); // a request given up throws, as HttpClient's does
+                        return new Playability(false, 11, null);
+                    };
+                    var slow = Stopwatch.StartNew();
+                    int slowCount = await Unplayable();
+                    c.Check("…nor when Roblox takes too long: Play waits 6 s at most", slowCount == 0 && slow.Elapsed < TimeSpan.FromSeconds(9), slow.Elapsed);
+                    int asksBefore = playabilityAsks;
+                    string signIn = account.Cookie;
+                    account.Cookie = "";
+                    robloxSays = (_, _, _) => Task.FromResult<Playability?>(new Playability(false, 11, null));
+                    c.Check("…and an account without a sign-in isn't asked", await Unplayable() == 0 && playabilityAsks == asksBefore);
+                    account.Cookie = signIn;
+                    c.Check("a reason Bloxkeep has no words for is said in Roblox's own",
+                        t.GetMethod("PlayabilityWhy", Harness.F)!.Invoke(null, [new Playability(false, 25, "This experience is not available right now.")]) as string
+                        == "This experience is not available right now");
+                    // Roblox's live answer names the status ("GuestProhibited", seen 2026-10-21) where its docs give a number.
+                    var standIn = typeof(RobloxApi).GetProperty("StandIn", Harness.F)!;
+                    var realStandIn = standIn.GetValue(null);
+                    standIn.SetValue(null, (Func<HttpRequestMessage, Task<HttpResponseMessage>>)(_ => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("""[{"playabilityStatus":"ContextualPlayabilityAgeCheckRequired","isPlayable":false,"universeId":5550,"unplayableDisplayText":"Age check required"}]"""),
+                    })));
+                    try
+                    {
+                        var parsed = await RobloxApi.GetPlayabilityAsync("test", Realm.Global, GatedUniverse);
+                        c.Check("Roblox's answer read with its status as a name: 26, with Roblox's words", parsed is { Playable: false, Status: 26, Text: "Age check required" }, parsed);
+                    }
+                    finally
+                    {
+                        standIn.SetValue(null, realStandIn);
+                    }
+                }
+                finally
+                {
+                    account.GameBans = bansBeforePlay;
+                    running[account.Id] = playOpen;
+                    Harness.Set(app, "_askPlayability", realPlayability);
+                    gameCache.Remove(Gated);
+                }
             }
             finally
             {
