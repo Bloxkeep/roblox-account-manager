@@ -34,6 +34,11 @@ static class QuietFixSuite
             && !WhatsNew.Older("1.0.8-alpha.3", "1.0.8-alpha.3.1"));
         c.Check("a beta and its version stay as they were (no notes again after the betas)",
             !WhatsNew.Older("1.0.6-beta.8", "1.0.6") && !WhatsNew.Older("1.0.6", "1.0.6-beta.8"));
+        c.Check("a beta copy's next beta comes in quietly (no Restart to update), as quiet fixes do",
+            WhatsNew.IsQuietUpdate("1.0.8-beta.5", "1.0.8-beta.4") && WhatsNew.IsQuietUpdate("1.0.8-alpha.4", "1.0.8"));
+        c.Check("…but not a regular copy's first beta, nor the regular version after the betas, nor the next version's beta",
+            !WhatsNew.IsQuietUpdate("1.0.8-beta.1", "1.0.8-alpha.3") && !WhatsNew.IsQuietUpdate("1.0.8", "1.0.8-beta.5")
+            && !WhatsNew.IsQuietUpdate("1.0.9-beta.1", "1.0.8-beta.5"));
 
         string[] Versions(string? after, string upTo) => WhatsNew.Between(after, upTo).Select(r => r.Version).ToArray();
         c.Check("updated to a quiet fix: no notes to show", Versions("1.0.6", "1.0.7-alpha.1").Length == 0, string.Join(", ", Versions("1.0.6", "1.0.7-alpha.1")));

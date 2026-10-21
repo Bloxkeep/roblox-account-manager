@@ -59,6 +59,16 @@ public static class WhatsNew
     public static bool IsQuietFix(string? version) =>
         (version ?? "").Split('+')[0].Split('-', 2) is [_, var label] && label.StartsWith("alpha.", StringComparison.Ordinal);
 
+    static bool IsBeta(string? version) =>
+        (version ?? "").Split('+')[0].Split('-', 2) is [_, var label] && label.StartsWith("beta.", StringComparison.Ordinal);
+
+    /// <summary>
+    /// An update that comes in quietly, without "Restart to update": a quiet fix, or the next beta of the version a beta
+    /// copy is on (the owner's wish, 2026-10-21: "cập nhật ngầm"), whose notes don't show either (<see cref="Since"/>).
+    /// </summary>
+    public static bool IsQuietUpdate(string? next, string? current) =>
+        IsQuietFix(next) || (IsBeta(current) && IsBeta(next) && Parse(next) == Parse(current));
+
     /// <summary>
     /// Whether <paramref name="a"/> is older than <paramref name="b"/>: a quiet fix before the version it leads to, an
     /// earlier quiet fix before a later one. A test build between two fixes (1.0.8-alpha.3.1) counts as the first.

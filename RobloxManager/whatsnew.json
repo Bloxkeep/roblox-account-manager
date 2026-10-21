@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.8-beta.5",
+    "date": "2026-10-21",
+    "improved": {
+      "en": [
+        "On a beta, the next beta installs by itself while you're not using Bloxkeep, without Restart to update, as small fixes do."
+      ],
+      "vi": [
+        "Đang dùng bản beta thì bản beta kế tiếp tự cài lúc bạn không dùng Bloxkeep, không hiện nút Khởi động lại để cập nhật, giống các bản vá nhỏ."
+      ]
+    }
+  },
+  {
     "version": "1.0.8-beta.4",
     "date": "2026-10-21",
     "fixed": {

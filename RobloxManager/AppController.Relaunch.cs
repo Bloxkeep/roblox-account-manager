@@ -257,7 +257,7 @@ public sealed partial class AppController
             bool busy = UpdateFolderWasBusy();
             Log.Note($"The update to {state.To} didn't install (this is {_updater.CurrentVersion}{(busy ? ", its folder was in use" : "")}); no new try by itself today.");
             // A quiet fix is tried again tomorrow without a word: it has no button to click.
-            _updateFailedNotice = WhatsNew.IsQuietFix(state.To) ? null : busy
+            _updateFailedNotice = WhatsNew.IsQuietUpdate(state.To, _updater.CurrentVersion) ? null : busy
                 ? L.F("Bloxkeep couldn't update to {0}: a program it opened earlier (Bloxstrap, or a Roblox window) was still using its folder. Close those, then click Restart to update again.", state.To)
                 : L.F("Bloxkeep couldn't update to {0}. Click Restart to update to try again.", state.To);
         }
@@ -334,9 +334,9 @@ public sealed partial class AppController
         if (_resumedFrom is not { } state || _vault is not null)
             return null;
         return !string.IsNullOrEmpty(state.To) && state.To != _updater.CurrentVersion
-            ? WhatsNew.IsQuietFix(state.To) ? L.T("Bloxkeep restarted. Unlock it to carry on.")
+            ? WhatsNew.IsQuietUpdate(state.To, _updater.CurrentVersion) ? L.T("Bloxkeep restarted. Unlock it to carry on.")
                 : L.F("The update to {0} didn't install, so Bloxkeep started again as it was. Unlock it to carry on.", state.To)
-            : WhatsNew.IsQuietFix(_updater.CurrentVersion) ? L.T("Bloxkeep installed a small fix. Unlock it to carry on.")
+            : WhatsNew.IsQuietUpdate(_updater.CurrentVersion, state.From) ? L.T("Bloxkeep installed a small fix. Unlock it to carry on.")
             : L.F("Bloxkeep was updated to {0}. Unlock it to carry on.", _updater.CurrentVersion ?? "");
     }
 }

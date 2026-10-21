@@ -156,8 +156,8 @@ public sealed class AppUpdater
         build = CurrentVersion,
         status = Status,
         version = NewVersion,
-        // A quiet fix on its way: no "Restart to update" while automatic updates install it by themselves.
-        quiet = WhatsNew.IsQuietFix(NewVersion) && Prefs.CheckUpdates,
+        // A quiet fix (or a beta copy's next beta) on its way: no "Restart to update" while automatic updates install it by themselves.
+        quiet = WhatsNew.IsQuietUpdate(NewVersion, CurrentVersion) && Prefs.CheckUpdates,
         progress = Progress,
         error = Error,
         auto = Prefs.CheckUpdates,

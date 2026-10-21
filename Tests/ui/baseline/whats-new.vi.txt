@@ -186,16 +186,16 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.8-beta.4 · 21 tháng 10, 2026"
+              small "Bloxkeep 1.0.8-beta.5 · 21 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        h4.fixed.wn-kind.wn-sub "Đã sửa"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+        h4.improved.wn-kind.wn-sub "Cải thiện"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #yqrnd9
-            span "Bị ban ngay lúc vào game (lỗi 600) giờ đã được nhận ra: Roblox trả lời là \"Unable to join Game 211\" chứ không có chữ \"banned\", nên bản 1.0.8-beta.3 vẫn cứ thử vào lại."
+            svg.i #1l5qw3q
+            span "Đang dùng bản beta thì bản beta kế tiếp tự cài lúc bạn không dùng Bloxkeep, không hiện nút Khởi động lại để cập nhật, giống các bản vá nhỏ."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

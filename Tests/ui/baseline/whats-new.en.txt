@@ -186,16 +186,16 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.8-beta.4 · October 21, 2026"
+              small "Bloxkeep 1.0.8-beta.5 · October 21, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        h4.fixed.wn-kind.wn-sub "Fixed"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+        h4.improved.wn-kind.wn-sub "Improved"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #yqrnd9
-            span "A ban met when joining (Join Error 600) is now caught: Roblox answers it as \"Unable to join Game 211\", not with the word \"banned\", so 1.0.8-beta.3 kept trying."
+            svg.i #1l5qw3q
+            span "On a beta, the next beta installs by itself while you're not using Bloxkeep, without Restart to update, as small fixes do."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
