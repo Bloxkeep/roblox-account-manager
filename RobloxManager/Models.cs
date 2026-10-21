@@ -34,6 +34,8 @@ public sealed class Account
     public bool? Banned { get; set; }
     /// <summary>When the ban was first noticed; null while not banned.</summary>
     public DateTime? BannedSince { get; set; }
+    /// <summary>Games that banned this account (the game's own ban, not Roblox's), as Bloxkeep saw them: no auto-rejoin into those.</summary>
+    public List<GameBan> GameBans { get; set; } = new();
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 
@@ -340,6 +342,20 @@ public sealed class ActivityName
     public string Label { get; set; } = "";
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>
+/// A game's ban of an account (Roblox's ban API, used by the game or its moderators), seen when it put the account out of
+/// a game, or when Roblox refused a join to it (Join Error 600). Dropped once the account gets into that game again.
+/// </summary>
+public sealed class GameBan
+{
+    /// <summary>The place it was banned from (the game's start place when known).</summary>
+    public long PlaceId { get; set; }
+    public string? GameName { get; set; }
+    public DateTime At { get; set; }
+    /// <summary>The game's words, when it gave any ("Exploiting").</summary>
+    public string? Message { get; set; }
 }
 
 /// <summary>

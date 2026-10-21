@@ -209,6 +209,51 @@ public static class RobloxApi
     }
 
     /// <summary>Last CSRF token per signed-in session (keyed by a hash of the cookie, never the cookie itself).</summary>
+    /// <summary>
+    /// Roblox's answer to letting an account into a game (gamejoin's join-game, what a Roblox window asks when it joins):
+    /// its HTTP status, its own status number, and the message the window shows (a game's ban: "You were banned by this
+    /// experience or its moderators. Moderation message: Exploiting", Join Error 600). The join ticket it may hold is left unread.
+    /// </summary>
+    public sealed record JoinAnswer(int Http, int? Status, string? Message)
+    {
+        /// <summary>The game (or its moderators) banned the account, by Roblox's words.</summary>
+        public bool Banned => Message is { } m && (m.Contains("banned", StringComparison.OrdinalIgnoreCase) || m.Contains("bị cấm", StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>The game's own words, after "Moderation message:" when Roblox gives them; else the whole message.</summary>
+        public string? Reason => Message is not { } m ? null
+            : m.IndexOf("Moderation message:", StringComparison.OrdinalIgnoreCase) is >= 0 and var at && m[(at + 19)..].Trim() is { Length: > 0 } words ? words : m.Trim();
+    }
+
+    /// <summary>
+    /// Asks Roblox to let the account into a game (a server of it, or that one server), only to read its answer: Bloxkeep
+    /// asks after a window has waited a minute without getting in, when Roblox logs nothing about why.
+    /// </summary>
+    public static async Task<JoinAnswer> JoinCheckAsync(string cookie, long placeId, string? jobId, string realm, CancellationToken ct = default)
+    {
+        string url = Realm.Api(realm, "gamejoin") + (jobId is null ? "/v1/join-game" : "/v1/join-game-instance");
+        object body = jobId is null
+            ? new { placeId, isTeleport = false, gameJoinAttemptId = Guid.NewGuid().ToString() }
+            : new { placeId, gameId = jobId, isTeleport = false, gameJoinAttemptId = Guid.NewGuid().ToString() };
+        using var res = await PostWithCsrfAsync(url, cookie, JsonSerializer.Serialize(body), null, ct, realm);
+        string text = await res.Content.ReadAsStringAsync(ct);
+        int? status = null;
+        string? message = null;
+        if (text.TrimStart().StartsWith('{'))
+        {
+            using var doc = JsonDocument.Parse(text);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("status", out var s) && s.ValueKind == JsonValueKind.Number)
+                status = s.GetInt32();
+            if (root.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String)
+                message = m.GetString();
+            // A refusal of the request itself: {"errors":[{"code":…,"message":…}]}.
+            else if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Array && errors.GetArrayLength() > 0
+                     && errors[0].TryGetProperty("message", out var e) && e.ValueKind == JsonValueKind.String)
+                message = e.GetString();
+        }
+        return new JoinAnswer((int)res.StatusCode, status, message);
+    }
+
     static readonly ConcurrentDictionary<(string Realm, int Session), string> CsrfTokens = new();
 
     /// <summary>

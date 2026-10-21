@@ -275,8 +275,11 @@ function Activity({ a }: { a: Account }) {
     const game = p?.type === 'ingame' && p.game ? { name: p.game, iconUrl: p.iconUrl } : a.session?.game;
     const c = a.session?.connection;
     if (c === 'disconnected') {
+      // Banned by the game (not a kick: Roblox gives both code 267), with its words when it gave any.
+      if (a.session.bannedByGame)
+        return box('kicked', iconBox('alert'), t('act.bannedByGame'), [a.session.kickMessage, game?.name].filter(Boolean).join(' · ') || t('act.stillOpen'));
       const why = a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : '';
-      return box('kicked', iconBox('alert'), t('act.kicked'), [why, game?.name].filter(Boolean).join(' · ') || t('act.stillOpen'));
+      return box('kicked', iconBox('alert'), t('act.kicked'), [why, a.session.kickMessage, game?.name].filter(Boolean).join(' · ') || t('act.stillOpen'));
     }
     if (c === 'menu') return box('online', iconBox('monitor'), t('act.menuHere'), t('act.menuWhere'));
     if (c === 'signedout') return box('signedout', iconBox('logIn'), t('act.signedOutHere'), t('act.signedOutWhere'));
@@ -392,8 +395,9 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
     const game = (p?.type === 'ingame' && p.game) || a.session?.game?.name || '';
     const withGame = (text: string) => game ? `${text} · ${game}` : text;
     if (c === 'disconnected') {
-      const why = a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : t('row.kicked');
-      return { cls: 'kicked', text: withGame(why) };
+      const why = a.session.bannedByGame ? t('act.bannedByGame')
+        : a.session.reason ? (KICK[a.session.reason] ? t(KICK[a.session.reason]) : t('kick.code', { code: a.session.reason })) : t('row.kicked');
+      return { cls: 'kicked', text: withGame(a.session.kickMessage ? `${why}: ${a.session.kickMessage}` : why) };
     }
     if (c === 'menu') return { cls: 'online', text: t('act.menuHere') };
     if (c === 'signedout') return { cls: 'signedout', text: t('act.signedOutHere') };

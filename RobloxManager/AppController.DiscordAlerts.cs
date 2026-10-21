@@ -54,6 +54,9 @@ public sealed partial class AppController
                     _ => (DT("Kicked for being AFK"), why is null ? null : DiscordWebhook.Escape(why), DiscordWebhook.Yellow),
                 };
                 return AccountAlert(who, title, description, color, now);
+            case "gameBan" when SubjectOf(subject, now) is { } who:
+                return AccountAlert(who, DT("Banned by the game"), why is null ? DT("Bloxkeep won't rejoin this game for this account.")
+                    : DiscordWebhook.Escape(why) + "\n-# " + DT("Bloxkeep won't rejoin this game for this account."), DiscordWebhook.Red, now);
             case "banned" when SubjectOf(subject, now) is { } who:
                 return AccountAlert(who, DT("Banned on Roblox"), DT("Bloxkeep won't open this account. Once the ban is over, Check sign-in clears it."),
                     DiscordWebhook.Red, now, facts: false);
@@ -166,7 +169,8 @@ public sealed partial class AppController
             place is long p ? GameName(p, same?.GameName) : null,
             place is long g ? GameIcon(g, same?.UniverseId ?? 0) : null,
             stay is null ? null : (stay.EndedAt ?? now) - stay.StartedAt,
-            code is int c ? KickText(c) : null);
+            // The game's own words with its kick, under Roblox's reason.
+            code is int c ? KickText(c) + (log?.KickMessage is { Length: > 0 } said ? "\n" + DiscordWebhook.Escape(said) : "") : null);
     }
 
     /// <summary>A game's name: as Roblox gave it, else as noted with the stay or preset, else "Place 123".</summary>

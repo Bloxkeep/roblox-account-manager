@@ -21,8 +21,10 @@ public sealed class RobloxLogWatcher
     /// Roblox's own screens); null while it is still in the game it was opened into. Teleports inside that game keep it.
     /// </param>
     /// <param name="PersonStarted">This join comes from a game start the person made in the window, not Bloxkeep's.</param>
+    /// <param name="KickMessage">The game's own words when it kicked or banned the player (null when it gave none).</param>
+    /// <param name="BannedByGame">The game banned the player (Roblox's ban API), rather than kicked: Roblox gives both code 267.</param>
     public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At, long? ChosenPlace = null,
-        bool PersonStarted = false);
+        bool PersonStarted = false, string? KickMessage = null, bool BannedByGame = false);
 
     sealed class Tail(string path, int pid)
     {
@@ -35,6 +37,9 @@ public sealed class RobloxLogWatcher
         /// <summary>When the last teleport line was logged; only a disconnect soon after it belongs to that teleport.</summary>
         public DateTime? TeleportAt;
         public int? PendingReason;
+        /// <summary>The game's kick line, logged before the disconnect it explains.</summary>
+        public string? PendingKickMessage;
+        public bool PendingBan;
         /// <summary>A game start that isn't the window's first: the game its "Joining game" names is one the person chose.</summary>
         public bool OwnStart;
         /// <summary>Servers connected to ("serverId:") and not yet left (a disconnect line ends one).</summary>
@@ -68,6 +73,13 @@ public sealed class RobloxLogWatcher
     // seen on a real kick, so it may come before or after the disconnect line.
     static readonly Regex NotificationReasonLine = new(@"Disconnection Notification\. Reason: (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     const string ConnectedMark = "[FLog::Network] serverId:";
+    // The game's words when it kicks a player, logged right before the disconnect (seen 2026-10-21 in 0.743):
+    // "[FLog::CreatorError] Error: Server Kick Message: A fatal error occured. This may be from an internet issue.; Metadata: "
+    // A ban by the game (Roblox's ban API) gives the same code 267, but its metadata says who banned and since when:
+    // "Server Kick Message: ; Metadata: {"moderatorType":"creator","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-10-21T00:07:04Z"}".
+    // A ban met when joining again (Join Error 600) logs nothing (seen the same day): see AppController.CheckJoin.
+    const string KickMark = "Server Kick Message:";
+    static readonly Regex KickLine = new(@"Server Kick Message: (.*?); Metadata: ?(.*)$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     const string LeavingMark = "[FLog::SingleSurfaceApp] leaveUGCGameInternal";
     // Signing out inside the Roblox window (seen 2026-10-13): the window stays open on the sign-in screen.
     const string SignedOutMark = "logout sync cookie to native";
@@ -282,6 +294,7 @@ public sealed class RobloxLogWatcher
             // A teleport stays open: its old server's disconnect line may still come (see TeleportMark).
             tail.Leaving = false;
             tail.PendingReason = null;
+            (tail.PendingKickMessage, tail.PendingBan) = (null, false);
             long? place = long.TryParse(join.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long id) ? id : null;
             tail.State = new ClientState("joining", place, join.Groups[1].Value, null, TimeOf(line), tail.OwnStart ? place : tail.State?.ChosenPlace,
                 tail.State?.PersonStarted == true);
@@ -292,6 +305,7 @@ public sealed class RobloxLogWatcher
             tail.Leaving = false;
             tail.TeleportAt = null;
             tail.PendingReason = null;
+            (tail.PendingKickMessage, tail.PendingBan) = (null, false);
             // Bloxkeep's own start is a window's first (it opens a new window for every launch); a later one is the
             // person picking a game on Roblox's screens, after leaving one or being kicked (seen 2026-10-19: a kick, Leave,
             // then a game start in the same window).
@@ -316,6 +330,16 @@ public sealed class RobloxLogWatcher
             tail.State = (tail.State ?? new ClientState("signedout", null, null, null, TimeOf(line))) with { Status = "signedout", Reason = null, At = TimeOf(line) };
         else if (line.Contains(TeleportMark, StringComparison.Ordinal))
             tail.TeleportAt = TimeOf(line);
+        else if (line.Contains(KickMark, StringComparison.Ordinal) && KickLine.Match(line) is { Success: true } kick)
+        {
+            string? message = kick.Groups[1].Value.Trim() is { Length: > 0 } words ? words : null;
+            bool ban = IsBan(kick.Groups[2].Value);
+            // Normally before the disconnect line; one logged after it completes the state shown.
+            if (tail.State is { Status: "disconnected", KickMessage: null, BannedByGame: false } shown)
+                tail.State = shown with { KickMessage = message, BannedByGame = ban };
+            else
+                (tail.PendingKickMessage, tail.PendingBan) = (message, ban);
+        }
         else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine.Match(line) is { Success: true } reason)
             tail.PendingReason = int.TryParse(reason.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int why) ? why : null;
         else if (line.Contains("Disconnection Notification", StringComparison.Ordinal) && NotificationReasonLine.Match(line) is { Success: true } notified
@@ -349,13 +373,34 @@ public sealed class RobloxLogWatcher
             }
             tail.State = tail.Leaving
                 ? state with { Status = "left", Reason = null, At = at }
-                : state with { Status = "disconnected", Reason = tail.PendingReason, At = at };
+                : state with { Status = "disconnected", Reason = tail.PendingReason, KickMessage = tail.PendingKickMessage, BannedByGame = tail.PendingBan, At = at };
             tail.Leaving = false;
             tail.PendingReason = null;
+            (tail.PendingKickMessage, tail.PendingBan) = (null, false);
         }
         else if (line.Contains(WndCheckMark, StringComparison.Ordinal)
                  && (line.Contains(NewProcessEventMark, StringComparison.Ordinal) || line.Contains(NewProcessMutexMark, StringComparison.Ordinal)))
             tail.ClosedByNewWindow ??= TimeOf(line);
+    }
+
+    /// <summary>
+    /// A kick line's metadata says it is a ban: Roblox's ban API names who banned (moderatorType) and since when; a plain
+    /// kick leaves it empty.
+    /// </summary>
+    internal static bool IsBan(string metadata)
+    {
+        if (!metadata.TrimStart().StartsWith('{'))
+            return false;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(metadata);
+            return doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && (doc.RootElement.TryGetProperty("moderatorType", out _) || doc.RootElement.TryGetProperty("beginTimestamp", out _));
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return metadata.Contains("\"moderatorType\"", StringComparison.Ordinal);
+        }
     }
 
     /// <summary>Lines start with an ISO UTC time ("2026-10-12T05:14:35.082Z,…").</summary>

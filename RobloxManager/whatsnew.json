@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.0.8-beta.3",
+    "date": "2026-10-21",
+    "new": {
+      "en": [
+        "A ban by a game is told apart from a kick (Roblox gives both the same code 267): the card says Banned by the game, with the game's words, Bloxkeep stops rejoining that game with that account, and asks before you open the account in it again. When a join never gets in, Bloxkeep asks Roblox why, so a ban met while joining (Join Error 600) is caught too."
+      ],
+      "vi": [
+        "Bị game ban giờ được phân biệt với bị kick (Roblox đưa cả hai cùng mã 267): thẻ ghi Bị game ban kèm lời nhắn của game, Bloxkeep thôi tự vào lại game đó bằng tài khoản đó, và hỏi lại trước khi bạn mở tài khoản đó vào game ấy. Khi vào game mãi không được, Bloxkeep hỏi Roblox lý do, nên bị ban ngay lúc vào (lỗi 600) cũng nhận ra."
+      ]
+    },
+    "improved": {
+      "en": [
+        "A kick shows the game's own words, on the card and in Discord alerts."
+      ],
+      "vi": [
+        "Bị kick thì hiện cả lời nhắn của game, trên thẻ và trong thông báo Discord."
+      ]
+    }
+  },
+  {
     "version": "1.0.8-beta.2",
     "date": "2026-10-21",
     "fixed": {

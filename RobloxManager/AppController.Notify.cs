@@ -22,7 +22,7 @@ public sealed partial class AppController
     /// <summary>The Settings kind an event type belongs to; null for one no switch covers (always shown).</summary>
     static string? NotifyKind(string type) => type switch
     {
-        "drop" or "rejoinFail" or "rejoinSlow" or "afk" => "drop",
+        "drop" or "rejoinFail" or "rejoinSlow" or "afk" or "gameBan" => "drop",
         "signin" or "banned" => "signin",
         "ram" => "ram",
         "launch" => "launch",

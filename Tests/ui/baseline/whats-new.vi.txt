@@ -186,19 +186,22 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.8-beta.2 · 21 tháng 10, 2026"
+              small "Bloxkeep 1.0.8-beta.3 · 21 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        h4.fixed.wn-kind.wn-sub "Đã sửa"
-          svg.i #yqrnd9
-        ul.fixed.wn-also
+        h4.new.wn-kind.wn-sub "Mới"
+          svg.i #u7ty99
+        ul.new.wn-also
           li
-            svg.i #yqrnd9
-            span "Danh sách tài khoản không còn cắt chữ VNG thành \"V..\": mỗi cột rộng bằng thứ dài nhất trong cột, dù máy bạn dùng phông chữ nào."
+            svg.i #u7ty99
+            span "Bị game ban giờ được phân biệt với bị kick (Roblox đưa cả hai cùng mã 267): thẻ ghi Bị game ban kèm lời nhắn của game, Bloxkeep thôi tự vào lại game đó bằng tài khoản đó, và hỏi lại trước khi bạn mở tài khoản đó vào game ấy. Khi vào game mãi không được, Bloxkeep hỏi Roblox lý do, nên bị ban ngay lúc vào (lỗi 600) cũng nhận ra."
+        h4.improved.wn-kind.wn-sub "Cải thiện"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
           li
-            svg.i #yqrnd9
-            span "Tài khoản bạn vừa đóng ngay trước khi Bloxkeep khởi động lại (ví dụ để cập nhật) không còn hiện \"Đang chơi · thiết bị khác\" trong vài phút."
+            svg.i #1l5qw3q
+            span "Bị kick thì hiện cả lời nhắn của game, trên thẻ và trong thông báo Discord."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q

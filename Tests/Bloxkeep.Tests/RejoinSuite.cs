@@ -313,6 +313,56 @@ static class RejoinSuite
             Harness.Invoke(app, "ForgetSettledRejoins", DateTime.UtcNow);
             c.Check("…but not one still getting into its game 11 min after it opened", rejoins.Contains(account.Id));
             rejoins.Remove(account.Id);
+
+            // The game's own kick, with its words, then a ban by the game (Roblox's ban API): the lines of 2026-10-21, both
+            // with code 267. Grand Piece Online's place.
+            const long Gpo = 1730877806;
+            void Played(DateTime at, string kickLine)
+            {
+                Write(Line(at, Launch));
+                Write(Line(at, $"[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place {Gpo} at 10.32.36.210"));
+                Write(Line(at, "[FLog::Network] serverId: 128.116.46.33|56123"));
+                Write(Line(at.AddSeconds(1), kickLine));
+                Write(Line(at.AddSeconds(2), "[FLog::Network] Disconnect reason received: 267"));
+                Write(Line(at.AddSeconds(2), "[FLog::Network] Disconnection Notification. Reason: 267"));
+                Write(Line(at.AddSeconds(2.1), "[FLog::Network] Time to disconnect replication data: 0.2"));
+            }
+            NewWindow();
+            Run(new GameTarget(Gpo));
+            closing.Clear();
+            Told();
+            var kickedAt = DateTime.UtcNow;
+            Played(kickedAt, "Error [FLog::CreatorError] Error: Server Kick Message: A fatal error occured. This may be from an internet issue.; Metadata: ");
+            state = Poll(s => s.Status == "disconnected");
+            c.Check("a kick by the game: code 267, with the game's own words, not a ban",
+                state is { Reason: 267, KickMessage: "A fatal error occured. This may be from an internet issue.", BannedByGame: false }, state);
+            NewWindow();
+            var bannedLaunch = Run(new GameTarget(Gpo));
+            var bannedAt = DateTime.UtcNow;
+            Played(bannedAt, """Error [FLog::CreatorError] Error: Server Kick Message: ; Metadata: {"moderatorType":"creator","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-10-21T00:07:04Z"}""");
+            state = Poll(s => s.Status == "disconnected" && s.At > bannedAt);
+            c.Check("a ban by the game: the same code 267, told apart by the metadata its kick line carries",
+                state is { Reason: 267, BannedByGame: true, KickMessage: null }, state);
+            Tick();
+            string? banSaid = Told();
+            c.Check("…no rejoin (its window stays, with Roblox's message), the ban noted with the account, and said",
+                !closing.Contains(me) && account.GameBans.SingleOrDefault() is { PlaceId: Gpo } && banSaid?.Contains("banned from") == true, banSaid);
+            var shouldRejoin = t.GetMethod("ShouldRejoin", Harness.F)!;
+            object?[] rejoinArgs = [account.Id, bannedLaunch, state, false, null];
+            c.Check("…nor a rejoin once its window is closed", !(bool)shouldRejoin.Invoke(app, rejoinArgs)!);
+            // Roblox's answer to a join it refuses (Join Error 600 in the window, nothing in the log).
+            var refused = new RobloxApi.JoinAnswer(200, 12, "You were banned by this experience or its moderators. Moderation message: Exploiting");
+            c.Check("Roblox's join answer for a game's ban: read as a ban, with the game's words", refused is { Banned: true, Reason: "Exploiting" }, refused.Reason);
+            c.Check("…and one for a full server isn't", !new RobloxApi.JoinAnswer(200, 6, "The game you requested is currently full. Please try again later.").Banned);
+            // In that game again later: the ban is over.
+            NewWindow();
+            Run(new GameTarget(Gpo));
+            Write(Line(DateTime.UtcNow, Launch));
+            Write(Line(DateTime.UtcNow, $"[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place {Gpo} at 10.32.36.210"));
+            Write(Line(DateTime.UtcNow, "[FLog::Network] serverId: 128.116.46.33|56123"));
+            Poll(s => s.Status == "ingame");
+            Harness.Invoke(app, "ForgetLiftedGameBans");
+            c.Check("…and once the account is in that game again, the ban is forgotten", account.GameBans.Count == 0, account.GameBans.Count);
         }
         finally
         {
