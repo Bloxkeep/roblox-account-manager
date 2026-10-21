@@ -22,6 +22,17 @@ static class CoresSuite
     static bool Set(int pid, string role) => (bool)Cores.GetMethod("Set", Harness.F)!.Invoke(null, [pid, Role(role)])!;
     static ulong Efficient => (ulong)Cores.GetProperty("EfficientMask", Harness.F)!.GetValue(null)!;
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool GetProcessInformation(IntPtr process, int infoClass, ref uint info, int size);
+
+    /// <summary>The process's RAM priority: 5 normal, 2 low.</summary>
+    static uint MemoryPriority(Process p)
+    {
+        uint priority = 0;
+        GetProcessInformation(p.Handle, 0, ref priority, sizeof(uint));
+        return priority;
+    }
+
     static (ulong Affinity, uint Control, uint State) Read(Process p)
     {
         p.Refresh();
@@ -129,6 +140,18 @@ static class CoresSuite
             lock (posted)
                 trimTold = posted.Any(json => json.Contains("refused memory trimming", StringComparison.Ordinal));
             c.Check("a window that closed since the scan: no \"Roblox refused memory trimming\" notice", !trimTold);
+
+            // The PC short of RAM (97 % used) with the setting on: a window in the background gets a low RAM priority, but
+            // its RAM isn't emptied outright (with 5 windows open some stuttered after each emptying, 2026-10-21).
+            stand.Refresh();
+            long before = stand.WorkingSet64;
+            Harness.Invoke(app, "GuardResources", new List<RobloxProcesses.PlayerProcess> { new(stand.Id, 0) }, new MemoryStatus(32000, 900, 97), DateTime.UtcNow);
+            stand.Refresh();
+            c.Check("short of RAM: a window in the background keeps its RAM (not emptied)", stand.WorkingSet64 > before / 2, $"{before / 1024} KB -> {stand.WorkingSet64 / 1024} KB");
+            c.Check("…and has a low RAM priority", MemoryPriority(stand) == 2, MemoryPriority(stand));
+            // Brought to the front: its normal RAM priority back at once, not at the next look at the windows.
+            Harness.Invoke(app, "FrontMemory", stand.Id);
+            c.Check("brought to the front: its normal RAM priority back at once", MemoryPriority(stand) == 5, MemoryPriority(stand));
             app.Dispose();
             var closed = Read(stand);
             c.Check("Bloxkeep closing gives the cores back", closed.Affinity == all && closed.Control == 0, $"0x{closed.Affinity:X} control {closed.Control}");

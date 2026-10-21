@@ -185,16 +185,16 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.8-beta.8 · October 21, 2026"
+              small "Bloxkeep 1.0.8-beta.9 · October 21, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        h4.improved.wn-kind.wn-sub "Improved"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
+        h4.fixed.wn-kind.wn-sub "Fixed"
+          svg.i #yqrnd9
+        ul.fixed.wn-also
           li
-            svg.i #1l5qw3q
-            span "Arrange windows also brings every Roblox window over your other apps, with Bloxkeep's window under them: one click instead of clicking each one on the taskbar."
+            svg.i #yqrnd9
+            span "With Save RAM on background windows on and 5 or more Roblox windows open, some windows no longer stutter (dragging one most of all): Bloxkeep no longer empties their RAM every 2 minutes once the PC uses 85 % of it. Windows still takes RAM from them first when it runs short, and a window you click gets its normal share back at once."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

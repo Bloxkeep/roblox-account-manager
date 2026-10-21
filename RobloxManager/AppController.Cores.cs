@@ -43,7 +43,10 @@ public sealed partial class AppController
         };
         _foregroundProc = (_, _, _, _, _, _, _) =>
         {
-            if (!_splitCoresOn || _corePids.Count == 0 || _disposed)
+            if (_disposed)
+                return;
+            Step(() => FrontMemory(RobloxProcesses.ForegroundPid()));
+            if (!_splitCoresOn || _corePids.Count == 0)
                 return;
             _coreCheck.Stop();
             if (_nudging)
@@ -52,6 +55,16 @@ public sealed partial class AppController
                 Step(() => SplitCores(_corePids));
         };
         _foregroundHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, _foregroundProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+    }
+
+    /// <summary>
+    /// A window brought to the front gets its normal RAM priority back at once (Settings' RAM saving gives the ones in
+    /// the background a low one), not at the next look at the windows, seconds later.
+    /// </summary>
+    void FrontMemory(int front)
+    {
+        if (_lowMemoryPriority.Remove(front))
+            RobloxProcesses.SetMemoryPriority(front, background: false);
     }
 
     /// <summary>Gives each client the role it should have now: in front, in the background, or Windows' own.</summary>

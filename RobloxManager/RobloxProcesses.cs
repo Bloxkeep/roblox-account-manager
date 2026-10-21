@@ -42,9 +42,6 @@ public static class RobloxProcesses
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern IntPtr OpenProcess(uint access, bool inheritHandle, int processId);
 
-    [DllImport("psapi.dll", SetLastError = true)]
-    static extern bool EmptyWorkingSet(IntPtr process);
-
     [DllImport("kernel32.dll")]
     static extern bool CloseHandle(IntPtr handle);
 
@@ -765,22 +762,6 @@ public static class RobloxProcesses
         {
             var info = new MEMORY_PRIORITY_INFORMATION { MemoryPriority = background ? (uint)MEMORY_PRIORITY_LOW : MEMORY_PRIORITY_NORMAL };
             return SetProcessInformation(handle, ProcessMemoryPriority, ref info, Marshal.SizeOf<MEMORY_PRIORITY_INFORMATION>());
-        }
-        finally
-        {
-            CloseHandle(handle);
-        }
-    }
-
-    public static bool TrimMemory(int pid)
-    {
-        const uint PROCESS_SET_QUOTA = 0x0100;
-        IntPtr handle = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
-        if (handle == IntPtr.Zero)
-            return false;
-        try
-        {
-            return EmptyWorkingSet(handle);
         }
         finally
         {

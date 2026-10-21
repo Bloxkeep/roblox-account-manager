@@ -50,9 +50,6 @@ public sealed partial class AppController : IDisposable
     /// </summary>
     static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(1);
     static readonly TimeSpan RobloxVersionInterval = TimeSpan.FromMinutes(30);
-    static readonly TimeSpan TrimInterval = TimeSpan.FromMinutes(2);
-    const int TrimLoadPercent = 85;
-    const long TrimBelowAvailableMb = 1536;
     static readonly TimeSpan MemoryWarningInterval = TimeSpan.FromMinutes(5);
     // Scanning launcher folders and reading the client's file version is the slow part; it is also re-read
     // whenever the launch option changes or a vault is opened.
@@ -161,7 +158,7 @@ public sealed partial class AppController : IDisposable
     bool _bootStatusDone, _bootAvatarsDone;
     BootProgress? _boot;
     bool _checking, _lastArmed, _presenceBusy, _presenceLoaded, _rejoining, _trimRefusedShown, _disposed;
-    DateTime _nextPresence, _lastFullPresence, _lastTrim, _lastMemoryWarning, _installsReadAt, _sweepBackgroundUntil, _resumedAt, _lastSessionStart, _lastTick;
+    DateTime _nextPresence, _lastFullPresence, _lastMemoryWarning, _installsReadAt, _sweepBackgroundUntil, _resumedAt, _lastSessionStart, _lastTick;
     string? _lastMetrics, _lastState, _pageView;
     InstallsInfo? _installs;
     /// <summary>The launcher that can update the client the launch option starts (<see cref="RobloxInstalls.UpdaterFor"/>).</summary>
@@ -3798,16 +3795,9 @@ public sealed partial class AppController : IDisposable
                 _lowMemoryPriority.Remove(p.Pid);
         }
 
-        bool shortOfRam = memory.TotalMb > 0 && (memory.LoadPercent >= TrimLoadPercent || memory.AvailableMb < TrimBelowAvailableMb);
-        if (shortOfRam && now - _lastTrim >= TrimInterval)
-        {
-            _lastTrim = now;
-            var background = players.Where(p => p.Pid != foreground).ToList();
-            // Refused when none was trimmed and one still running said no (one that closed since the scan says nothing).
-            int trimmed = background.Count(p => RobloxProcesses.TrimMemory(p.Pid));
-            if (trimmed == 0 && background.Any(p => !RobloxProcesses.Ended(p.Pid)))
-                refused = true;
-        }
+        // No more emptying their RAM outright every 2 minutes once the PC used 85 % of it: a game in the background needed
+        // it all back at once, and with 5 windows open some of them stuttered, a window grabbed to drag most of all
+        // (the owner's video, 2026-10-21). The low priority lets Windows take RAM from them first, when it runs short.
         if (refused && !_trimRefusedShown)
         {
             _trimRefusedShown = true;
