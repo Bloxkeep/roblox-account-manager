@@ -306,11 +306,12 @@ try {
   check('/online from someone who is not one of Bloxkeep\'s developers (a server admin): refused, seen only by them',
     r.json?.data.flags === 64 && /developers/.test(r.json.data.content ?? '') && !r.json.data.embeds, JSON.stringify(r.json));
   r = await interact(asDeveloper);
-  const oe = r.json?.data.embeds?.[0], field = name => oe?.fields?.find(f => f.name === name)?.value ?? '';
-  check('/online from a developer, in a DM with the bot: 2 online now, seen only by them', r.json?.data.flags === 64 && oe?.title === '2 online now', JSON.stringify(r.json));
-  check('…with today\'s peak, and who by version and language', /^\*\*2\*\*, at <t:\d+:t>$/.test(field('Peak today'))
-    && field('Version') === '1.0.8: **1**\n1.0.8-alpha.2: **1**' && field('Language') === 'en: **1**\nvi: **1**', JSON.stringify(oe?.fields));
-  const dashboard = r.json?.data.components?.[0]?.components?.[0]?.url ?? '';
+  const card = { body: r.json?.data }, said = textsOf(card).join('\n');
+  check('/online from a developer, in a DM with the bot: a card saying 2 use Bloxkeep now, seen only by them',
+    r.json?.data.flags === (64 | 1 << 15) && headingOf(card)?.startsWith('2 using Bloxkeep now'), JSON.stringify(r.json));
+  check('…with today\'s peak, the last 7 days\' and each version\'s share (no languages)', /\*\*Today's peak\*\* 2, at <t:\d+:t>/.test(said)
+    && /\*\*Last 7 days\*\* 0 · 0 · 0 · 0 · 0 · 0 · \*\*2\*\*/.test(said) && said.includes('`1.0.8` **1** · 50%\n`1.0.8-alpha.2` **1** · 50%') && !/vi|Language/.test(said), said);
+  const dashboard = linksOf(card)[0] ?? '';
   check('…and a Dashboard button, its link carrying the key', /^http:\/\/127\.0\.0\.1:\d+\/online\?key=[\w-]{24}$/.test(dashboard), dashboard);
   let page = await fetch(dashboard);
   check('the dashboard opens with that key', page.status === 200 && /text\/html/.test(page.headers.get('content-type')) && (await page.text()).includes('<title>Bloxkeep online</title>'), page.status);

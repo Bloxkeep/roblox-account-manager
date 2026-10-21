@@ -259,7 +259,8 @@ export class Gateway extends DurableObject {
   /** A slash command (worker.js checked Discord's signature): the reply Discord shows. */
   async interaction(i) {
     const l = lang(i.locale ?? i.guild_locale), r = replies(l), name = i.data?.name;
-    const reply = (data, mine = false) => ({ type: 4, data: { ...data, allowed_mentions: { parse: [] }, ...(mine ? { flags: 64 } : {}) } });
+    // Seen only by who asked (mine): flag 64, besides a card's own.
+    const reply = (data, mine = false) => ({ type: 4, data: { ...data, allowed_mentions: { parse: [] }, ...(mine ? { flags: (data.flags ?? 0) | 64 } : {}) } });
     const snap = await this.snapshot();
     switch (name) {
       case 'help':

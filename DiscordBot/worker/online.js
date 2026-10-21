@@ -51,24 +51,29 @@ export async function dashboardKey(token) {
   return btoa(String.fromCharCode(...mac.slice(0, 18))).replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-/** /online's answer: online now, today's peak, by version and language, and the dashboard's link. */
+/** /online's answer, a card: online now, today's peak, the last 7 days' peaks, by version, and the dashboard's link. */
 export function onlineMessage(o, link) {
   const time = at => `<t:${Math.floor(at / 1000)}:t>`;
-  const list = rows => rows.length ? rows.map(r => `${r.name}: **${r.n}**`).join('\n') : 'Nobody';
+  const text = content => ({ type: 10, content });
+  // The last 7 days' peaks, oldest first, today's in bold.
+  const week = o.days.slice(-7).map((d, i, all) => (i === all.length - 1 ? `**${d.peak}**` : String(d.peak))).join(' · ');
+  const versions = o.apps.length
+    ? o.apps.map(r => `\`${r.name}\` **${r.n}** · ${Math.round(r.n / Math.max(1, o.now) * 100)}%`).join('\n') : '-# Nobody right now';
   return {
-    embeds: [{
-      title: `${o.now} online now`,
-      color: 0x5865F2,
-      description: `Bloxkeep apps that said they're open in the last ${o.forMinutes} minutes.`,
-      fields: [
-        { name: 'Peak today', value: o.today.peak ? `**${o.today.peak}**, at ${time(o.today.at)}` : 'Nobody yet', inline: true },
-        { name: 'Version', value: list(o.apps), inline: true },
-        { name: 'Language', value: list(o.languages), inline: true },
+    flags: 1 << 15,
+    components: [{
+      type: 17, accent_color: o.now ? 0x57F287 : 0x4E5058, components: [
+        text(`## ${o.now} using Bloxkeep now\n-# Apps that said they're open in the last ${o.forMinutes} minutes`),
+        { type: 14, divider: true, spacing: 1 },
+        text([
+          `**Today's peak** ${o.today.peak ? `${o.today.peak}, at ${time(o.today.at)}` : 'nobody yet'}`,
+          `**Last 7 days** ${week}`,
+        ].join('\n')),
+        { type: 14, divider: true, spacing: 1 },
+        text(`**By version**\n${versions}`),
+        ...(link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : []),
       ],
-      footer: { text: 'Bloxkeep · Online' },
-      timestamp: new Date().toISOString(),
     }],
-    components: link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : [],
   };
 }
 
