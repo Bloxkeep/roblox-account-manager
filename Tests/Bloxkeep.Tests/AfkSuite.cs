@@ -167,8 +167,11 @@ static class AfkSuite
         SetWindowPos(Top, HWND_TOPMOST, 0, 0, 0, 0, Keep);
         SetWindowPos(X, HWND_TOP, 0, 0, 0, 0, Keep);
         var xPlace = place.Invoke(null, [X])!;
+        // What is above it besides the always-on-top window: nothing, or the app the person is using (Windows keeps a
+        // program in the background from putting its window over the one in front), never an always-on-top one.
+        var xAbove = (IntPtr)xPlace.GetType().GetField("Item1")!.GetValue(xPlace)!;
         c.Check("first of the usual windows: goes under none of the always-on-top ones",
-            (IntPtr)xPlace.GetType().GetField("Item1")!.GetValue(xPlace)! == IntPtr.Zero, xPlace);
+            xAbove != Top && (xAbove == IntPtr.Zero || (GetWindowLong(xAbove, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0), xPlace);
         SetWindowPos(Top, HWND_NOTOPMOST, 0, 0, 0, 0, Keep);
 
         // Left unseen by a nudge cut short (Bloxkeep closed): seen again; a window faded by its own app is left alone.
@@ -209,7 +212,7 @@ static class AfkSuite
         protected override bool ShowWithoutActivation => true;
     }
 
-    const int GWL_EXSTYLE = -20, WS_EX_TRANSPARENT = 0x20, WS_EX_LAYERED = 0x80000;
+    const int GWL_EXSTYLE = -20, WS_EX_TRANSPARENT = 0x20, WS_EX_LAYERED = 0x80000, WS_EX_TOPMOST = 0x8;
     const uint LWA_ALPHA = 0x2, GW_HWNDPREV = 3;
     const uint Keep = 0x1 | 0x2 | 0x10; // SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
     static readonly IntPtr HWND_TOP = 0, HWND_TOPMOST = -1, HWND_NOTOPMOST = -2;
