@@ -76,26 +76,49 @@ static class MainBrowserSuite
         c.Check("…nor when the page file may still grow enough",
             !AppController.MemoryTight(new MemoryStatus(32_000, 8_000, 60, 51_500, 500, PageFileRoomMb: 15_000)));
 
-        // How much the page files may still grow: up to each one's largest size, within its drive's free space less 1 GB,
-        // counting only the page files Windows made (made: the drives with one, "ce" for both).
-        long Room(string[] files, long nowMb, long freeC = 64_000, long freeE = 900_000, string made = "ce") =>
-            (long)typeof(SystemMemory).GetMethod("PageFileRoomMb", Harness.F)!.Invoke(null, [files, nowMb,
+        // How much the page files may still grow: each one Windows made (made: drive letter and size now in MB), up to its
+        // largest size (the one set, or for a system-managed one 3 × RAM or 4 GB, at most the drive's size ÷ 8), within
+        // its drive's free space less 1 GB.
+        long Room(string[] files, (char Drive, long NowMb)[]? made, long ramMb = 32_768, long freeC = 64_000, long freeE = 900_000,
+            long sizeC = 1_000_000, long sizeE = 1_000_000) =>
+            (long)typeof(SystemMemory).GetMethod("PageFileRoomMb", Harness.F)!.Invoke(null, [files,
+                made?.ToDictionary(m => $"{char.ToUpperInvariant(m.Drive)}:\\", m => m.NowMb, StringComparer.OrdinalIgnoreCase), ramMb,
                 (Func<string, long>)(root => root.StartsWith("c", StringComparison.OrdinalIgnoreCase) ? freeC : freeE),
-                (Func<string, bool>)(root => made.Contains(char.ToLowerInvariant(root[0])))])!;
+                (Func<string, long>)(root => root.StartsWith("c", StringComparison.OrdinalIgnoreCase) ? sizeC : sizeE)])!;
         string[] set = [@"c:\pagefile.sys 1024 4096", @"e:\pagefile.sys 16348 32768"];
-        c.Check("page files set to at most 4 + 32 GB, 18.9 GB now: 17.9 GB still to grow", Room(set, 18_942) == 36_864 - 18_942, Room(set, 18_942));
-        c.Check("…only as far as the drives' free space allows (less 1 GB each)", Room(set, 18_942, 1_500, 2_000) == 476 + 976, Room(set, 18_942, 1_500, 2_000));
-        c.Check("…none once they're at their largest", Room(set, 36_864) == 0);
-        c.Check("a page file Windows sizes by itself counts for nothing (its limits aren't known)",
-            Room([@"c:\pagefile.sys 0 0"], 4_000) == 0 && Room([@"?:\pagefile.sys"], 4_000) == 0 && Room([@"c:\pagefile.sys 1024 4096", @"e:\pagefile.sys"], 4_000) == 0);
-        c.Check("…nor does no page file at all", Room([], 0) == 0);
+        c.Check("page files set to at most 4 + 32 GB, 18.9 GB now: 17.9 GB still to grow",
+            Room(set, [('c', 1_024), ('e', 17_918)]) == 36_864 - 18_942, Room(set, [('c', 1_024), ('e', 17_918)]));
+        c.Check("…only as far as the drives' free space allows (less 1 GB each)",
+            Room(set, [('c', 1_024), ('e', 17_918)], freeC: 1_500, freeE: 2_000) == 476 + 976, Room(set, [('c', 1_024), ('e', 17_918)], freeC: 1_500, freeE: 2_000));
+        c.Check("…none once they're at their largest", Room(set, [('c', 4_096), ('e', 32_768)]) == 0);
+        c.Check("…nor with no page file, or none known", Room([], []) == 0 && Room(set, null) == 0);
         // 2026-10-22: E:'s page file set to 16–32 GB but never made, C:'s at its largest 4 GB, the commit limit full.
         c.Check("a page file set but never made by Windows counts for nothing: E: set to 16–32 GB, only C: (4 GB, at its largest) made",
-            Room(set, 4_096, made: "c") == 0, Room(set, 4_096, made: "c"));
-        c.Check("…and C:'s room still counts while it can grow", Room(set, 1_024, made: "c") == 3_072, Room(set, 1_024, made: "c"));
-        var drives = typeof(SystemMemory).GetMethod("PageFileDrives", Harness.F)!.Invoke(null, null) as HashSet<string>;
-        c.Check("the drives Windows made a page file on are read from Windows itself", drives is { Count: > 0 } && drives.All(d => d.Length == 3 && d[1] == ':' && d[2] == '\\'),
-            drives is null ? "null" : string.Join(",", drives));
+            Room(set, [('c', 4_096)]) == 0, Room(set, [('c', 4_096)]));
+        c.Check("…and C:'s room still counts while it can grow", Room(set, [('c', 1_024)]) == 3_072, Room(set, [('c', 1_024)]));
+
+        // Users' PCs: Windows sizes the page file by itself (its default), up to 3 × RAM or 4 GB, at most the drive's size
+        // ÷ 8. Play warns only when the windows it opens, 3 GB each, wouldn't fit (less a 1 GB margin) in what is left of
+        // the commit limit and that room to grow.
+        bool Warns(long ramMb, long roomMb, long commitLeftMb, int windows) =>
+            (bool)typeof(AppController).GetMethod("VirtualMemoryShort", Harness.F)!.Invoke(null,
+                [new MemoryStatus(ramMb, 1_000, 80, ramMb + 1_229, commitLeftMb, roomMb), windows, 3_072L])!;
+        long eightGb = Room([@"?:\pagefile.sys"], [('c', 1_229)], ramMb: 8_192, freeC: 150_000, sizeC: 262_144);
+        c.Check("an 8 GB PC, system-managed C: at 1.2 GB on a 256 GB drive: it may grow to 3 × RAM (24 GB)", eightGb == 24_576 - 1_229, eightGb);
+        c.Check("…so opening 3 Roblox windows with its commit nearly all used doesn't warn", !Warns(8_192, eightGb, 300, 3));
+        long sixteenGb = Room([@"c:\pagefile.sys 0 0"], [('c', 2_560)], ramMb: 16_384, freeC: 300_000, sizeC: 524_288);
+        c.Check("a 16 GB PC, C: system-managed (\"0 0\") at 2.5 GB on a 512 GB drive: room to 48 GB", sixteenGb == 49_152 - 2_560, sixteenGb);
+        c.Check("…opening 6 windows doesn't warn", !Warns(16_384, sixteenGb, 300, 6));
+        c.Check("…on a 128 GB drive it may grow only to its size ÷ 8 (16 GB)",
+            Room([@"c:\pagefile.sys 0 0"], [('c', 2_560)], ramMb: 16_384, freeC: 60_000, sizeC: 131_072) == 16_384 - 2_560);
+        long full = Room([@"?:\pagefile.sys"], [('c', 1_229)], ramMb: 8_192, freeC: 1_500, sizeC: 262_144);
+        c.Check("still warns when a system-managed page file can't grow: its drive almost full", full == 476 && Warns(8_192, full, 300, 2), full);
+        long atMost = Room([@"?:\pagefile.sys"], [('c', 24_576)], ramMb: 8_192, freeC: 150_000, sizeC: 262_144);
+        c.Check("…or it is already at its largest", atMost == 0 && Warns(8_192, atMost, 300, 1), atMost);
+        var pageFiles = typeof(SystemMemory).GetMethod("PageFilesNow", Harness.F)!.Invoke(null, null) as Dictionary<string, long>;
+        c.Check("the page files Windows has, and their size, are read from Windows itself",
+            pageFiles is { Count: > 0 } && pageFiles.All(f => f.Key.Length == 3 && f.Key[1] == ':' && f.Key[2] == '\\' && f.Value > 0),
+            pageFiles is null ? "null" : string.Join(", ", pageFiles.Select(f => $"{f.Key} {f.Value} MB")));
         var now = SystemMemory.Read();
         c.Check("this PC's virtual memory is read, with the page files' room to grow", now.CommitLimitMb > 0 && now.PageFileRoomMb >= 0 && now.CommitRoomMb >= now.CommitAvailableMb,
             $"limit {now.CommitLimitMb}, left {now.CommitAvailableMb}, room {now.PageFileRoomMb}");

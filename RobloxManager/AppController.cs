@@ -2860,7 +2860,7 @@ public sealed partial class AppController : IDisposable
                 warnings.Add(("memory", L.P(toOpen, "Only {0} of RAM is free, and {1} more Roblox window needs about {2}. The PC may slow down or Roblox may crash.",
                     "Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash.",
                     FormatMb(memory.AvailableMb), toOpen, FormatMb(neededMb))));
-            else if (s.MemoryWarnings && toOpen > 0 && memory.CommitLimitMb > 0 && memory.CommitRoomMb - toOpen * perClientCommitMb < CommitMarginMb)
+            else if (s.MemoryWarnings && VirtualMemoryShort(memory, toOpen, perClientCommitMb))
                 warnings.Add(("memory", L.P(toOpen, "RAM is free, but Windows' virtual memory is almost full, so {0} more Roblox window may crash as it opens. Close other apps or increase virtual memory.",
                     "RAM is free, but Windows' virtual memory is almost full, so {0} more Roblox windows may crash as they open. Close other apps or increase virtual memory.", toOpen)));
             warnings.RemoveAll(w => SkippableLaunchWarnings.Contains(w.Kind) && Prefs.SkipConfirm.Contains(LaunchWarningKey(w.Kind)));
@@ -3796,6 +3796,14 @@ public sealed partial class AppController : IDisposable
         _lastMetrics = json;
         Post($"{{\"type\":\"event\",\"name\":\"metrics\",\"data\":{json}}}");
     }
+
+    /// <summary>
+    /// Opening <paramref name="toOpen"/> more Roblox windows, each holding about <paramref name="perClientCommitMb"/> of the
+    /// commit limit, would leave less than the margin of what is left of it and the room the page files may still grow:
+    /// Play's "virtual memory is almost full" warning.
+    /// </summary>
+    internal static bool VirtualMemoryShort(MemoryStatus memory, int toOpen, long perClientCommitMb) =>
+        toOpen > 0 && memory.CommitLimitMb > 0 && memory.CommitRoomMb - toOpen * perClientCommitMb < CommitMarginMb;
 
     /// <summary>
     /// Windows is short of memory: another Roblox wouldn't fit in what is left of the commit limit (RAM and paging file
