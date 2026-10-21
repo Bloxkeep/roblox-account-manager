@@ -794,7 +794,7 @@ public sealed class ShellForm : Form
             _releaseTimer.Start();
             return;
         }
-        Log.Note($"Interface closed in the background, Windows short of memory: {memory.CommitAvailableMb} MB of virtual memory and {memory.AvailableMb} MB of RAM left.");
+        Log.Note($"Interface closed in the background, Windows short of memory: {memory.CommitAvailableMb} MB of virtual memory (and {memory.PageFileRoomMb} MB for the page files to grow) and {memory.AvailableMb} MB of RAM left.");
         _web = null;
         _released = true;
         _app.PageGone();

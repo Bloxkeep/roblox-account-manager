@@ -73,6 +73,23 @@ static class MainBrowserSuite
         c.Check("…or when RAM is nearly all used", Tight(50_000, 20_000, 93));
         c.Check("…but not with room to spare", !Tight(50_000, 10_000, 60));
         c.Check("…nor when Windows didn't say how much virtual memory is left", !Tight(0, 0, 60));
+        c.Check("…nor when the page file may still grow enough",
+            !AppController.MemoryTight(new MemoryStatus(32_000, 8_000, 60, 51_500, 500, PageFileRoomMb: 15_000)));
+
+        // How much the page files may still grow: up to each one's largest size, within its drive's free space less 1 GB.
+        long Room(string[] files, long nowMb, long freeC = 64_000, long freeE = 900_000) =>
+            (long)typeof(SystemMemory).GetMethod("PageFileRoomMb", Harness.F)!.Invoke(null, [files, nowMb,
+                (Func<string, long>)(root => root.StartsWith("c", StringComparison.OrdinalIgnoreCase) ? freeC : freeE)])!;
+        string[] set = [@"c:\pagefile.sys 1024 4096", @"e:\pagefile.sys 16348 32768"];
+        c.Check("page files set to at most 4 + 32 GB, 18.9 GB now: 17.9 GB still to grow", Room(set, 18_942) == 36_864 - 18_942, Room(set, 18_942));
+        c.Check("…only as far as the drives' free space allows (less 1 GB each)", Room(set, 18_942, 1_500, 2_000) == 476 + 976, Room(set, 18_942, 1_500, 2_000));
+        c.Check("…none once they're at their largest", Room(set, 36_864) == 0);
+        c.Check("a page file Windows sizes by itself counts for nothing (its limits aren't known)",
+            Room([@"c:\pagefile.sys 0 0"], 4_000) == 0 && Room([@"?:\pagefile.sys"], 4_000) == 0 && Room([@"c:\pagefile.sys 1024 4096", @"e:\pagefile.sys"], 4_000) == 0);
+        c.Check("…nor does no page file at all", Room([], 0) == 0);
+        var now = SystemMemory.Read();
+        c.Check("this PC's virtual memory is read, with the page files' room to grow", now.CommitLimitMb > 0 && now.PageFileRoomMb >= 0 && now.CommitRoomMb >= now.CommitAvailableMb,
+            $"limit {now.CommitLimitMb}, left {now.CommitAvailableMb}, room {now.PageFileRoomMb}");
         var wait = typeof(Prefs).Assembly.GetType("RobloxManager.ShellForm")!.GetMethod("ReleaseWait", Harness.F)!;
         int Wait(long hiddenMs, long commitFree) => (int)wait.Invoke(null, [hiddenMs, new MemoryStatus(32_000, 8_000, 60, 50_000, commitFree)])!;
         c.Check("in the background the browser stays, asleep, looked at every half minute", Wait(30_000, 10_000) == 30_000 && Wait(3_600_000, 10_000) == 30_000,

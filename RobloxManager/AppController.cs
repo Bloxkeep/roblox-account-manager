@@ -2726,7 +2726,7 @@ public sealed partial class AppController : IDisposable
                 warnings.Add(("memory", L.P(toOpen, "Only {0} of RAM is free, and {1} more Roblox window needs about {2}. The PC may slow down or Roblox may crash.",
                     "Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash.",
                     FormatMb(memory.AvailableMb), toOpen, FormatMb(neededMb))));
-            else if (s.MemoryWarnings && toOpen > 0 && memory.CommitLimitMb > 0 && memory.CommitAvailableMb - toOpen * perClientCommitMb < CommitMarginMb)
+            else if (s.MemoryWarnings && toOpen > 0 && memory.CommitLimitMb > 0 && memory.CommitRoomMb - toOpen * perClientCommitMb < CommitMarginMb)
                 warnings.Add(("memory", L.P(toOpen, "RAM is free, but Windows' virtual memory is almost full, so {0} more Roblox window may crash as it opens. Close other apps or increase virtual memory.",
                     "RAM is free, but Windows' virtual memory is almost full, so {0} more Roblox windows may crash as they open. Close other apps or increase virtual memory.", toOpen)));
             warnings.RemoveAll(w => SkippableLaunchWarnings.Contains(w.Kind) && Prefs.SkipConfirm.Contains(LaunchWarningKey(w.Kind)));
@@ -3646,10 +3646,10 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>
     /// Windows is short of memory: another Roblox wouldn't fit in what is left of the commit limit (RAM and paging file
-    /// together), or RAM is nearly all used. The main window then closes its browser sooner in the background.
+    /// together, with the room the paging files may still grow), or RAM is nearly all used. The main window then closes its browser sooner in the background.
     /// </summary>
     public static bool MemoryTight(MemoryStatus memory) =>
-        (memory.CommitLimitMb > 0 && memory.CommitAvailableMb < DefaultClientCommitMb + CommitMarginMb)
+        (memory.CommitLimitMb > 0 && memory.CommitRoomMb < DefaultClientCommitMb + CommitMarginMb)
         || memory.LoadPercent >= MemoryWarningLoad;
 
     /// <summary>
@@ -3667,9 +3667,9 @@ public sealed partial class AppController : IDisposable
             _lastMemoryWarning = now;
             Notify(L.F("Your PC is using {0}% of its RAM. Close some Roblox windows if things get slow.", memory.LoadPercent), "warn", "ram");
         }
-        // RAM may be fine while Windows' commit limit (RAM and paging file together) is nearly used up: a Roblox window
-        // that needs more then crashes.
-        else if (s.MemoryWarnings && players.Count > 0 && memory.CommitLimitMb > 0 && memory.CommitAvailableMb < CommitMarginMb
+        // RAM may be fine while Windows' commit limit (RAM and paging file together) is nearly used up, with no room left
+        // for the paging file to grow: a Roblox window that needs more then crashes.
+        else if (s.MemoryWarnings && players.Count > 0 && memory.CommitLimitMb > 0 && memory.CommitRoomMb < CommitMarginMb
             && now - _lastMemoryWarning > MemoryWarningInterval)
         {
             _lastMemoryWarning = now;
