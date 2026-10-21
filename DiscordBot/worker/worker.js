@@ -37,8 +37,8 @@ const OUTAGE_LOOKS = 2;
 // A Roblox update posted before Roblox's notes were out: they're looked for this often, for this long, and edited in.
 const NOTES_EVERY = 10 * 60_000, NOTES_FOR = 14 * 24 * 3600_000;
 // The community server's channel that shows how many have Bloxkeep open: renamed at most this often (Discord allows two
-// renames of a channel in ten minutes), and looked for this often while there is none.
-const COUNT_EVERY = 6 * 60_000, COUNT_LOOK = 3600_000;
+// renames of a channel in ten minutes), and looked for this often while there is none (made by hand, say).
+const COUNT_EVERY = 6 * 60_000, COUNT_LOOK = 10 * 60_000;
 // The bot's object, kept in eastern North America, next to Discord: slash commands come from Discord's servers there,
 // and the posts go back to them. The first object ("bot") was made where the first look at /status came from (Asia),
 // which put about 200 ms of ocean on every command; this one takes over its servers' choices and boards (migrate()).
@@ -635,7 +635,7 @@ export class Gateway extends DurableObject {
   /**
    * The community server's channel that shows how many have Bloxkeep open now ("🟢 Using Bloxkeep: 3": /setup makes it,
    * or one named so by hand that the bot may manage): renamed when the number changes, at most every six minutes, and
-   * looked for once an hour while there is none.
+   * looked for every ten minutes while there is none.
    */
   async updateCountChannel(now) {
     if (!this.env.DISCORD_TOKEN || !this.env.COMMUNITY_GUILD)

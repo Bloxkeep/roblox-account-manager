@@ -161,8 +161,8 @@ try {
   const under = (cat, list) => list.every(([name, type]) => named(name, type)?.parent_id === cat);
   check('Info: the trap, welcome, rules, announcements, roblox-updates', under(cat('Info'), [['dont-type-here', 0], ['welcome', 0], ['rules', 0], ['announcements', 5], ['roblox-updates', 5]]), JSON.stringify(channels.map(c => [c.name, c.type, c.parent_id])));
   const count = named('🟢 Using Bloxkeep: 0', 2), ows = count?.permission_overwrites ?? [];
-  check('Info starts with a voice channel saying how many use Bloxkeep: seen by all, joined by nobody, renamed by the bot alone',
-    count?.parent_id === cat('Info') && count.position === 0 && named('dont-type-here').position === 1
+  check('a voice channel saying how many use Bloxkeep, at the very top (no category): seen by all, joined by nobody, renamed by the bot alone',
+    count && !count.parent_id && named('dont-type-here').position === 0
     && ows.some(o => o.id === G && BigInt(o.deny) & (1n << 20n)) && ows.some(o => o.id === BOT && o.type === 1 && BigInt(o.allow) & (1n << 4n)), JSON.stringify(count));
   check('Community: general (Discord\'s #chung, renamed), general-vn, bot-commands, the voice channel (renamed General), no showcase or off-topic',
     under(cat('Community'), [['general', 0], ['general-vn', 0], ['bot-commands', 0], ['General', 2]])
