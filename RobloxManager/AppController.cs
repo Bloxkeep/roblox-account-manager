@@ -3664,6 +3664,8 @@ public sealed partial class AppController : IDisposable
         Step(() => RunDueRejoin(now));
         Step(() => RestartDueClients(now));
         Step(() => RunSignInCheckIfDue(now));
+        Step(SaveRenewedSignIns); // a cookie Roblox renewed in an answer goes to its account
+        Step(() => RenewSignInsIfDue(now));
         Step(() => RefreshRobuxIfDue(now));
         Step(() => TickDiscord(now, players));
         if (!_presenceBusy && now >= _nextPresence)

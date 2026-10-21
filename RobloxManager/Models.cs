@@ -23,6 +23,8 @@ public sealed class Account
     public DateTime? LastUsed { get; set; }
     public DateTime? LastChecked { get; set; }
     public bool? CookieValid { get; set; }
+    /// <summary>When Roblox last renewed <see cref="Cookie"/> (see AppController.SignIns.cs); null: not since Bloxkeep watches for it.</summary>
+    public DateTime? CookieRenewed { get; set; }
     public bool AutoRejoin { get; set; }
     /// <summary>Auto-rejoin was switched off because Roblox ended the sign-in: on again once it is signed in again.</summary>
     public bool RejoinOffBySignOut { get; set; }
