@@ -28,8 +28,10 @@ export function Sidebar() {
   return <aside className="side">
     <div className="lights">{(['close', 'min', 'zoom'] as const).map(w =>
       <button key={w} className={`light l-${w}`} data-act={`win-${w}`} title={t(`win.${w}`)} aria-label={t(`win.${w}`)} />)}</div>
-    <div className="brand"><img src={logo} alt="" /><div><div className="brand-name">Bloxkeep</div><div className="brand-sub">{t('brand.sub')}</div></div>
-      <button className="icon-btn brand-discord" data-act="open-discord" title={t('dc.title')} aria-label={t('dc.title')}><Icon name="discord" /></button></div>
+    <div className="brand"><img src={logo} alt="" /><div className="brand-text">
+      <div className="brand-top"><div className="brand-name">Bloxkeep</div>
+        <button className="icon-btn brand-discord" data-act="open-discord" title={t('dc.title')} aria-label={t('dc.title')}><Icon name="discord" /></button></div>
+      <div className="brand-sub">{t('brand.sub')}</div></div></div>
     <div className="side-nav">
       {nav('accounts', 'users', <em id="nav-count">{accounts.length}</em>)}
       {nav('presets', 'layers')}

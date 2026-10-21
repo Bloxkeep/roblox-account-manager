@@ -5,11 +5,12 @@ html [data-theme="dark" lang="vi"]
     aside.side
       div.brand
         img [alt="" src="logo.svg"]
-        div
-          div.brand-name "Bloxkeep"
+        div.brand-text
+          div.brand-top
+            div.brand-name "Bloxkeep"
+            button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+              svg.i #1crx2f1
           div.brand-sub "Quản lý tài khoản Roblox"
-        button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Tài khoản"]
           svg.i #v823bm
@@ -436,11 +437,12 @@ html [data-theme="dark" lang="vi"]
     aside.side
       div.brand
         img [alt="" src="logo.svg"]
-        div
-          div.brand-name "Bloxkeep"
+        div.brand-text
+          div.brand-top
+            div.brand-name "Bloxkeep"
+            button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+              svg.i #1crx2f1
           div.brand-sub "Quản lý tài khoản Roblox"
-        button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Tài khoản"]
           svg.i #v823bm
@@ -866,11 +868,12 @@ html [data-theme="dark" lang="vi"]
     aside.side
       div.brand
         img [alt="" src="logo.svg"]
-        div
-          div.brand-name "Bloxkeep"
+        div.brand-text
+          div.brand-top
+            div.brand-name "Bloxkeep"
+            button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+              svg.i #1crx2f1
           div.brand-sub "Quản lý tài khoản Roblox"
-        button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Tài khoản"]
           svg.i #v823bm
@@ -1296,11 +1299,12 @@ html [data-theme="dark" lang="vi"]
     aside.side
       div.brand
         img [alt="" src="logo.svg"]
-        div
-          div.brand-name "Bloxkeep"
+        div.brand-text
+          div.brand-top
+            div.brand-name "Bloxkeep"
+            button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+              svg.i #1crx2f1
           div.brand-sub "Quản lý tài khoản Roblox"
-        button.brand-discord.icon-btn [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-          svg.i #1crx2f1
       div.side-nav
         button.nav.on [title="Tài khoản"]
           svg.i #v823bm
