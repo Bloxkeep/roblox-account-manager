@@ -41,13 +41,13 @@
       "en": [
         "Browse servers › Your private servers: the game's private servers that your selected accounts own or were invited to, with the owner, how many are playing and which accounts can join. Use server puts it in the game box, and Play joins it as the Join button on its Roblox page does.",
         "Join a player… has a box, When these accounts rejoin, look this player up again and join their server. While the player can't be joined (offline, not in a game, a hidden or full server, a game that banned the account), the rejoin waits, looks again every minute and says why once.",
-        "A preset's server can be A player's server: its accounts join the server that player is in, no game needed.",
+        "A preset's server can be A player's server, so its accounts join the server that player is in, no game needed.",
         "Get started: until Bloxkeep has opened an account once, a line over the list shows the three steps (add an account, pick a game, select accounts and press Play) and ticks each one off."
       ],
       "vi": [
         "Chọn server › Server riêng của bạn: các server riêng của game mà tài khoản đang chọn là chủ hoặc được mời vào, kèm chủ server, số người đang chơi và tài khoản nào vào được. Dùng server này sẽ điền server vào ô game, bấm Vào game là vào đúng server đó, giống nút Join trên trang Roblox của game.",
         "Vào cùng người chơi… có thêm ô Khi các tài khoản này vào lại, tìm lại người chơi này và vào server họ đang chơi. Khi chưa vào cùng được (người đó offline, không ở trong game, server bị ẩn hoặc đã đầy, game đã cấm tài khoản), Bloxkeep chờ, cứ mỗi phút tìm lại và báo lý do một lần.",
-        "Server của Preset có thêm lựa chọn Server của một người chơi: các tài khoản vào server người đó đang chơi, không cần chọn game.",
+        "Server của Preset có thêm lựa chọn Server của một người chơi, để các tài khoản vào server người đó đang chơi mà không cần chọn game.",
         "Bắt đầu: cho tới khi Bloxkeep mở một tài khoản lần đầu, một dòng phía trên danh sách hiện ba bước (thêm tài khoản, chọn game, chọn tài khoản rồi bấm Vào game) và đánh dấu từng bước đã xong."
       ]
     },
