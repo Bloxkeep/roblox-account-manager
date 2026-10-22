@@ -3248,8 +3248,10 @@ public sealed partial class AppController : IDisposable
     /// could get each other's window, and a window the person opened from the website could be taken for a launch's.
     /// </summary>
     /// <param name="trackerOf">The browser tracker id a client's command line names ("" none, null not read).</param>
+    /// <param name="updating">Roblox's updater started since the launch is running (<see cref="RobloxProcesses.UpdaterRunningSince"/>).</param>
     /// <returns>Whether a launch got its window or stopped waiting.</returns>
-    bool ClaimWindows(HashSet<int> pids, Func<int, bool> hasWindow, Func<int, List<int>> childrenOf, Func<int, string?> trackerOf, DateTime now)
+    bool ClaimWindows(HashSet<int> pids, Func<int, bool> hasWindow, Func<int, List<int>> childrenOf, Func<int, string?> trackerOf,
+        Func<PendingLaunch, bool> updating, DateTime now)
     {
         bool changed = false;
         var claimed = _running.Values.Select(r => r.Pid).ToHashSet();
@@ -3285,12 +3287,20 @@ public sealed partial class AppController : IDisposable
                 changed = true;
             }
             // A client appeared for this launch and then every new client quit without a game window: stop waiting.
+            // Unless Roblox's updater started since: an outdated client hands the launch to it and quits, and the updated
+            // client comes from it a while later (until PendingTimeout, then as a late launch). Before, the launch was
+            // dropped 5 s on ("no Roblox window appeared" for a rejoin) and the window that came was nobody's.
             foreach (var launch in _pending.ToList())
             {
                 if (pids.Any(p => !launch.Before.Contains(p) && !claimed.Contains(p)))
                     _pendingSeenAlive[launch] = now;
                 else if (_pendingSeenAlive.TryGetValue(launch, out var seen) && now - seen > PendingGoneGrace)
                 {
+                    if (updating(launch))
+                    {
+                        _pendingSeenAlive[launch] = now;
+                        continue;
+                    }
                     DropPending(launch);
                     changed = true;
                 }
@@ -3642,8 +3652,10 @@ public sealed partial class AppController : IDisposable
             List<int> trayCopies = log is null ? [] : ChildrenOf(info.Pid).Where(p => !HasWindow(p)).ToList();
             if (log is not null)
                 _traySweep[info.Pid] = now + TraySweep;
+            // Roblox's updater started since the launch is one too: an outdated client hands the launch to it.
             bool handOver = now - info.Launch.StartedAt < HandOverWindow && !_userClosed.Contains(id) && !closedByRoblox
-                && pids.Any(p => !info.Launch.Before.Contains(p) && !claimedNow.Contains(p) && !trayCopies.Contains(p) && MayBeLaunchOf(TrackerOf(p), info.Launch));
+                && (pids.Any(p => !info.Launch.Before.Contains(p) && !claimedNow.Contains(p) && !trayCopies.Contains(p) && MayBeLaunchOf(TrackerOf(p), info.Launch))
+                    || RobloxProcesses.UpdaterRunningSince(info.Launch.StartedAt));
             if (handOver)
             {
                 _pending.Add(info.Launch);
@@ -3668,7 +3680,7 @@ public sealed partial class AppController : IDisposable
             }
             changed = true;
         }
-        changed |= ClaimWindows(pids, HasWindow, ChildrenOf, TrackerOf, now);
+        changed |= ClaimWindows(pids, HasWindow, ChildrenOf, TrackerOf, launch => RobloxProcesses.UpdaterRunningSince(launch.StartedAt), now);
         foreach (var gone in _pendingSeenAlive.Keys.Where(l => !_pending.Contains(l)).ToList())
             _pendingSeenAlive.Remove(gone);
 

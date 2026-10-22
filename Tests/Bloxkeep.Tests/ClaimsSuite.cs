@@ -63,8 +63,11 @@ static class ClaimsSuite
             return launch;
         }
         int Window(Account who) => running.Contains(who.Id) ? (int)running[who.Id]!.GetType().GetField("Item1")!.GetValue(running[who.Id])! : 0;
+        bool updating = false;
+        // Taken for a Func of the private launch type (a Func's argument is contravariant).
+        Func<object, bool> updatingNow = _ => updating;
         void Claim(Dictionary<int, string?> windows) => Harness.Invoke(app, "ClaimWindows", windows.Keys.ToHashSet(), (Func<int, bool>)(_ => true),
-            (Func<int, List<int>>)(_ => []), (Func<int, string?>)(pid => windows[pid]), DateTime.UtcNow);
+            (Func<int, List<int>>)(_ => []), (Func<int, string?>)(pid => windows[pid]), updatingNow, DateTime.UtcNow);
         void Reset()
         {
             pending.Clear();
@@ -104,5 +107,39 @@ static class ClaimsSuite
         Claim(new() { [1006] = null });
         c.Check("…and one whose command line can't be read", Window(b) == 1006, Window(b));
         Reset();
+
+        // An outdated client hands its launch to Roblox's updater (RobloxPlayerInstaller.exe) and quits; the updated client
+        // comes a while later. While the updater runs, the launch is still waited for; without it, the launch whose every
+        // client quit stops waiting 5 s on, as before. Before, it was dropped then all the same.
+        var alive = Harness.Get<System.Collections.IDictionary>(app, "_pendingSeenAlive");
+        var handed = Launch(b, 20, Second);
+        pending.Add(handed);
+        alive[handed] = DateTime.UtcNow.AddSeconds(-10);
+        updating = true;
+        Claim(new());
+        c.Check("every client of a launch quit, Roblox's updater started since: still waited for", pending.Contains(handed), pending.Count);
+        updating = false;
+        alive[handed] = DateTime.UtcNow.AddSeconds(-10);
+        Claim(new());
+        c.Check("…without it: no longer waited for, as before", !pending.Contains(handed), pending.Count);
+        Reset();
+        // Roblox's updater read from Windows' process list (a stand-in under its name: ping, copied).
+        string updaterDir = Path.Combine(dir, "updater");
+        Directory.CreateDirectory(updaterDir);
+        string updaterExe = Path.Combine(updaterDir, "RobloxPlayerInstaller.exe");
+        File.Copy(Path.Combine(Environment.SystemDirectory, "PING.EXE"), updaterExe, true);
+        var before = DateTime.UtcNow.AddSeconds(-2);
+        using var updater = Process.Start(new ProcessStartInfo(updaterExe, "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false })!;
+        try
+        {
+            c.Check("Roblox's updater running, started after the launch: seen", RobloxProcesses.UpdaterRunningSince(before));
+            c.Check("…one started before the launch isn't this launch's", !RobloxProcesses.UpdaterRunningSince(DateTime.UtcNow.AddMinutes(1)));
+        }
+        finally
+        {
+            try { updater.Kill(); } catch (InvalidOperationException) { }
+            updater.WaitForExit(5000);
+        }
+        c.Check("…and once it has quit, none", !RobloxProcesses.UpdaterRunningSince(before));
     }
 }

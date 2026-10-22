@@ -833,6 +833,48 @@ public static class RobloxProcesses
         return tray;
     }
 
+    /// <summary>Roblox's updater, which an outdated client starts and hands its launch to.</summary>
+    const string UpdaterProcessName = "RobloxPlayerInstaller";
+
+    /// <summary>
+    /// Whether Roblox's updater (RobloxPlayerInstaller.exe) is running, started at or after <paramref name="sinceUtc"/>.
+    /// An outdated client starts it and quits, and the updated client comes from it: the client's own lines
+    /// ("[FLog::UpdateController] WindowsUpdateController: updaterFullPath: …", "Update thread: start …", the updater
+    /// named RobloxPlayerInstaller.exe in it, 0.744). Where Bloxstrap installs Roblox the client finds no updater
+    /// ("Updater not found. Skipping update", every log on the owner's PC): Bloxstrap updates before starting it.
+    /// </summary>
+    public static bool UpdaterRunningSince(DateTime sinceUtc)
+    {
+        Process[] processes;
+        try
+        {
+            processes = Process.GetProcessesByName(UpdaterProcessName);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
+        {
+            return false;
+        }
+        try
+        {
+            return processes.Any(p =>
+            {
+                try
+                {
+                    return p.StartTime.ToUniversalTime() >= sinceUtc;
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
+                {
+                    return false; // gone meanwhile, or not ours to read
+                }
+            });
+        }
+        finally
+        {
+            foreach (var p in processes)
+                p.Dispose();
+        }
+    }
+
     static readonly Dictionary<(int Pid, long Created), string> _trackers = new();
     static readonly System.Text.RegularExpressions.Regex TrackerText = new(@"browsertrackerid[:=](\d+)|(?<=\s)-b\s+(\d+)",
         System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
