@@ -32,6 +32,8 @@ const MAX_EVENTS = 2000;
 const MAX_BACKOFF = 60_000;
 // Bloxkeep's releases are looked at every ten minutes (the others every minute).
 const RELEASE_EVERY = 10 * 60_000;
+// How many looks a new release waits for its notes to be readable before it is posted without them (an hour).
+const RELEASE_TRIES = 6;
 // An outage counts once two looks in a row say so, and is over after two that say all is well (no posts for a blip).
 const OUTAGE_LOOKS = 2;
 // A Roblox update posted before Roblox's notes were out: they're looked for this often, for this long, and edited in.
@@ -616,11 +618,19 @@ export class Gateway extends DurableObject {
       snap.releaseAt = now;
     if (tag && tag !== snap.announced.release && !/-/.test(tag)) {
       const rel = await readRelease(this.env, tag);
-      changed = true;
-      snap.bloxkeep = { version: rel.version, url: rel.url };
-      if (prev && (!snap.announced.release || newer(tag, snap.announced.release)))
-        posts.push({ kind: 'bloxkeep', make: l => releaseMessage(l, rel) });
-      snap.announced.release = tag;
+      // Its notes not readable yet (GitHub not answering): asked again at the next look, for up to RELEASE_TRIES looks,
+      // rather than posted without its highlights.
+      const tries = snap.releaseTries?.tag === tag ? snap.releaseTries.n + 1 : 1;
+      if (!rel.read && tries < RELEASE_TRIES) {
+        snap.releaseTries = { tag, n: tries };
+      } else {
+        delete snap.releaseTries;
+        changed = true;
+        snap.bloxkeep = { version: rel.version, url: rel.url };
+        if (prev && (!snap.announced.release || newer(tag, snap.announced.release)))
+          posts.push({ kind: 'bloxkeep', make: l => releaseMessage(l, rel) });
+        snap.announced.release = tag;
+      }
     }
     if (changed || !snap.changedAt)
       snap.changedAt = now;

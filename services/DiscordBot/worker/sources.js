@@ -10,6 +10,8 @@ const URLS = {
   STATUS_URL: 'https://api.status.io/1.0/status/59db90dbcdeb2f04dadcf16d', // status.roblox.com is a status.io page
   LATEST_URL: `${REPO}/releases/latest`,
   RELEASE_API_URL: 'https://api.github.com/repos/Bloxkeep/roblox-account-manager/releases/tags/',
+  // The repository's files at a tag (…/v1.0.9/RobloxManager/whatsnew.json), served without GitHub's API limit.
+  RELEASE_FILE_URL: 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/',
   NOTES_URL: 'https://create.roblox.com/docs/release-notes/release-notes-',
 };
 const url = (env, key) => env[key] || URLS[key];
@@ -77,19 +79,39 @@ export async function readLatestTag(env) {
 
 /**
  * A release's highlights in English and Vietnamese: the lines before its first heading, on each side of the
- * "**Tiếng Việt**" line its notes have (release-notes.ps1). Asked only when a new release appears.
+ * "**Tiếng Việt**" line its notes have (release-notes.ps1). Asked only when a new release appears. GitHub's API
+ * allows 60 requests an hour without a sign-in, per address, and Cloudflare's addresses are shared: when it doesn't
+ * answer (1.0.9 was posted with no highlights on 2026-10-23), they come from the notes the release was built from,
+ * whatsnew.json at its tag, written the same way. read: false when neither could be read (not a release without
+ * highlights), so the post can wait for them.
  */
 export async function readRelease(env, tag) {
-  const page = `${REPO}/releases/tag/${tag}`;
+  const page = `${REPO}/releases/tag/${tag}`, version = tag.replace(/^v/, '');
+  const highlights = text => text.split(/^#{1,6} /m)[0].trim().slice(0, 1500);
+  let fromApi = null;
   try {
     const d = await getJson(url(env, 'RELEASE_API_URL') + encodeURIComponent(tag));
     const body = String(d.body ?? '').replace(/\r/g, '');
     const [en, vi = ''] = body.split(/^\*\*Tiếng Việt\*\*\s*$/m);
-    const highlights = text => text.split(/^#{1,6} /m)[0].trim().slice(0, 1500);
-    return { tag, version: tag.replace(/^v/, ''), url: d.html_url || page, en: highlights(en), vi: highlights(vi) || highlights(en) };
+    fromApi = { tag, version, url: d.html_url || page, en: highlights(en), vi: highlights(vi) || highlights(en), read: true };
   } catch {
-    return { tag, version: tag.replace(/^v/, ''), url: page, en: '', vi: '' };
+    // GitHub's API didn't answer: the notes file instead
   }
+  if (fromApi?.en)
+    return fromApi;
+  try {
+    const list = await getJson(`${url(env, 'RELEASE_FILE_URL')}${encodeURIComponent(tag)}/RobloxManager/whatsnew.json`);
+    const notes = Array.isArray(list) ? list.find(r => r?.version === version) : null;
+    if (notes) {
+      // As release-notes.ps1 writes them: "- **Title**: text", one per highlight.
+      const lines = lang => (notes.highlights ?? []).map(h => h?.[lang]).filter(w => w?.[0])
+        .map(([title, text = '']) => `- **${title}**: ${text}`).join('\n').slice(0, 1500);
+      return { tag, version, url: fromApi?.url ?? page, en: lines('en'), vi: lines('vi') || lines('en'), read: true };
+    }
+  } catch {
+    // not readable either: read stays as the API left it
+  }
+  return fromApi ?? { tag, version, url: page, en: '', vi: '', read: false };
 }
 
 /** Where Roblox's notes for a weekly release are read (744 → .../release-notes-744). */

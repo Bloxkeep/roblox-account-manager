@@ -84,6 +84,8 @@ let watch = {
 };
 let status = { code: 100 };
 let latest = 'v1.0.7';
+// GitHub's API not answering (as for 1.0.9 on 2026-10-23) and the notes file at a tag not there yet.
+let apiDown = false, fileDown = false;
 // Roblox's notes, per weekly release, as its Creator Hub page carries them; a release not here has no page yet.
 const notes = new Map();
 const CHANGES = [
@@ -102,7 +104,10 @@ const src = http.createServer((req, res) => {
   if (req.url === '/status.json') return json({ result: { status_overall: { status_code: status.code }, status: ['User', 'Player', 'Creator'].map(name => ({ name, status_code: status.code })), incidents: status.code > 100 ? [{ name: 'Players can\'t join' }] : [] } });
   if (req.url === '/releases/latest') { res.writeHead(302, { Location: `http://127.0.0.1:${SRC}/releases/tag/${latest}` }); return res.end(); }
   const m = /^\/api\/tags\/(.+)$/.exec(req.url);
+  if (m && apiDown) { res.writeHead(403); return res.end('{"message":"API rate limit exceeded"}'); }
   if (m) return json({ html_url: `https://github.com/Bloxkeep/roblox-account-manager/releases/tag/${m[1]}`, body: NOTES });
+  const f = /^\/raw\/([^/]+)\/RobloxManager\/whatsnew\.json$/.exec(req.url);
+  if (f && !fileDown) return json([{ version: f[1].replace(/^v/, ''), highlights: [{ icon: 'lock', en: ['Private servers', 'listed.'], vi: ['Server riêng', 'đã có.'] }] }]);
   const n = /^\/notes\/release-notes-(\d+)$/.exec(req.url);
   if (n && notes.has(Number(n[1]))) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(notesPage(notes.get(Number(n[1])))); }
   res.writeHead(404); res.end();
@@ -152,7 +157,7 @@ function startDev(extra = {}) {
     OBJECT_NAME: 'bot-test', OLD_OBJECT_NAME: '', PRESENCE_EVERY_MS: '300', TRACE_URL: 'http://127.0.0.1:9/',
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
-    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
+    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '200', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
     NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', ...extra,
   };
@@ -416,6 +421,20 @@ try {
   check('…not where Bloxkeep news was turned off', posts('c3').length === before.c3);
   r = await interact(command('download', { locale: 'en-US' }));
   check('/download now names 1.0.8', r.json?.data.embeds[0].title === 'Bloxkeep 1.0.8');
+
+  // GitHub's API not answering, as when 1.0.9 went out with no highlights: nothing readable at first, so nothing
+  // posted; once the notes file at its tag answers, posted with that file's highlights.
+  apiDown = fileDown = true;
+  latest = 'v1.0.9';
+  before = base();
+  await minute();
+  check("a new Bloxkeep whose notes can't be read yet: not posted empty, it waits", posts('c1').length === before.c1);
+  fileDown = false;
+  await minute();
+  const rel9 = posts('c1').at(-1);
+  check("…GitHub's API still not answering: posted with the highlights of its notes file", posts('c1').length === before.c1 + 1
+    && embedOf(rel9)?.title === 'Bloxkeep 1.0.9 is out' && embedOf(rel9)?.description === '- **Private servers**: listed.', JSON.stringify(rel9?.body));
+  apiDown = false;
 
   // Turned off: nothing more there.
   await interact(command('notify', { sub: 'off' }));
