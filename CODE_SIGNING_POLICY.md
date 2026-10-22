@@ -1,7 +1,8 @@
 # Code signing policy
 
-Bloxkeep's Windows files are not code-signed yet. Bloxkeep is applying to [SignPath Foundation](https://signpath.org/)
-for a free code signing certificate for open source projects. Once the project is accepted, every signed release
+Bloxkeep's Windows files are not code-signed yet. [SignPath Foundation](https://signpath.org/), which gives open
+source projects a free code signing certificate, turned down Bloxkeep's first application in October 2026 because the
+project was too new; Bloxkeep will apply again once it is better known. Once it is accepted, every signed release
 carries this notice:
 
 > Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).

@@ -5,6 +5,7 @@
 <p align="center">Quản lý và mở nhiều tài khoản Roblox trên Windows. Tài khoản được mã hóa và chỉ lưu trên máy của bạn.</p>
 <p align="center"><a href="README.md">English</a> | Tiếng Việt</p>
 <p align="center"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 hoặc 11, 64-bit"> <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10"> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="Giấy phép MIT"></a></p>
+<p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/T%E1%BA%A3i_cho_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Tải Bloxkeep cho Windows (Bloxkeep-Setup.exe, bản mới nhất)"></a></p>
 <p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="Ảnh chụp thật trên một máy Windows: năm cửa sổ Roblox mở cùng lúc, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, bốn cửa sổ cùng ở trong một game và cửa sổ thứ năm đang vào, phía sau là Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật"></p>
@@ -45,7 +46,7 @@ Mỗi mục đều được giải thích ở phần [Sử dụng](#sử-dụng)
 
 Cần Windows 10 hoặc 11, bản 64-bit. Không cần cài .NET. Bộ cài tự cài Microsoft Edge WebView2 nếu máy chưa có.
 
-Tải ở trang [Releases](../../releases/latest):
+**[Tải Bloxkeep-Setup.exe](https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe)** (luôn là bản mới nhất), hoặc chọn file khác ở trang [Releases](../../releases/latest):
 
 | File | Dùng khi |
 |---|---|
@@ -56,7 +57,7 @@ Tải ở trang [Releases](../../releases/latest):
 > [!CAUTION]
 > Chỉ tải Bloxkeep ở trang Releases của repo này. Bản tải ở nơi khác có thể đã bị sửa để lấy cắp tài khoản.
 
-File chưa có chữ ký số: Bloxkeep đang đăng ký chữ ký số miễn phí của SignPath Foundation ([code signing policy](CODE_SIGNING_POLICY.md), tiếng Anh). Trong lúc chờ, lần đầu chạy Windows SmartScreen sẽ cảnh báo. Bấm **More info** rồi **Run anyway** (trên Windows tiếng Việt, hai nút này mang tên tiếng Việt tương ứng). Bạn có thể đối chiếu mã SHA-256 của file với `SHA256SUMS.txt` trong cùng bản phát hành. `Bloxkeep-Setup.exe` là cùng một file ở mọi bản phát hành (chỉ phần nó tải về là thay đổi), nên SmartScreen dần dần nhận ra nó; bộ cài này cũng tự đối chiếu file tải về với `SHA256SUMS.txt`.
+File chưa có chữ ký số ([code signing policy](CODE_SIGNING_POLICY.md), tiếng Anh), nên lần đầu chạy Windows SmartScreen sẽ cảnh báo. Bấm **More info** rồi **Run anyway** (trên Windows tiếng Việt, hai nút này mang tên tiếng Việt tương ứng). Bạn có thể đối chiếu mã SHA-256 của file với `SHA256SUMS.txt` trong cùng bản phát hành. `Bloxkeep-Setup.exe` là cùng một file ở mọi bản phát hành (chỉ phần nó tải về là thay đổi), nên SmartScreen dần dần nhận ra nó; bộ cài này cũng tự đối chiếu file tải về với `SHA256SUMS.txt`.
 
 Bộ cài cho bạn chọn nơi cài (mặc định là `%LOCALAPPDATA%\BloxkeepApp`; chương trình chiếm khoảng 230 MB), chép file kèm thanh tiến trình và có thể mở Bloxkeep khi xong. Tài khoản và cài đặt được lưu riêng với chương trình, trong `%LOCALAPPDATA%\Bloxkeep` (vài MB). Bộ cài và bộ gỡ có tiếng Việt và tiếng Anh.
 
@@ -576,7 +577,7 @@ Từng tính năng được giải thích từng bước trong [hướng dẫn s
 
 ### **H:** Đây có phải virus không? Sao Windows hay antivirus cảnh báo?
 
-**Đ:** Không. File chưa có chữ ký số (Bloxkeep đang xin ký miễn phí qua SignPath Foundation), nên SmartScreen và một số antivirus cảnh báo với mọi file mới. Bạn có thể đối chiếu SHA-256 với `SHA256SUMS.txt`, đọc mã nguồn trong repo này, hoặc [tự build](#tự-build-từ-mã-nguồn).
+**Đ:** Không. File chưa có chữ ký số, nên SmartScreen và một số antivirus cảnh báo với mọi file mới. Bạn có thể đối chiếu SHA-256 với `SHA256SUMS.txt`, đọc mã nguồn trong repo này, hoặc [tự build](#tự-build-từ-mã-nguồn).
 
 ### **H:** Antivirus xóa mất Bloxkeep. Có nên dùng tiếp không?
 
@@ -724,7 +725,7 @@ docs/screenshots/          ảnh chụp màn hình (vi/: ảnh giao diện tiế
 
 ## Code signing policy
 
-Các bản phát hành được build từ repo này bằng [workflow Release](.github/workflows/release.yml) trên máy Windows của chính GitHub. Bloxkeep đang đăng ký chữ ký số miễn phí của SignPath Foundation; file nào được ký, ký thế nào và ai duyệt nằm trong [code signing policy](CODE_SIGNING_POLICY.md). App gửi gì và gửi đi đâu nằm trong [chính sách quyền riêng tư](PRIVACY.md) (tiếng Anh).
+Các bản phát hành được build từ repo này bằng [workflow Release](.github/workflows/release.yml) trên máy Windows của chính GitHub. File chưa có chữ ký số; nếu có thì file nào được ký, ký thế nào và ai duyệt nằm trong [code signing policy](CODE_SIGNING_POLICY.md). App gửi gì và gửi đi đâu nằm trong [chính sách quyền riêng tư](PRIVACY.md) (tiếng Anh).
 
 ## Giấy phép
 
