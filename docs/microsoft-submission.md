@@ -34,7 +34,7 @@ https://github.com/Bloxkeep/roblox-account-manager
 
 Bloxkeep-Setup.exe is its web installer. It is published unchanged in every release:
 https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe
-SHA-256: 4aad1b9b49ffeefe947f56caf71102ceb934ec9e064a17fb9788128a5d5f4548
+SHA-256: 99c140ea697b43fa74a0f75f659fb92293dd881caca627365564fb956df50885
 
 It downloads the newest Bloxkeep-Setup-Offline.exe from the project's GitHub releases over HTTPS, checks it against
 that release's SHA256SUMS.txt and installs Bloxkeep for the current Windows user, without admin rights, into a folder
