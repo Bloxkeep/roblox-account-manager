@@ -9,7 +9,7 @@ is enough to stay current.
 
 Please don't open a public issue for a security problem. Report it privately on GitHub instead:
 **Security › Report a vulnerability** in this repository
-([direct link](https://github.com/minhhoang0122/Bloxkeep/security/advisories/new)).
+([direct link](https://github.com/Bloxkeep/roblox-account-manager/security/advisories/new)).
 
 Include, if you can:
 
@@ -35,8 +35,8 @@ release, or sooner as a quiet update, and you're credited in the notes if you'd 
 
 ## Fake copies and scams
 
-Bloxkeep is only published here, on [GitHub Releases](https://github.com/minhhoang0122/Bloxkeep/releases), and on its
-website, [minhhoang0122.github.io/Bloxkeep](https://minhhoang0122.github.io/Bloxkeep/). Check a download against
+Bloxkeep is only published here, on [GitHub Releases](https://github.com/Bloxkeep/roblox-account-manager/releases), and on its
+website, [bloxkeep.github.io/roblox-account-manager](https://bloxkeep.github.io/roblox-account-manager/). Check a download against
 `SHA256SUMS.txt` in the same release.
 
 Nobody from Bloxkeep will ever ask for your cookie, password or 2-step code, in Discord, in a direct message or anywhere

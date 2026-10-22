@@ -75,7 +75,7 @@ public static partial class DiscordWebhook
     /// <summary>Discord's own colours, by what a message means: news, good or done, needs a look, broken or blocked, nothing to do.</summary>
     public const int Blue = 0x5865F2, Green = 0x57F287, Yellow = 0xFEE75C, Red = 0xED4245, Grey = 0x4E5058;
     /// <summary>The sender's name and picture when the person set none, and the picture beside every footer.</summary>
-    public const string DefaultName = "Bloxkeep", Logo = "https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png";
+    public const string DefaultName = "Bloxkeep", Logo = "https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png";
 
     static readonly HttpClient Http = new(new SocketsHttpHandler
     {

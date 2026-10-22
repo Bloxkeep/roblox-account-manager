@@ -52,4 +52,4 @@ accounts and settings** in the uninstaller; backups in your backup folder are ne
 
 ## Questions
 
-Open an issue at https://github.com/minhhoang0122/bloxkeep/issues.
+Open an issue at https://github.com/Bloxkeep/roblox-account-manager/issues.

@@ -4,12 +4,12 @@
 // a card instead (Discord's newer message layout): a heading, a picture for what it means, and what changed in it.
 import { REPO, release } from './sources.js';
 
-export const LOGO = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png';
-export const SITE = 'https://minhhoang0122.github.io/Bloxkeep/';
-const WATCH_DOCS = 'https://github.com/minhhoang0122/bloxkeep/blob/main/docs/roblox-watch.md';
+export const LOGO = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png';
+export const SITE = 'https://bloxkeep.github.io/roblox-account-manager/';
+const WATCH_DOCS = 'https://github.com/Bloxkeep/roblox-account-manager/blob/main/docs/roblox-watch.md';
 const STATUS_PAGE = 'https://status.roblox.com';
 // The pictures beside a Roblox update, one per verdict (docs/brand/bot/make-icons.py draws them).
-const ICONS = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bot';
+const ICONS = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bot';
 const ICON = { same: 'same', changed: 'changed', renamed: 'changed', gone: 'gone', first: 'first' };
 /** The flag that makes a message one of Discord's newer layouts (components only: no content, no embeds). */
 export const CARD = 1 << 15;

@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: User guide
-    url: https://minhhoang0122.github.io/Bloxkeep/guide/
+    url: https://bloxkeep.github.io/roblox-account-manager/guide/
     about: How each feature works, and answers to common questions.
   - name: Discord
     url: https://bloxkeep-bot.bloxkeep-app.workers.dev/discord
     about: Ask a question or talk with other people who use Bloxkeep.
   - name: Security problem
-    url: https://github.com/minhhoang0122/Bloxkeep/security/policy
+    url: https://github.com/Bloxkeep/roblox-account-manager/security/policy
     about: Report it privately, not in a public issue.

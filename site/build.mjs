@@ -1,4 +1,4 @@
-// Builds Bloxkeep's website into site/dist for GitHub Pages (https://minhhoang0122.github.io/Bloxkeep/): the landing
+// Builds Bloxkeep's website into site/dist for GitHub Pages (https://bloxkeep.github.io/roblox-account-manager/): the landing
 // page (pages.mjs) and the user guide made from docs/guide.md and docs/guide/*.md, in English and Vietnamese, with the
 // screenshots, a sitemap and robots.txt. The guide's Markdown stays the one source: the site is rebuilt from it on every
 // push (.github/workflows/pages.yml). Run: npm ci && node build.mjs, then serve site/dist.
@@ -194,7 +194,7 @@ ${g.body}
 }
 
 // A page GitHub Pages shows for any address it doesn't have: absolute links, since it can be served at any depth.
-fs.writeFileSync(path.join(OUT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not found · Bloxkeep</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/Bloxkeep/style.css"></head><body><main class="wrap doc"><h1>This page doesn't exist</h1><p><a href="/Bloxkeep/">Bloxkeep's home page</a> · <a href="/Bloxkeep/guide/">User guide</a></p><p lang="vi"><a href="/Bloxkeep/vi/">Trang chủ tiếng Việt</a></p></main></body></html>\n`);
+fs.writeFileSync(path.join(OUT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not found · Bloxkeep</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/roblox-account-manager/style.css"></head><body><main class="wrap doc"><h1>This page doesn't exist</h1><p><a href="/roblox-account-manager/">Bloxkeep's home page</a> · <a href="/roblox-account-manager/guide/">User guide</a></p><p lang="vi"><a href="/roblox-account-manager/vi/">Trang chủ tiếng Việt</a></p></main></body></html>\n`);
 
 const today = new Date().toISOString().slice(0, 10);
 fs.writeFileSync(path.join(OUT, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>

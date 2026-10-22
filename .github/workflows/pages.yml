@@ -1,4 +1,4 @@
-# Publishes Bloxkeep's website (https://minhhoang0122.github.io/Bloxkeep/) to GitHub Pages: site/build.mjs turns the
+# Publishes Bloxkeep's website (https://bloxkeep.github.io/roblox-account-manager/) to GitHub Pages: site/build.mjs turns the
 # landing page and the user guide (docs/guide) into HTML. Runs whenever what the site is made of changes on main.
 # Pages must be set to "GitHub Actions" (Settings > Pages > Source).
 name: Pages

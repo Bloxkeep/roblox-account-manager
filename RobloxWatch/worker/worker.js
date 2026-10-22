@@ -1,9 +1,9 @@
 // Asks Roblox every minute whether a new Windows build went live, is offered on its beta channel or was uploaded
 // ahead of release, and starts the "Roblox watch" workflow (RobloxWatch/watch.py) at once instead of waiting for its
 // 10-minute schedule. All checks, Discord posts and the status file are the workflow's; this only notices and wakes it.
-const REPO = 'minhhoang0122/bloxkeep';
+const REPO = 'Bloxkeep/roblox-account-manager';
 const WORKFLOW = 'roblox-watch.yml';
-const UA = 'Bloxkeep-RobloxWatch (+https://github.com/minhhoang0122/bloxkeep)';
+const UA = 'Bloxkeep-RobloxWatch (+https://github.com/Bloxkeep/roblox-account-manager)';
 // A failed run isn't started again before this, so a broken download doesn't start one every minute.
 const RETRY_AFTER_FAILURE_MS = 15 * 60 * 1000;
 

@@ -12,8 +12,8 @@ namespace RobloxManager;
 /// </summary>
 public static class RobloxWatch
 {
-    const string StatusUrl = "https://raw.githubusercontent.com/minhhoang0122/bloxkeep/roblox-status/multi-status.json";
-    public const string DocsUrl = "https://github.com/minhhoang0122/bloxkeep/blob/main/docs/roblox-watch.md";
+    const string StatusUrl = "https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/roblox-status/multi-status.json";
+    public const string DocsUrl = "https://github.com/Bloxkeep/roblox-account-manager/blob/main/docs/roblox-watch.md";
     /// <summary>At most this many names are held for a build (Roblox has used one or two).</summary>
     const int MaxHold = 4;
     static readonly Regex LockName = new(@"^ROBLOX_[A-Za-z0-9_]{1,64}$", RegexOptions.CultureInvariant);

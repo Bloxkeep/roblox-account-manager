@@ -1,12 +1,12 @@
 // The website's own words (build.mjs makes the pages): the landing page and the frame around the guide, in English and
 // Vietnamese. Every claim here is one the README and the guide make; keep them in step.
-export const SITE = 'https://minhhoang0122.github.io/Bloxkeep/';
-export const REPO = 'https://github.com/minhhoang0122/Bloxkeep';
-// Google gives a name to a whole host, never to a folder like /Bloxkeep/, and reads it from the WebSite data on the
-// host's own home page (https://developers.google.com/search/docs/appearance/site-names). That page is the repo
-// minhhoang0122/minhhoang0122.github.io; the landing pages carry the same WebSite node so the two never disagree.
-const HOST = 'https://minhhoang0122.github.io/';
-const WEBSITE = { '@type': 'WebSite', '@id': `${HOST}#website`, name: 'Bloxkeep', alternateName: ['minhhoang0122.github.io'], url: HOST };
+export const SITE = 'https://bloxkeep.github.io/roblox-account-manager/';
+export const REPO = 'https://github.com/Bloxkeep/roblox-account-manager';
+// Google gives a name to a whole host, never to a folder like /roblox-account-manager/, and reads it from the WebSite
+// data on the host's own home page (https://developers.google.com/search/docs/appearance/site-names). That page is the
+// repo Bloxkeep/bloxkeep.github.io; the landing pages carry the same WebSite node so the two never disagree.
+const HOST = 'https://bloxkeep.github.io/';
+const WEBSITE = { '@type': 'WebSite', '@id': `${HOST}#website`, name: 'Bloxkeep', alternateName: ['bloxkeep.github.io'], url: HOST };
 const DOWNLOAD = `${REPO}/releases/latest/download/Bloxkeep-Setup.exe`;
 const PORTABLE = `${REPO}/releases/latest/download/Bloxkeep-Portable.zip`;
 

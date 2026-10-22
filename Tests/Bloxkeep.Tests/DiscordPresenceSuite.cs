@@ -47,7 +47,7 @@ static class DiscordPresenceSuite
         });
 
         using var presence = new DiscordPresence();
-        var activity = new DiscordPresence.Activity("2 Roblox windows open", "Blox Fruits", 1_700_000_000, "Get Bloxkeep", "https://minhhoang0122.github.io/Bloxkeep/");
+        var activity = new DiscordPresence.Activity("2 Roblox windows open", "Blox Fruits", 1_700_000_000, "Get Bloxkeep", "https://bloxkeep.github.io/roblox-account-manager/");
         await presence.SetAsync(activity, "123456");
         List<(int Op, string Body)> Seen() { lock (frames) return frames.ToList(); }
         var seen = Seen();
@@ -59,7 +59,7 @@ static class DiscordPresenceSuite
             set.ValueKind == JsonValueKind.Object && set.GetProperty("cmd").GetString() == "SET_ACTIVITY"
             && sent.GetProperty("details").GetString() == "2 Roblox windows open" && sent.GetProperty("state").GetString() == "Blox Fruits"
             && sent.GetProperty("timestamps").GetProperty("start").GetInt64() == 1_700_000_000
-            && sent.GetProperty("buttons")[0].GetProperty("url").GetString() == "https://minhhoang0122.github.io/Bloxkeep/",
+            && sent.GetProperty("buttons")[0].GetProperty("url").GetString() == "https://bloxkeep.github.io/roblox-account-manager/",
             seen.Count >= 2 ? seen[1].Body : "nothing sent");
 
         await presence.SetAsync(activity, "123456");

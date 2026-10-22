@@ -16,7 +16,7 @@ const P = {
 const TEXT = 0, VOICE = 2, CATEGORY = 4, NEWS = 5, FORUM = 15;
 // The categories Discord makes with a new server, in English and in Vietnamese (the creator's language decides).
 const DISCORD_CATEGORIES = ['Text Channels', 'Voice Channels', 'Kênh Chat', 'Kênh đàm thoại'];
-const ICON = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/server-icon.png';
+const ICON = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/server-icon.png';
 const SETUP = `${REPO}/releases/latest/download/Bloxkeep-Setup.exe`;
 const DESCRIPTION = "Bloxkeep: the free Roblox account manager for Windows. Help, ideas, and Roblox update alerts.";
 

@@ -17,7 +17,7 @@ BETA = 'https://clientsettingscdn.roblox.com/v2/client-version/WindowsPlayer/cha
 HISTORY = 'https://setup.rbxcdn.com/DeployHistory.txt'
 FLAGS = 'https://clientsettingscdn.roblox.com/v2/settings/application/PCDesktopClient'
 CDN = 'https://setup.rbxcdn.com'
-UA = 'Bloxkeep-RobloxWatch (+https://github.com/minhhoang0122/bloxkeep)'
+UA = 'Bloxkeep-RobloxWatch (+https://github.com/Bloxkeep/roblox-account-manager)'
 # The name Bloxkeep takes so Roblox can't set up its single-window check (RobloxManager/MultiInstance.cs).
 HELD = 'ROBLOX_singletonEvent'
 LOCK_NAME = re.compile(rb'ROBLOX_[A-Za-z0-9_]{3,64}')
@@ -29,8 +29,8 @@ SINGLETON = re.compile(r'(?i)singleton')
 FUTURE_LINE = re.compile(r'New WindowsPlayer (\S+) at (.+?), file version: (\d+), (\d+), (\d+), (\d+)')
 MAX_BUILDS = 40
 # How the messages look: docs/discord-style.md (sender, Discord's colours, short title, facts in inline fields).
-LOGO = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png'
-DOCS = 'https://github.com/minhhoang0122/bloxkeep/blob/main/docs/roblox-watch.md'
+LOGO = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png'
+DOCS = 'https://github.com/Bloxkeep/roblox-account-manager/blob/main/docs/roblox-watch.md'
 GREEN, YELLOW, RED, BLURPLE = 0x57F287, 0xFEE75C, 0xED4245, 0x5865F2
 # DeployHistory.txt's times are Roblox's (US Pacific).
 ROBLOX_TIME = 'America/Los_Angeles'

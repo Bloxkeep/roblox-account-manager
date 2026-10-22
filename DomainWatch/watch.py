@@ -23,7 +23,7 @@ import argparse, base64, datetime, io, json, os, re, sys, time, urllib.parse, ur
 CRTSH = 'https://crt.sh/'
 HAGEZI = 'https://raw.githubusercontent.com/hagezi/nrd/main/domains/nrd7.txt'   # 7 days ago to yesterday, ~55 MB
 WHOISDS = 'https://www.whoisds.com/whois-database/newly-registered-domains/{}/nrd'  # {} = base64 of "2026-10-15.zip"
-UA = 'Bloxkeep-DomainWatch (+https://github.com/minhhoang0122/bloxkeep)'
+UA = 'Bloxkeep-DomainWatch (+https://github.com/Bloxkeep/roblox-account-manager)'
 # crt.sh searches each as the start of a name ("bloxkeep%"): bloxkeep.com, bloxkeep-app.net, bloxkeeper.io,
 # bloxkeep.x.y. The NRD lists are searched for each anywhere in a name: free-bloxkeep.com, getbl0xkeep.net.
 PATTERNS = ['bloxkeep', 'bl0xkeep', 'bloxkep', 'bloxkeeep', 'blox-keep', 'bloxxkeep',
@@ -44,8 +44,8 @@ BLIND_AFTER = {'crtsh': datetime.timedelta(days=2), 'hagezi': datetime.timedelta
 LABEL = {'crtsh': 'crt.sh', 'hagezi': 'hagezi\'s NRD list', 'whoisds': 'WhoisDS'}
 MAX_LISTED = 15
 # How the messages look: docs/discord-style.md (sender, Discord's colours, short title, facts in fields).
-LOGO = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png'
-DOCS = 'https://github.com/minhhoang0122/bloxkeep/blob/main/docs/domain-watch.md'
+LOGO = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png'
+DOCS = 'https://github.com/Bloxkeep/roblox-account-manager/blob/main/docs/domain-watch.md'
 GREEN, YELLOW, RED = 0x57F287, 0xFEE75C, 0xED4245
 
 

@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         **Never paste a cookie, password, 2-step code or your Bloxkeep data folder here.** Blur account names in screenshots.
-        A security problem? Don't open an issue: see the [security policy](https://github.com/minhhoang0122/Bloxkeep/security/policy).
+        A security problem? Don't open an issue: see the [security policy](https://github.com/Bloxkeep/roblox-account-manager/security/policy).
         You can also report from the app: **Settings › Bloxkeep updates › Help & feedback › Send feedback**.
   - type: input
     id: version

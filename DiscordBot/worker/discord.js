@@ -2,7 +2,7 @@
 // application's public key), the REST calls the bot makes with its token (posting news, editing the board, putting its
 // commands in place), and the commands themselves.
 const API = 'https://discord.com/api/v10';
-const UA = 'DiscordBot (https://github.com/minhhoang0122/Bloxkeep, 1.0)';
+const UA = 'DiscordBot (https://github.com/Bloxkeep/roblox-account-manager, 1.0)';
 const MANAGE_GUILD = String(1 << 5);
 // What the bot needs in a channel: View Channel, Send Messages, Embed Links.
 export const PERMISSIONS = String((1 << 10) | (1 << 11) | (1 << 14));

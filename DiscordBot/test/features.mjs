@@ -102,7 +102,7 @@ const src = http.createServer((req, res) => {
   if (req.url === '/status.json') return json({ result: { status_overall: { status_code: status.code }, status: ['User', 'Player', 'Creator'].map(name => ({ name, status_code: status.code })), incidents: status.code > 100 ? [{ name: 'Players can\'t join' }] : [] } });
   if (req.url === '/releases/latest') { res.writeHead(302, { Location: `http://127.0.0.1:${SRC}/releases/tag/${latest}` }); return res.end(); }
   const m = /^\/api\/tags\/(.+)$/.exec(req.url);
-  if (m) return json({ html_url: `https://github.com/minhhoang0122/Bloxkeep/releases/tag/${m[1]}`, body: NOTES });
+  if (m) return json({ html_url: `https://github.com/Bloxkeep/roblox-account-manager/releases/tag/${m[1]}`, body: NOTES });
   const n = /^\/notes\/release-notes-(\d+)$/.exec(req.url);
   if (n && notes.has(Number(n[1]))) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(notesPage(notes.get(Number(n[1])))); }
   res.writeHead(404); res.end();
@@ -212,7 +212,7 @@ try {
   check('/help is in English, even for a Vietnamese server', r.json?.type === 4 && r.json.data.embeds[0].title === "What Bloxkeep's bot can do", JSON.stringify(r.json));
   const helpButtons = r.json?.data.components[0].components ?? [];
   check('…with Download, GitHub and add-to-server buttons', helpButtons.map(b => b.label).join() === 'Download,GitHub,Add to your server'
-    && helpButtons[1].url === 'https://github.com/minhhoang0122/Bloxkeep' && helpButtons[2].url.includes('client_id=app1') && helpButtons[2].url.includes('permissions=19456'), JSON.stringify(helpButtons));
+    && helpButtons[1].url === 'https://github.com/Bloxkeep/roblox-account-manager' && helpButtons[2].url.includes('client_id=app1') && helpButtons[2].url.includes('permissions=19456'), JSON.stringify(helpButtons));
   r = await interact(command('download', { locale: 'en-US' }));
   check('/download names the newest Bloxkeep', r.json?.data.embeds[0].title === 'Bloxkeep 1.0.7', JSON.stringify(r.json?.data.embeds[0]));
   check('…with Download, Website, GitHub and add-to-server buttons', (r.json?.data.components[0].components ?? []).map(b => b.label).join() === 'Download,Website,GitHub,Add to your server', JSON.stringify(r.json?.data.components));

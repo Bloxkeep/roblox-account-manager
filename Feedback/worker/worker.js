@@ -7,7 +7,7 @@ const MAX_TEXT = 2000;
 const MAX_CONTACT = 100;
 const MAX_LOG = 16_000;
 // How it looks: docs/discord-style.md.
-const LOGO = 'https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png';
+const LOGO = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png';
 const COLORS = { bug: 0xED4245, idea: 0x5865F2 };
 
 export default {

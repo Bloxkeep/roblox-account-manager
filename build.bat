@@ -13,7 +13,7 @@ setlocal
 cd /d "%~dp0"
 set VERSION=1.0.0
 if not "%~1"=="" set VERSION=%~1
-set REPO=https://github.com/minhhoang0122/bloxkeep
+set REPO=https://github.com/Bloxkeep/roblox-account-manager
 if not "%~2"=="" set REPO=%~2
 
 if exist artifacts\app rmdir /s /q artifacts\app

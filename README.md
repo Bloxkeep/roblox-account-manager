@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/.NET-10-512BD4" alt="Built with .NET 10">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
 </p>
-<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://minhhoang0122.github.io/Bloxkeep/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: five Roblox windows open at once, titled Roblox - Account 1 to Roblox - Account 5, four in the same game and the fifth joining, with Bloxkeep behind them counting 5 windows and Multi-Roblox on"></p>
 <p align="center"><sub>A real screenshot from one PC: five Roblox accounts open at once with Bloxkeep, four in the game and the fifth joining. Names in the game are blurred.</sub></p>
@@ -586,7 +586,7 @@ Every feature is explained step by step in the [user guide](docs/guide.md).
 
 ### **Q:** My antivirus deleted Bloxkeep. Should I not use it?
 
-**A:** Check the download first: its SHA-256 must match `SHA256SUMS.txt` on the release page, and it must come from this repository's [Releases](https://github.com/minhhoang0122/bloxkeep/releases). If it matches, restore it from your antivirus's quarantine and report the file as a false positive (for Windows Defender: [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)). Never use a "Bloxkeep" from anywhere else.
+**A:** Check the download first: its SHA-256 must match `SHA256SUMS.txt` on the release page, and it must come from this repository's [Releases](https://github.com/Bloxkeep/roblox-account-manager/releases). If it matches, restore it from your antivirus's quarantine and report the file as a false positive (for Windows Defender: [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)). Never use a "Bloxkeep" from anywhere else.
 
 ### **Q:** Does Multi-Roblox really work?
 
@@ -685,7 +685,7 @@ If you press **Play** for two accounts while it's off, Bloxkeep offers **Turn on
 
 ### **Q:** You should add (a feature) / I found a bug.
 
-**A:** Tell us from the app: **Settings › Bloxkeep updates › Send feedback** (or Ctrl+K). A bug report can include Bloxkeep's error log, with account names, passwords and cookies taken out, and you see exactly what is sent. You can also open an [issue](https://github.com/minhhoang0122/bloxkeep/issues).
+**A:** Tell us from the app: **Settings › Bloxkeep updates › Send feedback** (or Ctrl+K). A bug report can include Bloxkeep's error log, with account names, passwords and cookies taken out, and you see exactly what is sent. You can also open an [issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
 
 ### **Q:** How do I remove Bloxkeep completely?
 
@@ -702,7 +702,7 @@ build.bat 1.0.1
 It runs the checks in `Tests\Bloxkeep.Tests` first and stops if one fails (run them alone with `dotnet run --project Tests\Bloxkeep.Tests`; add `--online` for the ones that ask Roblox's servers). Each runs in its own process with throwaway data, never yours. The output goes to `dist\releases\`: `Bloxkeep-Setup.exe` (the web installer, copied as it is from `Installer\Web`), `Bloxkeep-Setup-Offline.exe`, `Bloxkeep-Portable.zip`, the update packages and `SHA256SUMS.txt`. The web installer is rebuilt only on purpose, with `Installer\Web\make.bat`: a new build is a new file to SmartScreen. A second argument is the GitHub repository the build looks for updates in (this one by default); pass another when you build a fork.
 
 ```bat
-release.bat 1.0.1 https://github.com/minhhoang0122/bloxkeep
+release.bat 1.0.1 https://github.com/Bloxkeep/roblox-account-manager
 ```
 
 This uploads the build to GitHub Releases and needs a `GITHUB_TOKEN` environment variable with write access to releases. Each version needs its notes, in English and Vietnamese, in `RobloxManager\whatsnew.json`; they show in the app after an update and become the release notes. To test updates before publishing, set `BLOXKEEP_UPDATE_SOURCE` to a local folder of release files.

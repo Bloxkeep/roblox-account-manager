@@ -8,7 +8,7 @@ have to read twice. Look at a message in `dev/discord-preview.html?src=<payloads
 ## Sender
 
 - `username` **Bloxkeep** and `avatar_url` the logo,
-  `https://raw.githubusercontent.com/minhhoang0122/bloxkeep/main/docs/brand/bloxkeep.png` (128 px). In the app the
+  `https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png` (128 px). In the app the
   person can set their own name and picture; these are the defaults.
 
 ## The embed

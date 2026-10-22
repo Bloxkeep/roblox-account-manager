@@ -8,7 +8,7 @@ How to install Bloxkeep, set the master password, and what unlocking, locking an
 
 ## Quick steps
 
-1. Download Bloxkeep from the [Releases page](https://github.com/minhhoang0122/bloxkeep/releases/latest) and run `Bloxkeep-Setup.exe`.
+1. Download Bloxkeep from the [Releases page](https://github.com/Bloxkeep/roblox-account-manager/releases/latest) and run `Bloxkeep-Setup.exe`.
 2. Pick the install folder and wait for Setup to finish.
 3. The first time Bloxkeep opens, **Set a master password** (at least 6 characters).
 4. Turn on backups: **Settings › Backup & data › Back up to a folder**.

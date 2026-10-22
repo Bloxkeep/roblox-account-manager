@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Look through the [open issues](https://github.com/minhhoang0122/Bloxkeep/issues) first: if someone had the same idea, a 👍 on it helps more than a new one.
+        Look through the [open issues](https://github.com/Bloxkeep/roblox-account-manager/issues) first: if someone had the same idea, a 👍 on it helps more than a new one.
   - type: textarea
     id: problem
     attributes:

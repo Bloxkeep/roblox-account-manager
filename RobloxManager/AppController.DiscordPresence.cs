@@ -10,7 +10,7 @@ public sealed partial class AppController
 {
     /// <summary>Bloxkeep's application on Discord's developer portal (created 2026-10-20, with the logo as its icon), whose name and icon the profile shows.</summary>
     internal const string DiscordApplicationId = "1561788269933498408";
-    const string WebsiteUrl = "https://minhhoang0122.github.io/Bloxkeep/";
+    const string WebsiteUrl = "https://bloxkeep.github.io/roblox-account-manager/";
     static readonly TimeSpan DiscordPresenceInterval = TimeSpan.FromSeconds(15);
 
     readonly DiscordPresence _discordPresence = new();

@@ -8,7 +8,7 @@ Cách cài Bloxkeep, đặt mật khẩu chủ, và việc mở khóa, khóa app
 
 ## Làm nhanh
 
-1. Tải Bloxkeep ở [trang Releases](https://github.com/minhhoang0122/bloxkeep/releases/latest) rồi chạy `Bloxkeep-Setup.exe`.
+1. Tải Bloxkeep ở [trang Releases](https://github.com/Bloxkeep/roblox-account-manager/releases/latest) rồi chạy `Bloxkeep-Setup.exe`.
 2. Chọn thư mục cài và đợi bộ cài chạy xong.
 3. Lần đầu mở Bloxkeep, **Đặt mật khẩu chủ** (ít nhất 6 ký tự).
 4. Bật sao lưu: **Cài đặt › Sao lưu & dữ liệu › Sao lưu vào thư mục**.

@@ -5,7 +5,7 @@
 <p align="center">Quản lý và mở nhiều tài khoản Roblox trên Windows. Tài khoản được mã hóa và chỉ lưu trên máy của bạn.</p>
 <p align="center"><a href="README.md">English</a> | Tiếng Việt</p>
 <p align="center"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 hoặc 11, 64-bit"> <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10"> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="Giấy phép MIT"></a></p>
-<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://minhhoang0122.github.io/Bloxkeep/vi/">Trang web</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
+<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="Ảnh chụp thật trên một máy Windows: năm cửa sổ Roblox mở cùng lúc, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, bốn cửa sổ cùng ở trong một game và cửa sổ thứ năm đang vào, phía sau là Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật"></p>
 <p align="center"><sub>Ảnh chụp thật trên một máy: năm tài khoản Roblox mở cùng lúc bằng Bloxkeep, bốn tài khoản đã vào game, tài khoản thứ năm đang vào. Tên trong game đã được làm mờ.</sub></p>
@@ -580,7 +580,7 @@ Từng tính năng được giải thích từng bước trong [hướng dẫn s
 
 ### **H:** Antivirus xóa mất Bloxkeep. Có nên dùng tiếp không?
 
-**Đ:** Kiểm tra file trước: SHA-256 phải khớp với `SHA256SUMS.txt` trên trang phát hành, và file phải tải từ [Releases](https://github.com/minhhoang0122/bloxkeep/releases) của repo này. Nếu khớp, khôi phục file từ khu cách ly của antivirus và báo là nhận nhầm (với Windows Defender: [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)). Đừng bao giờ dùng "Bloxkeep" tải từ nơi khác.
+**Đ:** Kiểm tra file trước: SHA-256 phải khớp với `SHA256SUMS.txt` trên trang phát hành, và file phải tải từ [Releases](https://github.com/Bloxkeep/roblox-account-manager/releases) của repo này. Nếu khớp, khôi phục file từ khu cách ly của antivirus và báo là nhận nhầm (với Windows Defender: [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)). Đừng bao giờ dùng "Bloxkeep" tải từ nơi khác.
 
 ### **H:** Multi-Roblox có chạy được thật không?
 
@@ -679,7 +679,7 @@ Nếu bấm **Vào game** cho hai tài khoản khi Multi-Roblox đang tắt, Blo
 
 ### **H:** Bạn nên thêm (tính năng) / Tôi gặp lỗi.
 
-**Đ:** Báo ngay trong app: **Cài đặt › Cập nhật Bloxkeep › Gửi góp ý** (hoặc Ctrl+K). Khi báo lỗi có thể gửi kèm nhật ký lỗi của Bloxkeep (đã xóa tên tài khoản, mật khẩu và cookie), và bạn xem trước đúng những gì được gửi. Bạn cũng có thể mở [issue](https://github.com/minhhoang0122/bloxkeep/issues) trên GitHub.
+**Đ:** Báo ngay trong app: **Cài đặt › Cập nhật Bloxkeep › Gửi góp ý** (hoặc Ctrl+K). Khi báo lỗi có thể gửi kèm nhật ký lỗi của Bloxkeep (đã xóa tên tài khoản, mật khẩu và cookie), và bạn xem trước đúng những gì được gửi. Bạn cũng có thể mở [issue](https://github.com/Bloxkeep/roblox-account-manager/issues) trên GitHub.
 
 ### **H:** Làm sao xóa sạch Bloxkeep?
 
@@ -696,7 +696,7 @@ build.bat 1.0.1
 Lệnh này chạy các bài kiểm tra trong `Tests\Bloxkeep.Tests` trước và dừng nếu có bài hỏng (chạy riêng bằng `dotnet run --project Tests\Bloxkeep.Tests`; thêm `--online` cho các bài cần hỏi máy chủ Roblox). Mỗi bài chạy trong tiến trình riêng với dữ liệu tạm, không bao giờ đụng dữ liệu của bạn. Kết quả nằm trong `dist\releases\`: `Bloxkeep-Setup.exe` (bộ cài tải qua mạng, chép nguyên từ `Installer\Web`), `Bloxkeep-Setup-Offline.exe`, `Bloxkeep-Portable.zip`, các gói cập nhật và `SHA256SUMS.txt`. Bộ cài tải qua mạng chỉ build lại khi thật cần, bằng `Installer\Web\make.bat`: mỗi lần build là một file mới đối với SmartScreen. Tham số thứ hai là link repo GitHub mà bản build sẽ tìm cập nhật (mặc định là repo này); truyền repo khác khi build bản fork.
 
 ```bat
-release.bat 1.0.1 https://github.com/minhhoang0122/bloxkeep
+release.bat 1.0.1 https://github.com/Bloxkeep/roblox-account-manager
 ```
 
 `release.bat` đăng lên GitHub Releases, cần biến môi trường `GITHUB_TOKEN` có quyền ghi release. Mỗi phiên bản cần ghi chú (tiếng Anh và tiếng Việt) trong `RobloxManager\whatsnew.json`; ghi chú này hiện trong app sau khi cập nhật và trên trang phát hành. Để thử cập nhật trước khi đăng, đặt `BLOXKEEP_UPDATE_SOURCE` là một thư mục chứa các file phát hành.

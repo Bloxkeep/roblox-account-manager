@@ -60,4 +60,4 @@ the person installing or operating it. What it sends, where and when, is listed 
 ## Reporting a problem
 
 If a signed file from Bloxkeep's releases behaves in a way this page or the privacy policy doesn't describe, please
-[open an issue](https://github.com/minhhoang0122/bloxkeep/issues). Signing will be paused while it is looked into.
+[open an issue](https://github.com/Bloxkeep/roblox-account-manager/issues). Signing will be paused while it is looked into.

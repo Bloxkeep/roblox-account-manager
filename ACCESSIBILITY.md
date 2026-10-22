@@ -29,7 +29,7 @@ been checked yet, so you know what to expect.
 
 If something in Bloxkeep is hard or impossible for you to use, that's a bug. Report it any of these ways:
 
-- an [issue](https://github.com/minhhoang0122/Bloxkeep/issues/new?template=bug_report.yml), saying it's about
+- an [issue](https://github.com/Bloxkeep/roblox-account-manager/issues/new?template=bug_report.yml), saying it's about
   accessibility;
 - **Settings › Bloxkeep updates › Help & feedback › Send feedback** in the app;
 - the [Discord server](https://bloxkeep-bot.bloxkeep-app.workers.dev/discord).

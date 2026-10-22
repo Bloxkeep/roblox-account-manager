@@ -15,8 +15,11 @@ namespace BloxkeepSetup
 {
     static class Web
     {
-        const string Repo = "https://github.com/minhhoang0122/bloxkeep";
+        const string Repo = "https://github.com/Bloxkeep/roblox-account-manager";
         public const string OfflineName = "Bloxkeep-Setup-Offline.exe";
+
+        // Where the repository is now: a renamed or moved one's links are sent on by GitHub, and Fetch keeps the new place.
+        static string _repo = Repo;
 
         sealed class Release
         {
@@ -70,12 +73,23 @@ namespace BloxkeepSetup
 
         static Release Fetch()
         {
-            // github.com/<repo>/releases/latest answers with a redirect to the newest release's page, named by its tag.
-            HttpWebRequest ask = Request(Repo + "/releases/latest");
-            ask.AllowAutoRedirect = false;
-            string location;
-            using (HttpWebResponse answer = Get(ask))
-                location = answer.Headers["Location"];
+            // github.com/<repo>/releases/latest answers with a redirect to the newest release's page, named by its tag. A
+            // renamed or moved repository first answers with a redirect to the same page at its new place, on github.com.
+            string url = Repo + "/releases/latest", location = null;
+            for (int hop = 0; hop < 5; hop++)
+            {
+                HttpWebRequest ask = Request(url);
+                ask.AllowAutoRedirect = false;
+                using (HttpWebResponse answer = Get(ask))
+                    location = answer.Headers["Location"];
+                if (location == null || Regex.IsMatch(location, "/releases/tag/[^/?#]+$"))
+                    break;
+                Match moved = Regex.Match(new Uri(new Uri(url), location).AbsoluteUri, "^(https://github\\.com/[^/?#]+/[^/?#]+)/releases/latest$", RegexOptions.IgnoreCase);
+                if (!moved.Success)
+                    break;
+                _repo = moved.Groups[1].Value;
+                url = moved.Value;
+            }
             Match tag = Regex.Match(location ?? "", "/releases/tag/([^/?#]+)$");
             if (!tag.Success)
                 throw new IOException(T.S("GitHub didn't say which version of Bloxkeep is the newest. Try again later.",
@@ -197,7 +211,7 @@ namespace BloxkeepSetup
 
         static string Asset(string tag, string name)
         {
-            return Repo + "/releases/download/" + Uri.EscapeDataString(tag) + "/" + name;
+            return _repo + "/releases/download/" + Uri.EscapeDataString(tag) + "/" + name;
         }
 
         static HttpWebRequest Request(string url)

@@ -14,6 +14,6 @@ Bloxkeep's Discord bot comes with it. Using either means you agree to these term
   notice. Don't use it to break Discord's rules.
 - **Privacy.** What Bloxkeep and the bot handle, and where it goes, is in the [privacy policy](PRIVACY.md).
 - **Changes.** These terms may change. The current ones are always at this address, with their date below.
-- **Questions.** Open an issue at https://github.com/minhhoang0122/bloxkeep/issues.
+- **Questions.** Open an issue at https://github.com/Bloxkeep/roblox-account-manager/issues.
 
 Last updated: 21 October 2026.
