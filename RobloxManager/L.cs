@@ -264,6 +264,9 @@ public static class L
         [" (imported)"] = " (đã nhập)",
         [" (imported {0})"] = " (đã nhập {0})",
         ["{0} left the game — rejoining in {1}s…"] = "{0} đã thoát game, sẽ tự vào lại sau {1} giây…",
+        ["{0} ran out of memory and Roblox crashed — rejoining in {1}s…"] = "{0} hết bộ nhớ nên Roblox bị văng, sẽ tự vào lại sau {1} giây…",
+        ["{0} waits to rejoin: Windows' virtual memory is almost full, so a new Roblox window would crash as it opens. It rejoins once there's room."] =
+            "{0} đang chờ vào lại: bộ nhớ ảo của Windows sắp đầy nên mở cửa sổ Roblox mới lúc này sẽ bị văng. Có chỗ là tự vào lại.",
         ["{0} lost connection — restarting Roblox…"] = "{0} mất kết nối — đang mở lại Roblox…",
         ["{0} was disconnected ({1}) — restarting Roblox…"] = "{0} bị ngắt kết nối ({1}) — đang mở lại Roblox…",
         ["{0} dropped out of the game, reason unknown — restarting Roblox…"] = "{0} bị văng khỏi game, chưa rõ lý do — đang mở lại Roblox…",
@@ -669,6 +672,8 @@ public static class L
         ["Bloxkeep · Alerts"] = "Bloxkeep · Thông báo",
         ["{0} alerts"] = "{0} thông báo",
         ["Disconnected, rejoining"] = "Bị văng, đang vào lại",
+        ["Crashed for want of memory, rejoining"] = "Văng vì hết bộ nhớ, đang vào lại",
+        ["Waiting for memory to rejoin"] = "Chờ bộ nhớ để vào lại",
         ["Lost connection, restarting Roblox"] = "Mất kết nối, đang mở lại Roblox",
         ["Disconnected, reason unknown"] = "Bị văng, chưa rõ lý do",
         ["Disconnected · code {0}"] = "Bị văng · mã {0}",

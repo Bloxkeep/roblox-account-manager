@@ -1104,6 +1104,57 @@ static class RejoinSuite
                 suspects.Clear();
                 closedBy.Clear();
             }
+            // A window that ran out of memory: said so, and its rejoin waits while Windows' virtual memory is still all but
+            // used up (a new window would crash as it opens, as on 2026-10-22); once there's room it goes ahead.
+            {
+                account.AutoRejoin = true;
+                queue.Clear();
+                Told();
+                var oomLaunch = Run(new GameTarget(920587237));
+                Harness.Get<HashSet<Guid>>(app, "_ranOutOfMemory").Add(account.Id);
+                Harness.Invoke(app, "QueueRejoin", account.Id, oomLaunch, null);
+                string? oomSaid = Told();
+                c.Check("a window that ran out of memory: said so, not \"left the game\"",
+                    oomSaid?.Contains("ran out of memory and Roblox crashed", StringComparison.Ordinal) == true && queue.Count == 1, oomSaid);
+                var heldRequest = queue[0]!;
+                var dueProp = heldRequest.GetType().GetProperty("Due")!;
+                dueProp.SetValue(heldRequest, DateTime.UtcNow.AddSeconds(-1));
+                var realRead = Harness.Get<object>(app, "_readMemory");
+                // 64 GB of commit limit, 2 GB of it left: one more 3 GB client doesn't fit.
+                var memoryNow = new MemoryStatus(32768, 16000, 50, 65536, 2048, 0);
+                Harness.Set(app, "_readMemory", (Func<MemoryStatus>)(() => memoryNow));
+                Harness.Set(app, "_lastSessionStart", DateTime.MinValue);
+                var heldBans = account.GameBans;
+                try
+                {
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    string? heldSaid = Told();
+                    c.Check("…its rejoin waits while Windows' virtual memory is still all but used up, and says why",
+                        queue.Count == 1 && (DateTime)dueProp.GetValue(queue[0])! > DateTime.UtcNow && Harness.Get<bool>(app, "_rejoining") is false
+                        && heldSaid?.Contains("waits to rejoin: Windows' virtual memory is almost full", StringComparison.Ordinal) == true, heldSaid);
+                    dueProp.SetValue(queue[0], DateTime.UtcNow.AddSeconds(-1));
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    c.Check("…said once", Told() is null && queue.Count == 1);
+                    // Room again (another window closed, the page file grew): it goes ahead. A ban by the game noted, so
+                    // nothing opens: RejoinAsync returns at once.
+                    account.GameBans = [new GameBan { PlaceId = 920587237, At = DateTime.UtcNow }];
+                    memoryNow = new MemoryStatus(32768, 16000, 50, 65536, 20480, 0);
+                    dueProp.SetValue(queue[0], DateTime.UtcNow.AddSeconds(-1));
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    c.Check("…once there's room, it goes ahead", queue.Count == 0, queue.Count);
+                    var heldAlert = Harness.Invoke(app, "AlertFor", "rejoinFail", account.Id,
+                        ("{0} waits to rejoin: Windows' virtual memory is almost full, so a new Roblox window would crash as it opens. It rejoins once there's room.",
+                            new object?[] { account.Label }), heldSaid ?? "", DateTime.UtcNow)!;
+                    string? heldTitle = heldAlert.GetType().GetProperty("Title")!.GetValue(heldAlert) as string;
+                    c.Check("…Discord's alert: \"Waiting for memory to rejoin\"", heldTitle == "Waiting for memory to rejoin", heldTitle);
+                }
+                finally
+                {
+                    account.GameBans = heldBans;
+                    Harness.Set(app, "_readMemory", realRead);
+                    queue.Clear();
+                }
+            }
         }
         finally
         {

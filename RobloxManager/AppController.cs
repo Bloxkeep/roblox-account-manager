@@ -2883,8 +2883,7 @@ public sealed partial class AppController : IDisposable
             long neededMb = toOpen * perClientMb;
             // Windows' commit limit (RAM and paging file together, "virtual memory") can run out with RAM to spare when the
             // paging file is small: a client that can't get its memory then crashes as it opens.
-            long perClientCommitMb = players.Count(p => p.Private > 0) is > 0 and var known
-                ? Math.Max(DefaultClientCommitMb / 2, players.Where(p => p.Private > 0).Sum(p => p.Private) / known / MB) : DefaultClientCommitMb;
+            long perClientCommitMb = ClientCommitMb(players);
             if (s.MemoryWarnings && memory.TotalMb > 0 && memory.AvailableMb - neededMb < memory.TotalMb * 8 / 100)
                 warnings.Add(("memory", L.P(toOpen, "Only {0} of RAM is free, and {1} more Roblox window needs about {2}. The PC may slow down or Roblox may crash.",
                     "Only {0} of RAM is free, and {1} more Roblox windows need about {2}. The PC may slow down or Roblox may crash.",
@@ -3648,6 +3647,9 @@ public sealed partial class AppController : IDisposable
             // Read now, with the log's last lines (a leave by choice logged right before the client quit), before the
             // log watcher drops the pid below.
             var log = EndedState(info.Pid);
+            // Its log said Windows refused it memory: its drop is said as that (QueueRejoin).
+            if (_logs.OutOfMemoryAt(info.Pid) is not null)
+                _ranOutOfMemory.Add(id);
             // Roblox closed it because another client opened: not a hand-over, and no auto-rejoin. Only a window that closed
             // in order can be that: its log says it shut down, or it left its notification-area copy behind.
             bool inOrder = _logs.ClosedInOrderAt(info.Pid) is not null || ChildrenOf(info.Pid).Any(trays.Contains);
@@ -3908,6 +3910,11 @@ public sealed partial class AppController : IDisposable
     internal static bool VirtualMemoryShort(MemoryStatus memory, int toOpen, long perClientCommitMb) =>
         toOpen > 0 && memory.CommitLimitMb > 0 && memory.CommitRoomMb - toOpen * perClientCommitMb < CommitMarginMb;
 
+    /// <summary>What a Roblox client holds of Windows' commit limit: the average of those running, else <see cref="DefaultClientCommitMb"/>.</summary>
+    static long ClientCommitMb(IReadOnlyCollection<RobloxProcesses.PlayerProcess> players) =>
+        players.Count(p => p.Private > 0) is > 0 and var known
+            ? Math.Max(DefaultClientCommitMb / 2, players.Where(p => p.Private > 0).Sum(p => p.Private) / known / MB) : DefaultClientCommitMb;
+
     /// <summary>
     /// Windows is short of memory: another Roblox wouldn't fit in what is left of the commit limit (RAM and paging file
     /// together, with the room the paging files may still grow), or RAM is nearly all used. The main window then closes its browser sooner in the background.
@@ -3999,6 +4006,7 @@ public sealed partial class AppController : IDisposable
     /// <returns>true when auto-rejoin (or the preset's planned restart) will bring the client back.</returns>
     bool QueueRejoin(Guid accountId, PendingLaunch launch, RobloxLogWatcher.ClientState? lastLog)
     {
+        bool outOfMemory = _ranOutOfMemory.Remove(accountId);
         bool restart = _restarts.Remove(accountId, out var restarting);
         if (!ShouldRejoin(accountId, launch, lastLog, restart, out var account))
         {
@@ -4022,6 +4030,9 @@ public sealed partial class AppController : IDisposable
         if (inARow == KeepsDropping)
             // Something keeps failing (a broken game, a bad connection): said once. It goes on trying all the same.
             Notify(L.F("{0} keeps getting disconnected — Bloxkeep keeps rejoining every {1}s.", Name(account), (int)wait.TotalSeconds), "warn", "rejoinSlow", account.Id);
+        // A crash for want of memory is no leave: said as what it was (its rejoin waits for room, see RunDueRejoin).
+        else if (outOfMemory)
+            Notify(L.F("{0} ran out of memory and Roblox crashed — rejoining in {1}s…", Name(account), (int)wait.TotalSeconds), "warn", "drop", account.Id);
         else
             Notify(L.F("{0} left the game — rejoining in {1}s…", Name(account), (int)wait.TotalSeconds), "info", "drop", account.Id);
         return true;
@@ -4624,9 +4635,31 @@ public sealed partial class AppController : IDisposable
         var due = _rejoinQueue.FirstOrDefault(r => r.Due <= now);
         if (due is null)
             return;
+        // Windows' virtual memory (its commit limit) all but used up: a new window would crash as it opens, as the ones
+        // that ran out did (2026-10-22: "cannot commit OS memory", OutOfMemoryGraphics), and rejoin into the same crash
+        // every 10 s. It waits for room, looked at again every MemoryHoldRecheck; said once. Memory warnings off: as before.
+        if (_vault?.Data.Settings.MemoryWarnings != false && VirtualMemoryShort(_readMemory(), 1, ClientCommitMb(_lastPlayers?.Players ?? [])))
+        {
+            _rejoinQueue[_rejoinQueue.IndexOf(due)] = due with { Due = now + MemoryHoldRecheck };
+            if (_memoryHeldTold.Add(due.AccountId) && FindAccount(due.AccountId) is { } held)
+                Notify(L.F("{0} waits to rejoin: Windows' virtual memory is almost full, so a new Roblox window would crash as it opens. It rejoins once there's room.",
+                    Name(held)), "warn", "rejoinFail", held.Id);
+            PushState();
+            return;
+        }
+        _memoryHeldTold.Remove(due.AccountId);
         _rejoinQueue.Remove(due);
         _ = RejoinAsync(due);
     }
+
+    /// <summary>Windows' memory as Bloxkeep reads it (a field, so the checks can answer for Windows).</summary>
+    Func<MemoryStatus> _readMemory = SystemMemory.Read;
+    /// <summary>A rejoin waiting for virtual memory is looked at again after this.</summary>
+    static readonly TimeSpan MemoryHoldRecheck = TimeSpan.FromSeconds(30);
+    /// <summary>Accounts told their rejoin waits for virtual memory (once, until it goes ahead).</summary>
+    readonly HashSet<Guid> _memoryHeldTold = new();
+    /// <summary>Accounts whose client just ended out of memory (its log said so): its drop is said so.</summary>
+    readonly HashSet<Guid> _ranOutOfMemory = new();
 
     async Task RejoinAsync(RejoinRequest request)
     {
