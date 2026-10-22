@@ -1,0 +1,66 @@
+name: Bug report
+description: Something in Bloxkeep doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste a cookie, password, 2-step code or your Bloxkeep data folder here.** Blur account names in screenshots.
+        A security problem? Don't open an issue: see the [security policy](https://github.com/minhhoang0122/Bloxkeep/security/policy).
+        You can also report from the app: **Settings › Bloxkeep updates › Help & feedback › Send feedback**.
+  - type: input
+    id: version
+    attributes:
+      label: Bloxkeep version
+      description: Shown under **Settings › Bloxkeep updates**.
+      placeholder: "1.0.8"
+    validations:
+      required: true
+  - type: dropdown
+    id: roblox
+    attributes:
+      label: Which Roblox
+      options:
+        - From the Roblox website
+        - From the Microsoft Store
+        - Roblox VNG
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: "Press Win+R, type `winver`, press Enter."
+      placeholder: "Windows 11 24H2"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and any message Bloxkeep or Roblox showed (a Roblox error code helps a lot).
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen
+      placeholder: |
+        1. Select two accounts
+        2. Pick a game and press Play
+        3. …
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+  - type: textarea
+    id: log
+    attributes:
+      label: Error log
+      description: |
+        The end of `error.log`, if it has anything about this. It is in Bloxkeep's data folder (**Settings › Backup & data › Data location › Open folder**) and has no account details.
+      render: text
+  - type: textarea
+    id: pictures
+    attributes:
+      label: Screenshots or a video
+      description: Drag them in here. Blur account names first.

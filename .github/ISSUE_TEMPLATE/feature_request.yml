@@ -1,0 +1,27 @@
+name: Idea
+description: Something Bloxkeep could do, or do better.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Look through the [open issues](https://github.com/minhhoang0122/Bloxkeep/issues) first: if someone had the same idea, a 👍 on it helps more than a new one.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to do
+      description: What you do now, and what gets in the way.
+      placeholder: "When I play with 6 accounts, I have to…"
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: How you picture it working. A sketch or a screenshot of another app is welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
