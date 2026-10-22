@@ -330,6 +330,13 @@ public static class RobloxApi
         /// </summary>
         public bool Full => Status == 6;
 
+        /// <summary>
+        /// Roblox refuses the account this game: one of the statuses its own client counts as a join error (its setting
+        /// FStringGameJoinStatusConsideredError, "12;29;30;31;32;33;" in 0.744), not a wait. Asked again, it answers the
+        /// same. A game's ban is one of them (see <see cref="Banned"/>).
+        /// </summary>
+        public bool Refused => Status is 12 or (>= 29 and <= 33);
+
         /// <summary>The number in "Unable to join Game 211": what the window turns into its own error.</summary>
         public int? Code => Message is { } m && System.Text.RegularExpressions.Regex.Match(m, @"Unable to join Game (\d+)") is { Success: true } found
             && int.TryParse(found.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code) ? code : null;

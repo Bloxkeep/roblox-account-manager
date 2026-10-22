@@ -863,7 +863,10 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>Roblox's answer about a window that hasn't got in (<see cref="CheckJoinAsync"/>), once it came.</summary>
     RobloxApi.JoinAnswer? JoinAnswerOf(int pid) =>
-        _joinChecks.TryGetValue(pid, out var asked) && asked.Answer is { IsCompletedSuccessfully: true, Result: { } answer } ? answer : null;
+        !_joinChecks.TryGetValue(pid, out var asked) ? null
+        : asked.Answer is { IsCompletedSuccessfully: true, Result: { } answer } ? answer
+        // Asked again while in a full game's line: the place it had, until the new answer comes.
+        : !asked.Answer.IsCompleted ? _inLine.GetValueOrDefault(pid) : null;
 
     /// <summary>How long a teleport is shown as one: Roblox's took 0.5-3.6 s here (2026-10-21); one that failed leaves the window where it was.</summary>
     static readonly TimeSpan TeleportShown = TimeSpan.FromMinutes(1);
@@ -3942,6 +3945,9 @@ public sealed partial class AppController : IDisposable
         // Roblox closed it when another window opened: a rejoin would only close the next one (AppController.RobloxUpdates.cs).
         if (_closedByRoblox.Remove(accountId))
             return false;
+        // Roblox refused the account its game (RejoinFromLogs): a new window would only be refused again.
+        if (_joinRefused.Remove(launch))
+            return false;
         if (FindAccount(accountId) is not { } found || launch.Target is null)
             return false;
         account = found;
@@ -4013,6 +4019,9 @@ public sealed partial class AppController : IDisposable
             _joinChecks.Remove(gone);
         _gameBanNoted.RemoveWhere(pid => _running.Values.All(r => r.Pid != pid));
         _noRejoinTold.RemoveWhere(pid => _running.Values.All(r => r.Pid != pid));
+        foreach (int gone in _inLine.Keys.Where(pid => _running.Values.All(r => r.Pid != pid)).ToList())
+            _inLine.Remove(gone);
+        _joinRefused.RemoveWhere(launch => _running.Values.All(r => !ReferenceEquals(r.Launch, launch)));
         if (_vault is null || _running.Count == 0 || Settling)
             return;
         var now = DateTime.UtcNow;
@@ -4038,15 +4047,23 @@ public sealed partial class AppController : IDisposable
             }
             // Not in after JoinCheckAfter (5 s for a game known to have banned the account, else 40 s): Roblox says why only in the
             // window (a game's ban is Join Error 600) and logs nothing, so its join API is asked, as the window asked it.
-            // A ban then shows at once, and stops auto-rejoin; any other answer leaves it to GetInTimeout.
+            // A ban then shows at once, and stops auto-rejoin, as does any other refusal; a place in a full game's line keeps
+            // the window; any other answer leaves it to GetInTimeout.
             if (state is { Status: "joining", JobId: null, PersonStarted: false } && info.Launch.Target is { } wanted
                 && FindAccount(id) is { Cookie.Length: > 0 } asking && now - state.At >= JoinCheckAfter(asking, wanted) && !_gameBanNoted.Contains(info.Pid))
             {
-                // Asked once; again after JoinCheckRetry when no answer came (no network, often right after the PC wakes).
-                if (!_joinChecks.TryGetValue(info.Pid, out var asked)
-                    || asked.Answer is { IsCompleted: true } and not { IsCompletedSuccessfully: true, Result: not null } && now - asked.At >= JoinCheckRetry)
+                // Asked once; again after JoinCheckRetry when no answer came (no network, often right after the PC wakes),
+                // and every QueueRecheck while in line, for its place and for when the line gives up on it.
+                bool inLine = _joinChecks.TryGetValue(info.Pid, out var asked) && asked.Answer is { IsCompletedSuccessfully: true, Result.QueuePosition: > 0 };
+                if (asked.Answer is null
+                    || asked.Answer is { IsCompleted: true } and not { IsCompletedSuccessfully: true, Result: not null } && now - asked.At >= JoinCheckRetry
+                    || inLine && now - asked.At >= QueueRecheck)
                 {
-                    _joinChecks[info.Pid] = (CheckJoinAsync(asking, wanted, "A join that never got in, asked again"), now);
+                    if (inLine)
+                        _inLine[info.Pid] = asked.Answer!.Result!;
+                    else
+                        _inLine.Remove(info.Pid);
+                    _joinChecks[info.Pid] = (CheckJoinAsync(asking, wanted, inLine ? "A join in a full game's line, asked again" : "A join that never got in, asked again"), now);
                     continue;
                 }
                 var check = asked.Answer;
@@ -4058,6 +4075,23 @@ public sealed partial class AppController : IDisposable
                 }
                 if (check.IsCompletedSuccessfully)
                     ForgetBanIfLetIn(asking, wanted.PlaceId, check.Result);
+                // A private server's join is asked as its public game's (the private join's request isn't known here), so
+                // that answer doesn't say whether the private server takes it: only a ban (the game's, whatever server) counts.
+                if (check is { IsCompletedSuccessfully: true, Result: { } said } && wanted is { LinkCode: null, ShareCode: null })
+                {
+                    // Refused by Roblox (not a wait): a new window would only be refused again, every minute for good. The
+                    // window stays, with Roblox's message, and why no rejoin follows is said once.
+                    if (said.Refused)
+                    {
+                        if (_joinRefused.Add(info.Launch) && RejoinOn(asking, info.Launch.PresetId))
+                            Notify(L.F("{0} can't get into the game, so Bloxkeep doesn't try again: {1}", Name(asking),
+                                said.Message ?? L.F("Roblox answered status {0}", said.Status)), "warn", "drop", asking.Id);
+                        continue;
+                    }
+                    // In a full game's line: a new window would start at its end.
+                    if (said.QueuePosition is > 0)
+                        continue;
+                }
             }
             // A window stuck on a game's ban (Join Error 600) is left as it is: nothing to try again (on the way, the
             // minute's timeout below closed it with "trying again").
@@ -4183,6 +4217,15 @@ public sealed partial class AppController : IDisposable
     readonly Dictionary<int, (Task<RobloxApi.JoinAnswer?> Answer, DateTime At)> _joinChecks = new();
     /// <summary>A question about a join that got no answer is asked again after this.</summary>
     static readonly TimeSpan JoinCheckRetry = TimeSpan.FromSeconds(30);
+    /// <summary>A join in a full game's line (Roblox's answer gave its place) is asked about again after this.</summary>
+    static readonly TimeSpan QueueRecheck = TimeSpan.FromSeconds(60);
+    /// <summary>Clients in a full game's line being asked about again: the answer that gave their place, shown until the new one.</summary>
+    readonly Dictionary<int, RobloxApi.JoinAnswer> _inLine = new();
+    /// <summary>
+    /// Launches Roblox refused the game (<see cref="RobloxApi.JoinAnswer.Refused"/>): not rejoined once they end. Held as
+    /// they are, not by value: a launch's start time moves with a set-back clock.
+    /// </summary>
+    readonly HashSet<PendingLaunch> _joinRefused = new(ReferenceEqualityComparer.Instance);
     /// <summary>The longest a launch waits for Roblox's word on bans noted before (<see cref="RecheckGameBansAsync"/>).</summary>
     static readonly TimeSpan GameBanRecheckLimit = TimeSpan.FromSeconds(6);
 

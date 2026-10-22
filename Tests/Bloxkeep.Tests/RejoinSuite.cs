@@ -742,6 +742,71 @@ static class RejoinSuite
                 checks[me] = (refusedAsk.Answer, DateTime.UtcNow.AddSeconds(-40));
                 Tick();
                 c.Check("a join question Roblox refused (too many requests) is asked again too", questions == 2, questions);
+                // Roblox refuses the account the game (a status its own client counts as a join error, not a wait): the window
+                // stays, why is said once, and it isn't rejoined once closed. Before, it was closed and opened again every
+                // minute, for good.
+                c.Check("Roblox's join statuses its client counts as errors (12, 29-33) read as refusals; a full game, a wait or a join don't",
+                    new[] { 12, 29, 30, 31, 32, 33 }.All(s => new RobloxApi.JoinAnswer(200, s, null).Refused)
+                    && new[] { 0, 1, 2, 6, 10, 28 }.All(s => !new RobloxApi.JoinAnswer(200, s, null).Refused));
+                NewWindow();
+                var refusedGame = Run(new GameTarget(920587237));
+                Write(Line(DateTime.UtcNow.AddSeconds(-70), Launch));
+                Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(65));
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 29, "This experience needs a trusted friend in the server.")), DateTime.UtcNow);
+                closing.Clear();
+                Told();
+                Tick();
+                string? refusalSaid = Told();
+                c.Check("a join Roblox refuses (status 29), a minute without a server: not closed to try again, and why is said",
+                    !closing.Contains(me) && refusalSaid?.Contains("can't get into the game, so Bloxkeep doesn't try again: This experience needs a trusted friend", StringComparison.Ordinal) == true,
+                    refusalSaid);
+                Tick();
+                c.Check("…said once", Told() is null && !closing.Contains(me));
+                var refusedEnd = Harness.Invoke(app, "EndedState", me) as RobloxLogWatcher.ClientState;
+                c.Check("…and closed by the person, not rejoined", Harness.Invoke(app, "QueueRejoin", account.Id, refusedGame, refusedEnd) is false && queue.Count == 0, queue.Count);
+                queue.Clear();
+                var refusalAlert = Harness.Invoke(app, "AlertFor", "drop", account.Id,
+                    ("{0} can't get into the game, so Bloxkeep doesn't try again: {1}", new object?[] { account.Label, "No." }), refusalSaid ?? "", DateTime.UtcNow)!;
+                string? refusalTitle = refusalAlert.GetType().GetProperty("Title")!.GetValue(refusalAlert) as string;
+                c.Check("…Discord's alert: \"Roblox won't let it in, not trying again\"", refusalTitle == "Roblox won't let it in, not trying again", refusalTitle);
+                // In a full game's line (Roblox's answer gives its place): kept, as a new window would start at the line's
+                // end; asked again every minute, its place shown meanwhile; once Roblox gives none, tried again as before.
+                NewWindow();
+                Run(new GameTarget(920587237));
+                Write(Line(DateTime.UtcNow.AddSeconds(-70), Launch));
+                Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(65));
+                const string FullGame = "The game you requested is currently full. Please try again later.";
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 6, FullGame, null, 3)), DateTime.UtcNow);
+                closing.Clear();
+                Told();
+                questions = 0;
+                Tick();
+                c.Check("in a full game's line (place 3), a minute without a server: not closed", !closing.Contains(me) && questions == 0 && Told() is null, questions);
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 6, FullGame, null, 3)), DateTime.UtcNow.AddSeconds(-61));
+                reply = new(200, 6, FullGame, null, 2);
+                Tick();
+                c.Check("…asked again a minute on: its new place read, still not closed",
+                    questions == 1 && !closing.Contains(me) && (Harness.Invoke(app, "JoinAnswerOf", me) as RobloxApi.JoinAnswer)?.QueuePosition == 2, questions);
+                checks[me] = (new TaskCompletionSource<RobloxApi.JoinAnswer?>().Task, DateTime.UtcNow);
+                c.Check("…while it is asked, the place it had is shown", (Harness.Invoke(app, "JoinAnswerOf", me) as RobloxApi.JoinAnswer)?.QueuePosition == 3);
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 6, FullGame, null, 2)), DateTime.UtcNow.AddSeconds(-61));
+                reply = new(200, 6, FullGame);
+                Tick();
+                Tick();
+                c.Check("…and once Roblox gives it no place, closed to try again as before", closing.Contains(me));
+                closing.Clear();
+                // A private server's join is asked as its public game's: that answer says nothing of the private server.
+                NewWindow();
+                Run(new GameTarget(920587237, null, "0123456789"));
+                Write(Line(DateTime.UtcNow.AddSeconds(-70), Launch));
+                Poll(s => s is { Status: "joining", JobId: null } && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(65));
+                checks[me] = (Task.FromResult<RobloxApi.JoinAnswer?>(new RobloxApi.JoinAnswer(200, 12, "Unable to join Game 517")), DateTime.UtcNow);
+                Told();
+                Tick();
+                string? privateSaid = Told();
+                c.Check("a private server's window isn't held by its public game's refusal: tried again as before",
+                    closing.Contains(me) && privateSaid?.Contains("trying again", StringComparison.Ordinal) == true, privateSaid);
+                closing.Clear();
                 // The person starts a game in a window held as banned (another, or the same again): the card no longer
                 // says the ban, and the window isn't held as banned.
                 NewWindow();
