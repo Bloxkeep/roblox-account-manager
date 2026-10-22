@@ -1,4 +1,4 @@
-// The bot's commands and news (DiscordBot/worker) against a fake Discord (its REST API and Gateway) and fake sources (the
+// The bot's commands and news (services/DiscordBot/worker) against a fake Discord (its REST API and Gateway) and fake sources (the
 // Roblox watch, Roblox's status page, Bloxkeep's releases, Roblox's release notes), run by wrangler dev: each command's
 // reply, a signature that doesn't verify refused, each kind of news posted once, in English, only where it was asked for
 // (a Roblox update as a card, Roblox's notes edited in once they're out), and /verify's captcha (a PNG only that person

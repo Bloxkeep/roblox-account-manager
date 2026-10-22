@@ -139,7 +139,7 @@ ${body}
 <footer class="foot">
   <div class="wrap">
     <p>${t.foot.disclaimer}</p>
-    <p><a href="${REPO}">GitHub</a> · <a href="${REPO}/releases">${t.foot.releases}</a> · <a href="${REPO}/blob/main/PRIVACY.md">${t.foot.privacy}</a> · <a href="${REPO}/blob/main/CODE_SIGNING_POLICY.md">${t.foot.signing}</a> · <a href="${REPO}/blob/main/LICENSE">${t.foot.license}</a></p>
+    <p><a href="${REPO}">GitHub</a> · <a href="${REPO}/releases">${t.foot.releases}</a> · <a href="${REPO}/blob/main/PRIVACY.md">${t.foot.privacy}</a> · <a href="${REPO}/blob/main/docs/CODE_SIGNING_POLICY.md">${t.foot.signing}</a> · <a href="${REPO}/blob/main/LICENSE">${t.foot.license}</a></p>
   </div>
 </footer>
 </body>

@@ -9,7 +9,7 @@ still new. Nothing runs on your PC.
 
 | What | Where | How often |
 |---|---|---|
-| Searches crt.sh (a public search over the CT logs) for names starting like Bloxkeep | GitHub Actions, `.github/workflows/domain-watch.yml` running `DomainWatch/watch.py --source crtsh` | every 3 hours |
+| Searches crt.sh (a public search over the CT logs) for names starting like Bloxkeep | GitHub Actions, `.github/workflows/domain-watch.yml` running `services/DomainWatch/watch.py --source crtsh` | every 3 hours |
 | Reads two free NRD lists whole and looks for Bloxkeep anywhere in a name | the same workflow, `--source nrd` | once a day, 9:47 UTC |
 | Remembers the names it posted, from either source | `domain-status.json` on the `domain-status` branch (made by the first run) | |
 
@@ -20,7 +20,7 @@ and the NRD lists come out once a day.
 ## What it finds and what it can't
 
 The words looked for are `bloxkeep`, `bl0xkeep`, `bloxkep`, `bloxkeeep`, `blox-keep`, `bloxxkeep`, `getbloxkeep`,
-`download-bloxkeep` and `downloadbloxkeep` (`PATTERNS` in `DomainWatch/watch.py`). Add one when you see scammers use
+`download-bloxkeep` and `downloadbloxkeep` (`PATTERNS` in `services/DomainWatch/watch.py`). Add one when you see scammers use
 it: both sources pick it up.
 
 - **crt.sh: names starting with one of them**, within hours of the certificate. `bloxkeep` alone covers
@@ -39,7 +39,7 @@ it: both sources pick it up.
   day it was first seen in the logs, and a crt.sh link to the certificate. The other names on the same certificate
   aren't posted. Only certificates still valid are searched. A name from the NRD lists is posted with the lists it's
   in, a who.is link (its registrar and when it was registered) and a crt.sh search for its certificates, if any.
-- Bloxkeep's own addresses go in `OFFICIAL` in `DomainWatch/watch.py` and are never posted, nor anything under them.
+- Bloxkeep's own addresses go in `OFFICIAL` in `services/DomainWatch/watch.py` and are never posted, nor anything under them.
   There are none yet: the official home is the GitHub repository, which never shows in CT.
 
 ## The NRD lists
@@ -108,7 +108,7 @@ Bloxkeep copy or asks for Roblox cookies:
 ## By hand
 
 - Actions › **Domain watch** › Run workflow: searches crt.sh and reads the NRD lists.
-- `python DomainWatch/watch.py --status domain-status.json --dry` searches both and prints what it would post.
+- `python services/DomainWatch/watch.py --status domain-status.json --dry` searches both and prints what it would post.
 - `--source crtsh` or `--source nrd` searches only one of them (the NRD lists take about 20 seconds and 60 MB).
 - `--pattern bloxstrap` (repeatable) searches other words instead, to see what a post looks like. A run with
   `--source nrd --pattern robloxs` on 2026-10-16 would have posted:

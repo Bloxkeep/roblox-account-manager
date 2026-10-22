@@ -1,4 +1,4 @@
-// Bloxkeep's page, timed: the real page (RobloxManager/wwwroot) with the fake app behind it (dev/mock.js) in a headless
+// Bloxkeep's page, timed: the real page (RobloxManager/wwwroot) with the fake app behind it (ui/dev/mock.js) in a headless
 // Edge, as Tests/ui runs it. For each number of accounts:
 //   open      a fresh Edge opens the page until the accounts are drawn (ms after the navigation started), with Chrome's
 //             own counters for that open (script, style, layout time; the page's JS heap)
@@ -8,7 +8,7 @@
 //             Statistics answering 350 ms later, as the app does when it asks Roblox for them first (measured 0.32-1.35 s)
 //   node Tests/perf/page.mjs                       7 and 300 accounts, 5 opens each
 //   node Tests/perf/page.mjs --accounts 50 --runs 3 --json Tests/perf/out/before.json
-//   --root <checkout>   another checkout's page (an older commit, its ui.js built), with this one's dev/mock.js copied in
+//   --root <checkout>   another checkout's page (an older commit, its ui.js built), with this one's ui/dev/mock.js copied in
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,7 @@ const base = `http://127.0.0.1:${server.port}`;
 const results = {};
 
 for (const n of COUNTS) {
-  const url = `${base}/dev/preview.html?lang=en&nodelay=1&settled=1&coldicons=1&statsms=350&accounts=${n}`;
+  const url = `${base}/ui/dev/preview.html?lang=en&nodelay=1&settled=1&coldicons=1&statsms=350&accounts=${n}`;
   const opens = [], script = [], style = [], layout = [], heap = [];
   const redraws = [], tabs = { Presets: [], Statistics: [] };
   for (let run = 0; run < RUNS; run++) {

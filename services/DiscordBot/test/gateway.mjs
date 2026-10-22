@@ -1,4 +1,4 @@
-// The bot Worker (DiscordBot/worker) against a fake Discord Gateway, run by wrangler dev: every way a real connection
+// The bot Worker (services/DiscordBot/worker) against a fake Discord Gateway, run by wrangler dev: every way a real connection
 // ends, and Cloudflare restarting the object, must end with the bot online again (or stopped, for a refused token). No
 // Discord account or token needed. In this folder: npm install, then node gateway.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';

@@ -5,8 +5,8 @@ track Roblox exploits. Nothing runs on your PC.
 
 | What | Where | How fast |
 |---|---|---|
-| Notices a new Windows build: offered on Roblox's beta channel, live, or uploaded ahead of release | Cloudflare Worker, `RobloxWatch/worker` | every minute |
-| Downloads the new build and compares it with the one before; reads Roblox's single-window settings; posts to Discord | GitHub Actions, `.github/workflows/roblox-watch.yml` running `RobloxWatch/watch.py` | started by the Worker; also every 10 minutes by itself |
+| Notices a new Windows build: offered on Roblox's beta channel, live, or uploaded ahead of release | Cloudflare Worker, `services/RobloxWatch/worker` | every minute |
+| Downloads the new build and compares it with the one before; reads Roblox's single-window settings; posts to Discord | GitHub Actions, `.github/workflows/roblox-watch.yml` running `services/RobloxWatch/watch.py` | started by the Worker; also every 10 minutes by itself |
 | Remembers what it saw | `multi-status.json` on the `roblox-status` branch | |
 
 ## What it can and can't tell
@@ -41,7 +41,7 @@ never into a file or a chat.
    your account, Create; secret `CLOUDFLARE_API_TOKEN`.
 4. Actions › **Cloudflare workers** › Run workflow. It puts the Worker on Cloudflare (with the feedback one,
    [docs/feedback.md](feedback.md)); from then on an update is noticed within a minute. Run it again after changing
-   `RobloxWatch/worker`.
+   `services/RobloxWatch/worker`.
 
 When the GitHub token expires, the Worker can't start the check any more and the 10-minute schedule carries on alone:
 make a new one and replace `WATCH_TOKEN`, then run step 4 again.
@@ -49,8 +49,8 @@ make a new one and replace `WATCH_TOKEN`, then run step 4 again.
 ## By hand
 
 - Actions › **Roblox watch** › Run workflow (tick *Check the live build again* to post the live build's result again).
-- `python RobloxWatch/watch.py --status multi-status.json --dry` checks and prints instead of posting.
-- `python RobloxWatch/watch.py --fingerprint RobloxPlayerBeta.exe` prints the names compared between builds.
+- `python services/RobloxWatch/watch.py --status multi-status.json --dry` checks and prints instead of posting.
+- `python services/RobloxWatch/watch.py --fingerprint RobloxPlayerBeta.exe` prints the names compared between builds.
 
 ## multi-status.json
 

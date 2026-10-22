@@ -22,7 +22,7 @@
   // them too. Longer ones (a minute's refresh) aren't waited for.
   const realSetTimeout = window.setTimeout.bind(window), realClearTimeout = window.clearTimeout.bind(window);
   const timers = new Set();
-  // run.mjs --jank sets __uiSlow: waits of the fake app (dev/mock.js answers in 0.1–0.8 s) and the page's short timers
+  // run.mjs --jank sets __uiSlow: waits of the fake app (ui/dev/mock.js answers in 0.1–0.8 s) and the page's short timers
   // take that many times longer, as over a slow connection, so content arriving late is seen arriving late.
   const slow = window.__uiSlow || 1;
   // A countdown sets its next tick from the tick before, again and again; under the fixed clock it never reaches zero.
@@ -64,7 +64,7 @@
     }).observe({ type: 'layout-shift', buffered: true });
   } catch { /* no Layout Instability API */ }
 
-  // The fake bridge (dev/mock.js) sets window.__mockBridge: its calls are recorded on the way through.
+  // The fake bridge (ui/dev/mock.js) sets window.__mockBridge: its calls are recorded on the way through.
   let bridge;
   Object.defineProperty(window, '__mockBridge', {
     configurable: true,

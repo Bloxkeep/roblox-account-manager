@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>
-/// What Bloxkeep's Roblox watch (RobloxWatch/watch.py in the repository, docs/roblox-watch.md) found in each Roblox
+/// What Bloxkeep's Roblox watch (services/RobloxWatch/watch.py in the repository, docs/roblox-watch.md) found in each Roblox
 /// build: whether the single-window lock Multi-Roblox relies on changed since the build before, and which lock names to
 /// hold for it when Roblox renamed that lock. Read from the repository's roblox-status branch. Only the verdicts and
 /// names shaped like Roblox's own lock objects are taken from it; anything else in it is ignored.

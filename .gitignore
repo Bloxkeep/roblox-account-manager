@@ -13,7 +13,7 @@ prefs.json
 AccountData.json
 
 # Secrets (never commit): signing material, and the webhook links and tokens a local run of the Cloudflare Workers
-# (Feedback/worker, RobloxWatch/worker: `wrangler dev`) or of the watch scripts reads
+# (services/Feedback/worker, services/RobloxWatch/worker: `wrangler dev`) or of the watch scripts reads
 *.pfx
 *.snk
 .dev.vars
@@ -30,11 +30,11 @@ TestResults/
 Tests/ui/out/
 Tests/perf/out/
 
-# Discord message samples the discord test suite writes for dev/discord-preview.html
-dev/discord-samples*.json
-dev/discord-samples/
+# Discord message samples the discord test suite writes for ui/dev/discord-preview.html
+ui/dev/discord-samples*.json
+ui/dev/discord-samples/
 
-# Python (DomainWatch, RobloxWatch)
+# Python (services/DomainWatch, services/RobloxWatch)
 __pycache__/
 *.pyc
 .venv/
@@ -43,9 +43,8 @@ __pycache__/
 node_modules/
 RobloxManager/wwwroot/ui.js
 
-# Claude Code: each person's own settings and worktrees (.claude/launch.json is shared)
-.claude/settings.local.json
-.claude/worktrees/
+# Claude Code: local settings, launch configurations and worktrees
+.claude/
 
 # IDE / OS
 .vs/

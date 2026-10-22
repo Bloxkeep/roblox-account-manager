@@ -14,8 +14,8 @@ namespace Bloxkeep.Tests;
 /// Every Discord message Bloxkeep can send, built with made-up accounts, games and play (nothing is sent: the builders
 /// and DiscordWebhook.Build are called directly), in English and Vietnamese, and checked against docs/discord-style.md:
 /// sender, footer and logo, colours, titles, three short fields to a row, names hidden, plain text, pings. In a
-/// checkout the payloads also go to dev/discord-samples.json (pictures in dev/discord-samples/), for
-/// dev/discord-preview.html?src=discord-samples.json; there the made-up Roblox picture links point at stand-in pictures.
+/// checkout the payloads also go to ui/dev/discord-samples.json (pictures in ui/dev/discord-samples/), for
+/// ui/dev/discord-preview.html?src=discord-samples.json; there the made-up Roblox picture links point at stand-in pictures.
 /// </summary>
 static class DiscordSuite
 {
@@ -439,13 +439,13 @@ static class DiscordSuite
         return e is null ? payload["content"]?.GetValue<string>() ?? "" : $"{e["title"]}|{e["description"]}|{e["footer"]?["text"]}";
     }
 
-    /// <summary>dev/ of the checkout these checks were built from, when there is one.</summary>
+    /// <summary>ui/dev/ of the checkout these checks were built from, when there is one.</summary>
     static string? FindDev()
     {
         for (var at = new DirectoryInfo(AppContext.BaseDirectory); at is not null; at = at.Parent)
         {
-            if (File.Exists(Path.Combine(at.FullName, "dev", "discord-preview.html")))
-                return Path.Combine(at.FullName, "dev");
+            if (File.Exists(Path.Combine(at.FullName, "ui", "dev", "discord-preview.html")))
+                return Path.Combine(at.FullName, "ui", "dev");
         }
         return null;
     }

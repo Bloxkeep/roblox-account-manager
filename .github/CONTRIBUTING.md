@@ -27,10 +27,10 @@ You need Windows 10 or 11, the **.NET 10 SDK**, and **Node.js 22** or newer (for
 | Build the interface | `cd ui`, then `npm install` and `npm run build` |
 | Run the app's checks | `dotnet run --project Tests\Bloxkeep.Tests` (each check runs in its own process with throwaway data, never yours) |
 | Run the interface checks | `node Tests/ui/run.mjs` (uses Microsoft Edge) |
-| Try the interface without building | serve the repository root with any static web server and open `dev/preview.html` (made-up data) |
-| Build the installers | `build.bat 1.0.1` (runs every check first) |
+| Try the interface without building | serve the repository root with any static web server and open `ui/dev/preview.html` (made-up data) |
+| Build the installers | `scripts\build.bat 1.0.1` (runs every check first) |
 
-More detail is in the README's [Build from source](README.md#build-from-source).
+More detail is in the README's [Build from source](../README.md#build-from-source).
 
 ### Pull requests
 
@@ -42,4 +42,4 @@ More detail is in the README's [Build from source](README.md#build-from-source).
 - Bloxkeep doesn't change Roblox's files, inject code into Roblox or read its memory. Changes that do won't be accepted.
 
 Releases are made by the maintainer. By contributing, you agree that your work is released under the
-[MIT License](LICENSE), like the rest of the project.
+[MIT License](../LICENSE), like the rest of the project.

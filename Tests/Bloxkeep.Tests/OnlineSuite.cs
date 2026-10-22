@@ -132,7 +132,7 @@ static class OnlineSuite
         // Without the test's server this copy is a development one again: closing sends nothing to the real bot.
         c.Check("a development copy says no goodbye to the real bot", !(bool)typeof(AppController).GetProperty("OnlineAllowed", Harness.F)!.GetValue(app)!);
 
-        // The real address: Bloxkeep's bot (DiscordBot/worker), which counts.
+        // The real address: Bloxkeep's bot (services/DiscordBot/worker), which counts.
         string real = (string)typeof(AppController).GetField("OnlineUrl", Harness.F)!.GetValue(null)!;
         c.Check("the bot's address is set", Uri.TryCreate(real, UriKind.Absolute, out var uri) && uri.Scheme == "https"
             && uri.Host == "bloxkeep-bot.bloxkeep-app.workers.dev" && uri.AbsolutePath == "/online/ping", real);

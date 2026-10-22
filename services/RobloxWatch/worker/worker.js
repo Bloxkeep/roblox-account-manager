@@ -1,5 +1,5 @@
 // Asks Roblox every minute whether a new Windows build went live, is offered on its beta channel or was uploaded
-// ahead of release, and starts the "Roblox watch" workflow (RobloxWatch/watch.py) at once instead of waiting for its
+// ahead of release, and starts the "Roblox watch" workflow (services/RobloxWatch/watch.py) at once instead of waiting for its
 // 10-minute schedule. All checks, Discord posts and the status file are the workflow's; this only notices and wakes it.
 const REPO = 'Bloxkeep/roblox-account-manager';
 const WORKFLOW = 'roblox-watch.yml';

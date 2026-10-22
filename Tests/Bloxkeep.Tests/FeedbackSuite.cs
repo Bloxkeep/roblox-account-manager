@@ -100,7 +100,7 @@ static class FeedbackSuite
         c.Check("service unreachable: said so", down is UserError, down);
         Environment.SetEnvironmentVariable("BLOXKEEP_FEEDBACK_URL", null);
 
-        // The real address: a build mustn't go out before it's set (Feedback/worker's workers.dev address).
+        // The real address: a build mustn't go out before it's set (services/Feedback/worker's workers.dev address).
         string real = (string)typeof(AppController).GetField("FeedbackUrl", Harness.F)!.GetValue(null)!;
         c.Check("the feedback service's address is set", Uri.TryCreate(real, UriKind.Absolute, out var uri) && uri.Scheme == "https"
             && uri.Host.EndsWith(".workers.dev") && !uri.Host.Contains("subdomain", StringComparison.OrdinalIgnoreCase) && uri.AbsolutePath == "/feedback", real);

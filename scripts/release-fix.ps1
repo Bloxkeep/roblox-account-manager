@@ -9,7 +9,7 @@
 param([string]$Version, [string]$Repo)
 $ErrorActionPreference = 'Stop'
 $repoName = ([Uri]$Repo).AbsolutePath.Trim('/')
-$dist = Join-Path $PSScriptRoot 'dist\releases'
+$dist = Join-Path $PSScriptRoot '..\dist\releases'
 
 # The newest public release ("Latest" on the Releases page) and the quiet fixes already inside it.
 $tag = gh release view --repo $repoName --json tagName --jq .tagName
@@ -33,7 +33,7 @@ if ($feed.Assets | Where-Object { $_.Version -eq $Version }) { throw "$Version i
 
 $built = Get-Content -Raw -Encoding UTF8 (Join-Path $dist 'releases.win.json') | ConvertFrom-Json
 $new = @($built.Assets | Where-Object { $_.Version -eq $Version })
-if (-not ($new | Where-Object { $_.Type -eq 'Full' })) { throw "dist\releases has no full package of ${Version}: run build.bat $Version first." }
+if (-not ($new | Where-Object { $_.Type -eq 'Full' })) { throw "dist\releases has no full package of ${Version}: run scripts\build.bat $Version first." }
 
 # The packages first, then the list that points at them: a copy checking in between never finds a missing file.
 foreach ($asset in $new) {

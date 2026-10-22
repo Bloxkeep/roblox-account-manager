@@ -72,7 +72,7 @@
 <script>
   // The repository's own files (the logo) from this checkout, so a picture not pushed yet still shows.
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
-    .replace(/https:\/\/raw\.githubusercontent\.com\/Bloxkeep\/roblox-account-manager\/main\//g, '../');
+    .replace(/https:\/\/raw\.githubusercontent\.com\/Bloxkeep\/roblox-account-manager\/main\//g, '../../');
   // Discord shows <t:unix:style> in the reader's own time zone and language: here the browser's.
   function stamp(unix, style) {
     const d = new Date(unix * 1000), lang = navigator.language;

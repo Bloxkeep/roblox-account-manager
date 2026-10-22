@@ -8,7 +8,7 @@ carries this notice:
 > Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
 
 Until then, check a download against `SHA256SUMS.txt` in the same release (see
-[Download and install](README.md#download-and-install)).
+[Download and install](../README.md#download-and-install)).
 
 ## What gets signed
 
@@ -28,9 +28,9 @@ sent for signing until it is built there.
 ## How a release is built and signed
 
 1. The version's notes are added to `RobloxManager/whatsnew.json` and a tag `vX.Y.Z` is pushed to `main`.
-2. The [Release workflow](.github/workflows/release.yml) builds everything on a fresh GitHub-hosted Windows machine with
-   `build.bat`, after Bloxkeep's checks (`Tests/Bloxkeep.Tests`) pass. The same script builds it on a developer's PC,
-   so anyone can rebuild a release from its tag ([Build from source](README.md#build-from-source)).
+2. The [Release workflow](../.github/workflows/release.yml) builds everything on a fresh GitHub-hosted Windows machine with
+   `scripts/build.bat`, after Bloxkeep's checks (`Tests/Bloxkeep.Tests`) pass. The same script builds it on a developer's PC,
+   so anyone can rebuild a release from its tag ([Build from source](../README.md#build-from-source)).
 3. The built files are kept on the workflow run, sent to SignPath for signing, and every signing request is approved by
    hand by an approver below before it is signed.
 4. The workflow publishes the signed files as the GitHub release, with `SHA256SUMS.txt`.
@@ -56,7 +56,7 @@ the maintainer, who reviews and commits it, and only the maintainer approves sig
 
 This program will not transfer any information to other networked systems unless specifically requested by the user or
 the person installing or operating it. What it sends, where and when, is listed in the
-[privacy policy](PRIVACY.md).
+[privacy policy](../PRIVACY.md).
 
 ## Reporting a problem
 

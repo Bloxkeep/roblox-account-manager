@@ -1,4 +1,4 @@
-// /setup (DiscordBot/worker/setup.js) against a fake Discord server, run by wrangler dev: refused to anyone but
+// /setup (services/DiscordBot/worker/setup.js) against a fake Discord server, run by wrangler dev: refused to anyone but
 // Bloxkeep's developers; then the roles, channels, Community, AutoMod, icon and posts made (no onboarding), Discord's
 // own categories tidied away, nothing made twice when run again, its roles renamed or not; and #dont-type-here banning whoever posts in it (not
 // moderators, not bots, once per person). No Discord account or token needed. In this folder: npm install, then

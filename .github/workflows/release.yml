@@ -1,10 +1,10 @@
 # Builds Bloxkeep on GitHub's own Windows machines and publishes the GitHub release, so every file people download is
 # made from the source in this repository by a build anyone can read (what SignPath Foundation asks for before it
-# signs a project). It runs the same build.bat and release.bat as a build on your own PC.
+# signs a project). It runs the same scripts\build.bat and scripts\release.bat as a build on your own PC.
 # Start a release: add the version's notes to RobloxManager\whatsnew.json, commit, then push a tag:
 #   git tag v1.0.12 && git push origin v1.0.12
 # A quiet fix (a small fix after the newest public version, installed in the background, no release of its own): tag the
-# number release-fix.ps1 next gives, e.g. git tag v1.0.7-alpha.1; its packages go inside the newest public release.
+# number scripts\release-fix.ps1 next gives, e.g. git tag v1.0.7-alpha.1; its packages go inside the newest public release.
 # Try a build without releasing: Actions > Release > Run workflow, with "Publish the release" off; the files stay on
 # the run (Artifacts) for 14 days.
 # The web installer (Installer\Web\Bloxkeep-Setup.exe) is copied from the repository as it is, not built here: it stays
@@ -55,7 +55,7 @@ jobs:
           "value=$v" >> $env:GITHUB_OUTPUT
       - name: Build ${{ steps.version.outputs.value }}
         shell: cmd
-        run: build.bat ${{ steps.version.outputs.value }} https://github.com/${{ github.repository }}
+        run: scripts\build.bat ${{ steps.version.outputs.value }} https://github.com/${{ github.repository }}
       - name: Keep the files on the run
         uses: actions/upload-artifact@v4
         with:
@@ -68,4 +68,4 @@ jobs:
         shell: cmd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: release.bat ${{ steps.version.outputs.value }} https://github.com/${{ github.repository }}
+        run: scripts\release.bat ${{ steps.version.outputs.value }} https://github.com/${{ github.repository }}

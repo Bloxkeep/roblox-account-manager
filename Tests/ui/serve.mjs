@@ -1,4 +1,4 @@
-// The repository's files over http://127.0.0.1 for the preview page (dev/preview.html), like `python -m http.server`.
+// The repository's files over http://127.0.0.1 for the preview page (ui/dev/preview.html), like `python -m http.server`.
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';

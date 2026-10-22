@@ -4,7 +4,7 @@
 // A source that can't be read is left as it was; nothing is announced from it.
 export const REPO = 'https://github.com/Bloxkeep/roblox-account-manager';
 const UA = 'BloxkeepBot (https://github.com/Bloxkeep/roblox-account-manager)';
-// Each one's address can be pointed elsewhere (DiscordBot/test runs them against its own fakes).
+// Each one's address can be pointed elsewhere (services/DiscordBot/test runs them against its own fakes).
 const URLS = {
   WATCH_URL: 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/roblox-status/multi-status.json',
   STATUS_URL: 'https://api.status.io/1.0/status/59db90dbcdeb2f04dadcf16d', // status.roblox.com is a status.io page

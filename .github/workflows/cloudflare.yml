@@ -1,7 +1,7 @@
 # Puts Bloxkeep's two Cloudflare Workers on Cloudflare. Run by hand once the secrets are set, and again after changing
 # either worker:
-#   RobloxWatch/worker   asks Roblox every minute for a new build and starts the "Roblox watch" workflow
-#   Feedback/worker      takes "Send feedback" from the app and posts it to Discord
+#   services/RobloxWatch/worker   asks Roblox every minute for a new build and starts the "Roblox watch" workflow
+#   services/Feedback/worker      takes "Send feedback" from the app and posts it to Discord
 # Secrets: CLOUDFLARE_API_TOKEN ("Edit Cloudflare Workers" template), CLOUDFLARE_ACCOUNT_ID, WATCH_TOKEN (a GitHub token
 # for this repository with Actions: read and write), and FEEDBACK_WEBHOOK (the Discord webhook feedback goes to;
 # DISCORD_WEBHOOK's channel when it isn't set). The account needs its workers.dev subdomain chosen once (Workers &
@@ -22,14 +22,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
-            RobloxWatch
-            Feedback
+            services/RobloxWatch
+            services/Feedback
       - name: Roblox watch
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: RobloxWatch/worker
+          workingDirectory: services/RobloxWatch/worker
           secrets: |
             WATCH_TOKEN
         env:
@@ -40,7 +40,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: Feedback/worker
+          workingDirectory: services/Feedback/worker
           secrets: |
             FEEDBACK_WEBHOOK
         env:

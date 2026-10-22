@@ -1,5 +1,5 @@
 # Checks Roblox for a new Windows build or a changed single-window setting and posts what it found to Discord
-# (RobloxWatch/watch.py). Started within a minute of a Roblox update by the Cloudflare watcher (RobloxWatch/worker),
+# (services/RobloxWatch/watch.py). Started within a minute of a Roblox update by the Cloudflare watcher (services/RobloxWatch/worker),
 # and every 10 minutes by itself in case that one is down. What it saw is kept on the roblox-status branch.
 # Secret: DISCORD_WEBHOOK (without it, the messages only go to the run's log).
 name: Roblox watch
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: RobloxWatch
+          sparse-checkout: services/RobloxWatch
       - uses: actions/checkout@v4
         with:
           ref: roblox-status
@@ -38,7 +38,7 @@ jobs:
       - name: Check Roblox (${{ inputs.reason || 'schedule' }})
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: python3 RobloxWatch/watch.py --status status/multi-status.json ${{ inputs.force && '--force' || '' }}
+        run: python3 services/RobloxWatch/watch.py --status status/multi-status.json ${{ inputs.force && '--force' || '' }}
       - name: Save what was seen
         if: success() || failure()
         working-directory: status

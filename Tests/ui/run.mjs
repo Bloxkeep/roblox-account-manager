@@ -1,4 +1,4 @@
-// Bloxkeep's interface checks: the real page (RobloxManager/wwwroot) with the fake app behind it (dev/mock.js), opened
+// Bloxkeep's interface checks: the real page (RobloxManager/wwwroot) with the fake app behind it (ui/dev/mock.js), opened
 // in a headless Edge. Each scenario (scenarios.mjs) opens the page, clicks and types like a person, and the page is then
 // written down as text (page-hooks.js snap(): what is shown, how it nests, labels, states, inline styles) together with
 // the commands it sent to the app. That text must match the saved copy in baseline/, so a change to how the page is
@@ -183,7 +183,7 @@ async function runOne(b, { sc, lang }) {
       await b.eval('__ui.settle()');
     },
     async wait(ms) { await sleep(ms); await b.eval('__ui.settle()'); },
-    /** An app event, as the app would send it (dev/mock.js passes it to the page). */
+    /** An app event, as the app would send it (ui/dev/mock.js passes it to the page). */
     async emit(name, data) { await b.eval(`__ui.emit(${JSON.stringify(name)}, ${JSON.stringify(data)})`); await b.eval('__ui.settle()'); },
     eval: expr => b.eval(expr),
     snap: label => record(label),
@@ -193,7 +193,7 @@ async function runOne(b, { sc, lang }) {
     const [w, h] = sc.size || SIZE;
     await b.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
     await b.send('Storage.clearDataForOrigin', { origin: base, storageTypes: 'all' });
-    await b.goto(`${base}/dev/preview.html?lang=${lang}${sc.query ? '&' + sc.query : ''}`);
+    await b.goto(`${base}/ui/dev/preview.html?lang=${lang}${sc.query ? '&' + sc.query : ''}`);
     await b.eval(`__ui.lang = ${JSON.stringify(lang)}`);
     await sleep(900); // the mock's own scripted views (?settings=…, ?menu=1…) start 600 ms after load
     await b.eval('__ui.settle()');

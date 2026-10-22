@@ -7,7 +7,7 @@ namespace RobloxManager;
 /// Settings › Bloxkeep updates › Privacy › Add me to the online count (on until turned off): while Bloxkeep is open,
 /// locked or not, it tells Bloxkeep's Discord bot so every ten minutes (further apart when the bot says so, once many
 /// people have it open) and says goodbye as it closes, so its developers can see how many people have it open right
-/// now (DiscordBot/worker/online.js; the bot's status shows the number too). What goes: a
+/// now (services/DiscordBot/worker/online.js; the bot's status shows the number too). What goes: a
 /// random id made for this Bloxkeep (<see cref="Prefs.OnlineId"/>, linked to no account, vault, Roblox or Discord),
 /// Bloxkeep's version and the app's language, nothing else. Turned off: a goodbye, the id forgotten, nothing more.
 /// Only an installed Bloxkeep counts: a development copy or the checks never do, unless BLOXKEEP_ONLINE_URL points them
@@ -15,7 +15,7 @@ namespace RobloxManager;
 /// </summary>
 public sealed partial class AppController
 {
-    /// <summary>Bloxkeep's Discord bot (DiscordBot/worker), which counts.</summary>
+    /// <summary>Bloxkeep's Discord bot (services/DiscordBot/worker), which counts.</summary>
     const string OnlineUrl = "https://bloxkeep-bot.bloxkeep-app.workers.dev/online/ping";
     /// <summary>Until the bot says otherwise (each answer says when to send the next, from a minute to six hours).</summary>
     static readonly TimeSpan OnlineBeat = TimeSpan.FromMinutes(10);

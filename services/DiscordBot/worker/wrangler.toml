@@ -1,5 +1,5 @@
-# Built by Cloudflare from this repository, like Feedback/worker (Workers & Pages › bloxkeep-bot, root directory
-# DiscordBot/worker). Its secret DISCORD_TOKEN (the bot's token from the Discord Developer Portal) is set in the worker's
+# Built by Cloudflare from this repository, like services/Feedback/worker (Workers & Pages › bloxkeep-bot, root directory
+# services/DiscordBot/worker). Its secret DISCORD_TOKEN (the bot's token from the Discord Developer Portal) is set in the worker's
 # settings. Keeps Bloxkeep's Discord bot online around the clock: worker.js. How it is doing:
 # https://bloxkeep-bot.bloxkeep-app.workers.dev/status
 name = "bloxkeep-bot"

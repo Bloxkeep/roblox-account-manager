@@ -1,5 +1,5 @@
 """Generates the static scenery behind the glass themes (RobloxManager/wwwroot/scene-*.svg).
-Deterministic: the same output every run. Usage: python dev/make-scenes.py RobloxManager/wwwroot"""
+Deterministic: the same output every run. Usage: python ui/dev/make-scenes.py RobloxManager/wwwroot"""
 import random, sys, os
 
 OUT = sys.argv[1]

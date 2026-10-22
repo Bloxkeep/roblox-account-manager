@@ -16,7 +16,7 @@ The app sends at most one a minute (`RobloxManager/AppController.Feedback.cs`).
 
 ## The way there
 
-The app posts it as JSON to a Cloudflare Worker (`Feedback/worker`), which posts it to a Discord channel through a
+The app posts it as JSON to a Cloudflare Worker (`services/Feedback/worker`), which posts it to a Discord channel through a
 webhook it keeps to itself: the app holds no webhook, so nobody can write to the channel directly. The Worker takes one
 JSON body of at most 40 KB, at most 3 sends a minute from one address and 30 from everyone, and posts with mentions
 turned off, so `@everyone` in a message pings nobody. The log arrives as a file, `error-log.txt`, in a message of its own right under the report (in the same message Discord would put the file above it); the report's **Error log** field links to that message.
@@ -27,7 +27,7 @@ turned off, so `@everyone` in a message pings nobody. The log arrives as a file,
    secret `FEEDBACK_WEBHOOK` (without it, the Roblox watch's `DISCORD_WEBHOOK` channel gets feedback too).
 2. The Cloudflare account and its secrets as in [the Roblox watch's setup](roblox-watch.md#setting-it-up), and the
    account's workers.dev subdomain chosen once: Workers & Pages in the Cloudflare dashboard.
-3. Actions › **Cloudflare workers** › Run workflow (or connect the repository in Workers & Pages, root directory `Feedback/worker`). The feedback address is
+3. Actions › **Cloudflare workers** › Run workflow (or connect the repository in Workers & Pages, root directory `services/Feedback/worker`). The feedback address is
    `https://bloxkeep-feedback.bloxkeep-app.workers.dev/feedback`.
 4. That address goes in `FeedbackUrl` (`RobloxManager/AppController.Feedback.cs`). Until then the checks
    (`Tests/Bloxkeep.Tests`, suite `feedback`) fail, so no build goes out with the feature pointing nowhere.

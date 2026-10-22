@@ -6,7 +6,7 @@
 <p align="center"><a href="README.md">English</a> | Tiếng Việt</p>
 <p align="center"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 hoặc 11, 64-bit"> <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10"> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="Giấy phép MIT"></a></p>
 <p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/T%E1%BA%A3i_cho_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Tải Bloxkeep cho Windows (Bloxkeep-Setup.exe, bản mới nhất)"></a></p>
-<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
+<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="docs/CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="Ảnh chụp thật trên một máy Windows: năm cửa sổ Roblox mở cùng lúc, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, bốn cửa sổ cùng ở trong một game và cửa sổ thứ năm đang vào, phía sau là Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật"></p>
 <p align="center"><sub>Ảnh chụp thật trên một máy: năm tài khoản Roblox mở cùng lúc bằng Bloxkeep, bốn tài khoản đã vào game, tài khoản thứ năm đang vào. Tên trong game đã được làm mờ.</sub></p>
@@ -57,7 +57,7 @@ Cần Windows 10 hoặc 11, bản 64-bit. Không cần cài .NET. Bộ cài tự
 > [!CAUTION]
 > Chỉ tải Bloxkeep ở trang Releases của repo này. Bản tải ở nơi khác có thể đã bị sửa để lấy cắp tài khoản.
 
-File chưa có chữ ký số ([code signing policy](CODE_SIGNING_POLICY.md), tiếng Anh), nên lần đầu chạy Windows SmartScreen sẽ cảnh báo. Bấm **More info** rồi **Run anyway** (trên Windows tiếng Việt, hai nút này mang tên tiếng Việt tương ứng). Bạn có thể đối chiếu mã SHA-256 của file với `SHA256SUMS.txt` trong cùng bản phát hành. `Bloxkeep-Setup.exe` là cùng một file ở mọi bản phát hành (chỉ phần nó tải về là thay đổi), nên SmartScreen dần dần nhận ra nó; bộ cài này cũng tự đối chiếu file tải về với `SHA256SUMS.txt`.
+File chưa có chữ ký số ([code signing policy](docs/CODE_SIGNING_POLICY.md), tiếng Anh), nên lần đầu chạy Windows SmartScreen sẽ cảnh báo. Bấm **More info** rồi **Run anyway** (trên Windows tiếng Việt, hai nút này mang tên tiếng Việt tương ứng). Bạn có thể đối chiếu mã SHA-256 của file với `SHA256SUMS.txt` trong cùng bản phát hành. `Bloxkeep-Setup.exe` là cùng một file ở mọi bản phát hành (chỉ phần nó tải về là thay đổi), nên SmartScreen dần dần nhận ra nó; bộ cài này cũng tự đối chiếu file tải về với `SHA256SUMS.txt`.
 
 Bộ cài cho bạn chọn nơi cài (mặc định là `%LOCALAPPDATA%\BloxkeepApp`; chương trình chiếm khoảng 230 MB), chép file kèm thanh tiến trình và có thể mở Bloxkeep khi xong. Tài khoản và cài đặt được lưu riêng với chương trình, trong `%LOCALAPPDATA%\Bloxkeep` (vài MB). Bộ cài và bộ gỡ có tiếng Việt và tiếng Anh.
 
@@ -688,21 +688,21 @@ Nếu bấm **Vào game** cho hai tài khoản khi Multi-Roblox đang tắt, Blo
 
 ## Tự build từ mã nguồn
 
-Cần Windows và **.NET 10 SDK**. App gồm phần lõi C# (.NET 10, WinForms) và giao diện HTML/CSS/JS chạy trong WebView2. Công cụ đóng gói [Velopack](https://velopack.io) (`vpk`) được khai báo trong `dotnet-tools.json` và script tự tải.
+Cần Windows và **.NET 10 SDK**. App gồm phần lõi C# (.NET 10, WinForms) và giao diện HTML/CSS/JS chạy trong WebView2. Công cụ đóng gói [Velopack](https://velopack.io) (`vpk`) được khai báo trong `.config/dotnet-tools.json` và script tự tải.
 
 ```bat
-build.bat 1.0.1
+scripts\build.bat 1.0.1
 ```
 
 Lệnh này chạy các bài kiểm tra trong `Tests\Bloxkeep.Tests` trước và dừng nếu có bài hỏng (chạy riêng bằng `dotnet run --project Tests\Bloxkeep.Tests`; thêm `--online` cho các bài cần hỏi máy chủ Roblox). Mỗi bài chạy trong tiến trình riêng với dữ liệu tạm, không bao giờ đụng dữ liệu của bạn. Kết quả nằm trong `dist\releases\`: `Bloxkeep-Setup.exe` (bộ cài tải qua mạng, chép nguyên từ `Installer\Web`), `Bloxkeep-Setup-Offline.exe`, `Bloxkeep-Portable.zip`, các gói cập nhật và `SHA256SUMS.txt`. Bộ cài tải qua mạng chỉ build lại khi thật cần, bằng `Installer\Web\make.bat`: mỗi lần build là một file mới đối với SmartScreen. Tham số thứ hai là link repo GitHub mà bản build sẽ tìm cập nhật (mặc định là repo này); truyền repo khác khi build bản fork.
 
 ```bat
-release.bat 1.0.1 https://github.com/Bloxkeep/roblox-account-manager
+scripts\release.bat 1.0.1 https://github.com/Bloxkeep/roblox-account-manager
 ```
 
-`release.bat` đăng lên GitHub Releases, cần biến môi trường `GITHUB_TOKEN` có quyền ghi release. Mỗi phiên bản cần ghi chú (tiếng Anh và tiếng Việt) trong `RobloxManager\whatsnew.json`; ghi chú này hiện trong app sau khi cập nhật và trên trang phát hành. Để thử cập nhật trước khi đăng, đặt `BLOXKEEP_UPDATE_SOURCE` là một thư mục chứa các file phát hành.
+`scripts\release.bat` đăng lên GitHub Releases, cần biến môi trường `GITHUB_TOKEN` có quyền ghi release. Mỗi phiên bản cần ghi chú (tiếng Anh và tiếng Việt) trong `RobloxManager\whatsnew.json`; ghi chú này hiện trong app sau khi cập nhật và trên trang phát hành. Để thử cập nhật trước khi đăng, đặt `BLOXKEEP_UPDATE_SOURCE` là một thư mục chứa các file phát hành.
 
-**Xem thử giao diện không cần build**: chạy một web server tĩnh ở thư mục gốc repo (ví dụ `python -m http.server 5178`), rồi mở `http://127.0.0.1:5178/dev/preview.html`. Trang này dùng dữ liệu giả trong `dev/mock.js`.
+**Xem thử giao diện không cần build**: chạy một web server tĩnh ở thư mục gốc repo (ví dụ `python -m http.server 5178`), rồi mở `http://127.0.0.1:5178/ui/dev/preview.html`. Trang này dùng dữ liệu giả trong `ui/dev/mock.js`.
 
 ```
 RobloxManager/             mã nguồn C#
@@ -718,14 +718,18 @@ RobloxManager/             mã nguồn C#
   Vault.cs                 kho mã hóa
   AppUpdater.cs            tự cập nhật (Velopack)
   whatsnew.json            ghi chú từng phiên bản
+ui/                        phần React của giao diện; dev/ là bản xem thử với dữ liệu giả (không đóng gói)
 Installer/                 ảnh màn hình chờ của bộ cài; Setup/ là cửa sổ cài và gỡ cài đặt
-dev/                       xem thử giao diện với dữ liệu giả (không đóng gói)
-docs/screenshots/          ảnh chụp màn hình (vi/: ảnh giao diện tiếng Việt)
+Tests/                     các bài kiểm tra của app (Bloxkeep.Tests) và của giao diện (ui)
+scripts/                   script build, phát hành và bản sửa ngầm
+services/                  phần chạy trên mạng: bot Discord, dịch vụ góp ý, Roblox watch và domain watch
+site/                      trang web, dựng từ docs/guide
+docs/                      hướng dẫn sử dụng, chính sách ký số và ghi chú; screenshots/ (vi/: ảnh tiếng Việt)
 ```
 
 ## Code signing policy
 
-Các bản phát hành được build từ repo này bằng [workflow Release](.github/workflows/release.yml) trên máy Windows của chính GitHub. File chưa có chữ ký số; nếu có thì file nào được ký, ký thế nào và ai duyệt nằm trong [code signing policy](CODE_SIGNING_POLICY.md). App gửi gì và gửi đi đâu nằm trong [chính sách quyền riêng tư](PRIVACY.md) (tiếng Anh).
+Các bản phát hành được build từ repo này bằng [workflow Release](.github/workflows/release.yml) trên máy Windows của chính GitHub. File chưa có chữ ký số; nếu có thì file nào được ký, ký thế nào và ai duyệt nằm trong [code signing policy](docs/CODE_SIGNING_POLICY.md). App gửi gì và gửi đi đâu nằm trong [chính sách quyền riêng tư](PRIVACY.md) (tiếng Anh).
 
 ## Giấy phép
 

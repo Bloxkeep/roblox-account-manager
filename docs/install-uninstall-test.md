@@ -1,6 +1,6 @@
 # Install / update / uninstall: manual test checklist
 
-For `dist\releases\Bloxkeep-Setup-Offline.exe` and `Bloxkeep-Portable.zip` built by `build.bat` (Velopack 1.2.161).
+For `dist\releases\Bloxkeep-Setup-Offline.exe` and `Bloxkeep-Portable.zip` built by `scripts\build.bat` (Velopack 1.2.161).
 `Bloxkeep-Setup.exe` (the web installer) installs the newest *published* release, so try it once after publishing (section 8).
 Do this on a PC (or a Windows Sandbox / VM) where you don't mind touching `%LOCALAPPDATA%\Bloxkeep`; on your own PC
 back up that folder first. Quit every dev build of Bloxkeep before you start: dev builds share the single-instance
@@ -28,7 +28,7 @@ Tick each line. "150 %" means Settings › System › Display › Scale set to 1
 
 - [ ] With Bloxkeep running (window open), run the same `Bloxkeep-Setup-Offline.exe` again. A dialog "Bloxkeep is already installed … Repair?" appears. Choose Repair: the running Bloxkeep is ended without any prompt (Velopack kills every process under `BloxkeepApp`), the splash shows, Bloxkeep starts again, still unlocked with your accounts.
 - [ ] Same with close-to-tray on and the window hidden to the tray: after the kill, a dead tray icon may stay until the mouse passes over it. Note whether it does on this Windows build.
-- [ ] Run a Setup built with a higher version (`build.bat 1.0.1`): the dialog offers Update instead; data is kept and What's new shows after the restart. A Setup with a lower version offers a downgrade warning.
+- [ ] Run a Setup built with a higher version (`scripts\build.bat 1.0.1`): the dialog offers Update instead; data is kept and What's new shows after the restart. A Setup with a lower version offers a downgrade warning.
 - [ ] Run Setup while a dev build is running: Setup finishes but the dev build's window comes to the front and the installed copy exits (expected, see top). Quit the dev build and start Bloxkeep from the Start menu.
 
 ## 3. Update in place (installed copy)

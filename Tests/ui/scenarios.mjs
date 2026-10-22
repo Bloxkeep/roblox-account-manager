@@ -1,4 +1,4 @@
-// What the interface checks look at. Each: a name, the preview's URL options (dev/mock.js lists them: ?menu=1, ?settings=
+// What the interface checks look at. Each: a name, the preview's URL options (ui/dev/mock.js lists them: ?menu=1, ?settings=
 // <page>…) and steps that click and type like a person. Elements are found by their words ({ key: an i18n key }, in
 // whichever language the run is in) or by a CSS selector when they have no words. The page is written down at the end,
 // and at each s.snap('label').
@@ -344,7 +344,7 @@ export default [
     await s.click({ css: '#pw-go' });
     await s.wait(800);
   }, { langs: ['en'] }),
-  // The password sign-in's other turns (dev/mock.js answers by username: x, 2fa, sms, captcha, locked, finish, key).
+  // The password sign-in's other turns (ui/dev/mock.js answers by username: x, 2fa, sms, captcha, locked, finish, key).
   S('pw-empty', '', async s => { await s.click(key('acc.add')); await s.click({ css: '#pw-go' }); }),
   S('pw-realm-keeps', '', async s => {
     await s.click(key('acc.add'));

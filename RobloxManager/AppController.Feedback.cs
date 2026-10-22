@@ -10,7 +10,7 @@ namespace RobloxManager;
 /// Settings › Bloxkeep updates › Send feedback: an idea or a bug report for Bloxkeep's developer, with Bloxkeep's
 /// version, Windows' and the language, and when asked for, the end of error.log. Before anything leaves, the log loses
 /// every account's name, id, password and cookie, Discord links, e-mail addresses and the Windows user and PC names,
-/// and the person can see exactly what goes (Preview). It goes to a Cloudflare Worker (Feedback/worker in the
+/// and the person can see exactly what goes (Preview). It goes to a Cloudflare Worker (services/Feedback/worker in the
 /// repository) that posts it to the developer's Discord channel and keeps that channel's webhook to itself.
 /// </summary>
 public sealed partial class AppController

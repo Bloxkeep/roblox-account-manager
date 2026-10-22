@@ -10,7 +10,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
 </p>
 <p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/Download_for_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Download Bloxkeep for Windows (Bloxkeep-Setup.exe, the newest version)"></a></p>
-<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="docs/CODE_SIGNING_POLICY.md">Code signing policy</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: five Roblox windows open at once, titled Roblox - Account 1 to Roblox - Account 5, four in the same game and the fifth joining, with Bloxkeep behind them counting 5 windows and Multi-Roblox on"></p>
 <p align="center"><sub>A real screenshot from one PC: five Roblox accounts open at once with Bloxkeep, four in the game and the fifth joining. Names in the game are blurred.</sub></p>
@@ -61,7 +61,7 @@ You need Windows 10 or 11, 64-bit. You don't need to install .NET. The installer
 > [!CAUTION]
 > Only download Bloxkeep from this repository's Releases page. A copy from anywhere else may have been changed to steal accounts.
 
-The files aren't code-signed yet ([code signing policy](CODE_SIGNING_POLICY.md)), so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release. `Bloxkeep-Setup.exe` is the same file in every release (only what it downloads changes), so SmartScreen gets to know it over time; the web installer checks its download against `SHA256SUMS.txt` itself.
+The files aren't code-signed yet ([code signing policy](docs/CODE_SIGNING_POLICY.md)), so Windows SmartScreen warns the first time. Click **More info**, then **Run anyway**. You can compare the file's SHA-256 with `SHA256SUMS.txt` in the same release. `Bloxkeep-Setup.exe` is the same file in every release (only what it downloads changes), so SmartScreen gets to know it over time; the web installer checks its download against `SHA256SUMS.txt` itself.
 
 Setup shows where Bloxkeep will go (`%LOCALAPPDATA%\BloxkeepApp` unless you choose another folder; the program takes about 230 MB), copies it with a progress bar and can open it when it's done. Your accounts and settings stay apart from the program, in `%LOCALAPPDATA%\Bloxkeep` (a few MB). Setup and the uninstaller speak English and Vietnamese.
 
@@ -694,21 +694,21 @@ If you press **Play** for two accounts while it's off, Bloxkeep offers **Turn on
 
 ## Build from source
 
-You need Windows and the **.NET 10 SDK**. The app is a C# core (.NET 10, WinForms) with an HTML/CSS/JS interface in WebView2. The [Velopack](https://velopack.io) packager (`vpk`) is pinned in `dotnet-tools.json` and the scripts fetch it.
+You need Windows and the **.NET 10 SDK**. The app is a C# core (.NET 10, WinForms) with an HTML/CSS/JS interface in WebView2. The [Velopack](https://velopack.io) packager (`vpk`) is pinned in `.config/dotnet-tools.json` and the scripts fetch it.
 
 ```bat
-build.bat 1.0.1
+scripts\build.bat 1.0.1
 ```
 
 It runs the checks in `Tests\Bloxkeep.Tests` first and stops if one fails (run them alone with `dotnet run --project Tests\Bloxkeep.Tests`; add `--online` for the ones that ask Roblox's servers). Each runs in its own process with throwaway data, never yours. The output goes to `dist\releases\`: `Bloxkeep-Setup.exe` (the web installer, copied as it is from `Installer\Web`), `Bloxkeep-Setup-Offline.exe`, `Bloxkeep-Portable.zip`, the update packages and `SHA256SUMS.txt`. The web installer is rebuilt only on purpose, with `Installer\Web\make.bat`: a new build is a new file to SmartScreen. A second argument is the GitHub repository the build looks for updates in (this one by default); pass another when you build a fork.
 
 ```bat
-release.bat 1.0.1 https://github.com/Bloxkeep/roblox-account-manager
+scripts\release.bat 1.0.1 https://github.com/Bloxkeep/roblox-account-manager
 ```
 
 This uploads the build to GitHub Releases and needs a `GITHUB_TOKEN` environment variable with write access to releases. Each version needs its notes, in English and Vietnamese, in `RobloxManager\whatsnew.json`; they show in the app after an update and become the release notes. To test updates before publishing, set `BLOXKEEP_UPDATE_SOURCE` to a local folder of release files.
 
-**Try the interface without building**: serve the repository root with any static web server (for example `python -m http.server 5178`) and open `http://127.0.0.1:5178/dev/preview.html`. It runs on the made-up data in `dev/mock.js`.
+**Try the interface without building**: serve the repository root with any static web server (for example `python -m http.server 5178`) and open `http://127.0.0.1:5178/ui/dev/preview.html`. It runs on the made-up data in `ui/dev/mock.js`.
 
 ```
 RobloxManager/             C# source
@@ -724,14 +724,18 @@ RobloxManager/             C# source
   Vault.cs                 the encrypted vault
   AppUpdater.cs            self-update (Velopack)
   whatsnew.json            notes for each version
+ui/                        the React parts of the interface; dev/ a preview with made-up data (not packaged)
 Installer/                 the installer's splash image; Setup/ the installer and uninstaller windows
-dev/                       interface preview with made-up data (not packaged)
-docs/screenshots/          screenshots (vi/: the Vietnamese ones)
+Tests/                     the app's checks (Bloxkeep.Tests) and the interface checks (ui)
+scripts/                   build, release and quiet-fix scripts
+services/                  what runs online: the Discord bot, the feedback service, the Roblox and domain watches
+site/                      the website, built from docs/guide
+docs/                      the user guide, the code signing policy and notes; screenshots/ (vi/: the Vietnamese ones)
 ```
 
 ## Code signing policy
 
-Releases are built from this repository by the [Release workflow](.github/workflows/release.yml) on GitHub's own Windows machines. The files aren't code-signed yet; what would be signed, how, and who approves it is in the [code signing policy](CODE_SIGNING_POLICY.md). What the app sends and where is in the [privacy policy](PRIVACY.md).
+Releases are built from this repository by the [Release workflow](.github/workflows/release.yml) on GitHub's own Windows machines. The files aren't code-signed yet; what would be signed, how, and who approves it is in the [code signing policy](docs/CODE_SIGNING_POLICY.md). What the app sends and where is in the [privacy policy](PRIVACY.md).
 
 ## License
 

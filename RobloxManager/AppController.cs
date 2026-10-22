@@ -550,7 +550,7 @@ public sealed partial class AppController : IDisposable
         // The user guide on GitHub, in the app's language (docs/guide.md, docs/guide.vi.md).
         "openGuide" => Done(OpenUrl($"https://github.com/Bloxkeep/roblox-account-manager/blob/main/docs/guide{(L.Language == "vi" ? ".vi" : "")}.md")),
         "openGitHub" => Done(OpenUrl("https://github.com/Bloxkeep/roblox-account-manager")),
-        // Bloxkeep's Discord bot sends this on to an invite into the community server that works (DiscordBot/worker
+        // Bloxkeep's Discord bot sends this on to an invite into the community server that works (services/DiscordBot/worker
         // invite()): a new one is made whenever the last stops working, so this address never changes.
         "openDiscord" => Done(OpenUrl("https://bloxkeep-bot.bloxkeep-app.workers.dev/discord")),
         "feedbackPreview" => Done(FeedbackPreview(a)),

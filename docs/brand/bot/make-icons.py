@@ -1,4 +1,4 @@
-"""The pictures beside the bot's Roblox update posts (DiscordBot/worker/texts.js): a coloured disc with an update arrow
+"""The pictures beside the bot's Roblox update posts (services/DiscordBot/worker/texts.js): a coloured disc with an update arrow
 around a mark for what the build means for Multi-Roblox. Drawn four times larger, then scaled down for smooth edges.
 Run from anywhere: python make-icons.py (needs Pillow)."""
 import math

@@ -1,9 +1,9 @@
 # How Bloxkeep's Discord messages look
 
 Every message Bloxkeep posts to Discord follows this, whoever sends it: the app (Settings › Discord), the Roblox watch
-(`RobloxWatch/watch.py`), the feedback Worker (`Feedback/worker`) and the domain watch. The model is a good status bot:
+(`services/RobloxWatch/watch.py`), the feedback Worker (`services/Feedback/worker`) and the domain watch. The model is a good status bot:
 a reader gets the news from the title and the coloured bar, the facts from short fields side by side, and nothing they
-have to read twice. Look at a message in `dev/discord-preview.html?src=<payloads.json>` before it ships.
+have to read twice. Look at a message in `ui/dev/discord-preview.html?src=<payloads.json>` before it ships.
 
 ## Sender
 
@@ -29,7 +29,7 @@ field per item.
 
 ## The Roblox update card
 
-The bot's Roblox update (`DiscordBot/worker/texts.js` `buildMessage`) is a card in Discord's newer layout (components,
+The bot's Roblox update (`services/DiscordBot/worker/texts.js` `buildMessage`) is a card in Discord's newer layout (components,
 flag `1 << 15`) instead of an embed, so it can carry a heading, a list and buttons:
 
 - A container in the verdict's colour. Beside its picture, a `##` heading ("Roblox 0.744 is live", the weekly release

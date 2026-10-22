@@ -2,12 +2,12 @@
 rem Publishes what build.bat made in dist\releases as a GitHub release. Installed copies of Bloxkeep find it on
 rem their next update check, download it in the background and offer "Restart to update" (a quiet fix: none of that,
 rem see release-fix.ps1).
-rem Usage: release.bat <version> <github repo url>
+rem Usage: scripts\release.bat <version> <github repo url>
 rem Needs GITHUB_TOKEN: a token with write access to that repository's contents (releases).
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 if "%~2"=="" (
-  echo Usage: release.bat ^<version^> ^<github repo url^>
+  echo Usage: scripts\release.bat ^<version^> ^<github repo url^>
   exit /b 1
 )
 if "%GITHUB_TOKEN%"=="" (
@@ -26,4 +26,4 @@ dotnet vpk upload github --repoUrl %~2 --token %GITHUB_TOKEN% -o dist\releases -
 exit /b %ERRORLEVEL%
 
 :fix
-powershell -NoProfile -ExecutionPolicy Bypass -File release-fix.ps1 %VERSION% %~2
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\release-fix.ps1 %VERSION% %~2

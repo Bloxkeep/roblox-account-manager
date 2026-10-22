@@ -3,7 +3,7 @@ using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-// Coming back from the tray, timed in a WebView2 of its own with Bloxkeep's real page (dev/preview.html: the page and
+// Coming back from the tray, timed in a WebView2 of its own with Bloxkeep's real page (ui/dev/preview.html: the page and
 // the fake app, answering at once). After a while hidden, how long from showing the window until the page is drawn
 // again, and how much memory the browser holds while hidden, three ways:
 //   low       hidden with MemoryUsageTargetLevel Low while the app keeps sending states (Bloxkeep before this change)
@@ -26,7 +26,7 @@ static class Program
 
 sealed class Bench : Form
 {
-    const string Url = "https://bench.local/dev/preview.html?lang=en&accounts=50&nodelay=1";
+    const string Url = "https://bench.local/ui/dev/preview.html?lang=en&accounts=50&nodelay=1";
     // The page's own: drawn after showing (two frames after visible), and drawn the first time with the accounts.
     const string Hooks = """
         (() => {

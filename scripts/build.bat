@@ -6,11 +6,11 @@ rem                                 file in every release (Installer\Web): it do
 rem   Bloxkeep-Setup-Offline.exe    the same installer with everything inside, for installing without internet
 rem   Bloxkeep-Portable.zip         no install; keeps its data in a "data" folder next to it; updates itself too
 rem   *.nupkg + releases.win.json   what installed copies download when they update
-rem Usage: build.bat [version] [github repo url]   e.g. build.bat 1.0.1
+rem Usage: scripts\build.bat [version] [github repo url]   e.g. scripts\build.bat 1.0.1
 rem The repo url defaults to Bloxkeep's GitHub repo; pass another one to build a fork. Updates only work while the repo is public. Each version needs its notes in RobloxManager\whatsnew.json
 rem (shown in the app after updating, and on the GitHub release); a quiet fix (1.0.7-alpha.1) has none. Publish with release.bat.
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 set VERSION=1.0.0
 if not "%~1"=="" set VERSION=%~1
 set REPO=https://github.com/Bloxkeep/roblox-account-manager
@@ -45,7 +45,7 @@ if not "%REPO%"=="" (
 )
 
 echo [5/5] Installer, portable zip and update packages...
-powershell -NoProfile -ExecutionPolicy Bypass -File release-notes.ps1 %VERSION% artifacts\release-notes.md || goto :fail
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\release-notes.ps1 %VERSION% artifacts\release-notes.md || goto :fail
 rem What these become on the user's PC (Velopack 1.2.161):
 rem   --packId         the install folder, %LOCALAPPDATA%\BloxkeepApp, and the name of the uninstall registry key
 rem   --packTitle      "Bloxkeep" in Windows' Installed apps list, the shortcut names and the installer's dialogs
