@@ -1884,6 +1884,17 @@ public sealed partial class AppController : IDisposable
     }
 
     /// <summary>
+    /// Roblox accepted the account's sign-in (a call made with it went through): not signed out, and auto-rejoin back on
+    /// if a sign-out switched it off. Before, a sign-out marked in an outage stayed: a later accepted call set the account
+    /// signed in with auto-rejoin still off.
+    /// </summary>
+    static void SignInAccepted(Account account)
+    {
+        account.CookieValid = true;
+        SignedInAgain(account);
+    }
+
+    /// <summary>
     /// Adding an account that is already in the list just refreshes its cookie. Roblox and Roblox VNG count user ids
     /// apart, so the same id in the other realm is another account.
     /// </summary>
@@ -2081,6 +2092,7 @@ public sealed partial class AppController : IDisposable
         PushState();
         int ok = 0, bad = 0, failed = 0, done = 0;
         var queue = new Queue<Account>(accounts);
+        var rejected = new List<Account>();
         var resumeAt = DateTime.UtcNow;
         var newlyBanned = new List<Account>();
 
@@ -2099,14 +2111,12 @@ public sealed partial class AppController : IDisposable
                         var user = await RobloxApi.GetAuthenticatedUserAsync(cookie, account.Realm);
                         if (account.Cookie != cookie)
                             break; // signed in again meanwhile: the old cookie's answer says nothing about the new one
+                        // A rejection is marked below, once Roblox's sign-in service is known to be up.
                         if (user is null)
-                        {
-                            account.CookieValid = false;
-                            bad++;
-                        }
+                            rejected.Add(account);
                         else
                         {
-                            account.CookieValid = true;
+                            SignInAccepted(account);
                             account.UserId = user.Id;
                             account.Username = user.Name;
                             account.DisplayName = user.DisplayName;
@@ -2159,6 +2169,20 @@ public sealed partial class AppController : IDisposable
         {
             Progress(L.F("Checking sign-ins… {0}/{1}", 0, accounts.Count));
             await Task.WhenAll(Enumerable.Range(0, Math.Min(CheckParallelism, accounts.Count)).Select(_ => WorkAsync()));
+            // Another account accepted in this check: Roblox's sign-in service is up, so a rejection means a sign-out.
+            // With none accepted, an outage answers 401 to everyone: each is marked only if Roblox accepts another account
+            // now (ConfirmSignedOutAsync), else counted as not checked.
+            foreach (var account in rejected)
+            {
+                if (_vault != vault)
+                    break;
+                if (ok > 0)
+                    account.CookieValid = false;
+                if (ok > 0 || await ConfirmSignedOutAsync(account))
+                    bad++;
+                else
+                    failed++;
+            }
         }
         finally
         {
@@ -3362,7 +3386,7 @@ public sealed partial class AppController : IDisposable
         _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker });
         NoteActivity(restart ? "reopened" : rejoin ? "rejoined" : "opened", account.Id, target?.PlaceId); // Statistics › Activity
         account.LastUsed = DateTime.Now;
-        account.CookieValid = true;
+        SignInAccepted(account);
     }
 
     object? CancelLaunch()
@@ -5091,15 +5115,24 @@ public sealed partial class AppController : IDisposable
     /// <summary>
     /// One rejected request isn't proof that an account was signed out (an outage of Roblox's sign-in service answers
     /// 401 for everyone): it is marked so only when the cheap "who am I" call, the one the sign-in check uses, rejects
-    /// the cookie too. Without a clear answer it is left as it was.
+    /// the cookie too, and Roblox accepts another account's sign-in at the same time. Without a clear answer it is left
+    /// as it was; one accepted after all is signed in (again).
     /// </summary>
-    async Task<bool> ConfirmSignedOutAsync(Account account, CancellationToken ct = default)
+    /// <param name="trusted">The daily check already ruled out an outage (or trusts its second run): no other account is asked.</param>
+    async Task<bool> ConfirmSignedOutAsync(Account account, CancellationToken ct = default, bool trusted = false)
     {
         string cookie = account.Cookie;
         try
         {
             if (await RobloxApi.GetAuthenticatedUserAsync(cookie, account.Realm, ct) is not null)
+            {
+                if (account.Cookie == cookie && account.CookieValid == false)
+                {
+                    SignInAccepted(account);
+                    PersistSoon();
+                }
                 return false;
+            }
         }
         catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
         {
@@ -5108,8 +5141,44 @@ public sealed partial class AppController : IDisposable
         // Signed in again meanwhile: the old cookie's answer says nothing about the new one.
         if (account.Cookie != cookie)
             return false;
+        // Before, this call alone decided: in an outage each request that met it marked one more account (one a status
+        // round, every account a preset tried), and a rejoin turned auto-rejoin off.
+        if (!trusted && await SignInServiceDownAsync(account, ct))
+            return false;
+        if (account.Cookie != cookie)
+            return false;
         account.CookieValid = false;
         PersistSoon();
+        return true;
+    }
+
+    /// <summary>
+    /// Whether Roblox's sign-in service rejects everyone just now (an outage), by asking up to two other accounts held
+    /// signed in, of the same Roblox (Roblox VNG's is another service), the last checked first. False when one is
+    /// accepted, or when there is none to ask (one account, the rest signed out: no telling, so a rejection counts as
+    /// before); true when those asked were all rejected or gave no answer.
+    /// </summary>
+    async Task<bool> SignInServiceDownAsync(Account rejected, CancellationToken ct)
+    {
+        var others = (_vault?.Data.Accounts ?? [])
+            .Where(a => a != rejected && a.Realm == rejected.Realm && a.CookieValid != false && a.Cookie.Length > 0 && a.Cookie != rejected.Cookie)
+            .OrderByDescending(a => a.CookieValid == true)
+            .ThenByDescending(a => a.LastChecked ?? DateTime.MinValue)
+            .Take(2)
+            .ToList();
+        if (others.Count == 0)
+            return false;
+        foreach (var other in others)
+        {
+            try
+            {
+                if (await RobloxApi.GetAuthenticatedUserAsync(other.Cookie, other.Realm, ct) is not null)
+                    return false;
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
+            {
+            }
+        }
         return true;
     }
 

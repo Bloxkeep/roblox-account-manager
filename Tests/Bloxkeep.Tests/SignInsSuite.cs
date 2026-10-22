@@ -142,6 +142,50 @@ static class SignInsSuite
             typeof(RobloxApi).GetMethod("RefreshSessionAsync", Harness.F) is null && typeof(AppController).GetMethod("RenewSignInsIfDue", Harness.F) is null);
         c.Check("…and nothing in this run asked for one", roblox.Asked.All(r => r.Path != "/v1/session/refresh"),
             roblox.Asked.Count(r => r.Path == "/v1/session/refresh"));
+
+        // ── Signed out, or Roblox's sign-in service down ──
+        // An outage of Roblox's sign-in service answers 401 to everyone: outside the daily check (which has its own test),
+        // an account is marked signed out only when Roblox accepts another account's sign-in at the same time. Before,
+        // each call that met an outage marked one more account, and a rejoin turned auto-rejoin off.
+        async Task<bool> Confirm(Account who, bool trusted = false) => await (Task<bool>)Harness.Invoke(app, "ConfirmSignedOutAsync", who, CancellationToken.None, trusted)!;
+        roblox.Down = true;
+        bool markedInOutage = await Confirm(cc);
+        c.Check("Roblox's sign-in service rejecting everyone: an account isn't marked signed out", !markedInOutage && cc.CookieValid == true, cc.CookieValid);
+        roblox.Down = false;
+        bool markedForReal = await Confirm(d);
+        c.Check("…one Roblox rejects while it accepts another account: marked signed out", markedForReal && d.CookieValid == false, d.CookieValid);
+        // The daily check's word (it ruled an outage out, or trusts its second run): no other account asked.
+        roblox.Down = true;
+        roblox.Clear();
+        bool trustedMark = await Confirm(w, trusted: true);
+        c.Check("…the daily check's own confirmation asks no other account", trustedMark && w.CookieValid == false && roblox.Asked.All(r => r.Cookie == w.Cookie),
+            string.Join(", ", roblox.Asked.Select(r => r.Cookie == w.Cookie ? "W" : "another")));
+        // Nobody else to ask (one account, the rest signed out): no telling, so marked as before.
+        var signedIn = vault.Data.Accounts.Where(k => k != cc && k.CookieValid != false).ToList();
+        foreach (var k in signedIn)
+            k.CookieValid = false;
+        bool alone = await Confirm(cc);
+        foreach (var k in signedIn)
+            k.CookieValid = true;
+        c.Check("…with no other account to ask: marked as before", alone && cc.CookieValid == false, cc.CookieValid);
+        // The account menu's check in an outage: nobody accepted, nothing marked; not checked rather than signed out.
+        var both = await Harness.Call(app, "checkAccounts", new { ids = new[] { a.Id, b.Id } });
+        c.Check("the account menu's check while Roblox's sign-in service rejects everyone: nobody marked signed out",
+            a.CookieValid == true && b.CookieValid == true && both?.GetType().GetProperty("bad")?.GetValue(both) is 0, both);
+        roblox.Down = false;
+        // Signed in again: an account marked signed out that Roblox accepts again is signed in, auto-rejoin back on.
+        cc.AutoRejoin = false;
+        cc.RejoinOffBySignOut = true;
+        await Harness.Call(app, "checkAccounts", new { ids = new[] { cc.Id } });
+        c.Check("the account menu's check: an account marked signed out that Roblox accepts again is signed in, auto-rejoin back on",
+            cc.CookieValid == true && cc.AutoRejoin && !cc.RejoinOffBySignOut, $"{cc.CookieValid} {cc.AutoRejoin}");
+        // The daily check asks the accounts marked signed out again too, quietly.
+        w.AutoRejoin = false;
+        w.RejoinOffBySignOut = true;
+        bool healed = await (Task<bool>)Harness.Invoke(app, "RecheckSignedOutAsync", vault, new List<Account>())!;
+        c.Check("the daily check asks again an account marked signed out: accepted now, it is signed in, auto-rejoin back on",
+            healed && w.CookieValid == true && w.AutoRejoin, $"{healed} {w.CookieValid} {w.AutoRejoin}");
+        c.Check("…ones Roblox still rejects stay signed out", d.CookieValid == false && s.CookieValid == false);
     }
 
     /// <summary>The renewals Roblox's answers brought, saved as the process timer saves them.</summary>
@@ -187,6 +231,8 @@ static class SignInsSuite
         public readonly Dictionary<string, string> Rotate = new();
         /// <summary>A Set-Cookie header added to every answer while set.</summary>
         public string? Extra;
+        /// <summary>Roblox's sign-in service down: "who am I" rejects every cookie.</summary>
+        public bool Down;
         readonly List<Request> _asked = new();
 
         public List<Request> Asked
@@ -218,7 +264,7 @@ static class SignInsSuite
                 long? user = cookie is not null && Users.TryGetValue(cookie, out long id) ? id : null;
                 res = uri.AbsolutePath switch
                 {
-                    "/v1/users/authenticated" => user is { } u
+                    "/v1/users/authenticated" => user is { } u && !Down
                         ? Json(HttpStatusCode.OK, new { id = u, name = $"user{u}", displayName = $"User {u}" })
                         : Refusal(HttpStatusCode.Unauthorized, "Authorization has been denied for this request."),
                     "/v1/authentication-ticket/" when !csrf => Csrf(),

@@ -115,7 +115,7 @@ public sealed partial class AppController
                         break;
                     }
                     ok++;
-                    account.CookieValid = true;
+                    SignInAccepted(account);
                     account.UserId = user.Id;
                     account.Username = user.Name;
                     account.DisplayName = user.DisplayName;
@@ -168,13 +168,16 @@ public sealed partial class AppController
                 }
                 if (!vault.Data.Accounts.Contains(account))
                     continue;
-                if (!await ConfirmSignedOutAsync(account))
+                if (!await ConfirmSignedOutAsync(account, trusted: true))
                     continue; // accepted after all, or no clear answer: asked again next time
                 signedOut.Add(account);
                 account.LastChecked = DateTime.Now;
                 changed = true;
             }
         }
+
+        if (!stopped && !outage && !rateLimited)
+            changed |= await RecheckSignedOutAsync(vault, signedOut);
 
         // Bans, from each account's public profile (no cookie): the ones checked above, and the signed-out and banned
         // ones too, so a ban that ends is noticed as well. Roblox asking to slow down ends this part until the next run.
@@ -260,6 +263,47 @@ public sealed partial class AppController
         }
         Prefs.LastSignInCheck = DateTime.UtcNow;
         Prefs.Save();
+    }
+
+    /// <summary>
+    /// The accounts marked signed out, asked again (quietly: the person was told). One Roblox accepts now was marked in an
+    /// outage, or its session came back, and is signed in again here, auto-rejoin back on. Before, they were never asked
+    /// again: a sign-out marked in an outage stayed until the person checked or signed in by hand.
+    /// </summary>
+    /// <param name="markedNow">Marked by this run: just asked.</param>
+    /// <returns>Whether any was signed in again.</returns>
+    async Task<bool> RecheckSignedOutAsync(Vault vault, List<Account> markedNow)
+    {
+        bool changed = false;
+        foreach (var account in vault.Data.Accounts.Where(a => a.CookieValid == false && a.Cookie.Length > 0 && !markedNow.Contains(a)).ToList())
+        {
+            if (!SignInCheckCanGoOn(vault))
+                break;
+            string cookie = account.Cookie;
+            try
+            {
+                var user = await RobloxApi.GetAuthenticatedUserAsync(cookie, account.Realm);
+                if (user is not null && account.Cookie == cookie && vault.Data.Accounts.Contains(account) && SignInCheckCanGoOn(vault))
+                {
+                    SignInAccepted(account);
+                    account.UserId = user.Id;
+                    account.Username = user.Name;
+                    account.DisplayName = user.DisplayName;
+                    account.LastChecked = DateTime.Now;
+                    changed = true;
+                }
+            }
+            catch (RobloxApiException ex) when (ex.RateLimited)
+            {
+                break;
+            }
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+            {
+                // No clear answer: asked again next time.
+            }
+            await Task.Delay(SignInCheckPause);
+        }
+        return changed;
     }
 
     /// <summary>The names go in as they are written out (<see cref="Name"/>), so Discord's copy follows its own switch and language.</summary>
