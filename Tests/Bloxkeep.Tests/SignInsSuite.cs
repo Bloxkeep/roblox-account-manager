@@ -186,6 +186,23 @@ static class SignInsSuite
         c.Check("the daily check asks again an account marked signed out: accepted now, it is signed in, auto-rejoin back on",
             healed && w.CookieValid == true && w.AutoRejoin, $"{healed} {w.CookieValid} {w.AutoRejoin}");
         c.Check("…ones Roblox still rejects stay signed out", d.CookieValid == false && s.CookieValid == false);
+
+        // ── Roblox VNG's accounts in the status round ──
+        // Roblox and Roblox VNG count user ids apart: the same number is another person on the other. A Roblox VNG
+        // account's status comes from Roblox VNG only; asked of Roblox, its number is a stranger's.
+        roblox.InGame[(false, v.UserId)] = 4242; // a stranger on Roblox with V's number, in a game
+        roblox.InGame[(true, v.UserId)] = 1818; // V itself, on Roblox VNG
+        async Task Round() => await (Task<object?>)Harness.Invoke(app, "RefreshPresenceAsync")!;
+        var presence = Harness.Get<System.Collections.IDictionary>(app, "_presence");
+        Presence? StatusOf(Account who) => presence[who.UserId] as Presence;
+        await Round();
+        c.Check("a Roblox VNG account's status: its own, from Roblox VNG", StatusOf(v)?.PlaceId == 1818, StatusOf(v)?.PlaceId);
+        v.CookieValid = false; // its own question isn't asked
+        await Round();
+        c.Check("…its own question not asked (signed out): not the status of the stranger with its number on Roblox", StatusOf(v)?.PlaceId != 4242, StatusOf(v)?.PlaceId);
+        c.Check("…and Roblox isn't asked about its number", roblox.Asked.Count(r => r.Path == "/v1/presence/users" && r.Host == "presence.roblox.com" && r.Body.Contains(v.UserId.ToString())) == 0);
+        v.CookieValid = true;
+        roblox.InGame.Clear();
     }
 
     /// <summary>The renewals Roblox's answers brought, saved as the process timer saves them.</summary>
@@ -219,7 +236,10 @@ static class SignInsSuite
         return done();
     }
 
-    sealed record Request(string Method, string Host, string Path, string? Cookie, bool Csrf, long BodyLength);
+    sealed record Request(string Method, string Host, string Path, string? Cookie, bool Csrf, long BodyLength)
+    {
+        public string Body { get; init; } = "";
+    }
 
     /// <summary>
     /// Roblox as far as these checks go: who each made-up cookie signs in, and a new cookie to set in the next answer
@@ -233,6 +253,8 @@ static class SignInsSuite
         public string? Extra;
         /// <summary>Roblox's sign-in service down: "who am I" rejects every cookie.</summary>
         public bool Down;
+        /// <summary>Who is in a game (the place), as Roblox's presence service and Roblox VNG's each say.</summary>
+        public readonly Dictionary<(bool Vng, long Id), long> InGame = new();
         readonly List<Request> _asked = new();
 
         public List<Request> Asked
@@ -254,9 +276,11 @@ static class SignInsSuite
             string? cookie = request.Headers.TryGetValues("Cookie", out var sent) && sent.FirstOrDefault() is { } header
                 ? header.Replace(".ROBLOSECURITY=", "") : null;
             bool csrf = request.Headers.Contains("x-csrf-token");
-            long body = request.Content is null ? 0 : (await request.Content.ReadAsByteArrayAsync()).Length;
+            byte[] sentBody = request.Content is null ? [] : await request.Content.ReadAsByteArrayAsync();
+            long body = sentBody.Length;
+            string text = Encoding.UTF8.GetString(sentBody);
             lock (_asked)
-                _asked.Add(new Request(request.Method.Method, uri.Host, uri.AbsolutePath, cookie, csrf, body));
+                _asked.Add(new Request(request.Method.Method, uri.Host, uri.AbsolutePath, cookie, csrf, body) { Body = text });
 
             HttpResponseMessage res;
             lock (Users)
@@ -272,7 +296,7 @@ static class SignInsSuite
                     "/v1/join-game" when !csrf => Csrf(),
                     "/v1/join-game" => Json(HttpStatusCode.OK, new { status = 12, message = "Unable to join Game 211" }),
                     "/v1/presence/users" when !csrf => Csrf(),
-                    "/v1/presence/users" => Json(HttpStatusCode.OK, new { userPresences = Array.Empty<object>() }),
+                    "/v1/presence/users" => Json(HttpStatusCode.OK, new { userPresences = PresencesIn(text, uri.Host.EndsWith(".vnggames.com", StringComparison.Ordinal)) }),
                     _ when uri.AbsolutePath.EndsWith("/currency", StringComparison.Ordinal) => Json(HttpStatusCode.OK, new { robux = 0 }),
                     _ when uri.Host.StartsWith("thumbnails.", StringComparison.Ordinal) => Json(HttpStatusCode.OK, new { data = Array.Empty<object>() }),
                     _ => Json(HttpStatusCode.NotFound, new { }),
@@ -284,6 +308,15 @@ static class SignInsSuite
             if (Extra is { } extra)
                 res.Headers.TryAddWithoutValidation("Set-Cookie", extra);
             return res;
+        }
+
+        object[] PresencesIn(string body, bool vng)
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.GetProperty("userIds").EnumerateArray().Select(e => e.GetInt64())
+                .Where(id => InGame.ContainsKey((vng, id)))
+                .Select(id => (object)new { userPresenceType = 2, userId = id, placeId = InGame[(vng, id)], rootPlaceId = InGame[(vng, id)], gameId = $"server-{id}" })
+                .ToArray();
         }
 
         static void SetCookie(HttpResponseMessage res, string value, string host)

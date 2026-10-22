@@ -5034,7 +5034,10 @@ public sealed partial class AppController : IDisposable
         var viewer = accounts.FirstOrDefault(a => a.CookieValid != false && a.Cookie.Length > 0 && a.Realm == Realm.Global);
         try
         {
-            var result = await RobloxApi.GetPresenceAsync(viewer?.Cookie, accounts.Select(a => a.UserId).ToList());
+            // Roblox's accounts only: Roblox and Roblox VNG count user ids apart, so a Roblox VNG account's number is
+            // someone else on Roblox (whose game its card showed, and whose server "join" went to, when its own question
+            // below wasn't asked or failed). Its status comes from Roblox VNG, with its own sign-in, below.
+            var result = await RobloxApi.GetPresenceAsync(viewer?.Cookie, accounts.Where(a => a.Realm == Realm.Global).Select(a => a.UserId).ToList());
             // First answer since unlocking: show it now instead of "status unknown" until every follow-up request
             // (accounts hidden by privacy, game names) is back; those fill in below.
             if (!_presenceLoaded && _vault == vault)
