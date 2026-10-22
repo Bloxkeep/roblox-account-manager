@@ -22,6 +22,8 @@ public sealed partial class AppController : IDisposable
     {
         /// <summary>Settable: moved back with the clock (see TrackProcesses) so a set-back clock doesn't make the launch wait longer.</summary>
         public DateTime StartedAt { get; set; } = StartedAt;
+        /// <summary>The browser tracker id in its launch link, which its client's command line carries (see <see cref="ClaimWindows"/>); null when not known.</summary>
+        public string? Tracker { get; init; }
     }
 
     /// <param name="NetworkRetries">Attempts that failed only because there was no connection.</param>
@@ -3206,9 +3208,109 @@ public sealed partial class AppController : IDisposable
     }
 
     /// <summary>
-    /// Windows are matched to launches newest first, so a client still opening (the previous account, a rejoin, a
-    /// hand-over — also one the person closed meanwhile, whose window is still on its way) must have its window
-    /// before the next one starts, or the two could get each other's window. A rejoin that is still getting its
+    /// Whether a client can be this launch's, by the browser tracker id its command line names
+    /// (<see cref="RobloxProcesses.LaunchTrackerOf"/>): one naming another is someone else's (another launch's, or the
+    /// person's own from the website); one naming none, not read, or a launch without one, may be.
+    /// </summary>
+    static bool MayBeLaunchOf(string? tracker, PendingLaunch launch) => tracker is not { Length: > 0 } || launch.Tracker is null || tracker == launch.Tracker;
+
+    /// <summary>The client names this launch's browser tracker id: it is that launch's, whichever started first.</summary>
+    static bool IsLaunchOf(string? tracker, PendingLaunch launch) => tracker is { Length: > 0 } && tracker == launch.Tracker;
+
+    /// <summary>
+    /// Gives launches still waiting their client's window (see TrackProcesses). A window whose command line names a
+    /// launch's browser tracker id is that launch's, and never another's; only one naming none (or not read) goes by the
+    /// order of starts. Before, the order alone decided: a launch past its wait (Roblox updating) and the next account's
+    /// could get each other's window, and a window the person opened from the website could be taken for a launch's.
+    /// </summary>
+    /// <param name="trackerOf">The browser tracker id a client's command line names ("" none, null not read).</param>
+    /// <returns>Whether a launch got its window or stopped waiting.</returns>
+    bool ClaimWindows(HashSet<int> pids, Func<int, bool> hasWindow, Func<int, List<int>> childrenOf, Func<int, string?> trackerOf, DateTime now)
+    {
+        bool changed = false;
+        var claimed = _running.Values.Select(r => r.Pid).ToHashSet();
+        if (_pending.Count > 0)
+        {
+            // Newest launch first: a new client can only belong to a launch made before it appeared (its Before
+            // list lacks it), and a session waiting for a hand-over must not take the next account's window.
+            foreach (var launch in _pending.OrderByDescending(p => p.StartedAt).ToList())
+            {
+                // A window named for this launch first; a session waiting for a hand-over takes a child of its ended
+                // process before any other client.
+                List<int> children = _handedOver.TryGetValue(launch, out var handed) ? childrenOf(handed.Pid) : [];
+                int pid = pids.Where(p => !launch.Before.Contains(p) && !claimed.Contains(p))
+                    .Where(hasWindow)
+                    .Where(p => MayBeLaunchOf(trackerOf(p), launch))
+                    .OrderByDescending(p => IsLaunchOf(trackerOf(p), launch))
+                    .ThenByDescending(children.Contains)
+                    .ThenBy(p => p)
+                    .FirstOrDefault();
+                if (pid == 0)
+                    continue;
+                claimed.Add(pid);
+                _pending.Remove(launch);
+                _handedOver.Remove(launch);
+                // The person closed this account while it was still opening.
+                if (_closeWhenClaimed.Remove(launch))
+                    RobloxProcesses.Close(pid);
+                else
+                {
+                    _running[launch.AccountId] = (pid, launch);
+                    PersistSoon(); // the open clients on disk (see Persist)
+                }
+                changed = true;
+            }
+            // A client appeared for this launch and then every new client quit without a game window: stop waiting.
+            foreach (var launch in _pending.ToList())
+            {
+                if (pids.Any(p => !launch.Before.Contains(p) && !claimed.Contains(p)))
+                    _pendingSeenAlive[launch] = now;
+                else if (_pendingSeenAlive.TryGetValue(launch, out var seen) && now - seen > PendingGoneGrace)
+                {
+                    DropPending(launch);
+                    changed = true;
+                }
+            }
+        }
+        // Launches past their wait, oldest first, take a window named for them, else only a client no launch still
+        // waiting could be taking (one that appeared before all of them started): a late window never takes the window
+        // of the launch under way.
+        foreach (var launch in _late.OrderBy(l => l.StartedAt).ToList())
+        {
+            if (now - launch.StartedAt > PendingTimeout + LateTimeout || _running.ContainsKey(launch.AccountId))
+            {
+                _late.Remove(launch);
+                _closeWhenClaimed.Remove(launch);
+                if (!_running.ContainsKey(launch.AccountId) && !_pending.Any(p => p.AccountId == launch.AccountId))
+                    ForgetScheduledOpen(launch.AccountId); // no client came of it: a scheduled stop has nothing of this account's to close
+                continue;
+            }
+            int pid = pids.Where(p => !launch.Before.Contains(p) && !claimed.Contains(p) && hasWindow(p) && MayBeLaunchOf(trackerOf(p), launch)
+                    && (IsLaunchOf(trackerOf(p), launch) || _pending.All(l => l.Before.Contains(p))))
+                .OrderByDescending(p => IsLaunchOf(trackerOf(p), launch))
+                .ThenBy(p => p)
+                .FirstOrDefault();
+            if (pid == 0)
+                continue;
+            claimed.Add(pid);
+            _late.Remove(launch);
+            if (_closeWhenClaimed.Remove(launch))
+                RobloxProcesses.Close(pid);
+            else
+            {
+                _running[launch.AccountId] = (pid, launch);
+                PersistSoon();
+            }
+            changed = true;
+        }
+        return changed;
+    }
+
+    /// <summary>
+    /// A window whose command line names no launch's browser tracker id is matched to launches newest first (see
+    /// ClaimWindows), so a client still opening (the previous account, a rejoin, a hand-over — also one the person
+    /// closed meanwhile, whose window is still on its way) must have its window before the next one starts, or the two
+    /// could get each other's window. A rejoin that is still getting its
     /// ticket is waited for too, so one account isn't opened twice.
     /// </summary>
     async Task WaitForPendingAsync(CancellationToken ct)
@@ -3253,11 +3355,11 @@ public sealed partial class AppController : IDisposable
                 _robloxSettingsWrittenAt = DateTime.UtcNow;
             }
         }
-        RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
+        string tracker = RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
         _late.RemoveWhere(l => l.AccountId == account.Id); // opened again: a window of the earlier try is not this one's
-        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId));
+        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker });
         NoteActivity(restart ? "reopened" : rejoin ? "rejoined" : "opened", account.Id, target?.PlaceId); // Statistics › Activity
         account.LastUsed = DateTime.Now;
         account.CookieValid = true;
@@ -3480,6 +3582,11 @@ public sealed partial class AppController : IDisposable
         players.RemoveAll(p => trays.Contains(p.Pid));
         ReleaseHomeSessionIfIdle(scan, scanned, trays, now);
         NoteClientStarts(pids, now, ParentOf);
+        // The browser tracker id each client's command line names: which launch it is (see ClaimWindows).
+        var createdOf = new Dictionary<int, long>();
+        foreach (var p in scanned)
+            createdOf[p.Pid] = p.Created;
+        string? TrackerOf(int pid) => RobloxProcesses.LaunchTrackerOf(pid, createdOf.GetValueOrDefault(pid));
         bool changed = false;
 
         foreach (var (id, info) in _running.ToList())
@@ -3512,7 +3619,7 @@ public sealed partial class AppController : IDisposable
             if (log is not null)
                 _traySweep[info.Pid] = now + TraySweep;
             bool handOver = now - info.Launch.StartedAt < HandOverWindow && !_userClosed.Contains(id) && !closedByRoblox
-                && pids.Any(p => !info.Launch.Before.Contains(p) && !claimedNow.Contains(p) && !trayCopies.Contains(p));
+                && pids.Any(p => !info.Launch.Before.Contains(p) && !claimedNow.Contains(p) && !trayCopies.Contains(p) && MayBeLaunchOf(TrackerOf(p), info.Launch));
             if (handOver)
             {
                 _pending.Add(info.Launch);
@@ -3537,75 +3644,7 @@ public sealed partial class AppController : IDisposable
             }
             changed = true;
         }
-        var claimed = _running.Values.Select(r => r.Pid).ToHashSet();
-        if (_pending.Count > 0)
-        {
-            // Newest launch first: a new client can only belong to a launch made before it appeared (its Before
-            // list lacks it), and a session waiting for a hand-over must not take the next account's window.
-            foreach (var launch in _pending.OrderByDescending(p => p.StartedAt).ToList())
-            {
-                // A session waiting for a hand-over takes a child of its ended process before any other client.
-                List<int> children = _handedOver.TryGetValue(launch, out var handed) ? ChildrenOf(handed.Pid) : [];
-                int pid = pids.Where(p => !launch.Before.Contains(p) && !claimed.Contains(p))
-                    .Where(HasWindow)
-                    .OrderByDescending(children.Contains)
-                    .ThenBy(p => p)
-                    .FirstOrDefault();
-                if (pid == 0)
-                    continue;
-                claimed.Add(pid);
-                _pending.Remove(launch);
-                _handedOver.Remove(launch);
-                // The person closed this account while it was still opening.
-                if (_closeWhenClaimed.Remove(launch))
-                    RobloxProcesses.Close(pid);
-                else
-                {
-                    _running[launch.AccountId] = (pid, launch);
-                    PersistSoon(); // the open clients on disk (see Persist)
-                }
-                changed = true;
-            }
-            // A client appeared for this launch and then every new client quit without a game window: stop waiting.
-            foreach (var launch in _pending.ToList())
-            {
-                if (pids.Any(p => !launch.Before.Contains(p) && !claimed.Contains(p)))
-                    _pendingSeenAlive[launch] = now;
-                else if (_pendingSeenAlive.TryGetValue(launch, out var seen) && now - seen > PendingGoneGrace)
-                {
-                    DropPending(launch);
-                    changed = true;
-                }
-            }
-        }
-        // Launches past their wait, oldest first, take only a client no launch still waiting could be taking (one
-        // that appeared before all of them started): a late window never takes the window of the launch under way.
-        foreach (var launch in _late.OrderBy(l => l.StartedAt).ToList())
-        {
-            if (now - launch.StartedAt > PendingTimeout + LateTimeout || _running.ContainsKey(launch.AccountId))
-            {
-                _late.Remove(launch);
-                _closeWhenClaimed.Remove(launch);
-                if (!_running.ContainsKey(launch.AccountId) && !_pending.Any(p => p.AccountId == launch.AccountId))
-                    ForgetScheduledOpen(launch.AccountId); // no client came of it: a scheduled stop has nothing of this account's to close
-                continue;
-            }
-            int pid = pids.Where(p => !launch.Before.Contains(p) && !claimed.Contains(p) && HasWindow(p) && _pending.All(l => l.Before.Contains(p)))
-                .OrderBy(p => p)
-                .FirstOrDefault();
-            if (pid == 0)
-                continue;
-            claimed.Add(pid);
-            _late.Remove(launch);
-            if (_closeWhenClaimed.Remove(launch))
-                RobloxProcesses.Close(pid);
-            else
-            {
-                _running[launch.AccountId] = (pid, launch);
-                PersistSoon();
-            }
-            changed = true;
-        }
+        changed |= ClaimWindows(pids, HasWindow, ChildrenOf, TrackerOf, now);
         foreach (var gone in _pendingSeenAlive.Keys.Where(l => !_pending.Contains(l)).ToList())
             _pendingSeenAlive.Remove(gone);
 

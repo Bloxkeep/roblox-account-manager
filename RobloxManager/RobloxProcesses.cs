@@ -833,6 +833,37 @@ public static class RobloxProcesses
         return tray;
     }
 
+    static readonly Dictionary<(int Pid, long Created), string> _trackers = new();
+    static readonly System.Text.RegularExpressions.Regex TrackerText = new(@"browsertrackerid[:=](\d+)|(?<=\s)-b\s+(\d+)",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// The browser tracker id a client was started with. Each launch link Bloxkeep makes has a new one
+    /// ("+browsertrackerid:N"), and the link reaches RobloxPlayerBeta.exe as it is: Bloxstrap's Bootstrapper starts it with
+    /// its launch arguments untouched, and Roblox's own link handler and Bloxkeep's other launch options give it the link;
+    /// Roblox's launcher of old passed it as "-b N". "" when the command line names none, null when it can't be read
+    /// (gone, not ours). Nothing else of the command line is kept: the sign-in ticket is in it.
+    /// </summary>
+    public static string? LaunchTrackerOf(int pid, long created)
+    {
+        lock (_trackers)
+        {
+            if (_trackers.TryGetValue((pid, created), out string? known))
+                return known;
+        }
+        if (CommandLineOf(pid, created) is not { } line)
+            return null;
+        var found = TrackerText.Match(line);
+        string tracker = !found.Success ? "" : found.Groups[1].Success ? found.Groups[1].Value : found.Groups[2].Value;
+        lock (_trackers)
+        {
+            if (_trackers.Count > 200)
+                _trackers.Clear();
+            _trackers[(pid, created)] = tracker;
+        }
+        return tracker;
+    }
+
     /// <summary>A process's command line (Windows 8.1 and later), or null when it can't be read (gone, not ours).</summary>
     static string? CommandLineOf(int pid, long expectedCreation = 0)
     {

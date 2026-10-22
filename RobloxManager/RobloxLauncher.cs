@@ -70,9 +70,10 @@ public static class RobloxLauncher
     }
 
     /// <summary>The same roblox-player: URI the website hands to the client when you press Play.</summary>
-    public static string BuildLaunchUri(string ticket, GameTarget? target)
+    /// <param name="trackerId">Its browser tracker id (a new one when not given), which the client's command line carries.</param>
+    public static string BuildLaunchUri(string ticket, GameTarget? target, string? trackerId = null)
     {
-        string trackerId = NewBrowserTrackerId();
+        trackerId ??= NewBrowserTrackerId();
         long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         string tail = $"+browsertrackerid:{trackerId}+robloxLocale:en_us+gameLocale:en_us+channel:+LaunchExp:InApp";
         if (target is null)
@@ -87,13 +88,18 @@ public static class RobloxLauncher
     /// "other:&lt;Name&gt;" and "custom" get the link as their first argument, the way Windows hands it to whatever
     /// handles roblox-player: links.
     /// </param>
-    public static void Launch(string ticket, GameTarget? target, string launchVia, string customLauncher = "")
+    /// <returns>
+    /// The link's browser tracker id, new for each launch: the client's command line carries it, so its window is told
+    /// to be this launch's (<see cref="RobloxProcesses.LaunchTrackerOf"/>).
+    /// </returns>
+    public static string Launch(string ticket, GameTarget? target, string launchVia, string customLauncher = "")
     {
-        string uri = BuildLaunchUri(ticket, target);
+        string tracker = NewBrowserTrackerId();
+        string uri = BuildLaunchUri(ticket, target, tracker);
         if (OtherName(launchVia) is { } other)
         {
             Start(RobloxInstalls.FindBootstrapper(other) ?? throw new FileNotFoundException(L.F("{0} is not installed.", other)), uri);
-            return;
+            return tracker;
         }
         switch (launchVia)
         {
@@ -140,6 +146,7 @@ public static class RobloxLauncher
                 Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true, WorkingDirectory = Path.GetTempPath() })?.Dispose();
                 break;
         }
+        return tracker;
     }
 
     static void Start(string exe, params string[] args)
