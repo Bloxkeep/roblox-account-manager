@@ -94,6 +94,8 @@ public sealed class AppSettings
     public List<SavedServer> SavedServers { get; set; } = new();
     /// <summary>Names last looked up with "Join a player…", newest first (see AppController.JoinPlayer.cs).</summary>
     public List<string> RecentPlayers { get; set; } = new();
+    /// <summary>"Join a player…"'s box: the accounts it opens follow that player when they rejoin (on until unticked).</summary>
+    public bool FollowJoinedPlayer { get; set; } = true;
     public List<LaunchPreset> Presets { get; set; } = new();
     /// <summary>Accounts in the order Play opens them; accounts missing here (added later) come after, as listed.</summary>
     public List<Guid> LaunchOrder { get; set; } = new();
@@ -119,6 +121,10 @@ public sealed class LaunchPreset
     /// <summary>"any" (Roblox picks), "most", "fewest", "ping", "random", or "job" (<see cref="JobId"/>).</summary>
     public string Server { get; set; } = "any";
     public string JobId { get; set; } = "";
+    /// <summary>With <see cref="Server"/> "follow": the player its accounts join and follow on every rejoin (their username when saved).</summary>
+    public string FollowPlayer { get; set; } = "";
+    /// <summary>That player's user id, which is what Roblox is asked about (a username can change).</summary>
+    public long FollowUserId { get; set; }
     /// <summary>Seconds between accounts; null uses the global setting.</summary>
     public int? DelaySeconds { get; set; }
     /// <summary>Runs by itself at set times; null (older presets) or Enabled = false when it doesn't.</summary>

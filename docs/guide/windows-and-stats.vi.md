@@ -10,7 +10,7 @@ Cách xem, xếp gọn và thống kê các cửa sổ Roblox: thẻ **Roblox tr
 
 1. Mở **Theo dõi game** ở thanh bên: hình trực tiếp của mọi cửa sổ Roblox.
 2. Bấm vào một hình để đưa cửa sổ đó lên trên cùng.
-3. Muốn xếp gọn các cửa sổ, bấm **Xếp cửa sổ** ở thanh chọn game (máy có nhiều màn hình thì chọn màn hình trước).
+3. Muốn xếp gọn các cửa sổ, bấm **Cửa sổ › Xếp cửa sổ Roblox** ở thanh chọn game (máy có nhiều màn hình thì chọn màn hình trước).
 4. Mở **Cửa sổ nhỏ** để có một danh sách nhỏ luôn nằm trên cùng.
 5. Mở **Thống kê** để xem thời gian chơi, và tab **Hoạt động** để xem những gì đã xảy ra.
 
@@ -46,7 +46,7 @@ Một cửa sổ nhỏ luôn nằm trên cùng. Mở bằng nút **Cửa sổ nh
 
 ## Xếp cửa sổ
 
-Bấm **Xếp cửa sổ** ở thanh chọn game, hoặc dùng **⋯ Tùy chọn khác › Xếp cửa sổ Roblox**, hoặc Ctrl+K. Máy có nhiều màn hình thì chọn màn hình trước (chữ "chính" đánh dấu màn hình chính).
+Bấm **Cửa sổ › Xếp cửa sổ Roblox** ở thanh chọn game, hoặc dùng **⋯ Tùy chọn khác › Xếp cửa sổ Roblox**, hoặc Ctrl+K. Máy có nhiều màn hình thì chọn màn hình trước (chữ "chính" đánh dấu màn hình chính).
 
 Kiểu xếp lấy từ **Cài đặt › Khởi chạy › Kiểu xếp cửa sổ**:
 

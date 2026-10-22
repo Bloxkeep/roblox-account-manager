@@ -23,6 +23,12 @@ export default [
   S('account-menu', 'menu=1'),
   S('account-edit', 'edit=1'),
   S('accounts-empty', 'empty=1'),
+  // Getting started: accounts never opened yet. The game step ticks once a game is in the box; Play is the step left.
+  S('start-steps', 'fresh=1', async s => {
+    await s.fill(key('dock.place'), 'https://www.roblox.com/games/2753915549/Blox-Fruits');
+    await s.wait(800);
+  }),
+  S('start-steps-list', 'fresh=1', async s => { await s.click(key('layout.list')); }),
   S('accounts-kicked', 'kicked=1'),
   S('accounts-kicked-unknown', 'kicked=unknown'),
   // On the way in, as the client's log and Roblox's join answer say it.
@@ -52,7 +58,9 @@ export default [
   S('locked', 'locked=1'),
 
   // ── Game ──
-  S('game-picker', '', async s => { await s.click(key('dock.browseTip')); }),
+  // The game box opens the list (the game picture beside it shows only in wider windows than this one).
+  S('game-picker', '', async s => { await s.click(key('dock.place')); }),
+  S('game-picker-thumb', '', async s => { await s.click(key('dock.browseTip')); }, { size: [1440, 860] }),
   S('launch-order', 'order=1'),
 
   // ── Side panel ──
@@ -245,7 +253,7 @@ export default [
     await s.wait(800);
   }),
   S('game-picker-tabs', '', async s => {
-    await s.click(key('dock.browseTip'));
+    await s.click(key('dock.place'));
     await s.wait(600);
     await s.click({ key: 'picker.popular', within: '#picker' });
     await s.snap('popular');
@@ -263,7 +271,7 @@ export default [
   // Saved servers: the Saved tab, picking one with a code (the game goes in the box, the code is copied), and saving a
   // private server's link, then a game with a code.
   S('saved-servers', '', async s => {
-    await s.click(key('dock.browseTip'));
+    await s.click(key('dock.place'));
     await s.wait(600);
     await s.click({ key: 'picker.saved', within: '#picker' });
     await s.snap('tab');
@@ -518,12 +526,23 @@ export default [
     await s.wait(500);
   }),
   S('game-picker-pin', '', async s => {
-    await s.click(key('dock.browseTip'));
+    await s.click(key('dock.place'));
     await s.click({ css: '[data-act=pin-game]' });
   }),
   S('game-private-link', '', async s => { await s.fill(key('dock.place'), 'https://www.roblox.com/share?code=abc123&type=Server'); await s.wait(600); }),
+  // Your private servers: one both selected accounts can join, one only Farm 1 can (said on its row, in the warning
+  // colour). Picking one puts it in the game box as a private server (roblox://placeId=…&accessCode=…).
+  S('servers-private', 'select=1', async s => {
+    await s.click(key('dock.servers'));
+    await s.wait(900);
+    await s.snap('list');
+    await s.click({ css: '[data-private="0"]' });
+    await s.wait(700);
+  }),
+  S('servers-private-none', 'noprivate=1', async s => { await s.click(key('dock.servers')); await s.wait(900); }),
+  S('servers-private-fail', 'privatefail=1', async s => { await s.click(key('dock.servers')); await s.wait(900); }),
   S('servers', '', async s => {
-    await s.click(key('srv.button'));
+    await s.click(key('dock.servers'));
     await s.wait(600);
     await s.snap('list');
     await s.click(key('srv.fewest'));
@@ -532,9 +551,9 @@ export default [
     await s.wait(600);
   }),
   // Roblox's few-lists-a-minute limit: the wait counts down where the list was, and the window keeps its size.
-  S('servers-busy', 'srvbusy=1', async s => { await s.click(key('srv.button')); await s.wait(600); }),
+  S('servers-busy', 'srvbusy=1', async s => { await s.click(key('dock.servers')); await s.wait(600); }),
   S('servers-sort-switching', '', async s => {
-    await s.click(key('srv.button'));
+    await s.click(key('dock.servers'));
     await s.wait(600);
     for (const k of ['srv.sort.fewest', 'srv.sort.ping', 'srv.sort.fps', 'srv.sort.most']) await s.click(key(k));
     await s.snap('three lists used');
@@ -542,12 +561,12 @@ export default [
     await s.wait(600);
   }),
   S('servers-use', '', async s => {
-    await s.click(key('srv.button'));
+    await s.click(key('dock.servers'));
     await s.wait(600);
     await s.click({ key: 'srv.pick', within: '.overlay' });
   }),
   S('servers-room', 'select=1', async s => {
-    await s.click(key('srv.button'));
+    await s.click(key('dock.servers'));
     await s.wait(800);
     await s.snap('room for 2');
     await s.click({ css: '.overlay [data-room]' });
@@ -555,12 +574,12 @@ export default [
     await s.click({ css: '.overlay [data-random]' });
   }),
   S('servers-friend', 'select=1', async s => {
-    await s.click(key('srv.button'));
+    await s.click(key('dock.servers'));
     await s.wait(800);
     await s.click({ css: '.overlay [data-friend]' });
   }),
-  S('servers-no-friends', 'select=1&nofriends=1', async s => { await s.click(key('srv.button')); await s.wait(800); }),
-  S('servers-friends-fail', 'select=1&friendsfail=1', async s => { await s.click(key('srv.button')); await s.wait(800); }),
+  S('servers-no-friends', 'select=1&nofriends=1', async s => { await s.click(key('dock.servers')); await s.wait(800); }),
+  S('servers-friends-fail', 'select=1&friendsfail=1', async s => { await s.click(key('dock.servers')); await s.wait(800); }),
   S('join-player', 'select=1', async s => {
     await s.click({ key: 'jp.button' });
     await s.snap('dialog');
@@ -589,8 +608,20 @@ export default [
     await s.wait(800);
   }),
   S('launch-ask-multi-off', 'multioff=1&select=1', async s => { await s.click({ key: 'dock.play', within: '.dock' }); await s.wait(500); }),
-  S('arrange-windows', '', async s => { await s.click(key('dock.arrangeTip')); }),
-  S('open-app-only', 'select=1', async s => { await s.click(key('dock.openAppTip')); await s.wait(800); }),
+  S('dock-more', 'select=1', async s => { await s.click({ key: 'dock.more', within: '.dock' }); }),
+  // A second click on a menu's button closes the menu (it used to close and open it again at once).
+  S('menu-click-twice', 'select=1', async s => {
+    await s.click({ key: 'dock.more', within: '.dock' });
+    await s.snap('open');
+    await s.click({ key: 'dock.more', within: '.dock' });
+  }),
+  S('card-menu-click-twice', '', async s => {
+    await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' });
+    await s.snap('open');
+    await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' });
+  }),
+  S('arrange-windows', '', async s => { await s.click({ key: 'dock.more', within: '.dock' }); await s.click(key('m.arrange')); }),
+  S('open-app-only', 'select=1', async s => { await s.click({ key: 'dock.more', within: '.dock' }); await s.click(key('dock.openAppTip')); await s.wait(800); }),
   S('tools-menu', '', async s => { await s.click({ css: '[data-act=tools-menu]' }); }),
   S('preset-menu', '', async s => { await s.click({ css: '[data-act=preset-menu]' }); }),
   S('save-as-preset', 'select=1', async s => {

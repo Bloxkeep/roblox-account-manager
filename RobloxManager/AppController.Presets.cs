@@ -18,7 +18,7 @@ public sealed partial class AppController
 
     const int MaxPresets = 50;
     const int MaxPresetName = 60;
-    static readonly string[] PresetServers = ["any", "most", "fewest", "ping", "random", "job"];
+    static readonly string[] PresetServers = ["any", "most", "fewest", "ping", "random", "job", "follow"];
     /// <summary><see cref="LaunchPreset.Profile"/> for the light AFK setup (<see cref="RobloxGameSettings.LightAfk"/>).</summary>
     const string AfkProfile = "afk";
     /// <summary>The choices the form offers for <see cref="LaunchPreset.RestartHours"/> (0 = never).</summary>
@@ -33,6 +33,7 @@ public sealed partial class AppController
         p.GameName,
         p.Server,
         p.JobId,
+        p.FollowPlayer,
         p.DelaySeconds,
         schedule = ScheduleDto(p.Schedule),
         nextRun = NextRun(p.Schedule),
@@ -83,15 +84,18 @@ public sealed partial class AppController
         if (ids.Count == 0)
             throw new UserError(L.T("Select at least one account."));
         string place = Str(a, "placeInput").Trim();
-        // Without a game the preset just opens Roblox, so there is no server to choose.
-        string server = place.Length == 0 ? "any" : PresetServers.Contains(Str(a, "server")) ? Str(a, "server") : "any";
+        // Without a game the preset just opens Roblox, so there is no server to choose; following a player needs none
+        // (the game is the one they are in).
+        string requested = Str(a, "server");
+        string server = requested == "follow" ? "follow" : place.Length == 0 ? "any" : PresetServers.Contains(requested) ? requested : "any";
         string job = server == "job" ? Str(a, "jobId").Trim() : "";
         if (server == "job" && job.Length == 0)
             throw new UserError(L.T("Enter the server's Job ID."));
         int? delay = Has(a, "delaySeconds", JsonValueKind.Number) ? (int)Math.Clamp(Long(a, "delaySeconds"), 0, 120) : null;
         string profile = Str(a, "profile") == AfkProfile ? AfkProfile : "";
-        // A restart opens the same game again; a preset without one only opens Roblox, so there is nothing to restart.
-        int restartHours = place.Length > 0 && RestartChoices.Contains((int)Long(a, "restartHours")) ? (int)Long(a, "restartHours") : 0;
+        // A restart opens the same game again (or follows the player again); a preset without one only opens Roblox, so
+        // there is nothing to restart.
+        int restartHours = (place.Length > 0 || server == "follow") && RestartChoices.Contains((int)Long(a, "restartHours")) ? (int)Long(a, "restartHours") : 0;
         var schedule = ParseSchedule(a, vault.Data.Settings.Presets.FirstOrDefault(p => p.Id == Id(a))?.Schedule);
         // Its own Discord channel: absent keeps the one saved, "" goes back to Settings' one, a link replaces it.
         string? discord = OptStr(a, "discordWebhook")?.Trim();
@@ -100,6 +104,12 @@ public sealed partial class AppController
                 : throw new UserError(L.T("That isn't a Discord webhook link. It looks like https://discord.com/api/webhooks/… (Channel settings › Integrations › Webhooks › Copy Webhook URL)."));
 
         // Checked now, so a typo shows while saving rather than when the preset runs.
+        RobloxUser? followed = null;
+        if (server == "follow")
+        {
+            string who = Str(a, "followPlayer").Trim().TrimStart('@').Trim();
+            followed = await LookUpPlayerAsync(who) ?? throw new UserError(L.F("Roblox has no player called {0}.", who));
+        }
         string gameName = "";
         if (place.Length > 0)
         {
@@ -126,6 +136,8 @@ public sealed partial class AppController
         preset.GameName = gameName;
         preset.Server = server;
         preset.JobId = job;
+        preset.FollowPlayer = followed?.Name ?? "";
+        preset.FollowUserId = followed?.Id ?? 0;
         preset.DelaySeconds = delay;
         preset.AntiAfk = OptBool(a, "antiAfk");
         preset.AutoRejoin = OptBool(a, "autoRejoin");
@@ -302,13 +314,15 @@ public sealed partial class AppController
             throw new UserError(L.T("This preset has no accounts left."));
         CheckCanLaunch(accounts);
         GameTarget? target = null;
-        if (preset.PlaceInput.Length > 0
+        if (preset.Server == "follow")
+            target = await PresetFollowTargetAsync(vault, preset, accounts);
+        else if (preset.PlaceInput.Length > 0
             && !GameTarget.TryParse(preset.PlaceInput, preset.Server == "job" ? preset.JobId : "", out target, out string error))
             throw new UserError(error);
 
         // A link that already names a server (or a private one) keeps it.
         string server = preset.Server;
-        bool pick = target is { JobId: null, LinkCode: null, ShareCode: null } && server is "most" or "fewest" or "ping" or "random";
+        bool pick = target is { JobId: null, LinkCode: null, ShareCode: null, AccessCode: null } && server is "most" or "fewest" or "ping" or "random";
         string? notice = null;
         var result = await LaunchAccountsAsync(vault, accounts, target, force, preset.DelaySeconds ?? vault.Data.Settings.LaunchDelaySeconds,
             pick
@@ -328,6 +342,35 @@ public sealed partial class AppController
             PushState();
         }
         return result with { Notice = notice };
+    }
+
+    /// <summary>
+    /// The server a preset that follows a player opens into: the one the player is in now, as Roblox shows it to the
+    /// preset's accounts (or, failing them, the others signed in), its rejoins following them too. When Roblox won't
+    /// show one (offline, the website, Studio, a hidden server), the preset doesn't run and says why.
+    /// </summary>
+    async Task<GameTarget> PresetFollowTargetAsync(Vault vault, LaunchPreset preset, IReadOnlyList<Account> accounts)
+    {
+        if (preset.FollowUserId <= 0)
+            throw new UserError(L.T("This preset joins a player who isn't saved with it. Edit the preset and type the player's name again."));
+        string player = preset.FollowPlayer.Length > 0 ? preset.FollowPlayer : preset.FollowUserId.ToString();
+        var viewers = accounts.Concat(vault.Data.Accounts.Where(other => !accounts.Contains(other))).Where(CanAskPresence).ToList();
+        if (viewers.Count == 0)
+            throw new UserError(L.T("None of the selected accounts is signed in, so Bloxkeep can't ask Roblox where this player is. Sign them in again first."));
+        Progress(L.F("Looking for {0}…", player));
+        var (seen, failed) = await WherePlayerIsAsync(preset.FollowUserId, viewers, vault);
+        if (seen is null && failed is not null)
+            throw new UserError(failed is RobloxApiException { CookieInvalid: true }
+                ? L.T("Roblox didn't accept the selected accounts' sign-in. Check their sign-in, then try again.")
+                : ErrorText(failed));
+        return (seen is null ? "offline" : PlayerStatus(seen)) switch
+        {
+            "found" => new GameTarget(seen!.PlaceId!.Value, seen.JobId) { Follow = new FollowedPlayer(preset.FollowUserId, player) },
+            "hidden" => throw new UserError(L.F("{0} is in a game, but Roblox doesn't show which server to your accounts (their privacy settings), so this preset can't join them.", player)),
+            "studio" => throw new UserError(L.F("{0} is in Roblox Studio, not in a game, so this preset can't join them yet.", player)),
+            "website" => throw new UserError(L.F("{0} is on the Roblox website, not in a game, so this preset can't join them yet.", player)),
+            _ => throw new UserError(L.F("{0} is offline, or hides being online, so this preset can't join them yet.", player)),
+        };
     }
 
     /// <summary>
@@ -525,8 +568,8 @@ public sealed partial class AppController
     {
         var target = run.Launch.Target!;
         if (_logs.StateOf(run.Pid)?.ChosenPlace is { } chosen && chosen != target.PlaceId)
-            target = new GameTarget(chosen);
-        return target.LinkCode is null && _logs.StateOf(run.Pid) is { Status: "ingame", JobId: { } job, PlaceId: { } place } && place == target.PlaceId
+            target = new GameTarget(chosen) { Follow = target.Follow };
+        return !target.IsPrivate && _logs.StateOf(run.Pid) is { Status: "ingame", JobId: { } job, PlaceId: { } place } && place == target.PlaceId
             ? target with { JobId = job }
             : target with { JobId = null };
     }

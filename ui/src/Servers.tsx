@@ -1,5 +1,5 @@
-// A game's servers, to pick one to join: the selected accounts' friends in it first, then its public servers (like
-// the Servers tab on its Roblox page). Roblox sorts by player count itself; ping and FPS are sorted here over the
+// A game's servers, to pick one to join: the private servers your accounts can join first (owned or invited to), the
+// selected accounts' friends in it, then its public servers (like the Servers tab on its Roblox page). Roblox sorts by player count itself; ping and FPS are sorted here over the
 // servers loaded so far ("ping" is the average ping of the players already in that server, what Roblox reports, not
 // the ping from this PC). Roblox gives only a few lists a minute: when it says to wait, the seconds count down in
 // place and the list is asked for again by itself.
@@ -9,9 +9,12 @@ import { Icon, useHost } from './host';
 type Server = { jobId: string; playing: number; maxPlayers: number; ping?: number; fps?: number };
 type Friend = { userId: number; name?: string; displayName?: string; avatarUrl?: string; via: string; jobId: string; placeId?: number };
 type Reply = { servers: Server[]; next: string | null; busy?: boolean; retryIn?: number; left?: number };
+/** One of your private servers: who can join it among the accounts asked (Roblox lets in only those). */
+type Private = { id: number; name: string; owner: string; accessCode: string; playing: number; maxPlayers: number; via: string[]; viaIds: string[] };
 const SORTS = ['most', 'fewest', 'ping', 'fps'];
 
-export function Servers({ placeId, ids, chosen }: { placeId: number; ids: string[]; chosen: (placeId: number, jobId: string) => void }) {
+export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: number; ids: string[]; chosen: (placeId: number, jobId: string) => void;
+  chosenPrivate: (placeId: number, accessCode: string) => void }) {
   const { t, call } = useHost();
   const party = ids.length;
   const [sort, setSort] = useState('most');
@@ -25,6 +28,8 @@ export function Servers({ placeId, ids, chosen }: { placeId: number; ids: string
   const [moreUntil, setMoreUntil] = useState(0);
   const [friends, setFriends] = useState<Friend[] | null>(null);
   const [friendsHow, setFriendsHow] = useState({ asked: false, failed: false });
+  const [mine, setMine] = useState<Private[] | null>(null);
+  const [mineHow, setMineHow] = useState({ asked: false, failed: false });
   const [, tick] = useState(0);
   // How many more lists Roblox gives this minute (-1 unknown), and the latest of everything for the requests' replies.
   const st = useRef({ left: -1, seq: 0, items, next, sort, alive: true });
@@ -82,6 +87,12 @@ export function Servers({ placeId, ids, chosen }: { placeId: number; ids: string
 
   useEffect(() => {
     (async () => {
+      const r = await call('privateServers', { placeId, ids }, { silent: true }) as { servers: Private[]; asked: number; failed: boolean } | undefined;
+      if (!st.current.alive) return;
+      setMine(r?.servers || []);
+      setMineHow({ asked: !!r?.asked, failed: !r || r.failed });
+    })();
+    (async () => {
       const r = await call('friendServers', { placeId, ids }, { silent: true }) as { friends: Friend[]; asked: number } | undefined;
       if (!st.current.alive) return;
       setFriends(r?.friends || []);
@@ -105,6 +116,24 @@ export function Servers({ placeId, ids, chosen }: { placeId: number; ids: string
   const rowsShown = !busy && view.length > 0;
 
   return <>
+    <div className="srv-head">{t('srv.privateTitle')}</div>
+    <div className={`srv-friends${mine?.length ? ' list' : ''}`} id="srv-private">
+      {mine === null ? <div className="srv-friends-note"><span className="spin" />{t('srv.privateLooking')}</div>
+        : !mine.length ? <div className="srv-friends-note">{t(mineHow.failed ? 'srv.privateError' : mineHow.asked ? 'srv.privateNone' : 'srv.friendsNoAccount')}</div>
+        : mine.map((s, i) => {
+          const name = s.name || t('srv.privateUnnamed');
+          const full = s.maxPlayers > 0 && s.playing >= s.maxPlayers;
+          // Selected accounts this server won't let in: said on the row, since Roblox would refuse them.
+          const left = ids.filter(id => !s.viaIds.includes(id)).length;
+          const who = [s.owner ? t('srv.privateOwner', { owner: s.owner }) : '', s.maxPlayers ? t('srv.players', { n: s.playing, max: s.maxPlayers }) : '',
+            left ? t('srv.privateOnly', { acc: s.via.join(', ') }) : ''].filter(Boolean).join(' · ');
+          return <div key={i} className="srv-friend srv-private">
+            <span className="ph"><Icon name="lock" /></span>
+            <div className="gtxt"><b title={name}>{name}</b><small className={left ? 'warn' : ''} title={who}>{who}</small></div>
+            <button className="btn sm" data-private={i} disabled={full} title={full ? t('srv.full') : t('srv.privatePickTip')} onClick={() => chosenPrivate(placeId, s.accessCode)}>{t('srv.joinFriend')}</button>
+          </div>;
+        })}
+    </div>
     <div className="srv-head">{t('srv.friendsTitle')}</div>
     <div className={`srv-friends${friends?.length ? ' list' : ''}`} id="srv-friends">
       {friends === null ? <div className="srv-friends-note"><span className="spin" />{t('srv.friendsLooking')}</div>

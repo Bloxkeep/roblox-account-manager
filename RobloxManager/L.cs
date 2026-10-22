@@ -118,6 +118,8 @@ public static class L
         ["Pick the game from the search list, or paste a game link or Place ID."] = "Hãy chọn game trong kết quả tìm kiếm, hoặc dán link game hay Place ID.",
         ["Invalid Place ID."] = "Place ID không hợp lệ.",
         ["Invalid Job ID (expected xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."] = "Job ID không hợp lệ (phải có dạng xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).",
+        ["Invalid private server access code."] = "Mã vào server riêng không hợp lệ.",
+        ["Roblox didn't answer (HTTP {0})."] = "Roblox không trả lời (HTTP {0}).",
         ["Bloxkeep is locked."] = "Bloxkeep đang khóa.",
         ["Account not found."] = "Không tìm thấy tài khoản.",
         ["Couldn't save data: {0}"] = "Không lưu được dữ liệu: {0}",
@@ -664,6 +666,39 @@ public static class L
             "Roblox không chấp nhận đăng nhập của các tài khoản đã chọn. Hãy kiểm tra đăng nhập rồi thử lại.",
         ["Roblox didn't say where this player is. Try again in a moment."] = "Roblox không cho biết người chơi này đang ở đâu. Hãy thử lại sau một lát.",
         ["That server can't be joined. Look the player up again."] = "Không vào được server đó. Hãy tìm lại người chơi.",
+        // Following a player on rejoin (AppController.JoinPlayer.cs, Presets)
+        ["{0} waits to join {1}: none of your accounts is signed in, so Bloxkeep can't ask Roblox where {1} is. Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: không tài khoản nào của bạn còn đăng nhập, nên Bloxkeep không hỏi được Roblox {1} đang ở đâu. Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} waits to join {1}: {1} is in a game, but Roblox doesn't show which server to your accounts (their privacy settings). Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: {1} đang chơi nhưng Roblox không cho các tài khoản của bạn biết server nào (do cài đặt riêng tư của họ). Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} waits to join {1}: {1} is in Roblox Studio, not in a game. Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: {1} đang ở Roblox Studio, không ở trong game. Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} waits to join {1}: {1} is on the Roblox website, not in a game. Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: {1} đang ở trang web Roblox, không ở trong game. Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} waits to join {1}: {1} is offline, or hides being online. Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: {1} đang offline, hoặc ẩn trạng thái online. Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} waits to join {1}: the game {1} is in has banned this account. Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: game {1} đang chơi đã cấm tài khoản này. Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} waits to join {1}: {1}'s server is full. Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: server của {1} đã đầy. Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} waits to join {1}: {1}'s server has just ended. Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: server của {1} vừa đóng. Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} waits to join {1}: Roblox won't let this account into the game {1} is in. Bloxkeep looks again every minute."] =
+            "{0} đang chờ để vào cùng {1}: Roblox không cho tài khoản này vào game {1} đang chơi. Cứ mỗi phút Bloxkeep tìm lại.",
+        ["{0} found {1} again — rejoining their server…"] = "{0} đã thấy lại {1}, đang vào lại server của họ…",
+        ["Waiting to join a player"] = "Chờ để vào cùng một người chơi",
+        ["Roblox has no player called {0}."] = "Roblox không có người chơi nào tên {0}.",
+        ["This preset joins a player who isn't saved with it. Edit the preset and type the player's name again."] =
+            "Preset này vào cùng một người chơi nhưng chưa lưu người đó. Hãy sửa Preset và nhập lại tên người chơi.",
+        ["Looking for {0}…"] = "Đang tìm {0}…",
+        ["{0} is in a game, but Roblox doesn't show which server to your accounts (their privacy settings), so this preset can't join them."] =
+            "{0} đang chơi nhưng Roblox không cho các tài khoản của bạn biết server nào (do cài đặt riêng tư của họ), nên Preset này không vào cùng được.",
+        ["{0} is in Roblox Studio, not in a game, so this preset can't join them yet."] =
+            "{0} đang ở Roblox Studio, không ở trong game, nên Preset này chưa vào cùng được.",
+        ["{0} is on the Roblox website, not in a game, so this preset can't join them yet."] =
+            "{0} đang ở trang web Roblox, không ở trong game, nên Preset này chưa vào cùng được.",
+        ["{0} is offline, or hides being online, so this preset can't join them yet."] =
+            "{0} đang offline, hoặc ẩn trạng thái online, nên Preset này chưa vào cùng được.",
         ["In game"] = "Đang chơi",
         ["Joining"] = "Đang vào game",
         ["In the menu"] = "Ở màn hình chính",

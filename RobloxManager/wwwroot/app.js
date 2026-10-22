@@ -422,6 +422,9 @@
   }
 
   let menuEl = null, menuOpener = null, menuUnmount = null;
+  // The button whose menu is open, and the button a press on which just closed its menu: the click that ends that
+  // press doesn't open it again, so a second click on a menu's button closes the menu (it used to close and reopen).
+  let menuButton = null, closedByButton = null;
   /** @param refocus true (from the keyboard) puts the focus back on the button that opened the menu. */
   function closeMenu(refocus = false) {
     if (!menuEl) return;
@@ -429,7 +432,7 @@
     // After the click that chose an item has been handled (the menu's items are React's).
     const unmount = menuUnmount;
     queueMicrotask(() => unmount?.());
-    menuEl = menuUnmount = null;
+    menuEl = menuUnmount = menuButton = null;
     lastOverlayClose = performance.now();
     syncToastLayer();
     if (menuOpener?.hasAttribute('aria-haspopup')) menuOpener.setAttribute('aria-expanded', 'false');
@@ -439,9 +442,13 @@
   /**
    * Items: each an icon, text, title, hint, danger, checked, disabled and run, or '-' for a line; their words as they
    * read (not HTML). split: the items before the first line scroll in a list of their own (the dock's presets).
+   * above: where the menu's bottom goes instead when it doesn't fit under y (a button low in the window, as in the dock):
+   * it opens upwards rather than being pushed up over the button that opened it. button: the button that opened it
+   * (a second click on it closes the menu).
    */
-  function openMenu(items, x, y, { cls = '', split = false } = {}) {
+  function openMenu(items, x, y, { cls = '', split = false, above = null, button = null } = {}) {
     closeMenu();
+    menuButton = button;
     menuOpener = document.activeElement !== document.body ? document.activeElement : null;
     const byKeyboard = !!menuOpener?.matches(':focus-visible');
     if (menuOpener?.hasAttribute('aria-haspopup')) menuOpener.setAttribute('aria-expanded', 'true');
@@ -457,15 +464,29 @@
     menuEl = el;
     syncToastLayer();
     const r = el.getBoundingClientRect();
-    el.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
-    el.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
+    let left = Math.max(8, Math.min(x, innerWidth - r.width - 8));
+    // Upwards only when the whole menu then fits in the window (a button scrolled out of view would put it partly off).
+    const up = above !== null && y + r.height > innerHeight - 8 && above - r.height >= 8 && above <= innerHeight - 8;
+    const top = up ? above - r.height : Math.max(8, Math.min(y, innerHeight - r.height - 8));
+    // Too tall for under or over its button (a long menu in a short window): beside the button rather than over it,
+    // so the button is still there to click again.
+    const b = button?.getBoundingClientRect();
+    if (b && top < b.bottom && top + r.height > b.top && left < b.right && left + r.width > b.left)
+      left = b.right + 6 + r.width <= innerWidth - 8 ? b.right + 6 : Math.max(8, b.left - 6 - r.width);
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
     if (byKeyboard) el.querySelector('button:not(:disabled)')?.focus();
   }
   const menuAt = (btn, items, width, opts) => {
     const r = btn.getBoundingClientRect();
-    openMenu(items, width ? r.right - width : r.left, r.bottom + 6, opts);
+    openMenu(items, width ? r.right - width : r.left, r.bottom + 6, { above: r.top - 6, button: btn, ...opts });
   };
-  document.addEventListener('mousedown', e => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); }, true);
+  document.addEventListener('mousedown', e => {
+    closedByButton = null;
+    if (!menuEl || menuEl.contains(e.target)) return;
+    if (menuButton?.contains(e.target)) closedByButton = menuButton;
+    closeMenu();
+  }, true);
   window.addEventListener('blur', closeMenu);
   window.addEventListener('resize', closeMenu);
 
@@ -1465,8 +1486,21 @@
   }
 
   /**
-   * The game's servers, to pick one to join: the selected accounts' friends in it, then its public servers (like the
-   * Servers tab on its Roblox page). Drawn by React (ui/src/Servers.tsx); a pick goes in the dock's Job ID box.
+   * One of your private servers in the dock (its access code, from Browse servers): the game box holds it as a deep link
+   * that GameTarget reads (roblox://placeId=…&accessCode=…), so it is saved, shown and launched like a private link.
+   */
+  function usePrivateServer(placeId, accessCode) {
+    S.jobPlace = null;
+    $('#job').value = '';
+    $('#place').value = `roblox://placeId=${placeId}&accessCode=${accessCode}`;
+    resolveGame();
+    scheduleSaveInputs();
+  }
+
+  /**
+   * The game's servers, to pick one to join: your private servers, the selected accounts' friends in it, then its
+   * public servers (like the Servers tab on its Roblox page). Drawn by React (ui/src/Servers.tsx); a pick goes in the
+   * dock's Job ID box, a private server in the game box.
    */
   function openServers() {
     const g = S.game;
@@ -1485,6 +1519,10 @@
     const body = api.el.querySelector('.modal-body');
     unmount = window.BloxkeepUI.servers(body, uiHost(), g.placeId, [...S.selected], (placeId, jobId) => {
       useServer(placeId, jobId);
+      api.close();
+      toast(t('srv.chosen'), 'ok');
+    }, (placeId, accessCode) => {
+      usePrivateServer(placeId, accessCode);
       api.close();
       toast(t('srv.chosen'), 'ok');
     });
@@ -1664,8 +1702,9 @@
   /** The preset's accounts that still exist (deleted ones are skipped when it runs). */
   const presetAccounts = p => p.accountIds.map(byId).filter(Boolean);
   const accCount = n => t(n === 1 ? 'ps.acc1' : 'ps.accN', { n });
-  const presetSub = p => [p.gameName || p.placeInput || t('ps.noGame'), accCount(presetAccounts(p).length),
-    p.server !== 'any' && p.placeInput ? t(`ps.srv.${p.server}`) : '', nextRunText(p)].filter(Boolean).join(' · ');
+  const presetSub = p => [p.server === 'follow' ? t('ps.following', { name: p.followPlayer }) : p.gameName || p.placeInput || t('ps.noGame'),
+    accCount(presetAccounts(p).length),
+    p.server !== 'any' && p.server !== 'follow' && p.placeInput ? t(`ps.srv.${p.server}`) : '', nextRunText(p)].filter(Boolean).join(' · ');
 
   /** The options a preset sets differently from the usual settings, for its row in the Presets tab. */
   const presetOptionsText = p => [
@@ -1745,6 +1784,7 @@
       placeInput: $('#place')?.value.trim() || '',
       server: dockJob ? 'job' : 'any',
       jobId: dockJob,
+      followPlayer: '',
       delaySeconds: null,
       schedule: null,
       // Options for the windows it opens: null follows the usual settings.
@@ -2115,11 +2155,12 @@
     })), 260);
   }
 
-  function cardMenu(id, x, y) {
+  function cardMenu(id, x, y, opts) {
     const a = byId(id);
     if (!a) return;
-    if (!S.selected.has(id)) selectOnly(id);
-    const ids = [...S.selected];
+    // On a selected account the menu acts on the whole selection; on any other it acts on that account alone and
+    // leaves the ticks as they are (opening ⋮ used to tick the account and untick the rest).
+    const ids = S.selected.has(id) ? [...S.selected] : [id];
     const many = ids.length > 1;
     openMenu([
       { icon: 'play', text: many ? t('m.playN', { n: ids.length }) : t('m.play'), hint: 'Enter', run: () => launch(ids, false) },
@@ -2148,7 +2189,7 @@
         run: () => a.hasAuthenticator ? copy(id, 'totp') : toast(t('m.noCode'), 'info') },
       '-',
       { icon: 'trash', text: many ? t('m.deleteN', { n: ids.length }) : t('m.delete'), hint: 'Del', danger: true, run: () => removeIds(ids) },
-    ], x, y);
+    ], x, y, opts);
   }
 
   /** The Multi-Roblox dialog while it is open: it follows the state (Roblox closed meanwhile, turned on or off from the tray). */
@@ -2477,7 +2518,7 @@
       close();
       // Toasts escape their text themselves.
       toast(tn('jp.found', ids.length, { name: who, game: r.game || `Place ${r.placeId}` }), 'info');
-      joinServer(ids, r.placeId, r.jobId);
+      joinServer(ids, r.placeId, r.jobId, false, { follow: ui.form.follow(), followUserId: r.userId, followName: r.name });
     };
     modal({
       title: t('jp.title'),
@@ -2496,23 +2537,29 @@
       onRemoved: () => ui?.unmount(),
     });
   }
-  /** Opens the accounts into the server found, through the usual launch: its warnings ask first, as Play's do. */
-  async function joinServer(ids, placeId, jobId, force = false) {
+  /**
+   * Opens the accounts into the server found, through the usual launch: its warnings ask first, as Play's do. With
+   * follow ticked, their rejoins go to wherever that player is by then.
+   */
+  async function joinServer(ids, placeId, jobId, force = false, follow = {}) {
     if (inFlight.has('launch')) return;
     inFlight.add('launch');
     let r;
     try {
-      r = await call('joinServer', { ids, placeId, jobId, force });
+      r = await call('joinServer', { ids, placeId, jobId, force, ...follow });
     } finally {
       inFlight.delete('launch');
     }
-    return launchDone(r, force => joinServer(ids, placeId, jobId, force));
+    return launchDone(r, force => joinServer(ids, placeId, jobId, force, follow));
   }
 
   /* ───────────────────────── events ───────────────────────── */
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
-    if (!el || !S.app) return;
+    // The press on a menu's button closed its menu (mousedown above): this click is that press ending, not a new ask.
+    const closedIt = el && el === closedByButton;
+    closedByButton = null;
+    if (!el || !S.app || closedIt) return;
     const id = el.closest('.card')?.dataset.id;
     switch (el.dataset.act) {
       case 'card': return onCardClick(id, e);
@@ -2523,7 +2570,7 @@
       case 'edit': return editAccount(id);
       case 'card-menu': {
         const r = el.getBoundingClientRect();
-        return cardMenu(id, r.left, r.bottom + 6);
+        return cardMenu(id, r.left, r.bottom + 6, { above: r.top - 6, button: el });
       }
       // The app answers with a state push in the new language.
       // Settings › Appearance › Custom: a picture behind the page, or none.
@@ -2611,6 +2658,12 @@
       case 'launch': return launch([...S.selected], false);
       case 'open-app': return launch([...S.selected], true);
       case 'arrange': return arrange(el);
+      // The dock's Windows menu: what used to be its two bare icons, now with their words.
+      case 'dock-more':
+        return menuAt(el, [
+          { icon: 'monitor', text: t('dock.openAppTip'), disabled: !S.selected.size, run: () => launch([...S.selected], true) },
+          { icon: 'screens', text: t('m.arrange'), run: () => arrange($('[data-act=dock-more]')) },
+        ], 280);
       case 'close-sel': return closeIds([...S.selected]);
       case 'close-all': return closeAll();
       // A double click would open the window and close it again: the second click is dropped.

@@ -8,15 +8,25 @@ How to pick a game and a server, open Roblox for your accounts, and use Bloxkeep
 
 ## Quick steps
 
-1. On the **Accounts** tab, select the accounts you want to open.
-2. Click the game box at the bottom and type a game's name, a Place ID or a link. Pick the game from the list.
-3. Press **Play**. It shows how many accounts will open.
+1. Click the game box at the bottom (**1 Game**) and type a game's name, a Place ID or a link. Pick the game from the list.
+2. To land in one exact server, use **2 Server** (optional): a Job ID, **Browse servers** or **Join a player…**.
+3. On the **Accounts** tab, select the accounts you want to open, then press **Play** (**3 Play**). It shows how many accounts will open.
 4. If Bloxkeep asks **Before you open**, read it and press **Open anyway**.
 5. To stop opening early, press **Stop**. To close Roblox, press **Close**.
 
+Until Bloxkeep has opened an account once, a **Get started** line over the list shows these steps (add an account, pick a game, select accounts and press **Play**) and ticks each one off as you do it.
+
 ## The game bar
 
-The bar at the bottom of **Accounts** holds, left to right: the game picture (**Choose a game**), the game box, the **Job ID (optional)** box, **Join a player…**, then **Arrange**, **Open Roblox without joining a game**, **Close**, **Presets** and **Play**.
+The bar at the bottom of **Accounts** goes in three numbered steps, left to right:
+
+| Step | What it holds |
+|---|---|
+| **1 Game** | The game picture (**Choose a game**), the game box, and under it the game found and recent games. |
+| **2 Server** (optional) | The **Job ID** box, **Browse servers** and **Join a player…**. |
+| **3 Play** | **Play**, and under it **Presets**, **Close** and **Windows** (**Open Roblox only**, **Arrange Roblox windows**). |
+
+Every button has its name on it. In the smallest windows the step captions are left out.
 
 The game box ("Search a game, or paste a link / Place ID…", Ctrl+L or `/`) takes:
 
@@ -28,21 +38,22 @@ The game box ("Search a game, or paste a link / Place ID…", Ctrl+L or `/`) tak
 | A private server share link | `roblox.com/share?…type=Server` |
 | A `roblox://` link | |
 
-Under the box you see the game's name, its creator, how many are playing and a **Servers** button. A private server shows **Private server**, a game with a Job ID shows **Specific server**, and a share link shows "Private server link — Bloxkeep opens this link when you join." Up to three recent games show as shortcuts; ✕ removes one.
+Under the box you see the game's name, its creator and how many are playing. A private server shows **Private server**, a game with a Job ID shows **Specific server**, and a share link shows "Private server link — Bloxkeep opens this link when you join." Up to three recent games show as shortcuts; ✕ removes one.
 
 **Choosing from the list**: click the game picture, or click the empty game box. The tabs are **Recent**, **Pinned**, **Roblox favorites** (games your accounts favorited on Roblox) and **Popular** (when available). Click ☆ to pin a game.
 
-**Job ID (optional)** is the ID of one exact server (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`), so several accounts land together. Changing to another game clears a Job ID left from the previous one. Enter in this box presses **Play**.
+**Job ID** (step 2, optional) is the ID of one exact server (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`), so several accounts land together. Changing to another game clears a Job ID left from the previous one. Enter in this box presses **Play**.
 
 > [!TIP]
-> To put several accounts in one server, pick it under **Servers** (**Use**), or use **Join this server** on an account already there. Then select the others and press **Play**.
+> To put several accounts in one server, pick it under **Browse servers** (**Use**), or use **Join this server** on an account already there. Then select the others and press **Play**.
 
 ## Servers
 
-**Servers** (not shown for private servers) opens the game's server list.
+**Browse servers** opens the game's server list. It is greyed out until a game is in the box, and for a private server.
 
-<img src="../screenshots/servers.png" width="760" alt="The server list for a game: friends in this game with Use server, then public servers with sort buttons, Room for 2 and Random server">
+<img src="../screenshots/servers.png" width="760" alt="The server list for a game: your private servers and friends in this game, each with Use server, then public servers with sort buttons, Room for 2 and Random server">
 
+- **Your private servers**: the private servers of this game that your selected accounts own or were invited to (with none selected, your first signed-in accounts), each with its owner, how many are playing and **Use server**. Roblox lets only those accounts in, so a server some selected accounts can't join says "only *account* can join". **Use server** puts it in the game box as a private server (`roblox://placeId=…&accessCode=…`); press **Play**, and Bloxkeep joins it the way the Join button on its Roblox page does.
 - **Friends in this game**: friends of your accounts who are in this game, each "friend of *account*", with **Use server**. Their privacy settings may hide them.
 - **Public servers**: sort by **Most players**, **Fewest players**, **Lowest ping** or **Best FPS**. **Room for N** (with 2 or more accounts selected) shows only servers with room for all of them. **Random server** picks one.
 - **Use** puts that server's Job ID in the game bar ("Server chosen — select accounts and press Play."). A full server is greyed out.
@@ -60,7 +71,7 @@ Keep the servers you go back to in the game box's **Saved** tab.
 
 ## Join a player
 
-The button with a person and an arrow, next to the Job ID box (also in Ctrl+K). It is greyed out until you select accounts. Type a player's **Roblox username or user ID** (a profile link works too) and press **Find and join**: the selected accounts open into the server that player is in. When that can't happen, the dialog says why:
+**Join a player…**, under the Job ID box (also in Ctrl+K). With no account selected it says to select accounts first. Type a player's **Roblox username or user ID** (a profile link works too) and press **Find and join**: the selected accounts open into the server that player is in. When that can't happen, the dialog says why:
 
 - no Roblox user has that name (it needs the username, not the display name);
 - the player is in a game but their privacy settings don't show your accounts which server;
@@ -69,13 +80,21 @@ The button with a person and an arrow, next to the Job ID box (also in Ctrl+K). 
 
 Bloxkeep only asks Roblox where the player is, using your selected accounts. It never follows or friends anyone to get past their privacy settings.
 
+**When these accounts rejoin, look this player up again and join their server** (ticked until you untick it): each time one of these accounts is brought back by auto-rejoin, Bloxkeep asks Roblox again where the player is and joins that server, even in another game. While that can't happen, the rejoin waits and looks again every minute, and tells you why once:
+
+- the player is offline, on the website or in Studio, or their server is hidden from your accounts;
+- the player's server is full or has just ended;
+- the game the player is in has banned this account, or Roblox won't let it in.
+
+A preset can do the same: choose **A player's server** as its server (see [Presets](presets.md)).
+
 ## Play, Open Roblox, Close and Stop
 
 | Button | What it does |
 |---|---|
-| **Play** | Reads **Select accounts** (greyed out) while nothing is selected. With a game in the box it reads **Play** and the number of accounts. With the game box empty it reads **Open Roblox**: each account opens Roblox's home screen. |
-| **Open Roblox without joining a game** (monitor icon) | The same home-screen launch, whatever is in the game box. Greyed out until you select accounts. |
-| **Close Roblox for the selected accounts** (power icon) | Greyed out unless a selected account is open on this PC. |
+| **Play** | Reads **Select accounts first** (greyed out) while nothing is selected. With a game in the box it reads **Play** and the number of accounts. With the game box empty it reads **Open Roblox**: each account opens Roblox's home screen. |
+| **Windows › Open Roblox only** | The same home-screen launch, whatever is in the game box. Greyed out until you select accounts. |
+| **Close** | Greyed out unless a selected account is open on this PC. |
 | **Stop** | Replaces **Play** while accounts are opening: "Opened 2 accounts (stopped early)." |
 
 How a launch goes:

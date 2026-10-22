@@ -84,6 +84,8 @@
   ];
   // ?vng=1: Trade is a Roblox VNG account (the VNG tag on its card and in its list row).
   if (params.has('vng')) accounts.find(a => a.id === id(6)).realm = 'vng';
+  // ?fresh=1: accounts Bloxkeep has never opened (just added): none running or opened before, so Getting started shows.
+  if (params.has('fresh')) accounts = accounts.map(a => ({ ...a, state: 'idle', session: null, lastUsed: null, presence: a.presence?.type === 'ingame' ? { type: 'offline' } : a.presence }));
   // ?accounts=300: that many accounts (copies of the ones above), for timing the page with a big list.
   if (params.has('accounts')) {
     const want = Math.min(1000, Number(params.get('accounts')) || 0), base = accounts.slice();
@@ -198,6 +200,7 @@
     launchOrder: [id(1), id(2), id(3), id(4), id(5), id(6), id(7)],
     // Names last looked up with "Join a player…" (kept in the vault).
     recentPlayers: ['builder_friend', 'hidden_friend'],
+    followJoinedPlayer: true,
   };
   if (LONG) {
     settings.customLauncher = 'Froststrap-Custom-Launcher-With-A-Long-Name'; settings.launchVia = 'custom';
@@ -469,7 +472,7 @@
           const m = /(\d{5,})/.exec(a.input);
           if (!m) return { ok: false, error: 'Không đọc được Place ID từ link này.' };
           const info = games[m[1]];
-          return { ok: true, kind: /privateServerLinkCode/.test(a.input) ? 'private' : 'game', placeId: +m[1], ...(info || {}) };
+          return { ok: true, kind: /privateServerLinkCode|accessCode/.test(a.input) ? 'private' : 'game', placeId: +m[1], ...(info || {}) };
         }
         case 'setSettings':
           if (a.multiTile) { multi.tile = true; settings.maximizeOnOpen = false; } else if (a.multiTile === false) multi.tile = false;
@@ -508,8 +511,11 @@
           if (!a.name) throw new Error('Give the preset a name.');
           const ids = a.ids.filter(x => accounts.some(y => y.id === x));
           if (!ids.length) throw new Error('Select at least one account.');
-          const server = a.placeInput ? a.server : 'any';
+          // Like the app: following a player needs no game (it's the one they're in).
+          const server = a.server === 'follow' ? 'follow' : a.placeInput ? a.server : 'any';
           if (server === 'job' && !a.jobId) throw new Error("Enter the server's Job ID.");
+          const follow = server === 'follow' ? String(a.followPlayer || '').trim().replace(/^@/, '') : '';
+          if (server === 'follow' && !follow) throw new Error("Type the player's Roblox username or user ID.");
           const m = /(\d{5,})/.exec(a.placeInput);
           const sc = a.schedule || null;
           if (sc?.enabled) {
@@ -520,11 +526,11 @@
             if (sc.stop === 'at' && !/^\d\d:\d\d$/.test(sc.stopTime)) throw new Error('Enter the stop time as HH:mm.');
           }
           const preset = { id: a.id || `p${Date.now()}`, name: a.name.slice(0, 60), accountIds: ids, placeInput: a.placeInput,
-            gameName: m && games[m[1]] ? games[m[1]].name : '', server, jobId: server === 'job' ? a.jobId : '', delaySeconds: a.delaySeconds,
+            gameName: m && games[m[1]] ? games[m[1]].name : '', server, jobId: server === 'job' ? a.jobId : '', followPlayer: follow, delaySeconds: a.delaySeconds,
             schedule: sc, nextRun: nextRun(sc), iconUrl: m && games[m[1]] ? games[m[1]].iconUrl : null, lastRun: null,
             // Like the app: no restart without a game (it would have nothing to open again).
             antiAfk: a.antiAfk ?? null, autoRejoin: a.autoRejoin ?? null, profile: a.profile === 'afk' ? 'afk' : '',
-            restartHours: a.placeInput && [2, 4, 6, 12].includes(a.restartHours) ? a.restartHours : 0, arrange: a.arrange ?? null, running: 0,
+            restartHours: (a.placeInput || server === 'follow') && [2, 4, 6, 12].includes(a.restartHours) ? a.restartHours : 0, arrange: a.arrange ?? null, running: 0,
             discord: a.discordWebhook === '' ? null : a.discordWebhook ? `discord.com/api/webhooks/…${(a.discordWebhook.match(/webhooks\/(\d+)/) || [, '0000'])[1].slice(-4)}/••••••`
               : settings.presets.find(x => x.id === a.id)?.discord ?? null };
           if (a.discordWebhook && !/^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api(?:\/v\d{1,2})?\/webhooks\/\d{17,20}\/[\w-]{50,100}\/?$/.test(a.discordWebhook)) throw new Error("That isn't a Discord webhook link.");
@@ -650,6 +656,13 @@
         case 'friendServers': await wait(600); if (params.has('friendsfail')) throw new Error('HTTP 500'); return { asked: 2, friends: params.has('nofriends') ? [] : [
           { userId: 5140000101, name: LONG ? 'kiwi_runner_kiwi_runner_kiwi' : 'kiwi_runner', displayName: LONG ? 'Kiwi The Fastest Runner In The World' : 'Kiwi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 1' : LONG ? 'Sunny_The_Builder_Of_Many_Worlds_2010' : tx('Main', 'Tài khoản chính') },
           { userId: 5140000102, name: 'mochi_cat', displayName: 'Mochi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 2' : 'Farm 1' }] };
+        // ?noprivate=1: no private servers; ?privatefail=1: Roblox didn't answer. One server only Farm 1 can join.
+        case 'privateServers': await wait(500); if (params.has('privatefail')) return { asked: 2, failed: true, servers: [] };
+          return { asked: 2, failed: false, servers: params.has('noprivate') ? [] : [
+            { id: 901, name: tx('Farm server', 'Server farm'), owner: hideNames ? 'Account 1' : 'Sunny', ownerName: 'sunny_builds', accessCode: '11111111-2222-4333-8444-555555555555', playing: 3, maxPlayers: 12,
+              via: hideNames ? ['Account 1', 'Account 2'] : [tx('Main', 'Tài khoản chính'), 'Farm 1'], viaIds: [id(4), id(2)] },
+            { id: 902, name: tx("Kiwi's base", 'Căn cứ của Kiwi'), owner: 'Kiwi', ownerName: 'kiwi_runner', accessCode: '66666666-7777-4888-8999-000000000000', playing: 12, maxPlayers: 12,
+              via: hideNames ? ['Account 2'] : ['Farm 1'], viaIds: [id(2)] }] };
         case 'pickLauncher': settings = { ...settings, customLauncher: 'Froststrap', launchVia: 'custom' }; push(); return null;
         case 'vaultImportPick':
           await wait(300);
@@ -802,6 +815,8 @@
         case 'forgetPlayer': settings = { ...settings, recentPlayers: settings.recentPlayers.filter(n => n.toLowerCase() !== String(a.name).toLowerCase()) }; push(); return null;
         case 'joinServer':
           await wait(300);
+          // Like the app: the follow box's choice is remembered for next time.
+          if (typeof a.follow === 'boolean') { settings = { ...settings, followJoinedPlayer: a.follow }; push(); }
           { const ask = launchAsks(a.ids.length, a.force); if (ask) return ask; }
           return { launched: a.ids.length, errors: [], cancelled: false };
         case 'activity': {

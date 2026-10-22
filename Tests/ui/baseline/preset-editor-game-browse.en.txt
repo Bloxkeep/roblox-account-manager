@@ -242,6 +242,7 @@ html [data-theme="dark" lang="en"]
                 option [value="ping"] "Lowest ping"
                 option [value="random"] "Random"
                 option [value="job"] "Fixed server (Job ID)"
+                option [value="follow"] "A player’s server"
             label "Wait between accounts (s)"
               input.field [id="ps-delay" type="number" placeholder="Default: 8" min="0" max="120" value=""]
           div.preset-accs "Accounts"
@@ -628,6 +629,7 @@ html [data-theme="dark" lang="en"]
                 option [value="ping"] "Lowest ping"
                 option [value="random"] "Random"
                 option [value="job"] "Fixed server (Job ID)"
+                option [value="follow"] "A player’s server"
             label "Wait between accounts (s)"
               input.field [id="ps-delay" type="number" placeholder="Default: 8" min="0" max="120" value=""]
           div.preset-accs "Accounts"

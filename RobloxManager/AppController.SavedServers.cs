@@ -38,7 +38,7 @@ public sealed partial class AppController
         {
             if (!GameTarget.TryParse(link, "", out var target, out string error))
                 throw new UserError(error);
-            if (target!.LinkCode is null && target.ShareCode is null)
+            if (!target!.IsPrivate && target.ShareCode is null)
                 throw new UserError(L.T("That link isn't a private server's. Paste the private server's link, or enter the code the game asks for."));
             if (target.PlaceId > 0)
                 placeId = target.PlaceId;

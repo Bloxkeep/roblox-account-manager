@@ -221,6 +221,7 @@ html [data-theme="dark" lang="vi"]
                 option [value="ping"] "Ping thấp nhất"
                 option [value="random"] "Ngẫu nhiên"
                 option [value="job"] "Server cố định (Job ID)"
+                option [value="follow"] "Server của một người chơi"
             label "Chờ giữa các tài khoản (giây)"
               input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value=""]
           div.preset-accs "Tài khoản"
@@ -609,6 +610,7 @@ html [data-theme="dark" lang="vi"]
                 option [value="ping"] "Ping thấp nhất"
                 option [value="random"] "Ngẫu nhiên"
                 option [value="job"] "Server cố định (Job ID)"
+                option [value="follow"] "Server của một người chơi"
             label "Chờ giữa các tài khoản (giây)"
               input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value=""]
           div.preset-accs "Tài khoản"

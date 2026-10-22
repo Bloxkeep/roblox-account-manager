@@ -1306,6 +1306,76 @@ public static class RobloxApi
         return null;
     }
 
+    /// <summary>
+    /// A private server the account can join: one it owns or was invited to. Its access code is what the website's Join
+    /// button sends (PlaceLauncher RequestPrivateGame&amp;accessCode=…); JobId is its running instance, if any.
+    /// </summary>
+    public sealed record PrivateServer(long Id, string Name, long OwnerId, string OwnerName, string OwnerDisplayName,
+        string AccessCode, string? JobId, int Playing, int MaxPlayers);
+
+    /// <summary>
+    /// The game's private servers this account can join, as the Servers tab of its Roblox page lists them: games'
+    /// GET /v1/games/{placeId}/private-servers with the account's cookie (Roblox's API reference, creator-docs
+    /// openapi.json: data[] of id, name, vipServerId, accessCode, owner, playing, maxPlayers; nextPageCursor, asked
+    /// again as exclusiveStartKeyCursor). At most three pages. Too many requests (429) and a lost sign-in throw.
+    /// </summary>
+    public static async Task<List<PrivateServer>> GetPrivateServersAsync(string cookie, long placeId, CancellationToken ct = default)
+    {
+        var list = new List<PrivateServer>();
+        string? cursor = null;
+        for (int page = 0; page < 3; page++)
+        {
+            string url = $"https://games.roblox.com/v1/games/{placeId.ToString(CultureInfo.InvariantCulture)}/private-servers"
+                + (cursor is null ? "" : "?exclusiveStartKeyCursor=" + Uri.EscapeDataString(cursor));
+            using var req = Request(HttpMethod.Get, url, cookie);
+            using var res = await Http.SendAsync(req, ct);
+            if (res.StatusCode == HttpStatusCode.TooManyRequests)
+                throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+                throw new RobloxApiException(L.T("This account was signed out — sign in to it again."), cookieInvalid: true);
+            if (!res.IsSuccessStatusCode)
+                throw new RobloxApiException(L.F("Roblox didn't answer (HTTP {0}).", (int)res.StatusCode), serverError: (int)res.StatusCode >= 500);
+            list.AddRange(ReadPrivateServers(await res.Content.ReadAsStringAsync(ct), out cursor));
+            if (string.IsNullOrEmpty(cursor))
+                break;
+        }
+        return list;
+    }
+
+    /// <summary>The servers in one page of that answer (those without an access code can't be joined and are left out).</summary>
+    internal static List<PrivateServer> ReadPrivateServers(string body, out string? next)
+    {
+        next = null;
+        var list = new List<PrivateServer>();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return list;
+            if (root.TryGetProperty("nextPageCursor", out var n) && n.ValueKind == JsonValueKind.String)
+                next = n.GetString();
+            if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+                return list;
+            static string Text(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+            static long Number(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out long x) ? x : 0;
+            foreach (var s in data.EnumerateArray())
+            {
+                if (s.ValueKind != JsonValueKind.Object || Text(s, "accessCode") is not { Length: > 0 } code)
+                    continue;
+                var owner = s.TryGetProperty("owner", out var o) && o.ValueKind == JsonValueKind.Object ? o : default;
+                bool hasOwner = owner.ValueKind == JsonValueKind.Object;
+                list.Add(new PrivateServer(Number(s, "vipServerId"), Text(s, "name"),
+                    hasOwner ? Number(owner, "id") : 0, hasOwner ? Text(owner, "name") : "", hasOwner ? Text(owner, "displayName") : "",
+                    code, Text(s, "id") is { Length: > 0 } job ? job : null, (int)Number(s, "playing"), (int)Number(s, "maxPlayers")));
+            }
+        }
+        catch (JsonException)
+        {
+        }
+        return list;
+    }
+
     /// <summary>Turns a "roblox.com/share?code=…&amp;type=Server" link into the place and private-server link code.</summary>
     public static async Task<(long PlaceId, string LinkCode)> ResolvePrivateServerShareAsync(string cookie, string shareCode, CancellationToken ct = default)
     {

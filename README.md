@@ -176,12 +176,12 @@ The dot on an account's picture shows where it is:
 
 #### The account menu
 
-Open it with an account's ⋯ button or a right-click. If the account isn't selected, it becomes the only selection; if it's part of a selection, the menu acts on all of them, except the items that need exactly one account, which are greyed out while several are selected.
+Open it with an account's ⋯ button or a right-click. If the account isn't selected, the menu acts on that account alone and leaves the selection as it is; if it's part of a selection, the menu acts on all of them, except the items that need exactly one account, which are greyed out while several are selected.
 
 <img src="docs/screenshots/account-menu.png" width="800" alt="An account's ⋯ menu open, with Play, Close Roblox, Edit, Check sign-in, Auto-rejoin, Open website, the Copy items and Delete">
 
 - **Play** / **Play (N accounts)** (`Enter`): opens the game in the game box, or Roblox's home screen when the box is empty, in launch order.
-- **Open Roblox (no game)**: Roblox's home screen, one window per account.
+- **Open Roblox only**: Roblox's home screen, one window per account.
 - **Close Roblox** closes the window normally. **Force close** ends a frozen window at once, and anything not saved in the game is lost. Both are greyed out unless a selected account is open on this PC.
 - **Edit…** (`F2`) and **Check sign-in**: see above. **Edit…** needs exactly one account.
 - **Join this server**: puts this account's game and server in the game bar. Select other accounts and press **Play**, and they land in the same server. One account, in a server Bloxkeep knows.
@@ -210,20 +210,21 @@ More in the user guide: [Open website](docs/guide/playing.md#open-website).
 ### Choosing a game and server
 
 - The game box (`Ctrl+L` or `/`) takes a game name, a Place ID, a `roblox.com/games/…` link (private-server links too), a server share link, or a `roblox://` link. When you type a name, pick the game from the list that appears; a name you typed but didn't pick doesn't count.
-- Under the box: the game's name, creator, how many are playing, and a **Servers** button. A private server, a share link and a Job ID each show a label. Up to three recent games sit there as shortcuts.
+- The bar goes in three numbered steps: **1 Game**, **2 Server** (optional) and **3 Play**, every button with its name on it. Until Bloxkeep has opened an account once, a **Get started** line over the list shows the steps and ticks them off.
+- Under the box: the game's name, creator and how many are playing. A private server, a share link and a Job ID each show a label. Up to three recent games sit there as shortcuts.
 - The game picker (click the picture, or the empty box) has **Recent**, **Pinned**, **Roblox favorites** and **Popular** tabs. Click ☆ to pin a game.
-- **Job ID (optional)**: joins one exact server, so several accounts land together. It is cleared when you change game.
-- **Servers** lists public servers with room: sort by **Most players**, **Fewest players**, **Lowest ping**, **Best FPS**; filter **Room for N** (when several accounts are selected); or click **Random server**. **Use** puts that server's Job ID in the bar; a full server is greyed out. **Friends in this game** lists friends of your accounts to join, when their privacy settings allow it. The ping shown is the average of the players in that server, not yours.
-- **Join a player…** (the button next to the Job ID box): type a player's username or user ID (a profile link works too) and the chosen accounts join the server that player is in. Bloxkeep asks Roblox with the accounts you chose. When it can't (no such user, the player is offline, not in a game, or their privacy settings hide the server), the dialog says which, and Bloxkeep never friends or follows anyone to get around that.
+- **Job ID** (step 2): joins one exact server, so several accounts land together. It is cleared when you change game.
+- **Browse servers** lists public servers with room: sort by **Most players**, **Fewest players**, **Lowest ping**, **Best FPS**; filter **Room for N** (when several accounts are selected); or click **Random server**. **Use** puts that server's Job ID in the bar; a full server is greyed out. **Your private servers** lists the game's private servers your accounts own or were invited to (and which of them can join each), to join with **Use server**. **Friends in this game** lists friends of your accounts to join, when their privacy settings allow it. The ping shown is the average of the players in that server, not yours.
+- **Join a player…** (under the Job ID box): type a player's username or user ID (a profile link works too) and the chosen accounts join the server that player is in. Bloxkeep asks Roblox with the accounts you chose. When it can't (no such user, the player is offline, not in a game, or their privacy settings hide the server), the dialog says which, and Bloxkeep never friends or follows anyone to get around that. With **When these accounts rejoin, look this player up again and join their server** ticked (it stays as you left it), each auto-rejoin of those accounts goes to the server the player is in by then, even in another game. While the player can't be joined (offline, not in a game, a hidden or full server, a game that banned the account), the rejoin waits and looks again every minute, and says why once.
 - On an account that's playing, **Join this server** sends the other accounts into that same server.
 
 <img src="docs/screenshots/game-picker.png" width="800" alt="The game picker with Recent, Pinned, Roblox favorites and Popular tabs">
 
-<img src="docs/screenshots/servers.png" width="700" alt="A game's server list, with friends playing and a filter for room for 2 accounts">
+<img src="docs/screenshots/servers.png" width="700" alt="A game's server list: your private servers, friends playing, and a filter for room for 2 accounts">
 
 **What Play does**
 
-- The button reads **Select accounts** (greyed out) until you choose some, **Play** and the number of accounts with a game in the box, or **Open Roblox** with the box empty: each chosen account opens Roblox on its home screen. Next to it: **Open Roblox without joining a game**, and **Close**, which closes Roblox for the selected accounts.
+- The button reads **Select accounts first** (greyed out) until you choose some, **Play** and the number of accounts with a game in the box, or **Open Roblox** with the box empty: each chosen account opens Roblox on its home screen. Under it: **Presets**, **Close** (closes Roblox for the selected accounts) and **Windows**, with **Open Roblox only** and **Arrange Roblox windows**.
 - Accounts open one after another, with **Wait between accounts** in between (8 seconds by default; a preset can have its own). While they open, **Play** becomes **Stop**.
 - An account already in this game is left as it is. One in another game is asked about first, then closed and opened again in the new game. Banned and Roblox VNG accounts are skipped, with a line in the result, and **Some accounts didn't open** says why for any that failed.
 - Before opening, Bloxkeep asks Roblox whether each account can play the game, as Roblox's own app does. If Roblox says one can't (an age check, its region, a restricted account, a game to buy, a private or friends-only game…), you're told why and asked whether to open it anyway. With no answer within 6 seconds, Play goes on as usual.
@@ -232,7 +233,7 @@ More in the user guide: [Playing](docs/guide/playing.md).
 
 ### Presets
 
-A preset saves a name, a list of accounts (in order), a game, how to pick the server, and the wait between accounts. Leave the game empty to open only the **Roblox home screen**. The server can be **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random** or a **Fixed server (Job ID)**. It is picked when the preset runs, among servers with room for its accounts; if none has room, Roblox picks.
+A preset saves a name, a list of accounts (in order), a game, how to pick the server, and the wait between accounts. Leave the game empty to open only the **Roblox home screen**. The server can be **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random**, a **Fixed server (Job ID)**, or **A player's server**: the accounts join the server that player is in (no game needed), and their rejoins look the player up again. It is picked when the preset runs, among servers with room for its accounts; if none has room, Roblox picks.
 
 Make one in the **Presets** tab (**New preset**), with **Save as preset…** in the presets button of the bottom bar (it starts from the accounts, game and Job ID you have chosen), or from `Ctrl+K`. Each row shows its game, a line about what it does, "Next: Today 20:00" or "Last run 2 h ago", and the accounts' avatars. You can edit, **Duplicate**, delete (asks first), reorder and **Run** them; the presets button in the bottom bar and `Ctrl+K` run them too. While a preset has windows open, its row says how many and **Run** becomes **Close**, which closes those windows (and no others). Up to 50 presets.
 
@@ -381,7 +382,7 @@ Choose in **Settings › Launching › Open Roblox with**. Bloxkeep finds what's
 - **Game monitor** (a sidebar tab): live pictures of every Roblox window with the account, game, RAM and PID. Click a picture to bring that window to the front; right-click for **Show**, **Close Roblox** and **Copy PID**. A minimised window has no live picture. Windows draws the pictures itself (like the previews when you hover the taskbar), so they cost next to nothing.
 - **Mini window**: a small window that stays on top, to watch the accounts that are playing without the main window: game, RAM and PID for each, with **Show** and **Close**, plus **Close all** and **Open Bloxkeep**. Open it from the sidebar, the tray menu or `Ctrl+K`; it keeps working while the main window is in the tray. `Esc` hides it, and it remembers its place.
 - **When a Roblox window opens** (in **Settings › Launching**): **As Roblox sizes it**, **Maximise it** (still a window, so the windows don't fight over Roblox's one fullscreen setting), or **Tile them side by side** (needs Multi-Roblox). A preset can tile its own windows whatever this says.
-- **Arrange** in the game bar, **Arrange Roblox windows** in the ⋯ menu above the list and **Arranging windows** (in **Settings › Launching**): **Fill the screen**, or **Small tiles** / **Medium tiles** / **Large tiles** laid out from the top-left, leaving the rest of the screen free. The smaller a Roblox window, the less work for the graphics card. With several screens you pick one first.
+- **Windows › Arrange Roblox windows** in the game bar, **Arrange Roblox windows** in the ⋯ menu above the list and **Arranging windows** (in **Settings › Launching**): **Fill the screen**, or **Small tiles** / **Medium tiles** / **Large tiles** laid out from the top-left, leaving the rest of the screen free. The smaller a Roblox window, the less work for the graphics card. With several screens you pick one first.
 - **Low RAM warning** (on by default): warns before you open more accounts than the free RAM can take, and when the PC uses more than 92 % of its RAM. When RAM is free but Windows' virtual memory is almost full, it says that instead, before **Play** and while you play, because a Roblox window then crashes as it opens ([what to do](#q-a-roblox-window-crashes-as-it-opens-memory-dump-captured-or-bloxstraps-roblox-failed-to-launch)).
 - **Save RAM on background windows** (off by default): the windows you aren't playing in get a low memory priority, so Windows takes RAM from them first, and when RAM runs low they are asked to give some back. Roblox may refuse; then Bloxkeep leaves it.
 - **Fast cores for the window you play** (off by default): Roblox windows in the background run in Windows' efficiency mode (power saving, lower priority, mostly on the CPU's efficiency cores), and the window you're playing runs at full speed (Windows' own settings; nothing in Roblox is changed).

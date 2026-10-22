@@ -14,7 +14,7 @@ const AVATARS_SHOWN = 4;
 
 type Schedule = { enabled: boolean; time: string; date?: string; days?: number[] };
 export type Preset = {
-  id: string; name: string; accountIds: string[]; placeInput: string; gameName?: string; server: string;
+  id: string; name: string; accountIds: string[]; placeInput: string; gameName?: string; server: string; followPlayer?: string;
   delaySeconds: number | null; schedule: Schedule | null; nextRun?: string; lastRun?: string; running?: number; iconUrl?: string;
 };
 type Account = { id: string; label: string };
@@ -164,12 +164,12 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
 }) {
   const host = useHost();
   const { t, tn, call, busy, toast } = host;
-  const game = p.placeInput ? p.gameName || p.placeInput : t('ps.noGame');
+  const game = p.server === 'follow' ? t('ps.following', { name: p.followPlayer || '' }) : p.placeInput ? p.gameName || p.placeInput : t('ps.noGame');
   const sc = p.schedule;
   const delay = p.delaySeconds ?? null;
   // What it does, in one plain line: server · wait · schedule · options set differently from Settings.
   const summary = [
-    p.placeInput ? t(`ps.srv.${p.server}`) : '',
+    p.placeInput && p.server !== 'follow' ? t(`ps.srv.${p.server}`) : '',
     delay === null ? t('pv.delayDefault', { n: delayDefault }) : delay === 0 ? t('pv.delay0') : t('pv.delayN', { n: delay }),
     !sc?.time ? t('pv.noSchedule') : !sc.enabled ? `${t('pv.schOff')} · ${host.scheduleText(sc)}` : host.scheduleText(sc),
     host.presetOptionsText(p),

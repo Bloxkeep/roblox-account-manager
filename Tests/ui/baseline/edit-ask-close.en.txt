@@ -345,25 +345,16 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
         div.dock
-          button.game-thumb [id="game-thumb" title="Choose a game"]
-            span.gph
-              svg.i #sy1lqp
-          div.dock-mid
-            div.dock-inputs
-              label.grow.inwrap [title="Place ID, game link or private server link (Ctrl+L)"]
-                svg.i #1u22jvi
-                input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
-              label.inwrap.job [title="Job ID of a specific server, to put several accounts in the same server."]
-                svg.i #ej9lod
-                input [id="job" placeholder="Job ID (optional)" maxlength="60" aria-label="Job ID (optional)" value=""]
-              button.dock-join [title="Join a player: the selected accounts open into the server someone is in" aria-label="Join a player…" disabled]
-                svg.i #145pp0l
+          div.dock-game.dock-step
+            div.step-cap
+              b "1"
+              span "Game"
+            label.inwrap [title="Place ID, game link or private server link (Ctrl+L)"]
+              svg.i #1u22jvi
+              input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
             div.dock-info [id="dock-info" aria-live="polite"]
               span.gname [title="Blox Fruits"] "Blox Fruits"
               span.players "412,873 playing"
-              button.srv-open
-                svg.i #ej9lod
-                span "Servers"
               button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
                 svg.i #1c3gvph
               div.recents
@@ -373,18 +364,38 @@ html [data-theme="dark" lang="en"]
                     span "[🎃] Adopt Me!"
                   button.rm [title="Remove from recent" aria-label="Remove from recent"]
                     svg.i #1tyq039
-          div.dock-actions [id="dock-actions"]
-            button.btn.ghost [title="Arrange all Roblox windows in a grid" aria-label="Arrange all Roblox windows in a grid"]
-              svg.i #1e3syqr
-            button.btn.ghost [title="Open Roblox without joining a game" aria-label="Open Roblox without joining a game" disabled]
-              svg.i #1y8kmj1
-            button.btn.ghost [title="Close Roblox for the selected accounts" aria-label="Close Roblox for the selected accounts" disabled]
-              svg.i #16z0s1r
-            button.btn.ghost [title="Presets" aria-haspopup="menu" aria-label="Presets"]
-              svg.i #1pvni8o
+          div.dock-server.dock-step
+            div.step-cap
+              b "2"
+              span "Server"
+              small "optional"
+            label.inwrap.job [title="Job ID of a specific server, to put several accounts in the same server."]
+              svg.i #ej9lod
+              input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
+            div.dock-sub
+              button.sub-btn [title="Pick one of this game’s servers: by players, by ping, or where your friends are"]
+                svg.i #uj30io
+                span "Browse servers"
+              button.sub-btn [title="Join a player: the selected accounts open into the server someone is in"]
+                svg.i #145pp0l
+                span "Join a player…"
+          div.dock-go.dock-step [id="dock-actions"]
+            div.step-cap
+              b "3"
+              span "Play"
             button.play-btn [disabled]
               svg.i #1ewcuky
-              span "Select accounts"
+              span "Select accounts first"
+            div.dock-sub
+              button.sub-btn [title="Presets" aria-haspopup="menu"]
+                svg.i #1pvni8o
+                span "Presets"
+              button.sub-btn [title="Close Roblox for the selected accounts" disabled]
+                svg.i #16z0s1r
+                span "Close"
+              button.sub-btn [title="Open Roblox only, or arrange the windows" aria-haspopup="menu"]
+                svg.i #1e3syqr
+                span "Windows"
 #layer
   div.at-top.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]

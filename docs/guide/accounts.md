@@ -73,14 +73,14 @@ If the search or a filter hides some selected accounts, the header says how many
 
 ## The account menu
 
-Open it with **⋯ More** on a card, or right-click the account. If the account isn't selected it becomes the only selection; if it is in a selection, the menu acts on every selected account.
+Open it with **⋯ More** on a card, or right-click the account. If the account isn't selected, the menu acts on that account alone and leaves your selection as it is; if it is in a selection, the menu acts on every selected account.
 
 <img src="../screenshots/account-menu.png" width="760" alt="The account menu open on a card: Play, Open Roblox, Close Roblox, Force close, Edit, Check sign-in, Join this server, Auto-rejoin, Roblox profile, Open website, the Copy items and Delete">
 
 | Item | What it does | Unavailable when |
 |---|---|---|
 | **Play** / **Play (N accounts)** (Enter) | Opens the game in the game box, or Roblox's home screen if it is empty. | — |
-| **Open Roblox (no game)** | Opens Roblox on its home screen, one window per account. | — |
+| **Open Roblox only** | Opens Roblox on its home screen, one window per account. | — |
 | **Close Roblox** | Closes the Roblox window normally. | None of the selected accounts is open here. |
 | **Force close** | Ends Roblox at once, for a frozen window. Unsaved game progress is lost. | Same as **Close Roblox**. |
 | **Edit…** (F2) | Nickname, group, password, authenticator key, note. | Several selected. |

@@ -15,6 +15,8 @@ export interface JoinPlayerApi {
   say(text: string, tone?: Tone, opts?: { spin?: boolean; bold?: string }): void;
   /** Back to the name box, its text selected when asked (to type another name over it). */
   focusName(select?: boolean): void;
+  /** The box "follow this player when the accounts rejoin": ticked, their rejoins go wherever the player is by then. */
+  follow(): boolean;
 }
 
 export function JoinPlayer({ count, submit, api }: { count: number; submit: () => void; api: Ref<JoinPlayerApi> }) {
@@ -25,10 +27,15 @@ export function JoinPlayer({ count, submit, api }: { count: number; submit: () =
   const [msg, setMsg] = useState<Msg>({ text: '', tone: 'info' });
   const current = useRef('');
   const box = useRef<HTMLInputElement>(null);
+  // Remembered by the app (FollowJoinedPlayer, on until unticked) once a join goes ahead with it.
+  const [follow, setFollow] = useState<boolean>(useAppState().settings?.followJoinedPlayer !== false);
+  const following = useRef(follow);
+  following.current = follow;
   useImperativeHandle(api, () => ({
     name: () => current.current,
     say: (text, tone = 'info', opts = {}) => setMsg({ text, tone, ...opts }),
     focusName: select => { box.current?.focus(); if (select) box.current?.select(); },
+    follow: () => following.current,
   }), []);
   const write = (v: string) => { current.current = v; setName(v); };
 
@@ -46,6 +53,8 @@ export function JoinPlayer({ count, submit, api }: { count: number; submit: () =
             onClick={async () => { await call('forgetPlayer', { name: n }); box.current?.focus(); }}><Icon name="x" /></button>
         </span>)}
       </div>
+      <label className="dont-ask jp-follow"><input type="checkbox" id="jp-follow" checked={follow} onChange={e => setFollow(e.target.checked)} />
+        <span>{t('jp.follow')}</span></label>
       <div className={`jp-msg ${msg.tone}`} id="jp-msg" role="status" aria-live="polite" hidden={!msg.text}>
         {msg.spin ? <span className="spin" /> : null}
         {msg.bold !== undefined ? msg.text.split('\u0000').map((part, i) => <Fragment key={i}>{i ? <b>{msg.bold}</b> : null}{part}</Fragment>) : msg.text}</div>

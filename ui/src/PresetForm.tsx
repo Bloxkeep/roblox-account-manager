@@ -7,14 +7,14 @@ import { useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, t
 import { Icon, useAppState, useHost } from './host';
 import { OrderList, type OrderAccount, type OrderListApi } from './OrderList';
 
-const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'job'];
+const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'job', 'follow'];
 const RESTART_HOURS = [0, 2, 4, 6, 12]; // the app's own choices (RestartChoices)
 const TABS = ['recent', 'pinned', 'favorites', 'popular'];
 const WEEK = [1, 2, 3, 4, 5, 6, 0]; // Monday first
 
 type Schedule = { enabled?: boolean; time?: string; days?: number[]; date?: string; stop?: string; stopHours?: number; stopTime?: string };
 export type PresetBase = {
-  id?: string; name: string; placeInput: string; server: string; jobId: string; delaySeconds: number | null;
+  id?: string; name: string; placeInput: string; server: string; jobId: string; followPlayer?: string; delaySeconds: number | null;
   schedule: Schedule | null; antiAfk: boolean | null; autoRejoin: boolean | null; profile: string; restartHours: number;
   arrange: boolean | null; discord: string | null;
 };
@@ -48,6 +48,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
   const [server, setServer] = useState(base.server);
   const [delay, setDelay] = useState(base.delaySeconds === null || base.delaySeconds === undefined ? '' : String(base.delaySeconds));
   const [job, setJob] = useState(base.jobId || '');
+  const [follow, setFollow] = useState(base.followPlayer || '');
   const [count, setCount] = useState(ticked.length);
   const order = useRef<OrderListApi>(null);
   const [afk, setAfk] = useState(tri(base.antiAfk));
@@ -70,7 +71,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
   const box = (key: string) => (el: HTMLElement | null) => { boxes.current[key] = el; };
   const form = useRef<HTMLDivElement>(null);
 
-  const snapshot = () => JSON.stringify([name, place, server, delay, job, order.current?.ids(), order.current?.ticked(), afk, rejoin, profile,
+  const snapshot = () => JSON.stringify([name, place, server, delay, job, follow, order.current?.ids(), order.current?.ticked(), afk, rejoin, profile,
     restart, arrange, dcMode, dcLink, schOn, time, mode, [...days].sort(), date, stop, hours, stopTime]);
   const initial = useRef('');
   useEffect(() => { initial.current = snapshot(); }, []); // once, as it opened
@@ -90,7 +91,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
     const d = delay.trim();
     return {
       args: {
-        id: base.id || '', name: name.trim(), placeInput: place.trim(), server, jobId: job.trim(),
+        id: base.id || '', name: name.trim(), placeInput: place.trim(), server, jobId: job.trim(), followPlayer: follow.trim(),
         ids: order.current!.ticked(), // ticked order = launch order
         delaySeconds: d === '' ? null : Math.min(120, Math.max(0, Math.round(+d) || 0)),
         antiAfk: fromTri(afk), autoRejoin: fromTri(rejoin), profile, restartHours: +restart || 0, arrange: fromTri(arrange),
@@ -110,6 +111,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
     return !name.trim() ? boxes.current.name
       : !order.current!.ticked().length ? firstTick
       : server === 'job' && !job.trim() ? boxes.current.job
+      : server === 'follow' && !follow.trim() ? boxes.current.follow
       : schOn && !time.trim() ? boxes.current.time
       : schOn && mode !== 'once' && !days.length ? firstDay
       : schOn && mode === 'once' && !date.trim() ? boxes.current.date : null;
@@ -121,7 +123,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
   }), []);
 
   // One short note under the options, only for a choice that needs explaining (a line each).
-  const optNote = [profile === 'afk' ? t('ps.opt.lightNote') : '', +restart ? t(place.trim() ? 'ps.opt.restartNote' : 'ps.opt.restartNoGame') : '']
+  const optNote = [profile === 'afk' ? t('ps.opt.lightNote') : '', +restart ? t(place.trim() || server === 'follow' ? 'ps.opt.restartNote' : 'ps.opt.restartNoGame') : '']
     .filter(Boolean).join('\n');
   const followSet = (on: boolean) => t('ps.opt.followSet', { state: t(on ? 'ps.opt.stOn' : 'ps.opt.stOff') });
   const triSelect = (id: string, value: string, set: (v: string) => void, follow: string) =>
@@ -147,6 +149,10 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
       </div>
       <label id="ps-job-row" hidden={server !== 'job'}>{t('ps.job')}<input className="field" id="ps-job" ref={box('job')} maxLength={60} spellCheck={false}
         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value={job} onChange={e => setJob(e.target.value)} /></label>
+      <label id="ps-follow-row" hidden={server !== 'follow'}>{t('ps.follow')}<input className="field" id="ps-follow" ref={box('follow')} maxLength={100}
+        spellCheck={false} autoComplete="off" list="ps-follow-recent" placeholder={t('jp.placeholder')} value={follow} onChange={e => setFollow(e.target.value)} />
+        <datalist id="ps-follow-recent">{(app.settings?.recentPlayers || []).map((n: string) => <option key={n} value={n} />)}</datalist>
+        <small className="muted">{t('ps.followNote')}</small></label>
       <div className="preset-accs">{t('ps.accounts')} <span className="muted" id="ps-count">({count})</span><small>{t('ps.order')}</small></div>
       {/* Accounts deleted since the preset was saved aren't in the list: said so, rather than dropped without a word. */}
       {gone ? <p className="ps-gone"><Icon name="info" /><span>{tn('ps.gone', gone)}</span></p> : null}

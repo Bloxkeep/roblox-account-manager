@@ -1,10 +1,31 @@
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace RobloxManager;
 
+/// <summary>A Roblox player an account follows: its rejoins go to the server that player is in by then.</summary>
+public sealed record FollowedPlayer(long UserId, string Name);
+
 /// <summary>Where to send an account: a place, optionally a specific server (job) or a private server.</summary>
 public sealed record GameTarget(long PlaceId, string? JobId = null, string? LinkCode = null, string? ShareCode = null)
 {
+    /// <summary>
+    /// The player this account follows ("Join a player…" with its box ticked, or a preset that follows one): kept through
+    /// rejoins and restarts, and saved with the open and waiting sessions, so each rejoin looks the player up again and
+    /// goes to their server of the moment instead of this place.
+    /// </summary>
+    public FollowedPlayer? Follow { get; init; }
+
+    /// <summary>
+    /// A private server's access code, from the list of private servers an account can join (Browse servers): Roblox
+    /// lets in only accounts that own it or were invited, unlike a link code, which lets in anyone with the link.
+    /// </summary>
+    public string? AccessCode { get; init; }
+
+    /// <summary>A private server, by its link or by its access code.</summary>
+    [JsonIgnore]
+    public bool IsPrivate => LinkCode is not null || AccessCode is not null;
+
     static readonly Regex GamePath = new(@"/games/(\d+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     // A pair also right after "roblox://" or at the start ("placeId=…&gameInstanceId=…"), not only after ? or &.
     static readonly Regex QueryPair = new(@"(?:[?&]|//|^)([^=&#\s/?]+)=([^&#\s]*)", RegexOptions.CultureInvariant);
@@ -12,7 +33,8 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
     /// <summary>
     /// Accepts a place id, a roblox.com/games/… link (with privateServerLinkCode or gameInstanceId),
     /// a roblox.com/share?code=…&amp;type=Server link (also as the roblox://navigation/share_links form, or wrapped
-    /// in a ro.blox.com link), or a roblox:// deep link with placeId (after ? or directly after the scheme).
+    /// in a ro.blox.com link), or a roblox:// deep link with placeId (after ? or directly after the scheme), also with
+    /// accessCode (what Browse servers puts in the game box for one of your private servers).
     /// </summary>
     public static bool TryParse(string placeInput, string jobInput, out GameTarget? target, out string error) =>
         TryParse(placeInput, jobInput, out target, out error, depth: 0);
@@ -30,7 +52,7 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
         }
 
         long placeId = 0;
-        string? linkCode = null, shareCode = null, jobId = null;
+        string? linkCode = null, shareCode = null, jobId = null, accessCode = null;
         if (!long.TryParse(input, out placeId))
         {
             // Words, not a link (a game typed by name and not picked from the search): say what to do instead.
@@ -69,6 +91,15 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
                 linkCode = lc;
             if (query.TryGetValue("gameInstanceId", out var gi) || query.TryGetValue("jobId", out gi))
                 jobId = gi;
+            if (query.TryGetValue("accessCode", out var ac) && ac.Trim().Length > 0)
+            {
+                if (!Guid.TryParse(ac.Trim(), out var access))
+                {
+                    error = L.T("Invalid private server access code.");
+                    return false;
+                }
+                accessCode = access.ToString("D");
+            }
 
             if (placeId <= 0 && shareCode is null)
             {
@@ -94,7 +125,7 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
             jobId = guid.ToString("D"); // Guid also accepts {…} and undashed forms, which Roblox and the log comparison don't
         }
 
-        target = new GameTarget(placeId, NullIfEmpty(jobId), NullIfEmpty(linkCode), shareCode);
+        target = new GameTarget(placeId, NullIfEmpty(jobId), NullIfEmpty(linkCode), shareCode) { AccessCode = accessCode };
         return true;
     }
 

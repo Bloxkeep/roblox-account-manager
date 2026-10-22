@@ -128,9 +128,13 @@ const BloxkeepUI = {
     const unmount = mount(el, host, <PresetForm {...opts} api={form} />);
     return { unmount, form: form.current! };
   },
-  /** A game's servers (and the selected accounts' friends in it) into the Servers dialog's body; chosen picks one. */
-  servers(el: HTMLElement, host: Host, placeId: number, ids: string[], chosen: (placeId: number, jobId: string) => void) {
-    return mount(el, host, <Servers placeId={placeId} ids={ids} chosen={chosen} />);
+  /**
+   * A game's servers (your private servers, the selected accounts' friends in it, its public servers) into the Servers
+   * dialog's body; chosen picks a server by its job, chosenPrivate one of your private servers by its access code.
+   */
+  servers(el: HTMLElement, host: Host, placeId: number, ids: string[], chosen: (placeId: number, jobId: string) => void,
+    chosenPrivate: (placeId: number, accessCode: string) => void) {
+    return mount(el, host, <Servers placeId={placeId} ids={ids} chosen={chosen} chosenPrivate={chosenPrivate} />);
   },
   /** The sign-in screen (username and password, the other ways around it) into its dialog's body; way opens another way. */
   passwordLogin(el: HTMLElement, host: Host, forRealm: string | null, way: (way: string, realm: string) => void) {

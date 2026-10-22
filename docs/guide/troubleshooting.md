@@ -48,9 +48,10 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 
 | Greyed out | Why |
 |---|---|
-| **Play** in the game bar ("Select accounts") | No account is selected. |
+| **Play** in the game bar ("Select accounts first") | No account is selected. |
 | **Play** on a card | It is launching. |
-| **Open Roblox**, **Join a player…** | No account is selected. |
+| **Open Roblox** | No account is selected. |
+| **Browse servers** | No game is in the game box yet, or it holds a private server. |
 | **Close** in the game bar, **Close Roblox**, **Force close** | None of the selected accounts is open on this PC. |
 | **Edit…**, **Join this server**, **Roblox profile**, **Open website**, the **Copy** items | Several accounts are selected. **Join this server** also needs a known server; **Open website** isn't available for Roblox VNG. |
 | **Run** on a preset | It has no accounts left, or another launch is running. |

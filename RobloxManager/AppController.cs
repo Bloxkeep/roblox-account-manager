@@ -479,6 +479,7 @@ public sealed partial class AppController : IDisposable
         "gameLists" => GameListsAsync(),
         "servers" => ServersAsync(Long(a, "placeId"), Bool(a, "fewest"), OptStr(a, "cursor")),
         "friendServers" => FriendServersAsync(Long(a, "placeId"), Ids(a)),
+        "privateServers" => PrivateServersAsync(Long(a, "placeId"), Ids(a)),
         "pinGame" => Done(TogglePin(Long(a, "placeId"), Long(a, "universeId"), Str(a, "name"))),
         "saveServer" => Done(SaveServer(a)),
         "deleteServer" => Done(DeleteServer(Id(a))),
@@ -980,6 +981,7 @@ public sealed partial class AppController : IDisposable
         pinnedGames = s.PinnedGames.Select(SavedGameDto),
         savedServers = s.SavedServers.Select(SavedServerDto),
         s.RecentPlayers,
+        s.FollowJoinedPlayer,
         presets = s.Presets.Select(PresetDto),
         launchOrder = LaunchOrderDto(),
     };
@@ -1345,6 +1347,7 @@ public sealed partial class AppController : IDisposable
         _discordVault = null;
         _friendIds.Clear();
         _friendServers.Clear();
+        _privateServers.Clear(); // their access codes are the vault's accounts'
         _favoriteGames = _popularGames = null;
         _players.Clear();
         _avatarUrls.Clear();
@@ -2517,6 +2520,86 @@ public sealed partial class AppController : IDisposable
         }).ToList(),
     };
 
+    /// <summary>A private server found for this game, with the accounts that can join it (each asked with its own cookie).</summary>
+    sealed record PrivateFound(RobloxApi.PrivateServer Server, List<Guid> Via);
+    readonly Dictionary<(long PlaceId, string Viewers), (List<PrivateFound> Servers, int Asked, bool Failed, DateTime At)> _privateServers = new();
+
+    /// <summary>
+    /// The game's private servers your accounts can join (owned, or invited to), for Browse servers. Roblox answers each
+    /// account with its own list, so the selected accounts are asked (up to 6; with none selected, up to 3 others) and
+    /// each server says which of them can join it: Roblox lets in only those, whatever the others try.
+    /// </summary>
+    async Task<object?> PrivateServersAsync(long placeId, Guid[] selected)
+    {
+        var vault = RequireVault();
+        if (placeId <= 0)
+            throw new UserError(L.T("Invalid Place ID."));
+        var usable = vault.Data.Accounts
+            .Where(a => a.UserId > 0 && a.CookieValid != false && a.Cookie.Length > 0 && a.Realm == Realm.Global)
+            .ToList();
+        var viewers = usable.Where(a => selected.Contains(a.Id)).Take(6).ToList();
+        if (viewers.Count == 0)
+            viewers = usable.Take(3).ToList();
+        var key = (placeId, string.Join(",", viewers.Select(v => v.Id)));
+        if (_privateServers.TryGetValue(key, out var kept) && DateTime.UtcNow - kept.At < FriendServerLifetime)
+            return PrivateServersDto(kept.Servers, kept.Asked, kept.Failed);
+        var found = new Dictionary<string, PrivateFound>(StringComparer.OrdinalIgnoreCase);
+        int failed = 0;
+        await Task.WhenAll(viewers.Select(async viewer =>
+        {
+            try
+            {
+                foreach (var s in await RobloxApi.GetPrivateServersAsync(viewer.Cookie, placeId))
+                {
+                    lock (found)
+                    {
+                        if (found.TryGetValue(s.AccessCode, out var f))
+                            f.Via.Add(viewer.Id);
+                        else
+                            found[s.AccessCode] = new PrivateFound(s, [viewer.Id]);
+                    }
+                }
+            }
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
+            {
+                Interlocked.Increment(ref failed); // that account's servers are just left out
+            }
+        }));
+        if (_vault != vault)
+            throw new UserError(L.T("Bloxkeep was locked."));
+        // Those every account asked can join first, then the fuller ones (people are playing there).
+        var servers = found.Values
+            .OrderByDescending(f => f.Via.Count)
+            .ThenByDescending(f => f.Server.Playing)
+            .ThenBy(f => f.Server.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        bool allFailed = viewers.Count > 0 && failed == viewers.Count;
+        if (_privateServers.Count > 20)
+            _privateServers.Clear();
+        if (!allFailed)
+            _privateServers[key] = (servers, viewers.Count, false, DateTime.UtcNow);
+        return PrivateServersDto(servers, viewers.Count, allFailed);
+    }
+
+    /// <summary>The private servers as the page gets them, the accounts that can join each named as they read now.</summary>
+    object PrivateServersDto(List<PrivateFound> servers, int asked, bool failed) => new
+    {
+        asked,
+        failed,
+        servers = servers.Select(f => new
+        {
+            id = f.Server.Id,
+            name = f.Server.Name,
+            owner = f.Server.OwnerDisplayName.Length > 0 ? f.Server.OwnerDisplayName : f.Server.OwnerName,
+            ownerName = f.Server.OwnerName,
+            accessCode = f.Server.AccessCode,
+            playing = f.Server.Playing,
+            maxPlayers = f.Server.MaxPlayers,
+            via = f.Via.Select(id => FindAccount(id) is { } account ? NameText(account) : "").Where(n => n.Length > 0).ToList(),
+            viaIds = f.Via.Select(id => id.ToString()).ToList(),
+        }).ToList(),
+    };
+
     async Task<object?> ResolveGameAsync(string input)
     {
         if (!GameTarget.TryParse(input, "", out var target, out string error))
@@ -2524,7 +2607,7 @@ public sealed partial class AppController : IDisposable
         if (target!.ShareCode is not null)
             return new { ok = true, kind = "share" };
         var info = await GetGameInfoAsync(target.PlaceId, fresh: true);
-        string kind = target.LinkCode is not null ? "private" : target.JobId is not null ? "server" : "game";
+        string kind = target.IsPrivate ? "private" : target.JobId is not null ? "server" : "game";
         return new
         {
             ok = true,
@@ -2971,7 +3054,7 @@ public sealed partial class AppController : IDisposable
                 if (i < accounts.Count - 1)
                 {
                     await WaitBeforeNextLaunchAsync(account, startedAt, delaySeconds, ct);
-                    if (!opened || !checkServer || target is not { JobId: { } job, LinkCode: null })
+                    if (!opened || !checkServer || target is not { JobId: { } job, IsPrivate: false })
                         continue;
                     if (await WaitForServerAnswerAsync(account, target, ct) != "closed")
                     {
@@ -3241,8 +3324,8 @@ public sealed partial class AppController : IDisposable
             return true;
         if (target.JobId is { } job)
             return !string.Equals(job, log?.JobId, StringComparison.OrdinalIgnoreCase);
-        if (target.LinkCode is not null || target.ShareCode is not null)
-            return target.LinkCode is null || run.Launch.Target?.LinkCode != target.LinkCode;
+        if (target.IsPrivate || target.ShareCode is not null)
+            return !target.IsPrivate || run.Launch.Target?.LinkCode != target.LinkCode || run.Launch.Target?.AccessCode != target.AccessCode;
         return !SameGame(current, target.PlaceId);
     }
 
@@ -4037,10 +4120,14 @@ public sealed partial class AppController : IDisposable
         }
         int inARow = _rejoinsInARow.GetValueOrDefault(accountId);
         _rejoinsInARow[accountId] = inARow + 1;
+        _followWaitTold.Remove(accountId); // a new drop: waiting for its followed player is said again
         var wait = RejoinDelay;
         // Rejoin the same game or private server rather than the exact server, which may be gone. A game the person
         // picked in the Roblox window since is the one they were playing: that one (any server), not the one opened.
-        var target = lastLog?.ChosenPlace is { } chosen && chosen != launch.Target!.PlaceId ? new GameTarget(chosen) : launch.Target! with { JobId = null };
+        // A followed player stays followed: the rejoin looks them up again (FollowTargetAsync).
+        var target = lastLog?.ChosenPlace is { } chosen && chosen != launch.Target!.PlaceId
+            ? new GameTarget(chosen) { Follow = launch.Target!.Follow }
+            : launch.Target! with { JobId = null };
         _rejoinQueue.Add(new RejoinRequest(accountId, target, DateTime.UtcNow + wait, PresetId: launch.PresetId));
         if (inARow == KeepsDropping)
             // Something keeps failing (a broken game, a bad connection): said once. It goes on trying all the same.
@@ -4194,7 +4281,7 @@ public sealed partial class AppController : IDisposable
                     ForgetBanIfLetIn(asking, wanted.PlaceId, check.Result);
                 // A private server's join is asked as its public game's (the private join's request isn't known here), so
                 // that answer doesn't say whether the private server takes it: only a ban (the game's, whatever server) counts.
-                if (check is { IsCompletedSuccessfully: true, Result: { } said } && wanted is { LinkCode: null, ShareCode: null })
+                if (check is { IsCompletedSuccessfully: true, Result: { } said } && wanted is { LinkCode: null, ShareCode: null, AccessCode: null })
                 {
                     // Refused by Roblox (not a wait): a new window would only be refused again, every minute for good. The
                     // window stays, with Roblox's message, and why no rejoin follows is said once.
@@ -4701,14 +4788,24 @@ public sealed partial class AppController : IDisposable
         var vault = _vault;
         var account = FindAccount(request.AccountId);
         if (vault is null || account is null || !request.Restart && !RejoinOn(account, request.PresetId) || account.Banned == true
-            // Banned by that game since it was queued (or before Bloxkeep restarted): only Join Error 600 again.
-            || GameBanOf(account, request.Target.PlaceId) is not null
+            // Banned by that game since it was queued (or before Bloxkeep restarted): only Join Error 600 again. A
+            // followed player's game is the one that counts, looked at once they are found (FollowTargetAsync).
+            || request.Target.Follow is null && GameBanOf(account, request.Target.PlaceId) is not null
             || _running.ContainsKey(account.Id) || _pending.Any(p => p.AccountId == account.Id))
             return;
         _rejoining = true;
         var cts = _rejoinCts = new CancellationTokenSource();
         try
         {
+            // Following a player: where they are now, not where they were. Not to be found (offline, a hidden server, a
+            // full one): waits and looks again (said once); no window opens meanwhile.
+            var target = request.Target;
+            if (target.Follow is not null)
+            {
+                if (await FollowTargetAsync(account, request, cts.Token) is not { } found)
+                    return;
+                target = found;
+            }
             // Banned while it played (the daily check would say so hours later): a new window would only show the ban,
             // again every few minutes. Its public profile is asked first; no clear answer lets the rejoin go on.
             try
@@ -4735,7 +4832,7 @@ public sealed partial class AppController : IDisposable
                 Notify(L.F("Didn't rejoin {0}: Multi-Roblox isn't ready, so a new Roblox window would close the one that's open.", Name(account)), "warn", "rejoinFail", account.Id);
                 return;
             }
-            await StartSessionAsync(account, request.Target, vault.Data.Settings.LaunchVia, cts.Token, rejoin: true, presetId: request.PresetId,
+            await StartSessionAsync(account, target, vault.Data.Settings.LaunchVia, cts.Token, rejoin: true, presetId: request.PresetId,
                 restart: request.Restart);
             Persist();
             PushState();

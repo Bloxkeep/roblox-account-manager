@@ -10,7 +10,7 @@ How to see, arrange and count your Roblox windows: the **Roblox on this PC** car
 
 1. Open **Game monitor** in the sidebar: a live picture of every Roblox window.
 2. Click a picture to bring that window to the front.
-3. To tidy the windows, press **Arrange** in the game bar (with several screens, pick one first).
+3. To tidy the windows, press **Windows › Arrange Roblox windows** in the game bar (with several screens, pick one first).
 4. Open **Mini window** for a small list that stays on top.
 5. Open **Statistics** to see play time, and its **Activity** tab to see what happened.
 
@@ -46,7 +46,7 @@ A small window that stays on top. Open it from **Mini window** in the sidebar, t
 
 ## Arrange windows
 
-Press **Arrange** in the game bar, use **⋯ More › Arrange Roblox windows**, or use Ctrl+K. With several screens, pick one first ("main" marks the main screen).
+Press **Windows › Arrange Roblox windows** in the game bar, use **⋯ More › Arrange Roblox windows**, or use Ctrl+K. With several screens, pick one first ("main" marks the main screen).
 
 The layout comes from **Settings › Launching › Arranging windows**:
 

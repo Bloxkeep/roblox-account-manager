@@ -25,8 +25,9 @@ Một preset lưu sẵn các tài khoản (theo thứ tự), game, cách chọn 
 |---|---|
 | **Tên** | Bắt buộc. |
 | **Game** | Giống ô game ở thanh dưới. Để trống thì chỉ mở Roblox. |
-| **Server** | **Bất kỳ (Roblox tự chọn)**, **Đông nhất**, **Vắng nhất**, **Ping thấp nhất**, **Ngẫu nhiên**, hoặc **Server cố định (Job ID)**. |
+| **Server** | **Bất kỳ (Roblox tự chọn)**, **Đông nhất**, **Vắng nhất**, **Ping thấp nhất**, **Ngẫu nhiên**, **Server cố định (Job ID)**, hoặc **Server của một người chơi**. |
 | **Job ID** | Chỉ dùng cho **Server cố định**. |
+| **Người chơi** | Chỉ dùng cho **Server của một người chơi**: tên đăng nhập hoặc ID của họ. Các tài khoản vào server người đó đang chơi (không cần chọn game), và mỗi lần vào lại sẽ tìm lại họ. Nếu lúc preset chạy chưa vào cùng được (người đó offline, không ở trong game, server bị ẩn), preset không chạy và báo lý do. |
 | **Chờ giữa các tài khoản (giây)** | Từ 0 đến 120. Để trống thì dùng giá trị trong Cài đặt. |
 | **Tài khoản** | Tích chọn. Các tài khoản đã tích mở theo thứ tự này: kéo tay nắm hoặc bấm mũi tên để đổi. |
 

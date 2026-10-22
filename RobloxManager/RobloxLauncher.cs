@@ -62,6 +62,11 @@ public static class RobloxLauncher
     {
         string common = $"browserTrackerId={browserTrackerId}&placeId={t.PlaceId}&isPlayTogetherGame=false&joinAttemptId={Guid.NewGuid()}";
         const string baseUrl = "https://www.roblox.com/Game/PlaceLauncher.ashx?";
+        // One of the account's own private servers: the access code from its list, as the website's Join button sends it
+        // (Roblox's PlaceLauncher.js RequestPrivateGame(placeId, accessCode); Roblox Account Manager joins the same way).
+        if (t.AccessCode is not null)
+            return $"{baseUrl}request=RequestPrivateGame&{common}&accessCode={Uri.EscapeDataString(t.AccessCode)}"
+                + (t.LinkCode is null ? "" : $"&linkCode={Uri.EscapeDataString(t.LinkCode)}") + "&joinAttemptOrigin=privateServerListJoin";
         if (t.LinkCode is not null)
             return $"{baseUrl}request=RequestPrivateGame&{common}&linkCode={Uri.EscapeDataString(t.LinkCode)}&joinAttemptOrigin=privateServerListJoin";
         if (t.JobId is not null)

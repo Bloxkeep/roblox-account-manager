@@ -73,14 +73,14 @@ Nếu ô tìm kiếm hay bộ lọc đang che bớt tài khoản đã chọn, đ
 
 ## Menu của tài khoản
 
-Mở bằng **⋯ Tùy chọn khác** trên thẻ, hoặc bấm chuột phải vào tài khoản. Nếu tài khoản chưa được chọn, nó thành tài khoản duy nhất được chọn; nếu nó nằm trong nhóm đang chọn, menu áp dụng cho mọi tài khoản đã chọn.
+Mở bằng **⋯ Tùy chọn khác** trên thẻ, hoặc bấm chuột phải vào tài khoản. Nếu tài khoản chưa được chọn, menu chỉ áp dụng cho riêng tài khoản đó và không đổi các tài khoản bạn đang chọn; nếu nó nằm trong nhóm đang chọn, menu áp dụng cho mọi tài khoản đã chọn.
 
 <img src="../screenshots/vi/account-menu.png" width="760" alt="Menu của tài khoản mở trên một thẻ: Vào game, Mở Roblox, Đóng Roblox, Buộc tắt, Sửa, Kiểm tra đăng nhập, Vào cùng server, Tự vào lại game, Trang cá nhân Roblox, Mở trang web, các mục Sao chép và Xóa">
 
 | Mục | Làm gì | Không dùng được khi |
 |---|---|---|
 | **Vào game** / **Vào game (N tài khoản)** (Enter) | Mở game đang có trong ô game, ô trống thì mở màn hình chính Roblox. | — |
-| **Mở Roblox (không vào game)** | Mở Roblox ở màn hình chính, mỗi tài khoản một cửa sổ. | — |
+| **Chỉ mở Roblox** | Mở Roblox ở màn hình chính, mỗi tài khoản một cửa sổ. | — |
 | **Đóng Roblox** | Đóng cửa sổ Roblox như bình thường. | Không tài khoản nào đã chọn đang mở trên máy này. |
 | **Buộc tắt** | Tắt Roblox ngay, dùng khi cửa sổ bị treo. Những gì chưa lưu trong game sẽ mất. | Giống **Đóng Roblox**. |
 | **Sửa…** (F2) | Tên gợi nhớ, nhóm, mật khẩu, khóa app xác thực, ghi chú. | Đang chọn nhiều tài khoản. |

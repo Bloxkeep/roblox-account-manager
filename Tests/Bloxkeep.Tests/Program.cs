@@ -13,6 +13,8 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("afk", false, AfkSuite.Run),
     ("restart", false, RestartSuite.Run),
     ("rejoin", false, RejoinSuite.Run),
+    ("follow", false, FollowSuite.Run),
+    ("private-servers", false, PrivateServerSuite.Run),
     ("claims", false, ClaimsSuite.Run),
     ("presets", false, PresetSuite.Run),
     ("window", false, WindowSuite.Run),

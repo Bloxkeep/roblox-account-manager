@@ -1495,6 +1495,11 @@ b, strong { font-weight: 650; }
 .srv-friends-note { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--well); border: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
 .srv-friend { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-radius: 10px; background: var(--well); border: 1px solid var(--line); }
 .srv-friend img, .srv-friend .ph { width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--surface-3); }
+/* Your private servers: as tall as what they hold (a note is one line), up to the friends' height, then scrolling. */
+#srv-private { height: auto; max-height: 112px; }
+.srv-private .ph { display: grid; place-items: center; border-radius: 9px; color: var(--muted); }
+.srv-private .ph .i { width: 15px; height: 15px; }
+.srv-private small.warn { color: var(--warn-ink); }
 .srv-friend-tag { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px; border-radius: 20px; background: var(--online-soft); color: var(--online-ink); font-size: 11.5px; vertical-align: 1px; }
 .srv-list { display: grid; align-content: start; gap: 6px; max-height: min(420px, 55vh); overflow-y: auto; padding-bottom: 2px; }
 /* The server picker: only the server list scrolls; friends and the filters stay put above it (no box in a box). */
@@ -1775,6 +1780,17 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .sort-btn.on { border-color: var(--line-3); color: var(--text); } /* a group chosen in the Group menu */
 .row-live { flex: none; width: 64px; text-align: right; font-size: 12px; color: var(--ok-ink); font-variant-numeric: tabular-nums; }
 .row-actions { flex: none; display: flex; gap: 2px; }
+/* A row's main button, with its words (RowAction keeps every row's as wide as the longest). */
+.row-act-cell { justify-items: stretch; }
+.row-act { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text-2); font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.row-act .i { width: 13px; height: 13px; flex: none; }
+.row-act.play .i { color: var(--ok); }
+.row-act.play:hover:not(:disabled) { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.row-act.play:hover:not(:disabled) .i { color: inherit; }
+.row-act.stop { color: var(--bad-ink); }
+.row-act.stop:hover { background: color-mix(in srgb, var(--bad) 16%, transparent); border-color: var(--bad-line); }
+.row-act.relogin:hover { background: var(--inv); border-color: transparent; color: var(--inv-ink); }
+.row-act:disabled { opacity: .5; cursor: default; }
 .icon-btn.play { color: var(--ok); }
 .icon-btn.stop { color: var(--bad); }
 .seg { display: inline-flex; flex: none; gap: 2px; padding: 2px; height: 32px; border-radius: 20px; border: 1px solid var(--line-2); }
@@ -1782,7 +1798,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .seg button { display: grid; place-items: center; width: 30px; border-radius: 16px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .seg button.on { background: var(--surface-3); color: var(--text); }
 .seg .i { width: 15px; height: 15px; }
-@media (max-width: 1180px) { .grid.list { margin: 4px 22px 24px; } }
+@media (max-width: 1180px) { .grid.list { margin: 4px 22px 24px; } .start-steps { margin: 4px 22px 12px; } }
 @media (max-width: 900px) { .row-meta, .row-live { display: none; } .row-name { flex-basis: 170px; } .row-name small { display: none; } }
 @keyframes pop { from { opacity: 0; transform: translateY(6px); } }
 .card:hover { transform: translateY(-2px); border-color: var(--line-3); background: var(--card-hover); }
@@ -1877,20 +1893,45 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .empty h2 { margin: 0 0 6px; font: 650 18px var(--font-display); }
 .empty p { margin: 0 0 20px; color: var(--muted); max-width: 440px; }
 .empty .row { display: flex; gap: 10px; justify-content: center; }
+/* Getting started (Accounts.tsx StartSteps): three steps on one line over the list, ticked as they are done. */
+.start-steps { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 4px 30px 14px; padding: 10px 16px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--surface); font-size: 13px; }
+.ss-title { font-weight: 700; color: var(--text); margin-right: 6px; }
+.ss-step { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.ss-step + .ss-step::before { content: "\2192"; margin-right: 6px; color: var(--dim); }
+.ss-step i { flex: none; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line-3); font-style: normal; font-size: 11px; font-weight: 800; color: var(--text-2); }
+.ss-step.now { color: var(--text); font-weight: 650; }
+.ss-step.now i { background: var(--inv); border-color: transparent; color: var(--inv-ink); }
+.ss-step.done span { text-decoration: line-through; }
+.ss-step.done i { background: color-mix(in srgb, var(--ok) 18%, transparent); border-color: transparent; color: var(--ok-ink); }
+.ss-step.done i .i { width: 12px; height: 12px; }
+/* With no accounts yet it sits under the heading, centred, as part of the page rather than a box over a list. */
+.empty .start-steps { justify-content: center; margin: 12px auto 16px; padding: 0; border: 0; background: none; }
+.empty .ss-title { display: none; }
 /* No accounts yet: no dock (nothing to play, and it would cover the sign-in choices in a small window). */
 #view-accounts.no-accounts .dock { display: none; }
 
 /* ───────── launch dock ───────── */
 .dock {
-  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center;
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 18px; row-gap: 12px; align-items: start;
   margin: 0 22px 20px; padding: 14px 16px; border-radius: 22px; border: 1px solid var(--line-2);
   background: var(--surface); box-shadow: 0 -10px 30px color-mix(in srgb, var(--shadow) 70%, transparent);
 }
-.game-thumb { width: 64px; height: 64px; padding: 0; border-radius: 16px; display: grid; place-items: center; background: var(--surface-3); color: var(--muted); overflow: hidden; border: 1px solid var(--line-2); transition: border-color .15s; }
+.game-thumb { align-self: center; width: 64px; height: 64px; padding: 0; border-radius: 16px; display: grid; place-items: center; background: var(--surface-3); color: var(--muted); overflow: hidden; border: 1px solid var(--line-2); transition: border-color .15s; }
 .game-thumb:hover { border-color: var(--line-3); color: var(--text-2); }
 .game-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .game-thumb .i { width: 26px; height: 26px; }
-.dock-mid { min-width: 0; display: grid; gap: 8px; }
+/* A step: its numbered caption, its box or button, and the line of smaller buttons (or what the game box holds) under it. */
+.dock-step { min-width: 0; display: grid; row-gap: 7px; align-content: start; }
+.step-cap { display: flex; align-items: center; gap: 7px; height: 16px; font-size: 12px; font-weight: 650; color: var(--text-2); white-space: nowrap; }
+.step-cap b { flex: none; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: var(--inv); color: var(--inv-ink); font-size: 10.5px; font-weight: 800; }
+.step-cap small { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.dock-sub { display: flex; align-items: center; gap: 6px; min-height: 28px; }
+.sub-btn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text-2); font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
+.sub-btn:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+.sub-btn:disabled { opacity: .45; cursor: default; }
+.sub-btn .i { width: 14px; height: 14px; flex: none; }
+/* Play fills its step, as wide as the buttons under it. */
+.dock-go .play-btn { width: 100%; height: 40px; justify-content: center; padding: 0 18px; border-radius: 12px; }
 .picker {
   /* A fixed height, not as tall as its rows: it hangs from the game bar, so a list that loads shorter (or longer)
      than the placeholder rows would move its top edge. */
@@ -1920,21 +1961,12 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .game-row.skel b { width: 62%; margin-bottom: 8px; }
 .game-row.skel small { width: 34%; }
 .picker-empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 13px; }
-.dock-inputs { display: flex; gap: 8px; }
 .inwrap { position: relative; display: flex; align-items: center; }
-.inwrap.grow { flex: 1; min-width: 0; }
-/* The game box gets the room (it shows a game's name or a link); the optional Job ID box stays small. */
-.inwrap.job { flex: 0 1 200px; min-width: 120px; }
-/* "Join a player…", beside the Job ID box: drawn like the boxes, since it is another way to say where to go. */
-.dock-join { flex: none; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; border-radius: 11px; border: 1px solid var(--line-field); background: var(--field); color: var(--muted); transition: border-color .15s, color .15s; }
-.dock-join:hover:not(:disabled) { color: var(--text); border-color: var(--focus-line); }
-.dock-join:disabled { opacity: .45; cursor: default; }
-.dock-join .i { width: 18px; height: 18px; }
 .inwrap .i { position: absolute; left: 12px; color: var(--muted); width: 16px; height: 16px; pointer-events: none; }
 .inwrap input { width: 100%; height: 40px; padding: 0 12px 0 36px; border-radius: 11px; border: 1px solid var(--line-field); background: var(--field); outline: none; transition: border-color .15s, box-shadow .15s; }
 .inwrap input:focus { border-color: var(--focus-line); box-shadow: 0 0 0 3px var(--focus-ring); }
 .inwrap input::placeholder { color: var(--muted); }
-.dock-info { display: flex; align-items: center; gap: 10px; min-height: 26px; font-size: 13px; color: var(--muted); min-width: 0; }
+.dock-info { display: flex; align-items: center; gap: 10px; min-height: 28px; font-size: 13px; color: var(--muted); min-width: 0; }
 .dock-info > span { white-space: nowrap; }
 .dock-info .gname { color: var(--text); font-weight: 650; overflow: hidden; text-overflow: ellipsis; min-width: 60px; flex-shrink: 1; }
 .dock-info .creator { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 2; }
@@ -1957,10 +1989,6 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .recent .rm { width: 24px; height: 24px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--muted); }
 .recent .rm:hover { background: var(--active); color: var(--text); }
 .recent .rm .i { width: 11px; height: 11px; }
-/* On one line with the inputs (as high as they are, the taller buttons centred on them), not centred on the inputs
-   and the line under them: else the join button by the Job ID box sat higher than the buttons beside it. */
-.dock-actions { display: flex; align-items: center; gap: 8px; align-self: start; height: 40px; }
-.dock-actions .btn.ghost { width: 44px; height: 52px; padding: 0; border-radius: 14px; }
 .play-btn {
   display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px 0 18px; border: 0; border-radius: 15px;
   background: var(--accent); color: var(--accent-ink); font: 700 15.5px var(--font-display);
@@ -2451,7 +2479,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .btn.go.busy::after { border-color: color-mix(in srgb, var(--accent-ink) 25%, transparent); border-top-color: var(--accent-ink); }
 .auth-or { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; color: var(--muted); font-size: 12.5px; }
 .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
-.auth-more { display: grid; gap: 8px; margin: 16px 0 0; font-size: 12.5px; color: var(--muted); }
+.auth-more { display: grid; grid-template-columns: repeat(3, max-content); row-gap: 8px; column-gap: 6px; justify-content: center; margin: 16px 0 0; font-size: 12.5px; color: var(--muted); }
 .seg.wide { display: flex; width: 100%; height: 38px; margin: 4px 0 0; padding: 3px; border-radius: 12px; background: var(--field); }
 .seg.wide button { flex: 1; height: 100%; border-radius: 9px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
 .seg.wide button:hover:not(.on) { color: var(--text-2); }
@@ -2491,9 +2519,13 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .start-opt small { font-size: 12.5px; color: var(--muted); }
 .start-opt > .i:last-child { width: 16px; height: 16px; flex: none; color: var(--muted); }
 /* The other ways to add an account: two short rows ("Other ways:", "Import from:") of small buttons, not a line of links. */
-.start-more { display: grid; gap: 8px; justify-content: center; margin-top: 14px; font-size: 12.5px; color: var(--muted); }
-.ways { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
-.ways > span { margin-right: 2px; }
+/* The other ways, one per line (here and in the sign-in window's .auth-more): the words in a column of their own
+   (right-aligned) and the buttons lined up after them, so the buttons start at the same place on every line. A line
+   with two buttons uses the third column. */
+.start-more { display: grid; grid-template-columns: repeat(3, max-content); row-gap: 8px; column-gap: 6px; justify-content: center; margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+.ways { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
+.ways > span { justify-self: end; margin-right: 2px; }
+.ways > .btn { justify-self: start; }
 .ways .btn.sm { padding: 0 8px; color: var(--text-2); }
 .ways .btn.sm:hover { color: var(--text); }
 .ways .btn.sm .i { width: 15px; height: 15px; }
@@ -2634,6 +2666,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .bar { padding: 0 38px 16px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; padding: 4px 38px 30px; }
   .dock { margin: 0 30px 24px; }
+  .start-steps { margin: 4px 38px 16px; }
   .set-nav { padding-left: 38px; }
   .settings { padding: 4px 38px 44px 24px; }
 }
@@ -2642,6 +2675,9 @@ body:has(.lock) #toasts { bottom: 24px; }
 }
 @media (max-width: 1280px) {
   .search { width: 220px; }
+  /* The game step gets the picture's room for the game's name and a recent game; the game box opens the list too. */
+  .dock { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .game-thumb { display: none; }
 }
 /* Narrow windows: the sidebar collapses to icons. */
 @media (max-width: 1180px) {
@@ -2683,17 +2719,13 @@ body:has(.lock) #toasts { bottom: 24px; }
 @media (max-width: 1080px) {
   .top-tools { width: 100%; }
   .search { flex: 1; width: auto; }
-  .dock { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
-  .game-thumb { display: none; }
-  .inwrap.job { flex-basis: 140px; }
+  .dock { column-gap: 14px; }
   .pw-form { grid-template-columns: 1fr 1fr; }
 }
-/* Too narrow for one row: the game inputs on top, the buttons under them. */
+/* Too narrow for one row: the game on top, the server and Play side by side under it. */
 @media (max-width: 900px) {
-  .dock { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .dock-actions { align-self: auto; height: auto; }
-  .dock-actions .play-btn { flex: 1; justify-content: center; }
-  .inwrap.job { flex-basis: 150px; }
+  .dock { grid-template-columns: minmax(0, 1fr) auto; }
+  .dock-game { grid-column: 1 / -1; }
 }
 /* Short windows: tighter vertical rhythm so more cards fit. */
 /* The app's smallest window: the title and its line (selection, Clear) share one row, and the dock keeps the game's
@@ -2703,7 +2735,8 @@ body:has(.lock) #toasts { bottom: 24px; }
   .top { padding-top: 12px; padding-bottom: 8px; }
   .top p { margin: 0; }
   .dock-info .creator, .dock-info .recents { display: none; }
-  .dock-mid { gap: 6px; }
+  .dock-step { row-gap: 6px; }
+  .step-cap { display: none; } /* the numbered captions give their line to the cards */
   .dock-info { min-height: 22px; }
   .bar { padding-bottom: 8px; }
   /* A whole card fits between the header and the dock: smaller avatar, tighter spacing, the note left to its tooltip. */
@@ -2753,7 +2786,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .activity { margin-top: 10px; min-height: 48px; padding: 7px 9px; }
   .dock { margin-bottom: 12px; padding: 10px 12px; }
   .game-thumb { width: 52px; height: 52px; border-radius: 13px; }
-  .play-btn, .dock-actions .btn.ghost { height: 46px; }
+  .play-btn { height: 46px; }
   .brand { padding-bottom: 10px; }
   .lock-card { padding: 26px 28px 20px; }
   .lock-card .logo-img { width: 56px; height: 56px; }

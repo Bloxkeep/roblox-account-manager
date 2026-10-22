@@ -346,25 +346,16 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
         div.dock
-          button.game-thumb [id="game-thumb" title="Chọn game"]
-            span.gph
-              svg.i #sy1lqp
-          div.dock-mid
-            div.dock-inputs
-              label.grow.inwrap [title="Place ID, link game hoặc link server riêng (Ctrl+L)"]
-                svg.i #1u22jvi
-                input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
-              label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
-                svg.i #ej9lod
-                input [id="job" placeholder="Job ID (tùy chọn)" maxlength="60" aria-label="Job ID (tùy chọn)" value=""]
-              button.dock-join [title="Vào cùng người chơi: các tài khoản đã chọn vào đúng server người đó đang ở" aria-label="Vào cùng người chơi…"]
-                svg.i #145pp0l
+          div.dock-game.dock-step
+            div.step-cap
+              b "1"
+              span "Game"
+            label.inwrap [title="Place ID, link game hoặc link server riêng (Ctrl+L)"]
+              svg.i #1u22jvi
+              input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
             div.dock-info [id="dock-info" aria-live="polite"]
               span.gname [title="Blox Fruits"] "Blox Fruits"
               span.players "412.873 đang chơi"
-              button.srv-open
-                svg.i #ej9lod
-                span "Server"
               button.srv-open.srv-save [title="Lưu server này để vào lại từ tab Đã lưu: link server riêng, hoặc code mà game yêu cầu." aria-label="Lưu server"]
                 svg.i #1c3gvph
               div.recents
@@ -374,19 +365,39 @@ html [data-theme="dark" lang="vi"]
                     span "[🎃] Adopt Me!"
                   button.rm [title="Xóa khỏi danh sách gần đây" aria-label="Xóa khỏi danh sách gần đây"]
                     svg.i #1tyq039
-          div.dock-actions [id="dock-actions"]
-            button.btn.ghost [title="Xếp tất cả cửa sổ Roblox thành lưới" aria-label="Xếp tất cả cửa sổ Roblox thành lưới"]
-              svg.i #1e3syqr
-            button.btn.ghost [title="Mở Roblox mà không vào game" aria-label="Mở Roblox mà không vào game"]
-              svg.i #1y8kmj1
-            button.btn.ghost [title="Đóng Roblox của các tài khoản đã chọn" aria-label="Đóng Roblox của các tài khoản đã chọn"]
-              svg.i #16z0s1r
-            button.btn.ghost [title="Preset" aria-haspopup="menu" aria-label="Preset"]
-              svg.i #1pvni8o
+          div.dock-server.dock-step
+            div.step-cap
+              b "2"
+              span "Server"
+              small "tùy chọn"
+            label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
+              svg.i #ej9lod
+              input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
+            div.dock-sub
+              button.sub-btn [title="Chọn một server của game này: theo số người chơi, theo ping, hoặc nơi bạn bè đang chơi"]
+                svg.i #uj30io
+                span "Chọn server"
+              button.sub-btn [title="Vào cùng người chơi: các tài khoản đã chọn vào đúng server người đó đang ở"]
+                svg.i #145pp0l
+                span "Vào cùng người chơi…"
+          div.dock-go.dock-step [id="dock-actions"]
+            div.step-cap
+              b "3"
+              span "Vào game"
             button.play-btn
               svg.i #1ewcuky
               span "Vào game"
               em "2"
+            div.dock-sub
+              button.sub-btn [title="Preset" aria-haspopup="menu"]
+                svg.i #1pvni8o
+                span "Preset"
+              button.sub-btn [title="Đóng Roblox của các tài khoản đã chọn"]
+                svg.i #16z0s1r
+                span "Đóng"
+              button.sub-btn [title="Chỉ mở Roblox, hoặc xếp cửa sổ" aria-haspopup="menu"]
+                svg.i #1e3syqr
+                span "Cửa sổ"
 #layer
 #toasts
 -- commands

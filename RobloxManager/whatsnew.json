@@ -1,5 +1,96 @@
 [
   {
+    "version": "1.0.9",
+    "date": "2026-10-23",
+    "highlights": [
+      {
+        "icon": "lock",
+        "en": [
+          "Your private servers",
+          "Browse servers now lists the private servers your accounts own or were invited to, and which accounts can join each. Pick one and press Play."
+        ],
+        "vi": [
+          "Server riêng của bạn",
+          "Chọn server giờ hiện các server riêng mà tài khoản của bạn là chủ hoặc được mời vào, kèm tài khoản nào vào được. Chọn một server rồi bấm Vào game."
+        ]
+      },
+      {
+        "icon": "userGo",
+        "en": [
+          "Stay with a player",
+          "Join a player… can keep your accounts with that player: each time they rejoin, Bloxkeep finds the player again and goes to their server, even in another game. A preset can do it too."
+        ],
+        "vi": [
+          "Luôn vào cùng một người chơi",
+          "Vào cùng người chơi… giờ giữ các tài khoản đi theo người đó: mỗi lần tự vào lại, Bloxkeep tìm lại người chơi và vào đúng server họ đang ở, kể cả khi họ đã sang game khác. Preset cũng làm được như vậy."
+        ]
+      },
+      {
+        "icon": "layers",
+        "en": [
+          "A clearer bottom bar",
+          "The bar under your accounts now goes step by step, Game, Server, Play, and every button says what it does. Until you've played once, a short Get started line shows the way."
+        ],
+        "vi": [
+          "Thanh dưới dễ hiểu hơn",
+          "Thanh dưới danh sách tài khoản giờ đi theo từng bước: Game, Server, Vào game, và nút nào cũng có ghi tên. Cho tới khi bạn vào game lần đầu, dòng Bắt đầu chỉ đường từng bước."
+        ]
+      }
+    ],
+    "new": {
+      "en": [
+        "Browse servers › Your private servers: the game's private servers that your selected accounts own or were invited to, with the owner, how many are playing and which accounts can join. Use server puts it in the game box, and Play joins it as the Join button on its Roblox page does.",
+        "Join a player… has a box, When these accounts rejoin, look this player up again and join their server. While the player can't be joined (offline, not in a game, a hidden or full server, a game that banned the account), the rejoin waits, looks again every minute and says why once.",
+        "A preset's server can be A player's server: its accounts join the server that player is in, no game needed.",
+        "Get started: until Bloxkeep has opened an account once, a line over the list shows the three steps (add an account, pick a game, select accounts and press Play) and ticks each one off."
+      ],
+      "vi": [
+        "Chọn server › Server riêng của bạn: các server riêng của game mà tài khoản đang chọn là chủ hoặc được mời vào, kèm chủ server, số người đang chơi và tài khoản nào vào được. Dùng server này sẽ điền server vào ô game, bấm Vào game là vào đúng server đó, giống nút Join trên trang Roblox của game.",
+        "Vào cùng người chơi… có thêm ô Khi các tài khoản này vào lại, tìm lại người chơi này và vào server họ đang chơi. Khi chưa vào cùng được (người đó offline, không ở trong game, server bị ẩn hoặc đã đầy, game đã cấm tài khoản), Bloxkeep chờ, cứ mỗi phút tìm lại và báo lý do một lần.",
+        "Server của Preset có thêm lựa chọn Server của một người chơi: các tài khoản vào server người đó đang chơi, không cần chọn game.",
+        "Bắt đầu: cho tới khi Bloxkeep mở một tài khoản lần đầu, một dòng phía trên danh sách hiện ba bước (thêm tài khoản, chọn game, chọn tài khoản rồi bấm Vào game) và đánh dấu từng bước đã xong."
+      ]
+    },
+    "improved": {
+      "en": [
+        "The bottom bar goes in three numbered steps. Its buttons have words: Browse servers, Join a player…, Presets, Close and Windows (Open Roblox only, Arrange Roblox windows). With no account selected, Play says Select accounts first.",
+        "The buttons at the end of each row in the list say what they do: Play, Close, Sign in, Cancel.",
+        "⋮ or a right-click on an account you haven't ticked acts on that account alone and leaves your ticks as they are; on a ticked one it still acts on all the ticked accounts.",
+        "Clicking a menu's button again closes the menu. A menu near the bottom of the window opens upwards, and a long one never covers the button that opened it.",
+        "When Roblox won't let an account into a game, its window is no longer closed and opened again every minute: it keeps Roblox's message, and Bloxkeep says why once. A window waiting in a full game's line keeps its place.",
+        "Accounts sent together to one server move to another only when Roblox says that server has ended or is full, not after 12 seconds without news.",
+        "Each Roblox window goes to the account it was opened for, even when two open close together or Roblox updates on the way.",
+        "A Roblox window that has to update first is waited for, instead of the launch being given up 5 seconds in.",
+        "Anti-AFK counts only what you really did in a Roblox window, so a window you weren't using is no longer left to be kicked for being idle.",
+        "The virtual memory warning counts the page files Windows really has, and the room of one Windows sizes by itself, so it warns when it should and not otherwise."
+      ],
+      "vi": [
+        "Thanh dưới chia thành ba bước có đánh số. Các nút đều có ghi tên: Chọn server, Vào cùng người chơi…, Preset, Đóng và Cửa sổ (Chỉ mở Roblox, Xếp cửa sổ Roblox). Khi chưa chọn tài khoản nào, nút chính ghi Chọn tài khoản trước.",
+        "Nút ở cuối mỗi dòng trong danh sách có ghi tên: Vào game, Đóng, Đăng nhập, Hủy.",
+        "Bấm ⋮ hoặc chuột phải vào tài khoản chưa tích thì menu chỉ áp dụng cho riêng tài khoản đó, các dấu tích của bạn giữ nguyên; với tài khoản đang tích thì vẫn áp dụng cho mọi tài khoản đã tích.",
+        "Bấm lần nữa vào nút của menu là menu đóng lại. Menu gần đáy cửa sổ mở lên trên, và menu dài không bao giờ che nút đã mở nó.",
+        "Khi Roblox không cho một tài khoản vào game, cửa sổ không còn bị đóng rồi mở lại mỗi phút: cửa sổ giữ lời báo của Roblox, và Bloxkeep báo lý do một lần. Cửa sổ đang xếp hàng vào game đầy vẫn giữ chỗ.",
+        "Các tài khoản được gửi vào cùng một server chỉ chuyển sang server khác khi Roblox báo server đó đã đóng hoặc đã đầy, không còn chuyển chỉ vì 12 giây chưa có tin.",
+        "Mỗi cửa sổ Roblox được gắn đúng tài khoản đã mở nó, kể cả khi hai cửa sổ mở sát nhau hoặc Roblox cập nhật giữa chừng.",
+        "Cửa sổ Roblox phải cập nhật trước khi mở giờ được chờ, thay vì bị bỏ sau 5 giây.",
+        "Chống AFK chỉ tính những gì bạn thật sự làm trong cửa sổ Roblox, nên cửa sổ bạn không dùng không còn bị bỏ qua rồi bị kick vì treo máy.",
+        "Cảnh báo bộ nhớ ảo tính đúng các page file Windows thật sự có, kể cả page file do Windows tự chỉnh cỡ, nên chỉ báo khi thật cần."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Roblox windows that crash because the PC ran out of memory are no longer taken for \"Roblox closed N windows when another one opened\". Bloxkeep says the window ran out of memory, and its rejoin waits until there is room for another window.",
+        "An account is marked signed out only when Bloxkeep is sure, not during an outage of Roblox's sign-in, and an account Roblox accepts again is signed in again with auto-rejoin back on.",
+        "A Roblox VNG account's card no longer shows the game of someone else with the same number on Roblox."
+      ],
+      "vi": [
+        "Cửa sổ Roblox bị văng vì máy hết bộ nhớ không còn bị báo nhầm thành \"Roblox đã đóng N cửa sổ khi mở cửa sổ mới\". Bloxkeep báo cửa sổ đó hết bộ nhớ, và chờ tới khi máy đủ chỗ mới tự vào lại.",
+        "Tài khoản chỉ bị đánh dấu đã đăng xuất khi Bloxkeep chắc chắn, không còn bị đánh dấu lúc dịch vụ đăng nhập của Roblox gặp sự cố; tài khoản được Roblox chấp nhận lại sẽ tự đăng nhập lại và bật lại tự vào lại game.",
+        "Thẻ của tài khoản Roblox VNG không còn hiện game của một người khác trùng số trên Roblox."
+      ]
+    }
+  },
+  {
     "version": "1.0.8",
     "date": "2026-10-21",
     "highlights": [

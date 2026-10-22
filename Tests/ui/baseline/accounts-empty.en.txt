@@ -96,6 +96,16 @@ html [data-theme="dark" lang="en"]
             div.empty
               img.art [alt="" src="logo.svg"]
               h2 "No accounts yet"
+              ol.start-steps [aria-label="Get started"]
+                li.now.ss-step
+                  i "1"
+                  span "Add an account"
+                li.ss-step
+                  i "2"
+                  span "Pick a game in the bar below"
+                li.ss-step
+                  i "3"
+                  span "Select accounts, then press Play"
               p "Pick how to sign in. You only do this once per account."
               div.start-opts
                 button.rec.start-opt [type="button"]

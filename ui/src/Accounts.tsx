@@ -141,6 +141,27 @@ export function AddOptions() {
 }
 
 /**
+ * Getting started, until Bloxkeep has opened Roblox for an account once: add an account, pick a game in the dock, select
+ * accounts and press Play. Each step is ticked as it is done; the line goes for good once an account has been opened
+ * (its "last opened" is set), so it never shows again to someone who already plays.
+ */
+export function StartSteps() {
+  const { t } = useHost();
+  const app = useAppState();
+  const game = usePage(p => p.game);
+  const all: Account[] = app.accounts || [];
+  if (all.some(a => a.lastUsed || a.state === 'running' || a.state === 'launching')) return null;
+  // The game box is hidden while there are no accounts, so a game it still holds from before isn't a step done yet.
+  const done = [all.length > 0, all.length > 0 && !!game?.ok, false];
+  const now = done.indexOf(false);
+  return <ol className="start-steps" aria-label={t('guide.title')}>
+    <li className="ss-title">{t('guide.title')}</li>
+    {['guide.add', 'guide.game', 'guide.play'].map((k, i) =>
+      <li key={k} className={`ss-step${done[i] ? ' done' : i === now ? ' now' : ''}`}><i>{done[i] ? <Icon name="check" /> : i + 1}</i><span>{t(k)}</span></li>)}
+  </ol>;
+}
+
+/**
  * Every account shown, as cards or rows. One Tab stop for the whole list (roving tabindex): the card with the focus,
  * else the first selected one, else the first; the arrow keys walk the cards (app.js moveCardFocus). A card redrawn
  * or moved (Play → Close, a sort) keeps the focus: on the same button if it is still there, else on the card.
@@ -192,10 +213,11 @@ export function AccountGrid() {
     return <div id="grid">{all.length
       ? <div className="empty"><h2>{t('nores.title')}</h2><p>{t('nores.text')}</p>
         <div className="row"><button className="btn" data-act="clear-search">{t(page.query.trim() ? 'nores.clear' : 'nores.all')}</button></div></div>
-      : <div className="empty"><img className="art" src={logo} alt="" /><h2>{t('empty.title')}</h2><p>{t('empty.text')}</p><AddOptions /></div>}</div>;
+      : <div className="empty"><img className="art" src={logo} alt="" /><h2>{t('empty.title')}</h2><StartSteps /><p>{t('empty.text')}</p><AddOptions /></div>}</div>;
   }
   const cols = asList ? listColumns(shown, host.fmtNum) : '';
   return <div id="grid">
+    <StartSteps />
     <GridBox key={asList ? 'list' : 'cards'} asList={asList} intro={!page.introShown} label={t('acc.title')} box={grid}>
       {shown.map(a => <AccountItem key={a.id} a={a} asList={asList} sel={page.selected.has(a.id)} lang={host.lang} minute={minute} cols={cols} />)}
     </GridBox>
@@ -438,6 +460,14 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
   }
 }
 
+/** A row's main button over unseen copies of all four it can be: every row's is as wide, in either language. */
+function RowAction({ children }: { children: ReactNode }) {
+  const { t } = useHost();
+  return <span className="cell row-act-cell">{children}
+    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play']] as const).map(([icon, k]) =>
+      <Sizer key={k}><span className="row-act"><Icon name={icon} /><span>{t(k)}</span></span></Sizer>)}</span>;
+}
+
 /** One line per account for the compact list; the same actions as a card (select, right-click menu, play). */
 function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }) {
   const { t, duration } = useHost();
@@ -445,10 +475,12 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
   const local = isLocal(a), pType = presenceType(a);
   const st = statusLine(t, a);
   const up = local && st.cls === 'ingame' && a.session ? duration(a.session.since) : '';
-  const action = local || a.state === 'launching' ? <button key="close-one" className="icon-btn stop" data-act="close-one" title={t('card.close')} aria-label={t('card.close')}><Icon name="power" /></button>
-    : a.rejoin ? <button key="cancel-rejoin" className="icon-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')} aria-label={t('rj.cancelTip')}><Icon name="x" /></button>
-    : a.cookieValid === false ? <button key="relogin" className="icon-btn relogin" data-act="relogin" title={t('card.relogin')} aria-label={t('card.relogin')}><Icon name="logIn" /></button>
-    : <button key="play-one" className="icon-btn play" data-act="play-one" title={t('card.play')} aria-label={t('card.play')} disabled={a.state === 'launching'}><Icon name="play" /></button>;
+  // The card's main button with its words too (a bare icon read as a mystery), each as wide as the longest of the four
+  // (RowAction's Sizers): the buttons stand in a straight column.
+  const action = local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one"><Icon name="power" /><span>{t('card.close')}</span></button>
+    : a.rejoin ? <button key="cancel-rejoin" className="row-act stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" /><span>{t('rj.cancel')}</span></button>
+    : a.cookieValid === false ? <button key="relogin" className="row-act relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" /><span>{t('card.relogin')}</span></button>
+    : <button key="play-one" className="row-act play" data-act="play-one" disabled={a.state === 'launching'}><Icon name="play" /><span>{t('card.play')}</span></button>;
   // The card's red pill in a list row too (banned, or signed out), in front of the status words.
   const badge = local || a.state === 'launching' ? null
     : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>
@@ -464,56 +496,74 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
         <span className="row-up" title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span></div>
       : <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}</div>}
     <RowColumns a={a} c={JSON.parse(cols)} local={local} />
-    <div className="row-actions">{action}<button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button></div>
+    <div className="row-actions"><RowAction>{action}</RowAction><button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button></div>
   </article>;
 }
 
 /* ───────────── the dock ───────────── */
 
 /**
- * The dock: the game's picture (it opens the picker), the game box with its picker, the Job ID box, Join a player,
- * what the game box holds (the game found, a link's kind, a mistake, what is going on) with recent games to pick
- * again, and the buttons for the selected accounts. The two boxes keep what is typed themselves: app.js reads and
+ * The dock, in the order a launch goes: 1 the game (its picture opens the picker, the game box with its picker, what
+ * the box holds and recent games to pick again), 2 the server (the Job ID box, the game's server list, Join a player),
+ * 3 Play for the selected accounts, with Presets, Close and Windows under it. Each step has a numbered caption and every
+ * button its words, so the order reads at a glance. The two boxes keep what is typed themselves: app.js reads and
  * fills them.
  */
 export function Dock() {
   const { t } = useHost();
   const app = useAppState();
   const page = usePage(p => p);
-  const n = page.selected.size;
   const P = page.picker;
+  const g = page.game;
+  // A public game found in the box: its servers can be listed (a private server's link goes straight to its server).
+  const canList = !page.progress && !!g && !g.loading && g.ok && !!g.placeId && g.kind !== 'private' && g.kind !== 'share';
   return <div className="dock">
     <button className="game-thumb" id="game-thumb" data-act="browse-games" title={t('dock.browseTip')}>
       <GameIcon key={page.game?.iconUrl || ''} url={page.game?.iconUrl} holder={() => page.game?.iconUrl ? <span className="gph"><Icon name="gamepad" /></span> : <Icon name="gamepad" />} /></button>
     <div className="picker" id="picker" hidden={!P.open}>{P.open ? <Picker P={P} /> : null}</div>
-    <div className="dock-mid">
-      <div className="dock-inputs">
-        <label className="inwrap grow" title={t('dock.placeTip')}><Icon name="search" /><input id="place" autoComplete="off" placeholder={t('dock.place')} maxLength={500} spellCheck={false}
-          aria-label={t('dock.place')} role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="picker-list" aria-expanded={P.open}
-          aria-activedescendant={P.open && P.index >= 0 ? `pk-${P.index}` : undefined} /></label>
-        <label className="inwrap job" title={t('dock.jobTip')}><Icon name="server" /><input id="job" placeholder={t('dock.job')} maxLength={60} spellCheck={false} aria-label={t('dock.job')} /></label>
-        {/* Join a player needs selected accounts, like Open Roblox and Close next to it: dimmed until there are some. */}
-        <button className="dock-join" data-act="join-player" title={t('jp.buttonTip')} aria-label={t('jp.button')} disabled={!n}><Icon name="userGo" /></button>
-      </div>
+    <div className="dock-step dock-game">
+      <StepCap n={1} text={t('dock.stepGame')} />
+      <label className="inwrap" title={t('dock.placeTip')}><Icon name="search" /><input id="place" autoComplete="off" placeholder={t('dock.place')} maxLength={500} spellCheck={false}
+        aria-label={t('dock.place')} role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="picker-list" aria-expanded={P.open}
+        aria-activedescendant={P.open && P.index >= 0 ? `pk-${P.index}` : undefined} /></label>
       <DockInfo page={page} recentGames={app.settings?.recentGames || []} />
     </div>
-    <div className="dock-actions" id="dock-actions">{app.launching
-      ? <button className="play-btn stop" data-act="cancel-launch"><Icon name="stop" /><span>{t('dock.stop')}</span></button>
-      : <DockButtons page={page} accounts={app.accounts || []} />}</div>
+    <div className="dock-step dock-server">
+      <StepCap n={2} text={t('dock.stepServer')} note={t('dock.optional')} />
+      <label className="inwrap job" title={t('dock.jobTip')}><Icon name="server" /><input id="job" placeholder={t('dock.job')} maxLength={60} spellCheck={false} aria-label={t('dock.job')} /></label>
+      <div className="dock-sub">
+        <button className="sub-btn" data-act="servers" disabled={!canList} title={t(canList ? 'dock.serversTip' : 'dock.serversNeedGame')}><Icon name="rows" /><span>{t('dock.servers')}</span></button>
+        {/* With nothing selected it says to select accounts first (app.js), rather than sitting greyed out unexplained. */}
+        <button className="sub-btn" data-act="join-player" title={t('jp.buttonTip')}><Icon name="userGo" /><span>{t('jp.button')}</span></button>
+      </div>
+    </div>
+    <div className="dock-step dock-go" id="dock-actions">
+      <StepCap n={3} text={t('dock.stepGo')} />
+      {app.launching
+        ? <button className="play-btn stop" data-act="cancel-launch"><Icon name="stop" /><span>{t('dock.stop')}</span></button>
+        : <DockButtons page={page} accounts={app.accounts || []} />}
+    </div>
   </div>;
+}
+
+/** A dock step's caption: its number, what it is, and "optional" for the server. */
+function StepCap({ n, text, note }: { n: number; text: string; note?: string }) {
+  return <div className="step-cap"><b>{n}</b><span>{text}</span>{note ? <small>{note}</small> : null}</div>;
 }
 
 function DockButtons({ page, accounts }: { page: PageState; accounts: Account[] }) {
   const { t } = useHost();
   const n = page.selected.size;
   const anyLocal = accounts.some(a => page.selected.has(a.id) && isLocal(a));
-  // With no game in the box, the main button opens Roblox on its home screen (one window per account).
+  // With nothing selected the main button says so; with no game in the box it opens Roblox on its home screen (one
+  // window per account).
   return <>
-    <button className="btn ghost" data-act="arrange" title={t('dock.arrangeTip')} aria-label={t('dock.arrangeTip')}><Icon name="screens" /></button>
-    <button className="btn ghost" data-act="open-app" disabled={!n} title={t('dock.openAppTip')} aria-label={t('dock.openAppTip')}><Icon name="monitor" /></button>
-    <button className="btn ghost" data-act="close-sel" disabled={!anyLocal} title={t('dock.closeTip')} aria-label={t('dock.closeTip')}><Icon name="power" /></button>
-    <button className="btn ghost" data-act="preset-menu" title={t('ps.tip')} aria-label={t('ps.tip')} aria-haspopup="menu"><Icon name="layers" /></button>
-    <button className="play-btn" data-act="launch" disabled={!n}><Icon name={page.hasGame ? 'play' : 'monitor'} /><span>{t(!n ? 'dock.pick' : page.hasGame ? 'dock.play' : 'dock.openHome')}</span>{n ? <em>{n}</em> : null}</button>
+    <button className="play-btn" data-act="launch" disabled={!n}><Icon name={!n || page.hasGame ? 'play' : 'monitor'} /><span>{t(!n ? 'dock.pick' : page.hasGame ? 'dock.play' : 'dock.openHome')}</span>{n ? <em>{n}</em> : null}</button>
+    <div className="dock-sub">
+      <button className="sub-btn" data-act="preset-menu" title={t('ps.tip')} aria-haspopup="menu"><Icon name="layers" /><span>{t('ps.tip')}</span></button>
+      <button className="sub-btn" data-act="close-sel" disabled={!anyLocal} title={t('dock.closeTip')}><Icon name="power" /><span>{t('card.close')}</span></button>
+      <button className="sub-btn" data-act="dock-more" title={t('dock.moreTip')} aria-haspopup="menu"><Icon name="screens" /><span>{t('dock.more')}</span></button>
+    </div>
   </>;
 }
 
@@ -537,7 +587,6 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
     {g.kind === 'private' ? <span className="kind">{t('dock.private')}</span> : g.kind === 'server' ? <span className="kind">{t('dock.server')}</span> : null}
     {g.creator ? <span className="creator">{t('dock.by', { c: g.creator })}</span> : null}
     {g.playing ? <span className="players">{t('dock.playing', { n: fmtNum(g.playing) })}</span> : null}
-    {g.placeId && g.kind !== 'private' ? <button className="srv-open" data-act="servers"><Icon name="server" /><span>{t('srv.button')}</span></button> : null}
     {/* Only its icon (its name on hover): with words it took the room of the recent games beside it. */}
     {g.placeId ? <button className="srv-open srv-save" data-act="save-server" title={t('sv.saveTip')} aria-label={t('sv.save')}><Icon name="bookmark" /></button> : null}
   </>;

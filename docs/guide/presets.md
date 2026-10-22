@@ -25,8 +25,9 @@ A preset keeps the accounts (in order), the game, how to pick the server, the wa
 |---|---|
 | **Name** | Required. |
 | **Game** | Same box as the game bar. Empty just opens Roblox. |
-| **Server** | **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random**, or **Fixed server (Job ID)**. |
+| **Server** | **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random**, **Fixed server (Job ID)**, or **A player's server**. |
 | **Job ID** | Only for **Fixed server**. |
+| **Player** | Only for **A player's server**: their username or user ID. The accounts join the server that player is in (no game needed), and each rejoin looks them up again. If the player can't be joined when the preset runs (offline, not in a game, a hidden server), it doesn't run and says why. |
 | **Wait between accounts (s)** | 0–120. Empty uses the one in Settings. |
 | **Accounts** | Tick them. Ticked accounts open in this order: drag the handle or use the arrows. |
 

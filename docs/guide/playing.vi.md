@@ -8,15 +8,25 @@ Cách chọn game và server, mở Roblox cho các tài khoản, và dùng cửa
 
 ## Làm nhanh
 
-1. Ở tab **Tài khoản**, chọn những tài khoản muốn mở.
-2. Bấm vào ô game ở cuối trang, gõ tên game, Place ID hoặc link. Chọn game trong danh sách hiện ra.
-3. Bấm **Vào game**. Nút cho biết sẽ mở bao nhiêu tài khoản.
+1. Bấm vào ô game ở cuối trang (**1 Game**), gõ tên game, Place ID hoặc link. Chọn game trong danh sách hiện ra.
+2. Muốn vào đúng một server thì dùng **2 Server** (tùy chọn): Job ID, **Chọn server** hoặc **Vào cùng người chơi…**.
+3. Ở tab **Tài khoản**, chọn những tài khoản muốn mở rồi bấm **Vào game** (**3 Vào game**). Nút cho biết sẽ mở bao nhiêu tài khoản.
 4. Nếu Bloxkeep hỏi **Lưu ý trước khi mở**, đọc rồi bấm **Vẫn mở**.
 5. Muốn dừng giữa chừng thì bấm **Dừng**. Muốn đóng Roblox thì bấm **Đóng**.
 
+Cho tới khi Bloxkeep mở một tài khoản lần đầu, dòng **Bắt đầu** phía trên danh sách hiện các bước này (thêm tài khoản, chọn game, chọn tài khoản rồi bấm **Vào game**) và đánh dấu từng bước khi bạn làm xong.
+
 ## Thanh chọn game
 
-Thanh ở cuối tab **Tài khoản** có, từ trái sang phải: ảnh game (**Chọn game**), ô game, ô **Job ID (tùy chọn)**, nút **Vào cùng người chơi…**, rồi các nút **Xếp cửa sổ**, **Mở Roblox mà không vào game**, **Đóng**, **Preset** và **Vào game**.
+Thanh ở cuối tab **Tài khoản** chia thành ba bước có đánh số, từ trái sang phải:
+
+| Bước | Có gì |
+|---|---|
+| **1 Game** | Ảnh game (**Chọn game**), ô game, và bên dưới là game tìm được cùng các game gần đây. |
+| **2 Server** (tùy chọn) | Ô **Job ID**, nút **Chọn server** và **Vào cùng người chơi…**. |
+| **3 Vào game** | Nút **Vào game**, bên dưới là **Preset**, **Đóng** và **Cửa sổ** (**Chỉ mở Roblox**, **Xếp cửa sổ Roblox**). |
+
+Nút nào cũng có ghi tên. Khi cửa sổ app rất nhỏ thì dòng tên các bước được ẩn đi.
 
 Ô game ("Tìm game, hoặc dán link / Place ID…", Ctrl+L hoặc `/`) nhận:
 
@@ -28,21 +38,22 @@ Thanh ở cuối tab **Tài khoản** có, từ trái sang phải: ảnh game (*
 | Link chia sẻ server riêng | `roblox.com/share?…type=Server` |
 | Link `roblox://` | |
 
-Dưới ô game là tên game, người làm game, số người đang chơi và nút **Server**. Server riêng có nhãn **Server riêng**, game có Job ID ghi **Server cụ thể**, còn link chia sẻ ghi "Link server riêng: Bloxkeep sẽ mở link này khi vào game." Tối đa ba game gần đây hiện thành lối tắt; dấu ✕ để bỏ một game.
+Dưới ô game là tên game, người làm game và số người đang chơi. Server riêng có nhãn **Server riêng**, game có Job ID ghi **Server cụ thể**, còn link chia sẻ ghi "Link server riêng: Bloxkeep sẽ mở link này khi vào game." Tối đa ba game gần đây hiện thành lối tắt; dấu ✕ để bỏ một game.
 
 **Chọn game từ danh sách**: bấm vào ảnh game, hoặc bấm vào ô game khi đang trống. Các tab gồm **Gần đây**, **Đã ghim**, **Yêu thích trên Roblox** (game mà các tài khoản của bạn đã thích trên Roblox) và **Phổ biến** (khi lấy được danh sách). Bấm ☆ để ghim game.
 
-**Job ID (tùy chọn)** là mã của đúng một server (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`), để nhiều tài khoản vào chung. Đổi sang game khác thì Job ID của game cũ tự bị xóa. Nhấn Enter trong ô này là **Vào game**.
+**Job ID** (bước 2, tùy chọn) là mã của đúng một server (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`), để nhiều tài khoản vào chung. Đổi sang game khác thì Job ID của game cũ tự bị xóa. Nhấn Enter trong ô này là **Vào game**.
 
 > [!TIP]
-> Muốn đưa nhiều tài khoản vào chung một server, chọn server ở **Server** (**Dùng**), hoặc dùng **Vào cùng server** trên một tài khoản đang ở đó. Sau đó chọn các tài khoản còn lại rồi bấm **Vào game**.
+> Muốn đưa nhiều tài khoản vào chung một server, chọn server ở **Chọn server** (**Dùng**), hoặc dùng **Vào cùng server** trên một tài khoản đang ở đó. Sau đó chọn các tài khoản còn lại rồi bấm **Vào game**.
 
 ## Server
 
-Nút **Server** (không có với server riêng) mở danh sách server của game.
+Nút **Chọn server** mở danh sách server của game. Nút bị mờ khi ô game chưa có game, và với server riêng.
 
-<img src="../screenshots/vi/servers.png" width="760" alt="Danh sách server của một game: bạn bè trong game này kèm nút Dùng server này, rồi các server công khai với nút sắp xếp, Đủ chỗ cho 2 tài khoản và Server ngẫu nhiên">
+<img src="../screenshots/vi/servers.png" width="760" alt="Danh sách server của một game: server riêng của bạn và bạn bè trong game này, mỗi mục kèm nút Dùng server này, rồi các server công khai với nút sắp xếp, Đủ chỗ cho 2 tài khoản và Server ngẫu nhiên">
 
+- **Server riêng của bạn**: các server riêng của game này mà tài khoản đang chọn là chủ hoặc được mời vào (chưa chọn tài khoản nào thì dùng vài tài khoản đã đăng nhập đầu tiên), mỗi server ghi chủ server, số người đang chơi và nút **Dùng server này**. Roblox chỉ cho đúng các tài khoản đó vào, nên server mà vài tài khoản đang chọn không vào được sẽ ghi "chỉ *tài khoản* vào được". **Dùng server này** điền server đó vào ô game dưới dạng server riêng (`roblox://placeId=…&accessCode=…`); bấm **Vào game** là Bloxkeep vào đúng server đó, giống nút Join trên trang Roblox của game.
 - **Bạn bè trong game này**: bạn bè của các tài khoản của bạn đang ở trong game này, mỗi người ghi "bạn của *tài khoản*", kèm nút **Dùng server này**. Quyền riêng tư của họ có thể che đi.
 - **Server công khai**: sắp xếp theo **Đông nhất**, **Vắng nhất**, **Ping thấp nhất** hoặc **FPS cao nhất**. **Đủ chỗ cho N tài khoản** (khi chọn từ 2 tài khoản) chỉ hiện server còn đủ chỗ cho tất cả. **Server ngẫu nhiên** chọn bừa một server.
 - **Dùng** điền Job ID của server đó vào thanh chọn game ("Đã chọn server. Giờ chọn tài khoản rồi bấm Vào game."). Server đã đầy thì nút bị mờ.
@@ -60,7 +71,7 @@ Giữ các server bạn hay vào lại trong tab **Đã lưu** của ô game.
 
 ## Vào cùng người chơi
 
-Nút hình người có mũi tên cạnh ô Job ID (cũng có trong Ctrl+K). Nút bị mờ cho tới khi bạn chọn tài khoản. Gõ **Tên đăng nhập Roblox hoặc ID người dùng** (dán link trang cá nhân cũng được) rồi bấm **Tìm và vào**: các tài khoản đã chọn sẽ vào đúng server người đó đang ở. Nếu không được, hộp thoại nói rõ lý do:
+Nút **Vào cùng người chơi…** dưới ô Job ID (cũng có trong Ctrl+K). Chưa chọn tài khoản nào thì app nhắc chọn tài khoản trước. Gõ **Tên đăng nhập Roblox hoặc ID người dùng** (dán link trang cá nhân cũng được) rồi bấm **Tìm và vào**: các tài khoản đã chọn sẽ vào đúng server người đó đang ở. Nếu không được, hộp thoại nói rõ lý do:
 
 - không có tài khoản Roblox nào tên như vậy (cần tên đăng nhập, không phải tên hiển thị);
 - người đó đang trong game nhưng quyền riêng tư không cho các tài khoản của bạn biết họ ở server nào;
@@ -69,13 +80,21 @@ Nút hình người có mũi tên cạnh ô Job ID (cũng có trong Ctrl+K). Nú
 
 Bloxkeep chỉ dùng các tài khoản đã chọn để hỏi Roblox người đó đang ở đâu. Bloxkeep không bao giờ theo dõi hay kết bạn với ai để lách quyền riêng tư của họ.
 
+**Khi các tài khoản này vào lại, tìm lại người chơi này và vào server họ đang chơi** (giữ tích cho tới khi bạn bỏ): mỗi lần tự vào lại đưa một trong các tài khoản này trở lại, Bloxkeep hỏi lại Roblox người đó đang ở đâu rồi vào đúng server đó, kể cả khi họ đã sang game khác. Khi chưa vào được, Bloxkeep chờ, cứ mỗi phút tìm lại, và báo lý do một lần:
+
+- người đó offline, đang ở web hoặc Studio, hoặc server của họ bị ẩn với các tài khoản của bạn;
+- server của người đó đã đầy hoặc vừa đóng;
+- game người đó đang chơi đã cấm tài khoản này, hoặc Roblox không cho vào.
+
+Preset cũng làm được như vậy: chọn **Server của một người chơi** ở mục Server (xem [Preset](presets.vi.md)).
+
 ## Vào game, Mở Roblox, Đóng và Dừng
 
 | Nút | Làm gì |
 |---|---|
-| **Vào game** | Ghi **Chọn tài khoản** (bị mờ) khi chưa chọn ai. Có game trong ô thì ghi **Vào game** kèm số tài khoản. Ô game để trống thì ghi **Mở Roblox**: mỗi tài khoản mở Roblox ở màn hình chính. |
-| **Mở Roblox mà không vào game** (biểu tượng màn hình) | Cũng mở Roblox ở màn hình chính, bất kể ô game có gì. Bị mờ khi chưa chọn tài khoản. |
-| **Đóng Roblox của các tài khoản đã chọn** (biểu tượng nút nguồn) | Bị mờ nếu không tài khoản nào đã chọn đang mở trên máy này. |
+| **Vào game** | Ghi **Chọn tài khoản trước** (bị mờ) khi chưa chọn ai. Có game trong ô thì ghi **Vào game** kèm số tài khoản. Ô game để trống thì ghi **Mở Roblox**: mỗi tài khoản mở Roblox ở màn hình chính. |
+| **Cửa sổ › Chỉ mở Roblox** | Cũng mở Roblox ở màn hình chính, bất kể ô game có gì. Bị mờ khi chưa chọn tài khoản. |
+| **Đóng** | Bị mờ nếu không tài khoản nào đã chọn đang mở trên máy này. |
 | **Dừng** | Thay cho **Vào game** trong lúc đang mở: "Đã mở 2 tài khoản (dừng giữa chừng)." |
 
 Một lượt mở diễn ra thế này:

@@ -96,6 +96,16 @@ html [data-theme="dark" lang="vi"]
             div.empty
               img.art [alt="" src="logo.svg"]
               h2 "Chưa có tài khoản nào"
+              ol.start-steps [aria-label="Bắt đầu"]
+                li.now.ss-step
+                  i "1"
+                  span "Thêm tài khoản"
+                li.ss-step
+                  i "2"
+                  span "Chọn game ở thanh bên dưới"
+                li.ss-step
+                  i "3"
+                  span "Chọn tài khoản rồi bấm Vào game"
               p "Chọn cách đăng nhập. Mỗi tài khoản chỉ cần làm một lần."
               div.start-opts
                 button.rec.start-opt [type="button"]

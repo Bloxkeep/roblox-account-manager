@@ -221,6 +221,7 @@ html [data-theme="dark" lang="vi"]
                 option [value="ping"] "Ping thấp nhất"
                 option [value="random"] "Ngẫu nhiên"
                 option [value="job"] "Server cố định (Job ID)"
+                option [value="follow"] "Server của một người chơi"
             label "Chờ giữa các tài khoản (giây)"
               input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value="12"]
           label [id="ps-job-row"] "Job ID"
@@ -643,6 +644,7 @@ html [data-theme="dark" lang="vi"]
                 option [value="ping"] "Ping thấp nhất"
                 option [value="random"] "Ngẫu nhiên"
                 option [value="job"] "Server cố định (Job ID)"
+                option [value="follow"] "Server của một người chơi"
             label "Chờ giữa các tài khoản (giây)"
               input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value="12"]
           label [id="ps-job-row"] "Job ID"
@@ -837,4 +839,4 @@ html [data-theme="dark" lang="vi"]
         button.btn.primary "Lưu"
 #toasts
 -- commands
-  savePreset {"antiAfk":true,"arrange":true,"autoRejoin":null,"delaySeconds":12,"id":"p1","ids":["00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004"],"jobId":"","name":"Farm Blox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","restartHours":4,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"job"}
+  savePreset {"antiAfk":true,"arrange":true,"autoRejoin":null,"delaySeconds":12,"followPlayer":"","id":"p1","ids":["00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004"],"jobId":"","name":"Farm Blox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","restartHours":4,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"job"}

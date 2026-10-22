@@ -221,6 +221,7 @@ html [data-theme="dark" lang="vi"]
                 option [value="ping"] "Ping thấp nhất"
                 option [value="random"] "Ngẫu nhiên"
                 option [value="job"] "Server cố định (Job ID)"
+                option [value="follow"] "Server của một người chơi"
             label "Chờ giữa các tài khoản (giây)"
               input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value="12"]
           div.preset-accs "Tài khoản"
@@ -621,4 +622,4 @@ html [data-theme="dark" lang="vi"]
     span "Đã lưu preset."
 -- commands
   pageBusy {"busy":false}
-  savePreset {"antiAfk":true,"arrange":true,"autoRejoin":null,"delaySeconds":12,"id":"p1","ids":["00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004","00000000-0000-4000-8000-000000000006"],"jobId":"","name":"Farm Blox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","restartHours":4,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"ping"}
+  savePreset {"antiAfk":true,"arrange":true,"autoRejoin":null,"delaySeconds":12,"followPlayer":"","id":"p1","ids":["00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004","00000000-0000-4000-8000-000000000006"],"jobId":"","name":"Farm Blox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","restartHours":4,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"ping"}
