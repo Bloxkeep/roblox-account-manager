@@ -3554,6 +3554,21 @@ public sealed partial class AppController : IDisposable
     {
         if (_disposed)
             return;
+        // Set up on the first tick, once the message loop runs: its window gets Windows' input messages.
+        if (!_robloxInputTried)
+        {
+            _robloxInputTried = true;
+            try
+            {
+                _robloxInput = new RobloxInput();
+                if (_robloxInput.Working)
+                    _robloxInputAt = _robloxInput.ReachedAt;
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+            {
+                Log.Write(ex); // anti-AFK counts input as before
+            }
+        }
         try
         {
             TrackProcesses();
@@ -4518,7 +4533,21 @@ public sealed partial class AppController : IDisposable
                 _afkHeld[pid] = AfkHeld.Locked;
             return [];
         }
-        if (idle < AntiAfk.UserIdleNeeded && windows.ContainsKey(foreground))
+        // The person's own input that reached a Roblox window: keys with it in front, the mouse over it in front (Windows'
+        // raw input, RobloxInput). Without that (not set up), the PC used with a Roblox window in front counts for it,
+        // as before: a mouse on another monitor too, which Roblox never got.
+        if (_robloxInputAt is { } reachedAt)
+        {
+            foreach (int pid in windows.Keys)
+            {
+                if (reachedAt(pid) is { } at && at > _lastInput.GetValueOrDefault(pid, DateTime.MinValue) && at <= now)
+                {
+                    _lastInput[pid] = at;
+                    _afkHeld.Remove(pid);
+                }
+            }
+        }
+        else if (idle < AntiAfk.UserIdleNeeded && windows.ContainsKey(foreground))
         {
             _lastInput[foreground] = now;
             _afkHeld.Remove(foreground);
@@ -4555,6 +4584,12 @@ public sealed partial class AppController : IDisposable
         var lastChance = lastInput + AntiAfk.LastChance;
         return later < lastChance ? later : lastChance > now + NudgeRetry ? lastChance : now + NudgeRetry;
     }
+
+    /// <summary>Which window the person's own input reached (Windows' raw input), set up on the first process tick.</summary>
+    RobloxInput? _robloxInput;
+    bool _robloxInputTried;
+    /// <summary>When the person's own input last reached a process's window; null when not known (counted as before). A field, so the checks can answer.</summary>
+    Func<int, DateTime?>? _robloxInputAt;
 
     DateTime LastInput(int pid)
     {
@@ -5414,6 +5449,7 @@ public sealed partial class AppController : IDisposable
         NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
         _updater.Changed -= OnUpdaterChanged;
         _discordPresence.Dispose(); // the profile stops showing Bloxkeep
+        _robloxInput?.Dispose();
         SayOfflineOnExit(); // no longer counted as open (not for an update in the background, back within seconds)
         _procTimer.Dispose();
         _homeSession?.Dispose();

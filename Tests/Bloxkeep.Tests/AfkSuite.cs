@@ -94,6 +94,36 @@ static class AfkSuite
         c.Check("last-chance window still waiting: not tried yet", rw.Count == 0, string.Join(",", rw));
         c.Check("in use clears the other windows' waits only", !retry.ContainsKey(B) && retry.ContainsKey(C), string.Join(",", retry.Keys));
 
+        // The person's own input as Windows' raw input names it (RobloxInput): a Roblox window in front gets only what
+        // reached it. The PC in use with it in front but none of the input its own (a mouse on another monitor): not
+        // counted, so at its last chance it is nudged in a pause. Before, any input then counted as its own, and it was
+        // kicked (2026-10-19: idle-kicked 8 minutes after Bloxkeep last counted input for it).
+        Harness.Set(app, "_robloxInputAt", (Func<int, DateTime?>)(_ => null));
+        try
+        {
+            lastInput.Clear(); retry.Clear(); held.Clear();
+            var t2 = DateTime.UtcNow;
+            lastInput[D] = t2.AddMinutes(-19);
+            var rd = (List<int>)plan.Invoke(app, [t2, new HashSet<int> { D }, wins, false, TimeSpan.FromSeconds(3), D, (Func<bool>)(() => false)])!;
+            c.Check("the PC in use with a Roblox window in front, none of the input its own: not counted, its last chance nudged in a pause",
+                rd.SequenceEqual([D]) && lastInput[D] < t2.AddMinutes(-18), $"{string.Join(",", rd)} {lastInput[D]}");
+            Harness.Set(app, "_robloxInputAt", (Func<int, DateTime?>)(pid => pid == D ? t2.AddSeconds(-1) : null));
+            lastInput[D] = t2.AddMinutes(-19);
+            rd = (List<int>)plan.Invoke(app, [t2, new HashSet<int> { D }, wins, false, TimeSpan.FromSeconds(3), D, (Func<bool>)(() => false)])!;
+            c.Check("…keys typed into it, or the mouse over it: counted, nothing nudged", rd.Count == 0 && lastInput[D] == t2.AddSeconds(-1), lastInput[D]);
+        }
+        finally
+        {
+            Harness.Set(app, "_robloxInputAt", null);
+        }
+        var inputType = typeof(Vault).Assembly.GetType("RobloxManager.RobloxInput")!;
+        int Reached(bool keyboard, int front, int under) => (int)inputType.GetMethod("Reached", Harness.F)!.Invoke(null, [keyboard, front, under])!;
+        c.Check("a key reaches the window in front, wherever the pointer is", Reached(true, D, Other) == D);
+        c.Check("the mouse reaches it only with the pointer over it", Reached(false, D, D) == D && Reached(false, D, Other) == 0);
+        // Windows takes the registration from a window of no one's in the background (as Bloxkeep's is).
+        using (var input = (IDisposable)Activator.CreateInstance(inputType, true)!)
+            c.Check("Windows' raw input set up, for the background too", inputType.GetProperty("Working")!.GetValue(input) is true);
+
         Unseen(c, afk);
     }
 
