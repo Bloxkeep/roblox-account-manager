@@ -2974,7 +2974,7 @@ public sealed partial class AppController : IDisposable
                     await WaitBeforeNextLaunchAsync(account, startedAt, delaySeconds, ct);
                     if (!opened || !checkServer || target is not { JobId: { } job, LinkCode: null })
                         continue;
-                    if (await WaitForServerAnswerAsync(account, ct) != "closed")
+                    if (await WaitForServerAnswerAsync(account, target, ct) != "closed")
                     {
                         checkServer = false; // it took this account (or its log can't tell): the rest follow
                         continue;
@@ -3048,32 +3048,48 @@ public sealed partial class AppController : IDisposable
     /// <summary>Servers found closed in one launch before Roblox is left to pick one for each account.</summary>
     const int MaxServerSwaps = 3;
     /// <summary>
-    /// How long a game start may go without a server before the server counts as not taking anyone: a normal join gets
-    /// one about a second after the start (1.0 and 1.2 s in Roblox logs from 2026-10-12).
+    /// How long a game start may go without a server before Roblox is asked whether the server takes anyone: a normal join
+    /// gets one about a second after the start (1.0 and 1.2 s in Roblox logs from 2026-10-12, at most 1.8 s in the 31 of
+    /// 2026-10-21), but one waiting for room logs nothing (17-38 s for four accounts sent to one server, 2026-10-16).
     /// </summary>
     static readonly TimeSpan ServerCheck = TimeSpan.FromSeconds(12);
     /// <summary>How long a launch waits for that answer before going on without it (the log not found, the window gone).</summary>
     static readonly TimeSpan ServerCheckLimit = TimeSpan.FromSeconds(25);
 
     /// <summary>
-    /// Whether the server this account's client was sent to has taken it: "in" once its log names a server, "closed"
-    /// when its game start has had none for <see cref="ServerCheck"/> (the server has ended, or it is full and Roblox
-    /// queues the join), null while its log says neither.
+    /// What this account's client's log says of the server it was sent to: "in" once it names a server, "silent" when its
+    /// game start has had none for <see cref="ServerCheck"/>, null while it says neither.
     /// </summary>
     string? ServerAnswer(Guid accountId) =>
         !_running.TryGetValue(accountId, out var run) || _logs.StateOf(run.Pid) is not { } log ? null
         : log.JobId is not null ? "in"
-        : log.Status == "joining" && DateTime.UtcNow - log.At >= ServerCheck ? "closed"
+        : log.Status == "joining" && DateTime.UtcNow - log.At >= ServerCheck ? "silent"
         : null;
 
-    /// <summary>Waits for <see cref="ServerAnswer"/>, at most <see cref="ServerCheckLimit"/>; null when none came.</summary>
-    async Task<string?> WaitForServerAnswerAsync(Account account, CancellationToken ct)
+    /// <summary>
+    /// Whether the server the first account was sent to takes it, at most <see cref="ServerCheckLimit"/>: "in" once its log
+    /// names the server; "closed" when, its join silent for <see cref="ServerCheck"/>, Roblox's join answer says the
+    /// server has ended or is full; null otherwise (Roblox lets it in and the join is slow, refuses the account, or gives
+    /// no answer): the rest follow. Before, the silence alone counted as closed: a join waiting for room (17-38 s seen)
+    /// had its window closed and the party sent elsewhere.
+    /// </summary>
+    async Task<string?> WaitForServerAnswerAsync(Account account, GameTarget target, CancellationToken ct)
     {
         var until = DateTime.UtcNow + ServerCheckLimit;
+        Task<RobloxApi.JoinAnswer?>? asked = null;
         while (DateTime.UtcNow < until)
         {
-            if (ServerAnswer(account.Id) is { } answer)
-                return answer;
+            string? log = ServerAnswer(account.Id);
+            if (log == "in")
+                return log;
+            if (log == "silent" && asked is null && _running.TryGetValue(account.Id, out var run))
+            {
+                // The answer stays with the window: its own join check reads it rather than asking again.
+                asked = CheckJoinAsync(account, target, "A party's server, its first join silent");
+                _joinChecks[run.Pid] = (asked, DateTime.UtcNow);
+            }
+            if (asked is { IsCompletedSuccessfully: true, Result: { } said } && (said.Ended || said.Full))
+                return "closed";
             Progress(L.F("Checking that the server lets {0} in…", Name(account)));
             await Task.Delay(500, ct);
         }

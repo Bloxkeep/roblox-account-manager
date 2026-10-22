@@ -197,10 +197,43 @@ static class RejoinSuite
             NewWindow(); // the next account's window
             Write(Line(DateTime.UtcNow.AddSeconds(-13), Launch));
             Poll(s => s.JobId is null);
-            c.Check("13 s without a server (a normal join gets one in about a second): it didn't", Answer() == "closed", Answer());
-            var waited = Stopwatch.StartNew();
-            var told = await (Task<string?>)t.GetMethod("WaitForServerAnswerAsync", Harness.F)!.Invoke(app, [account, CancellationToken.None])!;
-            c.Check("…and the launch hears it without waiting", told == "closed" && waited.ElapsedMilliseconds < 2000, $"{told} {waited.ElapsedMilliseconds} ms");
+            c.Check("13 s without a server (a normal join gets one in about a second): silent", Answer() == "silent", Answer());
+            // Roblox's join answer for that server decides, not the silence: a join waiting for room logs nothing (four
+            // accounts sent to one server waited 17-38 s, then got in, 2026-10-16). Roblox answers from here.
+            var partyAsk = Harness.Get<object>(app, "_askJoin");
+            RobloxApi.JoinAnswer partyReply = new(200, 5, "The game has ended.");
+            int partyAsks = 0;
+            Harness.Set(app, "_askJoin", (Func<Account, GameTarget, CancellationToken, Task<RobloxApi.JoinAnswer>>)((_, _, _) =>
+            {
+                partyAsks++;
+                return Task.FromResult(partyReply);
+            }));
+            var waitForServer = t.GetMethod("WaitForServerAnswerAsync", Harness.F)!;
+            Task<string?> Wait() => (Task<string?>)waitForServer.Invoke(app, [account, new GameTarget(107778070777162, DeadServer), CancellationToken.None])!;
+            try
+            {
+                var waited = Stopwatch.StartNew();
+                var told = await Wait();
+                c.Check("…Roblox says the server has ended (status 5): closed, heard without waiting",
+                    told == "closed" && partyAsks == 1 && waited.ElapsedMilliseconds < 2000, $"{told} {partyAsks} {waited.ElapsedMilliseconds} ms");
+                Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
+                partyReply = new(200, 6, "The game you requested is currently full.");
+                c.Check("…full (status 6): closed", await Wait() == "closed");
+                // Roblox would let it in (status 2): the join is slow, not refused. It got its server 2 s on.
+                Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
+                partyReply = new(200, 2, null);
+                var slow = Wait();
+                await Task.Delay(1500);
+                Write(Line(DateTime.UtcNow, Join));
+                Poll(s => s.JobId is not null); // as the process check reads the log
+                c.Check("…Roblox would let it in (status 2), its server named 2 s on: not closed, it got in", await slow == "in", slow.Result);
+                c.Check("…and the window's own join check has that answer, not asked again", Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Contains(me));
+            }
+            finally
+            {
+                Harness.Set(app, "_askJoin", partyAsk);
+                Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
+            }
 
             // A move to another server of the same place, as client 0.743 logged it on 2026-10-19: "Teleported." and the
             // new join first, the old server's disconnect line after them. Bloxkeep took that for a drop and closed the

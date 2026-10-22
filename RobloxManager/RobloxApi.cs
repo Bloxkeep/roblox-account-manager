@@ -331,6 +331,12 @@ public static class RobloxApi
         public bool Full => Status == 6;
 
         /// <summary>
+        /// The server has ended (status 5: Roblox's ConnectionError 517 is PlacelaunchGameEnded, 512 + the status, as 518
+        /// is PlacelaunchGameFull for 6; Roblox's API dump).
+        /// </summary>
+        public bool Ended => Status == 5;
+
+        /// <summary>
         /// Roblox refuses the account this game: one of the statuses its own client counts as a join error (its setting
         /// FStringGameJoinStatusConsideredError, "12;29;30;31;32;33;" in 0.744), not a wait. Asked again, it answers the
         /// same. A game's ban is one of them (see <see cref="Banned"/>).
