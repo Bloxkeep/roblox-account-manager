@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.10-beta.1",
+    "date": "2026-10-23",
+    "new": {
+      "en": [
+        "Windows in the game bar now shows Arrange windows' layouts as pictures, like Windows' snap layouts: Auto, grids from 2 × 1 to 4 × 4, or a size of your own (common sizes from 1920 × 1080 down to 320 × 180, smaller than Roblox lets you drag a window to). In a grid every window takes one cell however many are open, so 2 windows can be small too. Point at one to see which cells your windows would take, click it to arrange them. Set your own width and height in Settings › Launching › Arranging windows.",
+        "Drag an edge of a Roblox window to make it smaller than Roblox lets it go: the frame stops at Roblox's smallest size while you drag, and the window takes the size you let go at."
+      ],
+      "vi": [
+        "Nút Cửa sổ ở thanh dưới giờ hiện các kiểu xếp cửa sổ bằng hình, giống Snap của Windows: Tự vừa, lưới từ 2 × 1 đến 4 × 4, hoặc kích thước tự chọn (có sẵn các kích thước mẫu từ 1920 × 1080 xuống 320 × 180, nhỏ hơn mức Roblox cho phép khi tự kéo cửa sổ). Chọn lưới thì mỗi cửa sổ chiếm một ô dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Rê chuột lên một kiểu để xem cửa sổ sẽ nằm ở ô nào, bấm vào là xếp. Rộng và cao tự chọn đặt ở Cài đặt › Khởi chạy › Kiểu xếp cửa sổ.",
+        "Kéo mép cửa sổ Roblox giờ thu nhỏ được dưới mức Roblox cho phép: lúc kéo, khung dừng ở cỡ nhỏ nhất của Roblox, thả chuột ra là cửa sổ về đúng cỡ chỗ bạn thả."
+      ]
+    },
+    "improved": {
+      "en": [
+        "The online count is quicker: Bloxkeep says it's open every minute, so closing it takes you off the count within about 2 minutes. Each PC is counted once, even after Bloxkeep is reinstalled. It still sends only a code (now made from the PC, and it can't be traced back), the version and the language."
+      ],
+      "vi": [
+        "Số người đang dùng cập nhật nhanh hơn: Bloxkeep báo đang mở mỗi phút, nên tắt app thì khoảng 2 phút sau đã không còn được tính. Mỗi máy chỉ tính một lần, kể cả khi cài lại Bloxkeep. App vẫn chỉ gửi một mã (giờ tạo từ máy, không lần ngược ra được), phiên bản và ngôn ngữ."
+      ]
+    }
+  },
+  {
     "version": "1.0.9",
     "date": "2026-10-23",
     "highlights": [
