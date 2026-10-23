@@ -210,6 +210,7 @@ public sealed partial class AppController : IDisposable
         _procTimer.Tick += (_, _) => OnProcTimer();
         _procTimer.Start();
         WatchForeground();
+        WatchDrags();
         // Multi-Roblox before the master password (see Prefs.MultiRobloxAtStart).
         if (Prefs.MultiRobloxAtStart && !MultiInstance.Armed)
             MultiInstance.Enable();
@@ -965,6 +966,8 @@ public sealed partial class AppController : IDisposable
         windowPictures = s.WindowPictures ?? s.RenameWindows,
         s.TaskbarGroups,
         s.WindowLayout,
+        s.WindowWidth,
+        s.WindowHeight,
         s.MaximizeOnOpen,
         s.LaunchVia,
         customLauncher = s.CustomLauncher.Length > 0 ? Path.GetFileNameWithoutExtension(s.CustomLauncher) : null,
@@ -3580,8 +3583,9 @@ public sealed partial class AppController : IDisposable
         // Clicked in Bloxkeep: the windows come over every other app too (not after a launch: the person may be busy
         // elsewhere by then).
         var app = !auto && _owner.IsHandleCreated && _owner.Visible && _owner.WindowState != FormWindowState.Minimized ? _owner.Handle : IntPtr.Zero;
+        var s = _vault?.Data.Settings;
         return await RobloxProcesses.ArrangeGridAsync(tracked.Concat(others).Where(p => !afk.Contains(p)).ToList(), screen.WorkingArea,
-            _vault?.Data.Settings.WindowLayout ?? "fill", skipMinimized: auto, app: app);
+            s?.WindowLayout ?? "fill", skipMinimized: auto, app: app, custom: s is null ? default : new Size(s.WindowWidth, s.WindowHeight));
     }
 
     /// <summary>The clients a light-AFK preset opened (by process id).</summary>
@@ -5398,7 +5402,11 @@ public sealed partial class AppController : IDisposable
         if (OptBool(a, "renameWindows") is { } rename) s.RenameWindows = rename;
         if (OptBool(a, "windowPictures") is { } pictures) s.WindowPictures = pictures;
         if (OptStr(a, "taskbarGroups") is { } groups && groups is "roblox" or "account" or "preset") s.TaskbarGroups = groups;
-        if (OptStr(a, "windowLayout") is "fill" or "small" or "medium" or "large") s.WindowLayout = OptStr(a, "windowLayout")!;
+        if (OptStr(a, "windowLayout") is { } windowLayout && RobloxProcesses.IsLayout(windowLayout)) s.WindowLayout = windowLayout;
+        if (a.TryGetProperty("windowWidth", out var ww) && ww.TryGetInt32(out int width))
+            s.WindowWidth = Math.Clamp(width, RobloxProcesses.LeastWindow.Width, RobloxProcesses.MostWindow.Width);
+        if (a.TryGetProperty("windowHeight", out var wh) && wh.TryGetInt32(out int height))
+            s.WindowHeight = Math.Clamp(height, RobloxProcesses.LeastWindow.Height, RobloxProcesses.MostWindow.Height);
         // "custom" needs a launcher picked with PickLauncher; the page never supplies a path itself.
         // "other:<name>" only for a launcher actually found here, so the page can't name an arbitrary program.
         if (OptStr(a, "launchVia") is { } via && RobloxLauncher.IsValidOption(via) && (via != "custom" || File.Exists(s.CustomLauncher))
@@ -5540,6 +5548,7 @@ public sealed partial class AppController : IDisposable
             return;
         _disposed = true;
         GiveCoresBack();
+        StopWatchingDrags();
         GiveIconsBack();
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         SystemEvents.TimeChanged -= OnTimeChanged;

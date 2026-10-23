@@ -2,6 +2,7 @@
 // are arranged; then what opens Roblox (with a note while the Store edition is involved) and the wait between accounts.
 import { useEffect, useRef } from 'react';
 import { Icon, useAppState, useHost } from '../host';
+import { SIZES, SnapPicker } from '../Snap';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
 export function LaunchPage({ title }: { title: string }) {
@@ -18,6 +19,12 @@ export function LaunchPage({ title }: { title: string }) {
   // One of three: as Roblox sizes it, maximised, or tiled (the app keeps the other one off).
   const [openAs, setOpenAs] = useLocal(m.tile ? 'tile' : st.maximizeOnOpen ? 'maximize' : 'roblox');
   const [layout, setLayout] = useLocal(st.windowLayout || 'fill');
+  // A size of one's own: the boxes' text as typed (an emptied box stays empty), saved once a box is left (or Enter), held
+  // to what the app takes.
+  const [winW, setWinW] = useLocal<string>(String(st.windowWidth || 640));
+  const [winH, setWinH] = useLocal<string>(String(st.windowHeight || 480));
+  const saveSize = (w = winW, h = winH) => call('setSettings', { windowWidth: Math.round(+w) || 640, windowHeight: Math.round(+h) || 480 });
+  const sized = Object.values(SIZES).flat().find(([w, h]) => w === +winW && h === +winH);
 
   // [value, words, usable]: other Bloxstrap-style launchers only appear when found on this PC (or still chosen after
   // being removed).
@@ -83,12 +90,33 @@ export function LaunchPage({ title }: { title: string }) {
           {['roblox', 'maximize', 'tile'].map(k => <option key={k} value={k}>{t(`set.openAs.${k}`)}</option>)}
         </select>
       </Row>
-      <Row title={t('set.winLayout')} desc={t('set.winLayoutDesc')}>
-        <select className="select" id="s-winlayout" aria-label={t('set.winLayout')} value={layout}
-          onChange={e => { setLayout(e.target.value); call('setSettings', { windowLayout: e.target.value }); }}>
-          {['fill', 'small', 'medium', 'large'].map(k => <option key={k} value={k}>{t(`set.winLayout.${k}`)}</option>)}
-        </select>
-      </Row>
+      <Row title={t('set.winLayout')} desc={t('set.winLayoutDesc')} />
+      <div className="snap-row" id="s-winlayout">
+        <SnapPicker value={layout} width={st.windowWidth || 640} height={st.windowHeight || 480}
+          onPick={l => { setLayout(l); call('setSettings', { windowLayout: l }); }} />
+        {layout === 'custom' ? <div className="snap-size">
+          <select className="select" id="s-winsize" aria-label={t('snap.sizes')} value={sized ? `${sized[0]}x${sized[1]}` : ''}
+            onChange={e => {
+              const [w, h] = e.target.value.split('x').map(Number);
+              if (!w || !h) return;
+              setWinW(String(w));
+              setWinH(String(h));
+              saveSize(String(w), String(h));
+            }}>
+            <option value="">{t('snap.sizes')}</option>
+            {Object.entries(SIZES).map(([shape, list]) => <optgroup key={shape} label={shape}>
+              {list.map(([w, h]) => <option key={`${w}x${h}`} value={`${w}x${h}`}>{`${w} × ${h}`}</option>)}
+            </optgroup>)}
+          </select>
+          <label>{t('snap.width')} <input type="number" className="input" id="s-winw" min="160" max="7680" step="10" value={winW}
+            onChange={e => setWinW(e.target.value)} onBlur={() => saveSize()} onKeyDown={e => { if (e.key === 'Enter') saveSize(); }} /></label>
+          <span aria-hidden="true">×</span>
+          <label>{t('snap.height')} <input type="number" className="input" id="s-winh" min="120" max="4320" step="10" value={winH}
+            onChange={e => setWinH(e.target.value)} onBlur={() => saveSize()} onKeyDown={e => { if (e.key === 'Enter') saveSize(); }} /></label>
+          <span className="muted">px</span>
+          <button className="btn sm" data-act="arrange"><Icon name="screens" /><span>{t('m.arrange')}</span></button>
+        </div> : null}
+      </div>
     </Group>
     <Group id="client" title={t('set.g.client')}>
       <Row title={t('set.client')} desc={t('set.clientDesc')}>

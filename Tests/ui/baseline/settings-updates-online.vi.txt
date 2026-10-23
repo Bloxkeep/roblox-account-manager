@@ -172,7 +172,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Tính vào số người đang dùng"
-                        div.d "Khi Bloxkeep đang mở, cứ 10 phút app báo một lần để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Chỉ gửi một mã ngẫu nhiên, phiên bản và ngôn ngữ."
+                        div.d "Khi Bloxkeep đang mở, cứ mỗi phút app báo một lần để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Chỉ gửi một mã tạo từ máy này (không lần ngược ra được, cài lại vẫn giữ nguyên), phiên bản và ngôn ngữ."
                       div.ctl
                         label.switch
                           input [id="s-online" type="checkbox" aria-label="Tính vào số người đang dùng" checked=false FOCUSED]

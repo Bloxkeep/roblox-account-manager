@@ -46,14 +46,17 @@ Một cửa sổ nhỏ luôn nằm trên cùng. Mở bằng nút **Cửa sổ nh
 
 ## Xếp cửa sổ
 
-Bấm **Cửa sổ › Xếp cửa sổ Roblox** ở thanh chọn game, hoặc dùng **⋯ Tùy chọn khác › Xếp cửa sổ Roblox**, hoặc Ctrl+K. Máy có nhiều màn hình thì chọn màn hình trước (chữ "chính" đánh dấu màn hình chính).
+Bấm **Cửa sổ** ở thanh chọn game rồi chọn một kiểu xếp trong các hình mẫu, giống Snap của Windows: rê chuột lên hình nào thì các ô mà cửa sổ đang mở sẽ chiếm sáng lên, bấm vào là xếp ngay (và nhớ cho lần sau). **⋯ Tùy chọn khác › Xếp cửa sổ Roblox** và Ctrl+K dùng kiểu bạn đã chọn. Máy có nhiều màn hình thì chọn màn hình trước (chữ "chính" đánh dấu màn hình chính).
 
-Kiểu xếp lấy từ **Cài đặt › Khởi chạy › Kiểu xếp cửa sổ**:
+<img src="../screenshots/vi/arrange-layouts.png" width="760" alt="Menu Cửa sổ ở thanh dưới: Chỉ mở Roblox, rồi các kiểu xếp bằng hình màn hình (Tự vừa, 2 × 1 đến 4 × 4, và 640 × 480), chuột đang rê lên lưới 4 × 4 với hai ô đầu sáng lên cho hai cửa sổ đang mở">
 
 | Kiểu | Kết quả |
 |---|---|
-| **Lấp đầy màn hình** | Các cửa sổ lấp đầy cả màn hình. |
-| **Ô nhỏ**, **Ô vừa**, **Ô lớn** | Các ô xếp từ góc trên bên trái; phần còn lại của màn hình để trống. |
+| **Tự vừa** | Các cửa sổ lấp đầy cả màn hình, mở bao nhiêu cửa sổ thì chia bấy nhiêu ô. |
+| **2 × 1** đến **4 × 4** | Màn hình chia thành lưới đó; mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ. 2 cửa sổ trong lưới 4 × 4 thì mỗi cái bằng 1/16 màn hình. Nhiều cửa sổ hơn số ô thì xếp chồng so le đều nhau. |
+| **640 × 480** (kích thước tự chọn) | Mọi cửa sổ đúng kích thước đó, xếp cạnh nhau từ góc trên bên trái. Chọn một kích thước mẫu (16:9 từ 1920 × 1080 xuống 320 × 180, hoặc 4:3 từ 1024 × 768 xuống 320 × 240) hoặc nhập rộng và cao ở **Cài đặt › Khởi chạy › Kiểu xếp cửa sổ** (**Cửa sổ › Tự chọn kích thước cửa sổ…**). Có thể nhỏ hơn mức Roblox cho phép khi tự kéo cửa sổ. |
+
+Muốn thu nhỏ một cửa sổ bằng tay thì kéo mép của nó: lúc kéo, khung dừng ở cỡ nhỏ nhất của Roblox; thả chuột ra là Bloxkeep đưa cửa sổ về đúng cỡ chỗ bạn thả (không nhỏ hơn 160 × 120). Di chuyển cửa sổ bằng thanh tiêu đề thì vẫn do Windows lo.
 
 > [!TIP]
 > Cửa sổ càng nhỏ thì card đồ họa càng đỡ tải.

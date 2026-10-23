@@ -159,13 +159,101 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Các ô bắt đầu từ góc trên bên trái, phần còn lại của màn hình để trống."
+                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Kiểu xếp cửa sổ" value="small" FOCUSED]
-                          option [value="fill"] "Lấp đầy màn hình"
-                          option [value="small"] "Ô nhỏ"
-                          option [value="medium"] "Ô vừa"
-                          option [value="large"] "Ô lớn"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
+                        div.snap-opts
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Tự vừa"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.current.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="true" FOCUSED]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span.on
+                                span.on
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-own [style="height:44.4444%;width:33.3333%"]
+                            span.snap-name "640 × 480"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card
@@ -200,7 +288,319 @@ html [data-theme="dark" lang="vi"]
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setSettings {"multiTile":true}
   setSettings {"renameWindows":false}
-  setSettings {"windowLayout":"small"}
+  setSettings {"windowLayout":"3x3"}
+== own size
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav.on [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
+              svg.i #1crx2f1
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Cài đặt"
+        div.set-layout
+          nav.set-nav [aria-label="Cài đặt"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1ewcuky
+              span "Khởi chạy"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản & đồ họa Roblox"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Treo game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Thông báo"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Giao diện"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Bảo mật"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Sao lưu & dữ liệu"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Cập nhật Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
+                h2.set-page-title [id="set-page-launch-h"] "Khởi chạy"
+                div.set-grp [id="sec-launch"]
+                  h3.set-grp-title "Multi-Roblox & cửa sổ"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Multi-Roblox"
+                          span.ok.state-pill [id="s-multi-pill"] "Sẵn sàng"
+                        div.d "Chơi nhiều tài khoản cùng lúc."
+                          button.link [type="button"] "Chi tiết"
+                      div.ctl
+                        label.switch
+                          input [id="s-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Hiện tên tài khoản trên cửa sổ"
+                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), dưới taskbar và khi bấm Alt+Tab."
+                      div.ctl
+                        label.switch
+                          input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Ảnh tài khoản làm biểu tượng cửa sổ"
+                        div.d "Mỗi cửa sổ Roblox hiện ảnh của tài khoản thay cho biểu tượng Roblox."
+                      div.ctl
+                        label.switch
+                          input [id="s-pictures" type="checkbox" aria-label="Ảnh tài khoản làm biểu tượng cửa sổ" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Nút trên taskbar"
+                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Có thể cho mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm riêng (cửa sổ mở ngoài preset vẫn gộp chung)."
+                      div.ctl
+                        select.select [id="s-taskbar" aria-label="Nút trên taskbar" value="roblox"]
+                          option [value="roblox"] "Gộp chung như Roblox"
+                          option [value="account"] "Mỗi tài khoản một nút"
+                          option [value="preset"] "Mỗi preset một nhóm"
+                    div.set-row
+                      div
+                        div.t "Khi cửa sổ Roblox mở ra"
+                        div.d "Cửa sổ phóng to vẫn là cửa sổ thường, nên không dùng chung cài đặt toàn màn hình của Roblox. Xếp cạnh nhau cần bật Multi-Roblox."
+                      div.ctl
+                        select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="tile"]
+                          option [value="roblox"] "Để Roblox tự chọn"
+                          option [value="maximize"] "Phóng to"
+                          option [value="tile"] "Xếp cạnh nhau"
+                    div.set-row
+                      div
+                        div.t "Kiểu xếp cửa sổ"
+                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
+                      div.ctl
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
+                        div.snap-opts
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Tự vừa"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.current.snap-opt [role="menuitemradio" type="button" title="320 × 240" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-own [style="height:22.2222%;width:16.6667%"]
+                            span.snap-name "320 × 240"
+                      div.snap-size
+                        select.select [id="s-winsize" aria-label="Kích thước mẫu" value="320x240"]
+                          option [value=""] "Kích thước mẫu"
+                          option [value="1920x1080"] "1920 × 1080"
+                          option [value="1600x900"] "1600 × 900"
+                          option [value="1280x720"] "1280 × 720"
+                          option [value="1024x576"] "1024 × 576"
+                          option [value="960x540"] "960 × 540"
+                          option [value="854x480"] "854 × 480"
+                          option [value="640x360"] "640 × 360"
+                          option [value="480x270"] "480 × 270"
+                          option [value="320x180"] "320 × 180"
+                          option [value="1024x768"] "1024 × 768"
+                          option [value="800x600"] "800 × 600"
+                          option [value="640x480"] "640 × 480"
+                          option [value="480x360"] "480 × 360"
+                          option [value="400x300"] "400 × 300"
+                          option [value="320x240"] "320 × 240"
+                        label "Rộng"
+                          input.input [id="s-winw" type="number" min="160" max="7680" step="10" value="320" FOCUSED]
+                        span [aria-hidden="true"] "×"
+                        label "Cao"
+                          input.input [id="s-winh" type="number" min="120" max="4320" step="10" value="240"]
+                        span.muted "px"
+                        button.btn.sm
+                          svg.i #1e3syqr
+                          span "Xếp cửa sổ Roblox"
+                div.set-grp [id="sec-client"]
+                  h3.set-grp-title "Launcher & thời gian chờ"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Mở Roblox bằng"
+                        div.d "Dùng Bloxstrap hoặc Fishstrap thì vẫn giữ được mod."
+                      div.ctl
+                        select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                          option [value="auto"] "Mặc định (Bloxstrap)"
+                          option [value="bloxstrap"] "Bloxstrap"
+                          option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
+                          option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
+                          option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
+                        button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
+                    div [id="s-store"]
+                    div.set-row
+                      div
+                        div.t "Chờ giữa các tài khoản"
+                        div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
+                      div.ctl
+                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
+                        b.range-v [id="s-delay-v"] "8 giây"
+#layer
+#toasts
+-- commands
+  setSettings {"windowHeight":240,"windowWidth":320}
+  setSettings {"windowHeight":480,"windowWidth":320}
+  setSettings {"windowLayout":"custom"}
 == end
 html [data-theme="dark" lang="vi"]
 #app
@@ -362,13 +762,128 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Các ô bắt đầu từ góc trên bên trái, phần còn lại của màn hình để trống."
+                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Kiểu xếp cửa sổ" value="small"]
-                          option [value="fill"] "Lấp đầy màn hình"
-                          option [value="small"] "Ô nhỏ"
-                          option [value="medium"] "Ô vừa"
-                          option [value="large"] "Ô lớn"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
+                        div.snap-opts
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Tự vừa"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.current.snap-opt [role="menuitemradio" type="button" title="1280 × 720" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-own [style="height:66.6667%;width:66.6667%"]
+                            span.snap-name "1280 × 720"
+                      div.snap-size
+                        select.select [id="s-winsize" aria-label="Kích thước mẫu" value="1280x720"]
+                          option [value=""] "Kích thước mẫu"
+                          option [value="1920x1080"] "1920 × 1080"
+                          option [value="1600x900"] "1600 × 900"
+                          option [value="1280x720"] "1280 × 720"
+                          option [value="1024x576"] "1024 × 576"
+                          option [value="960x540"] "960 × 540"
+                          option [value="854x480"] "854 × 480"
+                          option [value="640x360"] "640 × 360"
+                          option [value="480x270"] "480 × 270"
+                          option [value="320x180"] "320 × 180"
+                          option [value="1024x768"] "1024 × 768"
+                          option [value="800x600"] "800 × 600"
+                          option [value="640x480"] "640 × 480"
+                          option [value="480x360"] "480 × 360"
+                          option [value="400x300"] "400 × 300"
+                          option [value="320x240"] "320 × 240"
+                        label "Rộng"
+                          input.input [id="s-winw" type="number" min="160" max="7680" step="10" value="1280"]
+                        span [aria-hidden="true"] "×"
+                        label "Cao"
+                          input.input [id="s-winh" type="number" min="120" max="4320" step="10" value="720"]
+                        span.muted "px"
+                        button.btn.sm
+                          svg.i #1e3syqr
+                          span "Xếp cửa sổ Roblox"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card
@@ -397,3 +912,5 @@ html [data-theme="dark" lang="vi"]
 -- commands
   setSettings {"launchDelaySeconds":20}
   setSettings {"launchVia":"direct"}
+  setSettings {"windowHeight":240,"windowWidth":320}
+  setSettings {"windowHeight":720,"windowWidth":1280}

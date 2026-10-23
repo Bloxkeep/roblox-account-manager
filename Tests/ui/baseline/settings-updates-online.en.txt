@@ -172,7 +172,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Add me to the online count"
-                        div.d "While Bloxkeep is open, it says so every 10 minutes, so the person who makes it can see how many people use it right now. Only a random code, the version and the language are sent."
+                        div.d "While Bloxkeep is open, it says so every minute, so the person who makes it can see how many people use it right now. Only a code made from this PC (it cannot be traced back, and stays the same if you reinstall), the version and the language are sent."
                       div.ctl
                         label.switch
                           input [id="s-online" type="checkbox" aria-label="Add me to the online count" checked=false FOCUSED]

@@ -17,7 +17,7 @@ Every page of **Settings** as one compact table: each row, what it does and its 
 | **Account pictures as window icons** | Each Roblox window shows its account's picture instead of Roblox's icon. | On |
 | **Taskbar buttons** | One button for all Roblox windows (Windows' own), one for each account (with its picture), or one group for each preset. | One for all |
 | **When a Roblox window opens** | **As Roblox sizes it**, **Maximise it** or **Tile them side by side** (needs Multi-Roblox). | As Roblox sizes it |
-| **Arranging windows** | How **Arrange windows** (and tiling after opening) lays them out: **Fill the screen**, **Small tiles**, **Medium tiles**, **Large tiles**. | Fill the screen |
+| **Arranging windows** | How **Arrange windows** (and tiling after opening) lays them out, picked from pictures: **Auto**, a grid from **2 × 1** to **4 × 4** (each window one cell, however many are open), or a size of your own (width × height in pixels). | Auto |
 | **Open Roblox with** | Which program opens Roblox (below). **Choose…** picks your own. | Default |
 | **Wait between accounts** | 0–60 seconds. Opening too many at once can fail. | 8 s |
 

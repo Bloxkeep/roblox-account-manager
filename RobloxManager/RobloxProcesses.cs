@@ -589,14 +589,27 @@ public static class RobloxProcesses
             ? main
             : windows.FirstOrDefault();
 
+    /// <summary>The smallest and largest window the "custom" layout gives.</summary>
+    public static readonly Size LeastWindow = new(160, 120), MostWindow = new(7680, 4320);
+
+    /// <summary>A layout Arrange windows knows (see <see cref="Settings.WindowLayout"/>): grids up to 8 × 8.</summary>
+    public static bool IsLayout(string layout) =>
+        layout is "fill" or "small" or "medium" or "large" or "custom" || GridOf(layout) is not null;
+
+    /// <summary>A grid layout's columns and rows ("3x2"), else null.</summary>
+    static (int Cols, int Rows)? GridOf(string layout) =>
+        layout.Length == 3 && layout[1] == 'x' && layout[0] is >= '1' and <= '8' && layout[2] is >= '1' and <= '8'
+            ? (layout[0] - '0', layout[2] - '0') : null;
+
     /// <summary>Tiles the clients' windows over a screen area, in the given order. Window messages only.</summary>
-    /// <param name="layout">"fill" spreads them over the whole area; "small" / "medium" / "large" are fixed tiles from the top-left.</param>
+    /// <param name="layout">"fill" spreads them over the whole area; a grid ("2x2") gives each one of its cells from the
+    /// top-left; "custom" gives each window <paramref name="custom"/>; "small" / "medium" / "large" are fixed tiles.</param>
     /// <param name="skipMinimized">Leave minimised windows as they are (and give them no tile).</param>
     /// <param name="app">Bloxkeep's window, when Arrange windows was clicked in it: the windows come over every other app
     /// (<see cref="RaiseAsync"/>). Zero leaves the order of the PC's windows as it is (tiling after a launch).</param>
     public static Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false,
-        IntPtr app = default) =>
-        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !(skipMinimized && IsIconic(h))).ToList(), area, layout, app);
+        IntPtr app = default, Size custom = default) =>
+        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !(skipMinimized && IsIconic(h))).ToList(), area, layout, app, custom);
 
     /// <summary>
     /// Tiles these windows (see <see cref="ArrangeGridAsync"/>). Roblox keeps its window at least 800 × 600 in its own
@@ -605,9 +618,9 @@ public static class RobloxProcesses
     /// screen, 2026-10-21). The tiles are given without that message (SWP_NOSENDCHANGING), so Roblox takes them and draws
     /// the game at that size (tried on the owner's PC, 853 × 764, the same day). A window that grows back all the same is
     /// spread evenly over the area instead (<see cref="OverlapSpots"/>), each over the one before it, so every title bar
-    /// shows.
+    /// shows; so are more windows than a grid has cells, or "custom" windows too many to fit side by side.
     /// </summary>
-    static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout, IntPtr app = default)
+    static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout, IntPtr app = default, Size custom = default)
     {
         if (windows.Count == 0)
             return 0;
@@ -623,28 +636,39 @@ public static class RobloxProcesses
         if (restored)
             await Task.Delay(250); // let the restore finish so it doesn't undo the new size
 
-        var (cols, width, height) = GridCells(windows.Count, area.Size, layout);
-        for (int i = 0; i < windows.Count; i++)
+        var (cols, width, height) = GridCells(windows.Count, area.Size, layout, custom);
+        var cell = new Size(width, height);
+        if ((windows.Count + cols - 1) / cols * height <= area.Height)
         {
-            SetWindowPos(windows[i], IntPtr.Zero, area.X + i % cols * width, area.Y + i / cols * height, width, height,
-                SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
-        }
-        if (await KeptSizeAsync(windows, new Size(width, height)) is { } size)
-        {
-            var spots = OverlapSpots(windows.Count, area, size);
-            // The last one keeps its place among the PC's other windows; each one before it goes just under the next, in
-            // turn (each moves on its own window's thread), so a later one lies over an earlier one's body, not its title bar.
-            for (int i = windows.Count - 1; i >= 0; i--)
+            for (int i = 0; i < windows.Count; i++)
             {
-                bool last = i == windows.Count - 1;
-                SetWindowPos(windows[i], last ? IntPtr.Zero : windows[i + 1], spots[i].X, spots[i].Y, size.Width, size.Height,
-                    SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | (last ? SWP_NOZORDER : 0));
-                await Task.Delay(40);
+                SetWindowPos(windows[i], IntPtr.Zero, area.X + i % cols * width, area.Y + i / cols * height, width, height,
+                    SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
             }
         }
+        else
+            await StackAsync(windows, OverlapSpots(windows.Count, area, cell), cell, SWP_NOSENDCHANGING);
+        if (await KeptSizeAsync(windows, cell) is { } size)
+            await StackAsync(windows, OverlapSpots(windows.Count, area, size), size);
         if (app != IntPtr.Zero)
             await RaiseAsync(windows, app);
         return windows.Count;
+    }
+
+    /// <summary>
+    /// The windows at these spots, overlapping: the last one keeps its place among the PC's other windows; each one before
+    /// it goes just under the next, in turn (each moves on its own window's thread), so a later one lies over an earlier
+    /// one's body, not its title bar.
+    /// </summary>
+    static async Task StackAsync(List<IntPtr> windows, List<Point> spots, Size size, uint flags = 0)
+    {
+        for (int i = windows.Count - 1; i >= 0; i--)
+        {
+            bool last = i == windows.Count - 1;
+            SetWindowPos(windows[i], last ? IntPtr.Zero : windows[i + 1], spots[i].X, spots[i].Y, size.Width, size.Height,
+                flags | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | (last ? SWP_NOZORDER : 0));
+            await Task.Delay(40);
+        }
     }
 
     /// <summary>
@@ -671,6 +695,69 @@ public static class RobloxProcesses
 
     [DllImport("user32.dll")]
     static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+    [DllImport("user32.dll")]
+    static extern uint GetDpiForWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    static extern int GetSystemMetricsForDpi(int index, uint dpi);
+
+    /// <summary>A window's place on the screen (its whole frame); null once it is gone.</summary>
+    public static Rectangle? WindowRect(IntPtr hWnd) =>
+        GetWindowRect(hWnd, out var r) ? Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom) : null;
+
+    /// <summary>Whether a window is a Roblox client's (RobloxPlayerBeta).</summary>
+    public static bool IsPlayerWindow(IntPtr hWnd)
+    {
+        GetWindowThreadProcessId(hWnd, out uint pid);
+        try
+        {
+            using var p = Process.GetProcessById((int)pid);
+            return p.ProcessName.Equals(PlayerProcessName, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>How far in from a window's frame the mouse grabs an edge to size it (Windows' resize border, at the window's DPI).</summary>
+    public static int ResizeBorder(IntPtr hWnd)
+    {
+        const int SM_CXSIZEFRAME = 32, SM_CXPADDEDBORDER = 92;
+        uint dpi = GetDpiForWindow(hWnd) is > 0 and var d ? d : 96;
+        return GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi) + 2;
+    }
+
+    /// <summary>A window put there at that size, as Arrange gives its tiles (without Roblox's least size).</summary>
+    public static void PlaceWindow(IntPtr hWnd, Rectangle r) =>
+        SetWindowPos(hWnd, IntPtr.Zero, r.X, r.Y, r.Width, r.Height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
+
+    /// <summary>
+    /// The size a window's edge was dragged to, when the window kept a bigger one (Roblox's least size); null when it took
+    /// what the mouse asked or the drag moved it. The edges grabbed are those the mouse was on at the start (within
+    /// <paramref name="border"/> of the frame); each moves as far as the mouse did, no smaller than <see cref="LeastWindow"/>.
+    /// </summary>
+    public static Rectangle? AfterDrag(Rectangle start, Rectangle end, Point grab, Point release, int border)
+    {
+        bool left = grab.X < start.Left + border, right = grab.X >= start.Right - border;
+        bool top = grab.Y < start.Top + border, bottom = grab.Y >= start.Bottom - border;
+        if (!(left || right || top || bottom))
+            return null;
+        int dx = release.X - grab.X, dy = release.Y - grab.Y;
+        int l = start.Left + (left ? dx : 0), r = start.Right + (right ? dx : 0);
+        int t = start.Top + (top ? dy : 0), b = start.Bottom + (bottom ? dy : 0);
+        if (r - l < LeastWindow.Width)
+        {
+            if (left) l = r - LeastWindow.Width;
+            else r = l + LeastWindow.Width;
+        }
+        if (b - t < LeastWindow.Height)
+        {
+            if (top) t = b - LeastWindow.Height;
+            else b = t + LeastWindow.Height;
+        }
+        var meant = Rectangle.FromLTRB(l, t, r, b);
+        return meant.Width < end.Width || meant.Height < end.Height ? meant : null;
+    }
 
     /// <summary>
     /// The size the windows kept when they were given <paramref name="cell"/>, when they refused to get that small (a
@@ -715,12 +802,21 @@ public static class RobloxProcesses
     }
 
     /// <summary>
-    /// Columns and tile size for <paramref name="count"/> windows. "fill": a near-square grid over the whole area.
-    /// Fixed tiles: 8 / 6 / 4 across (small / medium / large) at a 8:7 shape, rows from the top-left, the rest of the
+    /// Columns and tile size for <paramref name="count"/> windows. "fill": a near-square grid over the whole area. A grid
+    /// ("4x4"): its cells, whatever the count (more windows than cells don't fit, see <see cref="ArrangeAsync"/>).
+    /// "custom": <paramref name="custom"/>, held to the screen, as many across as fit. Fixed tiles: 8 / 6 / 4 across (small / medium / large) at a 8:7 shape, rows from the top-left, the rest of the
     /// screen left free — and more, smaller tiles only when the rows wouldn't fit on the screen.
     /// </summary>
-    public static (int Cols, int Width, int Height) GridCells(int count, Size area, string layout)
+    public static (int Cols, int Width, int Height) GridCells(int count, Size area, string layout, Size custom = default)
     {
+        if (GridOf(layout) is var (gc, gr))
+            return (gc, area.Width / gc, area.Height / gr);
+        if (layout == "custom" && !custom.IsEmpty)
+        {
+            int w = Math.Clamp(custom.Width, LeastWindow.Width, Math.Max(LeastWindow.Width, area.Width));
+            int h = Math.Clamp(custom.Height, LeastWindow.Height, Math.Max(LeastWindow.Height, area.Height));
+            return (Math.Max(1, area.Width / w), w, h);
+        }
         int across = layout switch { "small" => 8, "medium" => 6, "large" => 4, _ => 0 };
         if (across == 0 || count <= 0)
         {

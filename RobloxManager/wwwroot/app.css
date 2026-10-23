@@ -2590,6 +2590,27 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .menu button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu kbd { font: 11px var(--font); color: var(--muted); }
 .menu hr { border: 0; height: 1px; background: var(--line-2); margin: 5px 4px; }
+/* Arrange windows' layouts as pictures of the screen (ui/src/Snap.tsx), as Windows' snap layouts: in the dock's Windows
+   menu and in Settings › Launching. The one in use is outlined; pointing at one lights the cells the open windows take. */
+.menu.menu-snap { width: 340px; }
+.snap { padding: 2px 2px 4px; }
+.snap-label { padding: 4px 8px 8px; font-size: 12px; color: var(--muted); }
+.snap-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.snap-row .snap-opts { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); max-width: 640px; }
+.menu .snap-opt, .snap-opt { display: flex; flex-direction: column; align-items: stretch; gap: 5px; width: 100%; height: auto; padding: 6px;
+  border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--text-2); font-size: 12px; text-align: center; cursor: pointer; }
+.menu .snap-opt:hover, .snap-opt:hover, .snap-opt:focus-visible { background: var(--hover); color: var(--text); }
+.menu .snap-opt.current, .snap-opt.current { border-color: var(--accent); color: var(--text); }
+.menu .snap-opt span, .snap-opt span { flex: none; min-width: 0; }
+.snap-screen { display: block; aspect-ratio: 16 / 10; padding: 3px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); }
+.snap-grid { display: grid; gap: 2px; width: 100%; height: 100%; }
+.snap-grid > span, .snap-own { display: block; border-radius: 2px; background: var(--line-3); }
+.snap-grid > span.on, .snap-own.on { background: var(--accent); }
+.menu .snap-opt .snap-name, .snap-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.snap-row { padding: 0 0 14px; }
+.snap-size { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--text-2); }
+.snap-size label { display: flex; align-items: center; gap: 6px; }
+.snap-size .input { width: 84px; }
 .menu .i { width: 16px; height: 16px; }
 .menu button.checked { color: var(--text); }
 .menu button.checked .i { color: var(--ok); }

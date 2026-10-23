@@ -376,7 +376,7 @@ Chọn trong **Cài đặt › Khởi chạy › Mở Roblox bằng**. Bloxkeep 
 - **Theo dõi game** (tab ở thanh bên): hình trực tiếp của mọi cửa sổ Roblox, kèm tài khoản, game, RAM và PID. Bấm vào một hình để đưa cửa sổ đó lên trước; chuột phải để chọn **Hiện**, **Đóng Roblox** hoặc **Sao chép PID**. Cửa sổ đang thu nhỏ thì không có hình trực tiếp. Hình do chính Windows vẽ (giống ảnh xem trước khi rê chuột lên taskbar), nên gần như không tốn thêm tài nguyên.
 - **Cửa sổ nhỏ**: một cửa sổ gọn luôn nằm trên cùng, để theo dõi các tài khoản đang chơi mà không cần mở cửa sổ chính: mỗi tài khoản có game, RAM, PID và nút **Hiện**, **Đóng**, cùng nút **Đóng tất cả** và **Mở Bloxkeep**. Mở từ thanh bên, menu ở khay hoặc `Ctrl+K`; nó vẫn chạy khi cửa sổ chính đang ẩn dưới khay. Nhấn `Esc` để ẩn; vị trí được nhớ lại.
 - **Khi cửa sổ Roblox mở ra** (trong **Cài đặt › Khởi chạy**): **Để Roblox tự chọn**, **Phóng to** (vẫn là cửa sổ nên các cửa sổ không giành nhau công tắc toàn màn hình chung của Roblox), hoặc **Xếp cạnh nhau** (cần Multi-Roblox). Preset có thể tự xếp cửa sổ của nó bất kể lựa chọn này.
-- **Cửa sổ › Xếp cửa sổ Roblox** ở thanh dưới, **Xếp cửa sổ Roblox** trong menu ⋯ phía trên danh sách và **Kiểu xếp cửa sổ** (trong **Cài đặt › Khởi chạy**): **Lấp đầy màn hình**, hoặc **Ô nhỏ** / **Ô vừa** / **Ô lớn** xếp từ góc trên bên trái và chừa phần màn hình còn lại. Cửa sổ Roblox càng nhỏ thì card đồ họa càng đỡ tải. Máy có nhiều màn hình thì chọn màn hình trước.
+- **Cửa sổ** ở thanh dưới: chọn kiểu xếp bằng hình mẫu, giống Snap của Windows, các cửa sổ Roblox được xếp ngay: **Tự vừa** (cả màn hình), lưới từ **2 × 1** đến **4 × 4** (mỗi cửa sổ một ô, nên 2 cửa sổ cũng có thể nhỏ), hoặc kích thước tự chọn (rộng × cao, trong **Cài đặt › Khởi chạy › Kiểu xếp cửa sổ**). **Xếp cửa sổ Roblox** trong menu ⋯ phía trên danh sách dùng kiểu đã chọn. Cửa sổ Roblox càng nhỏ thì card đồ họa càng đỡ tải. Máy có nhiều màn hình thì chọn màn hình trước.
 - **Báo khi sắp hết RAM** (bật sẵn): cảnh báo trước khi mở nhiều tài khoản hơn RAM trống chịu được, và khi máy dùng quá 92 % RAM. Nếu RAM vẫn trống mà bộ nhớ ảo của Windows sắp đầy thì app báo chuyện đó, trước khi bấm **Vào game** và cả lúc đang chơi, vì khi ấy cửa sổ Roblox sẽ bị văng ngay khi mở ([cách xử lý](#h-cửa-sổ-roblox-bị-văng-ngay-khi-mở-memory-dump-captured-hoặc-bloxstrap-báo-roblox-failed-to-launch)).
 - **Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn): các cửa sổ bạn không chơi được đặt mức ưu tiên bộ nhớ thấp để Windows lấy RAM của chúng trước, và khi máy sắp hết RAM, chúng được yêu cầu nhả bớt. Roblox có thể không nhả; khi đó Bloxkeep bỏ qua.
 - **Nhường nhân mạnh cho cửa sổ đang chơi** (tắt sẵn): cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows (tiết kiệm điện, ưu tiên thấp hơn, chạy chủ yếu trên nhân tiết kiệm của CPU), cửa sổ bạn đang chơi chạy hết tốc lực (công tắc của chính Windows; không có gì trong Roblox bị thay đổi).
@@ -565,7 +565,7 @@ Bật **Cài đặt › Sao lưu & dữ liệu › Sao lưu vào thư mục**, r
 **Chưa thử với tài khoản thật:**
 
 - Tự vào lại game và **Mở lại Roblox** theo giờ trong thời gian dài.
-- Hẹn giờ preset, gửi lên Discord, **Treo máy nhẹ**, kiểu xếp **Ô nhỏ**.
+- Hẹn giờ preset, gửi lên Discord, **Treo máy nhẹ**, cửa sổ rất nhỏ (lưới 4 × 4 hoặc kích thước tự chọn nhỏ).
 - Mã 2FA điền sẵn khi đăng nhập, nhãn **Bị ban** với một tài khoản bị ban thật, **Vào cùng người chơi…** với người chơi thật.
 - Bước cuối của **Đăng nhập bằng điện thoại**, xác minh 2 bước, và captcha xoay hình (Arkose).
 - Chạy trên Windows 10.

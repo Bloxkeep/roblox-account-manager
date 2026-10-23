@@ -620,7 +620,14 @@ export default [
     await s.snap('open');
     await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' });
   }),
-  S('arrange-windows', '', async s => { await s.click({ key: 'dock.more', within: '.dock' }); await s.click(key('m.arrange')); }),
+  // The Windows menu's layouts as pictures: pointing at 4 × 4 lights the cells the open windows would take; picking 2 × 2
+  // keeps it and arranges them.
+  S('arrange-windows', '', async s => {
+    await s.click({ key: 'dock.more', within: '.dock' });
+    await s.hover({ css: '.menu [data-layout="4x4"]' });
+    await s.snap('pointed');
+    await s.click({ css: '.menu [data-layout="2x2"]' });
+  }),
   S('open-app-only', 'select=1', async s => { await s.click({ key: 'dock.more', within: '.dock' }); await s.click(key('dock.openAppTip')); await s.wait(800); }),
   S('tools-menu', '', async s => { await s.click({ css: '[data-act=tools-menu]' }); }),
   S('preset-menu', '', async s => { await s.click({ css: '[data-act=preset-menu]' }); }),
@@ -963,8 +970,16 @@ export default [
   S('settings-launch-controls', 'settings=launch', async s => {
     await s.click({ css: 'label:has(#s-rename)' });
     await s.choose({ css: '#s-openas' }, 'tile');
-    await s.choose({ css: '#s-winlayout' }, 'small');
+    await s.click({ css: '#s-winlayout [data-layout="3x3"]' });
     await s.snap('windows');
+    // A size of one's own: its two boxes, saved once left.
+    await s.click({ css: '#s-winlayout [data-layout="custom"]' });
+    await s.fill({ css: '#s-winw' }, '320');
+    await s.fill({ css: '#s-winh' }, '240');
+    await s.click({ css: '#s-winw' });
+    await s.snap('own size');
+    // Or one of the common sizes.
+    await s.choose({ css: '#s-winsize' }, '1280x720');
     await s.choose({ css: '#s-launch' }, 'direct');
     await s.choose({ css: '#s-delay' }, '20');
   }),

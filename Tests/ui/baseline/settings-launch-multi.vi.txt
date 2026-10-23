@@ -159,13 +159,101 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Các ô bắt đầu từ góc trên bên trái, phần còn lại của màn hình để trống."
+                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Kiểu xếp cửa sổ" value="fill"]
-                          option [value="fill"] "Lấp đầy màn hình"
-                          option [value="small"] "Ô nhỏ"
-                          option [value="medium"] "Ô vừa"
-                          option [value="large"] "Ô lớn"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
+                        div.snap-opts
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Tự vừa"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-own [style="height:44.4444%;width:33.3333%"]
+                            span.snap-name "640 × 480"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card
@@ -373,13 +461,101 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Các ô bắt đầu từ góc trên bên trái, phần còn lại của màn hình để trống."
+                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Kiểu xếp cửa sổ" value="fill"]
-                          option [value="fill"] "Lấp đầy màn hình"
-                          option [value="small"] "Ô nhỏ"
-                          option [value="medium"] "Ô vừa"
-                          option [value="large"] "Ô lớn"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
+                        div.snap-opts
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Tự vừa"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-own [style="height:44.4444%;width:33.3333%"]
+                            span.snap-name "640 × 480"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card
@@ -568,13 +744,101 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Các ô bắt đầu từ góc trên bên trái, phần còn lại của màn hình để trống."
+                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Kiểu xếp cửa sổ" value="fill"]
-                          option [value="fill"] "Lấp đầy màn hình"
-                          option [value="small"] "Ô nhỏ"
-                          option [value="medium"] "Ô vừa"
-                          option [value="large"] "Ô lớn"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
+                        div.snap-opts
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Tự vừa"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-own [style="height:44.4444%;width:33.3333%"]
+                            span.snap-name "640 × 480"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card

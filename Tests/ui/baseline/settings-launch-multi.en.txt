@@ -159,13 +159,101 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Tiles start at the top-left and leave the rest of the screen free."
+                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Arranging windows" value="fill"]
-                          option [value="fill"] "Fill the screen"
-                          option [value="small"] "Small tiles"
-                          option [value="medium"] "Medium tiles"
-                          option [value="large"] "Large tiles"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Arrange Roblox windows"]
+                        div.snap-opts
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Auto"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-own [style="height:44.4444%;width:33.3333%"]
+                            span.snap-name "640 × 480"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & timing"
                   div.set-card
@@ -373,13 +461,101 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Tiles start at the top-left and leave the rest of the screen free."
+                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Arranging windows" value="fill"]
-                          option [value="fill"] "Fill the screen"
-                          option [value="small"] "Small tiles"
-                          option [value="medium"] "Medium tiles"
-                          option [value="large"] "Large tiles"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Arrange Roblox windows"]
+                        div.snap-opts
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Auto"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-own [style="height:44.4444%;width:33.3333%"]
+                            span.snap-name "640 × 480"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & timing"
                   div.set-card
@@ -568,13 +744,101 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Tiles start at the top-left and leave the rest of the screen free."
+                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Arranging windows" value="fill"]
-                          option [value="fill"] "Fill the screen"
-                          option [value="small"] "Small tiles"
-                          option [value="medium"] "Medium tiles"
-                          option [value="large"] "Large tiles"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Arrange Roblox windows"]
+                        div.snap-opts
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Auto"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-own [style="height:44.4444%;width:33.3333%"]
+                            span.snap-name "640 × 480"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & timing"
                   div.set-card

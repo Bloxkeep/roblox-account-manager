@@ -4,6 +4,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useHost } from './host';
 import { richNodes } from './rich';
+import { SnapPicker } from './Snap';
 
 /* ───────────── dialogs ───────────── */
 
@@ -81,14 +82,17 @@ export function WhatsNewTitle({ sub }: { sub: string }) {
 
 /* ───────────── menus ───────────── */
 
-export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint?: string; danger?: boolean; checked?: boolean; disabled?: boolean; run?: () => void };
+export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint?: string; danger?: boolean; checked?: boolean; disabled?: boolean; run?: (arg?: string) => void;
+  /** Arrange windows' layouts as pictures (Snap.tsx) in place of a button: run gets the one picked. */
+  snap?: { value: string; width: number; height: number } };
 
 /**
  * A menu's items (app.js makes the menu, places it and closes it). For the dock's presets the items before the first
  * line scroll in a list of their own, Save and Edit staying at its foot.
  */
-export function MenuItems({ items, pick, split }: { items: MenuItem[]; pick: (i: number, byKeyboard: boolean) => void; split: boolean }) {
+export function MenuItems({ items, pick, split }: { items: MenuItem[]; pick: (i: number, byKeyboard: boolean, arg?: string) => void; split: boolean }) {
   const draw = (it: MenuItem, i: number) => it === '-' ? <hr key={i} />
+    : it.snap ? <SnapPicker key={i} {...it.snap} label={it.text} onPick={l => pick(i, false, l)} />
     : <button key={i} role="menuitem" data-mi={i} className={`${it.danger ? 'danger' : ''} ${it.checked ? 'checked' : ''}`} disabled={it.disabled}
       onClick={e => pick(i, e.detail === 0)}><Icon name={it.checked ? 'check' : it.icon || ''} /><span title={it.title || undefined}>{it.text}</span>{it.hint ? <kbd>{it.hint}</kbd> : null}</button>;
   const foot = items.indexOf('-');

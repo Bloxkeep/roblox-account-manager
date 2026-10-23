@@ -159,13 +159,101 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Tiles start at the top-left and leave the rest of the screen free."
+                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Arranging windows" value="small" FOCUSED]
-                          option [value="fill"] "Fill the screen"
-                          option [value="small"] "Small tiles"
-                          option [value="medium"] "Medium tiles"
-                          option [value="large"] "Large tiles"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Arrange Roblox windows"]
+                        div.snap-opts
+                          button.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Auto"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.current.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="true" FOCUSED]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span.on
+                                span.on
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-own [style="height:44.4444%;width:33.3333%"]
+                            span.snap-name "640 × 480"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & timing"
                   div.set-card
@@ -200,7 +288,319 @@ html [data-theme="dark" lang="en"]
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setSettings {"multiTile":true}
   setSettings {"renameWindows":false}
-  setSettings {"windowLayout":"small"}
+  setSettings {"windowLayout":"3x3"}
+== own size
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+            button.btn.ghost.side-discord.side-sq [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
+              svg.i #1crx2f1
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version & graphics"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep updates"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
+                h2.set-page-title [id="set-page-launch-h"] "Launching"
+                div.set-grp [id="sec-launch"]
+                  h3.set-grp-title "Multi-Roblox & windows"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Multi-Roblox"
+                          span.ok.state-pill [id="s-multi-pill"] "Ready"
+                        div.d "Play on several accounts at once."
+                          button.link [type="button"] "Details"
+                      div.ctl
+                        label.switch
+                          input [id="s-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Show account names on windows"
+                        div.d "Each Roblox window’s title carries its account’s name and its process ID (PID), on the taskbar and in Alt+Tab."
+                      div.ctl
+                        label.switch
+                          input [id="s-rename" type="checkbox" aria-label="Show account names on windows" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Account pictures as window icons"
+                        div.d "Each Roblox window shows its account’s picture instead of Roblox’s icon."
+                      div.ctl
+                        label.switch
+                          input [id="s-pictures" type="checkbox" aria-label="Account pictures as window icons" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Taskbar buttons"
+                        div.d "Windows puts every Roblox window under one button. Each account can have its own button, with its picture, or each preset its own group (windows opened without a preset stay together)."
+                      div.ctl
+                        select.select [id="s-taskbar" aria-label="Taskbar buttons" value="roblox"]
+                          option [value="roblox"] "One for all Roblox windows"
+                          option [value="account"] "One for each account"
+                          option [value="preset"] "One for each preset"
+                    div.set-row
+                      div
+                        div.t "When a Roblox window opens"
+                        div.d "Maximised windows are still windows, so they don’t share Roblox’s one fullscreen setting. Tiling needs Multi-Roblox."
+                      div.ctl
+                        select.select [id="s-openas" aria-label="When a Roblox window opens" value="tile"]
+                          option [value="roblox"] "As Roblox sizes it"
+                          option [value="maximize"] "Maximise it"
+                          option [value="tile"] "Tile them side by side"
+                    div.set-row
+                      div
+                        div.t "Arranging windows"
+                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
+                      div.ctl
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Arrange Roblox windows"]
+                        div.snap-opts
+                          button.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Auto"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.current.snap-opt [role="menuitemradio" type="button" title="320 × 240" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-own [style="height:22.2222%;width:16.6667%"]
+                            span.snap-name "320 × 240"
+                      div.snap-size
+                        select.select [id="s-winsize" aria-label="Common sizes" value="320x240"]
+                          option [value=""] "Common sizes"
+                          option [value="1920x1080"] "1920 × 1080"
+                          option [value="1600x900"] "1600 × 900"
+                          option [value="1280x720"] "1280 × 720"
+                          option [value="1024x576"] "1024 × 576"
+                          option [value="960x540"] "960 × 540"
+                          option [value="854x480"] "854 × 480"
+                          option [value="640x360"] "640 × 360"
+                          option [value="480x270"] "480 × 270"
+                          option [value="320x180"] "320 × 180"
+                          option [value="1024x768"] "1024 × 768"
+                          option [value="800x600"] "800 × 600"
+                          option [value="640x480"] "640 × 480"
+                          option [value="480x360"] "480 × 360"
+                          option [value="400x300"] "400 × 300"
+                          option [value="320x240"] "320 × 240"
+                        label "Width"
+                          input.input [id="s-winw" type="number" min="160" max="7680" step="10" value="320" FOCUSED]
+                        span [aria-hidden="true"] "×"
+                        label "Height"
+                          input.input [id="s-winh" type="number" min="120" max="4320" step="10" value="240"]
+                        span.muted "px"
+                        button.btn.sm
+                          svg.i #1e3syqr
+                          span "Arrange Roblox windows"
+                div.set-grp [id="sec-client"]
+                  h3.set-grp-title "Launcher & timing"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Open Roblox with"
+                        div.d "Bloxstrap and Fishstrap keep your mods."
+                      div.ctl
+                        select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                          option [value="auto"] "Default (Bloxstrap)"
+                          option [value="bloxstrap"] "Bloxstrap"
+                          option [value="fishstrap" disabled] "Fishstrap — not installed"
+                          option [value="roblox" disabled] "Roblox (official) — not installed"
+                          option [value="direct"] "RobloxPlayerBeta directly (skip launchers)"
+                        button.btn.sm [title="Choose another launcher…"] "Choose…"
+                    div [id="s-store"]
+                    div.set-row
+                      div
+                        div.t "Wait between accounts"
+                        div.d "Opening too many at once can fail."
+                      div.ctl
+                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Wait between accounts" value="8"]
+                        b.range-v [id="s-delay-v"] "8 s"
+#layer
+#toasts
+-- commands
+  setSettings {"windowHeight":240,"windowWidth":320}
+  setSettings {"windowHeight":480,"windowWidth":320}
+  setSettings {"windowLayout":"custom"}
 == end
 html [data-theme="dark" lang="en"]
 #app
@@ -362,13 +762,128 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Tiles start at the top-left and leave the rest of the screen free."
+                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
                       div.ctl
-                        select.select [id="s-winlayout" aria-label="Arranging windows" value="small"]
-                          option [value="fill"] "Fill the screen"
-                          option [value="small"] "Small tiles"
-                          option [value="medium"] "Medium tiles"
-                          option [value="large"] "Large tiles"
+                    div.snap-row [id="s-winlayout"]
+                      div.snap [role="group" aria-label="Arrange Roblox windows"]
+                        div.snap-opts
+                          button.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "Auto"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                            span.snap-name "2 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 1"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "2 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 2"
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "3 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 3"
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                            span.snap-screen
+                              span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                                span
+                            span.snap-name "4 × 4"
+                          button.current.snap-opt [role="menuitemradio" type="button" title="1280 × 720" aria-checked="true"]
+                            span.snap-screen
+                              span.snap-own [style="height:66.6667%;width:66.6667%"]
+                            span.snap-name "1280 × 720"
+                      div.snap-size
+                        select.select [id="s-winsize" aria-label="Common sizes" value="1280x720"]
+                          option [value=""] "Common sizes"
+                          option [value="1920x1080"] "1920 × 1080"
+                          option [value="1600x900"] "1600 × 900"
+                          option [value="1280x720"] "1280 × 720"
+                          option [value="1024x576"] "1024 × 576"
+                          option [value="960x540"] "960 × 540"
+                          option [value="854x480"] "854 × 480"
+                          option [value="640x360"] "640 × 360"
+                          option [value="480x270"] "480 × 270"
+                          option [value="320x180"] "320 × 180"
+                          option [value="1024x768"] "1024 × 768"
+                          option [value="800x600"] "800 × 600"
+                          option [value="640x480"] "640 × 480"
+                          option [value="480x360"] "480 × 360"
+                          option [value="400x300"] "400 × 300"
+                          option [value="320x240"] "320 × 240"
+                        label "Width"
+                          input.input [id="s-winw" type="number" min="160" max="7680" step="10" value="1280"]
+                        span [aria-hidden="true"] "×"
+                        label "Height"
+                          input.input [id="s-winh" type="number" min="120" max="4320" step="10" value="720"]
+                        span.muted "px"
+                        button.btn.sm
+                          svg.i #1e3syqr
+                          span "Arrange Roblox windows"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & timing"
                   div.set-card
@@ -397,3 +912,5 @@ html [data-theme="dark" lang="en"]
 -- commands
   setSettings {"launchDelaySeconds":20}
   setSettings {"launchVia":"direct"}
+  setSettings {"windowHeight":240,"windowWidth":320}
+  setSettings {"windowHeight":720,"windowWidth":1280}

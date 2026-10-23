@@ -8,7 +8,9 @@ namespace Bloxkeep.Tests;
 /// Arrange windows with windows that have a least size bigger than their tiles, as Roblox's (800 × 600 in its own units):
 /// 5 of them on a 150 % laptop screen ran over each other and past the screen's edge (2026-10-21). They are given their
 /// tiles all the same now; windows that grow back whatever they are given are spread evenly over the area instead, each
-/// over the one before it. Real windows of the test's own, on a thread with a message loop as a Roblox window has.
+/// over the one before it. And the layouts picked as pictures (2026-10-23): a grid's cells whatever the number of
+/// windows (two can be tiny), more windows than cells spread over the area, and a size of one's own. Real windows of the
+/// test's own, on a thread with a message loop as a Roblox window has.
 /// </summary>
 static class ArrangeSuite
 {
@@ -27,8 +29,24 @@ static class ArrangeSuite
         }
     }
 
-    public static Task Run(Checks c, string dir)
+    public static async Task Run(Checks c, string dir)
     {
+        // Picked in the page: a layout the app knows is kept, anything else left as it was; the size held to what it takes.
+        Harness.UseDataFolder(dir);
+        Vault.Create(Harness.Password).Dispose();
+        using (var form = new Form())
+        using (var app = new AppController(form, _ => { }))
+        {
+            await Harness.Unlock(app);
+            var s = Harness.Get<Vault>(app, "_vault").Data.Settings;
+            await Harness.Call(app, "setSettings", new { windowLayout = "4x4" });
+            await Harness.Call(app, "setSettings", new { windowLayout = "9x9" });
+            c.Check("a grid picked is kept; one the app doesn't know is left out", s.WindowLayout == "4x4", s.WindowLayout);
+            await Harness.Call(app, "setSettings", new { windowLayout = "custom", windowWidth = 50, windowHeight = 99999 });
+            c.Check("a size of one's own, held to 160 × 120 at least and 7680 × 4320 at most",
+                s.WindowLayout == "custom" && s.WindowWidth == 160 && s.WindowHeight == 4320, $"{s.WindowLayout} {s.WindowWidth} × {s.WindowHeight}");
+        }
+
         // Where 5 Roblox windows (1224 × 957 pixels each) go on that screen's 2560 × 1528 work area.
         var spots = RobloxProcesses.OverlapSpots(5, new Rectangle(0, 0, 2560, 1528), new Size(1224, 957));
         c.Check("5 windows too big for their tiles: 3 and 2, spread evenly from corner to corner",
@@ -37,6 +55,33 @@ static class ArrangeSuite
         c.Check("…every one of them on the screen", spots.All(p => p.X + 1224 <= 2560 && p.Y + 957 <= 1528));
         var two = RobloxProcesses.OverlapSpots(2, new Rectangle(100, 0, 2560, 1528), new Size(1224, 957));
         c.Check("2 that fit side by side: side by side, not spread apart", two.SequenceEqual([new Point(100, 0), new Point(1324, 0)]), string.Join(" ", two));
+
+        // The layouts: a grid's cells for 2 windows as for 16; a size of one's own, as many across as fit, held to the screen.
+        var screen = new Size(2560, 1528);
+        c.Check("a 4 × 4 grid: 2 windows get a sixteenth of the screen each, not half",
+            RobloxProcesses.GridCells(2, screen, "4x4") == (4, 640, 382), RobloxProcesses.GridCells(2, screen, "4x4"));
+        c.Check("a size of one's own: 640 × 480, 4 across", RobloxProcesses.GridCells(2, screen, "custom", new Size(640, 480)) == (4, 640, 480),
+            RobloxProcesses.GridCells(2, screen, "custom", new Size(640, 480)));
+        c.Check("…no smaller than 160 × 120 and no larger than the screen",
+            RobloxProcesses.GridCells(1, screen, "custom", new Size(20, 10)) == (16, 160, 120)
+            && RobloxProcesses.GridCells(1, screen, "custom", new Size(9000, 9000)) == (1, 2560, 1528));
+        // An edge dragged by the person, Roblox keeping 1224 × 957 (its least size on a 150 % screen): the size the mouse asked.
+        var from = new Rectangle(100, 100, 1224, 957);
+        var right = RobloxProcesses.AfterDrag(from, from, new Point(1322, 500), new Point(822, 500), 12);
+        c.Check("the right edge dragged 500 in, Roblox keeping its least size: 724 wide, the left edge where it was",
+            right == new Rectangle(100, 100, 724, 957), right);
+        var corner = RobloxProcesses.AfterDrag(from, from, new Point(101, 101), new Point(801, 601), 12);
+        c.Check("…the top-left corner dragged in: the bottom-right corner stays", corner == Rectangle.FromLTRB(800, 600, 1324, 1057), corner);
+        var tiny = RobloxProcesses.AfterDrag(from, from, new Point(1322, 1055), new Point(0, 0), 12);
+        c.Check("…no smaller than 160 × 120", tiny == new Rectangle(100, 100, 160, 120), tiny);
+        c.Check("…made bigger, as Windows did it: left alone",
+            RobloxProcesses.AfterDrag(from, new Rectangle(100, 100, 1424, 957), new Point(1322, 500), new Point(1522, 500), 12) is null);
+        c.Check("…moved by its title bar: left to Windows",
+            RobloxProcesses.AfterDrag(from, new Rectangle(300, 300, 1300, 1000), new Point(600, 120), new Point(800, 320), 12) is null);
+
+        c.Check("layouts the app takes: fill, the grids up to 8 × 8, custom and the old fixed tiles; nothing else",
+            new[] { "fill", "2x1", "4x4", "8x8", "custom", "small", "medium", "large" }.All(RobloxProcesses.IsLayout)
+            && !new[] { "", "9x9", "0x2", "2x0", "4x", "x4", "44", "4x4x", "huge" }.Any(RobloxProcesses.IsLayout));
 
         var done = new TaskCompletionSource();
         var thread = new Thread(() =>
@@ -67,10 +112,10 @@ static class ArrangeSuite
                         return opened;
                     }
                     var arrange = typeof(RobloxProcesses).GetMethod("ArrangeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
-                    async Task<List<Rectangle>> Arrange(List<Form> these, Form? app = null)
+                    async Task<List<Rectangle>> Arrange(List<Form> these, Form? app = null, string layout = "fill", Size custom = default)
                     {
                         await Task.Delay(200);
-                        int count = await (Task<int>)arrange.Invoke(null, [these.Select(w => w.Handle).ToList(), area, "fill", app?.Handle ?? IntPtr.Zero])!;
+                        int count = await (Task<int>)arrange.Invoke(null, [these.Select(w => w.Handle).ToList(), area, layout, app?.Handle ?? IntPtr.Zero, custom])!;
                         await Task.Delay(300);
                         return count == these.Count ? these.Select(w => w.Bounds).ToList() : [];
                     }
@@ -100,6 +145,35 @@ static class ArrangeSuite
                     var rank = stubborn.Select(w => order.IndexOf(w.Handle)).ToList();
                     c.Check("…each over the one before it, so every title bar shows", rank.Zip(rank.Skip(1)).All(p => p.First > p.Second), string.Join(",", rank));
                     foreach (var w in stubborn)
+                        w.Close();
+
+                    // A 3 × 2 grid of 900 × 700: 2 windows in its first two cells, 300 × 350 each.
+                    var grid = Open(() => new Form());
+                    got = await Arrange(grid.Take(2).ToList(), layout: "3x2");
+                    c.Check("a 3 × 2 grid with 2 windows: its first two cells, not half the area each",
+                        got.SequenceEqual([new Rectangle(area.X, area.Y, 300, 350), new Rectangle(area.X + 300, area.Y, 300, 350)]), string.Join(" ", got));
+                    // A 2 × 2 grid with 5: more than its 4 cells, so cell-sized windows spread over the area, none past its edge.
+                    got = await Arrange(grid, layout: "2x2");
+                    var overflow = new[] { (0, 0), (225, 0), (450, 0), (0, 350), (225, 350) }.Select(p => new Rectangle(area.X + p.Item1, area.Y + p.Item2, 450, 350)).ToList();
+                    c.Check("…more windows than cells: their cell's size, spread evenly over the area", got.SequenceEqual(overflow), string.Join(" ", got));
+                    // A size of one's own: 200 × 150, side by side from the top-left.
+                    got = await Arrange(grid.Take(3).ToList(), layout: "custom", custom: new Size(200, 150));
+                    c.Check("a size of one's own (200 × 150): side by side from the top-left",
+                        got.SequenceEqual([new Rectangle(area.X, area.Y, 200, 150), new Rectangle(area.X + 200, area.Y, 200, 150), new Rectangle(area.X + 400, area.Y, 200, 150)]),
+                        string.Join(" ", got));
+
+                    // A window that keeps a least size (as Roblox's), its right edge dragged 150 in: given that size.
+                    var held = grid[0];
+                    held.MinimumSize = new Size(400, 300);
+                    held.Bounds = new Rectangle(area.X, area.Y, 400, 300);
+                    await Task.Delay(200);
+                    var start = held.Bounds;
+                    var keep = typeof(AppController).GetMethod("KeepDraggedSizeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
+                    await (Task)keep.Invoke(null, [held.Handle, start, new Point(start.Right - 2, start.Y + 150), new Point(start.Right - 152, start.Y + 150)])!;
+                    await Task.Delay(200);
+                    c.Check("a window with a least size, its edge dragged in past it: the size the mouse asked, its place kept",
+                        held.Bounds == new Rectangle(start.X, start.Y, 250, 300), held.Bounds);
+                    foreach (var w in grid)
                         w.Close();
 
                     // Another app's window over them, Bloxkeep's over that: tiled after a launch, the order stays; clicked in
@@ -138,6 +212,6 @@ static class ArrangeSuite
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        return done.Task;
+        await done.Task;
     }
 }

@@ -62,8 +62,16 @@ public sealed class AppSettings
     public bool? WindowPictures { get; set; }
     /// <summary>Taskbar buttons: "roblox" (one for every Roblox window, Windows' own), "account" (one each) or "preset" (one group per preset).</summary>
     public string TaskbarGroups { get; set; } = "roblox";
-    /// <summary>How Arrange windows lays the Roblox windows out: "fill" (the whole screen), or fixed tiles from the top-left, "small" / "medium" / "large".</summary>
+    /// <summary>
+    /// How Arrange windows lays the Roblox windows out: "fill" (the whole screen, as many tiles as windows); a grid of
+    /// the screen, "<cols>x<rows>" ("2x2", "4x4"…), each window one of its cells from the top-left whatever their number
+    /// (two windows can be tiny too); "custom": every window <see cref="WindowWidth"/> × <see cref="WindowHeight"/>; or,
+    /// saved by older versions, fixed tiles "small" / "medium" / "large".
+    /// </summary>
     public string WindowLayout { get; set; } = "fill";
+    /// <summary>The "custom" layout's window size, in screen pixels (the whole window, title bar too).</summary>
+    public int WindowWidth { get; set; } = 640;
+    public int WindowHeight { get; set; } = 480;
     /// <summary>Replaced by <see cref="LaunchVia"/>; only read to migrate older vaults.</summary>
     public bool DirectLaunch { get; set; }
     public string LaunchVia { get; set; } = "";

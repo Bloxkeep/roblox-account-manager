@@ -46,14 +46,17 @@ A small window that stays on top. Open it from **Mini window** in the sidebar, t
 
 ## Arrange windows
 
-Press **Windows › Arrange Roblox windows** in the game bar, use **⋯ More › Arrange Roblox windows**, or use Ctrl+K. With several screens, pick one first ("main" marks the main screen).
+Press **Windows** in the game bar and pick a layout from its pictures, as with Windows' snap layouts: pointing at one lights the cells your open windows would take, and a click arranges them in it (and keeps it for next time). **⋯ More › Arrange Roblox windows** and Ctrl+K use the layout you picked. With several screens, pick one first ("main" marks the main screen).
 
-The layout comes from **Settings › Launching › Arranging windows**:
+<img src="../screenshots/arrange-layouts.png" width="760" alt="The Windows menu in the game bar: Open Roblox only, then the layouts as pictures of the screen (Auto, 2 × 1 to 4 × 4, and 640 × 480), the 4 × 4 grid pointed at with its first two cells lit for the two open windows">
 
 | Layout | What it does |
 |---|---|
-| **Fill the screen** | The windows fill the whole screen. |
-| **Small tiles**, **Medium tiles**, **Large tiles** | Tiles laid out from the top-left; the rest of the screen stays free. |
+| **Auto** | The windows fill the whole screen, as many tiles as windows. |
+| **2 × 1** to **4 × 4** | The screen cut into that grid; each window takes one cell from the top-left, however many windows are open. 2 windows in a 4 × 4 grid are a sixteenth of the screen each. More windows than cells overlap evenly. |
+| **640 × 480** (your own size) | Every window that size, side by side from the top-left. Pick a common size (16:9 from 1920 × 1080 down to 320 × 180, or 4:3 from 1024 × 768 down to 320 × 240) or type the width and height in **Settings › Launching › Arranging windows** (**Windows › Window size of your own…**). It can be smaller than Roblox lets you drag a window to. |
+
+To make one window smaller by hand, drag its edge: while you drag, the frame stops at Roblox's smallest size; let go and Bloxkeep gives the window the size you let go at (no smaller than 160 × 120). Moving a window by its title bar is left to Windows.
 
 > [!TIP]
 > Smaller windows are less work for the graphics card.

@@ -457,9 +457,9 @@
     el.setAttribute('role', 'menu');
     $('#layer').append(el);
     // The items are React's (ui/src/Overlays.tsx MenuItems).
-    menuUnmount = window.BloxkeepUI.menu(el, uiHost(), items, (i, kb) => {
+    menuUnmount = window.BloxkeepUI.menu(el, uiHost(), items, (i, kb, arg) => {
       closeMenu(kb); // picked with the keyboard: the focus goes back to the button first
-      items[i].run();
+      items[i].run(arg);
     }, split);
     menuEl = el;
     syncToastLayer();
@@ -2658,12 +2658,23 @@
       case 'launch': return launch([...S.selected], false);
       case 'open-app': return launch([...S.selected], true);
       case 'arrange': return arrange(el);
-      // The dock's Windows menu: what used to be its two bare icons, now with their words.
-      case 'dock-more':
+      // The dock's Windows menu: Open Roblox only, then Arrange windows' layouts as pictures (as Windows' snap layouts):
+      // picking one keeps it and arranges the windows in it at once; the size of one's own is typed in Settings.
+      case 'dock-more': {
+        const st = S.app.settings || {};
         return menuAt(el, [
           { icon: 'monitor', text: t('dock.openAppTip'), disabled: !S.selected.size, run: () => launch([...S.selected], true) },
-          { icon: 'screens', text: t('m.arrange'), run: () => arrange($('[data-act=dock-more]')) },
-        ], 280);
+          '-',
+          {
+            text: t('m.arrange'), snap: { value: st.windowLayout || 'fill', width: st.windowWidth || 640, height: st.windowHeight || 480 },
+            run: async layout => {
+              if (layout && layout !== st.windowLayout) await call('setSettings', { windowLayout: layout });
+              arrange($('[data-act=dock-more]'));
+            },
+          },
+          { icon: 'sliders', text: t('snap.edit'), run: () => openSettings('launch') },
+        ], 340, { cls: 'menu-snap' });
+      }
       case 'close-sel': return closeIds([...S.selected]);
       case 'close-all': return closeAll();
       // A double click would open the window and close it again: the second click is dropped.
