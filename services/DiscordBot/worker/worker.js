@@ -14,7 +14,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
-import { DAYS_SHOWN, GRACE, beatEvery, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
+import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { setupServer } from './setup.js';
 import { newer, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -426,7 +426,7 @@ export class Gateway extends DurableObject {
 
   /** How long a beat that says the next comes in `next` seconds keeps its app online (shorter in the checks). */
   onlineFor(next) {
-    return Number(this.env.ONLINE_FOR_MS) || next * 1000 * GRACE;
+    return Number(this.env.ONLINE_FOR_MS) || (next * GRACE + GRACE_SLACK_SECONDS) * 1000;
   }
 
   /** How many are online now; the ones that stopped saying so are forgotten on the way. */

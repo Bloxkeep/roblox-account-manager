@@ -158,7 +158,7 @@ function startDev(extra = {}) {
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
     RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
-    ONLINE_FOR_MS: '8000', BEAT_BUDGET: '200', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
+    ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
     NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
@@ -291,20 +291,20 @@ try {
   link = await discord();
   check('…and a new one once it has stopped working (deleted)', link === 'https://discord.gg/inv2' && invitesMade().length === 2, link);
 
-  // Online now: two Bloxkeep apps say they're open (online for 8 s here; for real, one and a half gaps between beats). The
-  // bot takes 200 beats a day here (40,000 for real): one app online beats every ten minutes, two every 864 s.
+  // Online now: two Bloxkeep apps say they're open (online for 8 s here; for real, one and a half gaps between beats and a
+  // minute). The bot takes 1,440 beats a day here (40,000 for real): one app online beats every minute, two every 2.
   const beat = async body => {
     const res = await fetch(`http://127.0.0.1:${DEV}/online/ping`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
     return { status: res.status, json: await res.json().catch(() => null) };
   };
   const A = 'a'.repeat(32), B = 'B'.repeat(32);
   let b = await beat({ id: A, app: '1.0.8', language: 'vi' });
-  check('a beat from a Bloxkeep app: taken, the answer says to send the next in ten minutes', b.status === 200 && b.json?.next === 600, JSON.stringify(b));
+  check('a beat from a Bloxkeep app: taken, the answer says to send the next in a minute', b.status === 200 && b.json?.next === 60, JSON.stringify(b));
   check("…one that isn't a beat is refused (an id that isn't 32 hex digits, a version that isn't one)",
     (await beat({ id: 'me', app: '1.0.8' })).status === 400 && (await beat({ id: B, app: 'x' })).status === 400 && (await beat({ id: B })).status === 400);
   await beat({ id: B, app: '1.0.8-alpha.2', language: 'en' });
   b = await beat({ id: A, app: '1.0.8', language: 'vi' }); // the same app again: still one
-  check('…and with more online, beats further apart, so that they stay within the day\'s budget', b.json?.next === 864, JSON.stringify(b));
+  check('…and with more online, beats further apart, so that they stay within the day\'s budget', b.json?.next === 120, JSON.stringify(b));
   const asDeveloper = command('online', { guild: null, locale: 'en-US' });
   const asSomeoneElse = { ...command('online', { locale: 'en-US', perms: '8' }), member: { permissions: '8', user: { id: 'u2' } } };
   r = await interact(asSomeoneElse);

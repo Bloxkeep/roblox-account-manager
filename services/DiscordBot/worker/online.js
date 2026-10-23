@@ -1,13 +1,13 @@
-// How many people have Bloxkeep open right now. While it is open, the app says so every ten minutes, further apart once
-// many have it open (POST /online/ping: a random id made for that PC's Bloxkeep, linked to nothing else, its version and
-// its language), and says goodbye as it closes. Whoever said so within one and a half of those gaps is online; the id is
-// forgotten once they aren't. The bot keeps no IP address and no history of who was online when: only the day's peak,
+// How many people have Bloxkeep open right now. While it is open, the app says so every minute, further apart once
+// many have it open (POST /online/ping: an id made from that PC, scrambled so it leads back to nothing, the same after
+// Bloxkeep is reinstalled; its version and its language), and says goodbye as it closes. Whoever said so within one and
+// a half of those gaps and a minute more is online; the id is forgotten once they aren't. The bot keeps no IP address and no history of who was online when: only the day's peak,
 // one number a day.
 // Bloxkeep's developers see it with /online (worker.js), on a page that link opens (dashboardPage), and anyone sees how
 // many are online in the bot's custom status (texts.js presenceLines).
 
 /** How often the app says it's open while few have it open (the app does what each answer says: changed here alone). */
-export const BEAT_SECONDS = 600;
+export const BEAT_SECONDS = 60;
 /**
  * Beats a day the bot takes at most: with more people online they come further apart (beatEvery), so that they and the
  * bot's own work stay within Cloudflare's free plan (100,000 requests, and as many rows written, a day for the whole
@@ -16,10 +16,11 @@ export const BEAT_SECONDS = 600;
 export const BEAT_BUDGET = 40_000;
 /** The longest the app is told to wait between beats (about 10,000 online); it never waits longer, whatever it's told. */
 export const MAX_BEAT_SECONDS = 6 * 3600;
-/** Online until one and a half gaps after a beat: one that comes a little late still counts. */
+/** Online until one and a half gaps and a minute after a beat: one that comes late, or once tried again, still counts. */
 export const GRACE = 1.5;
+export const GRACE_SLACK_SECONDS = 60;
 
-/** Seconds between beats with this many online: ten minutes up to about 280 online, then further apart. */
+/** Seconds between beats with this many online: a minute up to about 27 online, then further apart. */
 export const beatEvery = (online, budget = BEAT_BUDGET) => Math.min(MAX_BEAT_SECONDS, Math.max(BEAT_SECONDS, Math.ceil(online * 86_400 / budget)));
 /** Days run on Vietnam's time (UTC+7, no summer time), the developer's. */
 const DAY_OFFSET = 7 * 3600_000;
