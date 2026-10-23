@@ -47,8 +47,8 @@ public static class Prefs
     public static bool CountOnline { get; set; } = true;
 
     /// <summary>
-    /// The random id that says "this Bloxkeep is open" (AppController.Online.cs), made at its first beat; linked to nothing
-    /// else. Forgotten when that is turned off, so turning it on again makes a new one.
+    /// The id that says "Bloxkeep is open on this PC" (AppController.Online.cs), made from the PC at its first beat (the same
+    /// after a reinstall); linked to nothing else. Forgotten when that is turned off.
     /// </summary>
     public static string? OnlineId { get; set; }
 

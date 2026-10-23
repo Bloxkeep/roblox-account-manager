@@ -1,15 +1,18 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Win32;
 
 namespace RobloxManager;
 
 /// <summary>
 /// Settings › Bloxkeep updates › Privacy › Add me to the online count (on until turned off): while Bloxkeep is open,
-/// locked or not, it tells Bloxkeep's Discord bot so every ten minutes (further apart when the bot says so, once many
+/// locked or not, it tells Bloxkeep's Discord bot so every minute (further apart when the bot says so, once many
 /// people have it open) and says goodbye as it closes, so its developers can see how many people have it open right
-/// now (services/DiscordBot/worker/online.js; the bot's status shows the number too). What goes: a
-/// random id made for this Bloxkeep (<see cref="Prefs.OnlineId"/>, linked to no account, vault, Roblox or Discord),
-/// Bloxkeep's version and the app's language, nothing else. Turned off: a goodbye, the id forgotten, nothing more.
+/// now (services/DiscordBot/worker/online.js; the bot's status shows the number too). What goes: an id made from this
+/// PC (<see cref="OnlineIdForThisPc"/>: one way, linked to no account, vault, Roblox or Discord, and the same after
+/// Bloxkeep is reinstalled, so a reinstall isn't counted as one more), Bloxkeep's version and the app's language,
+/// nothing else. Turned off: a goodbye, the id forgotten, nothing more.
 /// Only an installed Bloxkeep counts: a development copy or the checks never do, unless BLOXKEEP_ONLINE_URL points them
 /// at a server of their own.
 /// </summary>
@@ -18,7 +21,7 @@ public sealed partial class AppController
     /// <summary>Bloxkeep's Discord bot (services/DiscordBot/worker), which counts.</summary>
     const string OnlineUrl = "https://bloxkeep-bot.bloxkeep-app.workers.dev/online/ping";
     /// <summary>Until the bot says otherwise (each answer says when to send the next, from a minute to six hours).</summary>
-    static readonly TimeSpan OnlineBeat = TimeSpan.FromMinutes(10);
+    static readonly TimeSpan OnlineBeat = TimeSpan.FromMinutes(1);
     static readonly TimeSpan OnlineBeatMin = TimeSpan.FromMinutes(1), OnlineBeatMax = TimeSpan.FromHours(6);
     /// <summary>After a beat that didn't go through (no internet yet, just after Windows started); doubled each time it fails again.</summary>
     static readonly TimeSpan OnlineRetry = TimeSpan.FromMinutes(2);
@@ -51,9 +54,11 @@ public sealed partial class AppController
     /// <summary>"Open now": the bot's answer says when to say it again.</summary>
     async Task BeatAsync()
     {
-        if (Prefs.OnlineId is null)
+        // This PC's id, also in place of one an earlier Bloxkeep made at random.
+        string? pc = OnlineIdForThisPc();
+        if (Prefs.OnlineId is null || (pc is not null && Prefs.OnlineId != pc))
         {
-            Prefs.OnlineId = Guid.NewGuid().ToString("N");
+            Prefs.OnlineId = pc ?? Guid.NewGuid().ToString("N");
             Prefs.Save();
         }
         string id = Prefs.OnlineId;
@@ -116,6 +121,29 @@ public sealed partial class AppController
         }
     });
 
+    /// <summary>
+    /// The id this PC is counted under: Windows' own id for the PC (MachineGuid, made when Windows was installed) hashed
+    /// with Bloxkeep's own label, so it leads back to nothing, yet stays the same when Bloxkeep is reinstalled or its data
+    /// deleted, and for a second copy on the same PC: one PC, one in the count. Null where Windows' id can't be read
+    /// (a random one is used then).
+    /// </summary>
+    static string? OnlineIdForThisPc()
+    {
+        try
+        {
+            using var key = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64)
+                .OpenSubKey(@"SOFTWARE\Microsoft\Cryptography");
+            if (key?.GetValue("MachineGuid") is not string guid || guid.Trim().Length == 0)
+                return null;
+            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes("bloxkeep-online:" + guid.Trim().ToLowerInvariant()));
+            return Convert.ToHexString(hash, 0, 16).ToLowerInvariant();
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
+    }
+
     static async Task<HttpResponseMessage> PostOnlineAsync(object body)
     {
         using var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
@@ -140,7 +168,7 @@ public sealed partial class AppController
             _onlineSaid = false;
         }
         Prefs.Save();
-        _nextOnline = DateTime.MinValue; // on again: counted at once, with a new id
+        _nextOnline = DateTime.MinValue; // on again: counted at once (this PC's id again)
         PushState();
         return null;
     }

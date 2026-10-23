@@ -90,7 +90,7 @@ Bloxkeep không có tài khoản hay công cụ phân tích riêng. Tài khoản
 | Thư mục sao lưu bạn chọn | Kho dữ liệu đã mã hóa. |
 | Webhook Discord của bạn | Chỉ khi bạn bật. Không bao giờ có cookie hay mật khẩu. |
 | Người làm Bloxkeep | Những góp ý bạn tự gửi. |
-| Bot Discord của Bloxkeep | Khi Bloxkeep đang mở, cứ 10 phút báo "đang mở" một lần mà không kèm danh tính (một mã ngẫu nhiên, phiên bản và ngôn ngữ), để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Tắt ở **Cài đặt › Cập nhật Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng**. |
+| Bot Discord của Bloxkeep | Khi Bloxkeep đang mở, cứ mỗi phút báo "đang mở" một lần mà không kèm danh tính (một mã tạo từ máy, không lần ngược ra được, phiên bản và ngôn ngữ), để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Tắt ở **Cài đặt › Cập nhật Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng**. |
 
 Danh sách đầy đủ có trong [chính sách quyền riêng tư](../../PRIVACY.md) (tiếng Anh).
 

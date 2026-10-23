@@ -7,9 +7,9 @@ namespace Bloxkeep.Tests;
 
 /// <summary>
 /// Add me to the online count (AppController.Online.cs): a development copy never counts; an installed one says it's open
-/// with a random id, its version and language and nothing else, locked or not, as often as the bot says (held between a
-/// minute and six hours), tries a failed beat again sooner but never more often than usual, says goodbye as it closes,
-/// and turned off says goodbye, forgets the id and sends nothing more. Sent to a little server of the test's own, never
+/// with an id made from this PC (the same after a reinstall), its version and language and nothing else, locked or not,
+/// as often as the bot says (held between a minute and six hours), tries a failed beat again sooner but never more often
+/// than usual, says goodbye as it closes, and turned off says goodbye, forgets the id and sends nothing more. Sent to a little server of the test's own, never
 /// the bot.
 /// </summary>
 static class OnlineSuite
@@ -69,8 +69,10 @@ static class OnlineSuite
         var first = Last();
         string id = Prefs.OnlineId ?? "";
         var names = first.EnumerateObject().Select(p => p.Name).Order().ToArray();
-        c.Check("…with a random id, the version and the language, nothing else", string.Join(",", names) == "app,id,language"
-            && Guid.TryParseExact(first.GetProperty("id").GetString(), "N", out _) && first.GetProperty("id").GetString() == id
+        string? pc = (string?)typeof(AppController).GetMethod("OnlineIdForThisPc", Harness.F)!.Invoke(null, null);
+        c.Check("…with this PC's id (32 hex digits, not Windows' own id), the version and the language, nothing else",
+            string.Join(",", names) == "app,id,language" && pc is { Length: 32 } && pc.All(Uri.IsHexDigit) && pc == pc.ToLowerInvariant()
+            && first.GetProperty("id").GetString() == id && id == pc && !first.ToString().Contains(MachineGuid(), StringComparison.OrdinalIgnoreCase)
             && first.GetProperty("app").GetString() == Harness.Get<AppUpdater>(app, "_updater").CurrentVersion
             && first.GetProperty("language").GetString() is "en" or "vi", first);
         string prefs = File.ReadAllText(Path.Combine(dir, "prefs.json"));
@@ -121,10 +123,20 @@ static class OnlineSuite
         await Task.Delay(300);
         c.Check("…and nothing more sent", Count() == 12, Count());
 
-        // On again: counted at once, with a new id.
+        // On again: counted at once, under this PC's id again.
         await Harness.Call(app, "setCountOnline", new { enabled = true });
-        c.Check("on again: a beat at once, with a new id", await Beat(DateTime.UtcNow, 13) && Last().GetProperty("id").GetString() is { } fresh
-            && fresh != id && fresh == Prefs.OnlineId, Last());
+        c.Check("on again: a beat at once, this PC's id again", await Beat(DateTime.UtcNow, 13) && Last().GetProperty("id").GetString() == id
+            && Prefs.OnlineId == id, Last());
+
+        // Reinstalled with its data deleted, or an earlier Bloxkeep's random id in prefs.json: still this PC's id, so it
+        // isn't counted as one more.
+        Prefs.OnlineId = null;
+        Harness.Set(app, "_nextOnline", DateTime.MinValue);
+        c.Check("reinstalled, its data deleted: the same id", await Beat(DateTime.UtcNow, 14) && Last().GetProperty("id").GetString() == id, Last());
+        Prefs.OnlineId = Guid.NewGuid().ToString("N");
+        Harness.Set(app, "_nextOnline", DateTime.MinValue);
+        c.Check("…and an earlier random id gives way to it", await Beat(DateTime.UtcNow, 15) && Last().GetProperty("id").GetString() == id
+            && Prefs.OnlineId == id, Last());
 
         listener.Stop();
         await serving;
@@ -136,6 +148,13 @@ static class OnlineSuite
         string real = (string)typeof(AppController).GetField("OnlineUrl", Harness.F)!.GetValue(null)!;
         c.Check("the bot's address is set", Uri.TryCreate(real, UriKind.Absolute, out var uri) && uri.Scheme == "https"
             && uri.Host == "bloxkeep-bot.bloxkeep-app.workers.dev" && uri.AbsolutePath == "/online/ping", real);
+    }
+
+    static string MachineGuid()
+    {
+        using var key = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry64)
+            .OpenSubKey(@"SOFTWARE\Microsoft\Cryptography");
+        return key?.GetValue("MachineGuid") as string ?? "no-machine-guid";
     }
 
     /// <summary>An HttpListener on a free port of this PC only.</summary>

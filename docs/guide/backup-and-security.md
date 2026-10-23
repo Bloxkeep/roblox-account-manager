@@ -90,7 +90,7 @@ Bloxkeep has no accounts or analytics of its own. Your accounts, settings and hi
 | Your backup folder | The encrypted vault. |
 | Your Discord webhook | Only when you turn it on. Never cookies or passwords. |
 | Bloxkeep's developer | Feedback you choose to send. |
-| Bloxkeep's Discord bot | While Bloxkeep is open, an anonymous "open now" note every 10 minutes (a random code, the version and the language), so the developer can see how many people use Bloxkeep right now. Turn it off in **Settings › Bloxkeep updates › Privacy › Add me to the online count**. |
+| Bloxkeep's Discord bot | While Bloxkeep is open, an anonymous "open now" note every minute (a code made from the PC that can't be traced back, the version and the language), so the developer can see how many people use Bloxkeep right now. Turn it off in **Settings › Bloxkeep updates › Privacy › Add me to the online count**. |
 
 The full list is in the [privacy policy](../../PRIVACY.md).
 
