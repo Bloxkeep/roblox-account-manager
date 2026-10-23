@@ -12,6 +12,7 @@
 // its form (/verify: a captcha drawn by captcha.js, solved in Discord, for a role). It also counts how many people have
 // Bloxkeep open right now (online.js): the app says so to /online/ping while it's open.
 import { DurableObject } from 'cloudflare:workers';
+import { onceMore } from './calls.js';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
@@ -1075,6 +1076,8 @@ async function ping(request, env, gateway) {
 
 /** The bot's object: made in eastern North America the first time, then wherever it is. */
 const bot = env => env.GATEWAY.get(env.GATEWAY.idFromName(env.OBJECT_NAME || OBJECT), { locationHint: PLACE });
+/** A call someone waits for, made once more if the object was starting over (a deploy: calls.js). */
+const ask = (env, call) => onceMore(() => bot(env), call);
 
 export default {
   async fetch(request, env, ctx) {
@@ -1093,7 +1096,7 @@ export default {
       const noStore = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' };
       return url.pathname === '/online'
         ? new Response(dashboardPage(), { headers: { 'Content-Type': 'text/html; charset=utf-8', ...noStore } })
-        : Response.json(await gateway.onlineNow(), { headers: noStore });
+        : Response.json(await ask(env, g => g.onlineNow()), { headers: noStore });
     }
     if (url.pathname === '/interactions' && request.method === 'POST') {
       const body = await request.text();
@@ -1108,12 +1111,12 @@ export default {
         return Response.json({ type: 5, data: { flags: 64 } });
       }
       if (i.type === 2) {
-        const started = Date.now(), reply = await gateway.interaction(i);
+        const started = Date.now(), reply = await ask(env, g => g.interaction(i));
         ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.name ?? '', Date.now() - started));
         return Response.json(reply);
       }
       if (i.type === 3 || i.type === 5) { // a button pressed, a form sent (/verify)
-        const started = Date.now(), { reply, png } = await gateway.component(i);
+        const started = Date.now(), { reply, png } = await ask(env, g => g.component(i));
         ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.custom_id ?? '', Date.now() - started));
         if (!png)
           return Response.json(reply);

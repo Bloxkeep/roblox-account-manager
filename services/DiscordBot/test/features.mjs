@@ -26,6 +26,19 @@ fs.mkdirSync(PERSIST, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let failures = 0;
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  [${String(detail).slice(0, 300)}]`}`); if (!ok) failures++; };
+
+// A command during a deploy (worker/calls.js): made once more on a new stub when the object was starting over, not for
+// any other error.
+{
+  const { onceMore } = await import('../worker/calls.js');
+  let made = 0;
+  const reset = Object.assign(new Error('Durable Object reset because its code was updated.'), { retryable: true });
+  const got = await onceMore(() => ++made, n => { if (n === 1) throw reset; return `answered by stub ${n}`; });
+  check('a command while the bot starts over after a deploy: answered by the new object', got === 'answered by stub 2', got);
+  made = 0;
+  const other = await onceMore(() => ++made, () => { throw new Error('Discord said no'); }).catch(e => e.message);
+  check('…another error: not made again', other === 'Discord said no' && made === 1, `${other} ${made}`);
+}
 const waitFor = async (cond, ms) => { const end = Date.now() + ms; while (Date.now() < end) { if (cond()) return true; await sleep(50); } return cond(); };
 
 // ── the fake Gateway: hello, ready, heartbeats answered; the custom statuses sent kept, open connections counted ──
