@@ -898,6 +898,7 @@ public sealed partial class AppController : IDisposable
     string? Phase(int pid) => _logs.StateOf(pid) switch
     {
         { Status: "ingame" or "joining", TeleportStarted: { } t } when DateTime.UtcNow - t < TeleportShown => "teleporting",
+        { Status: "joining", JobId: null } when _logs.JoinChallengedAt(pid) is not null => "challenged",
         { Status: "joining", JobId: null } when JoinAnswerOf(pid) is { Full: true } => "full",
         { Status: "joining", JobId: null } => "waiting",
         { Status: "left", NeverJoined: true } => "joinFailed",
@@ -4372,6 +4373,17 @@ public sealed partial class AppController : IDisposable
                     NoteGameBan(banned, state.ChosenPlace ?? info.Launch.Target?.PlaceId ?? state.PlaceId, state.KickMessage, info.Launch.StartedAt);
                 continue;
             }
+            // Roblox holds the join for its check that the account isn't a bot (the window's log says so): the window shows
+            // Roblox's Security page, blank where Roblox's check can't load (Vietnam, 2026-10-23), then Join Error 529.
+            // Before, it was closed after a minute and opened again, into the same check, for good, with nothing said. A
+            // new window would meet it again: the window stays, why is said once, and it isn't rejoined once closed.
+            if (state is { Status: "joining", JobId: null, PersonStarted: false } && _logs.JoinChallengedAt(info.Pid) is not null)
+            {
+                if (_joinRefused.Add(info.Launch) && FindAccount(id) is { } challenged && RejoinOn(challenged, info.Launch.PresetId))
+                    Notify(L.F("{0} can't get into the game: Roblox wants a check that it isn't a bot first, so Bloxkeep leaves the window open and doesn't try again.",
+                        Name(challenged)), "warn", "drop", challenged.Id);
+                continue;
+            }
             // Not in after JoinCheckAfter (5 s for a game known to have banned the account, else 40 s): Roblox says why only in the
             // window (a game's ban is Join Error 600) and logs nothing, so its join API is asked, as the window asked it.
             // A ban then shows at once, and stops auto-rejoin, as does any other refusal; a place in a full game's line keeps
@@ -4549,8 +4561,8 @@ public sealed partial class AppController : IDisposable
     /// <summary>Clients in a full game's line being asked about again: the answer that gave their place, shown until the new one.</summary>
     readonly Dictionary<int, RobloxApi.JoinAnswer> _inLine = new();
     /// <summary>
-    /// Launches Roblox refused the game (<see cref="RobloxApi.JoinAnswer.Refused"/>): not rejoined once they end. Held as
-    /// they are, not by value: a launch's start time moves with a set-back clock.
+    /// Launches Roblox refused the game (<see cref="RobloxApi.JoinAnswer.Refused"/>) or held for its bot check: not rejoined
+    /// once they end. Held as they are, not by value: a launch's start time moves with a set-back clock.
     /// </summary>
     readonly HashSet<PendingLaunch> _joinRefused = new(ReferenceEqualityComparer.Instance);
     /// <summary>The longest a launch waits for Roblox's word on bans noted before (<see cref="RecheckGameBansAsync"/>).</summary>

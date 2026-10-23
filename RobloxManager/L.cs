@@ -282,6 +282,8 @@ public static class L
         ["{0} couldn't get into that server (full or closed) — joining another one…"] = "{0} không vào được server đó (đã đầy hoặc đã đóng), đang vào server khác…",
         ["{0} couldn't get into the game — trying again…"] = "{0} không vào được game, đang thử lại…",
         ["{0} can't get into the game, so Bloxkeep doesn't try again: {1}"] = "{0} không vào được game nên Bloxkeep không thử lại: {1}",
+        ["{0} can't get into the game: Roblox wants a check that it isn't a bot first, so Bloxkeep leaves the window open and doesn't try again."] =
+            "{0} không vào được game: Roblox đòi xác minh tài khoản không phải bot trước, nên Bloxkeep để nguyên cửa sổ và không thử lại.",
         ["Roblox answered status {0}"] = "Roblox trả về mã {0}",
         ["{0} was banned from {1} by the game: {2}"] = "{0} bị game {1} ban: {2}",
         ["{0} was banned from {1} by the game."] = "{0} bị game {1} ban.",
@@ -726,6 +728,7 @@ public static class L
         ["Couldn't get into the server, joining another"] = "Không vào được server, đang vào server khác",
         ["Couldn't get into the game, trying again"] = "Không vào được game, đang thử lại",
         ["Roblox won't let it in, not trying again"] = "Roblox không cho vào, không thử lại",
+        ["Roblox wants a bot check, not trying again"] = "Roblox đòi xác minh không phải bot, không thử lại",
         ["Keeps getting disconnected"] = "Liên tục bị văng",
         ["Bloxkeep keeps rejoining every 10 seconds."] = "Bloxkeep vẫn tự vào lại mỗi 10 giây.",
         ["Couldn't rejoin"] = "Không vào lại được",

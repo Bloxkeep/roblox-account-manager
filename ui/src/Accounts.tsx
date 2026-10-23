@@ -314,6 +314,9 @@ function Activity({ a }: { a: Account }) {
       return box('online', iconBox('monitor'), t('act.joinFailed'), [a.session.game?.name, t('act.stillOpen')].filter(Boolean).join(' · '));
     if (c === 'menu') return box('online', iconBox('monitor'), t('act.menuHere'), t('act.menuWhere'));
     if (c === 'signedout') return box('signedout', iconBox('logIn'), t('act.signedOutHere'), t('act.signedOutWhere'));
+    // Roblox holds the join for its bot check (the window's Security page): the window stays open on it.
+    if (c === 'joining' && a.session.phase === 'challenged')
+      return box('kicked', iconBox('alert'), t('act.botCheck'), [game?.name, t('act.stillOpen')].filter(Boolean).join(' · '));
     // Roblox's join answer says the server is full: its place in line when Roblox gave one.
     if (c === 'joining' && a.session.phase === 'full')
       return box('launching', gIcon(game?.iconUrl), t('act.serverFull'),
@@ -443,6 +446,7 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
       return { cls: 'kicked', text: withGame(a.session.kickMessage ? `${why}: ${a.session.kickMessage}` : why) };
     }
     if (c === 'menu' && a.session.phase === 'joinFailed') return { cls: 'online', text: withGame(t('act.joinFailed')) };
+    if (c === 'joining' && a.session.phase === 'challenged') return { cls: 'kicked', text: withGame(t('act.botCheck')) };
     if (c === 'joining' && a.session.phase === 'full')
       return { cls: 'launching', text: withGame(a.session.queuePosition ? `${t('row.full')} · ${t('act.inLine', { n: a.session.queuePosition })}` : t('act.serverFull')) };
     if (c === 'menu') return { cls: 'online', text: t('act.menuHere') };
