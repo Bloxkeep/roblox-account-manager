@@ -2,7 +2,8 @@
 // many have it open (POST /online/ping: an id made from that PC, scrambled so it leads back to nothing, the same after
 // Bloxkeep is reinstalled; its version and its language), and says goodbye as it closes. Whoever said so within one and
 // a half of those gaps and a minute more is online; the id is forgotten once they aren't. The bot keeps no IP address and no history of who was online when: only the day's peak,
-// one number a day.
+// one number a day, and how many different PCs had it open that day (each id scrambled with a key made for that day; the
+// list and the key go when the day is over).
 // Bloxkeep's developers see it with /online (worker.js), on a page that link opens (dashboardPage), and anyone sees how
 // many are online in the bot's custom status (texts.js presenceLines).
 
@@ -30,6 +31,13 @@ export const DAYS_SHOWN = 30;
 /** Day's date (YYYY-MM-DD, Vietnam time) of a moment. */
 export const dayOf = ms => new Date(ms + DAY_OFFSET).toISOString().slice(0, 10);
 
+/** An id scrambled with the day's key (HMAC-SHA-256, 32 hex digits): the same all day, nothing to go back from. */
+export async function scramble(key, id) {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(id)));
+  return [...mac.slice(0, 16)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 /** What the app sent, checked: { id, app, lang } or { id, gone: true }; null for anything else. */
 export function readBeat(body) {
   const id = typeof body?.id === 'string' ? body.id.toLowerCase() : '';
@@ -55,8 +63,9 @@ export async function dashboardKey(token) {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /**
- * The last 7 days' peaks as a bar chart, drawn by QuickChart (quickchart.io, Chart.js) from those seven numbers alone:
- * Discord's dark grey behind, each day's peak over its bar, today's bar the bright green.
+ * The last 7 days as a bar chart, drawn by QuickChart (quickchart.io, Chart.js) from those numbers alone: each day's
+ * most at once (the darker bars) and its people (different PCs, the brighter ones), each number over its bar, on
+ * Discord's dark grey.
  */
 export function weekChart(days, today) {
   const week = days.slice(-7);
@@ -65,11 +74,18 @@ export function weekChart(days, today) {
     type: 'bar',
     data: {
       labels: week.map(label),
-      datasets: [{ data: week.map(d => d.peak), backgroundColor: week.map(d => (d.day === today ? '#23a55a' : '#3f6f52')), borderRadius: 6, barPercentage: 0.62 }],
+      datasets: [
+        { label: 'Most at once', data: week.map(d => d.peak), backgroundColor: '#3f6f52', borderRadius: 6, barPercentage: 0.8 },
+        // A day from before people were counted has no bar.
+        { label: 'People that day', data: week.map(d => d.people), backgroundColor: '#23a55a', borderRadius: 6, barPercentage: 0.8 },
+      ],
     },
     options: {
       layout: { padding: { top: 26, left: 8, right: 8, bottom: 4 } },
-      plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', color: '#f2f3f5', font: { size: 13, weight: 'bold' } } },
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { color: '#b5bac1', boxWidth: 12, font: { size: 12 } } },
+        datalabels: { anchor: 'end', align: 'end', color: '#f2f3f5', font: { size: 12, weight: 'bold' } },
+      },
       scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: '#949ba4', font: { size: 12 } } }, y: { display: false, beginAtZero: true } },
     },
   };
@@ -83,7 +99,8 @@ export function weekChart(days, today) {
 export function onlineMessage(o, link) {
   const time = at => `<t:${Math.floor(at / 1000)}:t>`;
   const text = content => ({ type: 10, content });
-  const peak = o.today.peak ? `Peak today **${o.today.peak}**, at ${time(o.today.at)}` : 'Nobody yet today';
+  const peak = o.today.peak ? `Peak today **${o.today.peak}**, at ${time(o.today.at)} · **${o.today.people ?? 0}** ${o.today.people === 1 ? 'person' : 'people'} today`
+    : 'Nobody yet today';
   const versions = o.apps.map(r => `${r.name} **${r.n}**`).join(' · ');
   return {
     flags: 1 << 15,
@@ -92,9 +109,9 @@ export function onlineMessage(o, link) {
         text(`## ${o.now} using Bloxkeep now\n${peak}`),
         // No chart of seven empty days.
         ...(o.days.slice(-7).some(d => d.peak)
-          ? [{ type: 12, items: [{ media: { url: weekChart(o.days, o.today.day) }, description: "Each day's peak, the last 7 days" }] }] : []),
+          ? [{ type: 12, items: [{ media: { url: weekChart(o.days, o.today.day) }, description: "Each day's most at once and its people, the last 7 days" }] }] : []),
         text([...(versions ? [`**Versions** ${versions}`] : []),
-          `-# The chart: each day's highest, the last 7 days. An app counts while it said it's open within ${o.forMinutes} minutes.`].join('\n')),
+          `-# The chart: each day's most at once and how many different PCs had Bloxkeep open, the last 7 days. An app counts while it said it's open within ${o.forMinutes} minutes.`].join('\n')),
         ...(link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : []),
       ],
     }],
@@ -146,7 +163,12 @@ h2 { font-size: 13px; font-weight: 600; margin: 0 0 12px; color: var(--text-2); 
 .gridline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid); }
 .tick { position: absolute; left: -28px; width: 22px; text-align: right; font-size: 11px; color: var(--muted); transform: translateY(-50%); }
 .slot { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; position: relative; }
-.bar { width: 100%; max-width: 20px; background: var(--series); border-radius: 4px 4px 0 0; }
+.bars { display: flex; align-items: flex-end; justify-content: center; gap: 1px; width: 100%; height: 100%; }
+.bar { width: 50%; max-width: 12px; background: var(--series); border-radius: 4px 4px 0 0; }
+.bar.most { opacity: .45; }
+.key { display: flex; gap: 14px; margin: 8px 0 0 28px; font-size: 12px; color: var(--muted); }
+.key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--series); margin-right: 5px; vertical-align: -1px; }
+.key i.most { opacity: .45; }
 .slot:hover .bar, .slot:focus .bar { opacity: .8; }
 .slot:focus { outline: none; }
 .xaxis { display: flex; justify-content: space-between; margin: 6px 0 0 28px; font-size: 11px; color: var(--muted); }
@@ -173,11 +195,13 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
   <div class="tiles">
     <div class="card"><div class="label" data-t="now">Online now</div><div class="big" id="now">–</div><div class="sub" id="nowSub"></div></div>
     <div class="card"><div class="label" data-t="peak">Peak today</div><div class="big" id="peak">–</div><div class="sub" id="peakSub"></div></div>
+    <div class="card"><div class="label" data-t="people">People today</div><div class="big" id="people">–</div><div class="sub" data-t="peopleSub"></div></div>
   </div>
   <div class="card">
-    <h2 data-t="days">Peak online, day by day</h2>
+    <h2 data-t="days">Online, day by day</h2>
     <div class="chart" id="chart" role="img"></div>
     <div class="xaxis"><span id="from"></span><span id="to"></span></div>
+    <div class="key"><span><i class="most"></i><span data-t="most">Most at once</span></span><span><i></i><span data-t="peopleDay">People that day</span></span></div>
     <details><summary data-t="table">As a table</summary><table id="dayTable"></table></details>
   </div>
   <div class="lists">
@@ -189,13 +213,13 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
 <script>
 const vi = (navigator.language || '').toLowerCase().startsWith('vi');
 const T = vi ? {
-  now: 'Đang online', peak: 'Cao nhất hôm nay', days: 'Số online cao nhất mỗi ngày', table: 'Xem dạng bảng', byApp: 'Đang online, theo phiên bản',
-  byLang: 'Đang online, theo ngôn ngữ', nobody: 'Chưa có ai', at: t => 'lúc ' + t, none: 'Chưa có ai trong hôm nay', day: 'Ngày', people: 'Số người',
+  now: 'Đang online', peak: 'Cao nhất hôm nay', people: 'Người dùng hôm nay', peopleSub: 'Số máy khác nhau đã mở Bloxkeep', most: 'Cao nhất cùng lúc', peopleDay: 'Người dùng trong ngày', days: 'Số người online mỗi ngày', table: 'Xem dạng bảng', byApp: 'Đang online, theo phiên bản',
+  byLang: 'Đang online, theo ngôn ngữ', nobody: 'Chưa có ai', at: t => 'lúc ' + t, none: 'Chưa có ai trong hôm nay', day: 'Ngày',
   foot: m => 'Tính các app Bloxkeep đã báo đang mở trong ' + m + ' phút qua. Tự cập nhật mỗi 30 giây.', error: 'Không tải được số liệu. Thử lại sau ít phút.',
   langs: { vi: 'Tiếng Việt', en: 'Tiếng Anh' }, updated: t => 'Cập nhật lúc ' + t,
 } : {
-  now: 'Online now', peak: 'Peak today', days: 'Peak online, day by day', table: 'As a table', byApp: 'Online now, by version',
-  byLang: 'Online now, by language', nobody: 'Nobody', at: t => 'at ' + t, none: 'Nobody today yet', day: 'Day', people: 'People',
+  now: 'Online now', peak: 'Peak today', people: 'People today', peopleSub: 'Different PCs that opened Bloxkeep', most: 'Most at once', peopleDay: 'People that day', days: 'Online, day by day', table: 'As a table', byApp: 'Online now, by version',
+  byLang: 'Online now, by language', nobody: 'Nobody', at: t => 'at ' + t, none: 'Nobody today yet', day: 'Day',
   foot: m => "Counts the Bloxkeep apps that said they're open in the last " + m + ' minutes. Updates every 30 seconds.',
   error: "Couldn't load the numbers. Try again in a few minutes.", langs: { vi: 'Vietnamese', en: 'English' }, updated: t => 'Updated ' + t,
 };
@@ -211,21 +235,23 @@ function draw(o) {
   $('nowSub').textContent = T.updated(clock(Date.parse(o.at)));
   $('peak').textContent = o.today.peak;
   $('peakSub').textContent = o.today.peak ? T.at(clock(o.today.at)) : T.none;
-  const max = Math.max(1, ...o.days.map(d => d.peak));
+  $('people').textContent = o.today.people ?? 0;
+  const max = Math.max(1, ...o.days.map(d => Math.max(d.peak, d.people ?? 0)));
   const step = max <= 5 ? 1 : Math.ceil(max / 4);
   const top = Math.ceil(max / step) * step;
   let html = '';
   for (let v = step; v <= top; v += step)
     html += '<div class="gridline" style="bottom:' + (v / top * 100) + '%"></div><div class="tick" style="bottom:' + (v / top * 100) + '%;transform:translateY(50%)">' + v + '</div>';
   html += '<div class="tick" style="bottom:0;transform:translateY(50%)">0</div>';
-  html += o.days.map(d => '<div class="slot" tabindex="0"><div class="bar" style="height:' + (d.peak / top * 100) + '%"></div><div class="tip">'
-    + shortDay(d.day) + ': ' + d.peak + (d.peak ? ' · ' + clock(d.at) : '') + '</div></div>').join('');
+  html += o.days.map(d => '<div class="slot" tabindex="0"><div class="bars"><div class="bar most" style="height:' + (d.peak / top * 100) + '%"></div>'
+    + '<div class="bar" style="height:' + ((d.people ?? 0) / top * 100) + '%"></div></div><div class="tip">'
+    + shortDay(d.day) + ': ' + T.most + ' ' + d.peak + (d.peak ? ' (' + clock(d.at) + ')' : '') + ' · ' + T.peopleDay + ' ' + (d.people ?? '–') + '</div></div>').join('');
   $('chart').innerHTML = html;
   $('chart').setAttribute('aria-label', T.days);
   $('from').textContent = shortDay(o.days[0].day);
   $('to').textContent = shortDay(o.days[o.days.length - 1].day);
-  $('dayTable').innerHTML = '<tr><td>' + T.day + '</td><td>' + T.people + '</td></tr>'
-    + o.days.slice().reverse().map(d => '<tr><td>' + shortDay(d.day) + '</td><td>' + d.peak + '</td></tr>').join('');
+  $('dayTable').innerHTML = '<tr><td>' + T.day + '</td><td>' + T.most + '</td><td>' + T.peopleDay + '</td></tr>'
+    + o.days.slice().reverse().map(d => '<tr><td>' + shortDay(d.day) + '</td><td>' + d.peak + '</td><td>' + (d.people ?? '–') + '</td></tr>').join('');
   $('apps').innerHTML = rows(o.apps, n => 'Bloxkeep ' + n);
   $('langs').innerHTML = rows(o.languages, n => T.langs[n] || n);
   $('foot').textContent = T.foot(o.forMinutes);

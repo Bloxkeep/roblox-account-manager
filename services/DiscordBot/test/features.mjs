@@ -316,16 +316,19 @@ try {
     r.json?.data.flags === (64 | 1 << 15) && headingOf(card)?.startsWith('2 using Bloxkeep now'), JSON.stringify(r.json));
   const chart = parts(card).find(c => c.type === 12)?.items?.[0]?.media.url ?? '';
   const drawn = JSON.parse(new URL(chart || 'https://x/?c={}').searchParams.get('c'));
-  check('…with today\'s peak, the versions (no languages), and the last 7 days\' peaks as a chart, today the last bar',
-    /Peak today \*\*2\*\*, at <t:\d+:t>/.test(said) && said.includes('**Versions** 1.0.8 **1** · 1.0.8-alpha.2 **1**') && !/Language|\bvi\b/.test(said)
-    && chart.startsWith('https://quickchart.io/chart?v=4&') && JSON.stringify(drawn.data?.datasets?.[0]?.data) === '[0,0,0,0,0,0,2]' && drawn.data.labels.at(-1) === 'Today', `${said} ${chart.slice(0, 200)}`);
+  check('…with today\'s peak and people, the versions (no languages), and the last 7 days\' peaks and people as a chart, today the last bars',
+    /Peak today \*\*2\*\*, at <t:\d+:t> · \*\*2\*\* people today/.test(said) && said.includes('**Versions** 1.0.8 **1** · 1.0.8-alpha.2 **1**') && !/Language|\bvi\b/.test(said)
+    && chart.startsWith('https://quickchart.io/chart?v=4&') && JSON.stringify(drawn.data?.datasets?.[0]?.data) === '[0,0,0,0,0,0,2]'
+    // Days before people were counted: no bar (null), not 0.
+    && JSON.stringify(drawn.data?.datasets?.[1]?.data) === '[null,null,null,null,null,null,2]' && drawn.data.labels.at(-1) === 'Today', `${said} ${chart.slice(0, 200)}`);
   const dashboard = linksOf(card)[0] ?? '';
   check('…and a Dashboard button, its link carrying the key', /^http:\/\/127\.0\.0\.1:\d+\/online\?key=[\w-]{24}$/.test(dashboard), dashboard);
   let page = await fetch(dashboard);
   check('the dashboard opens with that key', page.status === 200 && /text\/html/.test(page.headers.get('content-type')) && (await page.text()).includes('<title>Bloxkeep online</title>'), page.status);
   const numbers = async (key = new URL(dashboard).search) => { const res = await fetch(`http://127.0.0.1:${DEV}/online.json${key}`); return res.ok ? res.json() : res.status; };
   let o = await numbers();
-  check('…and its numbers: 2 now, today\'s peak 2, the last 30 days', o.now === 2 && o.today?.peak === 2 && o.days?.length === 30 && o.days.at(-1).day === o.today.day, JSON.stringify(o).slice(0, 300));
+  check('…and its numbers: 2 now, today\'s peak 2 and 2 people, the last 30 days', o.now === 2 && o.today?.peak === 2 && o.today?.people === 2
+    && o.days?.length === 30 && o.days.at(-1).day === o.today.day, JSON.stringify(o).slice(0, 300));
   check('…but not without the key, or with another', (await fetch(`http://127.0.0.1:${DEV}/online`)).status === 404 && await numbers('?key=nope') === 404 && await numbers('') === 404);
   check('no ids in what the dashboard reads', !JSON.stringify(o).includes(A) && !JSON.stringify(o).toLowerCase().includes(B.toLowerCase()));
   await sleep(1500);
@@ -345,6 +348,16 @@ try {
   await sleep(8500);
   o = await numbers();
   check('an app that stopped saying so (crashed, PC asleep) is no longer online once its time is up', o.now === 0 && o.today.peak === 2 && o.apps.length === 0, JSON.stringify(o).slice(0, 300));
+  // Today's people: each PC once, however often it said so or came back; a new one is one more.
+  const C = 'c'.repeat(32);
+  await beat({ id: B, app: '1.0.8-alpha.2', language: 'en' });
+  await beat({ id: C, app: '1.0.8', language: 'en' });
+  await beat({ id: C, app: '1.0.8', language: 'en' });
+  o = await numbers();
+  check("today's people: each PC once however often it says so or comes back, one more for a new one (3)", o.today.people === 3 && o.days.at(-1).people === 3, JSON.stringify(o.today));
+  check('…and no ids among them', !JSON.stringify(o).includes(C) && !JSON.stringify(o).toLowerCase().includes(B.toLowerCase()));
+  await beat({ id: B, gone: true });
+  await beat({ id: C, gone: true });
 
   // A build on Roblox's test channel, checked by the watch: "coming", to both news channels, pinging r1 in g1.
   const base = () => ({ c1: posts('c1').length, c3: posts('c3').length, patches: patches().length });

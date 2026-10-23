@@ -14,7 +14,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
-import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
+import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { setupServer } from './setup.js';
 import { newer, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -94,6 +94,12 @@ export class Gateway extends DurableObject {
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS online (id TEXT PRIMARY KEY, until INTEGER NOT NULL, app TEXT NOT NULL, lang TEXT NOT NULL)');
       // The most online at once on each day (Vietnam time), and when.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS peaks (day TEXT PRIMARY KEY, peak INTEGER NOT NULL, at INTEGER NOT NULL)');
+      // How many different PCs had Bloxkeep open on each day (Vietnam time). The day's list holds each one's id scrambled
+      // with that day's key (dayKey: random, made for the day), and the list and the key go once the day is over, so
+      // nothing leads back to an id or links one day's list to another's: only each day's number stays.
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS seen (day TEXT NOT NULL, key TEXT NOT NULL, PRIMARY KEY (day, key))');
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS people (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
+      this.dayKey = (await ctx.storage.get('dayKey')) ?? null; // { day, key }
       this.here = new Map([...ctx.storage.sql.exec('SELECT * FROM online')].map(r => [r.id, { until: r.until, app: r.app, lang: r.lang }]));
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
       this.stopped = (await ctx.storage.get('stopped')) ?? null;
@@ -404,14 +410,18 @@ export class Gateway extends DurableObject {
    * A beat from a Bloxkeep app (online.js readBeat): open now, or closing. The answer says when to send the next: later
    * the more are online, so that all the beats together stay within the bot's daily budget (online.js beatEvery).
    */
-  beat(b) {
+  async beat(b) {
     const now = Date.now();
     if (b.gone) {
       if (this.here.delete(b.id))
         this.ctx.storage.sql.exec('DELETE FROM online WHERE id = ?', b.id);
       return {};
     }
-    this.here.set(b.id, { until: now, app: b.app, lang: b.lang });
+    // Counted among the day's people once (a restart forgets that it was: the day's list then says so).
+    const counted = this.here.get(b.id)?.counted;
+    if (counted !== dayOf(now))
+      await this.notePerson(b.id, now);
+    this.here.set(b.id, { until: now, app: b.app, lang: b.lang, counted: dayOf(now) });
     const count = this.countHere(now), next = this.beatEvery(count), until = now + this.onlineFor(next);
     this.here.get(b.id).until = until;
     this.ctx.storage.sql.exec(`INSERT INTO online (id, until, app, lang) VALUES (?, ?, ?, ?)
@@ -422,6 +432,19 @@ export class Gateway extends DurableObject {
 
   beatEvery(count) {
     return beatEvery(count, Number(this.env.BEAT_BUDGET) || undefined);
+  }
+
+  /** One of the day's people: their id scrambled with the day's key, counted if the day's list hasn't it yet. */
+  async notePerson(id, now) {
+    const day = dayOf(now);
+    if (this.dayKey?.day !== day) {
+      this.dayKey = { day, key: crypto.randomUUID() + crypto.randomUUID() };
+      await this.ctx.storage.put('dayKey', this.dayKey);
+      this.ctx.storage.sql.exec('DELETE FROM seen WHERE day < ?', day);
+    }
+    const key = await scramble(this.dayKey.key, id);
+    if (this.ctx.storage.sql.exec('INSERT OR IGNORE INTO seen (day, key) VALUES (?, ?)', day, key).rowsWritten > 0)
+      this.ctx.storage.sql.exec('INSERT INTO people (day, n) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET n = n + 1', day);
   }
 
   /** How long a beat that says the next comes in `next` seconds keeps its app online (shorter in the checks). */
@@ -460,7 +483,11 @@ export class Gateway extends DurableObject {
     for (let n = DAYS_SHOWN - 1; n >= 0; n--)
       days.push(dayOf(now - n * 86_400_000));
     const peaks = new Map([...this.ctx.storage.sql.exec('SELECT * FROM peaks WHERE day >= ?', days[0])].map(p => [p.day, p]));
-    const shown = days.map(day => ({ day, peak: peaks.get(day)?.peak ?? 0, at: peaks.get(day)?.at ?? null }));
+    const people = new Map([...this.ctx.storage.sql.exec('SELECT * FROM people WHERE day >= ?', days[0])].map(p => [p.day, p.n]));
+    // People: none counted yet today is 0; an earlier day without a number is one from before they were counted (null).
+    const today = days.at(-1);
+    const shown = days.map(day => ({ day, peak: peaks.get(day)?.peak ?? 0, at: peaks.get(day)?.at ?? null,
+      people: people.get(day) ?? (day === today ? 0 : null) }));
     return {
       now: count, at: new Date(now).toISOString(), forMinutes: Math.round(this.onlineFor(this.beatEvery(count)) / 60_000),
       today: shown.at(-1), days: shown, apps: tally('app'), languages: tally('lang'),
