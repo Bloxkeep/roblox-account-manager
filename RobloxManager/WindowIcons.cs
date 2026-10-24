@@ -7,8 +7,8 @@ namespace RobloxManager;
 /// <summary>
 /// Each account's Roblox window carries the account's picture as its icon (the taskbar, Alt+Tab, the title bar), so the
 /// windows are told apart at a glance; the account's initials on its colour when it has no picture (yet). Roblox keeps
-/// an icon set on its window (seen on 0.743); a window that drops it gets it again at the next tick. Given back
-/// (Roblox's own icon) when the setting is turned off. UI thread only.
+/// an icon set on its window (seen on 0.743); a window that drops it gets it again at its next check (<see cref="CheckEvery"/>).
+/// Given back (Roblox's own icon) when the setting is turned off. UI thread only.
 /// </summary>
 static class WindowIcons
 {
@@ -19,17 +19,35 @@ static class WindowIcons
     const int WM_GETICON = 0x7F, WM_SETICON = 0x80, ICON_SMALL = 0, ICON_BIG = 1, SMTO_ABORTIFHUNG = 2;
     static readonly IntPtr ICON_SMALL_W = 0, ICON_BIG_W = 1;
 
+    /// <summary>
+    /// How often a client's windows are asked whether they still have their icon, one client at a time
+    /// (<see cref="NextToCheck"/>). Asking waits for Roblox's window to answer (up to 300 ms, while Bloxkeep's window
+    /// answers nothing), and Roblox keeps the icon. Every window used to be asked at every process check (1.5 s): six
+    /// windows busy loading a game could hold Bloxkeep's window up to 1.8 s a check.
+    /// </summary>
+    static readonly TimeSpan CheckEvery = TimeSpan.FromSeconds(30);
+
+    /// <summary>The checks' clock (Tests/Bloxkeep.Tests): when set, it stands in for Environment.TickCount64. The app never sets it.</summary>
+    internal static Func<long>? Clock { get; set; }
+
+    static long Now => Clock?.Invoke() ?? Environment.TickCount64;
+
     /// <summary>The icons made for a client, and each of its windows' own icons from before (put back when they go).</summary>
-    sealed record Made(IntPtr Big, IntPtr Small, string Key, Dictionary<IntPtr, (IntPtr Big, IntPtr Small)> Own);
+    sealed record Made(IntPtr Big, IntPtr Small, string Key, Dictionary<IntPtr, (IntPtr Big, IntPtr Small)> Own)
+    {
+        /// <summary>When its windows were last given the icons or asked whether they still have them (<see cref="Now"/>).</summary>
+        public long Checked;
+    }
     static readonly Dictionary<int, Made> ByPid = new();
 
     /// <param name="key">What the picture shows (the picture's address, or the initials and colour): drawn again when it changes.</param>
-    public static void Apply(int pid, IEnumerable<IntPtr> windows, string key, Func<Bitmap> draw)
+    /// <param name="check">Its windows are asked whether they still have the icons (<see cref="NextToCheck"/>).</param>
+    public static void Apply(int pid, IEnumerable<IntPtr> windows, string key, Func<Bitmap> draw, bool check)
     {
         if (!ByPid.TryGetValue(pid, out var made) || made.Key != key)
         {
             using var picture = draw();
-            var next = new Made(IconOf(picture, 48), IconOf(picture, 24), key, made?.Own ?? new());
+            var next = new Made(IconOf(picture, 48), IconOf(picture, 24), key, made?.Own ?? new()) { Checked = Now };
             foreach (var hWnd in windows)
                 Put(hWnd, next);
             if (made is not null)
@@ -37,11 +55,34 @@ static class WindowIcons
             ByPid[pid] = next;
             return;
         }
+        if (!check)
+            return;
         foreach (var hWnd in windows)
         {
             if (Get(hWnd, ICON_BIG) != made.Big)
                 Put(hWnd, made);
         }
+    }
+
+    /// <summary>
+    /// The client of these whose windows are checked this time: the one checked longest ago, once that is
+    /// <see cref="CheckEvery"/> ago (null when none is due yet), noted as checked now. One a process check, so a busy
+    /// Roblox holds up Bloxkeep's window once at most, and every client gets its turn.
+    /// </summary>
+    public static int? NextToCheck(IEnumerable<int> pids)
+    {
+        long now = Now;
+        Made? oldest = null;
+        int? next = null;
+        foreach (int pid in pids)
+        {
+            if (ByPid.TryGetValue(pid, out var made) && (oldest is null || made.Checked < oldest.Checked))
+                (oldest, next) = (made, pid);
+        }
+        if (oldest is null || now - oldest.Checked < CheckEvery.TotalMilliseconds)
+            return null;
+        oldest.Checked = now;
+        return next;
     }
 
     /// <summary>The windows' own icons back (the setting turned off, Bloxkeep closing).</summary>
