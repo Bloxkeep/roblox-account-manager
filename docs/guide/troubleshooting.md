@@ -30,6 +30,10 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 
 **A:** The **Banned** badge comes from Roblox's public information, read during sign-in checks. **Play** and presets skip the account, and auto-rejoin doesn't reopen it. Once the ban is over, **⋯ › Check sign-in** clears the badge.
 
+### **Q:** A game banned one of my accounts. Can my other accounts still play it?
+
+**A:** Careful: a game bans the person, not only the account. Roblox's ban tools also ban the accounts they take for that person's other ones, "for using an account to avoid a ban". So when you press **Play** for other accounts into a game one of your accounts is banned from, Bloxkeep asks first and names both. A preset opens them, but says so in its result. If a game banned you by mistake, appeal to that game (most use their Discord server): only the game can lift its ban.
+
 ### **Q:** Roblox isn't installed, or only the Microsoft Store version is
 
 **A:**

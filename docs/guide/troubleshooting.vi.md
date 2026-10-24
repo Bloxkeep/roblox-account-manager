@@ -30,6 +30,10 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 
 **Đ:** Nhãn **Bị ban** lấy từ thông tin công khai của Roblox, đọc trong lúc kiểm tra đăng nhập. **Vào game** và preset bỏ qua tài khoản này, tự vào lại game cũng không mở lại nó. Khi hết ban, bấm **⋯ › Kiểm tra đăng nhập** để bỏ nhãn.
 
+### **H:** Một tài khoản bị game ban. Các tài khoản khác còn vào game đó được không?
+
+**Đ:** Cẩn thận: game ban người chơi chứ không chỉ một tài khoản. Công cụ ban của Roblox ban luôn các tài khoản mà nó cho là của cùng người đó, với lý do "dùng tài khoản khác để né ban". Vì vậy khi bạn bấm **Vào game** cho tài khoản khác vào đúng game mà một tài khoản của bạn đang bị ban, Bloxkeep hỏi trước và nói rõ tài khoản nào. Preset thì vẫn mở nhưng có ghi trong kết quả. Nếu bị game ban nhầm, hãy kháng cáo với chính game đó (đa số qua server Discord của game): chỉ game mới gỡ được ban của mình.
+
 ### **H:** Máy chưa cài Roblox, hoặc chỉ có bản Microsoft Store
 
 **Đ:**
