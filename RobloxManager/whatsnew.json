@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.10-beta.3",
+    "date": "2026-10-24",
+    "en": [
+      "The question before opening accounts into a game another of your accounts is banned from (1.0.10-beta.2) is gone: it went by the vault rather than the PC, and it couldn't tell which accounts Roblox would count as alts."
+    ],
+    "vi": [
+      "Bỏ câu hỏi trước khi mở tài khoản vào game mà một tài khoản khác của bạn đang bị ban (có từ 1.0.10-beta.2): câu hỏi dựa theo vault chứ không theo máy, và không biết được Roblox sẽ coi tài khoản nào là tài khoản phụ."
+    ],
+    "improved": {
+      "en": [
+        "Sign in with a browser shows Roblox's own pages only: a link to another site opens in your own browser, and only when you click it. DevTools (F12) are off there too, as in Bloxkeep's other Roblox windows: they show the session, which is what cookie scams ask people to copy.",
+        "Presets brought in from a vault file come without their own Discord link, since a file from someone else could send your alerts to their channel. If the link is yours, set it again in the preset.",
+        "Bloxkeep's window no longer stalls while many Roblox windows load: the account pictures on their windows are checked one Roblox at a time, every 30 seconds, instead of every window at every check."
+      ],
+      "vi": [
+        "Đăng nhập bằng trình duyệt giờ chỉ mở trang của Roblox: link sang trang khác sẽ mở trong trình duyệt của bạn, và chỉ khi bạn bấm vào. Công cụ nhà phát triển (F12) cũng bị tắt ở đó, như các cửa sổ Roblox khác của Bloxkeep: nó hiện phiên đăng nhập, đúng thứ các trò lừa cookie hay bảo người ta sao chép.",
+        "Preset lấy từ file vault không còn mang theo link Discord riêng, vì file của người khác có thể gửi thông báo của bạn vào kênh của họ. Nếu link đó là của bạn, hãy đặt lại trong preset.",
+        "Cửa sổ Bloxkeep không còn bị khựng khi nhiều cửa sổ Roblox đang tải: ảnh tài khoản trên các cửa sổ được kiểm lần lượt từng Roblox, 30 giây một lần, thay vì kiểm mọi cửa sổ ở mỗi lượt."
+      ]
+    }
+  },
+  {
     "version": "1.0.10-beta.2",
     "date": "2026-10-24",
     "new": {
