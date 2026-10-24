@@ -185,7 +185,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.10-beta.1 · October 23, 2026"
+              small "Bloxkeep 1.0.10-beta.2 · October 24, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
@@ -194,16 +194,7 @@ html [data-theme="dark" lang="en"]
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Windows in the game bar now shows Arrange windows' layouts as pictures, like Windows' snap layouts: Auto, grids from 2 × 1 to 4 × 4, or a size of your own (common sizes from 1920 × 1080 down to 320 × 180, smaller than Roblox lets you drag a window to). In a grid every window takes one cell however many are open, so 2 windows can be small too. Point at one to see which cells your windows would take, click it to arrange them. Set your own width and height in Settings › Launching › Arranging windows."
-          li
-            svg.i #u7ty99
-            span "Drag an edge of a Roblox window to make it smaller than Roblox lets it go: the frame stops at Roblox's smallest size while you drag, and the window takes the size you let go at."
-        h4.improved.wn-kind.wn-sub "Improved"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "The online count is quicker: Bloxkeep says it's open every minute, so closing it takes you off the count within about 2 minutes. Each PC is counted once, even after Bloxkeep is reinstalled. It still sends only a code (now made from the PC, and it can't be traced back), the version and the language."
+            span "Before you press Play for accounts into a game another of your accounts is banned from, Bloxkeep asks first. Games ban the person, not only the account, and Roblox can ban your other accounts too \"for using an account to avoid a ban\". A preset opens them, but says so in its result."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

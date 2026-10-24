@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.10-beta.2",
+    "date": "2026-10-24",
+    "new": {
+      "en": [
+        "Before you press Play for accounts into a game another of your accounts is banned from, Bloxkeep asks first. Games ban the person, not only the account, and Roblox can ban your other accounts too \"for using an account to avoid a ban\". A preset opens them, but says so in its result."
+      ],
+      "vi": [
+        "Trước khi bạn bấm Vào game cho các tài khoản vào đúng game mà một tài khoản khác của bạn đang bị ban, Bloxkeep hỏi trước. Game ban người chơi chứ không chỉ một tài khoản, và Roblox có thể ban luôn các tài khoản khác của bạn vì \"dùng tài khoản khác để né ban\". Preset thì vẫn mở nhưng có ghi trong kết quả."
+      ]
+    }
+  },
+  {
     "version": "1.0.10-beta.1",
     "date": "2026-10-23",
     "new": {

@@ -185,7 +185,7 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.10-beta.1 · 23 tháng 10, 2026"
+              small "Bloxkeep 1.0.10-beta.2 · 24 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
@@ -194,16 +194,7 @@ html [data-theme="dark" lang="vi"]
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Nút Cửa sổ ở thanh dưới giờ hiện các kiểu xếp cửa sổ bằng hình, giống Snap của Windows: Tự vừa, lưới từ 2 × 1 đến 4 × 4, hoặc kích thước tự chọn (có sẵn các kích thước mẫu từ 1920 × 1080 xuống 320 × 180, nhỏ hơn mức Roblox cho phép khi tự kéo cửa sổ). Chọn lưới thì mỗi cửa sổ chiếm một ô dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Rê chuột lên một kiểu để xem cửa sổ sẽ nằm ở ô nào, bấm vào là xếp. Rộng và cao tự chọn đặt ở Cài đặt › Khởi chạy › Kiểu xếp cửa sổ."
-          li
-            svg.i #u7ty99
-            span "Kéo mép cửa sổ Roblox giờ thu nhỏ được dưới mức Roblox cho phép: lúc kéo, khung dừng ở cỡ nhỏ nhất của Roblox, thả chuột ra là cửa sổ về đúng cỡ chỗ bạn thả."
-        h4.improved.wn-kind.wn-sub "Cải thiện"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "Số người đang dùng cập nhật nhanh hơn: Bloxkeep báo đang mở mỗi phút, nên tắt app thì khoảng 2 phút sau đã không còn được tính. Mỗi máy chỉ tính một lần, kể cả khi cài lại Bloxkeep. App vẫn chỉ gửi một mã (giờ tạo từ máy, không lần ngược ra được), phiên bản và ngôn ngữ."
+            span "Trước khi bạn bấm Vào game cho các tài khoản vào đúng game mà một tài khoản khác của bạn đang bị ban, Bloxkeep hỏi trước. Game ban người chơi chứ không chỉ một tài khoản, và Roblox có thể ban luôn các tài khoản khác của bạn vì \"dùng tài khoản khác để né ban\". Preset thì vẫn mở nhưng có ghi trong kết quả."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q
