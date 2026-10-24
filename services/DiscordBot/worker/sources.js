@@ -10,6 +10,7 @@ const URLS = {
   STATUS_URL: 'https://api.status.io/1.0/status/59db90dbcdeb2f04dadcf16d', // status.roblox.com is a status.io page
   LATEST_URL: `${REPO}/releases/latest`,
   RELEASE_API_URL: 'https://api.github.com/repos/Bloxkeep/roblox-account-manager/releases/tags/',
+  RELEASES_API_URL: 'https://api.github.com/repos/Bloxkeep/roblox-account-manager/releases',
   // The repository's files at a tag (…/v1.0.9/RobloxManager/whatsnew.json), served without GitHub's API limit.
   RELEASE_FILE_URL: 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/',
   NOTES_URL: 'https://create.roblox.com/docs/release-notes/release-notes-',
@@ -39,6 +40,27 @@ async function getJson(address) {
   if (!res.ok)
     throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+/**
+ * The files people install Bloxkeep from. Not the update packages, nor releases.win.json, which every installed copy
+ * downloads itself each time it looks for an update: counted, they made "2.2k downloads" of some 90 installs
+ * (2026-10-24).
+ */
+export const INSTALL_FILES = ['Bloxkeep-Setup.exe', 'Bloxkeep-Setup-Offline.exe', 'Bloxkeep-Portable.zip'];
+
+/** How many times Bloxkeep's install files were downloaded, over every release on GitHub (betas too). */
+export async function readInstallDownloads(env) {
+  let total = 0;
+  for (let page = 1; page <= 10; page++) {
+    const list = await getJson(`${url(env, 'RELEASES_API_URL')}?per_page=100&page=${page}`);
+    for (const r of list)
+      for (const a of r.assets ?? [])
+        total += INSTALL_FILES.includes(a.name) ? a.download_count ?? 0 : 0;
+    if (list.length < 100)
+      break;
+  }
+  return total;
 }
 
 /**

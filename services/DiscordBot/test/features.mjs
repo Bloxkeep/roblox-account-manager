@@ -116,6 +116,14 @@ const src = http.createServer((req, res) => {
   if (req.url === '/watch.json') return json(watch);
   if (req.url === '/status.json') return json({ result: { status_overall: { status_code: status.code }, status: ['User', 'Player', 'Creator'].map(name => ({ name, status_code: status.code })), incidents: status.code > 100 ? [{ name: 'Players can\'t join' }] : [] } });
   if (req.url === '/releases/latest') { res.writeHead(302, { Location: `http://127.0.0.1:${SRC}/releases/tag/${latest}` }); return res.end(); }
+  // Every release with its files, for the downloads badge: only the install files count.
+  if (req.url.startsWith('/api/releases?'))
+    return json([
+      { tag_name: 'v1.0.9', assets: [{ name: 'Bloxkeep-Setup.exe', download_count: 6 }, { name: 'Bloxkeep-Setup-Offline.exe', download_count: 8 },
+        { name: 'releases.win.json', download_count: 900 }, { name: 'BloxkeepApp-1.0.9-full.nupkg', download_count: 40 }] },
+      { tag_name: 'v1.0.8', assets: [{ name: 'Bloxkeep-Setup.exe', download_count: 20 }, { name: 'Bloxkeep-Portable.zip', download_count: 11 },
+        { name: 'releases.win.json', download_count: 1300 }] },
+    ]);
   const m = /^\/api\/tags\/(.+)$/.exec(req.url);
   if (m && apiDown) { res.writeHead(403); return res.end('{"message":"API rate limit exceeded"}'); }
   if (m) return json({ html_url: `https://github.com/Bloxkeep/roblox-account-manager/releases/tag/${m[1]}`, body: NOTES });
@@ -170,7 +178,7 @@ function startDev(extra = {}) {
     OBJECT_NAME: 'bot-test', OLD_OBJECT_NAME: '', PRESENCE_EVERY_MS: '300', TRACE_URL: 'http://127.0.0.1:9/',
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
-    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
+    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASES_API_URL: `http://127.0.0.1:${SRC}/api/releases`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
     NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', ...extra,
   };
@@ -303,6 +311,11 @@ try {
   deadInvites.add('inv1');
   link = await discord();
   check('…and a new one once it has stopped working (deleted)', link === 'https://discord.gg/inv2' && invitesMade().length === 2, link);
+
+  // The README's downloads badge: the install files' downloads over every release, not the update feed or packages.
+  const badge = await (await fetch(`http://127.0.0.1:${DEV}/badge/downloads`)).json().catch(() => null);
+  check("the downloads badge counts the install files only (45), not the update feed every copy reads",
+    badge?.schemaVersion === 1 && badge.label === 'downloads' && badge.message === '45', JSON.stringify(badge));
 
   // Online now: two Bloxkeep apps say they're open (online for 8 s here; for real, one and a half gaps between beats and a
   // minute). The bot takes 1,440 beats a day here (40,000 for real): one app online beats every minute, two every 2.

@@ -17,7 +17,7 @@ import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { setupServer } from './setup.js';
-import { newer, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
+import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
   COUNT_CHANNEL, SITE, addressed, boardEmbed, buildMessage, captchaMessage, codeForm, countChannelName, downloadMessage, helpMessage, lang,
   multiEmbed, outageEmbed, presenceLines, releaseMessage, replies, statusEmbed, verifyPanel,
@@ -1074,6 +1074,29 @@ async function ping(request, env, gateway) {
   }
 }
 
+/**
+ * The README's downloads badge (shields.io's endpoint badge reads this): the install files' downloads (sources.js
+ * readInstallDownloads), worked out at most once an hour per Cloudflare location, so GitHub's API is asked rarely.
+ */
+async function downloadsBadge(env, ctx) {
+  const key = new Request('https://bloxkeep-bot.invalid/badge/downloads'), cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit)
+    return hit;
+  let n;
+  try {
+    n = await readInstallDownloads(env);
+  } catch {
+    return Response.json({ schemaVersion: 1, label: 'downloads', message: 'unknown', color: 'lightgrey', isError: true },
+      { headers: { 'Cache-Control': 'max-age=300' } });
+  }
+  const message = n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1).replace(/\.0$/, '')}k` : String(n);
+  const res = Response.json({ schemaVersion: 1, label: 'downloads', message, color: 'brightgreen' },
+    { headers: { 'Cache-Control': 'public, max-age=3600' } });
+  ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 /** The bot's object: made in eastern North America the first time, then wherever it is. */
 const bot = env => env.GATEWAY.get(env.GATEWAY.idFromName(env.OBJECT_NAME || OBJECT), { locationHint: PLACE });
 /** A call someone waits for, made once more if the object was starting over (a deploy: calls.js). */
@@ -1087,6 +1110,8 @@ export default {
       return Response.json(await gateway.status(), { headers: { 'Cache-Control': 'no-store' } });
     if (url.pathname === '/discord') // the app's Discord button
       return new Response(null, { status: 302, headers: { Location: await gateway.invite(), 'Cache-Control': 'no-store' } });
+    if (url.pathname === '/badge/downloads') // the README's downloads badge
+      return downloadsBadge(env, ctx);
     if (url.pathname === '/online/ping' && request.method === 'POST') // a Bloxkeep app, open now (online.js)
       return ping(request, env, gateway);
     if (url.pathname === '/online' || url.pathname === '/online.json') { // the dashboard, with the key /online gives
