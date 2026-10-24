@@ -39,6 +39,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("taskbar-groups", false, TaskbarGroupsSuite.Run),
     ("home-session", false, HomeSessionSuite.Run),
     ("sign-ins", false, SignInsSuite.Run),
+    ("tick-time", false, TickTimeSuite.Run),
     ("stats-icons", true, StatsIconSuite.Run),
     ("watch-online", true, WatchSuite.RunOnline),
 };

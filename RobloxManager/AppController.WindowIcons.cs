@@ -21,22 +21,28 @@ public sealed partial class AppController
                 WindowIcons.Remove(pid, windows.GetValueOrDefault(pid) ?? []);
             return;
         }
+        var shown = new List<(int Pid, List<IntPtr> Windows, Account Account)>();
         foreach (var (id, info) in _running)
         {
-            if (FindAccount(id) is not { } account || !windows.TryGetValue(info.Pid, out var list) || list.Count == 0)
-                continue;
+            if (FindAccount(id) is { } account && windows.TryGetValue(info.Pid, out var list) && list.Count > 0)
+                shown.Add((info.Pid, list, account));
+        }
+        // One client's windows are asked whether they still have their icon at a time, each every half a minute.
+        int? check = WindowIcons.NextToCheck(shown.Select(s => s.Pid));
+        foreach (var (pid, list, account) in shown)
+        {
             string? url = _avatarUrls.GetValueOrDefault(account.UserId);
             Bitmap? picture = null;
             if (url is not null && !_iconPictures.TryGetValue(url, out picture))
                 _ = LoadIconPictureAsync(url);
             if (picture is not null)
             {
-                WindowIcons.Apply(info.Pid, list, url!, () => new Bitmap(picture));
+                WindowIcons.Apply(pid, list, url!, () => new Bitmap(picture), check: pid == check);
             }
             else
             {
                 string name = NameText(account); // "Account 3" while names are hidden
-                WindowIcons.Apply(info.Pid, list, "initials:" + name, () => WindowIcons.Initials(name));
+                WindowIcons.Apply(pid, list, "initials:" + name, () => WindowIcons.Initials(name), check: pid == check);
             }
         }
     }
