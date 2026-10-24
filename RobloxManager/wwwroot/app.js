@@ -2744,7 +2744,7 @@
       case 'vault-back': return call('closeVaultPicker');
       case 'vault-remove': return (async () => {
         const name = (S.app.vaults?.list || []).find(x => x.id === el.dataset.id)?.name || '';
-        if (!await confirmBox(t('vault.removeText'), { title: t('vault.removeTitle', { name }), ok: t('vault.removeOk'), danger: true })) return;
+        if (!await confirmBox(t('vault.removeText'), { title: t('vault.removeTitle', { name: esc(name) }), ok: t('vault.removeOk'), danger: true })) return;
         await call('removeVault', { id: el.dataset.id });
       })();
       case 'vault-picture': return busy(el, () => call('pickVaultPicture', { id: el.dataset.id }));

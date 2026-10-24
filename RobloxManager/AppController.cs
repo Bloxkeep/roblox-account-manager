@@ -3656,6 +3656,9 @@ public sealed partial class AppController : IDisposable
                 Log.Write(ex); // anti-AFK counts input as before
             }
         }
+        long start = Stopwatch.GetTimestamp();
+        var parts = new List<(string What, TimeSpan Took)>();
+        _tickParts = parts;
         try
         {
             TrackProcesses();
@@ -3664,6 +3667,11 @@ public sealed partial class AppController : IDisposable
         catch (Exception ex)
         {
             LogTickError(ex);
+        }
+        finally
+        {
+            _tickParts = null;
+            NoteTickTime(Stopwatch.GetElapsedTime(start), parts);
         }
     }
 
@@ -3705,13 +3713,17 @@ public sealed partial class AppController : IDisposable
         // Windows' process list is the costly part of a tick (a few ms, whatever runs): in the tray with no Roblox
         // running and nothing on its way, it is read every 15 s rather than every 5.
         bool scan = ScanDue(now);
+        long part = Stopwatch.GetTimestamp();
         var players = scan ? RobloxProcesses.GetPlayers() : [];
+        Took("process list", part);
         IReadOnlyList<RobloxProcesses.PlayerProcess> scanned = players.ToArray();
         if (scan)
             _lastScan = now;
         var pids = players.Select(p => p.Pid).ToHashSet();
         // One pass over the desktop's windows serves every window check of this tick.
+        part = Stopwatch.GetTimestamp();
         var windows = RobloxProcesses.VisibleWindows(pids);
+        Took("window list", part);
         bool HasWindow(int pid) => windows.TryGetValue(pid, out var list) && list.Count > 0;
         // The same snapshot answers every parent → children question (it has each client's parent).
         Dictionary<int, List<int>>? tree = null;
@@ -3720,6 +3732,7 @@ public sealed partial class AppController : IDisposable
         // Roblox's copy in the notification area (RobloxProcesses.IsTrayCopy): not a client. It has no window to wait
         // for or to claim, isn't a start that closed another window, and doesn't count; once a window of ours has
         // closed, or after Close all, it is ended, since it would take over the next launch and open nothing.
+        part = Stopwatch.GetTimestamp();
         var trays = players.Where(p => !HasWindow(p.Pid) && RobloxProcesses.IsTrayCopy(p.Pid, p.Created)).Select(p => p.Pid).ToHashSet();
         if (now < _sweepBackgroundUntil || _traySweep.Values.Any(until => now <= until))
         {
@@ -3823,6 +3836,7 @@ public sealed partial class AppController : IDisposable
                 ForgetClientStart(child);
             }
         }
+        Took("clients started, ended and matched to launches", part);
         players.RemoveAll(p => !pids.Contains(p.Pid));
         if (scan)
             Step(() => SplitCores(pids));
@@ -3843,13 +3857,16 @@ public sealed partial class AppController : IDisposable
                 _robloxSettingsPending = false;
         }
         // Every Roblox window's log: the ones Bloxkeep opened for their status, all of them for anti-AFK.
+        part = Stopwatch.GetTimestamp();
         changed |= _logs.Poll(pids.ToList()) && _running.Count > 0;
+        Took("Roblox logs", part);
         // A client moved to a place not looked up yet: name it now rather than at the next status check.
         var unnamed = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0)
             .Where(id => id > 0 && !HasGame(id, false) && !(_gameFetchedAt.TryGetValue(id, out var asked) && now - asked < GameRetry))
             .Distinct().ToList();
         if (unnamed.Count > 0)
             _ = NameLoggedPlacesAsync(unnamed);
+        part = Stopwatch.GetTimestamp();
         RejoinFromLogs();
         ForgetLiftedGameBans();
         ForgetSettledRejoins(now);
@@ -3857,15 +3874,18 @@ public sealed partial class AppController : IDisposable
         RunAntiAfk(now, windows);
         MinimiseAfkWindows(windows);
         MaximiseNewWindows(now, windows);
+        Took("rejoins, play time, anti-AFK and window states", part);
 
         if (_vault is { Data.Settings.RenameWindows: true })
         {
+            part = Stopwatch.GetTimestamp();
             foreach (var (id, info) in _running)
             {
                 // With its process id, so a window can be matched to Task Manager and to its Roblox log.
                 if (FindAccount(id) is { } account && windows.TryGetValue(info.Pid, out var list))
                     RobloxProcesses.SetWindowTitle(list, $"Roblox - {NameText(account)} (PID {info.Pid})");
             }
+            Took("window titles", part);
         }
         if (scan)
         {
@@ -3921,7 +3941,7 @@ public sealed partial class AppController : IDisposable
             memory = SystemMemory.Read();
             if (memory.CommitLimitMb > 0 && memory.CommitRoomMb < CommitMarginMb)
                 _memoryShortAt = now;
-        });
+        }, "SystemMemory.Read()");
         if (_vault is null)
             return;
         Step(() => CheckAutoLock(AntiAfk.IdleTime(), DateTime.UtcNow));
@@ -3931,7 +3951,7 @@ public sealed partial class AppController : IDisposable
             NoteClientMemory(players);
             EmitMetrics(players, windows, memory);
             GuardResources(players, memory, now);
-        });
+        }, "EmitMetrics, GuardResources");
         Step(() => RunDueRejoin(now));
         Step(() => RestartDueClients(now));
         Step(() => RunSignInCheckIfDue(now));
@@ -3942,9 +3962,13 @@ public sealed partial class AppController : IDisposable
             _ = RefreshPresenceAsync();
     }
 
-    /// <summary>One job of the process check, on its own: a failure is logged (see <see cref="LogTickError"/>) and the next job runs.</summary>
-    void Step(Action job)
+    /// <summary>
+    /// One job of the process check, on its own: a failure is logged (see <see cref="LogTickError"/>) and the next job
+    /// runs. Timed as a part of the check (<see cref="NoteTickTime"/>), named by its code.
+    /// </summary>
+    void Step(Action job, [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(job))] string what = "")
     {
+        long start = Stopwatch.GetTimestamp();
         try
         {
             job();
@@ -3953,6 +3977,54 @@ public sealed partial class AppController : IDisposable
         {
             LogTickError(ex);
         }
+        finally
+        {
+            Took(what, start);
+        }
+    }
+
+    /// <summary>The parts of the process check under way and how long each took; null between checks.</summary>
+    List<(string What, TimeSpan Took)>? _tickParts;
+
+    /// <summary>A part of the process check under way took from <paramref name="since"/> (a Stopwatch timestamp) until now.</summary>
+    void Took(string what, long since) => _tickParts?.Add((what, Stopwatch.GetElapsedTime(since)));
+
+    /// <summary>
+    /// A process check that took this long goes to the log, with its slowest parts. It runs on the window's thread, so
+    /// Bloxkeep's window answers nothing meanwhile (a click, the page's commands). When all is well a check takes a few
+    /// ms: its costliest part, the process list, takes a few.
+    /// </summary>
+    static readonly TimeSpan SlowTick = TimeSpan.FromMilliseconds(100);
+    /// <summary>When the hour of the slow checks written began, the slowest written in it, and how many came unwritten since the last.</summary>
+    (DateTime Since, TimeSpan Slowest, int More)? _slowTick;
+
+    /// <summary>
+    /// A slow process check is written once an hour, as <see cref="LogTickError"/> does, and sooner when it took twice
+    /// as long as the slowest written in that hour, so the worst one is in the log with its parts. The parts are named
+    /// by the code (no account data).
+    /// </summary>
+    void NoteTickTime(TimeSpan took, List<(string What, TimeSpan Took)> parts)
+    {
+        if (took < SlowTick)
+            return;
+        var now = DateTime.UtcNow;
+        var since = now;
+        if (_slowTick is { } last && now >= last.Since && now - last.Since < TickErrorRepeat)
+        {
+            if (took < last.Slowest * 2)
+            {
+                _slowTick = last with { More = last.More + 1 };
+                return;
+            }
+            since = last.Since; // the same hour: the next one written must take twice as long again
+        }
+        static string Name(string what) => what.StartsWith("() => ", StringComparison.Ordinal) ? what[6..] : what;
+        var slowest = parts.OrderByDescending(p => p.Took).Take(4).Select(p => $"{Name(p.What)} {p.Took.TotalMilliseconds:0} ms");
+        var rest = took - parts.Aggregate(TimeSpan.Zero, (sum, p) => sum + p.Took);
+        string unwritten = _slowTick is { More: > 0 } previous ? $" {previous.More} slow check(s) came since the last one written." : "";
+        Log.Note($"Slow process check: {took.TotalMilliseconds:0} ms, {_lastPlayers?.Players.Count ?? 0} Roblox client(s). Slowest parts: "
+            + $"{string.Join(", ", slowest)}; the rest {rest.TotalMilliseconds:0} ms.{unwritten}");
+        _slowTick = (since, took, 0);
     }
 
     /// <summary>The last failure of the process check and how often it came again since it was written.</summary>

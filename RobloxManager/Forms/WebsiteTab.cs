@@ -249,8 +249,8 @@ public sealed class WebsiteTab : UserControl
                 e.Handled = true;
                 if (IsRoblox(e.Uri))
                     core.Navigate(e.Uri);
-                else if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http")
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })?.Dispose();
+                else
+                    OpenOutside(e.Uri);
             };
             core.HistoryChanged += (_, _) =>
             {
@@ -298,9 +298,16 @@ public sealed class WebsiteTab : UserControl
         }
     }
 
-    static bool IsRoblox(string url) =>
+    internal static bool IsRoblox(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https"
         && (uri.Host.Equals("roblox.com", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".roblox.com", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>A web link, in the person's own browser; anything else (a file, another scheme) isn't opened.</summary>
+    internal static void OpenOutside(string url)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http")
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })?.Dispose();
+    }
 
     /// <summary>The site's sign-out: it would end this session on Roblox's side, and with it the account saved in Bloxkeep.</summary>
     static bool IsSignOut(string url) =>

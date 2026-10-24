@@ -336,6 +336,8 @@ export class Gateway extends DurableObject {
     }
     if (name === 'verify' && sub?.name === 'set') {
       const channel = opt('channel'), role = opt('role');
+      if (!await mayGive(this.env, i, role))
+        return reply({ content: r.verifyNoRight(role) }, true);
       const res = await api(this.env, 'POST', `/channels/${channel}/messages`, verifyPanel(lang(locale)));
       if (!res.ok)
         return reply({ content: r.cantPost(channel) }, true);
@@ -1041,6 +1043,30 @@ export class Gateway extends DurableObject {
 async function tokenHash(token) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token ?? ''));
   return [...new Uint8Array(digest)].slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Whether whoever used the command could give this role by hand, by Discord's own rule: Manage Roles (or Administrator)
+ * and the role below their highest one, the server's owner above all; never @everyone or a role an app manages. The bot
+ * gives /verify's role to anyone who solves the captcha, so without this Manage Server alone would hand out any role
+ * under the bot's own (a moderator's, say).
+ */
+async function mayGive(env, i, role) {
+  const perms = BigInt(i.member?.permissions ?? 0);
+  if (!(perms & (1n << 28n)) && !(perms & (1n << 3n)))
+    return false;
+  const res = await api(env, 'GET', `/guilds/${i.guild_id}`);
+  if (!res.ok)
+    return false;
+  const guild = await res.json();
+  const target = guild.roles?.find(x => x.id === role);
+  if (!target || target.managed || role === i.guild_id)
+    return false;
+  if (guild.owner_id === i.member?.user?.id)
+    return true;
+  const mine = new Set(i.member?.roles ?? []);
+  const top = Math.max(0, ...guild.roles.filter(x => mine.has(x.id)).map(x => x.position));
+  return target.position < top;
 }
 
 /** What a board shows, without its timestamp: the board is edited only when this changes. */

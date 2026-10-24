@@ -74,6 +74,9 @@ const rest = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/oauth2/applications/@me') return send(200, { id: 'app1', owner: { id: 'u1' } });
     if (req.method === 'PATCH' && /\/messages\/gone$/.test(req.url)) return send(404, { message: 'Unknown Message', code: 10008 });
     if (req.method === 'POST' && /^\/channels\/\w+\/invites$/.test(req.url)) return send(200, { code: `inv${++inviteNo}` });
+    // g1's roles, low to high: rv (/verify's), an app's own, rme (u1's), rmod; u0 owns it.
+    if (req.method === 'GET' && req.url === '/guilds/g1') return send(200, { id: 'g1', owner_id: 'u0', roles: [
+      { id: 'g1', position: 0 }, { id: 'rv', position: 1 }, { id: 'rapp', position: 2, managed: true }, { id: 'rme', position: 3 }, { id: 'rmod', position: 5 }] });
     // The community server's channels: one shows how many have Bloxkeep open.
     if (req.method === 'GET' && req.url === '/guilds/g1/channels') return send(200, [{ id: 'c1', type: 0, name: 'news' }, { id: 'cnt', type: 2, name: '🟢 Using Bloxkeep: 0' }]);
     if (req.method === 'GET' && deadInvites.has(req.url.replace('/invites/', ''))) return send(404, { message: 'Unknown Invite', code: 10006 });
@@ -163,9 +166,9 @@ const typed = (code, { guild = 'g1', user = 'u9', roles = [] } = {}) => ({
   member: { permissions: '0', user: { id: user }, roles },
   data: { custom_id: 'verify-form', components: [{ type: 1, components: [{ type: 4, custom_id: 'code', value: code }] }] },
 });
-const command = (name, { guild = 'g1', locale = 'vi', perms = '32', sub, options = [], resolved } = {}) => ({
+const command = (name, { guild = 'g1', locale = 'vi', perms = '32', roles = [], sub, options = [], resolved } = {}) => ({
   type: 2, id: 'i', application_id: 'app1', token: 't', locale, guild_locale: locale,
-  ...(guild ? { guild_id: guild, member: { permissions: perms, user: { id: 'u1' } } } : { user: { id: 'u1' } }),
+  ...(guild ? { guild_id: guild, member: { permissions: perms, user: { id: 'u1' }, roles } } : { user: { id: 'u1' } }),
   data: { id: 'c', name, type: 1, options: sub ? [{ type: 1, name: sub, options }] : [], ...(resolved ? { resolved } : {}) },
 });
 const opt = (name, value, type = 7) => ({ name, value, type });
@@ -266,8 +269,15 @@ try {
   r = await interact(command('board', { guild: 'g2', locale: 'en-US', sub: 'set', options: [opt('channel', 'b1')] }));
   check('/board set posts the board', posts('b1').length === 1 && embedOf(posts('b1')[0])?.title === 'Roblox and Bloxkeep now' && /<#b1>/.test(r.json?.data.content ?? ''), JSON.stringify(posts('b1')[0]?.body));
 
+  // /verify set only for someone who could give the role by hand: not with Manage Server alone, not a role at or above
+  // their highest one, never a role an app manages; nothing posted.
+  const MANAGE_ROLES = String(32 + 2 ** 28);
+  for (const [why, perms, role] of [['Manage Server alone', '32', 'rv'], ['a role above their highest', MANAGE_ROLES, 'rmod'], ['their highest role itself', MANAGE_ROLES, 'rme'], ['an app\'s role', MANAGE_ROLES, 'rapp']]) {
+    r = await interact(command('verify', { perms, roles: ['rme'], sub: 'set', options: [opt('channel', 'v1'), opt('role', role, 8)] }));
+    check(`/verify set refused: ${why}`, /Manage Roles/.test(r.json?.data.content ?? '') && r.json.data.flags === 64 && posts('v1').length === 0, r.json?.data.content);
+  }
   // /verify in g1: the Verify button in v1, role rv for whoever solves the captcha (its code fixed for the test).
-  r = await interact(command('verify', { sub: 'set', options: [opt('channel', 'v1'), opt('role', 'rv', 8)] }));
+  r = await interact(command('verify', { perms: MANAGE_ROLES, roles: ['rme'], sub: 'set', options: [opt('channel', 'v1'), opt('role', 'rv', 8)] }));
   const panel = posts('v1')[0];
   check('/verify set posts the Verify button, and says the bot needs Manage Roles above the role', panel?.body.components?.[0]?.components?.[0]?.custom_id === 'verify'
     && r.json?.data.flags === 64 && /<#v1>/.test(r.json.data.content) && /<@&rv>/.test(r.json.data.content) && /Manage Roles/.test(r.json.data.content), `${JSON.stringify(panel?.body)} ${r.json?.data.content}`);
