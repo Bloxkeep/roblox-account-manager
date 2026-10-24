@@ -683,20 +683,6 @@ static class RejoinSuite
             var byHand = await Open(null);
             var asks = byHand?.GetType().GetProperty("Asks")!.GetValue(byHand) as List<string>;
             c.Check("…opened by hand, it is asked first", asks?.Contains("gameBan") == true, asks is null ? byHand?.ToString() : string.Join(",", asks));
-            // Another account opened by hand into the game this one is banned from: games ban the person, and Roblox bans
-            // the accounts it takes for their other ones too (the owner's second account in GPO, 2026-10-24). Asked first,
-            // naming both; nothing opens before the answer.
-            var other = new Account { Username = "SecondOne", UserId = 424242 };
-            vault.Data.Accounts.Add(other);
-            var task2 = (Task)launchAccounts.Invoke(app, [vault, new List<Account> { other }, new GameTarget(Gpo), false, 0, null, null])!;
-            await task2;
-            var otherResult = task2.GetType().GetProperty("Result")!.GetValue(task2);
-            var otherAsks = otherResult?.GetType().GetProperty("Asks")!.GetValue(otherResult) as List<string>;
-            string otherText = otherResult?.GetType().GetProperty("Message")!.GetValue(otherResult) as string ?? "";
-            c.Check("another account opened by hand into a game one of the vault's accounts is banned from: asked first, which may get it banned too",
-                otherAsks?.Contains("altBan") == true && otherAsks?.Contains("gameBan") != true && otherText.Contains("could be banned from it as well")
-                && !running.Contains(other.Id), $"{(otherAsks is null ? "" : string.Join(",", otherAsks))} {otherText}");
-            vault.Data.Accounts.Remove(other);
             account.GameBans = bansBefore;
             running[account.Id] = openBefore;
             // A window opened into the game that banned the account, the person in another game from it now: the ban stands,

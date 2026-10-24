@@ -2913,8 +2913,6 @@ public sealed partial class AppController : IDisposable
                 if (gameBanned.Count == accounts.Count)
                     throw new UserError(string.Join("\n", errors));
                 accounts = accounts.Except(gameBanned).ToList();
-                // Nobody here to ask (see AltBanWarning): said with the result instead.
-                errors.Add(L.T("Games ban the person, not only the account: the other accounts this preset opened into it could be banned from it too."));
             }
             // Things worth a second look before opening more windows.
             var players = RobloxProcesses.GetPlayers();
@@ -2959,8 +2957,6 @@ public sealed partial class AppController : IDisposable
                 warnings.Add(("gameBan", L.P(bannedHere.Count,
                     "{0} was banned from this game, so Roblox will most likely not let them in (Join Error 600).",
                     "{0} were banned from this game, so Roblox will most likely not let them in (Join Error 600).", Names(bannedHere))));
-            if (target is not null && AltBanWarning(vault, accounts, target.PlaceId) is { } altBan)
-                warnings.Add(("altBan", altBan));
             bool robloxOpen = RobloxProcesses.VisibleWindows(players.Select(p => p.Pid)).Values.Any(list => list.Count > 0);
             if ((accounts.Count > 1 || robloxOpen) && !MultiInstance.Armed)
                 warnings.Add(s.MultiInstance ? ("multiNotReady", MultiNotReadyText())
@@ -4550,24 +4546,6 @@ public sealed partial class AppController : IDisposable
     /// </summary>
     GameBan? GameBanOf(Account account, long? placeId) =>
         placeId is long place ? account.GameBans.FirstOrDefault(b => SameGame(b.PlaceId, place)) : null;
-
-    /// <summary>
-    /// Opening accounts by hand into a game another of the vault's accounts is banned from: a game bans the person, and
-    /// Roblox's ban API bans the accounts it takes for that person's other ones too, "for using an account to avoid a
-    /// ban" (the owner's second account in Grand Piece Online, 2026-10-24). Asked first, with who is banned and who may
-    /// be next; null when no account in the vault is banned there or every one opening is.
-    /// </summary>
-    string? AltBanWarning(Vault vault, List<Account> opening, long placeId)
-    {
-        var banned = vault.Data.Accounts.Where(acc => GameBanOf(acc, placeId) is not null).ToList();
-        var others = opening.Where(acc => GameBanOf(acc, placeId) is null).ToList();
-        if (banned.Count == 0 || others.Count == 0)
-            return null;
-        return L.P(banned.Count,
-            "{0} is banned from this game. Games ban the person, not only the account, so opening {1} here too can be taken as getting round that ban, and {1} could be banned from it as well.",
-            "{0} are banned from this game. Games ban the person, not only the account, so opening {1} here too can be taken as getting round that ban, and {1} could be banned from it as well.",
-            Names(banned), Names(others));
-    }
 
     /// <summary>An account that got into a game it was banned from: that ban is over (or was lifted).</summary>
     void ForgetLiftedGameBans()
