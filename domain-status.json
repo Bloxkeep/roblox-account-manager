@@ -1,10 +1,5 @@
 {
-  "changedAt": "2026-10-24T16:04:20Z",
-  "failing": {
-    "crtsh": {
-      "since": "2026-10-24T16:04:20Z"
-    }
-  },
+  "changedAt": "2026-10-24T23:19:25Z",
   "names": {
     "bloxkeep-app.workers.dev": {
       "crtsh": "https://crt.sh/?id=29875994159",
