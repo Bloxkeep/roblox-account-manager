@@ -218,8 +218,8 @@ public sealed partial class AppController
     /// New ones get a new id here: the file's could already name something in this vault (a deleted account's play
     /// history, the launch order). One already here only takes the file's sign-in, and its password when it has
     /// none, if its own sign-in isn't known to work; its name, group and note as set here are never changed. Presets
-    /// come only when asked, schedules switched off. Settings, Discord, the launch order and play history stay this
-    /// vault's own.
+    /// come only when asked, schedules switched off and without their own Discord channel. Settings, Discord, the
+    /// launch order and play history stay this vault's own.
     /// </summary>
     internal static ImportOutcome MergeImport(VaultData target, VaultData source, IReadOnlySet<int> keys, bool withPresets)
     {
@@ -322,8 +322,9 @@ public sealed partial class AppController
                     Profile = p.Profile == AfkProfile ? AfkProfile : "",
                     RestartHours = p.PlaceInput.Length > 0 && RestartChoices.Contains(p.RestartHours) ? p.RestartHours : 0,
                     Arrange = p.Arrange,
-                    // Its own Discord channel comes along only as a link Bloxkeep would accept from the form.
-                    DiscordWebhook = DiscordWebhook.TryNormalize(p.DiscordWebhook, out string hook) ? hook : "",
+                    // Not its own Discord channel: a file from someone else would send this PC's alerts about these
+                    // accounts (names, games, status) to that person's channel. Set it again here if it's yours.
+                    DiscordWebhook = "",
                     // Off, so the two PCs don't start the same accounts at the same minute.
                     Schedule = s is null ? null : new PresetSchedule
                     {

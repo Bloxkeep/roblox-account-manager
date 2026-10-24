@@ -84,5 +84,14 @@ static class PresetSuite
         await Call("skipConfirm", new { key = "deletePreset" });
         c.Check("Don't ask again is kept", Prefs.SkipConfirm.Contains("deletePreset"));
         c.Check("an unknown question is refused", await Call("skipConfirm", new { key = "deleteAccounts" }) is UserError && !Prefs.SkipConfirm.Contains("deleteAccounts"));
+
+        // A preset from another vault's file comes without its own Discord link, which could be someone else's channel.
+        var file = new VaultData();
+        var theirs = new Account { Username = "main", UserId = 1003 };
+        file.Accounts.Add(theirs);
+        file.Settings.Presets.Add(new LaunchPreset { Name = "Theirs", AccountIds = [theirs.Id], DiscordWebhook = hook });
+        typeof(AppController).GetMethod("MergeImport", Harness.F)!.Invoke(null, [V().Data, file, new HashSet<int>(), true]);
+        var imported = V().Data.Settings.Presets.SingleOrDefault(x => x.Name == "Theirs");
+        c.Check("an imported preset comes without its Discord link", imported is { DiscordWebhook: "" } && imported.AccountIds.SequenceEqual([acc.Id]), imported?.DiscordWebhook);
     }
 }

@@ -111,10 +111,25 @@ public sealed class BrowserLoginForm : Form
             var core = web.CoreWebView2;
             core.Settings.IsPasswordAutosaveEnabled = false;
             core.Settings.IsGeneralAutofillEnabled = false;
+            // DevTools would show the session cookie, which is how cookie thieves talk people into sharing it.
+            core.Settings.AreDevToolsEnabled = false;
+            // Only Roblox's own pages here: this window shows no address, so another site would pass for the sign-in
+            // page. A link elsewhere opens in the person's own browser, and only when they clicked it.
+            core.NavigationStarting += (_, e) =>
+            {
+                if (WebsiteTab.IsRoblox(e.Uri))
+                    return;
+                e.Cancel = true;
+                if (e.IsUserInitiated)
+                    WebsiteTab.OpenOutside(e.Uri);
+            };
             core.NewWindowRequested += (_, e) =>
             {
                 e.Handled = true;
-                core.Navigate(e.Uri);
+                if (WebsiteTab.IsRoblox(e.Uri))
+                    core.Navigate(e.Uri);
+                else if (e.IsUserInitiated)
+                    WebsiteTab.OpenOutside(e.Uri);
             };
             core.ContentLoading += (_, e) =>
             {

@@ -123,14 +123,13 @@ namespace BloxkeepSetup
             {
                 Latest();
                 Release r = _latest;
-                string expected = null;
-                try
-                {
-                    Match line = Regex.Match(Text(Asset(r.Tag, "SHA256SUMS.txt")), "^([0-9a-fA-F]{64}) [ *]?" + Regex.Escape(OfflineName) + "\\s*$", RegexOptions.Multiline);
-                    if (line.Success)
-                        expected = line.Groups[1].Value;
-                }
-                catch (FileNotFoundException) { } // a release without the list: the length alone is checked
+                // Every release lists its files' checksums; one that doesn't (not uploaded yet, or taken away) installs
+                // nothing, as a download that can't be checked can't be trusted.
+                Match line = Regex.Match(Text(Asset(r.Tag, "SHA256SUMS.txt")), "^([0-9a-fA-F]{64}) [ *]?" + Regex.Escape(OfflineName) + "\\s*$", RegexOptions.Multiline);
+                if (!line.Success)
+                    throw new IOException(T.S("Bloxkeep's newest release doesn't list this file's checksum, so the download can't be checked. Try again later.",
+                        "Bản phát hành mới nhất của Bloxkeep không ghi mã kiểm tra của file này, nên không kiểm được file tải về. Hãy thử lại sau."));
+                string expected = line.Groups[1].Value;
 
                 using (HttpWebResponse answer = Get(Request(Asset(r.Tag, OfflineName))))
                 using (Stream body = answer.GetResponseStream())
@@ -152,7 +151,7 @@ namespace BloxkeepSetup
                         }
                     }
                     sha.TransformFinalBlock(buffer, 0, 0);
-                    if ((total > 0 && have != total) || (expected != null && !string.Equals(Hex(sha.Hash), expected, StringComparison.OrdinalIgnoreCase)))
+                    if ((total > 0 && have != total) || !string.Equals(Hex(sha.Hash), expected, StringComparison.OrdinalIgnoreCase))
                         throw new IOException(T.S("The download arrived damaged. Try again.", "File tải về bị lỗi. Hãy thử lại."));
                 }
             }
