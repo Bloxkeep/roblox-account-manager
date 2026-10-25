@@ -1,0 +1,25 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+    div.lock-card.lock-update [id="lock-update"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Đang cập nhật lên 1.0.1"
+      p "Xong là Bloxkeep tự mở lại, ngay tại đây."
+      div.boot-bar [role="progressbar" aria-label="Đang cập nhật lên 1.0.1" aria-valuemax="100" aria-valuemin="0" aria-valuenow="100"]
+        i [style="transform:scaleX(1)"]
+      div.lock-update-step [id="lock-update-step" aria-live="polite"] "Đang cài đặt…"
+      div.lock-alt
+        button.link [id="lock-update-later" type="button" title="Bản cập nhật sẽ chờ tới lúc bạn không dùng Bloxkeep."] "Mở khóa luôn, cập nhật sau"
+#layer
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  updateAtLock {"go":true}

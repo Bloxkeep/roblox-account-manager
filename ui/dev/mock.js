@@ -110,6 +110,9 @@
   // ?autolockin=1500: the same, coming up 1.5 s after the page opens (as if the PC went unused meanwhile).
   let screenLock = params.has('autolock') ? { minutes: +params.get('autolock') || 15 } : null;
   let locked = params.has('locked') || params.has('new') || !!screenLock;
+  // ?lockupdatein=1500: the same update found 1.5 s after the lock screen came up (someone may be typing by then).
+  let lockUpdate = params.get('lockupdate');
+  let lockUpdateGo = null;
   let language = params.get('lang') || 'en';
   let theme = params.get('theme') || 'dark';
   // Set up yet (?new=1: not). The vaults on this PC (?vaults=1: three, one with a picture; ?vaultpick=1: the picker
@@ -289,8 +292,13 @@
       closed: params.has('rbxclosed') && !rbxClosedHidden ? { at: minsAgo(12), count: 3, updatedAt: minsAgo(60 * 20) } : null,
     },
     // ?update=quiet: a quiet fix downloaded (WhatsNew.IsQuietFix), installed by itself without the Restart to update button.
-    update: { supported: true, current: '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? (params.get('update') === 'quiet' ? '1.0.1-alpha.1' : '1.0.1') : null,
-      quiet: params.get('update') === 'quiet', progress: 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(23) },
+    // ?lockupdate=40 (with ?locked=1): an update found before the unlock, 40 % downloaded (ready: downloaded); the lock
+    // screen gives it its place (AppController.UpdateOffersAtLock).
+    update: lockUpdate !== null
+      ? { supported: true, current: '1.0.0', status: lockUpdate === 'ready' ? 'ready' : 'downloading', version: '1.0.1', quiet: false, progress: +lockUpdate || 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(0) }
+      : { supported: true, current: '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? (params.get('update') === 'quiet' ? '1.0.1-alpha.1' : '1.0.1') : null,
+        quiet: params.get('update') === 'quiet', progress: 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(23) },
+    lockUpdate: locked && !screenLock && lockUpdate !== null ? { go: lockUpdateGo } : null,
     countOnline,
     installs: { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store') },
     monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: LONG ? 'C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep' : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep', robloxInstalled: !params.has('noroblox'),
@@ -340,6 +348,7 @@
           return { servers: Array.from({ length: 12 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 15 - i, maxPlayers: 15, ping: 140 - i * 9, fps: 50 + (i * 7) % 11 })), next: a?.cursor ? null : 'more', busy: false, left: 3 - srvAsked.length };
         }
         case 'seenWhatsNew': return null;
+        case 'updateAtLock': lockUpdateGo = !!a.go; push(); return null;
         // The real notes, newest first: the newest three, as after an update over two versions (?wn=1: only the newest).
         case 'whatsNew': return (await fetch('/RobloxManager/whatsnew.json').then(r => r.json())).slice(0, +(params.get('wn') || 3));
         case 'unlock': case 'createVault':
@@ -890,6 +899,7 @@
       if (stepTo === 'wrong') setTimeout(() => { type('nope'); press(); }, 900);
       if (stepTo === 'preview') setTimeout(() => { type('demo'); press(); }, 900);
     }
+    if (params.has('lockupdatein')) setTimeout(() => { lockUpdate = '30'; push(); }, +params.get('lockupdatein') || 1500);
     if (params.has('autolockin')) setTimeout(() => { screenLock = { minutes: settings.autoLockMinutes || 15 }; locked = true; push(); }, +params.get('autolockin') || 1500);
     if (params.has('stats')) click('[data-view=stats]');
     if (params.has('monitor')) click('[data-view=monitor]');

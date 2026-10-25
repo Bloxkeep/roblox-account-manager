@@ -33,6 +33,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("saved-servers", false, SavedServersSuite.Run),
     ("discord-presence", false, DiscordPresenceSuite.Run),
     ("quiet-fixes", false, QuietFixSuite.Run),
+    ("lock-update", false, LockUpdateSuite.Run),
     ("custom-theme", false, CustomThemeSuite.Run),
     ("vaults", false, VaultsSuite.Run),
     ("foreign-vault", false, ForeignVaultSuite.Run),

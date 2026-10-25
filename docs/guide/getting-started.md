@@ -64,7 +64,9 @@ If something would pause (for example "Auto-rejoin for 3 accounts" or "2 schedul
 
 ## Updates
 
-Bloxkeep checks GitHub for a new version when it starts and every hour, downloads it in the background, and installs it by itself the next time you aren't using it. It comes back in a few seconds as it was: unlocked, on the same tab. Roblox windows keep running.
+Bloxkeep checks GitHub for a new version as soon as it opens and every hour after. One found before you unlock is installed right there: the lock screen shows **Updating to** *version* with its progress, and Bloxkeep opens again on the new version, at the lock screen. One found later downloads in the background and installs by itself the next time you aren't using Bloxkeep, coming back in a few seconds as it was: unlocked, on the same tab. Roblox windows keep running either way.
+
+<img src="../screenshots/lock-update.png" width="760" alt="The lock screen giving its place to an update found before unlocking: Updating to 1.0.1, Downloading 40 %, and Unlock now, update later">
 
 <img src="../screenshots/2-restart-to-update.png" width="760" alt="Restart to update in the sidebar, shown when an update is ready">
 
@@ -76,6 +78,7 @@ Bloxkeep checks GitHub for a new version when it starts and every hour, download
 <details>
 <summary>More details</summary>
 
+- On the lock screen, **Unlock now, update later** gives you the password box back; the update then waits until you aren't using Bloxkeep. If you had already started typing your password when the update was found, the lock screen stays as it is.
 - "Not using it" means the window is in the tray or minimised, or nobody has touched the PC for 10 minutes, and Bloxkeep is in the middle of nothing (no Roblox opening, no sign-in, backup or half-filled form). A Roblox window that is just running doesn't hold the update back.
 - To type the master password again after each update, lock Bloxkeep first: a locked copy hands over nothing.
 - If the new version doesn't come up within about a minute, Bloxkeep starts itself again in the tray, locked, with a notification. That update isn't tried again for a day; **Restart to update** still works.
