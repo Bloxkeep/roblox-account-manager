@@ -1209,6 +1209,11 @@ public sealed partial class AppController : IDisposable
     void OnUnlocked(Vault vault)
     {
         _vault = vault;
+        // A backup made somewhere else: its launcher and Discord links go before anything below can use them.
+        bool foreign = Prefs.ForeignRestore == vault.Id;
+        if (foreign)
+            DropForeignLinks(vault);
+        RememberVault(vault, foreign);
         _activeAt = DateTime.UtcNow; // the wait for the lock screen starts now
         var s = vault.Data.Settings;
         if (!RobloxLauncher.IsValidOption(s.LaunchVia))
@@ -1400,6 +1405,7 @@ public sealed partial class AppController : IDisposable
             throw new UserError(L.F("Couldn't save data: {0}", ErrorText(ex)));
         }
         OnPasswordChanged(next);
+        RememberVault(vault, foreign: false); // its new id: backups from now on carry it
         return true;
     }
 
@@ -5481,7 +5487,7 @@ public sealed partial class AppController : IDisposable
             s.WindowHeight = Math.Clamp(height, RobloxProcesses.LeastWindow.Height, RobloxProcesses.MostWindow.Height);
         // "custom" needs a launcher picked with PickLauncher; the page never supplies a path itself.
         // "other:<name>" only for a launcher actually found here, so the page can't name an arbitrary program.
-        if (OptStr(a, "launchVia") is { } via && RobloxLauncher.IsValidOption(via) && (via != "custom" || File.Exists(s.CustomLauncher))
+        if (OptStr(a, "launchVia") is { } via && RobloxLauncher.IsValidOption(via) && (via != "custom" || RobloxLauncher.CustomLauncherReady(s.CustomLauncher))
             && (RobloxLauncher.OtherName(via) is not { } other || RobloxInstalls.FindOtherBootstrappers().Contains(other)))
         {
             s.LaunchVia = via;
@@ -5590,13 +5596,15 @@ public sealed partial class AppController : IDisposable
         {
             Title = L.T("Choose the program that opens Roblox"),
             Filter = L.T("Programs") + " (*.exe)|*.exe",
-            InitialDirectory = File.Exists(s.CustomLauncher) ? Path.GetDirectoryName(s.CustomLauncher)
+            InitialDirectory = RobloxLauncher.CustomLauncherReady(s.CustomLauncher) ? Path.GetDirectoryName(s.CustomLauncher)
                 : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         };
         if (Ui.Modal(() => dialog.ShowDialog(_owner)) == DialogResult.OK)
         {
             if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(Application.ExecutablePath), StringComparison.OrdinalIgnoreCase))
                 throw new UserError(L.T("Pick the program that opens Roblox, not Bloxkeep itself."));
+            if (!RobloxLauncher.IsLocalProgram(dialog.FileName))
+                throw new UserError(L.T("Pick a launcher on this PC: Bloxkeep doesn't open programs from a network folder."));
             s.CustomLauncher = dialog.FileName;
             s.LaunchVia = "custom";
             _installs = null;

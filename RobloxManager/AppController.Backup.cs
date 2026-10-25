@@ -487,6 +487,7 @@ public sealed partial class AppController
             if (_vault is not null)
                 Lock();
             Backup.Restore(dialog.FileName, replace);
+            NoteRestored(dialog.FileName);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -498,5 +499,57 @@ public sealed partial class AppController
         Toast(L.T("Backup restored. Unlock it with the master password it was saved with."), "ok");
         PushState();
         return null;
+    }
+
+    /// <summary>
+    /// A restored backup with an id this PC never had (<see cref="Prefs.KnownVaultIds"/>) was made somewhere else: noted,
+    /// so its first unlock drops what whoever made it chose to run and where to post (<see cref="DropForeignLinks"/>).
+    /// A backup of this PC's own vault keeps everything. Saved with the prefs by the caller.
+    /// </summary>
+    static void NoteRestored(string file) =>
+        Prefs.ForeignRestore = Vault.IdOf(file) is { } id && !Prefs.KnownVaultIds.Contains(id) ? id : null;
+
+    /// <summary>
+    /// A vault restored from a backup made somewhere else, at its first unlock: the program it names for opening Roblox
+    /// and the Discord channels it posts to were chosen by whoever made it, so a "backup" someone shares could start
+    /// their program at the next Play, or send this PC's alerts about its accounts to their channel. Dropped before
+    /// anything uses them; the person sets them again if they're theirs.
+    /// </summary>
+    void DropForeignLinks(Vault vault)
+    {
+        var data = vault.Data;
+        var s = data.Settings;
+        bool had = s.CustomLauncher.Length > 0 || data.Discord.WebhookUrl.Length > 0 || s.Presets.Any(p => p.DiscordWebhook.Length > 0);
+        s.CustomLauncher = "";
+        if (s.LaunchVia == "custom")
+            s.LaunchVia = "auto";
+        data.Discord.Enabled = false;
+        data.Discord.WebhookUrl = "";
+        foreach (var preset in s.Presets)
+            preset.DiscordWebhook = "";
+        PersistSoon();
+        if (had)
+            Toast(L.T("This backup was made on another PC: the program it opened Roblox with and its Discord links were removed. Set them again in Settings if they're yours."));
+    }
+
+    /// <summary>
+    /// The vault just unlocked (or given a new password) is one of this PC's from now on, with the ids it had before
+    /// (its older backups carry them); not those of a vault from elsewhere, which wrote that list itself.
+    /// </summary>
+    void RememberVault(Vault vault, bool foreign)
+    {
+        bool changed = Prefs.KnownVaultIds.Add(vault.Id);
+        if (foreign)
+        {
+            Prefs.ForeignRestore = null;
+            changed = true;
+        }
+        else
+        {
+            foreach (string id in vault.Data.Settings.PreviousVaultIds)
+                changed |= Prefs.IsVaultId(id) && Prefs.KnownVaultIds.Add(id);
+        }
+        if (changed)
+            Prefs.Save();
     }
 }

@@ -24,6 +24,28 @@ public static class RobloxLauncher
     public static bool IsValidOption(string launchVia) =>
         LaunchOptions.Contains(launchVia) || (OtherName(launchVia) is { } name && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0);
 
+    /// <summary>
+    /// A launcher picked by hand that Bloxkeep may look at and start: a program on this PC, not on the network
+    /// (\\server\share, \\?\UNC\…, \\host@SSL\… or a mapped network drive). Windows would reach a network path the moment
+    /// Bloxkeep checked it was there, handing the PC's Windows sign-in to that server, and then run what it serves.
+    /// </summary>
+    public static bool IsLocalProgram(string path)
+    {
+        if (path.Length == 0 || !Path.IsPathFullyQualified(path) || path.StartsWith(@"\\", StringComparison.Ordinal) || path.StartsWith("//", StringComparison.Ordinal))
+            return false;
+        try
+        {
+            return new DriveInfo(Path.GetPathRoot(path)!).DriveType is not (DriveType.Network or DriveType.NoRootDirectory or DriveType.Unknown);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The launcher picked by hand is a program on this PC (<see cref="IsLocalProgram"/>) and still there.</summary>
+    public static bool CustomLauncherReady(string path) => IsLocalProgram(path) && File.Exists(path);
+
     public static bool IsProtocolRegistered()
     {
         using var key = Registry.ClassesRoot.OpenSubKey(@"roblox-player\shell\open\command");
@@ -109,7 +131,8 @@ public static class RobloxLauncher
         switch (launchVia)
         {
             case "custom":
-                if (!File.Exists(customLauncher))
+                // One on the network (a vault from elsewhere, say) is treated as gone: never looked at, never started.
+                if (!CustomLauncherReady(customLauncher))
                     throw new FileNotFoundException(L.T("The launcher you picked is gone. Choose it again under Settings › Launching › Open Roblox with."));
                 Start(customLauncher, uri);
                 break;
