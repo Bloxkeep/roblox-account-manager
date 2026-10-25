@@ -120,6 +120,7 @@ const src = http.createServer((req, res) => {
   if (req.url === '/status.json') return json({ result: { status_overall: { status_code: status.code }, status: ['User', 'Player', 'Creator'].map(name => ({ name, status_code: status.code })), incidents: status.code > 100 ? [{ name: 'Players can\'t join' }] : [] } });
   if (req.url === '/releases/latest') { res.writeHead(302, { Location: `http://127.0.0.1:${SRC}/releases/tag/${latest}` }); return res.end(); }
   // Every release with its files, for the downloads badge: only the install files count.
+  if (req.url.startsWith('/api/releases?') && apiDown) { res.writeHead(403); return res.end('{"message":"API rate limit exceeded"}'); }
   if (req.url.startsWith('/api/releases?'))
     return json([
       { tag_name: 'v1.0.9', assets: [{ name: 'Bloxkeep-Setup.exe', download_count: 6 }, { name: 'Bloxkeep-Setup-Offline.exe', download_count: 8 },
@@ -181,7 +182,7 @@ function startDev(extra = {}) {
     OBJECT_NAME: 'bot-test', OLD_OBJECT_NAME: '', PRESENCE_EVERY_MS: '300', TRACE_URL: 'http://127.0.0.1:9/',
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
-    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASES_API_URL: `http://127.0.0.1:${SRC}/api/releases`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
+    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASES_API_URL: `http://127.0.0.1:${SRC}/api/releases`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', DOWNLOADS_EVERY_MS: '0', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
     NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', ...extra,
   };
@@ -483,6 +484,9 @@ try {
   const rel9 = posts('c1').at(-1);
   check("…GitHub's API still not answering: posted with the highlights of its notes file", posts('c1').length === before.c1 + 1
     && embedOf(rel9)?.title === 'Bloxkeep 1.0.9 is out' && embedOf(rel9)?.description === '- **Private servers**: listed.', JSON.stringify(rel9?.body));
+  // The downloads badge (asked every time here): GitHub's API saying no keeps the last count, not "unknown".
+  const badgeDown = await (await fetch(`http://127.0.0.1:${DEV}/badge/downloads`)).json().catch(() => null);
+  check("the downloads badge while GitHub's API says no: the last count (45), not \"unknown\"", badgeDown?.message === '45' && !badgeDown.isError, JSON.stringify(badgeDown));
   apiDown = false;
 
   // Turned off: nothing more there.
