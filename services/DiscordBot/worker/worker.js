@@ -57,8 +57,9 @@ const INTENTS = 1 << 9;
 const CAPTCHA_FOR = 5 * 60_000, CAPTCHAS_PER = 5, CAPTCHA_WINDOW = 10 * 60_000;
 // The community server's invite (/discord) is asked Discord whether it still works at most this often.
 const INVITE_RECHECK = 60_000;
-// The README's downloads badge: GitHub is asked for the count at most once an hour, and 5 minutes after it said no.
-const DOWNLOADS_EVERY = 60 * 60_000, DOWNLOADS_RETRY = 5 * 60_000;
+// The README's downloads badge: the count is read at most every 10 minutes (the Roblox watch counts that often), and
+// 5 minutes after it couldn't be.
+const DOWNLOADS_EVERY = 10 * 60_000, DOWNLOADS_RETRY = 5 * 60_000;
 // Who Bloxkeep's developers are (the application's owner, or its team's owner and admins) is asked Discord this often.
 const DEVELOPERS_RECHECK = 10 * 60_000;
 
@@ -234,9 +235,9 @@ export class Gateway extends DurableObject {
   }
 
   /**
-   * The install files' downloads for the README's badge (null before GitHub first answered). GitHub's API takes 60
-   * unsigned calls an hour from one address, and Cloudflare's addresses are shared with everyone else's workers, so it
-   * often says no: the last count stays until it answers again, rather than the badge going to "unknown".
+   * The install files' downloads for the README's badge (null before the count was first read): the Roblox watch's
+   * count (sources.js readInstallDownloads), read at most every 10 minutes. When it can't be read, the last count stays
+   * rather than the badge going to "unknown".
    */
   async downloads() {
     const every = Number(this.env.DOWNLOADS_EVERY_MS ?? DOWNLOADS_EVERY);
@@ -1125,8 +1126,8 @@ async function ping(request, env, gateway) {
 
 /**
  * The README's downloads badge (shields.io's endpoint badge reads this): the install files' downloads, as the bot's
- * object last had them from GitHub (Gateway.downloads), kept an hour per Cloudflare location. "unknown" only before
- * GitHub ever answered.
+ * object last read them (Gateway.downloads), kept as long per Cloudflare location. "unknown" only before the count was
+ * ever read.
  */
 async function downloadsBadge(env, ctx) {
   const key = new Request('https://bloxkeep-bot.invalid/badge/downloads'), cache = caches.default;

@@ -102,6 +102,8 @@ let status = { code: 100 };
 let latest = 'v1.0.7';
 // GitHub's API not answering (as for 1.0.9 on 2026-10-23) and the notes file at a tag not there yet.
 let apiDown = false, fileDown = false;
+// The Roblox watch's downloads.json not readable (not written yet, or GitHub's raw files having trouble).
+let downloadsDown = false;
 // Roblox's notes, per weekly release, as its Creator Hub page carries them; a release not here has no page yet.
 const notes = new Map();
 const CHANGES = [
@@ -119,15 +121,9 @@ const src = http.createServer((req, res) => {
   if (req.url === '/watch.json') return json(watch);
   if (req.url === '/status.json') return json({ result: { status_overall: { status_code: status.code }, status: ['User', 'Player', 'Creator'].map(name => ({ name, status_code: status.code })), incidents: status.code > 100 ? [{ name: 'Players can\'t join' }] : [] } });
   if (req.url === '/releases/latest') { res.writeHead(302, { Location: `http://127.0.0.1:${SRC}/releases/tag/${latest}` }); return res.end(); }
-  // Every release with its files, for the downloads badge: only the install files count.
-  if (req.url.startsWith('/api/releases?') && apiDown) { res.writeHead(403); return res.end('{"message":"API rate limit exceeded"}'); }
-  if (req.url.startsWith('/api/releases?'))
-    return json([
-      { tag_name: 'v1.0.9', assets: [{ name: 'Bloxkeep-Setup.exe', download_count: 6 }, { name: 'Bloxkeep-Setup-Offline.exe', download_count: 8 },
-        { name: 'releases.win.json', download_count: 900 }, { name: 'BloxkeepApp-1.0.9-full.nupkg', download_count: 40 }] },
-      { tag_name: 'v1.0.8', assets: [{ name: 'Bloxkeep-Setup.exe', download_count: 20 }, { name: 'Bloxkeep-Portable.zip', download_count: 11 },
-        { name: 'releases.win.json', download_count: 1300 }] },
-    ]);
+  // The install files' downloads, as the Roblox watch workflow counts them for the badge.
+  if (req.url === '/downloads.json' && downloadsDown) { res.writeHead(404); return res.end('404: Not Found'); }
+  if (req.url === '/downloads.json') return json({ installs: 45 });
   const m = /^\/api\/tags\/(.+)$/.exec(req.url);
   if (m && apiDown) { res.writeHead(403); return res.end('{"message":"API rate limit exceeded"}'); }
   if (m) return json({ html_url: `https://github.com/Bloxkeep/roblox-account-manager/releases/tag/${m[1]}`, body: NOTES });
@@ -182,7 +178,7 @@ function startDev(extra = {}) {
     OBJECT_NAME: 'bot-test', OLD_OBJECT_NAME: '', PRESENCE_EVERY_MS: '300', TRACE_URL: 'http://127.0.0.1:9/',
     GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`, DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX,
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
-    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, RELEASES_API_URL: `http://127.0.0.1:${SRC}/api/releases`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', DOWNLOADS_EVERY_MS: '0', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
+    RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, DOWNLOADS_URL: `http://127.0.0.1:${SRC}/downloads.json`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', DOWNLOADS_EVERY_MS: '0', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
     NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', ...extra,
   };
@@ -323,10 +319,15 @@ try {
   link = await discord();
   check('…and a new one once it has stopped working (deleted)', link === 'https://discord.gg/inv2' && invitesMade().length === 2, link);
 
-  // The README's downloads badge: the install files' downloads over every release, not the update feed or packages.
+  // The README's downloads badge: the Roblox watch's count of the install files' downloads.
   const badge = await (await fetch(`http://127.0.0.1:${DEV}/badge/downloads`)).json().catch(() => null);
-  check("the downloads badge counts the install files only (45), not the update feed every copy reads",
+  check("the downloads badge shows the Roblox watch's count (45)",
     badge?.schemaVersion === 1 && badge.label === 'downloads' && badge.message === '45', JSON.stringify(badge));
+  // …and keeps it while that count can't be read (asked every time here), rather than turning to "unknown".
+  downloadsDown = true;
+  const badgeDown = await (await fetch(`http://127.0.0.1:${DEV}/badge/downloads`)).json().catch(() => null);
+  check('…while the count can\'t be read: the last count (45), not "unknown"', badgeDown?.message === '45' && !badgeDown.isError, JSON.stringify(badgeDown));
+  downloadsDown = false;
 
   // Online now: two Bloxkeep apps say they're open (online for 8 s here; for real, one and a half gaps between beats and a
   // minute). The bot takes 1,440 beats a day here (40,000 for real): one app online beats every minute, two every 2.
@@ -484,9 +485,6 @@ try {
   const rel9 = posts('c1').at(-1);
   check("…GitHub's API still not answering: posted with the highlights of its notes file", posts('c1').length === before.c1 + 1
     && embedOf(rel9)?.title === 'Bloxkeep 1.0.9 is out' && embedOf(rel9)?.description === '- **Private servers**: listed.', JSON.stringify(rel9?.body));
-  // The downloads badge (asked every time here): GitHub's API saying no keeps the last count, not "unknown".
-  const badgeDown = await (await fetch(`http://127.0.0.1:${DEV}/badge/downloads`)).json().catch(() => null);
-  check("the downloads badge while GitHub's API says no: the last count (45), not \"unknown\"", badgeDown?.message === '45' && !badgeDown.isError, JSON.stringify(badgeDown));
   apiDown = false;
 
   // Turned off: nothing more there.
