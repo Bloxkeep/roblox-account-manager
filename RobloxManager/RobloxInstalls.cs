@@ -170,7 +170,7 @@ public static class RobloxInstalls
             "fishstrap" => Bootstrapped("Fishstrap"),
             _ when RobloxLauncher.OtherName(launchVia) is { } other => Bootstrapped(other),
             // A launcher picked by hand: its own copy of Roblox if it keeps one next to it, else the newest anywhere.
-            "custom" => (File.Exists(customLauncher) ? Newest(ClientsIn(Path.GetDirectoryName(customLauncher))) : null) ?? FindAnyClient(),
+            "custom" => (RobloxLauncher.CustomLauncherReady(customLauncher) ? Newest(ClientsIn(Path.GetDirectoryName(customLauncher))) : null) ?? FindAnyClient(),
             "roblox" => FindOfficialClient(),
             "direct" => FindAnyClient(),
             "store" => FindStoreClient(),

@@ -167,6 +167,20 @@ public static class Prefs
     public static List<string> MultiWorked { get; } = new();
 
     /// <summary>
+    /// The vaults unlocked on this PC (<see cref="Vault.Id"/>, a hash of the salt, nothing secret), with the ids they had
+    /// before a password change: a backup restored with an id not in here was made somewhere else.
+    /// </summary>
+    public static HashSet<string> KnownVaultIds { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The id of a vault restored from a backup made somewhere else (AppController.RestoreBackup), until it is first
+    /// unlocked: the program it names for opening Roblox and its Discord links are dropped then.
+    /// </summary>
+    public static string? ForeignRestore { get; set; }
+
+    public static bool IsVaultId(string? id) => id is { Length: 8 } && id.All(char.IsAsciiHexDigitLower);
+
+    /// <summary>
     /// Multi-Roblox was on in the vault last opened: it is taken as Bloxkeep starts, before the master password, so
     /// Roblox windows opened any way (roblox.com in any browser, the Roblox app) run side by side even while Bloxkeep
     /// waits at the lock screen. A copy of the vault's setting, kept in step by AppController.
@@ -179,6 +193,7 @@ public static class Prefs
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
         "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
+        "knownVaultIds", "foreignRestore",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -312,6 +327,16 @@ public static class Prefs
                         MultiWorked.Add(workedFolder);
                 }
             }
+            if (root.TryGetProperty("knownVaultIds", out var known) && known.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var id in known.EnumerateArray())
+                {
+                    if (id.ValueKind == JsonValueKind.String && id.GetString() is { } vaultId && IsVaultId(vaultId))
+                        KnownVaultIds.Add(vaultId);
+                }
+            }
+            if (Text(root, "foreignRestore") is { } restored && IsVaultId(restored))
+                ForeignRestore = restored;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
@@ -345,6 +370,7 @@ public static class Prefs
                 ["skipConfirm"] = SkipConfirm.Order(StringComparer.Ordinal).ToArray(),
                 ["multiWorked"] = MultiWorked.ToArray(),
                 ["multiRobloxAtStart"] = MultiRobloxAtStart,
+                ["knownVaultIds"] = KnownVaultIds.Order(StringComparer.Ordinal).ToArray(), ["foreignRestore"] = ForeignRestore,
             };
             // Never over a known key: a pref missing from Known would otherwise revert to its loaded value every restart.
             foreach (var (key, value) in _extra)

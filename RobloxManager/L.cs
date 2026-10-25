@@ -69,6 +69,10 @@ public static class L
         ["Pick a picture: a PNG, JPG, WebP, GIF or BMP file."] = "Hãy chọn một file ảnh PNG, JPG, WebP, GIF hoặc BMP.",
         ["That picture is over 20 MB. Pick a smaller one."] = "Ảnh này nặng hơn 20 MB, hãy chọn ảnh nhỏ hơn.",
         ["Pick the program that opens Roblox, not Bloxkeep itself."] = "Hãy chọn launcher mở Roblox, đừng chọn chính Bloxkeep.",
+        ["Pick a launcher on this PC: Bloxkeep doesn't open programs from a network folder."] =
+            "Hãy chọn launcher nằm trên máy này: Bloxkeep không mở chương trình từ thư mục mạng.",
+        ["This backup was made on another PC: the program it opened Roblox with and its Discord links were removed. Set them again in Settings if they're yours."] =
+            "Bản backup này được tạo trên máy khác: launcher dùng để mở Roblox và các link Discord trong đó đã được gỡ. Nếu là của bạn, hãy đặt lại trong Cài đặt.",
         ["Open Bloxkeep"] = "Mở Bloxkeep",
         ["Quit Bloxkeep"] = "Thoát Bloxkeep",
         ["Mini window"] = "Cửa sổ nhỏ",
