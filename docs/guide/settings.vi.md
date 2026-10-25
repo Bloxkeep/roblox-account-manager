@@ -19,7 +19,7 @@ Mọi trang của **Cài đặt**, mỗi trang một bảng gọn: từng dòng,
 | **Khi cửa sổ Roblox mở ra** | **Để Roblox tự chọn**, **Phóng to** hoặc **Xếp cạnh nhau** (cần bật Multi-Roblox). | Để Roblox tự chọn |
 | **Kiểu xếp cửa sổ** | Cách xếp khi bấm **Xếp cửa sổ** (và khi tự xếp sau khi mở), chọn bằng hình mẫu: **Tự vừa**, lưới từ **2 × 1** đến **4 × 4** (mỗi cửa sổ một ô, dù mở bao nhiêu), hoặc kích thước tự chọn (rộng × cao, tính bằng pixel). | Tự vừa |
 | **Mở Roblox bằng** | Chương trình dùng để mở Roblox (bảng dưới). **Chọn…** để chọn chương trình của bạn. | Mặc định |
-| **Chờ giữa các tài khoản** | 0–60 giây. Mở quá nhiều tài khoản cùng lúc dễ bị lỗi. | 8 giây |
+| **Chờ giữa các tài khoản** | 0–120 giây. Mở quá nhiều tài khoản cùng lúc dễ bị lỗi. | 8 giây |
 
 **Mở Roblox bằng**:
 

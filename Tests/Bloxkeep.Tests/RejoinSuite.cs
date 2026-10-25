@@ -1155,6 +1155,82 @@ static class RejoinSuite
                     queue.Clear();
                 }
             }
+            // A launch of several accounts lets rejoins go while it waits between two of them (with two minutes between
+            // accounts, one dropped early would otherwise wait for the whole launch), but not of the accounts it is about
+            // to open, and none while it opens one. A rejoin keeps the wait between accounts of the preset that opened it.
+            {
+                account.AutoRejoin = true;
+                var heldBans = account.GameBans;
+                // A ban by the game noted, so nothing opens: RejoinAsync returns at once.
+                account.GameBans = [new GameBan { PlaceId = 920587237, At = DateTime.UtcNow }];
+                running.Clear();
+                queue.Clear();
+                object DueRejoin(Guid? preset = null) =>
+                    Activator.CreateInstance(requestType, account.Id, new GameTarget(920587237), DateTime.UtcNow.AddSeconds(-1), 0, preset, false)!;
+                var realRead = Harness.Get<object>(app, "_readMemory");
+                Harness.Set(app, "_readMemory", (Func<MemoryStatus>)(() => new MemoryStatus(32768, 16000, 50, 65536, 20480, 0)));
+                var preset = new LaunchPreset { Name = "Slow", AccountIds = [account.Id], DelaySeconds = 120 };
+                int heldDelay = vault.Data.Settings.LaunchDelaySeconds;
+                var launchCts = new CancellationTokenSource();
+                try
+                {
+                    Harness.Set(app, "_lastSessionStart", DateTime.MinValue);
+                    Harness.Set(app, "_launchCts", launchCts);
+                    queue.Add(DueRejoin());
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    c.Check("a launch opening an account: no rejoin goes meanwhile", queue.Count == 1);
+                    Harness.Set(app, "_launchWaiting", new HashSet<Guid> { account.Id });
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    c.Check("…waiting between two accounts: not of an account it is about to open", queue.Count == 1);
+                    Harness.Set(app, "_launchWaiting", new HashSet<Guid>());
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    c.Check("…but of the others, yes", queue.Count == 0, queue.Count);
+                    Harness.Set(app, "_launchWaiting", null);
+                    Harness.Set(app, "_launchCts", null);
+
+                    vault.Data.Settings.Presets.Add(preset);
+                    vault.Data.Settings.LaunchDelaySeconds = 8;
+                    Harness.Set(app, "_lastSessionStart", DateTime.UtcNow.AddSeconds(-30));
+                    queue.Add(DueRejoin(preset.Id));
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    c.Check("a rejoin of a preset's window keeps the preset's wait between accounts (2 minutes after the last window)", queue.Count == 1);
+                    queue.Clear();
+                    queue.Add(DueRejoin());
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    c.Check("…one opened by Play keeps Settings' (8 s)", queue.Count == 0, queue.Count);
+                    Harness.Set(app, "_lastSessionStart", DateTime.UtcNow.AddSeconds(-121));
+                    queue.Add(DueRejoin(preset.Id));
+                    Harness.Invoke(app, "RunDueRejoin", DateTime.UtcNow);
+                    c.Check("…and the preset's goes once its wait is over", queue.Count == 0, queue.Count);
+                }
+                finally
+                {
+                    Harness.Set(app, "_launchWaiting", null);
+                    Harness.Set(app, "_launchCts", null);
+                    launchCts.Dispose();
+                    vault.Data.Settings.Presets.Remove(preset);
+                    vault.Data.Settings.LaunchDelaySeconds = heldDelay;
+                    Harness.Set(app, "_readMemory", realRead);
+                    account.GameBans = heldBans;
+                    queue.Clear();
+                }
+                // The wait itself: rejoins of the others may go during it, and one started meanwhile pushes the next account
+                // to the same gap after it, so windows still start one every N seconds.
+                var waitBetween = t.GetMethod("WaitBeforeNextLaunchAsync", Harness.F)!;
+                Harness.Set(app, "_lastSessionStart", DateTime.UtcNow);
+                var took = Stopwatch.StartNew();
+                var waiting = (Task)waitBetween.Invoke(app, [account, DateTime.UtcNow, 2, new[] { Guid.NewGuid() }, CancellationToken.None])!;
+                await Task.Delay(300);
+                bool letsRejoinsGo = Harness.Get<HashSet<Guid>?>(app, "_launchWaiting") is { Count: 1 };
+                await Task.Delay(700);
+                Harness.Set(app, "_lastSessionStart", DateTime.UtcNow); // a rejoin's window started a second in
+                await waiting;
+                took.Stop();
+                c.Check("waiting between two accounts, rejoins of the others may go", letsRejoinsGo);
+                c.Check("…and one started meanwhile pushes the next account to the same gap after it (about 3 s here, not 2)",
+                    took.Elapsed >= TimeSpan.FromSeconds(2.8) && took.Elapsed < TimeSpan.FromSeconds(5), took.Elapsed);
+                c.Check("…and once the wait is over, none go", Harness.Get<HashSet<Guid>?>(app, "_launchWaiting") is null);
+            }
         }
         finally
         {
