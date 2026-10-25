@@ -57,6 +57,8 @@ const INTENTS = 1 << 9;
 const CAPTCHA_FOR = 5 * 60_000, CAPTCHAS_PER = 5, CAPTCHA_WINDOW = 10 * 60_000;
 // The community server's invite (/discord) is asked Discord whether it still works at most this often.
 const INVITE_RECHECK = 60_000;
+// The README's downloads badge: GitHub is asked for the count at most once an hour, and 5 minutes after it said no.
+const DOWNLOADS_EVERY = 60 * 60_000, DOWNLOADS_RETRY = 5 * 60_000;
 // Who Bloxkeep's developers are (the application's owner, or its team's owner and admins) is asked Discord this often.
 const DEVELOPERS_RECHECK = 10 * 60_000;
 
@@ -229,6 +231,27 @@ export class Gateway extends DurableObject {
     await this.ctx.storage.put('invite', { code, checked: Date.now() });
     this.log('invite', kept ? `${kept.code} stopped working, made ${code}` : `made ${code}`);
     return `https://discord.gg/${code}`;
+  }
+
+  /**
+   * The install files' downloads for the README's badge (null before GitHub first answered). GitHub's API takes 60
+   * unsigned calls an hour from one address, and Cloudflare's addresses are shared with everyone else's workers, so it
+   * often says no: the last count stays until it answers again, rather than the badge going to "unknown".
+   */
+  async downloads() {
+    const every = Number(this.env.DOWNLOADS_EVERY_MS ?? DOWNLOADS_EVERY);
+    const kept = (await this.ctx.storage.get('downloads')) ?? { n: null, next: 0 };
+    if (Date.now() < kept.next)
+      return kept.n;
+    try {
+      kept.n = await readInstallDownloads(this.env);
+      kept.next = Date.now() + every;
+    } catch (e) {
+      kept.next = Date.now() + Math.min(every, DOWNLOADS_RETRY);
+      this.log('downloads', e.message);
+    }
+    await this.ctx.storage.put('downloads', kept);
+    return kept.n;
   }
 
   /** How long a slash command took between Cloudflare's edge and this object, and where it entered (for /status). */
@@ -1101,25 +1124,25 @@ async function ping(request, env, gateway) {
 }
 
 /**
- * The README's downloads badge (shields.io's endpoint badge reads this): the install files' downloads (sources.js
- * readInstallDownloads), worked out at most once an hour per Cloudflare location, so GitHub's API is asked rarely.
+ * The README's downloads badge (shields.io's endpoint badge reads this): the install files' downloads, as the bot's
+ * object last had them from GitHub (Gateway.downloads), kept an hour per Cloudflare location. "unknown" only before
+ * GitHub ever answered.
  */
 async function downloadsBadge(env, ctx) {
   const key = new Request('https://bloxkeep-bot.invalid/badge/downloads'), cache = caches.default;
   const hit = await cache.match(key);
   if (hit)
     return hit;
-  let n;
-  try {
-    n = await readInstallDownloads(env);
-  } catch {
+  const n = await ask(env, g => g.downloads()).catch(() => null);
+  if (n == null)
     return Response.json({ schemaVersion: 1, label: 'downloads', message: 'unknown', color: 'lightgrey', isError: true },
       { headers: { 'Cache-Control': 'max-age=300' } });
-  }
   const message = n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1).replace(/\.0$/, '')}k` : String(n);
+  const seconds = Math.floor(Number(env.DOWNLOADS_EVERY_MS ?? DOWNLOADS_EVERY) / 1000);
   const res = Response.json({ schemaVersion: 1, label: 'downloads', message, color: 'brightgreen' },
-    { headers: { 'Cache-Control': 'public, max-age=3600' } });
-  ctx.waitUntil(cache.put(key, res.clone()));
+    { headers: { 'Cache-Control': `public, max-age=${seconds}` } });
+  if (seconds > 0)
+    ctx.waitUntil(cache.put(key, res.clone()));
   return res;
 }
 
