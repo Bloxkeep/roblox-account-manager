@@ -185,23 +185,65 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.10-beta.2 · October 24, 2026"
+              small "Bloxkeep 1.0.10 · October 25, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
+        ul.wn-cards
+          li.wn-card
+            span.wn-ic
+              svg.i #19k0rtd
+            b "Window layouts as pictures"
+            p "Windows in the bottom bar shows Arrange windows' layouts the way Windows shows its snap layouts: Auto, grids from 2 × 1 to 4 × 4, or a size of your own. Point at one to see where your windows go, click it to arrange them."
+          li.wn-card
+            span.wn-ic
+              svg.i #ktpp14
+            b "Up to 2 minutes between accounts"
+            p "Wait between accounts now goes up to 120 seconds, for when Roblox turns away accounts that join too fast. While Bloxkeep waits, an account that dropped rejoins right away instead of waiting for the whole launch."
+            button.wn-go [type="button" FOCUSED] "Set the wait"
+              svg.i #1g7f83q
+          li.wn-card
+            span.wn-ic
+              svg.i #1boeybj
+            b "Safer with files from others"
+            p "A backup or vault file made on another PC can no longer pick the program Play runs or the Discord channel your alerts go to: Bloxkeep drops them and tells you. A backup of your own keeps everything."
         h4.new.wn-kind.wn-sub "New"
           svg.i #u7ty99
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Before you press Play for accounts into a game another of your accounts is banned from, Bloxkeep asks first. Games ban the person, not only the account, and Roblox can ban your other accounts too \"for using an account to avoid a ban\". A preset opens them, but says so in its result."
+            span "Drag an edge of a Roblox window to make it smaller than Roblox lets it go: the frame stops at Roblox's smallest size while you drag, and the window takes the size you let go at."
+        h4.improved.wn-kind.wn-sub "Improved"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
+          li
+            svg.i #1l5qw3q
+            span "A rejoin keeps the wait between accounts of the preset that opened the window, so a preset set to 2 minutes rejoins 2 minutes apart too."
+          li
+            svg.i #1l5qw3q
+            span "While several accounts open, the wait before the next one counts down."
+          li
+            svg.i #1l5qw3q
+            span "The online count is quicker: Bloxkeep says it's open every minute, so closing it takes you off the count within about 2 minutes. Each PC is counted once, even after Bloxkeep is reinstalled. It still sends only a code (now made from the PC, and it can't be traced back), the version and the language."
+          li
+            svg.i #1l5qw3q
+            span "Sign in with a browser shows Roblox's own pages only: a link to another site opens in your own browser, and only when you click it. DevTools (F12) are off there too, as in Bloxkeep's other Roblox windows: they show the session, which is what cookie scams ask people to copy."
+          li
+            svg.i #1l5qw3q
+            span "Presets brought in from a vault file come without their own Discord link, since a file from someone else could send your alerts to their channel. If the link is yours, set it again in the preset."
+          li
+            svg.i #1l5qw3q
+            span "Bloxkeep's window no longer stalls while many Roblox windows load: the account pictures on their windows are checked one Roblox at a time, every 30 seconds, instead of every window at every check."
+          li
+            svg.i #1l5qw3q
+            span "Open Roblox with › Choose… no longer takes a program on a network drive or share."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
         p.wn-star
           svg.i #19cjsv1
           span "Like Bloxkeep? A star on GitHub helps other players find it."
-          button.wn-go [type="button" FOCUSED] "Open GitHub"
+          button.wn-go [type="button"] "Open GitHub"
             svg.i #1g7f83q
       div.modal-foot
         button.btn.primary "Got it"
