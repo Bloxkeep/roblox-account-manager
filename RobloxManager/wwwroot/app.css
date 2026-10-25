@@ -1396,6 +1396,10 @@ b, strong { font-weight: 650; }
 .lock-card .field { width: 100%; height: 46px; font-size: 15px; }
 .lock-card .stack { display: grid; gap: 10px; text-align: left; }
 .lock-error { min-height: 20px; margin: 10px 0 8px; color: var(--bad-ink); font-size: 13px; overflow-wrap: anywhere; }
+/* An update found before the unlock takes the card's place (Lock.tsx): the boot screen's bar, the step under it. */
+.lock-update .logo-img { animation: breathe 1.6s ease-in-out infinite; }
+.lock-update .boot-bar { width: 100%; margin: 0; }
+.lock-update-step { min-height: 18px; margin-top: 10px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .lock-alt { margin-top: 16px; font-size: 13px; }
 .lock-alt .link { color: var(--text-2); }
 .lock-alt .sep { margin: 0 8px; color: var(--dim); }

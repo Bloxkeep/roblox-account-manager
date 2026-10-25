@@ -178,8 +178,11 @@ public sealed partial class AppController : IDisposable
     readonly Dictionary<Guid, int> _rejoinsInARow = new();
     readonly Dictionary<Guid, int> _offlineStrikes = new();
     readonly AppUpdater _updater = new();
-    /// <summary>The first check a few seconds after the start (one small request, out of the way of the window's own start).</summary>
-    DateTime _nextUpdateCheck = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+    /// <summary>
+    /// The first check at the first tick (one small request): an update found before the vault is opened installs at
+    /// the lock screen (see <see cref="UpdateOffersAtLock"/>), so the sooner it is known, the likelier it comes in time.
+    /// </summary>
+    DateTime _nextUpdateCheck = DateTime.UtcNow;
     DateTime _nextRobloxVersionCheck;
     RobloxInstalls.ClientVersion? _latestRoblox;
     /// <summary>The version that ran before an update, until the page has shown what's new since then.</summary>
@@ -435,6 +438,7 @@ public sealed partial class AppController : IDisposable
         "pageShown" => Done(OnPageShown()),
         "checkUpdates" => CheckUpdatesAsync(),
         "applyUpdate" => ApplyUpdateAsync(),
+        "updateAtLock" => Done(SetUpdateAtLock(Bool(a, "go"))),
         "setAutoUpdate" => Done(SetAutoUpdate(Bool(a, "enabled"))),
         "setBetaUpdates" => Done(SetBetaUpdates(Bool(a, "enabled"))),
         "setCountOnline" => Done(SetCountOnline(Bool(a, "enabled"))),
@@ -676,6 +680,8 @@ public sealed partial class AppController : IDisposable
         discord = DiscordDto(),
         safeRendering = Prefs.SafeRendering,
         update = _updater.Dto(),
+        // An update found before the unlock, which the lock screen gives its place to; go: its answer (null: not yet).
+        lockUpdate = UpdateOffersAtLock ? new { go = _updateAtLock } : null,
         countOnline = Prefs.CountOnline,
         robloxVersion = RobloxVersionDto(),
         robloxUpdates = RobloxUpdatesDto(),
@@ -1214,6 +1220,7 @@ public sealed partial class AppController : IDisposable
     void OnUnlocked(Vault vault)
     {
         _vault = vault;
+        _updateAtLock = null; // in the app now: an update waits for a quiet moment
         // A backup made somewhere else: its launcher and Discord links go before anything below can use them.
         bool foreign = Prefs.ForeignRestore == vault.Id;
         if (foreign)
@@ -5093,6 +5100,9 @@ public sealed partial class AppController : IDisposable
         {
             _owner.BeginInvoke(new Action(() =>
             {
+                // A download that failed: the lock screen asks again when the next check finds the update.
+                if (_updater.Status == "error")
+                    _updateAtLock = null;
                 NoteUpdateReady(); // Statistics › Activity
                 PushState();
             }));
@@ -5156,7 +5166,7 @@ public sealed partial class AppController : IDisposable
         // The updater swapped the program files and rewrote the shortcuts; Explorer may keep showing a blank icon.
         if (Prefs.LastVersion is { } previous && previous != current && _updater.Supported)
             Ui.RefreshShellIcons();
-        if (Prefs.LastVersion is { } last && WhatsNew.Older(last, current) && WhatsNew.Between(last, current).Length > 0)
+        if (Prefs.LastVersion is { } last && WhatsNew.AfterUpdate(last, current).Length > 0)
         {
             _updatedFrom = last;
             return;

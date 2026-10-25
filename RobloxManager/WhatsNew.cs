@@ -43,12 +43,19 @@ public static class WhatsNew
         Version.TryParse((version ?? "").Split('-', '+')[0], out var v) ? v : new Version(0, 0);
 
     /// <summary>
-    /// Releases newer than <paramref name="after"/> (all of them when null) up to <paramref name="upTo"/>. A quiet fix
-    /// comes before the version it leads to: after one, that version's notes are new; up to one, they aren't yet.
+    /// Releases newer than <paramref name="after"/> (all of them when null) up to <paramref name="upTo"/>, in the order
+    /// of <see cref="Older"/>: after a quiet fix or a beta, the version it leads to has new notes; up to a quiet fix,
+    /// that version's notes aren't there yet.
     /// </summary>
     public static Release[] Between(string? after, string upTo) =>
-        Releases.Value.Where(r => (after is null || Parse(r.Version) > Parse(after) || (IsQuietFix(after) && Parse(r.Version) == Parse(after)))
-            && (Parse(r.Version) < Parse(upTo) || (Parse(r.Version) == Parse(upTo) && !IsQuietFix(upTo)))).ToArray();
+        Releases.Value.Where(r => (after is null || Older(after, r.Version)) && !Older(upTo, r.Version)).ToArray();
+
+    /// <summary>
+    /// The notes shown once after an update from <paramref name="last"/> to <paramref name="current"/>: the releases in
+    /// between, none for a beta copy's next beta (it comes in quietly, notes and all, see <see cref="IsQuietUpdate"/>).
+    /// </summary>
+    public static Release[] AfterUpdate(string last, string current) =>
+        !Older(last, current) || (IsBeta(last) && IsBeta(current) && Parse(last) == Parse(current)) ? [] : Between(last, current);
 
     /// <summary>
     /// A quiet fix ("1.0.7-alpha.2"): a small fix after a public version (1.0.6), put inside that version's GitHub
@@ -70,15 +77,21 @@ public static class WhatsNew
         IsQuietFix(next) || (IsBeta(current) && IsBeta(next) && Parse(next) == Parse(current));
 
     /// <summary>
-    /// Whether <paramref name="a"/> is older than <paramref name="b"/>: a quiet fix before the version it leads to, an
-    /// earlier quiet fix before a later one. A test build between two fixes (1.0.8-alpha.3.1) counts as the first.
+    /// Whether <paramref name="a"/> is older than <paramref name="b"/>, in Velopack's order: the quiet fixes of a number,
+    /// then its betas (and any other label), then the version itself; an earlier fix or beta before a later one. A test
+    /// build between two fixes (1.0.8-alpha.3.1) counts as the first. Until 2026-10-25 a beta and its version counted as
+    /// the same, so 1.0.10-beta.3 → 1.0.10 showed no notes.
     /// </summary>
     public static bool Older(string a, string b)
     {
-        static (Version Version, int Fix) Key(string v) =>
-            (Parse(v), IsQuietFix(v) && int.TryParse(v.Split('+')[0].Split("-alpha.")[1].Split('.')[0], out int n) ? n : int.MaxValue);
+        static (Version Version, int Kind, int N) Key(string v)
+        {
+            string label = v.Split('+')[0].Split('-', 2) is [_, var l] ? l : "";
+            int kind = label.Length == 0 ? 3 : IsQuietFix(v) ? 0 : IsBeta(v) ? 1 : 2;
+            return (Parse(v), kind, kind < 3 && label.Split('.') is [_, var n, ..] && int.TryParse(n, out int at) ? at : int.MaxValue);
+        }
         var (x, y) = (Key(a), Key(b));
-        return x.Version < y.Version || (x.Version == y.Version && x.Fix < y.Fix);
+        return x.Version < y.Version || (x.Version == y.Version && (x.Kind < y.Kind || (x.Kind == y.Kind && x.N < y.N)));
     }
 
     /// <summary>The version as people see it: a quiet fix shows as the public version it fixes (1.0.7-alpha.2 is 1.0.6).</summary>

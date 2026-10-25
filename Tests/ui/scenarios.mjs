@@ -657,6 +657,12 @@ export default [
   // ── Lock screen and first run ──
   S('unlock-wrong', 'locked=1', async s => { await s.type('wrong-one', key('lock.pw')); await s.key('Enter'); await s.wait(800); }),
   S('unlock-ok', 'locked=1', async s => { await s.type('demo', key('lock.pw')); await s.key('Enter'); await s.wait(2600); }),
+  // An update found before the unlock: the lock screen gives it its place (downloading, then installing), and its link
+  // gives the form back. Found while a password is being typed, the form stays.
+  S('lock-update', 'locked=1&lockupdate=40', async s => { await s.wait(300); }),
+  S('lock-update-ready', 'locked=1&lockupdate=ready', async s => { await s.wait(300); }),
+  S('lock-update-later', 'locked=1&lockupdate=40', async s => { await s.wait(300); await s.click(key('lock.upd.later')); await s.wait(300); }),
+  S('lock-update-typed', 'locked=1&lockupdatein=5000', async s => { await s.type('dem', key('lock.pw')); await s.wait(5600); }),
   // Several vaults: the picker (Steam-like) at a start that asks; picking one asks for its password; adding one asks for
   // a name and a new master password and opens it; Switch vault from the sidebar; one taken off the list.
   S('vault-picker', 'locked=1&vaults=1&vaultpick=1'),

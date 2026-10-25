@@ -64,7 +64,9 @@ Nếu có thứ sẽ bị tạm dừng (ví dụ "Tự vào lại game của 3 t
 
 ## Cập nhật
 
-Bloxkeep tự kiểm tra bản mới trên GitHub lúc mở và mỗi giờ một lần, tải về ở nền, rồi tự cài vào lần tới bạn không dùng nó. Vài giây sau app quay lại y như cũ: vẫn mở khóa, đúng tab đang xem. Các cửa sổ Roblox vẫn chạy suốt.
+Bloxkeep kiểm tra bản mới trên GitHub ngay khi mở và sau đó mỗi giờ một lần. Có bản mới trước khi bạn mở khóa thì cài luôn: màn hình mở khóa hiện **Đang cập nhật lên** *phiên bản* kèm tiến độ, rồi Bloxkeep mở lại ở bản mới, ngay màn hình mở khóa. Bản tìm thấy sau đó thì tải về ở nền và tự cài vào lần tới bạn không dùng Bloxkeep; vài giây sau app quay lại y như cũ: vẫn mở khóa, đúng tab đang xem. Các cửa sổ Roblox vẫn chạy suốt.
+
+<img src="../screenshots/vi/lock-update.png" width="760" alt="Màn hình mở khóa nhường chỗ cho bản cập nhật tìm thấy trước khi mở khóa: Đang cập nhật lên 1.0.1, Đang tải 40 %, và Mở khóa luôn, cập nhật sau">
 
 <img src="../screenshots/vi/2-restart-to-update.png" width="760" alt="Nút Khởi động lại để cập nhật ở thanh bên, hiện khi đã có bản mới">
 
@@ -76,6 +78,7 @@ Bloxkeep tự kiểm tra bản mới trên GitHub lúc mở và mỗi giờ mộ
 <details>
 <summary>Chi tiết thêm</summary>
 
+- Ở màn hình mở khóa, **Mở khóa luôn, cập nhật sau** trả lại ô mật khẩu; bản cập nhật sẽ chờ tới lúc bạn không dùng Bloxkeep. Nếu bạn đang gõ dở mật khẩu lúc tìm thấy bản mới thì màn hình mở khóa giữ nguyên.
 - "Không dùng" nghĩa là cửa sổ đang ở khay hoặc thu nhỏ, hoặc không ai chạm vào máy trong 10 phút, và Bloxkeep không làm dở việc gì (không đang mở Roblox, đăng nhập, sao lưu hay điền dở form). Cửa sổ Roblox đang chạy treo không làm việc cập nhật phải chờ.
 - Muốn nhập lại mật khẩu chủ sau mỗi lần cập nhật thì khóa Bloxkeep trước: bản đang khóa không chuyển gì cho bản mới.
 - Nếu khoảng một phút sau vẫn chưa thấy bản mới mở lên, Bloxkeep tự mở lại ở khay, đang khóa, kèm một thông báo. Bản cập nhật đó không tự thử lại trong một ngày; nút **Khởi động lại để cập nhật** vẫn dùng được.

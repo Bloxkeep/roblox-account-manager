@@ -128,7 +128,7 @@ Chi tiết nằm ở [Sao lưu và bảo mật](backup-and-security.vi.md).
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
 | **Bloxkeep** *phiên bản* | Cho biết trạng thái cập nhật, kèm **Có gì mới** và **Kiểm tra ngay** (bị mờ khi đang kiểm tra hoặc đang tải) hay **Khởi động lại để cập nhật**. | — |
-| **Tự động cập nhật** | Tự tải bản mới và tự cài vào lúc bạn không dùng. Bản mới tìm thấy ngay khi vừa mở Bloxkeep thì được cài luôn, trước khi bạn dùng (các cửa sổ Roblox vẫn mở). Tắt đi thì không có gì tự tải về, nhưng **Kiểm tra ngay** vẫn dùng được. Bị mờ với bản không tự cập nhật được. | Bật |
+| **Tự động cập nhật** | Tự tải bản mới và tự cài vào lúc bạn không dùng. Bản mới tìm thấy trước khi bạn mở khóa thì được cài luôn, ngay ở màn hình mở khóa (các cửa sổ Roblox vẫn mở). Tắt đi thì không có gì tự tải về, nhưng **Kiểm tra ngay** vẫn dùng được. Bị mờ với bản không tự cập nhật được. | Bật |
 | **Nhận bản beta** | Cập nhật cả lên bản beta: có tính năng mới sớm hơn mọi người, nhưng có thể còn lỗi. Đang dùng bản beta mà tắt đi thì bạn vẫn giữ bản đó tới khi có bản chính thức tiếp theo. Bị mờ với bản không tự cập nhật được. | Tắt |
 | **Hướng dẫn sử dụng › Mở** | Mở chính hướng dẫn này. | — |
 | **Gửi góp ý › Viết góp ý** | Một ý tưởng, hoặc lỗi gặp phải. Lời nhắn đi thẳng tới người làm Bloxkeep. Xem [Gỡ rối](troubleshooting.vi.md). | — |

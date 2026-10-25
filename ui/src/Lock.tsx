@@ -36,6 +36,27 @@ export function Lock({ mode, notice, kept, opened }: {
   const [error, setError] = useState('');
   const [shown, setShown] = useState(false);
   const [caps, setCaps] = useState(false);
+  // An update found before the unlock (AppController.UpdateOffersAtLock): the screen gives it its place while it
+  // downloads and installs, and Bloxkeep opens again here on the new version. Not when something was typed already
+  // (that person is on their way in); the screen's link gives the form back, and the update then waits until Bloxkeep
+  // isn't in use. Decided once per update offered; the app keeps the answer, so a redraw in another language keeps it.
+  const offer = mode === 'pick' ? null : app.lockUpdate as { go: boolean | null } | null;
+  const [updating, setUpdating] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!offer) {
+      setUpdating(null);
+      return;
+    }
+    if (updating !== null) return;
+    const take = offer.go ?? ![pw1, pw2, nameBox].some(r => r.current?.value);
+    setUpdating(take);
+    if (offer.go == null) ask('updateAtLock', { go: take }).catch(() => {});
+  }, [!!offer]);
+  const later = () => {
+    setUpdating(false);
+    ask('updateAtLock', { go: false }).catch(() => {});
+    setTimeout(() => pw1.current?.focus(), 50);
+  };
 
   /** A master password's strength as a bar and a word (app.js showStrength): only a guide, any 6+ characters do. */
   const showStrength = (v: string) => {
@@ -102,6 +123,27 @@ export function Lock({ mode, notice, kept, opened }: {
     <div className="lock-lang"><LangSwitch /></div>
     <VaultPicker />
   </div>;
+
+  if (offer && updating) {
+    const u = app.update || {};
+    const ready = u.status === 'ready';
+    const percent = ready ? 100 : Math.max(0, Math.min(100, Math.round(u.progress || 0)));
+    // A quiet fix shows no number: it is the version it fixes, as the app shows it.
+    const title = u.quiet || !u.version ? t('lock.upd.title') : t('lock.upd.titleV', { v: u.version });
+    return <div className="lock">
+      <div className="dots" />
+      <div className="lock-lang"><LangSwitch /></div>
+      <div className="lock-card lock-update" id="lock-update">
+        <img className="logo-img" src={logo} alt="" />
+        <h2>{title}</h2>
+        <p>{t('lock.upd.note')}</p>
+        <div className="boot-bar" role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+          <i style={{ transform: `scaleX(${(percent / 100).toFixed(3)})` }} /></div>
+        <div className="lock-update-step" id="lock-update-step" aria-live="polite">{ready ? t('lock.upd.install') : t('lock.upd.get', { p: percent })}</div>
+        <div className="lock-alt"><button type="button" className="link" id="lock-update-later" title={t('lock.upd.laterTip')} onClick={later}>{t('lock.upd.later')}</button></div>
+      </div>
+    </div>;
+  }
 
   return <div className="lock">
     <div className="dots" />

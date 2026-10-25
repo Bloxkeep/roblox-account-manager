@@ -42,20 +42,50 @@ public sealed partial class AppController
     /// <summary>Not this soon after a start (a restart can never loop), nor while someone used the PC this recently with a window of the app on screen.</summary>
     static readonly TimeSpan RelaunchAfterStart = TimeSpan.FromMinutes(3);
     static readonly TimeSpan RelaunchIdle = TimeSpan.FromMinutes(10);
+
     /// <summary>
-    /// An update found by the checks right after Bloxkeep was opened installs at once, before it is used (the owner's
-    /// choice, 2026-10-19), with the "Updating" window; one ready later waits for a quiet moment as before.
+    /// The lock screen's answer to the update it was offered (see Lock.tsx): true, it gave the update its place (nothing
+    /// was typed in it), which installs as soon as it is downloaded; false, it kept the form (something was typed, or
+    /// its link was clicked); null, not answered. An unlock, or a download that failed, clears it.
     /// </summary>
-    static readonly TimeSpan StartupUpdateWindow = TimeSpan.FromMinutes(5);
+    bool? _updateAtLock;
+
+    /// <summary>
+    /// An update found before the vault is opened (at start-up, or locked by hand) installs there and then, before anyone
+    /// is in the app (the owner's choice, 2026-10-25, as other apps update when opened): the lock screen offers its place
+    /// while it downloads. Found after the unlock, it waits for a quiet moment instead of cutting in (until then one found
+    /// in the first 5 minutes installed at once, unlocked or not).
+    /// </summary>
+    bool UpdateOffersAtLock => _vault is null && !_screenLocked && Prefs.CheckUpdates && _updater.Status is "downloading" or "ready"
+        && DateTime.UtcNow >= _autoRelaunchPausedUntil && !_relaunching && !_applyingUpdate;
+
+    /// <summary>The lock screen's answer to <see cref="UpdateOffersAtLock"/>: its place for the update, or the form kept.</summary>
+    object? SetUpdateAtLock(bool go)
+    {
+        _updateAtLock = UpdateOffersAtLock ? go : null;
+        PushState();
+        return null;
+    }
+
+    /// <summary>
+    /// At the lock screen, the vault still closed, with the screen given to the update or the window out of sight (in
+    /// the tray at Windows' sign-in, or minimised): nobody is in the app, so a downloaded update goes at once.
+    /// </summary>
+    bool UpdateGoesAtLock()
+    {
+        if (_vault is not null || _screenLocked)
+            return false;
+        var (window, _, mini) = WindowNow?.Invoke() ?? ("hidden", false, false);
+        return _updateAtLock == true || (window != "shown" && !mini);
+    }
 
     void RelaunchIfQuiet(DateTime now)
     {
-        // Opened by the person, not started again by an update (that run would only be its own update again).
-        bool startup = now - _started < StartupUpdateWindow && _resumedFrom is null;
+        bool atLock = UpdateGoesAtLock();
         if (_relaunching || _applyingUpdate || _disposed || !Prefs.CheckUpdates || _updater.Status != "ready"
-            || now < _autoRelaunchPausedUntil || !QuietForRelaunch(now, startup))
+            || now < _autoRelaunchPausedUntil || !QuietForRelaunch(now, atLock))
             return;
-        _ = RelaunchAsync(startup);
+        _ = RelaunchAsync(atLock);
     }
 
     /// <summary>
@@ -63,10 +93,10 @@ public sealed partial class AppController
     /// restart under way, no sign-in, captcha, message box or half-filled form open, no backup, import or save
     /// pending. Roblox windows that are simply running don't count: they keep running and are followed again after.
     /// </summary>
-    /// <param name="startup">Right after Bloxkeep was opened: no wait after the start, and nobody's use of it holds the update back.</param>
-    bool QuietForRelaunch(DateTime now, bool startup = false)
+    /// <param name="atLock">At the lock screen (<see cref="UpdateGoesAtLock"/>): no wait after the start, and nobody's use of it holds the update back.</param>
+    bool QuietForRelaunch(DateTime now, bool atLock = false)
     {
-        if ((!startup && now - _started < RelaunchAfterStart) || Settling || HomeSessionsActive)
+        if ((!atLock && now - _started < RelaunchAfterStart) || Settling || HomeSessionsActive)
             return false;
         if (OpeningRoblox || _restarts.Count > 0 || _nudging || now < _sweepBackgroundUntil)
             return false;
@@ -76,7 +106,7 @@ public sealed partial class AppController
         // Another window of the app (the sign-in browser, a captcha) means someone is in the middle of it.
         if (Application.OpenForms.Cast<Form>().Any(f => f != _owner && f is not MiniForm && f.Visible))
             return false;
-        if (startup)
+        if (atLock)
             return true;
         var (window, _, mini) = WindowNow?.Invoke() ?? ("hidden", false, false);
         return (window != "shown" && !mini) || AntiAfk.IdleTime() >= RelaunchIdle;
@@ -94,18 +124,20 @@ public sealed partial class AppController
 
     static readonly TimeSpan RejoinSoon = TimeSpan.FromSeconds(30);
 
-    /// <param name="startup">Right after Bloxkeep was opened: the "Updating" window shows, as for the button.</param>
-    async Task RelaunchAsync(bool startup = false)
+    /// <param name="atLock">At the lock screen: the "Updating" window shows (when Bloxkeep's is on screen), as for the button.</param>
+    async Task RelaunchAsync(bool atLock = false)
     {
         _relaunching = true;
         try
         {
             await SaveViewAsync();
-            // Something may have started meanwhile (or updates were turned off): the next quiet moment then.
-            if (_disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || !QuietForRelaunch(DateTime.UtcNow, startup) || !SaveBeforeClosing())
+            // Something may have started meanwhile (or updates were turned off, or the vault was opened): the next
+            // quiet moment then.
+            if (_disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || atLock != UpdateGoesAtLock()
+                || !QuietForRelaunch(DateTime.UtcNow, atLock) || !SaveBeforeClosing())
                 return;
             // Opened to the tray (at sign-in), it updates there without a window coming up.
-            QuitIntoUpdate(showWindow: startup && WindowNow?.Invoke().Window == "shown");
+            QuitIntoUpdate(showWindow: atLock && WindowNow?.Invoke().Window == "shown");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or CryptographicException or ObjectDisposedException)
         {
