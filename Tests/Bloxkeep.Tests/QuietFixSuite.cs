@@ -32,8 +32,10 @@ static class QuietFixSuite
         c.Check("a test build between two fixes counts as the first: the next fix and the next version are newer",
             WhatsNew.Older("1.0.8-alpha.3.1", "1.0.8-alpha.4") && WhatsNew.Older("1.0.8-alpha.3.1", "1.0.8")
             && !WhatsNew.Older("1.0.8-alpha.3", "1.0.8-alpha.3.1"));
-        c.Check("a beta and its version stay as they were (no notes again after the betas)",
-            !WhatsNew.Older("1.0.6-beta.8", "1.0.6") && !WhatsNew.Older("1.0.6", "1.0.6-beta.8"));
+        // 2026-10-25: 1.0.10-beta.3 → 1.0.10 showed no What's new, a beta and its version counting as the same.
+        c.Check("a beta comes before its version, an earlier beta before a later one, and a quiet fix before the betas (fails on the old code)",
+            WhatsNew.Older("1.0.6-beta.8", "1.0.6") && !WhatsNew.Older("1.0.6", "1.0.6-beta.8")
+            && WhatsNew.Older("1.0.6-beta.2", "1.0.6-beta.10") && WhatsNew.Older("1.0.7-alpha.3", "1.0.7-beta.1") && !WhatsNew.Older("1.0.7-beta.1", "1.0.7-alpha.3"));
         c.Check("a beta copy's next beta comes in quietly (no Restart to update), as quiet fixes do",
             WhatsNew.IsQuietUpdate("1.0.8-beta.5", "1.0.8-beta.4") && WhatsNew.IsQuietUpdate("1.0.8-alpha.4", "1.0.8"));
         c.Check("…but not a regular copy's first beta, nor the regular version after the betas, nor the next version's beta",
@@ -47,6 +49,14 @@ static class QuietFixSuite
         c.Check("from a quiet fix to the version it leads to: that version's notes",
             Versions("1.0.6-alpha.3", "1.0.6").SequenceEqual(["1.0.6"]), string.Join(", ", Versions("1.0.6-alpha.3", "1.0.6")));
         c.Check("all the notes, as Settings' What's new lists them", Versions(null, "1.0.6").FirstOrDefault() == "1.0.6");
+        string[] Shown(string last, string current) => WhatsNew.AfterUpdate(last, current).Select(r => r.Version).ToArray();
+        c.Check("from a beta to its version: that version's notes, once (fails on the old code: none)",
+            Shown("1.0.10-beta.3", "1.0.10").SequenceEqual(["1.0.10"]), string.Join(", ", Shown("1.0.10-beta.3", "1.0.10")));
+        c.Check("…and from the version before, the same", Shown("1.0.9", "1.0.10").SequenceEqual(["1.0.10"]), string.Join(", ", Shown("1.0.9", "1.0.10")));
+        c.Check("a beta copy's next beta: no notes (it comes in quietly)", Shown("1.0.10-beta.1", "1.0.10-beta.3").Length == 0);
+        c.Check("from a beta to a quiet fix after its version: that version's notes (the owner's copy, still noted as 1.0.10-beta.3)",
+            Shown("1.0.10-beta.3", "1.0.11-alpha.1").SequenceEqual(["1.0.10"]), string.Join(", ", Shown("1.0.10-beta.3", "1.0.11-alpha.1")));
+        c.Check("the same version again, or an older one: nothing", Shown("1.0.10", "1.0.10").Length == 0 && Shown("1.0.10", "1.0.9").Length == 0);
 
         // Bloxkeep clicked open while an update installs (2026-10-20, 8:43): that start waits for the update's run, which
         // carries the unlocked vault over, rather than taking its place. It knows by the fresh hand-over on disk.
