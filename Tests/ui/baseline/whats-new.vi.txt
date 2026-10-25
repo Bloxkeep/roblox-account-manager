@@ -185,23 +185,65 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.10-beta.2 · 24 tháng 10, 2026"
+              small "Bloxkeep 1.0.10 · 25 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
+        ul.wn-cards
+          li.wn-card
+            span.wn-ic
+              svg.i #19k0rtd
+            b "Kiểu xếp cửa sổ bằng hình"
+            p "Nút Cửa sổ ở thanh dưới hiện các kiểu xếp cửa sổ giống Snap của Windows: Tự vừa, lưới từ 2 × 1 đến 4 × 4, hoặc kích thước tự chọn. Rê chuột lên một kiểu để xem cửa sổ sẽ nằm ở đâu, bấm vào là xếp."
+          li.wn-card
+            span.wn-ic
+              svg.i #ktpp14
+            b "Chờ tới 2 phút giữa các tài khoản"
+            p "Chờ giữa các tài khoản giờ đặt được tới 120 giây, cho những lúc Roblox không cho vào vì các tài khoản vào quá nhanh. Trong lúc Bloxkeep chờ, tài khoản nào bị văng sẽ vào lại ngay, không phải đợi mở xong cả lượt."
+            button.wn-go [type="button" FOCUSED] "Đặt thời gian chờ"
+              svg.i #1g7f83q
+          li.wn-card
+            span.wn-ic
+              svg.i #1boeybj
+            b "An toàn hơn với file của người khác"
+            p "Bản sao lưu hay file vault làm trên máy khác không còn chọn được chương trình mà nút Vào game chạy, hay kênh Discord nhận thông báo của bạn: Bloxkeep bỏ chúng đi và báo cho bạn biết. Bản sao lưu của chính bạn thì giữ nguyên."
         h4.new.wn-kind.wn-sub "Mới"
           svg.i #u7ty99
         ul.new.wn-also
           li
             svg.i #u7ty99
-            span "Trước khi bạn bấm Vào game cho các tài khoản vào đúng game mà một tài khoản khác của bạn đang bị ban, Bloxkeep hỏi trước. Game ban người chơi chứ không chỉ một tài khoản, và Roblox có thể ban luôn các tài khoản khác của bạn vì \"dùng tài khoản khác để né ban\". Preset thì vẫn mở nhưng có ghi trong kết quả."
+            span "Kéo mép cửa sổ Roblox giờ thu nhỏ được dưới mức Roblox cho phép: lúc kéo, khung dừng ở cỡ nhỏ nhất của Roblox, thả chuột ra là cửa sổ về đúng cỡ chỗ bạn thả."
+        h4.improved.wn-kind.wn-sub "Cải thiện"
+          svg.i #1l5qw3q
+        ul.improved.wn-also
+          li
+            svg.i #1l5qw3q
+            span "Tự vào lại giữ đúng thời gian chờ giữa các tài khoản của Preset đã mở cửa sổ đó, nên Preset đặt 2 phút thì tự vào lại cũng cách nhau 2 phút."
+          li
+            svg.i #1l5qw3q
+            span "Khi mở nhiều tài khoản, thời gian chờ tới tài khoản tiếp theo giờ đếm ngược."
+          li
+            svg.i #1l5qw3q
+            span "Số người đang dùng cập nhật nhanh hơn: Bloxkeep báo đang mở mỗi phút, nên tắt app thì khoảng 2 phút sau đã không còn được tính. Mỗi máy chỉ tính một lần, kể cả khi cài lại Bloxkeep. App vẫn chỉ gửi một mã (giờ tạo từ máy, không lần ngược ra được), phiên bản và ngôn ngữ."
+          li
+            svg.i #1l5qw3q
+            span "Đăng nhập bằng trình duyệt giờ chỉ mở trang của Roblox: link sang trang khác sẽ mở trong trình duyệt của bạn, và chỉ khi bạn bấm vào. Công cụ nhà phát triển (F12) cũng bị tắt ở đó, như các cửa sổ Roblox khác của Bloxkeep: nó hiện phiên đăng nhập, đúng thứ các trò lừa cookie hay bảo người ta sao chép."
+          li
+            svg.i #1l5qw3q
+            span "Preset lấy từ file vault không còn mang theo link Discord riêng, vì file của người khác có thể gửi thông báo của bạn vào kênh của họ. Nếu link đó là của bạn, hãy đặt lại trong preset."
+          li
+            svg.i #1l5qw3q
+            span "Cửa sổ Bloxkeep không còn bị khựng khi nhiều cửa sổ Roblox đang tải: ảnh tài khoản trên các cửa sổ được kiểm lần lượt từng Roblox, 30 giây một lần, thay vì kiểm mọi cửa sổ ở mỗi lượt."
+          li
+            svg.i #1l5qw3q
+            span "Mở Roblox bằng › Chọn… không còn nhận chương trình nằm trên ổ mạng hay thư mục chia sẻ qua mạng."
         details.wn-older
           summary "Thêm 2 phiên bản trước đó"
             svg.i #1g7f83q
         p.wn-star
           svg.i #19cjsv1
           span "Thấy Bloxkeep có ích? Cho nó một sao trên GitHub để nhiều người tìm thấy hơn."
-          button.wn-go [type="button" FOCUSED] "Mở GitHub"
+          button.wn-go [type="button"] "Mở GitHub"
             svg.i #1g7f83q
       div.modal-foot
         button.btn.primary "Đã hiểu"

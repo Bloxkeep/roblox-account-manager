@@ -186,6 +186,11 @@ public sealed partial class AppController : IDisposable
     string? _updatedFrom;
     Vault? _vault;
     CancellationTokenSource? _launchCts, _rejoinCts;
+    /// <summary>
+    /// While a launch of several accounts waits between two of them: the accounts it has still to open. Rejoins of the
+    /// others go meanwhile (see RunDueRejoin); null while it opens one, and when no launch is going.
+    /// </summary>
+    HashSet<Guid>? _launchWaiting;
     bool _bootStatusDone, _bootAvatarsDone;
     BootProgress? _boot;
     bool _checking, _lastArmed, _presenceBusy, _presenceLoaded, _rejoining, _trimRefusedShown, _disposed;
@@ -3062,7 +3067,7 @@ public sealed partial class AppController : IDisposable
 
                 if (i < accounts.Count - 1)
                 {
-                    await WaitBeforeNextLaunchAsync(account, startedAt, delaySeconds, ct);
+                    await WaitBeforeNextLaunchAsync(account, startedAt, delaySeconds, accounts.Skip(i + 1).Select(acc => acc.Id), ct);
                     if (!opened || !checkServer || target is not { JobId: { } job, IsPrivate: false })
                         continue;
                     if (await WaitForServerAnswerAsync(account, target, ct) != "closed")
@@ -3268,7 +3273,8 @@ public sealed partial class AppController : IDisposable
     /// an update, its launcher downloads it before the window appears; starting more launchers meanwhile would make
     /// them all download at once and fight over the install.
     /// </summary>
-    async Task WaitBeforeNextLaunchAsync(Account account, DateTime startedAt, int delaySeconds, CancellationToken ct)
+    /// <param name="next">The accounts the launch has still to open: their own rejoins don't go during the wait.</param>
+    async Task WaitBeforeNextLaunchAsync(Account account, DateTime startedAt, int delaySeconds, IEnumerable<Guid> next, CancellationToken ct)
     {
         while (_pending.Any(p => p.AccountId == account.Id) && DateTime.UtcNow - startedAt < PendingTimeout)
         {
@@ -3281,11 +3287,36 @@ public sealed partial class AppController : IDisposable
             }
             await Task.Delay(500, ct);
         }
-        var rest = TimeSpan.FromSeconds(delaySeconds) - (DateTime.UtcNow - startedAt);
-        if (rest > TimeSpan.Zero)
+        // The wait itself lets rejoins go (one dropped early in a long launch, two minutes between accounts, would
+        // otherwise wait for the whole of it), but not of the accounts still to open: the launch opens them. A rejoin
+        // started meanwhile is waited for, and the next account then keeps the same gap after it, so windows still
+        // start one every delaySeconds.
+        if (delaySeconds <= 0)
+            return;
+        var ownStart = _lastSessionStart;
+        string? said = null;
+        _launchWaiting = next.ToHashSet();
+        try
         {
-            Progress(L.F("Waiting {0}s before the next account…", (int)Math.Ceiling(rest.TotalSeconds)));
-            await Task.Delay(rest, ct);
+            while (true)
+            {
+                var from = _lastSessionStart != ownStart ? _lastSessionStart : startedAt;
+                var rest = TimeSpan.FromSeconds(delaySeconds) - (DateTime.UtcNow - from);
+                bool opening = _rejoining || _pending.Count > 0;
+                if (rest <= TimeSpan.Zero && !opening)
+                    return;
+                string text = rest > TimeSpan.Zero ? L.F("Waiting {0}s before the next account…", (int)Math.Ceiling(rest.TotalSeconds))
+                    : L.T("Waiting for the previous Roblox window to open…");
+                if (text != said)
+                    Progress(said = text);
+                // The countdown goes down a second at a time; an opening window is looked at twice a second.
+                var step = rest <= TimeSpan.Zero ? TimeSpan.FromMilliseconds(500) : rest < TimeSpan.FromSeconds(1) ? rest : TimeSpan.FromSeconds(1);
+                await Task.Delay(step, ct);
+            }
+        }
+        finally
+        {
+            _launchWaiting = null;
         }
     }
 
@@ -4831,13 +4862,14 @@ public sealed partial class AppController : IDisposable
 
     void RunDueRejoin(DateTime now)
     {
-        // One client at a time: the previous one must have its window (Roblox may be updating), then a short gap.
-        var spacing = TimeSpan.FromSeconds(Math.Max(3, _vault?.Data.Settings.LaunchDelaySeconds ?? 0));
-        if (_rejoinQueue.Count == 0 || _rejoining || _openingHome || _launchCts is not null || now < _sweepBackgroundUntil || _pending.Count > 0
-            || now - _lastSessionStart < spacing || Settling)
+        // One client at a time: the previous one must have its window (Roblox may be updating), then the wait between
+        // accounts. A launch of several accounts lets rejoins go while it waits between two of them, except of the
+        // accounts it is about to open itself.
+        if (_rejoinQueue.Count == 0 || _rejoining || _openingHome || (_launchCts is not null && _launchWaiting is null) || now < _sweepBackgroundUntil
+            || _pending.Count > 0 || Settling)
             return;
-        var due = _rejoinQueue.FirstOrDefault(r => r.Due <= now);
-        if (due is null)
+        var due = _rejoinQueue.FirstOrDefault(r => r.Due <= now && _launchWaiting?.Contains(r.AccountId) != true);
+        if (due is null || now - _lastSessionStart < RejoinSpacing(due))
             return;
         // Windows' virtual memory (its commit limit) all but used up: a new window would crash as it opens, as the ones
         // that ran out did (2026-10-22: "cannot commit OS memory", OutOfMemoryGraphics), and rejoin into the same crash
@@ -4855,6 +4887,13 @@ public sealed partial class AppController : IDisposable
         _rejoinQueue.Remove(due);
         _ = RejoinAsync(due);
     }
+
+    /// <summary>
+    /// How long a rejoin waits after the last window to start: the wait between accounts of the preset that opened the
+    /// client (two minutes there keeps its rejoins two minutes apart too), else Settings'; 3 s at least.
+    /// </summary>
+    TimeSpan RejoinSpacing(RejoinRequest request) =>
+        TimeSpan.FromSeconds(Math.Max(3, PresetFor(request.PresetId)?.DelaySeconds ?? _vault?.Data.Settings.LaunchDelaySeconds ?? 0));
 
     /// <summary>Windows' memory as Bloxkeep reads it (a field, so the checks can answer for Windows).</summary>
     Func<MemoryStatus> _readMemory = SystemMemory.Read;

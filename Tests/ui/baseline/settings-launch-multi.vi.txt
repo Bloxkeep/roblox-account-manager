@@ -275,7 +275,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Chờ giữa các tài khoản"
                         div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
                       div.ctl
-                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
+                        input [id="s-delay" type="range" min="0" max="120" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
                         b.range-v [id="s-delay-v"] "8 giây"
 #layer
   div.overlay
@@ -577,7 +577,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Chờ giữa các tài khoản"
                         div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
                       div.ctl
-                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
+                        input [id="s-delay" type="range" min="0" max="120" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
                         b.range-v [id="s-delay-v"] "8 giây"
 #layer
 #toasts
@@ -860,7 +860,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Chờ giữa các tài khoản"
                         div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
                       div.ctl
-                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
+                        input [id="s-delay" type="range" min="0" max="120" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
                         b.range-v [id="s-delay-v"] "8 giây"
 #layer
 #toasts

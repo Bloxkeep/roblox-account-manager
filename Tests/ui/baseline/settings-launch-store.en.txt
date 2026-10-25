@@ -280,7 +280,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Wait between accounts"
                         div.d "Opening too many at once can fail."
                       div.ctl
-                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Wait between accounts" value="8"]
+                        input [id="s-delay" type="range" min="0" max="120" step="1" aria-label="Wait between accounts" value="8"]
                         b.range-v [id="s-delay-v"] "8 s"
 #layer
 #toasts
@@ -571,7 +571,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Wait between accounts"
                         div.d "Opening too many at once can fail."
                       div.ctl
-                        input [id="s-delay" type="range" min="0" max="60" step="1" aria-label="Wait between accounts" value="8"]
+                        input [id="s-delay" type="range" min="0" max="120" step="1" aria-label="Wait between accounts" value="8"]
                         b.range-v [id="s-delay-v"] "8 s"
 #layer
 #toasts

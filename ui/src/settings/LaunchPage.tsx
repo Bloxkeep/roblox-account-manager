@@ -129,7 +129,7 @@ export function LaunchPage({ title }: { title: string }) {
       </Row>
       <div id="s-store">{storeNote ? <div className="set-note"><Icon name="info" /><span>{storeNote}</span></div> : null}</div>
       <Row title={t('set.delay')} desc={t('set.delayDesc')}>
-        <input type="range" id="s-delay" min="0" max="60" step="1" aria-label={t('set.delay')} ref={slider} value={delay}
+        <input type="range" id="s-delay" min="0" max="120" step="1" aria-label={t('set.delay')} ref={slider} value={delay}
           onChange={e => setDelay(+e.target.value)} />
         <b id="s-delay-v" className="range-v">{t('set.seconds', { n: delay })}</b>
       </Row>
