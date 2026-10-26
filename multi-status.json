@@ -151,6 +151,36 @@
       "added": [],
       "removed": [],
       "liveAt": "2026-10-20T20:16:00Z"
+    },
+    {
+      "version": "0.745.0.7451137",
+      "hash": "version-5a21b87bbc2641cf",
+      "channel": "beta",
+      "seenAt": "2026-10-26T23:01:45Z",
+      "verdict": "same",
+      "hold": [
+        "ROBLOX_singletonEvent"
+      ],
+      "locks": [
+        "ROBLOX_MAINTENANCE",
+        "ROBLOX_singletonEvent",
+        "ROBLOX_singletonMutex"
+      ],
+      "related": [
+        "EnableWindowsAppReloadCheck",
+        "EventWaitResultUpdate",
+        "FLog::WndProcessCheck",
+        "MutexWaitResultLoopUpdate",
+        "SingleInstanceGuard",
+        "SingleInstanceGuardReadHwndRetries",
+        "SingleInstanceGuardTimeoutMilliSec",
+        "WindowsAppReloadTelemetry",
+        "WindowsAppReloadTracking",
+        "WindowsAppReloadTrackingThrottleHundredthsPercent",
+        "WndProcessCheck"
+      ],
+      "added": [],
+      "removed": []
     }
   ],
   "live": {
@@ -166,9 +196,9 @@
     "DFIntWindowsAppReloadTrackingThrottleHundredthsPercent": "50",
     "FFlagRemoveSingleInstanceSempahore": "True"
   },
-  "changedAt": "2026-10-26T22:44:36Z",
+  "changedAt": "2026-10-26T23:01:45Z",
   "beta": {
-    "version": "0.744.0.7441080",
-    "hash": "version-9ac8595712b447a7"
+    "version": "0.745.0.7451137",
+    "hash": "version-5a21b87bbc2641cf"
   }
 }
