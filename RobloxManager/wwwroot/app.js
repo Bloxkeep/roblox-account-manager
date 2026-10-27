@@ -311,10 +311,11 @@
     };
     $('#layer').append(el);
     onMount?.(api);
-    // Most modals focus one of their fields themselves; the rest start at their first control.
+    // Most modals focus one of their fields themselves; the rest start at their first control, without scrolling to it:
+    // a dialog opens at its top (What's new's first button can be its last line).
     setTimeout(() => {
       if (closed || el.contains(document.activeElement)) return;
-      (el.querySelector('.modal-body').querySelector('button:not(:disabled), input, select, textarea, a[href]') || el.querySelector('.modal-foot .btn.primary') || el.querySelector('[data-x]')).focus();
+      (el.querySelector('.modal-body').querySelector('button:not(:disabled), input, select, textarea, a[href]') || el.querySelector('.modal-foot .btn.primary') || el.querySelector('[data-x]')).focus({ preventScroll: true });
     }, 60);
     return api;
   }
