@@ -397,7 +397,7 @@ html [data-theme="dark" lang="vi"]
                 svg.i #1e3syqr
                 span "Cửa sổ"
 #layer
-  div.menu [role="menu" style="left:961px;top:241px"]
+  div.menu [role="menu" style="left:961px;top:205px"]
     button [role="menuitem"]
       svg.i #1ewcuky
       span "Vào game (2 tài khoản)"
@@ -422,6 +422,9 @@ html [data-theme="dark" lang="vi"]
     button [role="menuitem" disabled]
       svg.i #ej9lod
       span "Vào cùng server"
+    button [role="menuitem" disabled]
+      svg.i #g81ucr
+      span "Sang server khác"
     button [role="menuitem"]
       svg.i #1ap9cll
       span "Tự vào lại"

@@ -1,0 +1,88 @@
+using System.Net;
+using System.Text;
+using RobloxManager;
+
+namespace Bloxkeep.Tests;
+
+/// <summary>
+/// "Switch to another server" (AppController.ServerHop.cs): windows playing in a public server are closed and opened
+/// again into another server of their game with room, the same one for accounts of the same game, never the one they
+/// leave; a private server or a window not in a game is left alone; no other server with room: said, nothing closed.
+/// Roblox's server list is a stand-in (RobloxApi.StandIn); no window is closed.
+/// </summary>
+static class ServerHopSuite
+{
+    const long Place = 5151;
+
+    public static async Task Run(Checks c, string dir)
+    {
+        Harness.UseDataFolder(dir);
+        var seed = Vault.Create(Harness.Password);
+        var a1 = new Account { Username = "hop1", Cookie = "x1", UserId = 2001, CookieValid = true };
+        var a2 = new Account { Username = "hop2", Cookie = "x2", UserId = 2002, CookieValid = true };
+        var a3 = new Account { Username = "private", Cookie = "x3", UserId = 2003, CookieValid = true };
+        seed.Data.Accounts.AddRange([a1, a2, a3]);
+        seed.Save();
+        using var form = new Form();
+        using var app = new AppController(form, _ => { });
+        await Harness.Unlock(app);
+
+        var t = typeof(AppController);
+        var running = Harness.Get<System.Collections.IDictionary>(app, "_running");
+        var launchType = t.GetNestedType("PendingLaunch", Harness.F)!;
+        var tupleType = running.GetType().GetGenericArguments()[1];
+        var watcher = Harness.Get<RobloxLogWatcher>(app, "_logs");
+        var tails = Harness.Get<System.Collections.IDictionary>(watcher, "_tails");
+        var tailType = typeof(RobloxLogWatcher).GetNestedType("Tail", Harness.F)!;
+        void Window(Account account, int pid, GameTarget target, string status, string? job)
+        {
+            var launch = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-5), target, false, null)!;
+            running[account.Id] = Activator.CreateInstance(tupleType, pid, launch);
+            var tail = Activator.CreateInstance(tailType, $"stand-in-{pid}.log", pid)!;
+            tailType.GetField("State")!.SetValue(tail, new RobloxLogWatcher.ClientState(status, target.PlaceId, job, null, DateTime.UtcNow));
+            tails[pid] = tail;
+        }
+        Window(a1, 801, new GameTarget(Place), "ingame", "old-server");
+        Window(a2, 802, new GameTarget(Place), "ingame", "old-server");
+        Window(a3, 803, new GameTarget(Place) { AccessCode = "private-code" }, "ingame", "private-server");
+        var closed = new List<int>();
+        Harness.Set(app, "_closeForReopen", (Action<int, bool>)((pid, _) => closed.Add(pid)));
+        var restarts = Harness.Get<System.Collections.IDictionary>(app, "_restarts");
+        GameTarget? Going(Account a) => restarts.Contains(a.Id) ? (GameTarget)restarts[a.Id]!.GetType().GetField("Item1")!.GetValue(restarts[a.Id])! : null;
+
+        // Roblox's list: the one they're in, one full, one with room for one, one with room for both.
+        string list = """{"data":[{"id":"old-server","playing":5,"maxPlayers":20},{"id":"full","playing":20,"maxPlayers":20},{"id":"one-left","playing":19,"maxPlayers":20},{"id":"roomy","playing":3,"maxPlayers":20}],"nextPageCursor":null}""";
+        Task<HttpResponseMessage> Roblox(HttpRequestMessage req) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(req.RequestUri!.AbsolutePath.Contains("/servers/Public") ? list : "{}", Encoding.UTF8, "application/json"),
+        });
+        var standIn = typeof(RobloxApi).GetProperty("StandIn", Harness.F)!;
+        standIn.SetValue(null, (Func<HttpRequestMessage, Task<HttpResponseMessage>>)Roblox);
+        try
+        {
+            var onlyPrivate = await Harness.Try(app, "switchServer", new { ids = new[] { a3.Id } });
+            c.Check("a private server only: said, nothing closed", onlyPrivate is UserError && closed.Count == 0, onlyPrivate);
+
+            var moved = await Harness.Try(app, "switchServer", new { ids = new[] { a1.Id, a2.Id, a3.Id } });
+            c.Check("two accounts of a game: both closed to reopen, the private one left alone", moved is 2 && closed.Order().SequenceEqual([801, 802])
+                && !restarts.Contains(a3.Id), string.Join(",", closed));
+            c.Check("…into the same server with room for both, not the one they left", Going(a1) is { PlaceId: Place, JobId: "roomy" } && Going(a2) == Going(a1), Going(a1));
+            c.Check("…marked as moving, so a preset's Rejoin server doesn't send them back", Harness.Get<HashSet<Guid>>(app, "_hopping").SetEquals([a1.Id, a2.Id]));
+
+            closed.Clear();
+            restarts.Clear();
+            Window(a1, 811, new GameTarget(Place), "ingame", "roomy");
+            list = """{"data":[{"id":"roomy","playing":5,"maxPlayers":20},{"id":"full","playing":20,"maxPlayers":20}],"nextPageCursor":null}""";
+            var none = await Harness.Try(app, "switchServer", new { ids = new[] { a1.Id } });
+            c.Check("no other server with room: nothing closed", none is 0 && closed.Count == 0, none);
+
+            Window(a2, 812, new GameTarget(Place), "joining", null);
+            var notIn = await Harness.Try(app, "switchServer", new { ids = new[] { a2.Id } });
+            c.Check("a window still joining: said, nothing closed", notIn is UserError && closed.Count == 0, notIn);
+        }
+        finally
+        {
+            standIn.SetValue(null, null);
+        }
+    }
+}

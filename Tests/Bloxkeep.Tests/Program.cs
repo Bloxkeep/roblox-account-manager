@@ -39,6 +39,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("data-folder", false, DataFolderSuite.Run),
     ("rejoin-with", false, RejoinWithSuite.Run),
     ("bot-check", false, BotCheckSuite.Run),
+    ("server-hop", false, ServerHopSuite.Run),
     ("foreign-vault", false, ForeignVaultSuite.Run),
     ("window-icons", false, WindowIconsSuite.Run),
     ("taskbar-groups", false, TaskbarGroupsSuite.Run),

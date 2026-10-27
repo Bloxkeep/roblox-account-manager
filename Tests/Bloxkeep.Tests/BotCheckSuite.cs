@@ -43,7 +43,7 @@ static class BotCheckSuite
         var launch = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-1), new GameTarget(Place), false, null)!;
         running[account.Id] = Activator.CreateInstance(tupleType, Pid, launch);
         var closed = new List<int>();
-        Harness.Set(app, "_closeHeldWindow", (Action<int, bool>)((pid, _) => closed.Add(pid)));
+        Harness.Set(app, "_closeForReopen", (Action<int, bool>)((pid, _) => closed.Add(pid)));
         var restarts = Harness.Get<System.Collections.IDictionary>(app, "_restarts");
 
         // Roblox: the join is held until it carries the answered check.

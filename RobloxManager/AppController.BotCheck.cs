@@ -59,13 +59,13 @@ public sealed partial class AppController
             _joinRefused.Remove(now.Launch);
             _restarts[id] = (RestartTarget(now), DateTime.UtcNow);
             _closingForRejoin.Add(now.Pid);
-            _closeHeldWindow(now.Pid, InGameNow(now.Pid));
+            _closeForReopen(now.Pid, InGameNow(now.Pid));
             PushState();
         }
     }
 
-    /// <summary>Closes the held window (a field, so the checks don't close a real process).</summary>
-    Action<int, bool> _closeHeldWindow = RobloxProcesses.Close;
+    /// <summary>Closes a window Bloxkeep opens again at once (a field, so the checks don't close a real process).</summary>
+    Action<int, bool> _closeForReopen = RobloxProcesses.Close;
 
     /// <summary>The puzzle kind of check, in Bloxkeep's captcha window; null when it was closed unsolved.</summary>
     async Task<string?> ArkoseAnswerAsync(Account account, string blob, string captchaId, string actionType)

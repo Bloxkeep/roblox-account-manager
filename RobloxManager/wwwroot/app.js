@@ -2062,6 +2062,8 @@
       // Roblox holds its join for a bot check: solved in Bloxkeep's own window, then the window opens again.
       ...(!many && a.session?.phase === 'challenged' ? [{ icon: 'shield', text: t('m.botCheck'), run: () => call('solveBotCheck', { id }) }] : []),
       { icon: 'server', text: t('m.follow'), disabled: many || !serverOf(a), run: () => { const s = serverOf(a); useServer(s.placeId, s.jobId); toast(t('srv.followed', { name: a.label }), 'ok'); } },
+      // The window closes and opens again into another server of its game (those of the same game together).
+      { icon: 'shuffle', text: t('m.switchServer'), disabled: !ids.some(i => isLocal(byId(i) || {}) && serverOf(byId(i))), run: () => call('switchServer', { ids }) },
       // Ticked as the card shows it (a running window's preset may decide), and says so when it does.
       { icon: 'repeat', text: t('m.autoRejoin'), checked: ids.every(i => byId(i) && rejoinOn(byId(i))), run: () => toggleRejoin(ids),
         title: ids.some(i => { const x = byId(i); return x?.session && x.session.autoRejoin !== undefined && x.session.autoRejoin !== x.autoRejoin; }) ? t('m.rejoinPreset') : '' },

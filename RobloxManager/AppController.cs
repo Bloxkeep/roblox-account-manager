@@ -482,6 +482,7 @@ public sealed partial class AppController : IDisposable
         "deleteAccounts" => Done(DeleteAccounts(Ids(a))),
         "checkAccounts" => CheckAccountsAsync(Ids(a)),
         "solveBotCheck" => SolveBotCheckAsync(Id(a)),
+        "switchServer" => SwitchServerAsync(Ids(a)),
         "refreshPresence" => RefreshPresenceAsync(),
         "copy" => Done(Copy(Id(a), Str(a, "field"))),
         "resolveGame" => ResolveGameAsync(Str(a, "input")),
@@ -4951,8 +4952,8 @@ public sealed partial class AppController : IDisposable
                 target = found;
             }
             // Its preset's "Rejoin server" (a drop or its timed restart): the server another of its accounts plays in, when
-            // one will take it.
-            else if (await TeammateTargetAsync(account, request, cts.Token) is { } teammate)
+            // one will take it. Not when the person sent it to another server.
+            else if (!_hopping.Remove(account.Id) && await TeammateTargetAsync(account, request, cts.Token) is { } teammate)
             {
                 target = teammate;
             }
