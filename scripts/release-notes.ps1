@@ -16,8 +16,8 @@ if (-not $release) {
 # Built from char codes: Windows PowerShell reads a script without a BOM as ANSI, which would garble the accents.
 $vietnamese = 'Ti' + [char]0x1EBF + 'ng Vi' + [char]0x1EC7 + 't'
 $heads = @{
-    en = @{ new = 'New'; improved = 'Improved'; fixed = 'Fixed' }
-    vi = @{ new = 'M' + [char]0x1EDB + 'i'; improved = 'C' + [char]0x1EA3 + 'i thi' + [char]0x1EC7 + 'n'; fixed = [char]0x0110 + [char]0x00E3 + ' s' + [char]0x1EED + 'a' }
+    en = @{ new = 'New'; improved = 'Improved'; fixed = 'Fixed'; removed = 'Removed' }
+    vi = @{ new = 'M' + [char]0x1EDB + 'i'; improved = 'C' + [char]0x1EA3 + 'i thi' + [char]0x1EC7 + 'n'; fixed = [char]0x0110 + [char]0x00E3 + ' s' + [char]0x1EED + 'a'; removed = [char]0x0110 + [char]0x00E3 + ' b' + [char]0x1ECF }
 }
 # "Title: what it does" gets its title in bold, as the app's What's new shows it (app.js, splitNote). Headline features
 # (highlights: [title, text, button]) come first, the same way, then the notes in no group, then New, Improved and
@@ -25,7 +25,7 @@ $heads = @{
 function Note([string]$n) { '- ' + ($n -replace '^([^.:]{1,60}): ', '**$1**: ') }
 function Part([string]$lang) {
     $out = @($release.highlights | Where-Object { $_ } | ForEach-Object { $w = $_.$lang; "- **$($w[0])**: $($w[1])" }) + @($release.$lang | Where-Object { $_ } | ForEach-Object { Note $_ })
-    foreach ($kind in 'new', 'improved', 'fixed') {
+    foreach ($kind in 'new', 'improved', 'fixed', 'removed') {
         $items = @($release.$kind.$lang | Where-Object { $_ })
         if ($items.Count) { $out += @('', "#### $($heads[$lang][$kind])") + @($items | ForEach-Object { Note $_ }) }
     }

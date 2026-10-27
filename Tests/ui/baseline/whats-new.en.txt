@@ -213,33 +213,40 @@ html [data-theme="dark" lang="en"]
               img [alt="" style="width:470px" src="whatsnew/1.0.11-rejoin.en.webp"]
             div.wn-feat-text
               h3 "Rejoin with your group"
-              p "A dropped account rejoins the server another account is in."
+              p "In a preset, pick Rejoin server › With another account (or one of its accounts). An account that drops rejoins the server that account is in; if it's full, any server."
           article.wn-feat
             div.wn-shot
               img [alt="" style="width:344px" src="whatsnew/1.0.11-tray.en.webp"]
             div.wn-feat-text
               h3 "New tray menu"
-              p "Your windows, Play and Multi-Roblox in one click."
+              p "Click the tray icon to see your open windows, Play, Presets and Multi-Roblox. Right-click it for the menu."
           article.wn-feat
             div.wn-shot
               img [alt="" style="width:420px" src="whatsnew/1.0.11-lock-update.en.webp"]
             div.wn-feat-text
-              h3 "Update before you unlock"
-              p "A new version installs on the lock screen. Roblox stays open."
+              h3 "Update at the lock screen"
+              p "An update found before you unlock installs right there, and Roblox stays open."
         section.new.wn-group
           h4.wn-kind "New"
           ul.wn-notes
-            li "Settings show where each file is."
+            li "Settings › Backup & data shows where the vault file, the error log and the program folder are, each with a button to open it."
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
-            li "Settings tidied up, with a Bloxkeep page."
-            li "Tidier data folder."
-            li "Preset wait picked from a list."
+            li "A new Bloxkeep page holds updates, the tray, hardware acceleration, help and privacy, and Security is now Vault & security."
+              b "Settings are reorganised"
+            li "A preset's wait between accounts is now picked from a list (Follow Settings, 0–120 s) instead of typed."
+            li "Old vault copies, pictures and caches move into folders of their own."
+              b "The data folder is tidier"
+            li "What's new shows a picture of each new feature."
         section.fixed.wn-group
           h4.wn-kind "Fixed"
           ul.wn-notes
-            li "What's new shows after updating from a beta."
+            li "Fixed What's new not showing after updating from a beta to the full version."
+        section.removed.wn-group
+          h4.wn-kind "Removed"
+          ul.wn-notes
+            li "The Discord button at the bottom of the sidebar. Bloxkeep's Discord is now in Settings › Bloxkeep › Help & feedback."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

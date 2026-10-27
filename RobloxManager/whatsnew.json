@@ -8,11 +8,11 @@
         "image": "whatsnew/1.0.11-rejoin.{lang}.webp",
         "en": [
           "Rejoin with your group",
-          "A dropped account rejoins the server another account is in."
+          "In a preset, pick Rejoin server › With another account (or one of its accounts). An account that drops rejoins the server that account is in; if it's full, any server."
         ],
         "vi": [
           "Vào lại cùng nhóm",
-          "Tài khoản bị văng vào lại đúng server của tài khoản khác."
+          "Trong preset, chọn Server khi vào lại › Cùng tài khoản khác (hoặc một tài khoản cụ thể). Tài khoản bị văng sẽ vào lại đúng server của tài khoản đó; server đầy thì vào server bất kỳ."
         ]
       },
       {
@@ -20,52 +20,62 @@
         "image": "whatsnew/1.0.11-tray.{lang}.webp",
         "en": [
           "New tray menu",
-          "Your windows, Play and Multi-Roblox in one click."
+          "Click the tray icon to see your open windows, Play, Presets and Multi-Roblox. Right-click it for the menu."
         ],
         "vi": [
           "Khay hệ thống mới",
-          "Cửa sổ đang chạy, Vào game và Multi-Roblox chỉ một cú bấm."
+          "Bấm biểu tượng dưới khay để xem các cửa sổ đang chạy, Vào game, Preset và Multi-Roblox. Chuột phải để mở menu."
         ]
       },
       {
         "icon": "download",
         "image": "whatsnew/1.0.11-lock-update.{lang}.webp",
         "en": [
-          "Update before you unlock",
-          "A new version installs on the lock screen. Roblox stays open."
+          "Update at the lock screen",
+          "An update found before you unlock installs right there, and Roblox stays open."
         ],
         "vi": [
-          "Cập nhật ngay ở màn hình khóa",
-          "Có bản mới thì cài luôn trước khi mở khóa, Roblox vẫn chạy."
+          "Cập nhật ở màn hình khóa",
+          "Có bản mới trước khi mở khóa thì Bloxkeep cài luôn ở đó, Roblox vẫn chạy."
         ]
       }
     ],
     "new": {
       "en": [
-        "Settings show where each file is."
+        "Settings › Backup & data shows where the vault file, the error log and the program folder are, each with a button to open it."
       ],
       "vi": [
-        "Cài đặt hiện đường dẫn từng file."
+        "Cài đặt › Sao lưu & dữ liệu hiện đường dẫn file vault, nhật ký lỗi và thư mục cài đặt, mỗi dòng có nút mở."
       ]
     },
     "improved": {
       "en": [
-        "Settings tidied up, with a Bloxkeep page.",
-        "Tidier data folder.",
-        "Preset wait picked from a list."
+        "Settings are reorganised: a new Bloxkeep page holds updates, the tray, hardware acceleration, help and privacy, and Security is now Vault & security.",
+        "A preset's wait between accounts is now picked from a list (Follow Settings, 0–120 s) instead of typed.",
+        "The data folder is tidier: old vault copies, pictures and caches move into folders of their own.",
+        "What's new shows a picture of each new feature."
       ],
       "vi": [
-        "Cài đặt gọn hơn, thêm trang Bloxkeep.",
-        "Thư mục dữ liệu gọn hơn.",
-        "Thời gian chờ của Preset chọn từ danh sách."
+        "Sắp xếp lại Cài đặt: trang Bloxkeep mới gom cập nhật, khay hệ thống, tăng tốc phần cứng, hướng dẫn và quyền riêng tư; Bảo mật đổi tên thành Vault & bảo mật.",
+        "Thời gian chờ giữa các tài khoản trong preset giờ chọn từ danh sách (Theo Cài đặt, 0–120 giây) thay vì gõ tay.",
+        "Thư mục dữ liệu gọn hơn: bản vault cũ, ảnh và bộ nhớ đệm được chuyển vào thư mục riêng.",
+        "What's new có ảnh minh họa cho từng tính năng."
       ]
     },
     "fixed": {
       "en": [
-        "What's new shows after updating from a beta."
+        "Fixed What's new not showing after updating from a beta to the full version."
       ],
       "vi": [
-        "What's new hiện cả khi cập nhật từ bản beta."
+        "Sửa lỗi What's new không hiện khi cập nhật từ bản beta lên bản chính thức."
+      ]
+    },
+    "removed": {
+      "en": [
+        "The Discord button at the bottom of the sidebar. Bloxkeep's Discord is now in Settings › Bloxkeep › Help & feedback."
+      ],
+      "vi": [
+        "Nút Discord ở cuối thanh bên. Discord của Bloxkeep giờ nằm ở Cài đặt › Bloxkeep › Hướng dẫn & góp ý."
       ]
     }
   },

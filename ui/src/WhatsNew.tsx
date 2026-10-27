@@ -17,6 +17,7 @@ export interface Release {
   new?: Notes | null;
   improved?: Notes | null;
   fixed?: Notes | null;
+  removed?: Notes | null;
 }
 /**
  * A headline feature: [title, one or two sentences, button] in each language, where the button leads, and its picture
@@ -25,7 +26,7 @@ export interface Release {
 export interface Highlight { icon?: string; go?: string | null; image?: string | null; en: string[]; vi: string[] }
 export interface Notes { en: string[]; vi: string[] }
 
-const KINDS = ['new', 'improved', 'fixed'] as const;
+const KINDS = ['new', 'improved', 'fixed', 'removed'] as const;
 
 /** "Title: what it does" as [title, text]; a note without a short title before its first ": " is all text. */
 function splitNote(note: string, locale: string): [string, string] {

@@ -213,33 +213,40 @@ html [data-theme="dark" lang="vi"]
               img [alt="" style="width:470px" src="whatsnew/1.0.11-rejoin.vi.webp"]
             div.wn-feat-text
               h3 "Vào lại cùng nhóm"
-              p "Tài khoản bị văng vào lại đúng server của tài khoản khác."
+              p "Trong preset, chọn Server khi vào lại › Cùng tài khoản khác (hoặc một tài khoản cụ thể). Tài khoản bị văng sẽ vào lại đúng server của tài khoản đó; server đầy thì vào server bất kỳ."
           article.wn-feat
             div.wn-shot
               img [alt="" style="width:344px" src="whatsnew/1.0.11-tray.vi.webp"]
             div.wn-feat-text
               h3 "Khay hệ thống mới"
-              p "Cửa sổ đang chạy, Vào game và Multi-Roblox chỉ một cú bấm."
+              p "Bấm biểu tượng dưới khay để xem các cửa sổ đang chạy, Vào game, Preset và Multi-Roblox. Chuột phải để mở menu."
           article.wn-feat
             div.wn-shot
               img [alt="" style="width:420px" src="whatsnew/1.0.11-lock-update.vi.webp"]
             div.wn-feat-text
-              h3 "Cập nhật ngay ở màn hình khóa"
-              p "Có bản mới thì cài luôn trước khi mở khóa, Roblox vẫn chạy."
+              h3 "Cập nhật ở màn hình khóa"
+              p "Có bản mới trước khi mở khóa thì Bloxkeep cài luôn ở đó, Roblox vẫn chạy."
         section.new.wn-group
           h4.wn-kind "Mới"
           ul.wn-notes
-            li "Cài đặt hiện đường dẫn từng file."
+            li "Cài đặt › Sao lưu & dữ liệu hiện đường dẫn file vault, nhật ký lỗi và thư mục cài đặt, mỗi dòng có nút mở."
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "Cài đặt gọn hơn, thêm trang Bloxkeep."
-            li "Thư mục dữ liệu gọn hơn."
-            li "Thời gian chờ của Preset chọn từ danh sách."
+            li "Trang Bloxkeep mới gom cập nhật, khay hệ thống, tăng tốc phần cứng, hướng dẫn và quyền riêng tư; Bảo mật đổi tên thành Vault & bảo mật."
+              b "Sắp xếp lại Cài đặt"
+            li "Thời gian chờ giữa các tài khoản trong preset giờ chọn từ danh sách (Theo Cài đặt, 0–120 giây) thay vì gõ tay."
+            li "Bản vault cũ, ảnh và bộ nhớ đệm được chuyển vào thư mục riêng."
+              b "Thư mục dữ liệu gọn hơn"
+            li "What's new có ảnh minh họa cho từng tính năng."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "What's new hiện cả khi cập nhật từ bản beta."
+            li "Sửa lỗi What's new không hiện khi cập nhật từ bản beta lên bản chính thức."
+        section.removed.wn-group
+          h4.wn-kind "Đã bỏ"
+          ul.wn-notes
+            li "Nút Discord ở cuối thanh bên. Discord của Bloxkeep giờ nằm ở Cài đặt › Bloxkeep › Hướng dẫn & góp ý."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q
