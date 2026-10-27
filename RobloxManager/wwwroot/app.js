@@ -2059,6 +2059,8 @@
       '-',
       { icon: 'edit', text: t('m.edit'), hint: 'F2', disabled: many, run: () => editAccount(id) },
       { icon: 'refresh', text: t('m.check'), run: () => checkAccounts(ids) },
+      // Roblox holds its join for a bot check: solved in Bloxkeep's own window, then the window opens again.
+      ...(!many && a.session?.phase === 'challenged' ? [{ icon: 'shield', text: t('m.botCheck'), run: () => call('solveBotCheck', { id }) }] : []),
       { icon: 'server', text: t('m.follow'), disabled: many || !serverOf(a), run: () => { const s = serverOf(a); useServer(s.placeId, s.jobId); toast(t('srv.followed', { name: a.label }), 'ok'); } },
       // Ticked as the card shows it (a running window's preset may decide), and says so when it does.
       { icon: 'repeat', text: t('m.autoRejoin'), checked: ids.every(i => byId(i) && rejoinOn(byId(i))), run: () => toggleRejoin(ids),

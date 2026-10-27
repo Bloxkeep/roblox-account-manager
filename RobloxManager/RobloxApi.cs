@@ -324,6 +324,9 @@ public static class RobloxApi
     /// <param name="QueuePosition">The account's place in a full game's line, when Roblox gives one (its client shows "Position in queue is N").</param>
     public sealed record JoinAnswer(int Http, int? Status, string? Message, string? Data = null, int? QueuePosition = null)
     {
+        /// <summary>Roblox's bot check holding this join (a 403 with its rblx-challenge-* headers), or null.</summary>
+        public JoinChallenge? Challenge { get; init; }
+
         /// <summary>
         /// The server or game is full (status 6: Roblox's client says "Requested experience is full" for it, and its
         /// ConnectionError 518 is PlacelaunchGameFull, 512 + the status, as 524 is for 12).
@@ -388,14 +391,32 @@ public static class RobloxApi
     /// Asks Roblox to let the account into a game (a server of it, or that one server), only to read its answer: Bloxkeep
     /// asks after a window has waited a minute without getting in, when Roblox logs nothing about why.
     /// </summary>
-    public static async Task<JoinAnswer> JoinCheckAsync(string cookie, long placeId, string? jobId, string realm, CancellationToken ct = default)
+    /// <param name="answered">A check answered (<see cref="ContinueChallengeAsync"/>): the join is asked again carrying it,
+    /// as roblox.com retries a request once its check is passed.</param>
+    public static async Task<JoinAnswer> JoinCheckAsync(string cookie, long placeId, string? jobId, string realm, CancellationToken ct = default,
+        JoinChallenge? answered = null)
     {
         string url = Realm.Api(realm, "gamejoin") + (jobId is null ? "/v1/join-game" : "/v1/join-game-instance");
         object body = jobId is null
             ? new { placeId, isTeleport = false, gameJoinAttemptId = Guid.NewGuid().ToString() }
             : new { placeId, gameId = jobId, isTeleport = false, gameJoinAttemptId = Guid.NewGuid().ToString() };
-        using var res = await PostWithCsrfAsync(url, cookie, JsonSerializer.Serialize(body), null, ct, realm);
+        using var res = await PostWithCsrfAsync(url, cookie, JsonSerializer.Serialize(body), answered is null ? null : req =>
+        {
+            req.Headers.TryAddWithoutValidation("rblx-challenge-id", answered.Id);
+            req.Headers.TryAddWithoutValidation("rblx-challenge-type", answered.Type);
+            req.Headers.TryAddWithoutValidation("rblx-challenge-metadata", Convert.ToBase64String(Encoding.UTF8.GetBytes(answered.MetadataJson)));
+        }, ct, realm);
         string text = await res.Content.ReadAsStringAsync(ct);
+        // Roblox's bot check ("Challenge is required to authorize the request", 403): which check, and what it carries, by
+        // name only (its values tie it to this account).
+        JoinChallenge? challenge = null;
+        if (Header(res, "rblx-challenge-id") is { Length: > 0 } challengeId)
+        {
+            var meta = DecodeMetadata(Header(res, "rblx-challenge-metadata"));
+            challenge = new JoinChallenge(challengeId, Header(res, "rblx-challenge-type") ?? "", meta?.GetRawText() ?? "{}");
+            Log.Note($"Join held for Roblox's check: type '{SafeName(challenge.Type)}', metadata fields "
+                + (meta is { ValueKind: JsonValueKind.Object } m ? string.Join(", ", m.EnumerateObject().Select(x => SafeName(x.Name))) : "(none)"));
+        }
         int? status = null, queue = null;
         string? message = null, data = null;
         if (text.TrimStart().StartsWith('{'))
@@ -416,7 +437,60 @@ public static class RobloxApi
             if (status != 2 && root.TryGetProperty("statusData", out var d) && d.ValueKind is JsonValueKind.Object or JsonValueKind.String)
                 data = d.GetRawText() is { Length: > 400 } raw ? raw[..400] : d.GetRawText();
         }
-        return new JoinAnswer((int)res.StatusCode, status, message, data, queue);
+        return new JoinAnswer((int)res.StatusCode, status, message, data, queue) { Challenge = challenge };
+    }
+
+    /// <summary>
+    /// The check Roblox put on a join (its rblx-challenge-* headers): its id, its kind ("captcha", "captchav2",
+    /// "proofofwork"…) and what it carries, as JSON.
+    /// </summary>
+    public sealed record JoinChallenge(string Id, string Type, string MetadataJson)
+    {
+        /// <summary>A text field of what the check carries, or null.</summary>
+        public string? Meta(string name) => Field(DecodeJson(MetadataJson), name);
+        /// <summary>What it carries with one field added (the answer: a redemption or captcha token).</summary>
+        public string MetaWith(string name, string value) => WithField(MetadataJson, name, value);
+    }
+
+    /// <summary>
+    /// Hands Roblox a check's answer with the account's own sign-in, as roblox.com does, and returns the check the
+    /// retried request carries (Roblox echoes it, sometimes with a new id); a different kind of check after it comes
+    /// back as that one, to answer in turn.
+    /// </summary>
+    public static async Task<JoinChallenge> ContinueChallengeAsync(string realm, string cookie, JoinChallenge answered, CancellationToken ct = default)
+    {
+        string json = JsonSerializer.Serialize(new { challengeId = answered.Id, challengeType = answered.Type, challengeMetadata = answered.MetadataJson });
+        using var res = await PostWithCsrfAsync(Realm.Api(realm, "apis") + "/challenge/v1/continue", cookie, json, null, ct, realm);
+        string body = await res.Content.ReadAsStringAsync(ct);
+        if (!res.IsSuccessStatusCode)
+            throw Refused("Check answer", res.StatusCode, body);
+        var reply = DecodeJson(body);
+        Log.Note($"Check answer ({SafeName(answered.Type)}) reply: fields "
+            + (reply is { ValueKind: JsonValueKind.Object } r ? string.Join(", ", r.EnumerateObject().Select(x => SafeName(x.Name))) : "(none)")
+            + $", type '{SafeName(Field(reply, "challengeType") ?? "")}'");
+        return new JoinChallenge(Field(reply, "challengeId") is { Length: > 0 } id ? id : answered.Id,
+            Field(reply, "challengeType") is { Length: > 0 } type ? type : answered.Type,
+            Field(reply, "challengeMetadata") is { Length: > 0 } meta ? meta : answered.MetadataJson);
+    }
+
+    /// <summary>The FunCaptcha key Roblox uses for <paramref name="actionType"/> (its captcha settings name each action), or null.</summary>
+    public static async Task<string?> GetCaptchaKeyAsync(string realm, string actionType, CancellationToken ct = default)
+    {
+        using var req = Request(HttpMethod.Get, Realm.Api(realm, "apis") + "/captcha/v1/metadata", null);
+        using var res = await Http.SendAsync(req, ct);
+        string body = await res.Content.ReadAsStringAsync(ct);
+        if (!res.IsSuccessStatusCode)
+            throw Refused("Captcha settings", res.StatusCode, body);
+        using var doc = JsonDocument.Parse(body);
+        if (!doc.RootElement.TryGetProperty("funCaptchaPublicKeys", out var keys) || keys.ValueKind != JsonValueKind.Object)
+            return null;
+        // "Generic" or "JoinGame" answers to ACTION_TYPE_GENERIC or ACTION_TYPE_JOIN_GAME: compared without the underscores.
+        static string Plain(string s) => new(s.Where(char.IsAsciiLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+        string wanted = "ACTIONTYPE" + Plain(actionType);
+        var key = keys.EnumerateObject().FirstOrDefault(k => Plain(k.Name) == wanted);
+        Log.Note($"Captcha key for '{SafeName(actionType)}': {(key.Value.ValueKind == JsonValueKind.String ? "found" : "none")} among "
+            + string.Join(", ", keys.EnumerateObject().Select(k => SafeName(k.Name))));
+        return key.Value.ValueKind == JsonValueKind.String ? key.Value.GetString() : null;
     }
 
     static readonly ConcurrentDictionary<(string Realm, int Session), string> CsrfTokens = new();
@@ -886,9 +960,17 @@ public static class RobloxApi
     /// </summary>
     public static async Task<LoginResult> FinishProofOfWorkLoginAsync(ProofOfWorkPrompt prompt, CancellationToken ct = default)
     {
-        string service = Realm.Api(prompt.Realm, "apis") + "/proof-of-work-service/v1/pow-puzzle";
+        string redemptionToken = await ProofOfWorkTokenAsync(prompt.Realm, prompt.SessionId, ct);
+        return await ContinueLoginAsync(prompt.Realm, prompt.LoginChallengeId, "proofofwork",
+            WithField(prompt.Metadata, "redemptionToken", redemptionToken), prompt.Username, prompt.Password, ct);
+    }
+
+    /// <summary>Fetches a proof-of-work puzzle, computes its answer and trades it for the redemption token the check wants.</summary>
+    public static async Task<string> ProofOfWorkTokenAsync(string realm, string sessionId, CancellationToken ct = default)
+    {
+        string service = Realm.Api(realm, "apis") + "/proof-of-work-service/v1/pow-puzzle";
         string puzzleType, artifacts;
-        using (var req = Request(HttpMethod.Get, $"{service}?sessionID={Uri.EscapeDataString(prompt.SessionId)}", null))
+        using (var req = Request(HttpMethod.Get, $"{service}?sessionID={Uri.EscapeDataString(sessionId)}", null))
         using (var res = await Http.SendAsync(req, ct))
         {
             string body = await res.Content.ReadAsStringAsync(ct);
@@ -906,7 +988,7 @@ public static class RobloxApi
         string solution = await Task.Run(() => SolvePuzzle(puzzleType, artifacts, ct), ct);
 
         string redemptionToken;
-        using (var res = await PostWithCsrfAsync(service, "", JsonSerializer.Serialize(new { sessionID = prompt.SessionId, solution }), null, ct, prompt.Realm))
+        using (var res = await PostWithCsrfAsync(service, "", JsonSerializer.Serialize(new { sessionID = sessionId, solution }), null, ct, realm))
         {
             string body = await res.Content.ReadAsStringAsync(ct);
             if (!res.IsSuccessStatusCode)
@@ -922,9 +1004,7 @@ public static class RobloxApi
                 throw new RobloxApiException(L.T("Roblox didn't accept the sign-in check. Please try again."));
             }
         }
-
-        return await ContinueLoginAsync(prompt.Realm, prompt.LoginChallengeId, "proofofwork",
-            WithField(prompt.Metadata, "redemptionToken", redemptionToken), prompt.Username, prompt.Password, ct);
+        return redemptionToken;
     }
 
     /// <summary>

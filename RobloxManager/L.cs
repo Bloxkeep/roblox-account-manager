@@ -729,6 +729,12 @@ public static class L
         ["Couldn't get into the game, trying again"] = "Không vào được game, đang thử lại",
         ["Roblox won't let it in, not trying again"] = "Roblox không cho vào, không thử lại",
         ["Roblox wants a bot check, not trying again"] = "Roblox đòi xác minh không phải bot, không thử lại",
+        ["{0} isn't held by a bot check right now."] = "{0} hiện không bị đòi xác minh bot.",
+        ["Roblox no longer asks {0} for a check. Opening its window again…"] = "Roblox không còn đòi {0} xác minh. Đang mở lại cửa sổ…",
+        ["Roblox asked {0} for a kind of check Bloxkeep can't show yet ({1}). It was noted, to be added."] =
+            "Roblox đòi {0} một kiểu xác minh Bloxkeep chưa hỗ trợ ({1}). Bloxkeep đã ghi lại để bổ sung.",
+        ["The check was solved, but Roblox still won't let {0} join."] = "Đã xác minh xong nhưng Roblox vẫn chưa cho {0} vào game.",
+        ["Check passed. Opening {0}'s window again…"] = "Đã xác minh. Đang mở lại cửa sổ của {0}…",
         ["Keeps getting disconnected"] = "Liên tục bị văng",
         ["Bloxkeep keeps rejoining every 10 seconds."] = "Bloxkeep vẫn tự vào lại mỗi 10 giây.",
         ["Couldn't rejoin"] = "Không vào lại được",

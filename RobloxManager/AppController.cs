@@ -481,6 +481,7 @@ public sealed partial class AppController : IDisposable
         "totpCheck" => Done(CheckAuthenticator(Str(a, "key"))),
         "deleteAccounts" => Done(DeleteAccounts(Ids(a))),
         "checkAccounts" => CheckAccountsAsync(Ids(a)),
+        "solveBotCheck" => SolveBotCheckAsync(Id(a)),
         "refreshPresence" => RefreshPresenceAsync(),
         "copy" => Done(Copy(Id(a), Str(a, "field"))),
         "resolveGame" => ResolveGameAsync(Str(a, "input")),
