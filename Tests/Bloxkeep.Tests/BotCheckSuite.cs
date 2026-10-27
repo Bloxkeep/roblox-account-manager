@@ -118,6 +118,18 @@ static class BotCheckSuite
             c.Check("…the join asked again carrying the check", retryHeader == "check-1", retryHeader);
             c.Check("…let in: the held window closed and opened again into its game", closed.SequenceEqual([Pid]) && restarts.Contains(account.Id), string.Join(",", closed));
 
+            // The puzzle kind's answer: the check's whole metadata (as a join's check carries it, 2026-10-27), token filled in.
+            var held = new RobloxApi.JoinChallenge("check-2", "captcha",
+                """{"captchaToken":"","unifiedCaptchaId":"u-1","dataExchangeBlob":"blob","actionType":"Generic","requestPath":"/v1/join-game","requestMethod":"POST","sharedParameters":"{}"}""");
+            using (var answer = JsonDocument.Parse((string)t.GetMethod("CaptchaAnswer", Harness.F)!.Invoke(null, [held, "solved-token"])!))
+            {
+                var r = answer.RootElement;
+                c.Check("a solved puzzle goes back with every field of the check, its token filled in",
+                    r.GetProperty("captchaToken").GetString() == "solved-token" && r.GetProperty("requestPath").GetString() == "/v1/join-game"
+                    && r.GetProperty("sharedParameters").GetString() == "{}" && r.GetProperty("dataExchangeBlob").GetString() == "blob"
+                    && r.GetProperty("unifiedCaptchaId").GetString() == "u-1" && r.GetProperty("actionType").GetString() == "Generic", r.GetRawText());
+            }
+
             // The puzzle kind's key, from Roblox's captcha settings (real names, 2026-10-27): there is none for a join.
             async Task<string?> Key(string action) => await RobloxApi.GetCaptchaKeyAsync("", action);
             c.Check("the captcha key: WebLogin's own, Generic to the generic challenge's, a join's to the generic one",

@@ -34,7 +34,7 @@ public sealed partial class AppController
             "captchav2" when challenge.Meta("challengeId") is { Length: > 0 } human =>
                 ShowCaptcha(CaptchaForm.Human(account.Realm, human)) is { } redemption ? challenge.MetaWith("redemptionToken", redemption) : null,
             "captcha" when challenge.Meta("dataExchangeBlob") is { Length: > 0 } blob && challenge.Meta("unifiedCaptchaId") is { Length: > 0 } captchaId =>
-                await ArkoseAnswerAsync(account, blob, captchaId, challenge.Meta("actionType") ?? "Generic"),
+                await ArkoseAnswerAsync(account, challenge, blob, challenge.Meta("actionType") ?? "Generic"),
             _ => throw new UserError(L.F("Roblox asked {0} for a kind of check Bloxkeep can't show yet ({1}). It was noted, to be added.",
                 Name(account), challenge.Type.Length > 0 ? challenge.Type : "?")),
         };
@@ -68,12 +68,17 @@ public sealed partial class AppController
     Action<int, bool> _closeForReopen = RobloxProcesses.Close;
 
     /// <summary>The puzzle kind of check, in Bloxkeep's captcha window; null when it was closed unsolved.</summary>
-    async Task<string?> ArkoseAnswerAsync(Account account, string blob, string captchaId, string actionType)
+    async Task<string?> ArkoseAnswerAsync(Account account, RobloxApi.JoinChallenge challenge, string blob, string actionType)
     {
         string key = await RobloxApi.GetCaptchaKeyAsync(account.Realm, actionType)
             ?? throw new UserError(L.F("Roblox asked {0} for a kind of check Bloxkeep can't show yet ({1}). It was noted, to be added.", Name(account), actionType));
-        return ShowCaptcha(CaptchaForm.Arkose(account.Realm, key, blob)) is { } token
-            ? System.Text.Json.JsonSerializer.Serialize(new { unifiedCaptchaId = captchaId, captchaToken = token, actionType })
-            : null;
+        return ShowCaptcha(CaptchaForm.Arkose(account.Realm, key, blob)) is { } token ? CaptchaAnswer(challenge, token) : null;
     }
+
+    /// <summary>
+    /// The check's own metadata with the solved puzzle's token in captchaToken. A join's check carries more than a
+    /// sign-in's (requestPath, requestMethod, sharedParameters, dataExchangeBlob); sent back with only unifiedCaptchaId,
+    /// captchaToken and actionType, Roblox answered 403 "an internal error occurred" (2026-10-27).
+    /// </summary>
+    static string CaptchaAnswer(RobloxApi.JoinChallenge challenge, string token) => challenge.MetaWith("captchaToken", token);
 }
