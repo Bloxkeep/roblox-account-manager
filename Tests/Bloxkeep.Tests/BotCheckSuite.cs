@@ -48,7 +48,7 @@ static class BotCheckSuite
 
         // Roblox: the join is held until it carries the answered check.
         string type = "proofofwork";
-        bool stillHeld = false;
+        bool stillHeld = false, continueRefuses = false;
         var seen = new List<string>();
         string? continued = null, continueCookie = null, retryHeader = null;
         static HttpResponseMessage Json(HttpStatusCode code, string json) => new(code) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
@@ -82,6 +82,8 @@ static class BotCheckSuite
             if (path.EndsWith("/challenge/v1/continue", StringComparison.Ordinal))
             {
                 continued = req.Content!.ReadAsStringAsync().Result;
+                if (continueRefuses)
+                    return Task.FromResult(Json(HttpStatusCode.Forbidden, """{"errors":[{"code":1,"message":"an internal error occurred"}]}"""));
                 continueCookie = req.Headers.TryGetValues("Cookie", out var ck) ? string.Join(";", ck) : null;
                 return Task.FromResult(Json(HttpStatusCode.OK, """{"challengeId":"check-1","challengeType":"proofofwork","challengeMetadata":"{\"sessionId\":\"pow-1\",\"redemptionToken\":\"token-1\"}"}"""));
             }
@@ -117,6 +119,18 @@ static class BotCheckSuite
                 continued?.Contains("token-1") == true && continued.Contains("check-1") && continueCookie?.Contains("cookie-held") == true, continued);
             c.Check("…the join asked again carrying the check", retryHeader == "check-1", retryHeader);
             c.Check("…let in: the held window closed and opened again into its game", closed.SequenceEqual([Pid]) && restarts.Contains(account.Id), string.Join(",", closed));
+
+            // A join's check as Roblox answered it on 2026-10-27: continue refused (403, "an internal error occurred"). The
+            // join itself is asked again carrying the answer.
+            continueRefuses = true;
+            closed.Clear();
+            restarts.Clear();
+            retryHeader = null;
+            Held(true);
+            var viaJoin = await Harness.Try(app, "solveBotCheck", new { id = account.Id });
+            c.Check("continue refused: the join asked again carrying the answer, and once let in the window reopens",
+                viaJoin is not UserError && retryHeader == "check-1" && closed.SequenceEqual([Pid]), viaJoin);
+            continueRefuses = false;
 
             // The puzzle kind's answer: the check's whole metadata (as a join's check carries it, 2026-10-27), token filled in.
             var held = new RobloxApi.JoinChallenge("check-2", "captcha",

@@ -42,7 +42,20 @@ public sealed partial class AppController
         if (answer is null || _vault != vault)
             return null;
 
-        var passed = await RobloxApi.ContinueChallengeAsync(account.Realm, account.Cookie, challenge with { MetadataJson = answer });
+        // Roblox's challenge/continue, as a sign-in's check is answered. A join's check (2026-10-27) names the request it
+        // holds (requestPath, requestMethod) and continue refused it with 403 "an internal error occurred", with the
+        // answer in either shape: then the join itself is asked again carrying the answer, as that request's retry.
+        var solved = challenge with { MetadataJson = answer };
+        RobloxApi.JoinChallenge passed;
+        try
+        {
+            passed = await RobloxApi.ContinueChallengeAsync(account.Realm, account.Cookie, solved);
+        }
+        catch (RobloxApiException ex) when (!ex.ServerError && !ex.RateLimited)
+        {
+            Log.Note("Bot check: continue refused; asking the join again carrying the answer.");
+            passed = solved;
+        }
         var again = await RobloxApi.JoinCheckAsync(account.Cookie, place, target.JobId, account.Realm, answered: passed);
         Log.Note($"Bot check answered: the join asked again got http {again.Http}, status {again.Status}{(again.Challenge is null ? "" : ", held again")}.");
         if (again.Challenge is not null || again.Http == 403)

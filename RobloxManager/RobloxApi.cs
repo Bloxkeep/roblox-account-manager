@@ -414,8 +414,11 @@ public static class RobloxApi
         {
             var meta = DecodeMetadata(Header(res, "rblx-challenge-metadata"));
             challenge = new JoinChallenge(challengeId, Header(res, "rblx-challenge-type") ?? "", meta?.GetRawText() ?? "{}");
+            // The action and the request it holds are Roblox's own names, nothing of the account's: said as they are.
+            static string Plain(string? s) => s is { Length: > 0 and <= 60 } && s.All(c => char.IsAsciiLetterOrDigit(c) || c is '/' or '-' or '_' or '.') ? s : "#";
             Log.Note($"Join held for Roblox's check: type '{SafeName(challenge.Type)}', metadata fields "
-                + (meta is { ValueKind: JsonValueKind.Object } m ? string.Join(", ", m.EnumerateObject().Select(x => SafeName(x.Name))) : "(none)"));
+                + (meta is { ValueKind: JsonValueKind.Object } m ? string.Join(", ", m.EnumerateObject().Select(x => SafeName(x.Name))) : "(none)")
+                + $"; action '{Plain(challenge.Meta("actionType"))}', request {Plain(challenge.Meta("requestMethod"))} {Plain(challenge.Meta("requestPath"))}");
         }
         int? status = null, queue = null;
         string? message = null, data = null;
