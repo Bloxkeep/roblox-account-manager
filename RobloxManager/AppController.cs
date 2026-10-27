@@ -4732,6 +4732,11 @@ public sealed partial class AppController : IDisposable
         _afkAdopted = true;
         if (_nudging)
             return;
+        // A window held on Roblox's bot check: the person is likely solving it, and a nudge brings another window to the
+        // front for a moment. The check was cancelled twice while another window was due a nudge (2026-10-27), so
+        // none goes until it is gone (solved, or the window closed).
+        if (windows.Keys.Any(pid => _logs.JoinChallengedAt(pid) is not null && _logs.StateOf(pid) is { Status: "joining" }))
+            return;
         var due = AntiAfkDue(now, on, windows, AntiAfk.Locked(), AntiAfk.IdleTime(), RobloxProcesses.ForegroundPid(), AntiAfk.FullScreenInFront);
         if (due.Count > 0)
             _ = NudgeAsync(due.Select(pid => (pid, windows[pid][0])).ToList());
