@@ -2458,6 +2458,7 @@
       case 'card': return onCardClick(id, e);
       case 'play-one': return launch([id], false);
       case 'close-one': return closeIds([id]);
+      case 'bot-check': return busy(el, () => call('solveBotCheck', { id }));
       case 'cancel-rejoin': return call('cancelRejoin', { id }).then(r => r !== undefined && toast(t('rj.cancelled'), 'ok'));
       case 'copy-pid': return copy(id, 'pid');
       case 'edit': return editAccount(id);

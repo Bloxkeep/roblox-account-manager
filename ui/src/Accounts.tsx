@@ -398,7 +398,10 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
     : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null;
   const sub = [a.username ? `@${a.username}` : '', a.displayName && a.displayName !== a.username && a.displayName !== a.label ? a.displayName : ''].filter(Boolean).join(' · ');
   // The main button, by what it does (a new one, not the old one changed: the focus then goes as it did, to the card).
-  const action = local || a.state === 'launching'
+  // A window held on Roblox's bot check: Verify, in Bloxkeep's own window (Close stays in the menu).
+  const action = held(a)
+    ? <button key="bot-check" className="pill-btn relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" />{t('card.botCheck')}</button>
+    : local || a.state === 'launching'
     ? <button key="close-one" className="pill-btn stop" data-act="close-one"><Icon name="power" />{t('card.close')}</button>
     : a.rejoin
       ? <button key="cancel-rejoin" className="pill-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" />{t('rj.cancel')}</button>
@@ -468,9 +471,12 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
 function RowAction({ children }: { children: ReactNode }) {
   const { t } = useHost();
   return <span className="cell row-act-cell">{children}
-    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play']] as const).map(([icon, k]) =>
+    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play'], ['shield', 'card.botCheck']] as const).map(([icon, k]) =>
       <Sizer key={k}><span className="row-act"><Icon name={icon} /><span>{t(k)}</span></span></Sizer>)}</span>;
 }
+
+/** A window of this PC held on Roblox's bot check (the window's log said so). */
+const held = (a: Account) => isLocal(a) && a.session?.phase === 'challenged';
 
 /** One line per account for the compact list; the same actions as a card (select, right-click menu, play). */
 function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }) {
@@ -481,7 +487,8 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
   const up = local && st.cls === 'ingame' && a.session ? duration(a.session.since) : '';
   // The card's main button with its words too (a bare icon read as a mystery), each as wide as the longest of the four
   // (RowAction's Sizers): the buttons stand in a straight column.
-  const action = local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one"><Icon name="power" /><span>{t('card.close')}</span></button>
+  const action = held(a) ? <button key="bot-check" className="row-act relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" /><span>{t('card.botCheck')}</span></button>
+    : local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one"><Icon name="power" /><span>{t('card.close')}</span></button>
     : a.rejoin ? <button key="cancel-rejoin" className="row-act stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" /><span>{t('rj.cancel')}</span></button>
     : a.cookieValid === false ? <button key="relogin" className="row-act relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" /><span>{t('card.relogin')}</span></button>
     : <button key="play-one" className="row-act play" data-act="play-one" disabled={a.state === 'launching'}><Icon name="play" /><span>{t('card.play')}</span></button>;
