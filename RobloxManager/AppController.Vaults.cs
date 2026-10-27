@@ -28,7 +28,7 @@ public sealed partial class AppController
         current = (_newVault ?? Vaults.Current)?.Id,
         name = (_newVault ?? Vaults.Current)?.Name,
         picture = _newVault is null && Vaults.Current?.Picture is { } own ? "user/" + own : null,
-        // The vault open right now (none while locked): the sidebar's Switch vault, Settings › Security.
+        // The vault open right now (none while locked): the sidebar's Switch vault, Settings › Vault & security.
         open = _vault is null ? null : Vaults.Current?.Id,
         pick = _vaultPick,
         adding = _newVault is not null,
@@ -144,9 +144,9 @@ public sealed partial class AppController
             throw new UserError(L.T("Pick a picture: a PNG, JPG, WebP, GIF or BMP file."));
         if (new FileInfo(dialog.FileName).Length > MaxThemePicture)
             throw new UserError(L.T("That picture is over 20 MB. Pick a smaller one."));
-        Directory.CreateDirectory(Vault.DataDir);
+        Directory.CreateDirectory(Vault.PicturesDir);
         string name = $"vault-picture-{entry.Id}-{DateTime.UtcNow.Ticks}{type}";
-        File.Copy(dialog.FileName, Path.Combine(Vault.DataDir, name));
+        File.Copy(dialog.FileName, Path.Combine(Vault.PicturesDir, name));
         DeleteVaultPicture(entry);
         entry.Picture = name;
         Prefs.Save();
@@ -170,7 +170,8 @@ public sealed partial class AppController
             return;
         try
         {
-            File.Delete(Path.Combine(Vault.DataDir, picture));
+            File.Delete(Path.Combine(Vault.PicturesDir, picture));
+            File.Delete(Path.Combine(Vault.DataDir, picture)); // one Vault.Tidy couldn't move yet
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

@@ -14,7 +14,7 @@ html [data-theme="dark" lang="vi"]
         b [title="Vault 2"] "Vault 2"
         button.link [type="button"] "Hủy"
       h2 "Tạo vault mới"
-      p "Một vault riêng, với tài khoản, preset và mật khẩu chủ của riêng nó. Quên mật khẩu chủ thì ."
+      p "Vault riêng, có tài khoản, Preset và mật khẩu chủ riêng. Quên mật khẩu chủ thì ."
         b "không lấy lại được"
       div.stack
         input.field [id="vault-name" placeholder="Tên vault" maxlength="40" aria-label="Tên vault" value="Vault 2"]

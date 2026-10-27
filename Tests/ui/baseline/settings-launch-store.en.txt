@@ -65,8 +65,6 @@ html [data-theme="dark" lang="en"]
               span "Lock app"
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,13 +96,13 @@ html [data-theme="dark" lang="en"]
               span "Appearance"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Security"
+              span "Vault & security"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Bloxkeep updates"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
@@ -250,10 +248,10 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Custom · 640 × 480" aria-checked="false"]
                             span.snap-screen
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
-                            span.snap-name "640 × 480"
+                            span.snap-name "Custom"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & timing"
                   div.set-card
@@ -274,7 +272,7 @@ html [data-theme="dark" lang="en"]
                     div [id="s-store"]
                       div.set-note
                         svg.i #v9c4u6
-                        span "Roblox from the Microsoft Store is new in Bloxkeep and still being tested: each account opens in a window of its own. If it doesn’t work, say so under Bloxkeep updates › Send feedback."
+                        span "Roblox from the Microsoft Store is new in Bloxkeep and still being tested: each account opens in a window of its own. If it doesn’t work, say so under Settings › Bloxkeep › Send feedback."
                     div.set-row
                       div
                         div.t "Wait between accounts"
@@ -359,8 +357,6 @@ html [data-theme="dark" lang="en"]
               span "Lock app"
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -392,13 +388,13 @@ html [data-theme="dark" lang="en"]
               span "Appearance"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Security"
+              span "Vault & security"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Bloxkeep updates"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
@@ -544,10 +540,10 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Custom · 640 × 480" aria-checked="false"]
                             span.snap-screen
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
-                            span.snap-name "640 × 480"
+                            span.snap-name "Custom"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & timing"
                   div.set-card

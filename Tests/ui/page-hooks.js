@@ -160,7 +160,7 @@
       }
       for (const c of el.children) walk(c, depth + 1);
     };
-    for (const sel of ['#app', '#layer', '#toasts']) {
+    for (const sel of ['#app', '#layer', '#toasts', '#tray']) { // #tray: the tray's page (tray-preview.html)
       const root = document.querySelector(sel);
       if (root) { out.push(sel); for (const c of root.children) walk(c, 1); }
     }

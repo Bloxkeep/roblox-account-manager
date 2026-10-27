@@ -2,16 +2,16 @@
 
 # Giữ tài khoản trong game
 
-Cách Bloxkeep giữ các tài khoản luôn ở trong game: Tự vào lại game, Chống AFK, kiểm tra đăng nhập mỗi ngày, các tùy chọn về RAM và chạy ẩn dưới khay hệ thống. Tất cả nằm ở **Cài đặt › Treo game**.
+Cách Bloxkeep giữ các tài khoản luôn ở trong game: Tự vào lại game, Chống AFK, kiểm tra đăng nhập mỗi ngày, và các tùy chọn về RAM, nằm ở **Cài đặt › Treo game**; chạy ẩn dưới khay hệ thống nằm ở **Cài đặt › Bloxkeep**.
 
-<img src="../screenshots/vi/settings-staying.png" width="760" alt="Cài đặt, trang Treo game: Tự vào lại game, Chống AFK, Kiểm tra đăng nhập mỗi ngày, Báo khi sắp hết RAM, Tiết kiệm RAM cho cửa sổ chạy nền và Chạy ẩn dưới khay hệ thống khi đóng">
+<img src="../screenshots/vi/settings-staying.png" width="760" alt="Cài đặt, trang Treo game: Tự vào lại game, Chống AFK, Kiểm tra đăng nhập mỗi ngày, Báo khi sắp hết RAM, Tiết kiệm RAM cho cửa sổ chạy nền và Nhường nhân mạnh cho cửa sổ đang chơi">
 
 ## Làm nhanh
 
 1. Mở **Cài đặt › Treo game**.
 2. Ở dòng **Tự vào lại game**, chọn **Bật cho mọi tài khoản**. Muốn bật riêng cho một tài khoản thì dùng **⋯ › Tự vào lại game** của tài khoản đó.
 3. Bật **Chống AFK**.
-4. Để nguyên **Chạy ẩn dưới khay hệ thống khi đóng** ở trạng thái bật, để bấm ✕ chỉ thu Bloxkeep xuống khay chứ không thoát.
+4. Ở **Cài đặt › Bloxkeep**, để nguyên **Chạy ẩn dưới khay hệ thống khi đóng** ở trạng thái bật, để bấm ✕ chỉ thu Bloxkeep xuống khay chứ không thoát.
 
 ## Tự vào lại game
 
@@ -98,7 +98,7 @@ Cửa sổ ở phía trước được trả lại mức ưu tiên bình thườ
 
 ## Chạy ẩn dưới khay hệ thống
 
-**Cài đặt › Treo game › Chạy ẩn dưới khay hệ thống khi đóng** (bật sẵn). Bấm ✕ thì Bloxkeep thu xuống khay hệ thống. Tự vào lại game, Multi-Roblox và preset hẹn giờ vẫn chạy.
+**Cài đặt › Bloxkeep › Chạy ẩn dưới khay hệ thống khi đóng** (bật sẵn). Bấm ✕ thì Bloxkeep thu xuống khay hệ thống. Tự vào lại game, Multi-Roblox và preset hẹn giờ vẫn chạy.
 
 **Bấm vào biểu tượng ở khay** để mở bảng nhanh, giống bảng nhanh của Windows 11:
 

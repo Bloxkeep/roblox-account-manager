@@ -1,71 +1,136 @@
 [
   {
-    "version": "1.0.10",
-    "date": "2026-10-25",
+    "version": "1.0.11",
+    "date": "2026-10-27",
     "highlights": [
       {
-        "icon": "grid",
+        "icon": "refresh",
+        "image": "whatsnew/1.0.11-rejoin.{lang}.webp",
         "en": [
-          "Window layouts as pictures",
-          "Windows in the bottom bar shows Arrange windows' layouts the way Windows shows its snap layouts: Auto, grids from 2 × 1 to 4 × 4, or a size of your own. Point at one to see where your windows go, click it to arrange them."
+          "Rejoin with your group",
+          "A dropped account rejoins the server another account is in."
         ],
         "vi": [
-          "Kiểu xếp cửa sổ bằng hình",
-          "Nút Cửa sổ ở thanh dưới hiện các kiểu xếp cửa sổ giống Snap của Windows: Tự vừa, lưới từ 2 × 1 đến 4 × 4, hoặc kích thước tự chọn. Rê chuột lên một kiểu để xem cửa sổ sẽ nằm ở đâu, bấm vào là xếp."
+          "Vào lại cùng nhóm",
+          "Tài khoản bị văng vào lại đúng server của tài khoản khác."
         ]
       },
       {
-        "icon": "clock",
-        "go": "settings:launch",
+        "icon": "layers",
+        "image": "whatsnew/1.0.11-tray.{lang}.webp",
         "en": [
-          "Up to 2 minutes between accounts",
-          "Wait between accounts now goes up to 120 seconds, for when Roblox turns away accounts that join too fast. While Bloxkeep waits, an account that dropped rejoins right away instead of waiting for the whole launch.",
-          "Set the wait"
+          "New tray menu",
+          "Your windows, Play and Multi-Roblox in one click."
         ],
         "vi": [
-          "Chờ tới 2 phút giữa các tài khoản",
-          "Chờ giữa các tài khoản giờ đặt được tới 120 giây, cho những lúc Roblox không cho vào vì các tài khoản vào quá nhanh. Trong lúc Bloxkeep chờ, tài khoản nào bị văng sẽ vào lại ngay, không phải đợi mở xong cả lượt.",
-          "Đặt thời gian chờ"
+          "Khay hệ thống mới",
+          "Cửa sổ đang chạy, Vào game và Multi-Roblox chỉ một cú bấm."
         ]
       },
       {
-        "icon": "shield",
+        "icon": "download",
+        "image": "whatsnew/1.0.11-lock-update.{lang}.webp",
         "en": [
-          "Safer with files from others",
-          "A backup or vault file made on another PC can no longer pick the program Play runs or the Discord channel your alerts go to: Bloxkeep drops them and tells you. A backup of your own keeps everything."
+          "Update before you unlock",
+          "A new version installs on the lock screen. Roblox stays open."
         ],
         "vi": [
-          "An toàn hơn với file của người khác",
-          "Bản sao lưu hay file vault làm trên máy khác không còn chọn được chương trình mà nút Vào game chạy, hay kênh Discord nhận thông báo của bạn: Bloxkeep bỏ chúng đi và báo cho bạn biết. Bản sao lưu của chính bạn thì giữ nguyên."
+          "Cập nhật ngay ở màn hình khóa",
+          "Có bản mới thì cài luôn trước khi mở khóa, Roblox vẫn chạy."
         ]
       }
     ],
     "new": {
       "en": [
-        "Drag an edge of a Roblox window to make it smaller than Roblox lets it go: the frame stops at Roblox's smallest size while you drag, and the window takes the size you let go at."
+        "Settings show where each file is."
       ],
       "vi": [
-        "Kéo mép cửa sổ Roblox giờ thu nhỏ được dưới mức Roblox cho phép: lúc kéo, khung dừng ở cỡ nhỏ nhất của Roblox, thả chuột ra là cửa sổ về đúng cỡ chỗ bạn thả."
+        "Cài đặt hiện đường dẫn từng file."
       ]
     },
     "improved": {
       "en": [
-        "A rejoin keeps the wait between accounts of the preset that opened the window, so a preset set to 2 minutes rejoins 2 minutes apart too.",
-        "While several accounts open, the wait before the next one counts down.",
-        "The online count is quicker: Bloxkeep says it's open every minute, so closing it takes you off the count within about 2 minutes. Each PC is counted once, even after Bloxkeep is reinstalled. It still sends only a code (now made from the PC, and it can't be traced back), the version and the language.",
-        "Sign in with a browser shows Roblox's own pages only: a link to another site opens in your own browser, and only when you click it. DevTools (F12) are off there too, as in Bloxkeep's other Roblox windows: they show the session, which is what cookie scams ask people to copy.",
-        "Presets brought in from a vault file come without their own Discord link, since a file from someone else could send your alerts to their channel. If the link is yours, set it again in the preset.",
-        "Bloxkeep's window no longer stalls while many Roblox windows load: the account pictures on their windows are checked one Roblox at a time, every 30 seconds, instead of every window at every check.",
-        "Open Roblox with › Choose… no longer takes a program on a network drive or share."
+        "Settings tidied up, with a Bloxkeep page.",
+        "Tidier data folder.",
+        "Preset wait picked from a list."
       ],
       "vi": [
-        "Tự vào lại giữ đúng thời gian chờ giữa các tài khoản của Preset đã mở cửa sổ đó, nên Preset đặt 2 phút thì tự vào lại cũng cách nhau 2 phút.",
-        "Khi mở nhiều tài khoản, thời gian chờ tới tài khoản tiếp theo giờ đếm ngược.",
-        "Số người đang dùng cập nhật nhanh hơn: Bloxkeep báo đang mở mỗi phút, nên tắt app thì khoảng 2 phút sau đã không còn được tính. Mỗi máy chỉ tính một lần, kể cả khi cài lại Bloxkeep. App vẫn chỉ gửi một mã (giờ tạo từ máy, không lần ngược ra được), phiên bản và ngôn ngữ.",
-        "Đăng nhập bằng trình duyệt giờ chỉ mở trang của Roblox: link sang trang khác sẽ mở trong trình duyệt của bạn, và chỉ khi bạn bấm vào. Công cụ nhà phát triển (F12) cũng bị tắt ở đó, như các cửa sổ Roblox khác của Bloxkeep: nó hiện phiên đăng nhập, đúng thứ các trò lừa cookie hay bảo người ta sao chép.",
-        "Preset lấy từ file vault không còn mang theo link Discord riêng, vì file của người khác có thể gửi thông báo của bạn vào kênh của họ. Nếu link đó là của bạn, hãy đặt lại trong preset.",
-        "Cửa sổ Bloxkeep không còn bị khựng khi nhiều cửa sổ Roblox đang tải: ảnh tài khoản trên các cửa sổ được kiểm lần lượt từng Roblox, 30 giây một lần, thay vì kiểm mọi cửa sổ ở mỗi lượt.",
-        "Mở Roblox bằng › Chọn… không còn nhận chương trình nằm trên ổ mạng hay thư mục chia sẻ qua mạng."
+        "Cài đặt gọn hơn, thêm trang Bloxkeep.",
+        "Thư mục dữ liệu gọn hơn.",
+        "Thời gian chờ của Preset chọn từ danh sách."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "What's new shows after updating from a beta."
+      ],
+      "vi": [
+        "What's new hiện cả khi cập nhật từ bản beta."
+      ]
+    }
+  },
+  {
+    "version": "1.0.10",
+    "date": "2026-10-25",
+    "highlights": [
+      {
+        "icon": "grid",
+        "image": "whatsnew/1.0.10-layouts.{lang}.webp",
+        "en": [
+          "Window layouts",
+          "Pick how Roblox windows are arranged, like Windows snap layouts."
+        ],
+        "vi": [
+          "Xếp cửa sổ",
+          "Chọn bố cục xếp cửa sổ Roblox, giống Snap trên Windows."
+        ]
+      },
+      {
+        "icon": "clock",
+        "go": "settings:launch",
+        "image": "whatsnew/1.0.10-wait.{lang}.webp",
+        "en": [
+          "Up to 2 minutes between accounts",
+          "Accounts that drop rejoin during the wait.",
+          "Set the wait"
+        ],
+        "vi": [
+          "Giãn cách tới 2 phút",
+          "Tài khoản bị văng vẫn tự vào lại trong lúc chờ.",
+          "Chỉnh thời gian chờ"
+        ]
+      },
+      {
+        "icon": "shield",
+        "image": "whatsnew/1.0.10-safer.{lang}.webp",
+        "en": [
+          "Safer backups",
+          "A backup from another PC can't run its own program or use its Discord links."
+        ],
+        "vi": [
+          "Sao lưu an toàn hơn",
+          "Tự gỡ launcher và link Discord trong bản sao lưu từ máy khác."
+        ]
+      }
+    ],
+    "new": {
+      "en": [
+        "Drag a Roblox window smaller than Roblox allows."
+      ],
+      "vi": [
+        "Thu nhỏ cửa sổ Roblox dưới mức tối thiểu."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Rejoins follow the preset's wait.",
+        "Sign-in window shows Roblox pages only.",
+        "Smoother while many windows load."
+      ],
+      "vi": [
+        "Tự vào lại theo thời gian chờ của Preset.",
+        "Cửa sổ đăng nhập chỉ mở trang Roblox.",
+        "Mượt hơn khi nhiều cửa sổ đang tải."
       ]
     }
   },

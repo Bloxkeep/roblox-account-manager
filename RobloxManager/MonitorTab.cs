@@ -181,7 +181,7 @@ sealed class MonitorTab : IDisposable
         protected override void OnOpening(System.ComponentModel.CancelEventArgs e)
         {
             var theme = Themes.Current;
-            Renderer = new TrayMenu.ThemedRenderer(theme, TrayMenu.RoundCorners(Handle, theme));
+            Renderer = new ThemedMenu.Renderer(theme, ThemedMenu.RoundCorners(Handle, theme));
             base.OnOpening(e);
         }
 

@@ -38,7 +38,8 @@ static class CustomThemeSuite
         c.Check("on a dark background they are dark", Themes.Current is { Id: "custom", Dark: true }, Themes.Current);
 
         // A picture chosen earlier (as "Choose a picture…" leaves it), then removed: the file goes too.
-        string picture = Path.Combine(Vault.DataDir, "theme-background-1.png");
+        Directory.CreateDirectory(Vault.PicturesDir);
+        string picture = Path.Combine(Vault.PicturesDir, "theme-background-1.png");
         File.WriteAllBytes(picture, [0x89, 0x50, 0x4e, 0x47]);
         Prefs.Custom = Prefs.Custom with { Picture = "theme-background-1.png" };
         await Harness.Call(app, "clearThemePicture", new { });

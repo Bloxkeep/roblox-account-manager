@@ -42,6 +42,7 @@ public sealed partial class AppController
         lastRun = p.LastRunAt,
         p.AntiAfk,
         p.AutoRejoin,
+        p.RejoinWith,
         p.Profile,
         p.RestartHours,
         p.Arrange,
@@ -91,6 +92,10 @@ public sealed partial class AppController
         string job = server == "job" ? Str(a, "jobId").Trim() : "";
         if (server == "job" && job.Length == 0)
             throw new UserError(L.T("Enter the server's Job ID."));
+        // "Rejoin into": only with a game, and not for a preset that follows a player (its rejoins follow that player).
+        string rejoinWith = Str(a, "rejoinWith").Trim();
+        if (place.Length == 0 || server == "follow" || !(rejoinWith == "any" || Guid.TryParse(rejoinWith, out var with) && ids.Contains(with)))
+            rejoinWith = "";
         int? delay = Has(a, "delaySeconds", JsonValueKind.Number) ? (int)Math.Clamp(Long(a, "delaySeconds"), 0, 120) : null;
         string profile = Str(a, "profile") == AfkProfile ? AfkProfile : "";
         // A restart opens the same game again (or follows the player again); a preset without one only opens Roblox, so
@@ -141,6 +146,7 @@ public sealed partial class AppController
         preset.DelaySeconds = delay;
         preset.AntiAfk = OptBool(a, "antiAfk");
         preset.AutoRejoin = OptBool(a, "autoRejoin");
+        preset.RejoinWith = rejoinWith;
         preset.Profile = profile;
         preset.RestartHours = restartHours;
         preset.Arrange = OptBool(a, "arrange");
@@ -225,6 +231,7 @@ public sealed partial class AppController
             DelaySeconds = source.DelaySeconds,
             AntiAfk = source.AntiAfk,
             AutoRejoin = source.AutoRejoin,
+            RejoinWith = source.RejoinWith,
             Profile = source.Profile,
             RestartHours = source.RestartHours,
             Arrange = source.Arrange,
@@ -427,6 +434,36 @@ public sealed partial class AppController
     static bool AntiAfkFor(LaunchPreset? preset, AppSettings settings) => preset?.AntiAfk ?? settings.AntiAfk;
 
     bool RejoinOn(Account account, Guid? presetId) => AutoRejoinFor(PresetFor(presetId), account);
+
+    /// <summary>
+    /// A preset's "Rejoin into" (<see cref="LaunchPreset.RejoinWith"/>): the server its chosen account, or any other
+    /// account whose window it opened, plays in now, as that window's log says. A server Roblox's join answer calls full,
+    /// ended or closed to this account, or a game that banned it, is passed over; none left (or nobody in a game): null,
+    /// and the rejoin goes to any server of its game, as without the option.
+    /// </summary>
+    async Task<GameTarget?> TeammateTargetAsync(Account account, RejoinRequest request, CancellationToken ct)
+    {
+        if (PresetFor(request.PresetId) is not { RejoinWith.Length: > 0 } preset || request.Target.IsPrivate || request.Target.ShareCode is not null)
+            return null;
+        Guid? only = Guid.TryParse(preset.RejoinWith, out var chosen) ? chosen : null;
+        var servers = _running
+            .Where(r => r.Key != account.Id && (only is Guid one ? r.Key == one : r.Value.Launch.PresetId == preset.Id))
+            .OrderBy(r => r.Value.Launch.StartedAt)
+            .Select(r => _logs.StateOf(r.Value.Pid))
+            .Where(s => s is { Status: "ingame", PlaceId: not null, JobId.Length: > 0 })
+            .Select(s => new GameTarget(s!.PlaceId!.Value, s.JobId))
+            .Distinct().ToList();
+        foreach (var target in servers)
+        {
+            if (GameBanOf(account, target.PlaceId) is not null)
+                continue;
+            var answer = await CheckJoinAsync(account, target, "Rejoining another account's server", ct);
+            ct.ThrowIfCancellationRequested();
+            if (answer is not ({ Full: true } or { Ended: true } or { Refused: true }))
+                return target;
+        }
+        return null;
+    }
 
     /// <summary>Anti-AFK for a Roblox window here: the preset's that opened it, else Settings (also windows opened outside Bloxkeep).</summary>
     bool AntiAfkOn(int pid)

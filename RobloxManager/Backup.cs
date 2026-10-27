@@ -154,7 +154,7 @@ static class Backup
 
     /// <summary>
     /// Puts a backup in place as the vault. With a vault already there, the current one is first copied beside it as
-    /// vault-before-restore-….rmv, so a restore of the wrong file loses nothing.
+    /// old-vaultsault-before-restore-….rmv, so a restore of the wrong file loses nothing.
     /// </summary>
     public static void Restore(string file, bool replaceExisting)
     {
@@ -165,7 +165,10 @@ static class Backup
             throw new UserError(L.T("Bloxkeep is already set up."));
         byte[] bytes = File.ReadAllBytes(file);
         if (exists)
-            File.Copy(Vault.VaultPath, Path.Combine(Vault.DataDir, $"vault-before-restore-{DateTime.Now:yyyyMMdd-HHmmss}.rmv"), overwrite: false);
+        {
+            Directory.CreateDirectory(Vault.OldVaultsDir);
+            File.Copy(Vault.VaultPath, Path.Combine(Vault.OldVaultsDir, $"vault-before-restore-{DateTime.Now:yyyyMMdd-HHmmss}.rmv"), overwrite: false);
+        }
         Vault.ReplaceFile(bytes);
     }
 

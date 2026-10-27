@@ -142,7 +142,7 @@ public static class Themes
         text is { Length: 7 } && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit) ? text.ToLowerInvariant() : null;
 
     /// <summary>
-    /// A picture of the person's as kept in the data folder, the only files the page may load from there: the custom
+    /// A picture of the person's as kept in the data folder's pictures, the only files the page may load from there: the custom
     /// theme's (theme-background-&lt;time&gt;.png…) and each vault's (vault-picture-&lt;id&gt;-&lt;time&gt;.png…).
     /// </summary>
     public static bool IsPictureName(string name) =>

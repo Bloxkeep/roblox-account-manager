@@ -10,7 +10,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw
@@ -36,7 +36,7 @@ html [data-theme="dark" lang="vi"]
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc. Bạn tự chịu rủi ro khi dùng."
+        p.modal-text.pre "Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc. Bạn tự chịu rủi ro."
       div.modal-foot
         button.btn "Hủy"
         button.btn.primary [FOCUSED] "Bật"
@@ -57,7 +57,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw
@@ -74,13 +74,13 @@ html [data-theme="dark" lang="vi"]
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
       div.lock-alt.lock-multi
-        span [id="lock-multi-on"] "Multi-Roblox đang bật: các cửa sổ Roblox mở từ roblox.com trên trình duyệt của bạn chạy song song được."
+        span [id="lock-multi-on"] "Multi-Roblox đang bật: các cửa sổ Roblox mở từ roblox.com trên trình duyệt sẽ chạy song song."
         button.link [type="button" FOCUSED] "Tắt"
 #layer
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Đã bật Multi-Roblox. Đăng nhập roblox.com trên trình duyệt của bạn rồi bấm Play: mỗi cửa sổ chạy song song. Menu ở biểu tượng khay dùng để tắt hoặc mở Roblox."
+    span "Đã bật Multi-Roblox. Đăng nhập roblox.com trên trình duyệt rồi bấm Play, các cửa sổ sẽ chạy song song. Bấm biểu tượng ở khay hệ thống để tắt hoặc mở Roblox."
 -- commands
   multiOnly {"on":true}
 == end
@@ -95,7 +95,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw
@@ -117,6 +117,6 @@ html [data-theme="dark" lang="vi"]
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Đã bật Multi-Roblox. Đăng nhập roblox.com trên trình duyệt của bạn rồi bấm Play: mỗi cửa sổ chạy song song. Menu ở biểu tượng khay dùng để tắt hoặc mở Roblox."
+    span "Đã bật Multi-Roblox. Đăng nhập roblox.com trên trình duyệt rồi bấm Play, các cửa sổ sẽ chạy song song. Bấm biểu tượng ở khay hệ thống để tắt hoặc mở Roblox."
 -- commands
   multiOnly {"on":false}

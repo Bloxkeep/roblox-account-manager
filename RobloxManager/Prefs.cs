@@ -43,7 +43,7 @@ public static class Prefs
     /// <summary>Settings › Discord › Show on my Discord profile: off until the person turns it on (AppController.DiscordPresence.cs).</summary>
     public static bool DiscordPresence { get; set; }
 
-    /// <summary>Settings › Bloxkeep updates › Add me to the online count: on until the person turns it off (AppController.Online.cs).</summary>
+    /// <summary>Settings › Bloxkeep › Add me to the online count: on until the person turns it off (AppController.Online.cs).</summary>
     public static bool CountOnline { get; set; } = true;
 
     /// <summary>
@@ -114,7 +114,7 @@ public static class Prefs
         /// <summary>vault.rmv for the first, vault-&lt;id&gt;.rmv for the others.</summary>
         public string File { get; set; } = "";
         public string Name { get; set; } = "";
-        /// <summary>A picture copied into the data folder (vault-picture-&lt;id&gt;-&lt;time&gt;.png…), or none: the name's first letter shows.</summary>
+        /// <summary>A picture copied into the data folder's pictures (vault-picture-&lt;id&gt;-&lt;time&gt;.png…), or none: the name's first letter shows.</summary>
         public string? Picture { get; set; }
         public DateTime? LastBackup { get; set; }
         public bool BackupPending { get; set; }

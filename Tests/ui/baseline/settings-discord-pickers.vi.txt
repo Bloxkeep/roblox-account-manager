@@ -60,13 +60,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,13 +96,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
@@ -114,7 +112,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện trên hồ sơ Discord"
-                        div.d "Hồ sơ Discord của bạn hiện “Đang chơi Bloxkeep” kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút dẫn tới Bloxkeep. Cần app Discord đang chạy trên máy này."
+                        div.d "Hồ sơ Discord hiện “Đang chơi Bloxkeep” kèm số cửa sổ Roblox đang mở, tên game (không bao giờ hiện tên tài khoản) và link tới Bloxkeep. Cần mở app Discord trên máy này."
                       div.ctl
                         label.switch
                           input [id="s-dc-presence" type="checkbox" aria-label="Hiện trên hồ sơ Discord" checked=false]
@@ -124,7 +122,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Gửi lên Discord"
-                        div.d "Gửi tổng kết thời gian chơi, tin trạng thái trực tiếp và cảnh báo vào kênh của bạn qua webhook. Mặc định tắt, chỉ gửi khi bạn bật."
+                        div.d "Gửi tổng kết thời gian chơi, tin trạng thái trực tiếp và cảnh báo vào kênh của bạn qua webhook. Mặc định tắt."
                       div.ctl
                         label.switch [title=""]
                           input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
@@ -135,7 +133,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Link webhook"
                         div.d
                           span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
-                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Link được mã hóa và lưu cùng các tài khoản."
+                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Bloxkeep mã hóa link và lưu cùng tài khoản."
                       div.ctl
                         button.btn.sm [id="s-dc-paste"] "Thay…"
                         button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Hiện"
@@ -168,16 +166,16 @@ html [data-theme="dark" lang="vi"]
                           input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
                     div.set-row
                       div
-                        div.t "Khi preset hẹn giờ chạy xong"
-                        div.d "Gửi khoảng nửa phút sau khi các tài khoản đóng, chỉ tính tài khoản của preset đó (vào kênh riêng nếu preset có)."
+                        div.t "Khi Preset hẹn giờ chạy xong"
+                        div.d "Gửi khoảng nửa phút sau khi các tài khoản đóng, chỉ tính tài khoản của Preset đó (gửi vào kênh riêng của Preset nếu có)."
                       div.ctl
                         label.switch
-                          input [id="s-dc-after" type="checkbox" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
+                          input [id="s-dc-after" type="checkbox" aria-label="Khi Preset hẹn giờ chạy xong" checked=true]
                           span
                     div.set-row
                       div
                         div.t "Khoảng thời gian"
-                        div.d "Áp dụng cho bản tổng kết hằng ngày và “Gửi ngay”. Bản hằng tuần luôn tính 7 ngày, bản gửi sau khi preset hẹn giờ chạy xong tính từ đầu hôm nay."
+                        div.d "Dùng cho tổng kết hằng ngày và “Gửi ngay”. Tổng kết hằng tuần tính 7 ngày, tổng kết sau Preset hẹn giờ tính từ đầu hôm nay."
                       div.ctl
                         select.select.sm [id="s-dc-days" aria-label="Khoảng thời gian" value="1"]
                           option [value="1"] "24 giờ qua"
@@ -218,7 +216,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Gửi cảnh báo"
-                        div.d "Tách riêng với thông báo Windows. Các cảnh báo cách nhau dưới 10 giây được gộp thành một tin."
+                        div.d "Không liên quan tới thông báo Windows. Cảnh báo cách nhau dưới 10 giây sẽ gộp thành một tin."
                       div.ctl
                         label.switch
                           input [id="s-dc-alerts" type="checkbox" aria-label="Gửi cảnh báo" checked=true]
@@ -244,7 +242,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Luôn cập nhật tin trạng thái"
-                        div.d "Chỉ một tin, được sửa liên tục: tài khoản nào đang mở, game gì, đã chơi bao lâu, PID và RAM. Không bao giờ tag ai."
+                        div.d "Chỉ một tin, tự sửa liên tục: tài khoản nào đang mở, game gì, chơi bao lâu, PID và RAM. Không bao giờ tag ai."
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
                           option [value="2"] "Mỗi 2 phút"
@@ -258,14 +256,14 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Giờ yên lặng"
-                        div.d "Tin vẫn được gửi nhưng không tag ai."
+                        div.t "Giờ yên tĩnh"
+                        div.d "Vẫn gửi tin nhưng không tag ai."
                       div.ctl
                         input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
                         span.dc-dash "–"
                         input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
                         label.switch
-                          input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên lặng" checked=true]
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên tĩnh" checked=true]
                           span
                 div.set-grp [id="sec-dc-look"]
                   div.set-card
@@ -280,7 +278,7 @@ html [data-theme="dark" lang="vi"]
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text "Chỉ tính các tài khoản này. Để tính tất cả, đừng chọn tài khoản nào hoặc chọn “Mọi tài khoản”."
+        p.modal-text "Chỉ tính các tài khoản này. Không chọn ai hoặc chọn “Mọi tài khoản” để tính tất cả."
         div.rc-list
           label.rc-item
             input [type="checkbox" checked=false FOCUSED]
@@ -404,13 +402,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -442,13 +438,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
@@ -458,7 +454,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện trên hồ sơ Discord"
-                        div.d "Hồ sơ Discord của bạn hiện “Đang chơi Bloxkeep” kèm số cửa sổ Roblox đang mở và tên game, không bao giờ có tên tài khoản, cùng nút dẫn tới Bloxkeep. Cần app Discord đang chạy trên máy này."
+                        div.d "Hồ sơ Discord hiện “Đang chơi Bloxkeep” kèm số cửa sổ Roblox đang mở, tên game (không bao giờ hiện tên tài khoản) và link tới Bloxkeep. Cần mở app Discord trên máy này."
                       div.ctl
                         label.switch
                           input [id="s-dc-presence" type="checkbox" aria-label="Hiện trên hồ sơ Discord" checked=false]
@@ -468,7 +464,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Gửi lên Discord"
-                        div.d "Gửi tổng kết thời gian chơi, tin trạng thái trực tiếp và cảnh báo vào kênh của bạn qua webhook. Mặc định tắt, chỉ gửi khi bạn bật."
+                        div.d "Gửi tổng kết thời gian chơi, tin trạng thái trực tiếp và cảnh báo vào kênh của bạn qua webhook. Mặc định tắt."
                       div.ctl
                         label.switch [title=""]
                           input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
@@ -479,7 +475,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Link webhook"
                         div.d
                           span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
-                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Link được mã hóa và lưu cùng các tài khoản."
+                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Bloxkeep mã hóa link và lưu cùng tài khoản."
                       div.ctl
                         button.btn.sm [id="s-dc-paste"] "Thay…"
                         button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Hiện"
@@ -512,16 +508,16 @@ html [data-theme="dark" lang="vi"]
                           input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
                     div.set-row
                       div
-                        div.t "Khi preset hẹn giờ chạy xong"
-                        div.d "Gửi khoảng nửa phút sau khi các tài khoản đóng, chỉ tính tài khoản của preset đó (vào kênh riêng nếu preset có)."
+                        div.t "Khi Preset hẹn giờ chạy xong"
+                        div.d "Gửi khoảng nửa phút sau khi các tài khoản đóng, chỉ tính tài khoản của Preset đó (gửi vào kênh riêng của Preset nếu có)."
                       div.ctl
                         label.switch
-                          input [id="s-dc-after" type="checkbox" aria-label="Khi preset hẹn giờ chạy xong" checked=true]
+                          input [id="s-dc-after" type="checkbox" aria-label="Khi Preset hẹn giờ chạy xong" checked=true]
                           span
                     div.set-row
                       div
                         div.t "Khoảng thời gian"
-                        div.d "Áp dụng cho bản tổng kết hằng ngày và “Gửi ngay”. Bản hằng tuần luôn tính 7 ngày, bản gửi sau khi preset hẹn giờ chạy xong tính từ đầu hôm nay."
+                        div.d "Dùng cho tổng kết hằng ngày và “Gửi ngay”. Tổng kết hằng tuần tính 7 ngày, tổng kết sau Preset hẹn giờ tính từ đầu hôm nay."
                       div.ctl
                         select.select.sm [id="s-dc-days" aria-label="Khoảng thời gian" value="1"]
                           option [value="1"] "24 giờ qua"
@@ -562,7 +558,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Gửi cảnh báo"
-                        div.d "Tách riêng với thông báo Windows. Các cảnh báo cách nhau dưới 10 giây được gộp thành một tin."
+                        div.d "Không liên quan tới thông báo Windows. Cảnh báo cách nhau dưới 10 giây sẽ gộp thành một tin."
                       div.ctl
                         label.switch
                           input [id="s-dc-alerts" type="checkbox" aria-label="Gửi cảnh báo" checked=true]
@@ -588,7 +584,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Luôn cập nhật tin trạng thái"
-                        div.d "Chỉ một tin, được sửa liên tục: tài khoản nào đang mở, game gì, đã chơi bao lâu, PID và RAM. Không bao giờ tag ai."
+                        div.d "Chỉ một tin, tự sửa liên tục: tài khoản nào đang mở, game gì, chơi bao lâu, PID và RAM. Không bao giờ tag ai."
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="Bao lâu một lần" value="5"]
                           option [value="2"] "Mỗi 2 phút"
@@ -602,14 +598,14 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Giờ yên lặng"
-                        div.d "Tin vẫn được gửi nhưng không tag ai."
+                        div.t "Giờ yên tĩnh"
+                        div.d "Vẫn gửi tin nhưng không tag ai."
                       div.ctl
                         input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
                         span.dc-dash "–"
                         input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
                         label.switch
-                          input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên lặng" checked=true]
+                          input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên tĩnh" checked=true]
                           span
                 div.set-grp [id="sec-dc-look"]
                   div.set-card
@@ -624,7 +620,7 @@ html [data-theme="dark" lang="vi"]
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text "Chọn những mục có trong bản tổng kết (ít nhất một mục)."
+        p.modal-text "Chọn nội dung có trong tổng kết (ít nhất một mục)."
         div.rc-list
           label.rc-item
             input [type="checkbox" checked=true FOCUSED]

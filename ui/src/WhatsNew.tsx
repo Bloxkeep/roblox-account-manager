@@ -1,7 +1,10 @@
 // What's new: the release notes, shown once after an update and any time from Settings › Bloxkeep updates. The body of
 // the dialog app.js opens (its title, close button and Got it stay there). The newest release first: its headline
-// features as cards with a button to try each, its other notes, then New, Improved and Fixed under their own headings;
-// the older releases skipped over are folded below; last, a line asking for a GitHub star.
+// features, one per row, each with a picture or a short moving demo of it in the app and a button to try it; its other notes; then
+// New, Improved and Fixed as plain lists under small labels. No icon beside each note: the pictures carry the page
+// (the owner found the icon tiles old-fashioned, 2026-10-26). The older releases skipped over are folded below; last,
+// a line asking for a GitHub star.
+import { useState } from 'react';
 import { Icon, useHost } from './host';
 
 /** whatsnew.json, as the app hands it over (RobloxManager/WhatsNew.cs). */
@@ -15,19 +18,14 @@ export interface Release {
   improved?: Notes | null;
   fixed?: Notes | null;
 }
-/** A headline feature: [title, one or two sentences, button] in each language, and where the button leads. */
-export interface Highlight { icon?: string; go?: string | null; en: string[]; vi: string[] }
+/**
+ * A headline feature: [title, one or two sentences, button] in each language, where the button leads, and its picture
+ * (a page file, "{lang}" standing for en or vi).
+ */
+export interface Highlight { icon?: string; go?: string | null; image?: string | null; en: string[]; vi: string[] }
 export interface Notes { en: string[]; vi: string[] }
 
-/** A note's icon, from the words in it (either language); the first match wins. */
-const NOTE_ICONS: [RegExp, string][] = [
-  [/microsoft store/i, 'gamepad'], [/website|roblox\.com|trang web/i, 'globe'], [/discord/i, 'message'],
-  [/guide|hướng dẫn/i, 'book'], [/feedback|góp ý/i, 'message'], [/lock app|khóa app/i, 'lock'],
-  [/before you open|question|câu hỏi|lưu ý/i, 'alert'], [/multi-roblox/i, 'layers'], [/theme|giao diện/i, 'palette'],
-  [/faster|nhanh hơn/i, 'gauge'], [/vietnamese|tiếng việt/i, 'languages'], [/github|download|tải về/i, 'shield'],
-  [/preset|schedule|hẹn giờ/i, 'calendar'], [/password|mật khẩu/i, 'key'],
-];
-const KINDS = [['new', 'plus'], ['improved', 'gauge'], ['fixed', 'wrench']] as const;
+const KINDS = ['new', 'improved', 'fixed'] as const;
 
 /** "Title: what it does" as [title, text]; a note without a short title before its first ": " is all text. */
 function splitNote(note: string, locale: string): [string, string] {
@@ -35,6 +33,19 @@ function splitNote(note: string, locale: string): [string, string] {
   if (!(i > 0 && i <= 60 && !note.slice(0, i).includes('.'))) return ['', note];
   const text = note.slice(i + 2); // under its own title it starts a sentence: "choose it…" reads "Choose it…"
   return [note.slice(0, i), text.charAt(0).toLocaleUpperCase(locale) + text.slice(1)];
+}
+
+/** The pictures are made at 1.5 times the app's size (sharp on a scaled screen): shown at the size they are in the app. */
+const SHOT_SCALE = 1.5;
+
+/** One headline feature: a wide picture (a row of settings, a message) above the words, a tall one (a menu) beside them. */
+function Feature({ image, eager, children }: { image?: string | null; eager: boolean; children: React.ReactNode }) {
+  const [size, setSize] = useState<{ w: number; wide: boolean } | null>(null);
+  return <article className={`wn-feat${image ? (size?.wide ? ' wide' : '') : ' plain'}`}>
+    {image ? <div className="wn-shot"><img src={image} alt="" loading={eager ? 'eager' : 'lazy'} style={size ? { width: size.w } : undefined}
+      onLoad={e => { const i = e.currentTarget; setSize({ w: Math.round(i.naturalWidth / SHOT_SCALE), wide: i.naturalWidth >= i.naturalHeight * 2 }); }} /></div> : null}
+    <div className="wn-feat-text">{children}</div>
+  </article>;
 }
 
 export function WhatsNew({ releases, close }: { releases: Release[]; close: () => void }) {
@@ -46,45 +57,46 @@ export function WhatsNew({ releases, close }: { releases: Release[]; close: () =
     const date = new Date(`${d}T00:00:00`);
     return isNaN(+date) ? '' : date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
   };
-  const groups = (r: Release) => KINDS.map(([kind, icon]) => {
-    const list = pick(r[kind]?.en, r[kind]?.vi);
-    return list.length ? [
-      <h4 key={`${kind}-h`} className={`wn-sub wn-kind ${kind}`}><Icon name={icon} />{t(`wn.kind.${kind}`)}</h4>,
-      <ul key={`${kind}-l`} className={`wn-also ${kind}`}>{list.map((n, i) => <li key={i}><Icon name={icon} /><span>{n}</span></li>)}</ul>,
-    ] : null;
+  /** A list of notes; one with a short title before ": " shows it in bold. */
+  const list = (items: string[], className: string) => <ul className={className}>{items.map((n, i) => {
+    const [title, text] = splitNote(n, locale);
+    return <li key={i}>{title ? <><b>{title}</b> </> : null}{text}</li>;
+  })}</ul>;
+  const groups = (r: Release) => KINDS.map(kind => {
+    const items = pick(r[kind]?.en, r[kind]?.vi);
+    return items.length ? <section key={kind} className={`wn-group ${kind}`}>
+      <h4 className="wn-kind">{t(`wn.kind.${kind}`)}</h4>
+      {list(items, 'wn-notes')}
+    </section> : null;
   });
   const [latest, ...older] = releases;
   const highlights = latest.highlights || [];
   const go = (target: string) => { close(); host.go(target); };
 
   return <>
-    {highlights.length ? <>
-      <ul className="wn-cards">{highlights.map((h, i) => {
-        const [title, text, button] = pick(h.en, h.vi);
-        return <li key={i} className="wn-card">
-          <span className="wn-ic"><Icon name={h.icon || 'check'} /></span><b>{title}</b><p>{text}</p>
-          {h.go && button ? <button type="button" className="wn-go" onClick={() => go(h.go!)}>{button}<Icon name="chevronRight" /></button> : null}
-        </li>;
-      })}</ul>
-      {notes(latest).length ? <>
-        <h4 className="wn-sub">{t('wn.also')}</h4>
-        <ul className="wn-also">{notes(latest).map((n, i) => <li key={i}><Icon name="check" /><span>{n}</span></li>)}</ul>
-      </> : null}
-    </> : notes(latest).length ? <ul className="wn-list">{notes(latest).map((n, i) => {
-      const [title, text] = splitNote(n, locale);
-      const icon = NOTE_ICONS.find(([re]) => re.test(title || text))?.[1] || 'check';
-      return <li key={i} className="wn-item"><span className="wn-ic"><Icon name={icon} /></span><div>{title ? <b>{title}</b> : null}<p>{text}</p></div></li>;
-    })}</ul> : null}
+    {highlights.length ? <div className="wn-feats">{highlights.map((h, i) => {
+      const [title, text, button] = pick(h.en, h.vi);
+      const image = h.image?.replace('{lang}', lang === 'vi' ? 'vi' : 'en');
+      return <Feature key={i} image={image} eager={i === 0}>
+        <h3>{title}</h3>
+        <p>{text}</p>
+        {h.go && button ? <button type="button" className="wn-go" onClick={() => go(h.go!)}>{button}<Icon name="chevronRight" /></button> : null}
+      </Feature>;
+    })}</div> : null}
+    {notes(latest).length ? <section className="wn-group">
+      {highlights.length ? <h4 className="wn-kind">{t('wn.also')}</h4> : null}
+      {list(notes(latest), 'wn-notes')}
+    </section> : null}
     {groups(latest)}
     {older.length ? <details className="wn-older">
       <summary><Icon name="chevronRight" />{tn('wn.older', older.length)}</summary>
       {older.map(r => <section key={r.version} className="wn">
         <div className="wn-head"><b>{r.version}</b><span>{day(r.date)}</span></div>
-        {notes(r).length ? <ul>{notes(r).map((n, i) => <li key={i}>{n}</li>)}</ul> : null}
+        {notes(r).length ? list(notes(r), 'wn-notes') : null}
         {groups(r)}
       </section>)}
     </details> : null}
-    <p className="wn-star"><Icon name="star" /><span>{t('wn.star')}</span>
+    <p className="wn-star"><span>{t('wn.star')}</span>
       <button type="button" className="wn-go" onClick={() => host.go('github')}>{t('star.open')}<Icon name="chevronRight" /></button></p>
   </>;
 }

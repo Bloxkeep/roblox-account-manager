@@ -4,7 +4,7 @@
 
 The master password and what can't be recovered, automatic backups, restoring, moving to a new PC, importing from another Bloxkeep file, where your data lives, what leaves the PC and Hide account names.
 
-<img src="../screenshots/settings-backup.png" width="760" alt="Settings › Backup & data: Back up to a folder with the chosen OneDrive folder and Back up now, Restore, Import accounts from a vault file, and the data location">
+<img src="../screenshots/settings-backup.png" width="760" alt="Settings › Backup & data: Back up to a folder with the chosen OneDrive folder and Back up now, Restore, Import accounts from a vault file, and where each file is">
 
 ## Quick steps
 
@@ -19,8 +19,8 @@ The first time Bloxkeep opens, it asks you to **Set a master password**. It encr
 
 - At least 6 characters, and not only spaces. The **Weak / OK / Strong** bar is only a guide.
 - Each start shows **Welcome back**: type the master password and press **Unlock**. A warning shows while Caps Lock is on.
-- To change it: **Settings › Security**. Backups made before the change still open only with the old password.
-- **Lock automatically** (**Settings › Security**): when nobody has used the PC's keyboard or mouse for the time you pick (5 minutes to 2 hours), Bloxkeep shows this screen again. Roblox, auto-rejoin, scheduled presets and Discord keep running behind it. The **Lock** button still closes Bloxkeep completely: those pause until you unlock.
+- To change it: **Settings › Vault & security**. Backups made before the change still open only with the old password.
+- **Lock automatically** (**Settings › Vault & security**): when nobody has used the PC's keyboard or mouse for the time you pick (5 minutes to 2 hours), Bloxkeep shows this screen again. Roblox, auto-rejoin, scheduled presets and Discord keep running behind it. The **Lock** button still closes Bloxkeep completely: those pause until you unlock.
 
 > [!WARNING]
 > The master password can't be recovered. Bloxkeep never stores it, so if you forget it, your saved accounts are gone. The only way back is a backup whose password you remember.
@@ -90,7 +90,7 @@ Bloxkeep has no accounts or analytics of its own. Your accounts, settings and hi
 | Your backup folder | The encrypted vault. |
 | Your Discord webhook | Only when you turn it on. Never cookies or passwords. |
 | Bloxkeep's developer | Feedback you choose to send. |
-| Bloxkeep's Discord bot | While Bloxkeep is open, an anonymous "open now" note every minute (a code made from the PC that can't be traced back, the version and the language), so the developer can see how many people use Bloxkeep right now. Turn it off in **Settings › Bloxkeep updates › Privacy › Add me to the online count**. |
+| Bloxkeep's Discord bot | While Bloxkeep is open, an anonymous "open now" note every minute (a code made from the PC that can't be traced back, the version and the language), so the developer can see how many people use Bloxkeep right now. Turn it off in **Settings › Bloxkeep › Privacy › Add me to the online count**. |
 
 The full list is in the [privacy policy](../../PRIVACY.md).
 

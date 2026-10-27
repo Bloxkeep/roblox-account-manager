@@ -517,6 +517,7 @@ public sealed partial class AppController : IDisposable
         "openWebsite" => Done(OpenWebsite(Id(a))),
         "openWebsiteBlank" => Done(OpenBlankWebsite()),
         "openDataFolder" => Done(OpenDataFolder()),
+        "showPath" => Done(ShowPath(Str(a, "which"))),
         "monitorArea" => Done(MonitorAreaCommand(a)),
         "setNotifications" => Done(SetNotifications(a)),
         "setDailySignInCheck" => Done(SetDailySignInCheck(Bool(a, "enabled"))),
@@ -695,6 +696,8 @@ public sealed partial class AppController : IDisposable
         // The lock screen after a while without use: Bloxkeep is open behind it, Roblox and the background carry on.
         screenLock = _screenLocked ? new { minutes = _vault?.Data.Settings.AutoLockMinutes ?? 0 } : null,
         dataPath = Vault.DataDir,
+        // Settings › Backup & data › Data: the open vault's file, the error log, the program's folder.
+        paths = new { vault = _vault?.FilePath, log = LogPath, app = AppFolder },
         robloxInstalled = RegistryInfo().Protocol,
         launching = _launchCts is not null,
         checking = _checking,
@@ -3977,7 +3980,7 @@ public sealed partial class AppController : IDisposable
 
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
         Step(() => TickDiscordPresence(now)); // Settings › Discord › Show on my Discord profile, locked or not
-        Step(() => TickOnline(now)); // Settings › Bloxkeep updates › Add me to the online count, locked or not
+        Step(() => TickOnline(now)); // Settings › Bloxkeep › Add me to the online count, locked or not
         // Also while locked: windows go on running, and one that ends soon after the commit limit ran out ran out of memory.
         MemoryStatus memory = default;
         Step(() =>
@@ -4934,6 +4937,12 @@ public sealed partial class AppController : IDisposable
                     return;
                 target = found;
             }
+            // Its preset's "Rejoin server" (a drop or its timed restart): the server another of its accounts plays in, when
+            // one will take it.
+            else if (await TeammateTargetAsync(account, request, cts.Token) is { } teammate)
+            {
+                target = teammate;
+            }
             // Banned while it played (the daily check would say so hours later): a new window would only show the ban,
             // again every few minutes. Its public profile is asked first; no clear answer lets the rejoin go on.
             try
@@ -5661,6 +5670,30 @@ public sealed partial class AppController : IDisposable
         }
         // Also when cancelled: the page put its list back on the previous choice and waits for this.
         PushState();
+        return null;
+    }
+
+    static string LogPath => Path.Combine(Vault.DataDir, "error.log");
+    /// <summary>The folder Bloxkeep.exe runs from (an installed copy's current version, or a portable copy's own folder).</summary>
+    static string AppFolder => Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
+
+    /// <summary>
+    /// Settings' Show buttons: the open vault's file or the error log selected in Explorer (their folder when the file isn't
+    /// there yet), or the program's folder. Only these: the page never names a path to open.
+    /// </summary>
+    object? ShowPath(string which)
+    {
+        string? file = which switch { "vault" => _vault?.FilePath, "log" => LogPath, _ => null };
+        var start = new ProcessStartInfo("explorer.exe");
+        if (file is not null && File.Exists(file))
+            start.Arguments = $"/select,\"{file}\"";
+        else if (which is "vault" or "log")
+            start.ArgumentList.Add(Vault.DataDir);
+        else if (which == "app")
+            start.ArgumentList.Add(AppFolder);
+        else
+            return null;
+        Process.Start(start)?.Dispose();
         return null;
     }
 

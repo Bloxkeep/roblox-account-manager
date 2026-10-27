@@ -26,12 +26,116 @@ public sealed class Vault : IDisposable
     /// </summary>
     public static string DataDir { get; } = ResolveDataDir();
 
+    /// <summary>Old copies of vaults: one taken off the list (vault-removed-…), the one a restore replaced (vault-before-restore-…).</summary>
+    public static string OldVaultsDir => Path.Combine(DataDir, "old-vaults");
+    /// <summary>The custom theme's picture and the vaults' pictures (<see cref="Themes.IsPictureName"/>).</summary>
+    public static string PicturesDir => Path.Combine(DataDir, "pictures");
+    /// <summary>What Bloxkeep rebuilds when it's gone: the browsers' profiles, the sign-in windows' client paths.</summary>
+    public static string CacheDir => Path.Combine(DataDir, "cache");
+
+    /// <summary>A browser profile's folder in <see cref="CacheDir"/>, with cache made first (best effort: WebView2 reports its own error).</summary>
+    public static string CacheFolder(string name)
+    {
+        try
+        {
+            Directory.CreateDirectory(CacheDir);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+        return Path.Combine(CacheDir, name);
+    }
+    static readonly string[] CacheFolders = ["webview", "webview-safe", "captcha", "roblox-client-paths"];
+
+    /// <summary>
+    /// Builds before 1.0.11 kept everything at the top of the data folder: their old vault copies, pictures and caches
+    /// move into old-vaults, pictures and cache. Run at start, before anything opens them; whatever won't move
+    /// (held by another program) stays where it is and is tried again next start. The vaults, their .bak and .tmp
+    /// copies, settings and the log stay at the top. Never stops the start: anything unexpected is only logged.
+    /// </summary>
+    public static void Tidy()
+    {
+        try
+        {
+            if (Directory.Exists(DataDir))
+                TidyFolder();
+        }
+        catch (Exception ex)
+        {
+            Log.Write(ex);
+        }
+    }
+
+    static void TidyFolder()
+    {
+        foreach (string file in Directory.EnumerateFiles(DataDir).ToList())
+        {
+            string name = Path.GetFileName(file);
+            string? to = IsOldVault(name) ? OldVaultsDir : Themes.IsPictureName(name) ? PicturesDir : null;
+            if (to is null)
+                continue;
+            try
+            {
+                Directory.CreateDirectory(to);
+                if (!File.Exists(Path.Combine(to, name)))
+                    File.Move(file, Path.Combine(to, name));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Write(ex);
+            }
+        }
+        foreach (string name in CacheFolders)
+        {
+            string from = Path.Combine(DataDir, name), to = Path.Combine(CacheDir, name);
+            // Right after an update's restart the last run's browser may hold its profile a moment longer; moved
+            // later, the interface would start on an empty one (the list's layout and sort forgotten).
+            for (int attempt = 1; attempt <= 6 && Directory.Exists(from); attempt++)
+            {
+                try
+                {
+                    Directory.CreateDirectory(CacheDir);
+                    if (!Directory.Exists(to))
+                    {
+                        Directory.Move(from, to);
+                    }
+                    else if (name == "roblox-client-paths")
+                    {
+                        // Junctions to Roblox's own folder: each removed as a link, never walked into.
+                        RobloxHomeSession.CleanupAliases(from);
+                        Directory.Delete(from);
+                    }
+                    else
+                    {
+                        // A cache: with a new one already there the old one is only in the way.
+                        Directory.Delete(from, recursive: true);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Waited for only to move one: an old copy beside a new one, or junctions in use (until Roblox
+                    // closes), wait for the next start instead of slowing every start.
+                    if (attempt == 6 || Directory.Exists(to))
+                    {
+                        Log.Write(ex);
+                        break;
+                    }
+                    Thread.Sleep(500);
+                }
+            }
+        }
+    }
+
+    static bool IsOldVault(string name) =>
+        (name.StartsWith("vault-before-restore-", StringComparison.OrdinalIgnoreCase) || name.StartsWith("vault-removed-", StringComparison.OrdinalIgnoreCase))
+        && name.EndsWith(".rmv", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Removes the interface's browser caches (rebuilt when needed). Accounts and settings stay.</summary>
     public static void DeleteCaches()
     {
-        foreach (string name in new[] { "webview", "webview-safe", "captcha" })
+        // The top of the data folder too: where builds before 1.0.11 kept them.
+        foreach (string dir in new[] { "webview", "webview-safe", "captcha" }.SelectMany(n => new[] { Path.Combine(CacheDir, n), Path.Combine(DataDir, n) }))
         {
-            string dir = Path.Combine(DataDir, name);
             // The browser processes may need a moment to let go of their files.
             for (int attempt = 1; attempt <= 4 && Directory.Exists(dir); attempt++)
             {
@@ -62,10 +166,10 @@ public sealed class Vault : IDisposable
         bool Own(string name) => own.Contains(name)
             // Every vault (vault.rmv, vault-<id>.rmv) with its spare, unfinished and damaged copies.
             || System.Text.RegularExpressions.Regex.IsMatch(name, @"^vault(-[0-9a-f]{8})?\.rmv(\.bak|\.tmp|\.damaged-.*|\.spare-.*)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-            || ((name.StartsWith("vault-before-restore-", StringComparison.OrdinalIgnoreCase) || name.StartsWith("vault-removed-", StringComparison.OrdinalIgnoreCase))
-                && name.EndsWith(".rmv", StringComparison.OrdinalIgnoreCase))
+            || IsOldVault(name)
             || Themes.IsPictureName(name); // the custom theme's picture, the vaults' pictures
-        foreach (string file in Directory.EnumerateFiles(DataDir).Where(f => Own(Path.GetFileName(f))).ToList())
+        var folders = new[] { DataDir, OldVaultsDir, PicturesDir }.Where(Directory.Exists);
+        foreach (string file in folders.SelectMany(Directory.EnumerateFiles).Where(f => Own(Path.GetFileName(f))).ToList())
         {
             try
             {
@@ -78,6 +182,14 @@ public sealed class Vault : IDisposable
         }
         try
         {
+            // Never a recursive delete here: cache\roblox-client-paths may hold junctions to Roblox's own folder.
+            string aliases = Path.Combine(CacheDir, "roblox-client-paths");
+            RobloxHomeSession.CleanupAliases(aliases);
+            foreach (string dir in new[] { aliases, OldVaultsDir, PicturesDir, CacheDir })
+            {
+                if (Directory.Exists(dir) && !Directory.EnumerateFileSystemEntries(dir).Any())
+                    Directory.Delete(dir);
+            }
             if (!Directory.EnumerateFileSystemEntries(DataDir).Any())
                 Directory.Delete(DataDir);
         }
@@ -392,19 +504,20 @@ public sealed class Vault : IDisposable
 
     /// <summary>
     /// A vault taken off this PC's list (the lock screen's picker): its file and spare copies are moved aside as
-    /// vault-removed-&lt;time&gt;.rmv, never deleted (it is restored like a backup), so nothing brings it back.
+    /// old-vaultsault-removed-&lt;time&gt;.rmv, never deleted (it is restored like a backup), so nothing brings it back.
     /// </summary>
     /// <returns>The file the vault now is.</returns>
     public static string SetAside(string file)
     {
         lock (FileGate)
         {
-            string path = Path.Combine(DataDir, file), stamp = Stamp(), kept = Path.Combine(DataDir, $"vault-removed-{stamp}.rmv");
+            Directory.CreateDirectory(OldVaultsDir);
+            string path = Path.Combine(DataDir, file), stamp = Stamp(), kept = Path.Combine(OldVaultsDir, $"vault-removed-{stamp}.rmv");
             File.Move(path, kept);
             foreach (var (from, what) in new[] { (path + ".bak", "spare"), (path + ".tmp", "unsaved") })
             {
                 if (File.Exists(from))
-                    File.Move(from, Path.Combine(DataDir, $"vault-removed-{stamp}-{what}.rmv"));
+                    File.Move(from, Path.Combine(OldVaultsDir, $"vault-removed-{stamp}-{what}.rmv"));
             }
             return kept;
         }

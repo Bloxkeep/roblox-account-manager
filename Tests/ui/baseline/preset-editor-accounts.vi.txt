@@ -60,13 +60,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-presets"]
@@ -222,14 +220,25 @@ html [data-theme="dark" lang="vi"]
                 option [value="random"] "Ngẫu nhiên"
                 option [value="job"] "Server cố định (Job ID)"
                 option [value="follow"] "Server của một người chơi"
-            label "Chờ giữa các tài khoản (giây)"
-              input.field [id="ps-delay" type="number" placeholder="Mặc định: 8" min="0" max="120" value="12"]
+            label "Chờ giữa các tài khoản"
+              select.select [id="ps-delay" value="12"]
+                option [value=""] "Theo Cài đặt (8 giây)"
+                option [value="0"] "0 giây"
+                option [value="5"] "5 giây"
+                option [value="10"] "10 giây"
+                option [value="12"] "12 giây"
+                option [value="15"] "15 giây"
+                option [value="30"] "30 giây"
+                option [value="45"] "45 giây"
+                option [value="60"] "60 giây"
+                option [value="90"] "90 giây"
+                option [value="120"] "120 giây"
           div.preset-accs "Tài khoản"
             span.muted [id="ps-count"] "(3)"
-            small "Các tài khoản đã đánh dấu sẽ mở theo thứ tự này. Kéo tay nắm hoặc bấm mũi tên để đổi thứ tự."
+            small "Tài khoản đã đánh dấu sẽ mở theo thứ tự này. Kéo thả hoặc bấm mũi tên để đổi thứ tự."
           p.ps-gone
             svg.i #v9c4u6
-            span "1 tài khoản trong preset này đã bị xóa, khi bạn lưu Bloxkeep sẽ bỏ chúng ra."
+            span "1 tài khoản trong preset này đã bị xóa và sẽ bị bỏ ra khi bạn lưu."
         div.ord-list [role="list"]
           div.ord-item [role="listitem"]
             span.ord-grip [title="Kéo để đổi chỗ"]
@@ -339,11 +348,18 @@ html [data-theme="dark" lang="vi"]
                   option [value=""] "Theo Cài đặt (đang tắt)"
                   option [value="on"] "Bật"
                   option [value="off"] "Tắt"
-              label "Tự vào lại game"
+              label "Tự vào lại"
                 select.select [id="ps-rejoin" value=""]
                   option [value=""] "Theo từng tài khoản"
                   option [value="on"] "Bật"
                   option [value="off"] "Tắt"
+              label "Server khi vào lại"
+                select.select [id="ps-rejoin-with" value=""]
+                  option [value=""] "Bất kỳ"
+                  option [value="any"] "Cùng tài khoản khác"
+                  option [value="00000000-0000-4000-8000-000000000003"] "Cùng Farm 2"
+                  option [value="00000000-0000-4000-8000-000000000004"] "Cùng Night Owl"
+                  option [value="00000000-0000-4000-8000-000000000006"] "Cùng Trade"
               label "Hiệu năng"
                 select.select [id="ps-profile" value="afk"]
                   option [value=""] "Bình thường"
@@ -371,7 +387,7 @@ html [data-theme="dark" lang="vi"]
             div.ps-dc-own [id="ps-dc-own"]
               input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Link webhook của preset này" value=""]
               button.btn [id="ps-dc-test" type="button"] "Gửi thử"
-            p.ps-opts-note "Đã có link (ẩn ở đây). Dán link khác để thay. Gồm tin hẹn giờ, bản tổng kết sau khi preset hẹn giờ dừng, và cảnh báo của các cửa sổ do preset mở. Các tin khác vẫn vào kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord, nên chưa có tin nào được gửi cho tới khi bạn bật."
+            p.ps-opts-note "Đã lưu link (đang ẩn). Dán link khác để thay. Gồm tin hẹn giờ, bản tổng kết khi preset hẹn giờ dừng và cảnh báo về các cửa sổ preset đã mở. Các tin khác vẫn gửi vào kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord. Bật lên thì tin mới được gửi đi."
           div.ps-sched
             div.ps-sched-head
               label.switch
@@ -481,13 +497,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-presets"]
@@ -622,4 +636,4 @@ html [data-theme="dark" lang="vi"]
     span "Đã lưu preset."
 -- commands
   pageBusy {"busy":false}
-  savePreset {"antiAfk":true,"arrange":true,"autoRejoin":null,"delaySeconds":12,"followPlayer":"","id":"p1","ids":["00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004","00000000-0000-4000-8000-000000000006"],"jobId":"","name":"Farm Blox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","restartHours":4,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"ping"}
+  savePreset {"antiAfk":true,"arrange":true,"autoRejoin":null,"delaySeconds":12,"followPlayer":"","id":"p1","ids":["00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004","00000000-0000-4000-8000-000000000006"],"jobId":"","name":"Farm Blox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","rejoinWith":"","restartHours":4,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"ping"}

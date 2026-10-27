@@ -70,8 +70,6 @@ html [data-theme="dark" lang="en"]
               span "Lock app"
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -103,18 +101,19 @@ html [data-theme="dark" lang="en"]
               span "Appearance"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Security"
+              span "Vault & security"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #1uvtx1
-              span "Bloxkeep updates"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-updates" aria-labelledby="set-page-updates-h"]
-                h2.set-page-title [id="set-page-updates-h"] "Bloxkeep updates"
+                h2.set-page-title [id="set-page-updates-h"] "Bloxkeep"
                 div.set-grp [id="sec-updates"]
+                  h3.set-grp-title "Updates"
                   div.set-card
                     div [id="s-update"]
                       div.set-row
@@ -139,6 +138,25 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         label.switch
                           input [id="s-betaupd" type="checkbox" aria-label="Get beta versions" checked=false]
+                          span
+                div.set-grp [id="sec-app"]
+                  h3.set-grp-title "This app"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Keep running in the tray when closed"
+                        div.d "Auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon."
+                      div.ctl
+                        label.switch
+                          input [id="s-tray" type="checkbox" aria-label="Keep running in the tray when closed" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Hardware acceleration"
+                        div.d "Off uses less RAM. Turns off automatically if your graphics driver acts up."
+                      div.ctl
+                        label.switch
+                          input [id="s-gpu" type="checkbox" aria-label="Hardware acceleration" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Help & feedback"

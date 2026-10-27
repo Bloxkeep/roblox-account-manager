@@ -88,7 +88,7 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 
 ### **Q:** How do I send feedback, with the error log?
 
-**A:** Go to **Settings › Bloxkeep updates › Send feedback › Write** (or Ctrl+K › "feedback"):
+**A:** Go to **Settings › Bloxkeep › Send feedback › Write** (or Ctrl+K › "feedback"):
 
 1. **What is it?**: **Something doesn't work** or **An idea**.
 2. **Message**, and **How to reach you** (optional) if you'd like an answer.

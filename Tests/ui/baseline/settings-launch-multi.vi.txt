@@ -60,13 +60,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,13 +96,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
@@ -125,7 +123,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), dưới taskbar và khi bấm Alt+Tab."
+                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), hiện ở taskbar và Alt+Tab."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
@@ -141,16 +139,16 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Nút trên taskbar"
-                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Có thể cho mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm riêng (cửa sổ mở ngoài preset vẫn gộp chung)."
+                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Bạn có thể tách mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm (cửa sổ mở ngoài preset vẫn gộp chung)."
                       div.ctl
                         select.select [id="s-taskbar" aria-label="Nút trên taskbar" value="roblox"]
-                          option [value="roblox"] "Gộp chung như Roblox"
+                          option [value="roblox"] "Gộp chung một nút"
                           option [value="account"] "Mỗi tài khoản một nút"
                           option [value="preset"] "Mỗi preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
-                        div.d "Cửa sổ phóng to vẫn là cửa sổ thường, nên không dùng chung cài đặt toàn màn hình của Roblox. Xếp cạnh nhau cần bật Multi-Roblox."
+                        div.d "Cửa sổ phóng to vẫn là cửa sổ, không dùng chung chế độ toàn màn hình của Roblox. Muốn xếp cạnh nhau cần bật Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="roblox"]
                           option [value="roblox"] "Để Roblox tự chọn"
@@ -159,7 +157,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
+                        div.d "Cách xếp cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia đều màn hình theo số cửa sổ. Kiểu lưới thì mỗi cửa sổ chiếm một ô từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
@@ -250,17 +248,17 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 640 × 480" aria-checked="false"]
                             span.snap-screen
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
-                            span.snap-name "640 × 480"
+                            span.snap-name "Tự chọn"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card
                     div.set-row
                       div
                         div.t "Mở Roblox bằng"
-                        div.d "Dùng Bloxstrap hoặc Fishstrap thì vẫn giữ được mod."
+                        div.d "Bloxstrap và Fishstrap giữ nguyên mod của bạn."
                       div.ctl
                         select.select [id="s-launch" aria-label="Roblox client" value="auto"]
                           option [value="auto"] "Mặc định (Bloxstrap)"
@@ -273,7 +271,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Chờ giữa các tài khoản"
-                        div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
+                        div.d "Mở quá nhiều tài khoản cùng lúc dễ lỗi."
                       div.ctl
                         input [id="s-delay" type="range" min="0" max="120" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
                         b.range-v [id="s-delay-v"] "8 giây"
@@ -285,7 +283,7 @@ html [data-theme="dark" lang="vi"]
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc. Bạn tự chịu rủi ro khi dùng."
+        p.modal-text.pre "Roblox không chính thức hỗ trợ chạy nhiều client cùng lúc. Bạn tự chịu rủi ro."
         label.dont-ask
           input [id="dont-ask" type="checkbox" checked=false]
           span "Không hỏi lại"
@@ -362,13 +360,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -400,13 +396,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
@@ -427,7 +423,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), dưới taskbar và khi bấm Alt+Tab."
+                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), hiện ở taskbar và Alt+Tab."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
@@ -443,16 +439,16 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Nút trên taskbar"
-                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Có thể cho mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm riêng (cửa sổ mở ngoài preset vẫn gộp chung)."
+                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Bạn có thể tách mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm (cửa sổ mở ngoài preset vẫn gộp chung)."
                       div.ctl
                         select.select [id="s-taskbar" aria-label="Nút trên taskbar" value="roblox"]
-                          option [value="roblox"] "Gộp chung như Roblox"
+                          option [value="roblox"] "Gộp chung một nút"
                           option [value="account"] "Mỗi tài khoản một nút"
                           option [value="preset"] "Mỗi preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
-                        div.d "Cửa sổ phóng to vẫn là cửa sổ thường, nên không dùng chung cài đặt toàn màn hình của Roblox. Xếp cạnh nhau cần bật Multi-Roblox."
+                        div.d "Cửa sổ phóng to vẫn là cửa sổ, không dùng chung chế độ toàn màn hình của Roblox. Muốn xếp cạnh nhau cần bật Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="roblox"]
                           option [value="roblox"] "Để Roblox tự chọn"
@@ -461,7 +457,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
+                        div.d "Cách xếp cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia đều màn hình theo số cửa sổ. Kiểu lưới thì mỗi cửa sổ chiếm một ô từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
@@ -552,17 +548,17 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 640 × 480" aria-checked="false"]
                             span.snap-screen
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
-                            span.snap-name "640 × 480"
+                            span.snap-name "Tự chọn"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card
                     div.set-row
                       div
                         div.t "Mở Roblox bằng"
-                        div.d "Dùng Bloxstrap hoặc Fishstrap thì vẫn giữ được mod."
+                        div.d "Bloxstrap và Fishstrap giữ nguyên mod của bạn."
                       div.ctl
                         select.select [id="s-launch" aria-label="Roblox client" value="auto"]
                           option [value="auto"] "Mặc định (Bloxstrap)"
@@ -575,7 +571,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Chờ giữa các tài khoản"
-                        div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
+                        div.d "Mở quá nhiều tài khoản cùng lúc dễ lỗi."
                       div.ctl
                         input [id="s-delay" type="range" min="0" max="120" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
                         b.range-v [id="s-delay-v"] "8 giây"
@@ -645,13 +641,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -683,13 +677,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-launch" aria-labelledby="set-page-launch-h"]
@@ -710,7 +704,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), dưới taskbar và khi bấm Alt+Tab."
+                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), hiện ở taskbar và Alt+Tab."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
@@ -726,16 +720,16 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Nút trên taskbar"
-                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Có thể cho mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm riêng (cửa sổ mở ngoài preset vẫn gộp chung)."
+                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Bạn có thể tách mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm (cửa sổ mở ngoài preset vẫn gộp chung)."
                       div.ctl
                         select.select [id="s-taskbar" aria-label="Nút trên taskbar" value="roblox"]
-                          option [value="roblox"] "Gộp chung như Roblox"
+                          option [value="roblox"] "Gộp chung một nút"
                           option [value="account"] "Mỗi tài khoản một nút"
                           option [value="preset"] "Mỗi preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
-                        div.d "Cửa sổ phóng to vẫn là cửa sổ thường, nên không dùng chung cài đặt toàn màn hình của Roblox. Xếp cạnh nhau cần bật Multi-Roblox."
+                        div.d "Cửa sổ phóng to vẫn là cửa sổ, không dùng chung chế độ toàn màn hình của Roblox. Muốn xếp cạnh nhau cần bật Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="roblox"]
                           option [value="roblox"] "Để Roblox tự chọn"
@@ -744,7 +738,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp các cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia cả màn hình theo số cửa sổ. Chọn lưới thì mỗi cửa sổ chiếm một ô tính từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
+                        div.d "Cách xếp cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia đều màn hình theo số cửa sổ. Kiểu lưới thì mỗi cửa sổ chiếm một ô từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
@@ -835,17 +829,17 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.snap-opt [role="menuitemradio" type="button" title="640 × 480" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 640 × 480" aria-checked="false"]
                             span.snap-screen
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
-                            span.snap-name "640 × 480"
+                            span.snap-name "Tự chọn"
                 div.set-grp [id="sec-client"]
                   h3.set-grp-title "Launcher & thời gian chờ"
                   div.set-card
                     div.set-row
                       div
                         div.t "Mở Roblox bằng"
-                        div.d "Dùng Bloxstrap hoặc Fishstrap thì vẫn giữ được mod."
+                        div.d "Bloxstrap và Fishstrap giữ nguyên mod của bạn."
                       div.ctl
                         select.select [id="s-launch" aria-label="Roblox client" value="auto"]
                           option [value="auto"] "Mặc định (Bloxstrap)"
@@ -858,7 +852,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Chờ giữa các tài khoản"
-                        div.d "Mở quá nhiều tài khoản cùng lúc dễ bị lỗi."
+                        div.d "Mở quá nhiều tài khoản cùng lúc dễ lỗi."
                       div.ctl
                         input [id="s-delay" type="range" min="0" max="120" step="1" aria-label="Chờ giữa các tài khoản" value="8"]
                         b.range-v [id="s-delay-v"] "8 giây"

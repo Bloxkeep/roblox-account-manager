@@ -39,7 +39,7 @@ It encrypts everything you save in Bloxkeep, so Bloxkeep asks for it the first t
 - Bloxkeep never stores it, so it **can't be recovered**. If you forget it, your saved accounts are gone. The only way back is a backup whose password you remember.
 - Turn on backups early: **Settings › Backup & data › Back up to a folder**. A backup opens with the password it was saved with.
 - Moving to a new PC? On the first screen choose **Restore from a backup** instead of setting a new password.
-- To change it later: **Settings › Security**.
+- To change it later: **Settings › Vault & security**.
 - The **EN / VI** switch in the top corner changes the language (also **Settings › Appearance › Language**).
 
 ## Unlock and lock
@@ -72,7 +72,7 @@ Bloxkeep checks GitHub for a new version as soon as it opens and every hour afte
 
 - **Restart to update** in the sidebar installs it right away. Quitting Bloxkeep installs it too.
 - After an update, **What's new** shows what changed.
-- **Settings › Bloxkeep updates** shows the version and its state. **Check now** looks for an update. **Update automatically** is on by default; off, nothing is downloaded or installed by itself.
+- **Settings › Bloxkeep** shows the version and its state. **Check now** looks for an update. **Update automatically** is on by default; off, nothing is downloaded or installed by itself.
 - **Update automatically** is greyed out on a copy that can't update itself ("Only the installed version updates itself").
 
 <details>

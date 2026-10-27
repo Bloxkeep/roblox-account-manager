@@ -112,8 +112,8 @@ export default [
   S('settings-update-quiet', 'settings=updates&update=quiet'),
   S('settings-updates-beta', 'settings=updates', async s => { await s.click({ css: 'label.switch:has(#s-betaupd)' }); }),
   S('settings-updates-online', 'settings=updates', async s => { await s.click({ css: 'label.switch:has(#s-online)' }); }),
-  // Bloxkeep's Discord server: the button by the logo, and the row in Help & feedback (both open the bot's /discord).
-  S('sidebar-discord', '', async s => { await s.click({ css: '.side-discord' }); }),
+  // Bloxkeep's Discord server: the row in Help & feedback (opens the bot's /discord).
+  S('settings-help-discord', 'settings=updates', async s => { await s.click({ css: '#sec-feedback [data-act="open-discord"]' }); }),
   S('settings-updates-discord', 'settings=updates', async s => { await s.click(key('dc.open')); }),
   S('settings-search', 'settings=1', async s => { await s.type('rejoin', key('set.search')); }),
   S('whats-new', 'settings=updates', async s => { await s.click(key('wn.link')); }),
@@ -656,6 +656,17 @@ export default [
 
   // ── Lock screen and first run ──
   S('unlock-wrong', 'locked=1', async s => { await s.type('wrong-one', key('lock.pw')); await s.key('Enter'); await s.wait(800); }),
+  // The tray icon's quick panel and menu (ui/src/Tray.tsx), on their own page with a fake app (ui/dev/tray-mock.js).
+  S('tray-panel', '', null, { page: 'tray-preview.html', size: [420, 520] }),
+  S('tray-panel-locked', 'locked=1', null, { page: 'tray-preview.html', size: [420, 520] }),
+  S('tray-panel-many', 'many=1&multi=notReady', null, { page: 'tray-preview.html', size: [420, 640] }),
+  S('tray-panel-play', '', async s => { await s.click(key('tray.play')); }, { page: 'tray-preview.html', size: [420, 640] }),
+  S('tray-panel-close-all', '', async s => { await s.click(key('tray.closeAll')); await s.snap('asked'); await s.click({ css: '.tray-link' }); }, { page: 'tray-preview.html', size: [420, 520] }),
+  S('tray-panel-multi', '', async s => { await s.click({ css: '.tray-multi' }); }, { page: 'tray-preview.html', size: [420, 520] }),
+  S('tray-menu', 'mode=menu', null, { page: 'tray-preview.html', size: [420, 520] }),
+  S('tray-menu-play', 'mode=menu', async s => { await s.click(key('tray.playAs')); }, { page: 'tray-preview.html', size: [420, 520] }),
+  S('tray-menu-multi', 'mode=menu', async s => { await s.click({ css: '[data-item=multi]' }); }, { page: 'tray-preview.html', size: [420, 520] }),
+  S('tray-menu-close', 'mode=menu', async s => { await s.click(key('tray.closeAllRoblox')); await s.click({ css: '.tray-item.danger' }); }, { page: 'tray-preview.html', size: [420, 520] }),
   S('unlock-ok', 'locked=1', async s => { await s.type('demo', key('lock.pw')); await s.key('Enter'); await s.wait(2600); }),
   // An update found before the unlock: the lock screen gives it its place (downloading, then installing), and its link
   // gives the form back. Found while a password is being typed, the form stays.
@@ -858,6 +869,14 @@ export default [
     await s.wait(300);
     await s.fill({ css: '#ps-place' }, '920587237');
     await s.wait(700);
+  }),
+  // Rejoin server: a dropped window rejoins another account's server; its note shows, and Save sends it.
+  S('preset-editor-rejoin-with', 'preset=1', async s => {
+    await s.wait(300);
+    await s.choose({ css: '#ps-rejoin-with' }, 'any');
+    await s.snap('with another account');
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.wait(400);
   }),
   S('preset-editor-job', 'preset=1', async s => {
     await s.wait(300);

@@ -6,7 +6,7 @@ The manual test on 2026-10-18 used Roblox 0.743.0.7431134. A client started thro
 
 ## Changes after the initial experiment
 
-- Junctions live under Bloxkeep's data directory, in roblox-client-paths, instead of TEMP. Removing a junction is always non-recursive; its target installation is never traversed by cleanup.
+- Junctions live under Bloxkeep's data directory, in cacheoblox-client-paths (roblox-client-paths at its top before 1.0.11), instead of TEMP. Removing a junction is always non-recursive; its target installation is never traversed by cleanup.
 - Session lifetime follows clients launched through those junctions, including their tray copies, rather than all Roblox processes. Normal clients (including accounts launched with tickets) do not keep these locks or the update delay active after the separate clients have closed.
 - Windows QueryFullProcessImageName resolves junctions to the real installation, so it cannot identify the alias used at launch. The executable argument from the process command line retains it. The query validates process creation time through the same handle; cached classifications use PID plus creation time. Command lines and authentication tickets are never logged.
 - An unknown process whose launch path cannot be queried keeps the locks held conservatively. Failed queries are retried. A reused PID or missing creation time never inherits a stale classification.

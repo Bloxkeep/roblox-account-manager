@@ -1,0 +1,18 @@
+== end
+html [data-theme="dark" lang="vi"]
+#tray
+  div.tray.tray-menu [role="menu" tabindex="-1" aria-label="Bloxkeep"]
+    button.tray-back [type="button"] "Đóng tất cả Roblox"
+      svg.i #10tf97k
+    button.danger.tray-item [role="menuitem" type="button" FOCUSED]
+      svg.i #1tyq039
+      span.tray-item-text "Đóng 0 cửa sổ Roblox"
+-- commands
+  act {"what":"closeAll"}
+  ready {}
+  size {"h":379,"opened":1,"w":292}
+  size {"h":379,"opened":1,"w":292}
+  size {"h":82,"opened":1,"w":292}
+  size {"h":82,"opened":1,"w":292}
+  size {"h":82,"opened":1,"w":292}
+  size {"h":82,"opened":1,"w":292}

@@ -10,7 +10,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw
@@ -46,7 +46,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw
@@ -58,7 +58,7 @@ html [data-theme="dark" lang="vi"]
           div.strength
             i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:20%"]
           span.pw-strength.weak [id="pw-strength" aria-live="polite"] "Yếu"
-      div.lock-error [id="lock-error" role="alert"] "Mật khẩu không thể chỉ toàn dấu cách."
+      div.lock-error [id="lock-error" role="alert"] "Mật khẩu không được chỉ có dấu cách."
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
         button.link [type="button"] "Khôi phục từ bản sao lưu"
@@ -80,7 +80,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw
@@ -114,7 +114,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw
@@ -148,7 +148,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw

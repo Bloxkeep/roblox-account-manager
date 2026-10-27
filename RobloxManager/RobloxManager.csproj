@@ -44,6 +44,8 @@
   <ItemGroup>
     <!-- ui.js is built (BuildUi below), so it's added once it exists rather than by this list. -->
     <EmbeddedResource Include="wwwroot\*" Exclude="wwwroot\ui.js" LogicalName="wwwroot/%(Filename)%(Extension)" />
+    <!-- What's new's pictures of the headline features (whatsnew.json "image"); ".en"/".vi" in their names is not a culture. -->
+    <EmbeddedResource Include="wwwroot\whatsnew\*" LogicalName="wwwroot/whatsnew/%(Filename)%(Extension)" WithCulture="false" />
     <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
     <EmbeddedResource Include="whatsnew.json" LogicalName="whatsnew.json" />
   </ItemGroup>

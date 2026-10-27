@@ -37,7 +37,7 @@ An option that isn't installed shows "*name* — not installed" and is greyed ou
 <details>
 <summary>More details</summary>
 
-For the Microsoft Store option, Bloxkeep starts the Store's Roblox inside its package with each account's own sign-in, skipping Microsoft's launcher screen (which allows only one window). The Microsoft Store still installs its updates. If it doesn't work, say so under **Bloxkeep updates › Send feedback**. When the Store's Roblox is the only Roblox on the PC, a note says so.
+For the Microsoft Store option, Bloxkeep starts the Store's Roblox inside its package with each account's own sign-in, skipping Microsoft's launcher screen (which allows only one window). The Microsoft Store still installs its updates. If it doesn't work, say so under **Settings › Bloxkeep › Send feedback**. When the Store's Roblox is the only Roblox on the PC, a note says so.
 
 </details>
 
@@ -68,8 +68,6 @@ Details for each row are in [Staying in game](staying-in-game.md).
 | **Low RAM warning** | Asks before opening when RAM or Windows' virtual memory is short, and warns while playing. | On |
 | **Save RAM on background windows** | Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first. | Off |
 | **Fast cores for the window you play** | Roblox windows in the background run in Windows' efficiency mode: they give way to the one you play and lean on the CPU's efficiency cores. | Off |
-| **Keep running in the tray when closed** | The ✕ button hides Bloxkeep to the tray instead of quitting. | On |
-| **Hardware acceleration** | Draws Bloxkeep's window with the graphics card. Off, the window uses less RAM (about 90 MB less on a PC with an NVIDIA card). Turns itself off if the driver acts up. Switching reloads the window. | On |
 
 ## Notifications
 
@@ -95,7 +93,7 @@ Every row is explained in [Sending to Discord](discord.md): **Show on my Discord
 | **Language** | EN / VI. | EN |
 | **Hide account names** | Shows "Account 1", "Account 2"… everywhere instead of names. See [Backup and security](backup-and-security.md). | Off |
 
-## Security
+## Vault & security
 
 | Row | What it does | Default |
 |---|---|---|
@@ -120,16 +118,20 @@ Details are in [Backup and security](backup-and-security.md).
 | **Restore › Restore…** | Replaces your data with a backup. Always asks first; your current data is kept as a copy. | — |
 | **Import accounts from a vault file › Import…** | Adds accounts from another vault or backup; yours stay. | — |
 | **Data location › Open folder** | Opens the folder where Bloxkeep keeps your data. | — |
+| **Open vault file**, **Error log** › **Show file** | Shows that file in File Explorer. | — |
+| **Program folder › Open folder** | Opens the folder Bloxkeep runs from. | — |
 
-## Bloxkeep updates
+## Bloxkeep
 
-<img src="../screenshots/3-settings-updates.png" width="620" alt="Settings › Bloxkeep updates: the version with What's new and Restart to update, Update automatically, and the User guide and Send feedback rows">
+<img src="../screenshots/3-settings-updates.png" width="620" alt="Settings › Bloxkeep: the version with What's new and Restart to update, Update automatically, Get beta versions, This app, Help & feedback and Privacy">
 
 | Row | What it does | Default |
 |---|---|---|
 | **Bloxkeep** *version* | Shows the update state, with **What's new** and **Check now** (greyed out while checking or downloading) or **Restart to update**. | — |
 | **Update automatically** | Downloads new versions and installs them by itself the next time you're not using it. One found before you unlock installs at once, on the lock screen (Roblox windows stay open). Off: nothing is downloaded by itself, but **Check now** still works. Greyed out on a copy that can't update itself. | On |
 | **Get beta versions** | Updates also bring beta versions: new features before everyone else, which may still have bugs. Turned off on a beta, you keep it until the next regular version. Greyed out on a copy that can't update itself. | Off |
+| **Keep running in the tray when closed** | The ✕ button hides Bloxkeep to the tray instead of quitting. | On |
+| **Hardware acceleration** | Draws Bloxkeep's window with the graphics card. Off, the window uses less RAM (about 90 MB less on a PC with an NVIDIA card). Turns itself off if the driver acts up. Switching reloads the window. | On |
 | **User guide › Open** | Opens this guide. | — |
 | **Send feedback › Write** | An idea, or something that doesn't work. It goes to Bloxkeep's developer. See [Troubleshooting](troubleshooting.md). | — |
 | **Privacy › Add me to the online count** | While Bloxkeep is open, it tells Bloxkeep's developer so every minute (further apart when many people use it), and once as it closes: only a code made from this PC (it can't be traced back, and stays the same if you reinstall), the version and the language. That's how they see how many people use Bloxkeep right now. Off: one last note that you've gone, nothing after, and the code is forgotten. See [What leaves the PC](backup-and-security.md#what-leaves-the-pc). | On |

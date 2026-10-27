@@ -36,6 +36,8 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("lock-update", false, LockUpdateSuite.Run),
     ("custom-theme", false, CustomThemeSuite.Run),
     ("vaults", false, VaultsSuite.Run),
+    ("data-folder", false, DataFolderSuite.Run),
+    ("rejoin-with", false, RejoinWithSuite.Run),
     ("foreign-vault", false, ForeignVaultSuite.Run),
     ("window-icons", false, WindowIconsSuite.Run),
     ("taskbar-groups", false, TaskbarGroupsSuite.Run),

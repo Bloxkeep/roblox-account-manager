@@ -110,7 +110,7 @@ An option that isn't installed shows "*name* — not installed" and is greyed ou
 <details>
 <summary>More details</summary>
 
-**Roblox (Microsoft Store)**: Bloxkeep starts the Store's Roblox inside its package with each account's own sign-in. It skips Microsoft's launcher screen, which allows only one window. The Microsoft Store still installs its updates. If it doesn't work, say so under **Bloxkeep updates › Send feedback**.
+**Roblox (Microsoft Store)**: Bloxkeep starts the Store's Roblox inside its package with each account's own sign-in. It skips Microsoft's launcher screen, which allows only one window. The Microsoft Store still installs its updates. If it doesn't work, say so under **Settings › Bloxkeep › Send feedback**.
 
 </details>
 

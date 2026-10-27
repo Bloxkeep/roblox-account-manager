@@ -1,0 +1,47 @@
+== end
+html [data-theme="dark" lang="vi"]
+#tray
+  div.tray.tray-menu [role="menu" tabindex="-1" aria-label="Bloxkeep" FOCUSED]
+    div.tray-head
+      img.tray-logo [alt="" src="logo.svg"]
+      div.tray-name
+        b "Bloxkeep"
+        span "Multi-Roblox đang bật · 2 cửa sổ Roblox"
+          i.ready.tray-dot
+    div.tray-sep
+    button.strong.tray-item [role="menuitem" type="button"]
+      svg.i #1a4qrux
+      span.tray-item-text "Mở Bloxkeep"
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1e3syqr
+      span.tray-item-text "Cửa sổ nhỏ"
+    div.tray-sep
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1ewcuky
+      span.tray-item-text "Vào game bằng"
+      svg.i.tray-sub #1g7f83q
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1pvni8o
+      span.tray-item-text "Chạy Preset"
+      svg.i.tray-sub #1g7f83q
+    button.tray-item [role="menuitem" type="button" title="Mỗi cửa sổ đăng nhập riêng. Giữ Bloxkeep mở, đóng cửa sổ là mất đăng nhập."]
+      svg.i #puf41w
+      span.tray-item-text "Mở Roblox mới để đăng nhập"
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1pvni8o
+      span.tray-item-text "Multi-Roblox"
+      span.tray-value "Bật"
+      svg.i.tray-sub #1g7f83q
+    div.tray-sep
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1tyq039
+      span.tray-item-text "Đóng tất cả Roblox"
+      span.tray-value "2"
+      svg.i.tray-sub #1g7f83q
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #16z0s1r
+      span.tray-item-text "Thoát Bloxkeep"
+-- commands
+  ready {}
+  size {"h":379,"opened":1,"w":292}
+  size {"h":379,"opened":1,"w":292}

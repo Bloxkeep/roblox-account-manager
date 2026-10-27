@@ -16,7 +16,7 @@ namespace RobloxManager;
 /// </summary>
 public sealed class ShellForm : Form
 {
-    const string Origin = "https://bloxkeep.local/";
+    internal const string Origin = "https://bloxkeep.local/";
     const int MaxAutomaticRestarts = 3;
     /// <summary>
     /// After this long without a browser failure the counts start again: crashes days apart (a GPU reset after a
@@ -39,7 +39,7 @@ public sealed class ShellForm : Form
     const int BalloonMs = 8000;
     readonly NotifyIcon _tray;
     /// <summary>The tray icon's quick panel (a left click); made with the icon, hidden until then.</summary>
-    readonly TrayPanel _panel = new();
+    readonly TrayWindow _trayWindow = new();
     /// <summary>Until when the newest notification balloon may be on screen; the icon isn't hidden before that.</summary>
     DateTime _balloonUntil;
     WebView2? _web;
@@ -257,42 +257,28 @@ public sealed class ShellForm : Form
 
     NotifyIcon CreateTrayIcon()
     {
-        var menu = new TrayMenu { MiniOpen = () => _mini is { Visible: true } };
-        menu.MiniClicked += () => SetMiniOpen(null);
-        menu.OpenClicked += BringToFront;
-        menu.QuitClicked += Quit;
-        menu.State = _app.TrayState;
-        menu.MultiClicked += on =>
-        {
-            if (menu.CanSwitchMulti(on))
-                _app.TrayMulti(!on);
-            else
-                BringToFront(); // on: the sidebar's switch, which asks first; locked: the lock screen
-        };
-        menu.PresetClicked += _app.TrayRunPreset;
-        menu.NewRobloxClicked += _app.TrayNewRoblox;
-        menu.AccountClicked += _app.TrayOpenAccount;
-        menu.CloseAllClicked += () => _app.CloseAllClients();
-
-        // A left click opens the quick panel (the right click, the menu): Windows 11's own tray icons do the same.
-        _panel.MiniOpen = () => _mini is { Visible: true };
-        _panel.State = _app.TrayState;
-        _panel.OpenClicked += BringToFront;
-        _panel.MiniClicked += () => SetMiniOpen(null);
-        _panel.MultiClicked += on => _app.TrayMulti(!on); // only raised when it can switch from here
-        _panel.AccountClicked += _app.TrayOpenAccount;
-        _panel.PresetClicked += _app.TrayRunPreset;
-        _panel.NewRobloxClicked += _app.TrayNewRoblox;
-        _panel.CloseAllClicked += () => _app.CloseAllClients();
-        _panel.ShowClientClicked += _app.TrayShowClient;
-        _panel.CloseClientClicked += _app.CloseClient;
-        var tray = new NotifyIcon { Icon = Ui.AppIcon, Text = Ui.Title, ContextMenuStrip = menu };
+        // The quick panel (a left click) and the menu (a right click), drawn by the tray's page (TrayWindow).
+        var tw = _trayWindow;
+        tw.MiniOpen = () => _mini is { Visible: true };
+        tw.State = _app.TrayState;
+        tw.PictureOf = _app.TrayPictureUrl;
+        tw.CustomTheme = _app.TrayCustomTheme;
+        tw.OpenClicked += BringToFront;
+        tw.MiniClicked += () => SetMiniOpen(null);
+        tw.QuitClicked += Quit;
+        tw.MultiClicked += on => _app.TrayMulti(!on); // only offered where it can switch from here
+        tw.AccountClicked += _app.TrayOpenAccount;
+        tw.PresetClicked += _app.TrayRunPreset;
+        tw.NewRobloxClicked += _app.TrayNewRoblox;
+        tw.CloseAllClicked += () => _app.CloseAllClients();
+        tw.ShowClientClicked += _app.TrayShowClient;
+        tw.CloseClientClicked += _app.CloseClient;
+        var tray = new NotifyIcon { Icon = Ui.AppIcon, Text = Ui.Title };
         tray.MouseClick += (_, e) =>
         {
-            if (e.Button == MouseButtons.Left)
-                _panel.Toggle(Cursor.Position);
+            if (e.Button is MouseButtons.Left or MouseButtons.Right)
+                tw.Toggle(Cursor.Position, e.Button == MouseButtons.Left ? "panel" : "menu");
         };
-        menu.Opening += (_, _) => _panel.HidePanel();
         // A notification shown while the icon is normally hidden (close-to-tray off) takes the icon with it — but
         // not while a newer balloon is still showing (Windows closes the one it replaced right after).
         tray.BalloonTipClicked += (_, _) =>
@@ -904,10 +890,10 @@ public sealed class ShellForm : Form
         }
     }
 
-    static Task<CoreWebView2Environment> CreateEnvironmentAsync()
+    internal static Task<CoreWebView2Environment> CreateEnvironmentAsync()
     {
         // Separate profile folders, because a running browser can't be reopened with different switches.
-        return CoreWebView2Environment.CreateAsync(null, Path.Combine(Vault.DataDir, Prefs.SafeRendering ? "webview-safe" : "webview"),
+        return CoreWebView2Environment.CreateAsync(null, Vault.CacheFolder(Prefs.SafeRendering ? "webview-safe" : "webview"),
             WebView2Setup.MainWindowOptions());
     }
 
@@ -1080,12 +1066,15 @@ public sealed class ShellForm : Form
         }
     }
 
-    static void ServeAsset(CoreWebView2Environment env, CoreWebView2WebResourceRequestedEventArgs e)
+    internal static void ServeAsset(CoreWebView2Environment env, CoreWebView2WebResourceRequestedEventArgs e)
     {
         string path = new Uri(e.Request.Uri).AbsolutePath.TrimStart('/');
-        // The custom theme's picture, from the data folder (AppController.CustomTheme.cs): only a file of that name, read
+        // The custom theme's picture, from the data folder's pictures (AppController.CustomTheme.cs): only a file of that name, read
         // whole so no handle stays open on it (a new picture deletes the old one).
-        string? picture = path.StartsWith("user/", StringComparison.Ordinal) && Themes.IsPictureName(path[5..]) ? Path.Combine(Vault.DataDir, path[5..]) : null;
+        string? picture = path.StartsWith("user/", StringComparison.Ordinal) && Themes.IsPictureName(path[5..]) ? Path.Combine(Vault.PicturesDir, path[5..]) : null;
+        // One Vault.Tidy couldn't move yet is still at the top.
+        if (picture is not null && !File.Exists(picture))
+            picture = Path.Combine(Vault.DataDir, path[5..]);
         Stream? stream;
         try
         {
@@ -1141,7 +1130,7 @@ public sealed class ShellForm : Form
         _tray.Visible = false;
         _tray.ContextMenuStrip?.Dispose();
         _tray.Dispose();
-        _panel.Dispose();
+        _trayWindow.Dispose();
         // Closed for the exit (not dismissed), so it comes back next start if it was open.
         _mini?.Dispose();
         _releaseTimer.Dispose();

@@ -1,7 +1,7 @@
 namespace RobloxManager;
 
 /// <summary>
-/// The lock screen after a while without use (Settings › Security › Lock automatically), like Windows' own: when nobody
+/// The lock screen after a while without use (Settings › Vault & security › Lock automatically), like Windows' own: when nobody
 /// has used the PC's keyboard or mouse for the chosen time (anti-AFK's own nudges don't count), the page shows the lock
 /// screen and asks for the master password again. The vault stays open behind it, so Roblox windows, auto-rejoin,
 /// scheduled presets and Discord carry on; nothing of it reaches the page meanwhile (no accounts, settings, toasts or

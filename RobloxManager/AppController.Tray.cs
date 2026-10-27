@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace RobloxManager;
 
 /// <summary>
-/// What the tray icon's menu (<see cref="TrayMenu"/>) shows and does with Bloxkeep in the tray: Multi-Roblox's state
+/// What the tray icon's quick panel and menu (<see cref="TrayWindow"/>) show and does with Bloxkeep in the tray: Multi-Roblox's state
 /// (and turning it off), a new Roblox window, the accounts and presets to open, and closing every Roblox, the same
 /// actions as the page's. With Multi-Roblox only (no vault, see <see cref="MultiOnly"/>) Multi-Roblox turns on and off
 /// from here as well.
@@ -16,10 +16,9 @@ public sealed partial class AppController
     /// <param name="MultiOnly">No vault on this PC (Multi-Roblox only): Multi-Roblox turns on and off from the menu.</param>
     /// <param name="Clients">The accounts' Roblox windows open now, in the launch order (the quick panel's list).</param>
     /// <param name="RamMb">What every Roblox window on this PC holds in RAM together.</param>
-    /// <param name="PictureOf">An account's picture once it was fetched (null meanwhile: its initials then).</param>
     public sealed record TrayInfo(bool Open, string Multi, int RobloxCount, List<(Guid Id, string Name)> Presets,
         List<(Guid Id, string Name, bool Running)>? Accounts = null, bool MultiOnly = false, List<TrayClient>? Clients = null,
-        long RamMb = 0, Func<Guid, Image?>? PictureOf = null);
+        long RamMb = 0);
 
     /// <summary>One account's Roblox window in the quick panel.</summary>
     public sealed record TrayClient(Guid Id, string Name, string Game, int Pid, long RamMb);
@@ -37,19 +36,15 @@ public sealed partial class AppController
             : [];
         var clients = open ? RunningClients().Select(c => new TrayClient(c.Id, c.Label, c.Game, c.Pid, c.RamMb)).ToList() : [];
         return new TrayInfo(open, !on ? "off" : MultiInstance.Armed ? "ready" : "notReady", RobloxCount, presets, accounts, !Vault.Exists,
-            clients, _clientRam.Values.Sum() / MB, TrayPicture);
+            clients, _clientRam.Values.Sum() / MB);
     }
 
-    /// <summary>The account's picture as fetched for its window's icon; asked for when not yet (it shows next time).</summary>
-    Image? TrayPicture(Guid id)
-    {
-        if (FindAccount(id) is not { UserId: > 0 } account || _avatarUrls.GetValueOrDefault(account.UserId) is not { } url)
-            return null;
-        if (_iconPictures.TryGetValue(url, out var picture))
-            return picture;
-        _ = LoadIconPictureAsync(url);
-        return null;
-    }
+    /// <summary>The account's picture for the tray's page: Roblox's address for it, once known (its initials meanwhile).</summary>
+    public string? TrayPictureUrl(Guid id) =>
+        FindAccount(id) is { UserId: > 0 } account ? _avatarUrls.GetValueOrDefault(account.UserId) : null;
+
+    /// <summary>Settings › Appearance › Custom's colours, for the tray's page in a custom theme.</summary>
+    public object TrayCustomTheme() => CustomThemeDto();
 
     /// <summary>The quick panel's eye: the account's Roblox window in front.</summary>
     public void TrayShowClient(int pid) => RobloxProcesses.Focus(pid);
@@ -96,7 +91,7 @@ public sealed partial class AppController
     /// <summary>The "separate sign-in windows are experimental" question is open: another click waits for it, nothing else does.</summary>
     bool _askingHome;
     DateTime _homeStartedAt;
-    static readonly string HomeAliases = Path.Combine(Vault.DataDir, "roblox-client-paths");
+    static readonly string HomeAliases = Path.Combine(Vault.CacheDir, "roblox-client-paths");
 
     /// <summary>
     /// A new sign-in window without an account or ticket from Bloxkeep. The installed client is opened directly

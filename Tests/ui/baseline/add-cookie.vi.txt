@@ -60,13 +60,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
         header.top
@@ -252,7 +250,7 @@ html [data-theme="dark" lang="vi"]
                   span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "12.450"
                     svg.i #hpg3hu
                   span.tag [title="Main"] "Main"
-                  span.rejoin [title="Đang bật tự vào lại game"]
+                  span.rejoin [title="Đang bật Tự vào lại"]
                     svg.i #1ap9cll
                 div.note [title="Tài khoản chơi chính, đừng dùng farm"] "Tài khoản chơi chính, đừng dùng farm"
                 div.card-actions
@@ -320,7 +318,7 @@ html [data-theme="dark" lang="vi"]
                 div.card-top
                   span.check
                     svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua tài khoản này."] "Bị ban"
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                 div.avatar.invalid
                   img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
@@ -355,14 +353,14 @@ html [data-theme="dark" lang="vi"]
             div.dock-info [id="dock-info" aria-live="polite"]
               span.gname [title="Blox Fruits"] "Blox Fruits"
               span.players "412.873 đang chơi"
-              button.srv-open.srv-save [title="Lưu server này để vào lại từ tab Đã lưu: link server riêng, hoặc code mà game yêu cầu." aria-label="Lưu server"]
+              button.srv-open.srv-save [title="Lưu link server riêng hoặc code game yêu cầu để vào lại từ tab Đã lưu." aria-label="Lưu server"]
                 svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick
                     i.ph
                     span "[🎃] Adopt Me!"
-                  button.rm [title="Xóa khỏi danh sách gần đây" aria-label="Xóa khỏi danh sách gần đây"]
+                  button.rm [title="Xóa khỏi Gần đây" aria-label="Xóa khỏi Gần đây"]
                     svg.i #1tyq039
           div.dock-server.dock-step
             div.step-cap
@@ -373,10 +371,10 @@ html [data-theme="dark" lang="vi"]
               svg.i #ej9lod
               input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
             div.dock-sub
-              button.sub-btn [title="Chọn một server của game này: theo số người chơi, theo ping, hoặc nơi bạn bè đang chơi"]
+              button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
                 svg.i #uj30io
                 span "Chọn server"
-              button.sub-btn [title="Vào cùng người chơi: các tài khoản đã chọn vào đúng server người đó đang ở"]
+              button.sub-btn [title="Vào cùng người chơi: đưa các tài khoản đã chọn vào server người đó đang chơi"]
                 svg.i #145pp0l
                 span "Vào cùng người chơi…"
           div.dock-go.dock-step [id="dock-actions"]
@@ -506,13 +504,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
         header.top
@@ -698,7 +694,7 @@ html [data-theme="dark" lang="vi"]
                   span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "12.450"
                     svg.i #hpg3hu
                   span.tag [title="Main"] "Main"
-                  span.rejoin [title="Đang bật tự vào lại game"]
+                  span.rejoin [title="Đang bật Tự vào lại"]
                     svg.i #1ap9cll
                 div.note [title="Tài khoản chơi chính, đừng dùng farm"] "Tài khoản chơi chính, đừng dùng farm"
                 div.card-actions
@@ -766,7 +762,7 @@ html [data-theme="dark" lang="vi"]
                 div.card-top
                   span.check
                     svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua tài khoản này."] "Bị ban"
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                 div.avatar.invalid
                   img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
@@ -801,14 +797,14 @@ html [data-theme="dark" lang="vi"]
             div.dock-info [id="dock-info" aria-live="polite"]
               span.gname [title="Blox Fruits"] "Blox Fruits"
               span.players "412.873 đang chơi"
-              button.srv-open.srv-save [title="Lưu server này để vào lại từ tab Đã lưu: link server riêng, hoặc code mà game yêu cầu." aria-label="Lưu server"]
+              button.srv-open.srv-save [title="Lưu link server riêng hoặc code game yêu cầu để vào lại từ tab Đã lưu." aria-label="Lưu server"]
                 svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick
                     i.ph
                     span "[🎃] Adopt Me!"
-                  button.rm [title="Xóa khỏi danh sách gần đây" aria-label="Xóa khỏi danh sách gần đây"]
+                  button.rm [title="Xóa khỏi Gần đây" aria-label="Xóa khỏi Gần đây"]
                     svg.i #1tyq039
           div.dock-server.dock-step
             div.step-cap
@@ -819,10 +815,10 @@ html [data-theme="dark" lang="vi"]
               svg.i #ej9lod
               input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
             div.dock-sub
-              button.sub-btn [title="Chọn một server của game này: theo số người chơi, theo ping, hoặc nơi bạn bè đang chơi"]
+              button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
                 svg.i #uj30io
                 span "Chọn server"
-              button.sub-btn [title="Vào cùng người chơi: các tài khoản đã chọn vào đúng server người đó đang ở"]
+              button.sub-btn [title="Vào cùng người chơi: đưa các tài khoản đã chọn vào server người đó đang chơi"]
                 svg.i #145pp0l
                 span "Vào cùng người chơi…"
           div.dock-go.dock-step [id="dock-actions"]

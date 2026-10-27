@@ -11,7 +11,7 @@ html [data-theme="dark" lang="vi"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Chào mừng trở lại"
       p "Nhập mật khẩu chủ để mở khóa."
-      p.lock-paused "Bloxkeep đã tự khóa sau 15 phút không có ai dùng máy. Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy."
+      p.lock-paused "Đã tự khóa sau 15 phút không dùng máy. Roblox, tự vào lại, preset hẹn giờ và Discord vẫn chạy."
       div.stack
         div.pw
           input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]

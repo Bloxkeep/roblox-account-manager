@@ -1,0 +1,65 @@
+== end
+html [data-theme="dark" lang="vi"]
+#tray
+  div.tray.tray-panel [role="dialog" tabindex="-1" aria-label="Bloxkeep"]
+    div.tray-head
+      img.tray-logo [alt="" src="logo.svg"]
+      div.tray-name
+        b "Bloxkeep"
+        span "2 cửa sổ Roblox · 2.8 GB RAM"
+      button.tray-icon [type="button" title="Cửa sổ nhỏ" aria-label="Cửa sổ nhỏ" aria-pressed="false"]
+        svg.i #1e3syqr
+      button.tray-icon [type="button" title="Mở Bloxkeep" aria-label="Mở Bloxkeep"]
+        svg.i #1a4qrux
+    button.tray-back [type="button"] "Vào game bằng"
+      svg.i #10tf97k
+    div.tray-list
+      button.tray-row [type="button" disabled]
+        span.tray-av
+          img [alt="" style="--h:216" src=#1augph5]
+        span.tray-row-text
+          b "Main"
+        span.tray-playing "Đang chơi"
+      button.tray-row [type="button" disabled]
+        span.tray-av
+          img [alt="" style="--h:342" src=#1x61xx9]
+        span.tray-row-text
+          b "Farm 1"
+        span.tray-playing "Đang chơi"
+      button.tray-row [type="button"]
+        span.tray-av
+          span.initials [style="--h:343"] "FA"
+        span.tray-row-text
+          b "Farm 2"
+      button.tray-row [type="button"]
+        span.tray-av
+          img [alt="" style="--h:146" src=#1augph5]
+        span.tray-row-text
+          b "Alt"
+      button.tray-row [type="button"]
+        span.tray-av
+          img [alt="" style="--h:45" src=#1x61xx9]
+        span.tray-row-text
+          b "Trader"
+      button.tray-row [type="button"]
+        span.tray-av
+          span.initials [style="--h:164"] "BU"
+        span.tray-row-text
+          b "Builder"
+      button.tray-row [type="button"]
+        span.tray-av
+          img [alt="" style="--h:301" src=#1augph5]
+        span.tray-row-text
+          b "Night Owl"
+      button.tray-row [type="button"]
+        span.tray-av
+          img [alt="" style="--h:153" src=#1x61xx9]
+        span.tray-row-text
+          b "Test"
+-- commands
+  ready {}
+  size {"h":361,"opened":1,"w":344}
+  size {"h":361,"opened":1,"w":344}
+  size {"h":465,"opened":1,"w":344}
+  size {"h":472,"opened":1,"w":344}
+  size {"h":472,"opened":1,"w":344}

@@ -65,8 +65,6 @@ html [data-theme="dark" lang="en"]
               span "Lock app"
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,18 +96,19 @@ html [data-theme="dark" lang="en"]
               span "Appearance"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Security"
+              span "Vault & security"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #1uvtx1
-              span "Bloxkeep updates"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-updates" aria-labelledby="set-page-updates-h"]
-                h2.set-page-title [id="set-page-updates-h"] "Bloxkeep updates"
+                h2.set-page-title [id="set-page-updates-h"] "Bloxkeep"
                 div.set-grp [id="sec-updates"]
+                  h3.set-grp-title "Updates"
                   div.set-card
                     div [id="s-update"]
                       div.set-row
@@ -134,6 +133,25 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         label.switch
                           input [id="s-betaupd" type="checkbox" aria-label="Get beta versions" checked=false]
+                          span
+                div.set-grp [id="sec-app"]
+                  h3.set-grp-title "This app"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Keep running in the tray when closed"
+                        div.d "Auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon."
+                      div.ctl
+                        label.switch
+                          input [id="s-tray" type="checkbox" aria-label="Keep running in the tray when closed" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Hardware acceleration"
+                        div.d "Off uses less RAM. Turns off automatically if your graphics driver acts up."
+                      div.ctl
+                        label.switch
+                          input [id="s-gpu" type="checkbox" aria-label="Hardware acceleration" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Help & feedback"
@@ -185,65 +203,49 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.10 · October 25, 2026"
+              small "Bloxkeep 1.0.11 · October 27, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        ul.wn-cards
-          li.wn-card
-            span.wn-ic
-              svg.i #19k0rtd
-            b "Window layouts as pictures"
-            p "Windows in the bottom bar shows Arrange windows' layouts the way Windows shows its snap layouts: Auto, grids from 2 × 1 to 4 × 4, or a size of your own. Point at one to see where your windows go, click it to arrange them."
-          li.wn-card
-            span.wn-ic
-              svg.i #ktpp14
-            b "Up to 2 minutes between accounts"
-            p "Wait between accounts now goes up to 120 seconds, for when Roblox turns away accounts that join too fast. While Bloxkeep waits, an account that dropped rejoins right away instead of waiting for the whole launch."
-            button.wn-go [type="button" FOCUSED] "Set the wait"
-              svg.i #1g7f83q
-          li.wn-card
-            span.wn-ic
-              svg.i #1boeybj
-            b "Safer with files from others"
-            p "A backup or vault file made on another PC can no longer pick the program Play runs or the Discord channel your alerts go to: Bloxkeep drops them and tells you. A backup of your own keeps everything."
-        h4.new.wn-kind.wn-sub "New"
-          svg.i #u7ty99
-        ul.new.wn-also
-          li
-            svg.i #u7ty99
-            span "Drag an edge of a Roblox window to make it smaller than Roblox lets it go: the frame stops at Roblox's smallest size while you drag, and the window takes the size you let go at."
-        h4.improved.wn-kind.wn-sub "Improved"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "A rejoin keeps the wait between accounts of the preset that opened the window, so a preset set to 2 minutes rejoins 2 minutes apart too."
-          li
-            svg.i #1l5qw3q
-            span "While several accounts open, the wait before the next one counts down."
-          li
-            svg.i #1l5qw3q
-            span "The online count is quicker: Bloxkeep says it's open every minute, so closing it takes you off the count within about 2 minutes. Each PC is counted once, even after Bloxkeep is reinstalled. It still sends only a code (now made from the PC, and it can't be traced back), the version and the language."
-          li
-            svg.i #1l5qw3q
-            span "Sign in with a browser shows Roblox's own pages only: a link to another site opens in your own browser, and only when you click it. DevTools (F12) are off there too, as in Bloxkeep's other Roblox windows: they show the session, which is what cookie scams ask people to copy."
-          li
-            svg.i #1l5qw3q
-            span "Presets brought in from a vault file come without their own Discord link, since a file from someone else could send your alerts to their channel. If the link is yours, set it again in the preset."
-          li
-            svg.i #1l5qw3q
-            span "Bloxkeep's window no longer stalls while many Roblox windows load: the account pictures on their windows are checked one Roblox at a time, every 30 seconds, instead of every window at every check."
-          li
-            svg.i #1l5qw3q
-            span "Open Roblox with › Choose… no longer takes a program on a network drive or share."
+        div.wn-feats
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:470px" src="whatsnew/1.0.11-rejoin.en.webp"]
+            div.wn-feat-text
+              h3 "Rejoin with your group"
+              p "A dropped account rejoins the server another account is in."
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:344px" src="whatsnew/1.0.11-tray.en.webp"]
+            div.wn-feat-text
+              h3 "New tray menu"
+              p "Your windows, Play and Multi-Roblox in one click."
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:420px" src="whatsnew/1.0.11-lock-update.en.webp"]
+            div.wn-feat-text
+              h3 "Update before you unlock"
+              p "A new version installs on the lock screen. Roblox stays open."
+        section.new.wn-group
+          h4.wn-kind "New"
+          ul.wn-notes
+            li "Settings show where each file is."
+        section.improved.wn-group
+          h4.wn-kind "Improved"
+          ul.wn-notes
+            li "Settings tidied up, with a Bloxkeep page."
+            li "Tidier data folder."
+            li "Preset wait picked from a list."
+        section.fixed.wn-group
+          h4.wn-kind "Fixed"
+          ul.wn-notes
+            li "What's new shows after updating from a beta."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
         p.wn-star
-          svg.i #19cjsv1
           span "Like Bloxkeep? A star on GitHub helps other players find it."
-          button.wn-go [type="button"] "Open GitHub"
+          button.wn-go [type="button" FOCUSED] "Open GitHub"
             svg.i #1g7f83q
       div.modal-foot
         button.btn.primary "Got it"

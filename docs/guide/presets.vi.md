@@ -28,7 +28,7 @@ Một preset lưu sẵn các tài khoản (theo thứ tự), game, cách chọn 
 | **Server** | **Bất kỳ (Roblox tự chọn)**, **Đông nhất**, **Vắng nhất**, **Ping thấp nhất**, **Ngẫu nhiên**, **Server cố định (Job ID)**, hoặc **Server của một người chơi**. |
 | **Job ID** | Chỉ dùng cho **Server cố định**. |
 | **Người chơi** | Chỉ dùng cho **Server của một người chơi**: tên đăng nhập hoặc ID của họ. Các tài khoản vào server người đó đang chơi (không cần chọn game), và mỗi lần vào lại sẽ tìm lại họ. Nếu lúc preset chạy chưa vào cùng được (người đó offline, không ở trong game, server bị ẩn), preset không chạy và báo lý do. |
-| **Chờ giữa các tài khoản (giây)** | Từ 0 đến 120. Để trống thì dùng giá trị trong Cài đặt. |
+| **Chờ giữa các tài khoản** | **Theo Cài đặt** (mặc định) hoặc từ 0 đến 120 giây. |
 | **Tài khoản** | Tích chọn. Các tài khoản đã tích mở theo thứ tự này: kéo tay nắm hoặc bấm mũi tên để đổi. |
 
 <details>
@@ -51,6 +51,7 @@ Các tùy chọn này áp dụng cho các cửa sổ mà preset mở, cho tới 
 |---|---|
 | **Chống AFK** | **Theo Cài đặt (đang bật/đang tắt)**, **Bật**, **Tắt** |
 | **Tự vào lại game** | **Theo từng tài khoản**, **Bật**, **Tắt** |
+| **Server khi vào lại** | **Bất kỳ**, **Cùng tài khoản khác**, hoặc **Cùng** một tài khoản trong preset: tài khoản bị văng (hoặc được mở lại theo **Mở lại Roblox**) sẽ vào lại server mà tài khoản kia đang chơi, để cả nhóm ở chung một server. Server đó đầy, hoặc không còn ai trong game, thì vào server bất kỳ. Cần chọn game; không hiện khi preset đang theo một người chơi hoặc đã tắt tự vào lại. |
 | **Hiệu năng** | **Bình thường**, hoặc **Treo máy nhẹ**: đồ họa thấp nhất, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. |
 | **Mở lại Roblox** | **Không**, hoặc **Mỗi 2 / 4 / 6 / 12 giờ**: lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ (hoặc game bạn đã tự chuyển sang trong cửa sổ đó). Cần có game. |
 | **Xếp cửa sổ** | **Theo Cài đặt (đang bật/đang tắt)**, **Bật**, **Tắt**: xếp các cửa sổ sau khi preset mở xong. |
