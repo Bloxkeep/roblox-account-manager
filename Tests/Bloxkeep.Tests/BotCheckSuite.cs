@@ -77,6 +77,8 @@ static class BotCheckSuite
                 string body = req.Content!.ReadAsStringAsync().Result;
                 return Task.FromResult(Json(HttpStatusCode.OK, body.Contains("\"solution\":\"4\"") ? """{"answerCorrect":true,"redemptionToken":"token-1"}""" : """{"answerCorrect":false}"""));
             }
+            if (path.EndsWith("/captcha/v1/metadata", StringComparison.Ordinal))
+                return Task.FromResult(Json(HttpStatusCode.OK, """{"funCaptchaPublicKeys":{"ACTION_TYPE_WEB_LOGIN":"key-login","ACTION_TYPE_GENERIC_CHALLENGE":"key-generic"}}"""));
             if (path.EndsWith("/challenge/v1/continue", StringComparison.Ordinal))
             {
                 continued = req.Content!.ReadAsStringAsync().Result;
@@ -115,6 +117,12 @@ static class BotCheckSuite
                 continued?.Contains("token-1") == true && continued.Contains("check-1") && continueCookie?.Contains("cookie-held") == true, continued);
             c.Check("…the join asked again carrying the check", retryHeader == "check-1", retryHeader);
             c.Check("…let in: the held window closed and opened again into its game", closed.SequenceEqual([Pid]) && restarts.Contains(account.Id), string.Join(",", closed));
+
+            // The puzzle kind's key, from Roblox's captcha settings (real names, 2026-10-27): there is none for a join.
+            async Task<string?> Key(string action) => await RobloxApi.GetCaptchaKeyAsync("", action);
+            c.Check("the captcha key: WebLogin's own, Generic to the generic challenge's, a join's to the generic one",
+                await Key("WebLogin") == "key-login" && await Key("Generic") == "key-generic" && await Key("JoinGame") == "key-generic",
+                $"{await Key("WebLogin")} {await Key("Generic")} {await Key("JoinGame")}");
         }
         finally
         {

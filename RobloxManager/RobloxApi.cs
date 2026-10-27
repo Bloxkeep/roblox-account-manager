@@ -484,10 +484,15 @@ public static class RobloxApi
         using var doc = JsonDocument.Parse(body);
         if (!doc.RootElement.TryGetProperty("funCaptchaPublicKeys", out var keys) || keys.ValueKind != JsonValueKind.Object)
             return null;
-        // "Generic" or "JoinGame" answers to ACTION_TYPE_GENERIC or ACTION_TYPE_JOIN_GAME: compared without the underscores.
+        // Compared without the underscores: "WebLogin" is ACTION_TYPE_WEB_LOGIN, "Generic" ACTION_TYPE_GENERIC_CHALLENGE (a
+        // name it starts). Roblox lists no key of a join's own (2026-10-27): a join's check, seen as "captcha" in the
+        // client's log, takes the generic one when nothing else fits.
         static string Plain(string s) => new(s.Where(char.IsAsciiLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
         string wanted = "ACTIONTYPE" + Plain(actionType);
-        var key = keys.EnumerateObject().FirstOrDefault(k => Plain(k.Name) == wanted);
+        var all = keys.EnumerateObject().Where(k => k.Value.ValueKind == JsonValueKind.String).ToList();
+        var key = all.FirstOrDefault(k => Plain(k.Name) == wanted) is { Value.ValueKind: JsonValueKind.String } exact ? exact
+            : all.FirstOrDefault(k => Plain(k.Name).StartsWith(wanted, StringComparison.Ordinal)) is { Value.ValueKind: JsonValueKind.String } starts ? starts
+            : all.FirstOrDefault(k => k.Name == "ACTION_TYPE_GENERIC_CHALLENGE");
         Log.Note($"Captcha key for '{SafeName(actionType)}': {(key.Value.ValueKind == JsonValueKind.String ? "found" : "none")} among "
             + string.Join(", ", keys.EnumerateObject().Select(k => SafeName(k.Name))));
         return key.Value.ValueKind == JsonValueKind.String ? key.Value.GetString() : null;
