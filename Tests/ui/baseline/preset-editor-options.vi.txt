@@ -631,9 +631,6 @@ html [data-theme="dark" lang="vi"]
                   svg.i #u1ag9u
 #layer
 #toasts
-  div.ok.toast [role="status"]
-    svg.i #14iobj
-    span "Đã lưu preset."
 -- commands
   pageBusy {"busy":false}
   savePreset {"antiAfk":false,"arrange":true,"autoRejoin":null,"delaySeconds":12,"followPlayer":"","id":"p1","ids":["00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004"],"jobId":"","name":"Farm Blox Fruits","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"afk","rejoinWith":"","restartHours":6,"schedule":{"date":"","days":[1,2,3,4,5],"enabled":true,"stop":"after","stopHours":3,"stopTime":"","time":"20:00"},"server":"ping"}

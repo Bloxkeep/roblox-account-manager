@@ -4208,7 +4208,8 @@ public sealed partial class AppController : IDisposable
         if (refused && !_trimRefusedShown)
         {
             _trimRefusedShown = true;
-            Toast(L.T("Roblox refused memory trimming, so it was skipped."), "info");
+            // Nothing the person can do about it: noted, not shown.
+            Log.Note("Save RAM: Windows refused to lower a Roblox window's memory priority; it runs as usual.");
         }
     }
 
@@ -5319,8 +5320,6 @@ public sealed partial class AppController : IDisposable
         if (_nextUpdateCheck > _resumedAt + TimeSpan.FromMinutes(2))
             _nextUpdateCheck = _resumedAt + TimeSpan.FromMinutes(2);
         Resumed?.Invoke();
-        if (_vault is not null && (_rejoinQueue.Count > 0 || _running.Any(r => FindAccount(r.Key) is { } account && RejoinOn(account, r.Value.Launch.PresetId))))
-            Toast(L.T("The PC woke up — auto-rejoin waits until the connection is back."));
     }
 
     /// <summary>Raised on the UI thread when the PC wakes from sleep.</summary>

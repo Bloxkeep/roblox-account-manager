@@ -194,9 +194,6 @@ html [data-theme="dark" lang="en"]
                   svg.i #u1ag9u
 #layer
 #toasts
-  div.ok.toast [role="status"]
-    svg.i #14iobj
-    span "Preset saved."
 -- commands
   getState {}
   monitorArea {"hidden":true}

@@ -1579,7 +1579,6 @@
       });
     }
     if (r.launched) toast(tn(r.cancelled ? 't.launchedStopped' : 't.launched', r.launched), 'ok');
-    else if (r.cancelled) toast(t('t.stopped'), 'info');
     // Accounts already open where asked were left alone: worth a note, not an error.
     if (r.skipped?.length && !r.cancelled) toast(tn('t.skipped', r.skipped.length), 'info');
   }
@@ -1717,8 +1716,7 @@
             let refused = null;
             await busy(btn, () => hold(() => bridge.call('savePreset', r.args)).catch(e => { refused = e; }));
             if (refused) return fail(refused.message || t('common.unknownError'), ui.form.refusedBox());
-            close();
-            toast(t('ps.saved'), 'ok');
+            close(); // the list shows it saved
           },
         },
       ],
@@ -1754,7 +1752,6 @@
             const ids = ui.list.ids();
             if (await busy(btn, () => call('setLaunchOrder', { ids })) === undefined) return;
             close();
-            toast(t('lo.saved'), 'ok');
           },
         },
       ],
@@ -2180,8 +2177,6 @@
               if (isNew && r) {
                 toast(t(r.merged ? 't.merged' : 't.added', { name: r.label }), 'ok');
                 selectOnly(r.id);
-              } else {
-                toast(t('t.saved'), 'ok');
               }
             } catch (ex) {
               ui.form.fail(ex.message);
@@ -2459,7 +2454,7 @@
       case 'play-one': return launch([id], false);
       case 'close-one': return closeIds([id]);
       case 'bot-check': return busy(el, () => call('solveBotCheck', { id }));
-      case 'cancel-rejoin': return call('cancelRejoin', { id }).then(r => r !== undefined && toast(t('rj.cancelled'), 'ok'));
+      case 'cancel-rejoin': return call('cancelRejoin', { id }); // the card shows it at once
       case 'copy-pid': return copy(id, 'pid');
       case 'edit': return editAccount(id);
       case 'card-menu': {
@@ -2541,8 +2536,8 @@
       case 'refresh-presence':
         // refreshPresence replies null on success, { skipped } when one was already running; call() yields undefined after showing an error.
         return busy(el, () => call('refreshPresence')).then(r => {
+          // Done shows on the cards themselves; only a click that did nothing is said.
           if (r?.skipped) toast(t('t.refreshBusy'), 'info');
-          else if (r !== undefined) toast(t('t.refreshed'), 'ok');
         });
       case 'filter':
         S.filter = el.dataset.f;

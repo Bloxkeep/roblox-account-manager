@@ -138,7 +138,7 @@ static class CoresSuite
                     gone.Dispose();
             }
             // The same for the background windows' memory (Settings' trim): one that closed since the scan isn't
-            // "Roblox refused memory trimming".
+            // "Windows didn't let Bloxkeep lower a Roblox window's memory priority".
             Harness.Get<Vault>(app, "_vault").Data.Settings.TrimBackground = true;
             var dead = Process.Start(new ProcessStartInfo("ping.exe", "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false })!;
             int deadPid = dead.Id;
@@ -150,8 +150,8 @@ static class CoresSuite
             Harness.Invoke(app, "GuardResources", new List<RobloxProcesses.PlayerProcess> { new(deadPid, 0) }, new MemoryStatus(16000, 8000, 50), DateTime.UtcNow);
             bool trimTold;
             lock (posted)
-                trimTold = posted.Any(json => json.Contains("refused memory trimming", StringComparison.Ordinal));
-            c.Check("a window that closed since the scan: no \"Roblox refused memory trimming\" notice", !trimTold);
+                trimTold = posted.Any(json => json.Contains("memory priority", StringComparison.Ordinal));
+            c.Check("a window that closed since the scan: no memory-priority notice", !trimTold);
 
             // The PC short of RAM (97 % used) with the setting on: a window in the background gets a low RAM priority, but
             // its RAM isn't emptied outright (with 5 windows open some stuttered after each emptying, 2026-10-21).
