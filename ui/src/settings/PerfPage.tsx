@@ -1,11 +1,11 @@
 // Settings › Staying in game: auto-rejoin for every account at once, Anti-AFK, the daily sign-in check (with when it
 // last ran); then RAM and CPU (the low-RAM warning, saving RAM on background windows, the fast cores for the window
-// played); then this app (keep running in the tray, hardware acceleration).
+// played). Keep running in the tray and hardware acceleration are under Settings › Bloxkeep.
 import { useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
 export function PerfPage({ title }: { title: string }) {
-  const { t, tn, locale, call, toast, saveView } = useHost();
+  const { t, tn, locale, call, toast } = useHost();
   const app = useAppState();
   const st = app.settings || {};
   const accounts: { id: string; autoRejoin?: boolean }[] = app.accounts || [];
@@ -22,8 +22,6 @@ export function PerfPage({ title }: { title: string }) {
   // Two kinds of cores (Intel 12th gen and later…): background windows go to the efficiency ones; otherwise only the
   // power-saving mode is left to give.
   const cpu: { hybrid?: boolean; efficient?: number } = st.cores || {};
-  const [tray, setTray] = useLocal(app.closeToTray !== false);
-  const [gpu, setGpu] = useLocal(!app.safeRendering);
 
   const checkedAt = app.lastSignInCheck ? new Date(app.lastSignInCheck) : null;
   const dailyWhen = checkedAt && !isNaN(+checkedAt) ? t('set.dailyLast', {
@@ -59,15 +57,6 @@ export function PerfPage({ title }: { title: string }) {
       <Row title={t('set.trim')} desc={t('set.trimDesc')}><Switch id="s-trim" label={t('set.trim')} checked={trim} onChange={setting('trimBackground', setTrim)} /></Row>
       <Row title={t('set.cores')} desc={cpu.hybrid ? t('set.coresDesc', { e: cpu.efficient || 0 }) : t('set.coresDescOne')}>
         <Switch id="s-cores" label={t('set.cores')} checked={cores} onChange={setting('splitCores', setCores)} /></Row>
-    </Group>
-    <Group id="app" title={t('set.g.app')}>
-      <Row title={t('set.tray')} desc={t('set.trayDesc')}>
-        <Switch id="s-tray" label={t('set.tray')} checked={tray} onChange={v => { setTray(v); call('setCloseToTray', { enabled: v }); }} />
-      </Row>
-      <Row title={t('set.gpu')} desc={t('set.gpuDesc')}>
-        {/* Switching reloads the interface, so the reply may never come back; the reloaded page shows the new state. */}
-        <Switch id="s-gpu" label={t('set.gpu')} checked={gpu} onChange={v => { setGpu(v); saveView(true); call('setRendering', { gpu: v }, { silent: true }); }} />
-      </Row>
     </Group>
   </Page>;
 }

@@ -45,7 +45,7 @@ Needs the next version on GitHub Releases, or a folder with the next version's `
 
 - [ ] With Bloxkeep hidden to the tray (close-to-tray on): Settings › Apps › Installed apps › Bloxkeep › Uninstall. A "Bloxkeep Uninstall" progress box, then "Uninstall Complete". Bloxkeep was ended without a prompt; a dead tray icon may remain until you hover it (known, documented in the README).
 - [ ] Afterwards: `%LOCALAPPDATA%\BloxkeepApp` is gone (Update.exe may take a few seconds to delete itself). Start menu entry, Desktop shortcut, Start pin and taskbar pin are gone. The Uninstall registry key is gone.
-- [ ] `%LOCALAPPDATA%\Bloxkeep` still exists with `vault.rmv`, `vault.rmv.bak`, `prefs.json`, `roblox-settings.json`, `error.log`; the `webview` and `webview-safe` folders are gone (removed by the uninstall hook).
+- [ ] `%LOCALAPPDATA%\Bloxkeep` still exists with `vault.rmv`, `vault.rmv.bak`, `prefs.json`, `roblox-settings.json`, `error.log` (and `old-vaults`, `pictures` when there were any); `cache\webview` and `cache\webview-safe` are gone (removed by the uninstall hook).
 - [ ] `%TEMP%` has no `velopack_BloxkeepApp` folder and no `Bloxkeep-login-*` / captcha profile folders.
 - [ ] `HKCU\…\CurrentVersion\Run` and `…\Explorer\StartupApproved\Run` have no Bloxkeep entry (Bloxkeep only ever edits Roblox's own `--launch-to-tray` entry there, and only when you ask it to).
 - [ ] Uninstall with the "Couldn't save your changes. Quit anyway?" box open (make `vault.rmv` read-only, change a nickname, press X with close-to-tray off): the box and the app are simply killed. Afterwards the vault is the last good save; nothing is corrupted (start the portable build on the same data folder via `BLOXKEEP_DATA` to check).

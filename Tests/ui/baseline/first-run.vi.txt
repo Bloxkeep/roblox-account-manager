@@ -10,7 +10,7 @@ html [data-theme="dark" lang="vi"]
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Mật khẩu này dùng để mở khóa Bloxkeep. Nếu quên sẽ ."
+      p "Dùng để mở khóa Bloxkeep. Quên là ."
         b "không lấy lại được"
       div.stack
         div.pw

@@ -19,10 +19,11 @@ public static class WhatsNew
     public sealed record Notes(string[] En, string[] Vi);
 
     /// <summary>
-    /// A headline feature: an icon (one of the page's), [title, one or two sentences, button] in each language, and where
-    /// the button leads ("settings:&lt;page or group&gt;", "guide", "web", "feedback", "discord"; none = no button).
+    /// A headline feature: an icon (kept for older notes, no longer shown), [title, one or two sentences, button] in each
+    /// language, where the button leads ("settings:&lt;page or group&gt;", "guide", "web", "feedback", "discord"; none =
+    /// no button), and its picture: a page file under wwwroot/whatsnew, "{lang}" standing for en or vi.
     /// </summary>
-    public sealed record Highlight(string Icon, string? Go, string[] En, string[] Vi);
+    public sealed record Highlight(string Icon, string? Go, string[] En, string[] Vi, string? Image = null);
 
     static readonly Lazy<Release[]> Releases = new(() =>
     {

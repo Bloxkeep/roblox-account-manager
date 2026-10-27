@@ -110,7 +110,7 @@ Lựa chọn chưa cài sẽ ghi "*tên* (chưa cài)" và bị mờ. Nếu máy
 <details>
 <summary>Chi tiết thêm</summary>
 
-**Roblox (Microsoft Store)**: Bloxkeep mở Roblox của Store ngay bên trong gói cài của nó, với phiên đăng nhập riêng của từng tài khoản. Cách này bỏ qua màn hình khởi động của Microsoft, vốn chỉ cho một cửa sổ. Microsoft Store vẫn tự cài các bản cập nhật như thường. Nếu không chạy được, hãy báo ở **Cập nhật Bloxkeep › Gửi góp ý**.
+**Roblox (Microsoft Store)**: Bloxkeep mở Roblox của Store ngay bên trong gói cài của nó, với phiên đăng nhập riêng của từng tài khoản. Cách này bỏ qua màn hình khởi động của Microsoft, vốn chỉ cho một cửa sổ. Microsoft Store vẫn tự cài các bản cập nhật như thường. Nếu không chạy được, hãy báo ở **Cài đặt › Bloxkeep › Gửi góp ý**.
 
 </details>
 

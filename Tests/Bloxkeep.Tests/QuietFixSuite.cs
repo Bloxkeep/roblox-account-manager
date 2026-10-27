@@ -54,7 +54,7 @@ static class QuietFixSuite
             Shown("1.0.10-beta.3", "1.0.10").SequenceEqual(["1.0.10"]), string.Join(", ", Shown("1.0.10-beta.3", "1.0.10")));
         c.Check("…and from the version before, the same", Shown("1.0.9", "1.0.10").SequenceEqual(["1.0.10"]), string.Join(", ", Shown("1.0.9", "1.0.10")));
         c.Check("a beta copy's next beta: no notes (it comes in quietly)", Shown("1.0.10-beta.1", "1.0.10-beta.3").Length == 0);
-        c.Check("from a beta to a quiet fix after its version: that version's notes (the owner's copy, still noted as 1.0.10-beta.3)",
+        c.Check("from a beta to a quiet fix after its version: that version's notes (a copy still noted as a beta)",
             Shown("1.0.10-beta.3", "1.0.11-alpha.1").SequenceEqual(["1.0.10"]), string.Join(", ", Shown("1.0.10-beta.3", "1.0.11-alpha.1")));
         c.Check("the same version again, or an older one: nothing", Shown("1.0.10", "1.0.10").Length == 0 && Shown("1.0.10", "1.0.9").Length == 0);
 

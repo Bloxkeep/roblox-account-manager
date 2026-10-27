@@ -28,7 +28,7 @@ A preset keeps the accounts (in order), the game, how to pick the server, the wa
 | **Server** | **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random**, **Fixed server (Job ID)**, or **A player's server**. |
 | **Job ID** | Only for **Fixed server**. |
 | **Player** | Only for **A player's server**: their username or user ID. The accounts join the server that player is in (no game needed), and each rejoin looks them up again. If the player can't be joined when the preset runs (offline, not in a game, a hidden server), it doesn't run and says why. |
-| **Wait between accounts (s)** | 0–120. Empty uses the one in Settings. |
+| **Wait between accounts** | **Follow Settings** (the default) or 0 to 120 seconds. |
 | **Accounts** | Tick them. Ticked accounts open in this order: drag the handle or use the arrows. |
 
 <details>
@@ -51,6 +51,7 @@ These apply to the windows this preset opens, until they close (also when they r
 |---|---|
 | **Anti-AFK** | **Follow Settings (on/off)**, **On**, **Off** |
 | **Auto-rejoin** | **Follow each account**, **On**, **Off** |
+| **Rejoin server** | **Any**, **With another account**, or **With** one of the preset's accounts: a dropped account (or one reopened by **Restart Roblox**) rejoins the server that account plays in, so the group stays together. If that server is full, or nobody is left in a game, it rejoins any server. Needs a game; not shown when the preset follows a player or auto-rejoin is off. |
 | **Performance** | **Normal**, or **Light AFK**: lowest graphics, 30 FPS, no sound, and the window is minimised once it's in the game. |
 | **Restart Roblox** | **Never**, or **Every 2 / 4 / 6 / 12 hours**: each window is closed and opened again into the same game (or the game you switched to in that window), one at a time. Needs a game. |
 | **Arrange windows** | **Follow Settings (on/off)**, **On**, **Off**: tiles the windows once the preset has opened them. |

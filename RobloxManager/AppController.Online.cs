@@ -6,7 +6,7 @@ using Microsoft.Win32;
 namespace RobloxManager;
 
 /// <summary>
-/// Settings › Bloxkeep updates › Privacy › Add me to the online count (on until turned off): while Bloxkeep is open,
+/// Settings › Bloxkeep › Privacy › Add me to the online count (on until turned off): while Bloxkeep is open,
 /// locked or not, it tells Bloxkeep's Discord bot so every minute (further apart when the bot says so, once many
 /// people have it open) and says goodbye as it closes, so its developers can see how many people have it open right
 /// now (services/DiscordBot/worker/online.js; the bot's status shows the number too). What goes: an id made from this

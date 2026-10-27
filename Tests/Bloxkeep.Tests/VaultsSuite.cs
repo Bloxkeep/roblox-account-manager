@@ -91,7 +91,7 @@ static class VaultsSuite
         bool kept = await Harness.Try(app, "removeVault", new { id = main.Id }) is UserError && Prefs.VaultList.Any(v => v.Id == main.Id);
         c.Check("the vault open right now can't be taken off the list", kept);
         await Harness.Call(app, "removeVault", new { id = farm.Id });
-        var setAside = Directory.GetFiles(data, "vault-removed-*.rmv").Select(f => Path.GetFileName(f)!).ToList();
+        var setAside = Directory.GetFiles(Vault.OldVaultsDir, "vault-removed-*.rmv").Select(f => Path.GetFileName(f)!).ToList();
         c.Check("one taken off the list is set aside, never deleted", Prefs.VaultList.Count == 1 && !File.Exists(Path.Combine(data, farm.File))
             && setAside.Any(n => !n.Contains("-spare")), string.Join(", ", setAside));
         using (var third = new AppController(new Form(), _ => { }))

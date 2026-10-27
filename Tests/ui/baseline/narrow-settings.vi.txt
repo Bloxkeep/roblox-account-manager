@@ -27,12 +27,10 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -64,33 +62,33 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
                 h2.set-page-title [id="set-page-perf-h"] "Treo game"
                 div.set-grp [id="sec-perf"]
-                  h3.set-grp-title "Giữ tài khoản luôn trong game"
+                  h3.set-grp-title "Giữ tài khoản trong game"
                   div.set-card
                     div.set-row
                       div
-                        div.t "Tự vào lại game"
-                        div.d "Bật/tắt cho mọi tài khoản cùng lúc. Muốn bật/tắt riêng một tài khoản, dùng menu ⋯ của tài khoản đó. Nếu preset có đặt riêng, các cửa sổ do preset mở sẽ theo preset."
+                        div.t "Tự vào lại"
+                        div.d "Áp dụng cho mọi tài khoản. Bật/tắt riêng từng tài khoản trong menu ⋯. Preset có đặt riêng thì cửa sổ do preset mở sẽ theo preset."
                       div.ctl
-                        select.select [id="s-rejoin" aria-label="Tự vào lại game" value="some"]
+                        select.select [id="s-rejoin" aria-label="Tự vào lại" value="some"]
                           option [value="on"] "Bật cho mọi tài khoản"
                           option [value="off"] "Tắt cho mọi tài khoản"
                           option [value="some" disabled hidden] "Bật cho 1/7 tài khoản"
                     div.set-row
                       div
                         div.t "Chống AFK"
-                        div.d "Treo máy không lo bị kick, kể cả khi bạn đi vắng hay đang dùng cửa sổ khác. Không hoạt động khi máy đang khóa."
+                        div.d "Treo game không bị kick khi bạn đi vắng hay đang dùng cửa sổ khác. Không hoạt động khi máy đang khóa."
                       div.ctl
                         label.switch
                           input [id="s-antiafk" type="checkbox" aria-label="Chống AFK" checked=false]
@@ -99,7 +97,7 @@ html [data-theme="dark" lang="vi"]
                       div
                         div.t "Kiểm tra đăng nhập mỗi ngày"
                         div.d "Phát hiện tài khoản bị Roblox đăng xuất để bạn biết trước khi bấm Vào game."
-                          span [id="s-daily-when"] "Lần kiểm tra gần nhất: 7:00."
+                          span [id="s-daily-when"] "Kiểm tra lần cuối: 7:00."
                       div.ctl
                         label.switch
                           input [id="s-daily" type="checkbox" aria-label="Kiểm tra đăng nhập mỗi ngày" checked=true]
@@ -129,25 +127,6 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         label.switch
                           input [id="s-cores" type="checkbox" aria-label="Nhường nhân mạnh cho cửa sổ đang chơi" checked=false]
-                          span
-                div.set-grp [id="sec-app"]
-                  h3.set-grp-title "Ứng dụng"
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Chạy ẩn dưới khay hệ thống khi đóng"
-                        div.d "Tự vào lại game và Multi-Roblox vẫn hoạt động. Muốn thoát hẳn, bấm chuột phải vào biểu tượng ở khay hệ thống."
-                      div.ctl
-                        label.switch
-                          input [id="s-tray" type="checkbox" aria-label="Chạy ẩn dưới khay hệ thống khi đóng" checked=true]
-                          span
-                    div.set-row
-                      div
-                        div.t "Tăng tốc phần cứng"
-                        div.d "Tắt đi sẽ đỡ tốn RAM. Tự tắt nếu driver card đồ họa bị lỗi."
-                      div.ctl
-                        label.switch
-                          input [id="s-gpu" type="checkbox" aria-label="Tăng tốc phần cứng" checked=true]
                           span
 #layer
 #toasts

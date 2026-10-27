@@ -144,6 +144,11 @@ public sealed class LaunchPreset
     public bool? AntiAfk { get; set; }
     /// <summary>Auto-rejoin for its windows; null follows each account's own switch.</summary>
     public bool? AutoRejoin { get; set; }
+    /// <summary>
+    /// Where a dropped window rejoins: "" any server of the game, "any" the server another of its accounts plays in, or
+    /// one of its accounts' id, that account's server (see AppController.TeammateTargetAsync).
+    /// </summary>
+    public string RejoinWith { get; set; } = "";
     /// <summary>"" (Roblox as set up) or "afk": lowest graphics, 30 FPS, no sound, minimised once in the game.</summary>
     public string Profile { get; set; } = "";
     /// <summary>Each of its windows in a game is closed and opened again after this many hours; 0 = never.</summary>

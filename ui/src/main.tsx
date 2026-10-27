@@ -21,6 +21,7 @@ import { Servers } from './Servers';
 import { AskBody, DiscordLinkBody, ErrorsBody, MenuItems, ModalFrame, SaveServerBody, Toasts, WhatsNewTitle, type MenuItem, type ModalOpts, type ToastsApi } from './Overlays';
 import { Shell, type SettingsPageInfo } from './Shell';
 import { type StatsApi } from './StatsView';
+import { TrayView, type TrayApi, type TrayViewApi } from './Tray';
 import { WhatsNew, type Release } from './WhatsNew';
 
 /**
@@ -181,6 +182,12 @@ const BloxkeepUI = {
     const api = createRef<BootApi>();
     const unmount = mount(el, host, <Boot api={api} />);
     return { unmount, api: api.current! };
+  },
+  /** The tray icon's quick panel or menu into its own window's page (tray.js), drawn again by show with each state. */
+  tray(el: HTMLElement, host: Host, api: TrayApi) {
+    const view = createRef<TrayViewApi>();
+    const unmount = mount(el, host, <TrayView api={api} handle={view} />, false);
+    return { unmount, show: view.current!.show };
   },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */
   pickList(el: HTMLElement, host: Host, text: string, items: PickItem[]) {

@@ -60,13 +60,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,18 +96,19 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-updates" aria-labelledby="set-page-updates-h"]
-                h2.set-page-title [id="set-page-updates-h"] "Cập nhật Bloxkeep"
+                h2.set-page-title [id="set-page-updates-h"] "Bloxkeep"
                 div.set-grp [id="sec-updates"]
+                  h3.set-grp-title "Cập nhật"
                   div.set-card
                     div [id="s-update"]
                       div.set-row
@@ -130,10 +129,29 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Nhận bản beta"
-                        div.d "Dùng thử tính năng mới sớm hơn. Bản beta có thể còn lỗi."
+                        div.d "Dùng thử tính năng mới sớm hơn, nhưng có thể còn lỗi."
                       div.ctl
                         label.switch
                           input [id="s-betaupd" type="checkbox" aria-label="Nhận bản beta" checked=false]
+                          span
+                div.set-grp [id="sec-app"]
+                  h3.set-grp-title "Ứng dụng"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Chạy ẩn dưới khay hệ thống khi đóng"
+                        div.d "Tự vào lại và Multi-Roblox vẫn chạy. Muốn thoát hẳn, chuột phải vào biểu tượng dưới khay."
+                      div.ctl
+                        label.switch
+                          input [id="s-tray" type="checkbox" aria-label="Chạy ẩn dưới khay hệ thống khi đóng" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Tăng tốc phần cứng"
+                        div.d "Tắt để đỡ tốn RAM. Tự tắt nếu driver card đồ họa bị lỗi."
+                      div.ctl
+                        label.switch
+                          input [id="s-gpu" type="checkbox" aria-label="Tăng tốc phần cứng" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Hướng dẫn & góp ý"
@@ -141,28 +159,28 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hướng dẫn sử dụng"
-                        div.d "Giải thích từng tính năng: nằm ở đâu, dùng để làm gì, và vì sao một mục có thể bị mờ."
+                        div.d "Giải thích từng tính năng: ở đâu, để làm gì, và vì sao một mục bị mờ."
                       div.ctl
                         button.btn.sm "Mở"
                           svg.i #4hphjr
                     div.set-row
                       div
                         div.t "Gửi góp ý"
-                        div.d "Có ý tưởng, hay gặp chỗ nào không chạy? Lời nhắn sẽ đến thẳng người làm Bloxkeep."
+                        div.d "Có ý tưởng hay gặp lỗi? Lời nhắn sẽ đến thẳng người làm Bloxkeep."
                       div.ctl
                         button.btn.sm "Viết góp ý"
                           svg.i #13a5dgx
                     div.set-row
                       div
                         div.t "Bloxkeep trên Discord"
-                        div.d "Hỏi khi cần giúp, góp ý tưởng, và nhận ping mỗi khi Roblox cập nhật."
+                        div.d "Hỏi đáp, góp ý tưởng và nhận thông báo khi Roblox cập nhật."
                       div.ctl
                         button.btn.sm "Tham gia"
                           svg.i #1crx2f1
                     div.set-row
                       div
-                        div.t "Cho Bloxkeep một sao trên GitHub"
-                        div.d "Bloxkeep miễn phí và mã nguồn mở. Mỗi sao giúp thêm nhiều người chơi tìm thấy nó."
+                        div.t "Tặng Bloxkeep một sao trên GitHub"
+                        div.d "Bloxkeep miễn phí và mã nguồn mở. Mỗi sao giúp thêm người chơi biết đến Bloxkeep."
                       div.ctl
                         button.btn.sm "Mở GitHub"
                           svg.i #19cjsv1
@@ -172,7 +190,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Tính vào số người đang dùng"
-                        div.d "Khi Bloxkeep đang mở, cứ mỗi phút app báo một lần để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Chỉ gửi một mã tạo từ máy này (không lần ngược ra được, cài lại vẫn giữ nguyên), phiên bản và ngôn ngữ."
+                        div.d "Khi đang mở, Bloxkeep báo mỗi phút một lần để người làm app biết lúc này có bao nhiêu người dùng. Chỉ gửi một mã tạo từ máy này (không truy ngược được, cài lại vẫn giữ nguyên), phiên bản và ngôn ngữ."
                       div.ctl
                         label.switch
                           input [id="s-online" type="checkbox" aria-label="Tính vào số người đang dùng" checked=true]
@@ -185,65 +203,49 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.10 · 25 tháng 10, 2026"
+              small "Bloxkeep 1.0.11 · 27 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        ul.wn-cards
-          li.wn-card
-            span.wn-ic
-              svg.i #19k0rtd
-            b "Kiểu xếp cửa sổ bằng hình"
-            p "Nút Cửa sổ ở thanh dưới hiện các kiểu xếp cửa sổ giống Snap của Windows: Tự vừa, lưới từ 2 × 1 đến 4 × 4, hoặc kích thước tự chọn. Rê chuột lên một kiểu để xem cửa sổ sẽ nằm ở đâu, bấm vào là xếp."
-          li.wn-card
-            span.wn-ic
-              svg.i #ktpp14
-            b "Chờ tới 2 phút giữa các tài khoản"
-            p "Chờ giữa các tài khoản giờ đặt được tới 120 giây, cho những lúc Roblox không cho vào vì các tài khoản vào quá nhanh. Trong lúc Bloxkeep chờ, tài khoản nào bị văng sẽ vào lại ngay, không phải đợi mở xong cả lượt."
-            button.wn-go [type="button" FOCUSED] "Đặt thời gian chờ"
-              svg.i #1g7f83q
-          li.wn-card
-            span.wn-ic
-              svg.i #1boeybj
-            b "An toàn hơn với file của người khác"
-            p "Bản sao lưu hay file vault làm trên máy khác không còn chọn được chương trình mà nút Vào game chạy, hay kênh Discord nhận thông báo của bạn: Bloxkeep bỏ chúng đi và báo cho bạn biết. Bản sao lưu của chính bạn thì giữ nguyên."
-        h4.new.wn-kind.wn-sub "Mới"
-          svg.i #u7ty99
-        ul.new.wn-also
-          li
-            svg.i #u7ty99
-            span "Kéo mép cửa sổ Roblox giờ thu nhỏ được dưới mức Roblox cho phép: lúc kéo, khung dừng ở cỡ nhỏ nhất của Roblox, thả chuột ra là cửa sổ về đúng cỡ chỗ bạn thả."
-        h4.improved.wn-kind.wn-sub "Cải thiện"
-          svg.i #1l5qw3q
-        ul.improved.wn-also
-          li
-            svg.i #1l5qw3q
-            span "Tự vào lại giữ đúng thời gian chờ giữa các tài khoản của Preset đã mở cửa sổ đó, nên Preset đặt 2 phút thì tự vào lại cũng cách nhau 2 phút."
-          li
-            svg.i #1l5qw3q
-            span "Khi mở nhiều tài khoản, thời gian chờ tới tài khoản tiếp theo giờ đếm ngược."
-          li
-            svg.i #1l5qw3q
-            span "Số người đang dùng cập nhật nhanh hơn: Bloxkeep báo đang mở mỗi phút, nên tắt app thì khoảng 2 phút sau đã không còn được tính. Mỗi máy chỉ tính một lần, kể cả khi cài lại Bloxkeep. App vẫn chỉ gửi một mã (giờ tạo từ máy, không lần ngược ra được), phiên bản và ngôn ngữ."
-          li
-            svg.i #1l5qw3q
-            span "Đăng nhập bằng trình duyệt giờ chỉ mở trang của Roblox: link sang trang khác sẽ mở trong trình duyệt của bạn, và chỉ khi bạn bấm vào. Công cụ nhà phát triển (F12) cũng bị tắt ở đó, như các cửa sổ Roblox khác của Bloxkeep: nó hiện phiên đăng nhập, đúng thứ các trò lừa cookie hay bảo người ta sao chép."
-          li
-            svg.i #1l5qw3q
-            span "Preset lấy từ file vault không còn mang theo link Discord riêng, vì file của người khác có thể gửi thông báo của bạn vào kênh của họ. Nếu link đó là của bạn, hãy đặt lại trong preset."
-          li
-            svg.i #1l5qw3q
-            span "Cửa sổ Bloxkeep không còn bị khựng khi nhiều cửa sổ Roblox đang tải: ảnh tài khoản trên các cửa sổ được kiểm lần lượt từng Roblox, 30 giây một lần, thay vì kiểm mọi cửa sổ ở mỗi lượt."
-          li
-            svg.i #1l5qw3q
-            span "Mở Roblox bằng › Chọn… không còn nhận chương trình nằm trên ổ mạng hay thư mục chia sẻ qua mạng."
+        div.wn-feats
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:470px" src="whatsnew/1.0.11-rejoin.vi.webp"]
+            div.wn-feat-text
+              h3 "Vào lại cùng nhóm"
+              p "Tài khoản bị văng vào lại đúng server của tài khoản khác."
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:344px" src="whatsnew/1.0.11-tray.vi.webp"]
+            div.wn-feat-text
+              h3 "Khay hệ thống mới"
+              p "Cửa sổ đang chạy, Vào game và Multi-Roblox chỉ một cú bấm."
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:420px" src="whatsnew/1.0.11-lock-update.vi.webp"]
+            div.wn-feat-text
+              h3 "Cập nhật ngay ở màn hình khóa"
+              p "Có bản mới thì cài luôn trước khi mở khóa, Roblox vẫn chạy."
+        section.new.wn-group
+          h4.wn-kind "Mới"
+          ul.wn-notes
+            li "Cài đặt hiện đường dẫn từng file."
+        section.improved.wn-group
+          h4.wn-kind "Cải thiện"
+          ul.wn-notes
+            li "Cài đặt gọn hơn, thêm trang Bloxkeep."
+            li "Thư mục dữ liệu gọn hơn."
+            li "Thời gian chờ của Preset chọn từ danh sách."
+        section.fixed.wn-group
+          h4.wn-kind "Đã sửa"
+          ul.wn-notes
+            li "What's new hiện cả khi cập nhật từ bản beta."
         details.wn-older
-          summary "Thêm 2 phiên bản trước đó"
+          summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q
         p.wn-star
-          svg.i #19cjsv1
-          span "Thấy Bloxkeep có ích? Cho nó một sao trên GitHub để nhiều người tìm thấy hơn."
-          button.wn-go [type="button"] "Mở GitHub"
+          span "Thấy Bloxkeep có ích? Tặng một sao trên GitHub để nhiều người biết đến hơn."
+          button.wn-go [type="button" FOCUSED] "Mở GitHub"
             svg.i #1g7f83q
       div.modal-foot
         button.btn.primary "Đã hiểu"

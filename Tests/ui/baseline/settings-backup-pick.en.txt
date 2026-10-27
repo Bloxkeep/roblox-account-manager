@@ -65,8 +65,6 @@ html [data-theme="dark" lang="en"]
               span "Lock app"
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,13 +96,13 @@ html [data-theme="dark" lang="en"]
               span "Appearance"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Security"
+              span "Vault & security"
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Bloxkeep updates"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
@@ -162,6 +160,30 @@ html [data-theme="dark" lang="en"]
                         div.t "Data location"
                         div.d
                           span.path [id="s-path"] "C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Open vault file"
+                        div.d
+                          span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Error log"
+                        div.d
+                          span.path [id="s-log-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Program folder"
+                        div.d
+                          span.path [id="s-app-path"] "C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current"
                       div.ctl
                         button.btn.sm "Open folder"
                           svg.i #3wh3ok

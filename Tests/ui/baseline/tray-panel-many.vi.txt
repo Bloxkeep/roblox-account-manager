@@ -1,0 +1,100 @@
+== end
+html [data-theme="dark" lang="vi"]
+#tray
+  div.tray.tray-panel [role="dialog" tabindex="-1" aria-label="Bloxkeep" FOCUSED]
+    div.tray-head
+      img.tray-logo [alt="" src="logo.svg"]
+      div.tray-name
+        b "Bloxkeep"
+        span "8 cửa sổ Roblox · 11.3 GB RAM"
+      button.tray-icon [type="button" title="Cửa sổ nhỏ" aria-label="Cửa sổ nhỏ" aria-pressed="false"]
+        svg.i #1e3syqr
+      button.tray-icon [type="button" title="Mở Bloxkeep" aria-label="Mở Bloxkeep"]
+        svg.i #1a4qrux
+    button.notReady.tray-multi [role="switch" type="button" aria-checked="true"]
+      svg.i #1pvni8o
+      span.tray-multi-text
+        b "Multi-Roblox"
+        span "Chưa chạy được, mở Bloxkeep để sửa"
+      span.on.tray-switch [aria-hidden="true"]
+        i
+    section.tray-running
+      div.tray-label
+        span "Đang chạy"
+        button.danger.tray-link [type="button"] "Đóng tất cả"
+      div.tray-list
+        div.client.tray-row [title="PID 4320"]
+          button.tray-row-main [type="button"]
+            span.tray-av
+              img [alt="" style="--h:216" src=#1augph5]
+            span.tray-row-text
+              b "Main"
+              span "Blox Fruits · 1.3 GB"
+          span.tray-row-acts
+            button.sm.tray-icon [type="button" title="Hiện" aria-label="Hiện"]
+              svg.i #1pcfgz
+            button.danger.sm.tray-icon [type="button" title="Đóng" aria-label="Đóng"]
+              svg.i #1tyq039
+        div.client.tray-row [title="PID 4321"]
+          button.tray-row-main [type="button"]
+            span.tray-av
+              img [alt="" style="--h:342" src=#1x61xx9]
+            span.tray-row-text
+              b "Farm 1"
+              span "Adopt Me! · 1.4 GB"
+          span.tray-row-acts
+            button.sm.tray-icon [type="button" title="Hiện" aria-label="Hiện"]
+              svg.i #1pcfgz
+            button.danger.sm.tray-icon [type="button" title="Đóng" aria-label="Đóng"]
+              svg.i #1tyq039
+        div.client.tray-row [title="PID 4322"]
+          button.tray-row-main [type="button"]
+            span.tray-av
+              span.initials [style="--h:343"] "FA"
+            span.tray-row-text
+              b "Farm 2"
+              span "Brookhaven 🏡RP · 1.5 GB"
+          span.tray-row-acts
+            button.sm.tray-icon [type="button" title="Hiện" aria-label="Hiện"]
+              svg.i #1pcfgz
+            button.danger.sm.tray-icon [type="button" title="Đóng" aria-label="Đóng"]
+              svg.i #1tyq039
+        div.client.tray-row [title="PID 4323"]
+          button.tray-row-main [type="button"]
+            span.tray-av
+              img [alt="" style="--h:146" src=#1augph5]
+            span.tray-row-text
+              b "Alt"
+              span "Blox Fruits · 1.6 GB"
+          span.tray-row-acts
+            button.sm.tray-icon [type="button" title="Hiện" aria-label="Hiện"]
+              svg.i #1pcfgz
+            button.danger.sm.tray-icon [type="button" title="Đóng" aria-label="Đóng"]
+              svg.i #1tyq039
+        div.client.tray-row [title="PID 4324"]
+          button.tray-row-main [type="button"]
+            span.tray-av
+              img [alt="" style="--h:45" src=#1x61xx9]
+            span.tray-row-text
+              b "Trader"
+              span "Adopt Me! · 1.7 GB"
+          span.tray-row-acts
+            button.sm.tray-icon [type="button" title="Hiện" aria-label="Hiện"]
+              svg.i #1pcfgz
+            button.danger.sm.tray-icon [type="button" title="Đóng" aria-label="Đóng"]
+              svg.i #1tyq039
+        button.tray-more [type="button"] "+3 tài khoản khác"
+    div.tray-tiles
+      button.primary.tray-tile [type="button"]
+        svg.i #1ewcuky
+        span "Vào game"
+      button.tray-tile [type="button"]
+        svg.i #1pvni8o
+        span "Preset"
+      button.tray-tile [type="button" title="Mỗi cửa sổ đăng nhập riêng. Giữ Bloxkeep mở, đóng cửa sổ là mất đăng nhập."]
+        svg.i #puf41w
+        span "Roblox mới"
+-- commands
+  ready {}
+  size {"h":550,"opened":1,"w":344}
+  size {"h":550,"opened":1,"w":344}

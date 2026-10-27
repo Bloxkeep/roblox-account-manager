@@ -65,8 +65,6 @@ html [data-theme="dark" lang="en"]
               span "Lock app"
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep on Discord" aria-label="Bloxkeep on Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,13 +96,13 @@ html [data-theme="dark" lang="en"]
               span "Appearance"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Security"
+              span "Vault & security"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Bloxkeep updates"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
@@ -121,17 +119,6 @@ html [data-theme="dark" lang="en"]
                           option [value="on"] "On for all accounts"
                           option [value="off"] "Off for all accounts"
                           option [value="some" disabled hidden] "On for 1 of 7"
-                div.set-grp [id="sec-app"]
-                  h3.set-grp-title "This app"
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Keep running in the tray when closed"
-                        div.d "Auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon."
-                      div.ctl
-                        label.switch
-                          input [id="s-tray" type="checkbox" aria-label="Keep running in the tray when closed" checked=true]
-                          span
               section.set-page [id="set-page-notify" aria-labelledby="set-page-notify-h"]
                 h2.set-page-title [id="set-page-notify-h"] "Notifications"
                 div.set-grp [id="sec-notify-kinds"]
@@ -171,7 +158,7 @@ html [data-theme="dark" lang="en"]
                               span
                     p.set-hint "To ping a person or a role you need its ID: in Discord, turn on Settings › Advanced › Developer Mode, then right-click the person or role › Copy ID."
               section.set-page [id="set-page-security" aria-labelledby="set-page-security-h"]
-                h2.set-page-title [id="set-page-security-h"] "Security"
+                h2.set-page-title [id="set-page-security-h"] "Vault & security"
                 div.set-grp [id="sec-autolock"]
                   h3.set-grp-title "When you’re away"
                   div.set-card
@@ -188,6 +175,19 @@ html [data-theme="dark" lang="en"]
                           option [value="30"] "After 30 minutes"
                           option [value="60"] "After 1 hour"
                           option [value="120"] "After 2 hours"
+              section.set-page [id="set-page-updates" aria-labelledby="set-page-updates-h"]
+                h2.set-page-title [id="set-page-updates-h"] "Bloxkeep"
+                div.set-grp [id="sec-app"]
+                  h3.set-grp-title "This app"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Keep running in the tray when closed"
+                        div.d "Auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon."
+                      div.ctl
+                        label.switch
+                          input [id="s-tray" type="checkbox" aria-label="Keep running in the tray when closed" checked=true]
+                          span
 #layer
 #toasts
 -- commands

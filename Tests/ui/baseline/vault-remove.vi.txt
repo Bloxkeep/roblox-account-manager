@@ -50,7 +50,7 @@ html [data-theme="dark" lang="vi"]
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "Vault này sẽ không còn trong danh sách. File của nó không bị xóa mà vẫn nằm trong thư mục dữ liệu của Bloxkeep, và Khôi phục từ bản sao lưu có thể mở lại."
+        p.modal-text.pre "Vault sẽ bị bỏ khỏi danh sách, file vẫn còn trong thư mục dữ liệu của Bloxkeep. Dùng Khôi phục từ bản sao lưu để mở lại."
       div.modal-foot
         button.btn [FOCUSED] "Hủy"
         button.btn.danger "Gỡ"

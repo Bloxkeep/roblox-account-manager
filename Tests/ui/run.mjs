@@ -193,7 +193,8 @@ async function runOne(b, { sc, lang }) {
     const [w, h] = sc.size || SIZE;
     await b.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
     await b.send('Storage.clearDataForOrigin', { origin: base, storageTypes: 'all' });
-    await b.goto(`${base}/ui/dev/preview.html?lang=${lang}${sc.query ? '&' + sc.query : ''}`);
+    // The app's page, or another of ui/dev's previews (the tray's: page: 'tray-preview.html').
+    await b.goto(`${base}/ui/dev/${sc.page || 'preview.html'}?lang=${lang}${sc.query ? '&' + sc.query : ''}`);
     await b.eval(`__ui.lang = ${JSON.stringify(lang)}`);
     await sleep(900); // the mock's own scripted views (?settings=…, ?menu=1…) start 600 ms after load
     await b.eval('__ui.settle()');

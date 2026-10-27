@@ -102,7 +102,7 @@ Bật **Cài đặt › Sao lưu và dữ liệu › Sao lưu vào thư mục** 
 
 **Dùng trên Mac hay Linux được không?** Không, chỉ Windows 10 và 11.
 
-**Gặp lỗi hoặc muốn thêm tính năng?** Vào **Cài đặt › Cập nhật Bloxkeep › Gửi góp ý** (app cho xem trước đúng những gì sẽ gửi), hoặc [mở issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
+**Gặp lỗi hoặc muốn thêm tính năng?** Vào **Cài đặt › Bloxkeep › Gửi góp ý** (app cho xem trước đúng những gì sẽ gửi), hoặc [mở issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
 
 Thêm câu trả lời: [Khắc phục sự cố](docs/guide/troubleshooting.vi.md).
 

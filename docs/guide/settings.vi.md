@@ -37,7 +37,7 @@ Lựa chọn chưa cài sẽ ghi "*tên* (chưa cài)" và bị mờ.
 <details>
 <summary>Chi tiết thêm</summary>
 
-Với lựa chọn Microsoft Store, Bloxkeep mở Roblox của Store ngay bên trong gói cài của nó, với phiên đăng nhập riêng của từng tài khoản, bỏ qua màn hình khởi động của Microsoft (vốn chỉ cho một cửa sổ). Microsoft Store vẫn tự cài các bản cập nhật như thường. Nếu không chạy được, hãy báo ở **Cập nhật Bloxkeep › Gửi góp ý**. Nếu máy chỉ có Roblox bản Microsoft Store, ở đây có dòng ghi chú nói rõ.
+Với lựa chọn Microsoft Store, Bloxkeep mở Roblox của Store ngay bên trong gói cài của nó, với phiên đăng nhập riêng của từng tài khoản, bỏ qua màn hình khởi động của Microsoft (vốn chỉ cho một cửa sổ). Microsoft Store vẫn tự cài các bản cập nhật như thường. Nếu không chạy được, hãy báo ở **Cài đặt › Bloxkeep › Gửi góp ý**. Nếu máy chỉ có Roblox bản Microsoft Store, ở đây có dòng ghi chú nói rõ.
 
 </details>
 
@@ -68,8 +68,6 @@ Chi tiết từng dòng nằm ở [Giữ tài khoản trong game](staying-in-gam
 | **Báo khi sắp hết RAM** | Hỏi trước khi mở nếu thiếu RAM hoặc bộ nhớ ảo của Windows, và cảnh báo khi đang chơi. | Bật |
 | **Tiết kiệm RAM cho cửa sổ chạy nền** | Cửa sổ Roblox bạn không chơi bị hạ mức ưu tiên bộ nhớ, nên Windows lấy RAM của chúng trước. | Tắt |
 | **Nhường nhân mạnh cho cửa sổ đang chơi** | Cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm của CPU. | Tắt |
-| **Chạy ẩn dưới khay hệ thống khi đóng** | Nút ✕ thu Bloxkeep xuống khay hệ thống thay vì thoát. | Bật |
-| **Tăng tốc phần cứng** | Vẽ cửa sổ Bloxkeep bằng card đồ họa. Tắt đi thì cửa sổ đỡ tốn RAM (khoảng 90 MB trên máy dùng card NVIDIA). Tự tắt nếu driver card đồ họa bị lỗi. Bật hay tắt thì cửa sổ được tải lại. | Bật |
 
 ## Thông báo
 
@@ -95,7 +93,7 @@ Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **H
 | **Ngôn ngữ** | EN / VI. | EN |
 | **Ẩn tên tài khoản** | Thay tên thật bằng "Tài khoản 1", "Tài khoản 2"… ở mọi chỗ. Xem [Sao lưu và bảo mật](backup-and-security.vi.md). | Tắt |
 
-## Bảo mật
+## Vault & bảo mật
 
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
@@ -120,16 +118,20 @@ Chi tiết nằm ở [Sao lưu và bảo mật](backup-and-security.vi.md).
 | **Khôi phục** › **Khôi phục…** | Thay dữ liệu hiện tại bằng một bản sao lưu. Luôn hỏi trước; dữ liệu hiện tại được giữ lại một bản. | — |
 | **Nhập tài khoản từ file dữ liệu Bloxkeep** › **Nhập…** | Thêm tài khoản từ một file dữ liệu hay bản sao lưu khác; tài khoản đang có vẫn giữ nguyên. | — |
 | **Nơi lưu dữ liệu** › **Mở thư mục** | Mở thư mục Bloxkeep cất dữ liệu của bạn. | — |
+| **File vault đang mở**, **Nhật ký lỗi** › **Hiện file** | Mở File Explorer và chọn sẵn file đó. | — |
+| **Thư mục cài đặt** › **Mở thư mục** | Mở thư mục chứa chương trình Bloxkeep. | — |
 
-## Cập nhật Bloxkeep
+## Bloxkeep
 
-<img src="../screenshots/vi/3-settings-updates.png" width="620" alt="Cài đặt › Cập nhật Bloxkeep: phiên bản kèm nút Có gì mới và Khởi động lại để cập nhật, công tắc Tự động cập nhật, và các dòng Hướng dẫn sử dụng, Gửi góp ý">
+<img src="../screenshots/vi/3-settings-updates.png" width="620" alt="Cài đặt › Bloxkeep: phiên bản kèm nút Có gì mới và Khởi động lại để cập nhật, Tự động cập nhật, Nhận bản beta, Ứng dụng, Hướng dẫn & góp ý và Quyền riêng tư">
 
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
 | **Bloxkeep** *phiên bản* | Cho biết trạng thái cập nhật, kèm **Có gì mới** và **Kiểm tra ngay** (bị mờ khi đang kiểm tra hoặc đang tải) hay **Khởi động lại để cập nhật**. | — |
 | **Tự động cập nhật** | Tự tải bản mới và tự cài vào lúc bạn không dùng. Bản mới tìm thấy trước khi bạn mở khóa thì được cài luôn, ngay ở màn hình mở khóa (các cửa sổ Roblox vẫn mở). Tắt đi thì không có gì tự tải về, nhưng **Kiểm tra ngay** vẫn dùng được. Bị mờ với bản không tự cập nhật được. | Bật |
 | **Nhận bản beta** | Cập nhật cả lên bản beta: có tính năng mới sớm hơn mọi người, nhưng có thể còn lỗi. Đang dùng bản beta mà tắt đi thì bạn vẫn giữ bản đó tới khi có bản chính thức tiếp theo. Bị mờ với bản không tự cập nhật được. | Tắt |
+| **Chạy ẩn dưới khay hệ thống khi đóng** | Nút ✕ thu Bloxkeep xuống khay hệ thống thay vì thoát. | Bật |
+| **Tăng tốc phần cứng** | Vẽ cửa sổ Bloxkeep bằng card đồ họa. Tắt đi thì cửa sổ đỡ tốn RAM (khoảng 90 MB trên máy dùng card NVIDIA). Tự tắt nếu driver card đồ họa bị lỗi. Bật hay tắt thì cửa sổ được tải lại. | Bật |
 | **Hướng dẫn sử dụng › Mở** | Mở chính hướng dẫn này. | — |
 | **Gửi góp ý › Viết góp ý** | Một ý tưởng, hoặc lỗi gặp phải. Lời nhắn đi thẳng tới người làm Bloxkeep. Xem [Gỡ rối](troubleshooting.vi.md). | — |
 | **Quyền riêng tư › Tính vào số người đang dùng** | Khi Bloxkeep đang mở, cứ mỗi phút app báo cho người làm Bloxkeep một lần (thưa hơn khi có nhiều người dùng), và một lần khi tắt app: chỉ gồm một mã tạo từ máy này (không lần ngược ra được, cài lại vẫn giữ nguyên), phiên bản và ngôn ngữ. Nhờ vậy họ biết lúc này có bao nhiêu người đang dùng Bloxkeep. Tắt đi: app báo một lần là bạn đã rời, sau đó không gửi gì nữa, và mã kia bị xóa. Xem [Những gì rời khỏi máy](backup-and-security.vi.md#những-gì-rời-khỏi-máy). | Bật |

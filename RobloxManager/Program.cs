@@ -91,6 +91,7 @@ static class Program
             return;
         }
 
+        Vault.Tidy(); // before anything opens the files it moves
         Prefs.Load();
         Vaults.Load(); // the vault the lock screen offers (and an update's restart opens): the last one used
         BrowserLoginForm.CleanupLeftoverProfiles();

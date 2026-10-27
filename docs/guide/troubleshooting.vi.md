@@ -88,7 +88,7 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 
 ### **H:** Gửi góp ý kèm nhật ký lỗi thế nào?
 
-**Đ:** Vào **Cài đặt › Cập nhật Bloxkeep › Gửi góp ý › Viết góp ý** (hoặc Ctrl+K rồi gõ "góp ý"):
+**Đ:** Vào **Cài đặt › Bloxkeep › Gửi góp ý › Viết góp ý** (hoặc Ctrl+K rồi gõ "góp ý"):
 
 1. **Bạn muốn gửi gì?**: **Báo lỗi** hoặc **Góp ý, ý tưởng**.
 2. **Nội dung**, và **Cách liên hệ với bạn** (không bắt buộc) nếu bạn muốn được trả lời.

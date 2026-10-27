@@ -58,7 +58,7 @@ The files aren't code-signed yet, so SmartScreen warns the first time: **More in
 
 ### Updates
 
-Bloxkeep updates itself in the background and installs when you aren't using it, coming back unlocked where you left it. **Restart to update** does it now. **Settings › Bloxkeep updates** turns it off or adds beta versions. [Updates](docs/guide/getting-started.md#updates)
+Bloxkeep updates itself in the background and installs when you aren't using it, coming back unlocked where you left it. **Restart to update** does it now. **Settings › Bloxkeep** turns it off or adds beta versions. [Updates](docs/guide/getting-started.md#updates)
 
 ### Uninstall
 
@@ -108,7 +108,7 @@ Turn on **Settings › Backup & data › Back up to a folder** and pick a OneDri
 
 **Mac or Linux?** No, Windows 10 and 11 only.
 
-**Found a bug or want a feature?** **Settings › Bloxkeep updates › Send feedback** (it shows exactly what it sends), or [open an issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
+**Found a bug or want a feature?** **Settings › Bloxkeep › Send feedback** (it shows exactly what it sends), or [open an issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
 
 More answers: [Troubleshooting](docs/guide/troubleshooting.md).
 

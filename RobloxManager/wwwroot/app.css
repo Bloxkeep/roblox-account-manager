@@ -1434,7 +1434,6 @@ b, strong { font-weight: 650; }
 .side-lock { display: flex; gap: 8px; }
 .side-lock .btn.w { flex: 1; min-width: 0; }
 .side-sq { flex: none; width: 40px; padding: 0; display: grid; place-items: center; }
-.side-discord:hover:not(:disabled) { color: #5865f2; }
 .lock-caps { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; color: var(--warn-ink); font-size: 12.5px; }
 .lock-caps[hidden] { display: none; }
 .lock-caps .i { width: 14px; height: 14px; }
@@ -1524,43 +1523,45 @@ b, strong { font-weight: 650; }
 .update-btn span { display: grid; gap: 1px; line-height: 1.25; }
 .update-btn small { font-size: 11.5px; font-weight: 500; } /* not faded: small text on the Play colour needs all its contrast */
 /* What's new: the newest release as features, each with an icon on a tint of the theme's accent; older ones folded. */
-.modal:has(.wn-list) { width: min(600px, 100%); }
 .wn-title { display: flex; align-items: center; gap: 12px; }
 .wn-title img { width: 40px; height: 40px; border-radius: 11px; flex: none; }
 .wn-title > span { display: grid; gap: 1px; }
 .wn-title small { font: 500 12.5px var(--font); color: var(--muted); letter-spacing: 0; }
-.wn-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
-.wn-item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 11px 12px; border-radius: 14px; background: var(--well); border: 1px solid var(--line); }
-.wn-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
-.wn-ic .i { width: 18px; height: 18px; }
-.wn-item b { display: block; margin: 1px 0 3px; font-size: 14px; font-weight: 650; color: var(--text); }
-.wn-item p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
-/* A release with headline features: two cards to a row, each with a button to try it, then "Also new" as a short list. */
-.modal:has(.wn-cards) { width: min(680px, 100%); }
-.wn-cards { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.wn-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 15px 13px; border-radius: 16px; background: var(--well); border: 1px solid var(--line); }
-.wn-card .wn-ic { margin-bottom: 4px; }
-.wn-card b { font: 650 14.5px/1.3 var(--font-display); color: var(--text); }
-.wn-card p { flex: 1; margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
-.wn-go { align-self: flex-start; display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; padding: 5px 10px 5px 12px; border: 1px solid var(--line-2); border-radius: 9px; background: var(--surface); color: var(--text); font: 600 12.5px var(--font); cursor: pointer; transition: border-color .15s, background .15s; }
+/* The headline features (ui/src/WhatsNew.tsx), one per row: a real picture or short moving demo of it in the app,
+   beside the words when it is tall (a menu), above them when it is wide (a row of settings, a message). No icon tiles. */
+.modal:has(.wn-feats) { width: min(760px, 100%); }
+.wn-feats { display: grid; gap: 12px; margin-top: 4px; }
+.wn-feat { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: center; min-width: 0; border-radius: 16px; background: var(--well); border: 1px solid var(--line); overflow: hidden; }
+.wn-feat.wide { display: flex; flex-direction: column; align-items: stretch; }
+.wn-feat.plain { display: block; }
+.wn-shot { display: flex; align-items: center; justify-content: center; align-self: stretch; padding: 20px; background: var(--bg); border-right: 1px solid var(--line); }
+.wn-feat.wide .wn-shot { border-right: 0; border-bottom: 1px solid var(--line); }
+.wn-shot img { display: block; max-width: 100%; max-height: 300px; width: auto; height: auto; border-radius: 10px; box-shadow: 0 10px 28px var(--shadow); }
+.wn-feat-text { display: flex; flex-direction: column; gap: 6px; padding: 18px 22px; }
+.wn-feat h3 { margin: 0; font: 650 17px/1.3 var(--font-display); letter-spacing: -.01em; color: var(--text); }
+.wn-feat p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
+.wn-go { align-self: flex-start; display: inline-flex; align-items: center; gap: 3px; margin-top: 6px; padding: 6px 10px 6px 12px; border: 1px solid var(--line-2); border-radius: 9px; background: var(--surface); color: var(--text); font: 600 12.5px var(--font); cursor: pointer; transition: border-color .15s, background .15s; }
 .wn-go:hover { border-color: var(--line-3); background: var(--hover); }
 .wn-go .i { width: 14px; height: 14px; color: var(--muted); }
-.wn-sub { margin: 20px 0 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.wn-also { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.wn-also li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 1.5; color: var(--text-2); }
-.wn-also .i { width: 15px; height: 15px; margin-top: 2px; color: var(--ok); }
-/* New, Improved, Fixed: each its own colour, on the heading and on its lines' icons. */
-.wn-kind { display: flex; align-items: center; gap: 7px; }
-.wn-kind .i { width: 14px; height: 14px; }
-.wn-kind.new, .wn-also.new .i { color: var(--accent); }
-.wn-kind.improved, .wn-also.improved .i { color: var(--online); }
-.wn-kind.fixed, .wn-also.fixed .i { color: var(--warn); }
-.wn .wn-kind { margin-top: 12px; }
-@media (max-width: 720px) { .wn-cards { grid-template-columns: 1fr; } }
-.wn-older { margin-top: 14px; }
-/* The last line of What's new: a quiet ask for a GitHub star, under everything else. */
-.wn-star { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.45; color: var(--muted); }
-.wn-star > .i { flex: none; width: 16px; height: 16px; color: var(--muted); }
+@media (max-width: 720px) { .wn-feat { display: flex; flex-direction: column; align-items: stretch; } .wn-shot { border-right: 0; border-bottom: 1px solid var(--line); } }
+/* The other notes: plain lists, New, Improved and Fixed each under a small label in its colour; a short dot on each
+   line instead of an icon. */
+.wn-group { margin-top: 20px; }
+.wn-kind { display: inline-block; margin: 0 0 10px; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); background: color-mix(in srgb, var(--muted) 14%, transparent); }
+.wn-group.new .wn-kind { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.wn-group.improved .wn-kind { color: var(--online); background: color-mix(in srgb, var(--online) 14%, transparent); }
+.wn-group.fixed .wn-kind { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.wn-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.wn-notes li { position: relative; padding-left: 16px; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
+.wn-notes li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--line-3); }
+.wn-group.new .wn-notes li::before { background: var(--accent); }
+.wn-group.improved .wn-notes li::before { background: var(--online); }
+.wn-group.fixed .wn-notes li::before { background: var(--warn); }
+.wn-notes b { color: var(--text); font-weight: 650; }
+.wn .wn-group { margin-top: 12px; }
+.wn-older { margin-top: 18px; }
+.wn-star { display: flex; align-items: center; gap: 8px; margin: 20px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.45; color: var(--muted); }
 .wn-star span { flex: 1; min-width: 0; }
 .wn-star .wn-go { flex: none; margin: 0; }
 .wn-older summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; color: var(--muted); border-radius: 8px; }
@@ -1573,7 +1574,6 @@ b, strong { font-weight: 650; }
 .wn-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .wn-head b { font-size: 14px; }
 .wn-head span { font-size: 12px; color: var(--muted); }
-.wn ul { margin: 0; padding-left: 18px; display: grid; gap: 7px; color: var(--text-2); font-size: 13.5px; line-height: 1.5; }
 .btn.busy { position: relative; color: transparent !important; pointer-events: none; }
 .btn.busy::after { content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line-3); border-top-color: var(--text); animation: spin .7s linear infinite; }
 .icon-btn { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); transition: background .15s, color .15s; }
@@ -4248,3 +4248,107 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="kde"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: rgba(61, 174, 233, .22); box-shadow: inset 0 0 0 1px #3daee9; color: #fcfcfc; }
 [data-theme="kde"] :is(.modal, .menu, .picker) { border-radius: 4px; }
 [data-theme="kde"] .side { border-right: 1px solid rgba(0, 0, 0, .4); }
+
+/* ───────────── The tray icon's quick panel and menu (ui/src/Tray.tsx, page tray.html, window TrayWindow.cs) ─────────────
+   A card the size of what it shows; the window around it takes that size, with Windows 11's rounded corners. */
+body.tray-page { background: var(--surface); overflow: hidden; }
+.tray { width: 344px; padding: 14px; display: grid; gap: 12px; color: var(--text); font-size: 13px; }
+.tray.tray-menu { width: 292px; padding: 6px; gap: 0; }
+:where(.tray) :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+:where(.tray) :where(button:disabled) { cursor: default; }
+.tray .i { width: 18px; height: 18px; flex: none; }
+.tray-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tray.tray-menu .tray-head { padding: 8px 8px 10px; }
+.tray-logo { width: 36px; height: 36px; border-radius: 10px; flex: none; }
+.tray-name { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.tray-name b { font: 650 15px/1.25 var(--font-display); }
+.tray-name span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tray-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--muted); }
+.tray-dot.ready { background: var(--ok); }
+.tray-dot.notReady { background: var(--warn); }
+.tray-icon { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 10px; color: var(--text-2); transition: background .12s, color .12s; }
+.tray-icon:hover { background: var(--card-hover); color: var(--text); }
+.tray-icon.on { background: var(--surface-3); color: var(--text); }
+.tray-icon.sm { width: 30px; height: 30px; border-radius: 8px; }
+.tray-icon.sm .i { width: 16px; height: 16px; }
+.tray-icon.danger:hover { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+
+/* Multi-Roblox: a card in its state's colour, its switch on the right. */
+.tray-multi { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); transition: background .12s; }
+.tray-multi:hover { background: var(--card-hover); }
+.tray-multi > .i { color: var(--text-2); }
+.tray-multi.ready { background: color-mix(in srgb, var(--ok) 11%, var(--surface)); border-color: color-mix(in srgb, var(--ok) 32%, transparent); }
+.tray-multi.ready > .i { color: var(--ok); }
+.tray-multi.notReady { background: color-mix(in srgb, var(--warn) 11%, var(--surface)); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.tray-multi.notReady > .i { color: var(--warn); }
+.tray-multi-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.tray-multi-text b { font-weight: 600; font-size: 13.5px; }
+.tray-multi-text span { font-size: 12px; color: var(--text-2); }
+.tray-multi.ready .tray-multi-text span { color: color-mix(in srgb, var(--ok) 70%, var(--text)); }
+.tray-switch { position: relative; width: 38px; height: 22px; flex: none; border-radius: 999px; background: var(--surface-3); transition: background .15s; }
+.tray-switch i { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--knob, #fff); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
+.tray-switch.on { background: var(--accent); }
+.tray-switch.on i { transform: translateX(16px); }
+
+.tray-locked { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border-radius: 14px; background: var(--card); }
+.tray-locked > .i { color: var(--text-2); }
+.tray-locked span { flex: 1; }
+.tray-btn { padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--surface); font-weight: 600; font-size: 12.5px; }
+.tray-btn:hover { background: var(--card-hover); }
+
+.tray-running { display: grid; gap: 4px; }
+.tray-label { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.tray-link { padding: 3px 8px; border-radius: 7px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.tray-link.danger:hover, .tray-link.confirm { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.tray-empty { padding: 12px 4px; text-align: center; color: var(--text-2); }
+.tray-list { display: grid; gap: 2px; max-height: 340px; overflow-y: auto; scrollbar-width: thin; }
+.tray-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 8px; border-radius: 10px; transition: background .12s; }
+.tray-row:not(:disabled):hover, .tray-row.client:hover { background: var(--card-hover); }
+.tray-row:disabled { opacity: .55; }
+.tray-row.client { padding: 0 6px 0 0; }
+.tray-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px; }
+.tray-row-acts { display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+.tray-row.client:hover .tray-row-acts, .tray-row.client:focus-within .tray-row-acts { opacity: 1; }
+.tray-av { width: 32px; height: 32px; flex: none; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: var(--surface-3); }
+.tray-av.sm { width: 26px; height: 26px; }
+.tray-av img, .tray-av .initials { width: 100%; height: 100%; display: grid; place-items: center; object-fit: cover; border-radius: 50%; }
+.tray-av .initials { font: 700 12px var(--font-display); color: #fff; background: hsl(var(--h) 38% 40%); }
+.tray-av.glyph { border-radius: 9px; color: var(--text-2); }
+.tray-av.glyph .i { width: 16px; height: 16px; }
+.tray-row-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.tray-row-text b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tray-row-text span { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tray-playing { font-size: 12px; font-weight: 600; color: var(--ok); }
+.tray-more { padding: 8px; border-radius: 9px; text-align: center; font-size: 12px; color: var(--text-2); }
+.tray-more:hover { background: var(--card-hover); }
+
+/* Play (the accent), Presets, a new Roblox window. */
+.tray-tiles { display: flex; gap: 8px; }
+.tray-tile { flex: 1; min-width: 0; display: grid; justify-items: center; gap: 6px; padding: 12px 6px 10px; border-radius: 14px; background: var(--card);
+  border: 1px solid var(--line); text-align: center; font-size: 12.5px; font-weight: 600; transition: background .12s; }
+.tray-tile:hover { background: var(--card-hover); }
+.tray-tile .i { width: 20px; height: 20px; color: var(--text-2); }
+.tray-tile span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tray-tile.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.tray-tile.primary .i { color: var(--accent-ink); }
+.tray-tile.primary:hover { background: var(--accent-hover); }
+
+.tray-back { display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px 8px; border-radius: 10px; font-weight: 600; font-size: 13.5px; }
+.tray-back:hover { background: var(--card-hover); }
+.tray-back .i { width: 16px; height: 16px; color: var(--text-2); }
+
+/* The menu: rows like Windows 11's, an icon, the words, a value or a tick, a chevron for a page of more. */
+.tray-sep { height: 1px; margin: 5px 8px; background: var(--line); }
+.tray-item { display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px 10px; border-radius: 8px; transition: background .1s; }
+.tray-item:hover { background: var(--card-hover); }
+.tray-item > .i { width: 17px; height: 17px; color: var(--text-2); }
+.tray-item.strong { font-weight: 650; }
+.tray-item.danger:hover { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+.tray-item.danger:hover > .i { color: var(--bad); }
+.tray-item-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tray-value { font-size: 12px; color: var(--muted); }
+.tray .tray-check { width: 15px; height: 15px; color: var(--accent); }
+.tray .tray-sub { width: 15px; height: 15px; color: var(--muted); }
+.tray.tray-menu .tray-list .tray-row { min-height: 38px; }
+.tray :focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tray:focus { outline: none; }

@@ -60,13 +60,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,13 +96,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
@@ -130,27 +128,27 @@ html [data-theme="dark" lang="vi"]
                       div.set-row
                         div
                           div.t "Kiểm tra Multi-Roblox"
-                          div.d "Mỗi khi Roblox có bản mới, Bloxkeep kiểm tra xem bản đó có thay đổi gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn."
+                          div.d "Mỗi bản Roblox mới, Bloxkeep đều kiểm tra xem có gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn."
                             button.link [type="button"] "Cách hoạt động"
                         div.ctl
-                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "Không thay đổi"
+                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "Không có thay đổi"
                       div.set-row
                         div
                           div.t "Bản Roblox sắp ra"
                           div.d "0.743.0.7431134, đã kiểm tra trước khi Roblox phát hành"
                         div.ctl
-                          span.ok.state-pill "Không thay đổi"
+                          span.ok.state-pill "Không có thay đổi"
                       div.ru-head "Lịch sử cập nhật"
                       ul.ru-list
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.742.0.7421053"
-                              span.ru-note "bản vá, không đổi số phiên bản"
+                              span.ru-note "bản mới, cùng số phiên bản"
                               span.ok.ru-note "Multi-Roblox không đổi"
                             div.ru-sub "16:00 15 thg 10, 2026 · · Bloxstrap"
                               span [title="version-cec3ad5889b447cf"] "mã cec3ad58"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, hiếm khi nhắc đến thay đổi của chính app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
+                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
                         li.ru-item
                           div.ru-text
                             div.ru-main
@@ -158,7 +156,7 @@ html [data-theme="dark" lang="vi"]
                               span.ok.ru-note "Multi-Roblox chạy tốt ở máy này"
                             div.ru-sub "10:00 14 thg 10, 2026 · · Bloxstrap"
                               span [title="version-5b1e07d2a6c84f13"] "mã 5b1e07d2"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, hiếm khi nhắc đến thay đổi của chính app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
+                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
                         li.ru-item
                           div.ru-text
                             div.ru-main
@@ -166,7 +164,7 @@ html [data-theme="dark" lang="vi"]
                               span.ru-note "đã có từ trước"
                             div.ru-sub "12:00 7 thg 10, 2026 · · Bloxstrap"
                               span [title="version-91f0c3ab72d14e6e"] "mã 91f0c3ab"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, hiếm khi nhắc đến thay đổi của chính app Roblox." aria-label="Ghi chú phát hành của Roblox 0.741.0.7410829"] "Ghi chú"
+                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.741.0.7410829"] "Ghi chú"
                 div.set-grp [id="sec-rc"]
                   h3.set-grp-title "Cấu hình Roblox"
                   div.set-card
@@ -290,13 +288,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -328,13 +324,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
@@ -360,27 +356,27 @@ html [data-theme="dark" lang="vi"]
                       div.set-row
                         div
                           div.t "Kiểm tra Multi-Roblox"
-                          div.d "Mỗi khi Roblox có bản mới, Bloxkeep kiểm tra xem bản đó có thay đổi gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn."
+                          div.d "Mỗi bản Roblox mới, Bloxkeep đều kiểm tra xem có gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn."
                             button.link [type="button"] "Cách hoạt động"
                         div.ctl
-                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "Không thay đổi"
+                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "Không có thay đổi"
                       div.set-row
                         div
                           div.t "Bản Roblox sắp ra"
                           div.d "0.743.0.7431134, đã kiểm tra trước khi Roblox phát hành"
                         div.ctl
-                          span.ok.state-pill "Không thay đổi"
+                          span.ok.state-pill "Không có thay đổi"
                       div.ru-head "Lịch sử cập nhật"
                       ul.ru-list
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.742.0.7421053"
-                              span.ru-note "bản vá, không đổi số phiên bản"
+                              span.ru-note "bản mới, cùng số phiên bản"
                               span.ok.ru-note "Multi-Roblox không đổi"
                             div.ru-sub "16:00 15 thg 10, 2026 · · Bloxstrap"
                               span [title="version-cec3ad5889b447cf"] "mã cec3ad58"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, hiếm khi nhắc đến thay đổi của chính app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
+                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
                         li.ru-item
                           div.ru-text
                             div.ru-main
@@ -388,7 +384,7 @@ html [data-theme="dark" lang="vi"]
                               span.ok.ru-note "Multi-Roblox chạy tốt ở máy này"
                             div.ru-sub "10:00 14 thg 10, 2026 · · Bloxstrap"
                               span [title="version-5b1e07d2a6c84f13"] "mã 5b1e07d2"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, hiếm khi nhắc đến thay đổi của chính app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
+                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
                         li.ru-item
                           div.ru-text
                             div.ru-main
@@ -396,7 +392,7 @@ html [data-theme="dark" lang="vi"]
                               span.ru-note "đã có từ trước"
                             div.ru-sub "12:00 7 thg 10, 2026 · · Bloxstrap"
                               span [title="version-91f0c3ab72d14e6e"] "mã 91f0c3ab"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, hiếm khi nhắc đến thay đổi của chính app Roblox." aria-label="Ghi chú phát hành của Roblox 0.741.0.7410829"] "Ghi chú"
+                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.741.0.7410829"] "Ghi chú"
                 div.set-grp [id="sec-rc"]
                   h3.set-grp-title "Cấu hình Roblox"
                   div.set-card

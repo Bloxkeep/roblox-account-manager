@@ -60,13 +60,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -98,13 +96,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
@@ -162,6 +160,30 @@ html [data-theme="dark" lang="vi"]
                         div.t "Nơi lưu dữ liệu"
                         div.d
                           span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Mở thư mục"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "File vault đang mở"
+                        div.d
+                          span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
+                      div.ctl
+                        button.btn.sm "Hiện file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Nhật ký lỗi"
+                        div.d
+                          span.path [id="s-log-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log"
+                      div.ctl
+                        button.btn.sm "Hiện file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Thư mục cài đặt"
+                        div.d
+                          span.path [id="s-app-path"] "C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current"
                       div.ctl
                         button.btn.sm "Mở thư mục"
                           svg.i #3wh3ok
@@ -237,13 +259,11 @@ html [data-theme="dark" lang="vi"]
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep, cần mật khẩu chủ để mở lại. Các cửa sổ Roblox vẫn mở, còn tự vào lại game, preset hẹn giờ và Discord tạm dừng tới khi bạn mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-            button.btn.ghost.side-discord.side-sq [title="Bloxkeep trên Discord" aria-label="Bloxkeep trên Discord"]
-              svg.i #1crx2f1
     main.main
       section.seen.view [id="view-accounts"]
       section.seen.view [id="view-settings"]
@@ -275,13 +295,13 @@ html [data-theme="dark" lang="vi"]
               span "Giao diện"
             button.set-nav-item [type="button"]
               svg.i #fevui6
-              span "Bảo mật"
+              span "Vault & bảo mật"
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
               svg.i #1uvtx1
-              span "Cập nhật Bloxkeep"
+              span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
@@ -339,6 +359,30 @@ html [data-theme="dark" lang="vi"]
                         div.t "Nơi lưu dữ liệu"
                         div.d
                           span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Mở thư mục"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "File vault đang mở"
+                        div.d
+                          span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
+                      div.ctl
+                        button.btn.sm "Hiện file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Nhật ký lỗi"
+                        div.d
+                          span.path [id="s-log-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log"
+                      div.ctl
+                        button.btn.sm "Hiện file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Thư mục cài đặt"
+                        div.d
+                          span.path [id="s-app-path"] "C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current"
                       div.ctl
                         button.btn.sm "Mở thư mục"
                           svg.i #3wh3ok

@@ -1,0 +1,32 @@
+== end
+html [data-theme="dark" lang="vi"]
+#tray
+  div.tray.tray-panel [role="dialog" tabindex="-1" aria-label="Bloxkeep" FOCUSED]
+    div.tray-head
+      img.tray-logo [alt="" src="logo.svg"]
+      div.tray-name
+        b "Bloxkeep"
+        span "Đang khóa"
+      button.tray-icon [type="button" title="Cửa sổ nhỏ" aria-label="Cửa sổ nhỏ" aria-pressed="false"]
+        svg.i #1e3syqr
+      button.tray-icon [type="button" title="Mở Bloxkeep" aria-label="Mở Bloxkeep"]
+        svg.i #1a4qrux
+    button.ready.tray-multi [role="switch" type="button" aria-checked="true"]
+      svg.i #1pvni8o
+      span.tray-multi-text
+        b "Multi-Roblox"
+        span "Mở khóa để thay đổi"
+      span.on.tray-switch [aria-hidden="true"]
+        i
+    div.tray-locked
+      svg.i #21scx0
+      span "Bloxkeep đang khóa"
+      button.tray-btn [type="button"] "Mở khóa"
+    div.tray-tiles
+      button.tray-tile [type="button" title="Mỗi cửa sổ đăng nhập riêng. Giữ Bloxkeep mở, đóng cửa sổ là mất đăng nhập."]
+        svg.i #puf41w
+        span "Roblox mới"
+-- commands
+  ready {}
+  size {"h":285,"opened":1,"w":344}
+  size {"h":285,"opened":1,"w":344}

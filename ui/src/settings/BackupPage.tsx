@@ -10,6 +10,7 @@ export function BackupPage({ title }: { title: string }) {
   const b = app.backup || {};
   const [on, setOn] = useLocal(b.enabled !== false);
   const suggested: { path: string; name: string }[] = b.suggested || [];
+  const paths: { vault?: string | null; log?: string; app?: string } = app.paths || {};
 
   return <Page id="backup" title={title}>
     <Group id="backup" title={t('bk.title')}>
@@ -43,6 +44,16 @@ export function BackupPage({ title }: { title: string }) {
     <Group id="data" title={t('set.data')}>
       <Row title={t('set.dataPath')} desc={<span className="path" id="s-path">{app.dataPath || ''}</span>}>
         <button className="btn sm" data-act="open-data"><Icon name="folder" />{t('set.openFolder')}</button>
+      </Row>
+      {/* Where each thing is, so nobody has to look it up in the guide: shown in Explorer. */}
+      {paths.vault ? <Row title={t('set.vaultPath')} desc={<span className="path" id="s-vault-path">{paths.vault}</span>}>
+        <button className="btn sm" onClick={() => call('showPath', { which: 'vault' })}><Icon name="folder" />{t('set.showFile')}</button>
+      </Row> : null}
+      <Row title={t('set.logPath')} desc={<span className="path" id="s-log-path">{paths.log || ''}</span>}>
+        <button className="btn sm" onClick={() => call('showPath', { which: 'log' })}><Icon name="folder" />{t('set.showFile')}</button>
+      </Row>
+      <Row title={t('set.appPath')} desc={<span className="path" id="s-app-path">{paths.app || ''}</span>}>
+        <button className="btn sm" onClick={() => call('showPath', { which: 'app' })}><Icon name="folder" />{t('set.openFolder')}</button>
       </Row>
     </Group>
   </Page>;

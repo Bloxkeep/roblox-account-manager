@@ -29,14 +29,15 @@ export function SnapPicker({ value, width, height, onPick, label }: {
   const { t } = useHost();
   const count = useMetrics().robloxCount || 0;
   const [lit, setLit] = useState<string | null>(null);
-  const name = (l: string) => l === 'fill' ? t('snap.fill') : l === 'custom' ? t('snap.custom', { w: width, h: height })
-    : l.replace('x', ' × ');
+  // A size of one's own reads "Custom" (its numbers alone said nothing, 2026-10-26); the size is in its tooltip.
+  const name = (l: string) => l === 'fill' ? t('snap.fill') : l === 'custom' ? t('snap.customName') : l.replace('x', ' × ');
+  const tip = (l: string) => l === 'custom' ? `${t('snap.customName')} · ${t('snap.custom', { w: width, h: height })}` : name(l);
   const tile = (l: string) => {
     const grid = gridOf(l, count);
     const cells = grid ? grid[0] * grid[1] : 1;
     const on = lit === l ? Math.min(count, cells) : 0;
     return <button key={l} type="button" role="menuitemradio" aria-checked={value === l} data-layout={l}
-      className={`snap-opt${value === l ? ' current' : ''}`} title={name(l)}
+      className={`snap-opt${value === l ? ' current' : ''}`} title={tip(l)}
       onMouseEnter={() => setLit(l)} onMouseLeave={() => setLit(null)} onFocus={() => setLit(l)} onBlur={() => setLit(null)}
       onClick={() => onPick(l)}>
       <span className="snap-screen">

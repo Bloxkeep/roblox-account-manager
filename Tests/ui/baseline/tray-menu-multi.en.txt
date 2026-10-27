@@ -1,0 +1,15 @@
+== end
+html [data-theme="dark" lang="en"]
+#tray
+  div.tray.tray-menu [role="menu" tabindex="-1" aria-label="Bloxkeep"]
+    button.tray-back [type="button"] "Multi-Roblox"
+      svg.i #10tf97k
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #16z0s1r
+      span.tray-item-text "Turn off Multi-Roblox"
+-- commands
+  ready {}
+  size {"h":379,"opened":1,"w":292}
+  size {"h":379,"opened":1,"w":292}
+  size {"h":82,"opened":1,"w":292}
+  size {"h":82,"opened":1,"w":292}

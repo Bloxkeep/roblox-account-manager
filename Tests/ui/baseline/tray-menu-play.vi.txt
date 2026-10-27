@@ -1,0 +1,56 @@
+== end
+html [data-theme="dark" lang="vi"]
+#tray
+  div.tray.tray-menu [role="menu" tabindex="-1" aria-label="Bloxkeep"]
+    button.tray-back [type="button"] "Vào game bằng"
+      svg.i #10tf97k
+    div.tray-list
+      button.tray-row [role="menuitem" type="button" disabled]
+        span.sm.tray-av
+          img [alt="" style="--h:216" src=#1augph5]
+        span.tray-row-text
+          b "Main"
+        span.tray-playing "Đang chơi"
+      button.tray-row [role="menuitem" type="button" disabled]
+        span.sm.tray-av
+          img [alt="" style="--h:342" src=#1x61xx9]
+        span.tray-row-text
+          b "Farm 1"
+        span.tray-playing "Đang chơi"
+      button.tray-row [role="menuitem" type="button"]
+        span.sm.tray-av
+          span.initials [style="--h:343"] "FA"
+        span.tray-row-text
+          b "Farm 2"
+      button.tray-row [role="menuitem" type="button"]
+        span.sm.tray-av
+          img [alt="" style="--h:146" src=#1augph5]
+        span.tray-row-text
+          b "Alt"
+      button.tray-row [role="menuitem" type="button"]
+        span.sm.tray-av
+          img [alt="" style="--h:45" src=#1x61xx9]
+        span.tray-row-text
+          b "Trader"
+      button.tray-row [role="menuitem" type="button"]
+        span.sm.tray-av
+          span.initials [style="--h:164"] "BU"
+        span.tray-row-text
+          b "Builder"
+      button.tray-row [role="menuitem" type="button"]
+        span.sm.tray-av
+          img [alt="" style="--h:301" src=#1augph5]
+        span.tray-row-text
+          b "Night Owl"
+      button.tray-row [role="menuitem" type="button"]
+        span.sm.tray-av
+          img [alt="" style="--h:153" src=#1x61xx9]
+        span.tray-row-text
+          b "Test"
+-- commands
+  ready {}
+  size {"h":366,"opened":1,"w":292}
+  size {"h":376,"opened":1,"w":292}
+  size {"h":376,"opened":1,"w":292}
+  size {"h":379,"opened":1,"w":292}
+  size {"h":379,"opened":1,"w":292}

@@ -143,7 +143,7 @@ static class HomeSessionSuite
         using var form = new Form();
         using var app = new AppController(form, _ => { });
         string root = (string)typeof(AppController).GetField("HomeAliases", Harness.F)!.GetValue(null)!;
-        c.Check("controller stores aliases in its data directory, outside the old TEMP root", root == Path.Combine(dir, "roblox-client-paths"));
+        c.Check("controller stores aliases in its data directory's cache, outside the old TEMP root", root == Path.Combine(dir, "cache", "roblox-client-paths"));
         var messages = new List<string>();
         bool Ready() => (bool)Harness.Invoke(app, "HomeLaunchReady", (Action<string>)messages.Add)!;
         Prefs.MultiRobloxAtStart = false;

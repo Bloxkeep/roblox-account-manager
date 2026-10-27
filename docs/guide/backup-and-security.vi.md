@@ -4,7 +4,7 @@
 
 Mật khẩu chủ và những gì không lấy lại được, sao lưu tự động, khôi phục, chuyển sang máy mới, nhập từ file Bloxkeep khác, dữ liệu nằm ở đâu, những gì rời khỏi máy và Ẩn tên tài khoản.
 
-<img src="../screenshots/vi/settings-backup.png" width="760" alt="Cài đặt › Sao lưu & dữ liệu: Sao lưu vào thư mục với thư mục OneDrive đã chọn và nút Sao lưu ngay, Khôi phục, Nhập tài khoản từ file dữ liệu, và nơi lưu dữ liệu">
+<img src="../screenshots/vi/settings-backup.png" width="760" alt="Cài đặt › Sao lưu & dữ liệu: Sao lưu vào thư mục với thư mục OneDrive đã chọn và nút Sao lưu ngay, Khôi phục, Nhập tài khoản từ file dữ liệu, và vị trí từng file">
 
 ## Làm nhanh
 
@@ -19,8 +19,8 @@ Lần đầu mở, Bloxkeep yêu cầu **Đặt mật khẩu chủ**. Mọi th�
 
 - Ít nhất 6 ký tự và không được chỉ toàn dấu cách. Thanh **Yếu / Tạm được / Mạnh** chỉ để tham khảo.
 - Mỗi lần khởi động, Bloxkeep hiện **Chào mừng trở lại**: nhập mật khẩu chủ rồi bấm **Mở khóa**. Nếu đang bật Caps Lock, app sẽ nhắc.
-- Muốn đổi mật khẩu: **Cài đặt › Bảo mật**. Các bản sao lưu làm trước khi đổi vẫn chỉ mở được bằng mật khẩu cũ.
-- **Tự khóa** (**Cài đặt › Bảo mật**): khi không ai dùng bàn phím hay chuột của máy trong khoảng thời gian bạn chọn (từ 5 phút tới 2 giờ), Bloxkeep hiện lại màn hình này. Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy phía sau. Còn nút **Khóa** thì khóa hẳn Bloxkeep: các việc đó tạm dừng cho tới khi bạn mở khóa.
+- Muốn đổi mật khẩu: **Cài đặt › Vault & bảo mật**. Các bản sao lưu làm trước khi đổi vẫn chỉ mở được bằng mật khẩu cũ.
+- **Tự khóa** (**Cài đặt › Vault & bảo mật**): khi không ai dùng bàn phím hay chuột của máy trong khoảng thời gian bạn chọn (từ 5 phút tới 2 giờ), Bloxkeep hiện lại màn hình này. Roblox, tự vào lại game, preset hẹn giờ và Discord vẫn chạy phía sau. Còn nút **Khóa** thì khóa hẳn Bloxkeep: các việc đó tạm dừng cho tới khi bạn mở khóa.
 
 > [!WARNING]
 > Mật khẩu chủ không lấy lại được. Bloxkeep không lưu nó ở đâu cả, nên quên là mất hết tài khoản đã lưu. Cách duy nhất để lấy lại là một bản sao lưu mà bạn còn nhớ mật khẩu.
@@ -90,7 +90,7 @@ Bloxkeep không có tài khoản hay công cụ phân tích riêng. Tài khoản
 | Thư mục sao lưu bạn chọn | Kho dữ liệu đã mã hóa. |
 | Webhook Discord của bạn | Chỉ khi bạn bật. Không bao giờ có cookie hay mật khẩu. |
 | Người làm Bloxkeep | Những góp ý bạn tự gửi. |
-| Bot Discord của Bloxkeep | Khi Bloxkeep đang mở, cứ mỗi phút báo "đang mở" một lần mà không kèm danh tính (một mã tạo từ máy, không lần ngược ra được, phiên bản và ngôn ngữ), để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Tắt ở **Cài đặt › Cập nhật Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng**. |
+| Bot Discord của Bloxkeep | Khi Bloxkeep đang mở, cứ mỗi phút báo "đang mở" một lần mà không kèm danh tính (một mã tạo từ máy, không lần ngược ra được, phiên bản và ngôn ngữ), để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Tắt ở **Cài đặt › Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng**. |
 
 Danh sách đầy đủ có trong [chính sách quyền riêng tư](../../PRIVACY.md) (tiếng Anh).
 

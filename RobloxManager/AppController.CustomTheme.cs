@@ -50,10 +50,10 @@ public sealed partial class AppController
             throw new UserError(L.T("Pick a picture: a PNG, JPG, WebP, GIF or BMP file."));
         if (new FileInfo(dialog.FileName).Length > MaxThemePicture)
             throw new UserError(L.T("That picture is over 20 MB. Pick a smaller one."));
-        Directory.CreateDirectory(Vault.DataDir);
+        Directory.CreateDirectory(Vault.PicturesDir);
         // A new name each time, so the page loads the new picture rather than the one it already shows.
         string name = $"theme-background-{DateTime.UtcNow.Ticks}{type}";
-        File.Copy(dialog.FileName, Path.Combine(Vault.DataDir, name));
+        File.Copy(dialog.FileName, Path.Combine(Vault.PicturesDir, name));
         DeleteThemePictures(except: name);
         Prefs.Custom = Prefs.Custom with { Picture = name };
         return UseCustomTheme();
@@ -80,7 +80,9 @@ public sealed partial class AppController
     {
         try
         {
-            foreach (string file in Directory.EnumerateFiles(Vault.DataDir, "theme-background-*"))
+            // The top of the data folder too: one Vault.Tidy couldn't move yet.
+            foreach (string file in new[] { Vault.PicturesDir, Vault.DataDir }.Where(Directory.Exists)
+                .SelectMany(dir => Directory.EnumerateFiles(dir, "theme-background-*")).ToList())
             {
                 if (Path.GetFileName(file) != except && Themes.IsPictureName(Path.GetFileName(file)))
                     File.Delete(file);

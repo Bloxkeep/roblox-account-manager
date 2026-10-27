@@ -11,7 +11,7 @@ html [data-theme="dark" lang="vi"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Chào mừng trở lại"
       p "Nhập mật khẩu chủ để mở khóa."
-      p.lock-paused "Các cửa sổ Roblox vẫn đang mở. Tự vào lại game, preset hẹn giờ và Discord sẽ chạy lại khi bạn mở khóa."
+      p.lock-paused "Cửa sổ Roblox vẫn đang mở. Tự vào lại, preset hẹn giờ và Discord sẽ chạy lại khi mở khóa."
       div.stack
         div.pw
           input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]

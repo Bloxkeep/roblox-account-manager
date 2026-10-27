@@ -39,7 +39,7 @@ Mọi thứ bạn lưu trong Bloxkeep đều được mã hóa bằng mật kh�
 - Bloxkeep không lưu mật khẩu này ở đâu cả, nên nó **không lấy lại được**. Quên là mất hết tài khoản đã lưu. Cách duy nhất để lấy lại là một bản sao lưu mà bạn còn nhớ mật khẩu.
 - Nên bật sao lưu sớm: **Cài đặt › Sao lưu & dữ liệu › Sao lưu vào thư mục**. Bản sao lưu mở bằng mật khẩu dùng lúc sao lưu.
 - Chuyển sang máy mới? Ở màn hình đầu tiên, bấm **Khôi phục từ bản sao lưu** thay vì đặt mật khẩu mới.
-- Muốn đổi mật khẩu sau này: **Cài đặt › Bảo mật**.
+- Muốn đổi mật khẩu sau này: **Cài đặt › Vault & bảo mật**.
 - Nút **EN / VI** ở góc trên dùng để đổi ngôn ngữ (cũng có ở **Cài đặt › Giao diện › Ngôn ngữ**).
 
 ## Mở khóa và khóa app
@@ -66,19 +66,19 @@ Nếu có thứ sẽ bị tạm dừng (ví dụ "Tự vào lại game của 3 t
 
 Bloxkeep kiểm tra bản mới trên GitHub ngay khi mở và sau đó mỗi giờ một lần. Có bản mới trước khi bạn mở khóa thì cài luôn: màn hình mở khóa hiện **Đang cập nhật lên** *phiên bản* kèm tiến độ, rồi Bloxkeep mở lại ở bản mới, ngay màn hình mở khóa. Bản tìm thấy sau đó thì tải về ở nền và tự cài vào lần tới bạn không dùng Bloxkeep; vài giây sau app quay lại y như cũ: vẫn mở khóa, đúng tab đang xem. Các cửa sổ Roblox vẫn chạy suốt.
 
-<img src="../screenshots/vi/lock-update.png" width="760" alt="Màn hình mở khóa nhường chỗ cho bản cập nhật tìm thấy trước khi mở khóa: Đang cập nhật lên 1.0.1, Đang tải 40 %, và Mở khóa luôn, cập nhật sau">
+<img src="../screenshots/vi/lock-update.png" width="760" alt="Màn hình mở khóa nhường chỗ cho bản cập nhật tìm thấy trước khi mở khóa: Đang cập nhật lên 1.0.1, Đang tải 40 %, và Để sau">
 
 <img src="../screenshots/vi/2-restart-to-update.png" width="760" alt="Nút Khởi động lại để cập nhật ở thanh bên, hiện khi đã có bản mới">
 
 - **Khởi động lại để cập nhật** ở thanh bên cài ngay. Thoát Bloxkeep cũng sẽ cài bản mới.
 - Sau khi cập nhật, **Có gì mới** cho biết đã thay đổi những gì.
-- **Cài đặt › Cập nhật Bloxkeep** hiện phiên bản và trạng thái. **Kiểm tra ngay** tìm bản mới. **Tự động cập nhật** bật sẵn; tắt đi thì app không tự tải hay tự cài gì.
+- **Cài đặt › Bloxkeep** hiện phiên bản và trạng thái. **Kiểm tra ngay** tìm bản mới. **Tự động cập nhật** bật sẵn; tắt đi thì app không tự tải hay tự cài gì.
 - **Tự động cập nhật** bị mờ trên bản không tự cập nhật được ("Chỉ có bản cài đặt là tự cập nhật được").
 
 <details>
 <summary>Chi tiết thêm</summary>
 
-- Ở màn hình mở khóa, **Mở khóa luôn, cập nhật sau** trả lại ô mật khẩu; bản cập nhật sẽ chờ tới lúc bạn không dùng Bloxkeep. Nếu bạn đang gõ dở mật khẩu lúc tìm thấy bản mới thì màn hình mở khóa giữ nguyên.
+- Ở màn hình mở khóa, **Để sau** trả lại ô mật khẩu; bản cập nhật sẽ chờ tới lúc bạn không dùng Bloxkeep. Nếu bạn đang gõ dở mật khẩu lúc tìm thấy bản mới thì màn hình mở khóa giữ nguyên.
 - "Không dùng" nghĩa là cửa sổ đang ở khay hoặc thu nhỏ, hoặc không ai chạm vào máy trong 10 phút, và Bloxkeep không làm dở việc gì (không đang mở Roblox, đăng nhập, sao lưu hay điền dở form). Cửa sổ Roblox đang chạy treo không làm việc cập nhật phải chờ.
 - Muốn nhập lại mật khẩu chủ sau mỗi lần cập nhật thì khóa Bloxkeep trước: bản đang khóa không chuyển gì cho bản mới.
 - Nếu khoảng một phút sau vẫn chưa thấy bản mới mở lên, Bloxkeep tự mở lại ở khay, đang khóa, kèm một thông báo. Bản cập nhật đó không tự thử lại trong một ngày; nút **Khởi động lại để cập nhật** vẫn dùng được.

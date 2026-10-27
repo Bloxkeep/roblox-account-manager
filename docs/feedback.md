@@ -1,6 +1,6 @@
 # Send feedback
 
-**Settings › Bloxkeep updates › Send feedback** (or `Ctrl+K`, "feedback") sends an idea or a bug report to Bloxkeep's
+**Settings › Bloxkeep › Send feedback** (or `Ctrl+K`, "feedback") sends an idea or a bug report to Bloxkeep's
 developer, on Discord.
 
 ## What goes

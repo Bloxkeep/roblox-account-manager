@@ -46,7 +46,7 @@ public sealed class CaptchaForm : Form
     /// sees a browser it already knows, so its "Verifying browser…" step doesn't start from nothing every time. It
     /// only ever holds the puzzle pages' own data — never a Roblox sign-in, which goes through the app.
     /// </summary>
-    public static string ProfileDir => Path.Combine(Vault.DataDir, "captcha");
+    public static string ProfileDir => Vault.CacheFolder("captcha");
 
     public string? Token { get; private set; }
 

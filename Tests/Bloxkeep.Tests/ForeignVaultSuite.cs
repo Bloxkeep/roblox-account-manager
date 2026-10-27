@@ -59,7 +59,7 @@ static class ForeignVaultSuite
         {
             await Harness.Call(app, "lock", new { });
             // The copy kept aside is named to the second; two restores here can fall in the same one.
-            foreach (string kept in Directory.GetFiles(Vault.DataDir, "vault-before-restore-*"))
+            foreach (string kept in (Directory.Exists(Vault.OldVaultsDir) ? Directory.GetFiles(Vault.OldVaultsDir, "vault-before-restore-*") : []))
                 File.Delete(kept);
             typeof(AppController).Assembly.GetType("RobloxManager.Backup")!.GetMethod("Restore", Harness.F)!.Invoke(null, [file, true]);
             typeof(AppController).GetMethod("NoteRestored", Harness.F)!.Invoke(null, [file]);

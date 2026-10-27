@@ -2,16 +2,16 @@
 
 # Staying in game
 
-How Bloxkeep keeps accounts in their games: Auto-rejoin, Anti-AFK, the daily sign-in check, the RAM options and running from the tray. All of it is on **Settings › Staying in game**.
+How Bloxkeep keeps accounts in their games: Auto-rejoin, Anti-AFK, the daily sign-in check, and the RAM options, on **Settings › Staying in game**; running from the tray is on **Settings › Bloxkeep**.
 
-<img src="../screenshots/settings-staying.png" width="760" alt="Settings, Staying in game page: Auto-rejoin, Anti-AFK, Check sign-ins every day, Low RAM warning, Save RAM on background windows and Keep running in the tray when closed">
+<img src="../screenshots/settings-staying.png" width="760" alt="Settings, Staying in game page: Auto-rejoin, Anti-AFK, Check sign-ins every day, Low RAM warning, Save RAM on background windows and Fast cores for the window you play">
 
 ## Quick steps
 
 1. Open **Settings › Staying in game**.
 2. Next to **Auto-rejoin**, choose **On for all accounts**. For a single account, use its **⋯ › Auto-rejoin** instead.
 3. Turn on **Anti-AFK**.
-4. Leave **Keep running in the tray when closed** on, so the ✕ button hides Bloxkeep instead of quitting it.
+4. In **Settings › Bloxkeep**, leave **Keep running in the tray when closed** on, so the ✕ button hides Bloxkeep instead of quitting it.
 
 ## Auto-rejoin
 
@@ -98,7 +98,7 @@ The window in front gets its normal priority back. Roblox may refuse; Bloxkeep t
 
 ## The tray
 
-**Settings › Staying in game › Keep running in the tray when closed** (on by default). The ✕ button hides Bloxkeep to the system tray. Auto-rejoin, Multi-Roblox and schedules keep working.
+**Settings › Bloxkeep › Keep running in the tray when closed** (on by default). The ✕ button hides Bloxkeep to the system tray. Auto-rejoin, Multi-Roblox and schedules keep working.
 
 **Click the tray icon** for the quick panel, like Windows 11's own:
 
