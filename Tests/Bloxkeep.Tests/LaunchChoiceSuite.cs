@@ -34,6 +34,15 @@ static class LaunchChoiceSuite
             RobloxInstalls.ClientFor("direct"));
         c.Check("…nor Default's fallback", !RobloxInstalls.IsVngClient(FallbackExe() ?? ""), FallbackExe());
 
+        // The sidebar's "Roblox doesn't seem to be installed": a client on disk is enough, whatever the roblox-player:
+        // links say (Roblox VNG's uninstaller took them on 2026-10-28 with the global Roblox still here).
+        using (var form = new Form())
+        using (var app = new AppController(form, _ => { }))
+        {
+            var state = Harness.Invoke(app, "BuildState")!;
+            c.Check("a Roblox client on the PC: not said to be missing", state.GetType().GetProperty("robloxInstalled")!.GetValue(state) is true);
+        }
+
         // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
         Directory.Delete(Path.Combine(local, "Roblox"), recursive: true);
         if (RobloxInstalls.FindAnyClient() is null)
