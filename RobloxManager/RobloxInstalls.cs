@@ -8,7 +8,8 @@ namespace RobloxManager;
 public static class RobloxInstalls
 {
     const string ProtocolCommandKey = @"roblox-player\shell\open\command";
-    static readonly string Local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    /// <summary>%LOCALAPPDATA%; a field the checks point at a folder of their own.</summary>
+    static string Local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
     /// <summary>Executable registered for roblox-player: links (the official client or a bootstrapper).</summary>
     public static string? ProtocolHandlerPath()
@@ -32,6 +33,14 @@ public static class RobloxInstalls
     /// installing Roblox VNG doesn't change what Bloxkeep opens Roblox with.
     /// </summary>
     public static bool IsVngClient(string path) => path.Contains(@"\RobloxPCVNG\", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Roblox VNG's newest client: its own launch option ("vng"), and the last choice of Default and "direct" when no
+    /// other Roblox is on the PC (never ahead of one; the owner's rule, 2026-10-28). It opened
+    /// global accounts too when their tickets were redeemed (seen 2026-10-19). After Bloxstrap was removed it was the only
+    /// Roblox on the owner's PC (2026-10-28).
+    /// </summary>
+    public static string? FindVngClient() => Newest(ClientsIn(Path.Combine(Local, "RobloxPCVNG")));
 
     /// <summary>The program roblox-player: links open, when it is still there and isn't Roblox VNG's client.</summary>
     public static string? UsableHandlerPath() =>
@@ -172,15 +181,16 @@ public static class RobloxInstalls
             // A launcher picked by hand: its own copy of Roblox if it keeps one next to it, else the newest anywhere.
             "custom" => (RobloxLauncher.CustomLauncherReady(customLauncher) ? Newest(ClientsIn(Path.GetDirectoryName(customLauncher))) : null) ?? FindAnyClient(),
             "roblox" => FindOfficialClient(),
-            "direct" => FindAnyClient(),
+            "direct" => FindAnyClient() ?? FindVngClient(), // VNG's only when nothing else is there
             "store" => FindStoreClient(),
+            "vng" => FindVngClient(),
             // Whatever opens roblox-player: links: the client itself, or a bootstrapper with its own copies.
             // (Not Roblox VNG's client: see IsVngClient.)
             _ => UsableHandlerPath() is { } handler
                 ? Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase)
                     ? handler
                     : Newest(ClientsIn(Path.GetDirectoryName(handler))) ?? FindAnyClient()
-                : FindAnyClient(),
+                : FindAnyClient() ?? FindVngClient(),
         };
     }
 
@@ -192,7 +202,7 @@ public static class RobloxInstalls
     /// </summary>
     public static string? UpdaterFor(string launchVia, string customLauncher = "")
     {
-        if (launchVia is "custom" or "store" or "roblox" || ClientFor(launchVia, customLauncher) is not { } client)
+        if (launchVia is "custom" or "store" or "roblox" or "vng" || ClientFor(launchVia, customLauncher) is not { } client)
             return null;
         foreach (var name in KnownBootstrappers.Concat(FindOtherBootstrappers()))
         {

@@ -720,7 +720,8 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>Which Roblox clients and launchers exist, and the version of the client the chosen option starts.</summary>
     /// <param name="Others">Other Bloxstrap-style launchers found here (their option is "other:&lt;name&gt;").</param>
-    sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, List<string> Others, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client);
+    sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, List<string> Others, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client,
+        bool Vng = false);
 
     /// <param name="UpToDate">null until both versions are known.</param>
     /// <param name="Store">Roblox from the Microsoft Store is chosen: the Store installs its updates, not Roblox itself.</param>
@@ -755,9 +756,10 @@ public sealed partial class AppController : IDisposable
             Fishstrap: RobloxInstalls.FindBootstrapper("Fishstrap") is not null,
             Others: RobloxInstalls.FindOtherBootstrappers(),
             Roblox: RobloxInstalls.FindOfficialClient() is not null,
-            Direct: RobloxInstalls.FindAnyClient() is not null,
+            Direct: (RobloxInstalls.FindAnyClient() ?? RobloxInstalls.FindVngClient()) is not null,
             Store: RobloxInstalls.StoreEditionInstalled(),
-            Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")));
+            Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")),
+            Vng: RobloxInstalls.FindVngClient() is not null);
         _updaterExe = RobloxInstalls.UpdaterFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "");
         // Roblox (or its launcher) put a new build in place since the last look — or an older one (a launcher set to a
         // version, an older copy chosen), which isn't an update.

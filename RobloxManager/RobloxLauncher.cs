@@ -9,7 +9,7 @@ public static class RobloxLauncher
     /// Values of <see cref="AppSettings.LaunchVia"/>, plus "other:&lt;Name&gt;" for another Bloxstrap-style launcher found on
     /// this PC and "custom" for one the user picked (<see cref="AppSettings.CustomLauncher"/>).
     /// </summary>
-    public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct", "store", "custom"];
+    public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct", "store", "custom", "vng"];
 
     const string OtherPrefix = "other:";
 
@@ -61,7 +61,8 @@ public static class RobloxLauncher
 
     /// <summary>
     /// What opens Roblox when the links don't: Bloxstrap or Fishstrap (as their own options start them), another
-    /// Bloxstrap-style launcher, else the newest RobloxPlayerBeta.exe on the PC. Null when there is none.
+    /// Bloxstrap-style launcher, else the newest RobloxPlayerBeta.exe on the PC, and Roblox VNG's client only when
+    /// nothing else is there (the owner's rule, 2026-10-28: VNG is always the last choice). Null when there is none.
     /// </summary>
     internal static (string Exe, string[] Args)? FallbackLauncher()
     {
@@ -75,7 +76,7 @@ public static class RobloxLauncher
             if (RobloxInstalls.FindBootstrapper(name) is { } exe)
                 return (exe, []);
         }
-        return RobloxInstalls.FindAnyClient() is { } client ? (client, []) : null;
+        return (RobloxInstalls.FindAnyClient() ?? RobloxInstalls.FindVngClient()) is { } client ? (client, []) : null;
     }
 
     static string NewBrowserTrackerId() => Random.Shared.NextInt64(100_000_000_000, 999_999_999_999).ToString();
@@ -145,8 +146,13 @@ public static class RobloxLauncher
                 Start(RobloxInstalls.FindOfficialClient() ?? throw new FileNotFoundException(L.T("The official Roblox client is not installed.")), uri);
                 break;
             case "direct":
-                Start(RobloxInstalls.FindAnyClient()
+                // Roblox VNG's client only when no other is on the PC: always the last choice.
+                Start(RobloxInstalls.FindAnyClient() ?? RobloxInstalls.FindVngClient()
                       ?? throw new FileNotFoundException(L.T("RobloxPlayerBeta.exe was not found. Pick another option under Settings › Launching › Open Roblox with, or reinstall Roblox.")), uri);
+                break;
+            case "vng":
+                Start(RobloxInstalls.FindVngClient()
+                      ?? throw new FileNotFoundException(L.T("Roblox VNG isn't installed. Pick another option under Settings › Launching › Open Roblox with.")), uri);
                 break;
             case "store":
                 StartInStorePackage(RobloxInstalls.FindStoreClient()
@@ -165,7 +171,7 @@ public static class RobloxLauncher
                     }
                     // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
                     if (RobloxInstalls.ProtocolHandlerPath() is { } vng && RobloxInstalls.IsVngClient(vng))
-                        throw new FileNotFoundException(L.T("Only Roblox VNG is installed, and Bloxkeep doesn't open Roblox with it. Install Roblox from roblox.com/download (or Bloxstrap), then try again."));
+                        throw new FileNotFoundException(L.T("Only Roblox VNG is installed. Choose Roblox VNG under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download."));
                     throw new FileNotFoundException(RobloxInstalls.StoreEditionInstalled()
                         ? L.T("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
                         : L.T("Roblox isn't installed. Install it from roblox.com/download, then try again."));

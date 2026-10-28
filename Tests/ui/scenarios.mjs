@@ -1024,6 +1024,8 @@ export default [
     await s.snap('store');
     await s.choose({ css: '#s-launch' }, 'other:Voidstrap');
   }),
+  // Roblox VNG on this PC: its own option, chosen and saved.
+  S('settings-launch-vng', 'settings=launch&vng=1', async s => { await s.choose({ css: '#s-launch' }, 'vng'); }),
   S('settings-launch-long', 'settings=launch&long=1&notready=1'),
   S('settings-backup-problems', 'settings=backup&backup=1&bkerr=1&weak=1', async s => { await s.click(key('bk.now')); await s.wait(500); }),
   S('settings-backup-use', 'settings=backup', async s => {
