@@ -211,56 +211,59 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.11 · 27 tháng 10, 2026"
+              small "Bloxkeep 1.0.12 · 29 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
+          article.wide.wn-feat
+            div.wn-shot
+              img [alt="" style="width:735px" src="whatsnew/1.0.12-discord.vi.webp"]
+            div.wn-feat-text
+              h3 "Điều khiển từ Discord"
+              p "Gõ /pc trong Discord để xem tài khoản nào đang trong game, chạy preset, đóng cửa sổ hay đổi server trên máy, ở đâu cũng được."
+              button.wn-go [type="button" FOCUSED] "Bật ngay"
+                svg.i #1g7f83q
           article.wn-feat
             div.wn-shot
-              img [alt="" style="width:470px" src="whatsnew/1.0.11-rejoin.vi.webp"]
+              img [alt="" style="width:532px" src="whatsnew/1.0.12-hide.vi.webp"]
             div.wn-feat-text
-              h3 "Vào lại cùng nhóm"
-              p "Trong preset, chọn Server khi vào lại › Cùng tài khoản khác (hoặc một tài khoản cụ thể). Tài khoản bị văng sẽ vào lại đúng server của tài khoản đó; server đầy thì vào server bất kỳ."
+              h3 "Ẩn cửa sổ Roblox"
+              p "Ẩn cửa sổ mà game vẫn chạy, từ menu tài khoản hoặc bằng Ctrl+Alt+H. Ctrl+Alt+A để xếp cửa sổ."
           article.wn-feat
             div.wn-shot
-              img [alt="" style="width:344px" src="whatsnew/1.0.11-tray.vi.webp"]
+              img [alt="" style="width:312px" src="whatsnew/1.0.12-botcheck.vi.webp"]
             div.wn-feat-text
-              h3 "Khay hệ thống mới"
-              p "Bấm biểu tượng dưới khay để xem các cửa sổ đang chạy, Vào game, Preset và Multi-Roblox. Chuột phải để mở menu."
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:420px" src="whatsnew/1.0.11-lock-update.vi.webp"]
-            div.wn-feat-text
-              h3 "Cập nhật ở màn hình khóa"
-              p "Có bản mới trước khi mở khóa thì Bloxkeep cài luôn ở đó, Roblox vẫn chạy."
+              h3 "Xác minh không phải bot"
+              p "Khi Roblox bắt tài khoản đang vào game xác minh không phải bot, thẻ tài khoản sẽ báo và nút Xác minh mở bước kiểm tra trong cửa sổ của Bloxkeep."
         section.new.wn-group
           h4.wn-kind "Mới"
           ul.wn-notes
-            li "Cài đặt › Sao lưu & dữ liệu hiện đường dẫn file vault, nhật ký lỗi và thư mục cài đặt, mỗi dòng có nút mở."
+            li "Sang server khác ngay từ menu tài khoản."
+            li "Có thể chọn Roblox VNG trong Cài đặt › Khởi chạy. VNG luôn là lựa chọn cuối, chỉ dùng trước khi bạn tự chọn."
+            li "Khi Roblox không cho một tài khoản đăng nhập, thông báo lỗi có nút mở roblox.com của tài khoản đó, đã đăng nhập sẵn, để xem lý do."
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "Trang Bloxkeep mới gom cập nhật, khay hệ thống, tăng tốc phần cứng, hướng dẫn và quyền riêng tư; Bảo mật đổi tên thành Vault & bảo mật."
-              b "Sắp xếp lại Cài đặt"
-            li "Thời gian chờ giữa các tài khoản trong preset giờ chọn từ danh sách (Theo Cài đặt, 0–120 giây) thay vì gõ tay."
-            li "Bản vault cũ, ảnh và bộ nhớ đệm được chuyển vào thư mục riêng."
-              b "Thư mục dữ liệu gọn hơn"
-            li "What's new có ảnh minh họa cho từng tính năng."
+            li "Danh sách ghi rõ Online trên web hoặc app Roblox, thay vì chỉ Online."
+            li "Không báo những việc bạn không làm gì được hoặc đã thấy rồi."
+              b "Bớt thông báo"
+            li "Hộp thoại mở ra từ đầu."
+            li "Thông báo ở góc nằm trên thanh Vào game, không đè lên mép của nó nữa."
+            li "Kiểm tra đăng nhập tách riêng tài khoản bị Roblox từ chối với lỗi mạng."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "Sửa lỗi What's new không hiện khi cập nhật từ bản beta lên bản chính thức."
-        section.removed.wn-group
-          h4.wn-kind "Đã bỏ"
-          ul.wn-notes
-            li "Nút Discord ở cuối thanh bên. Discord của Bloxkeep giờ nằm ở Cài đặt › Bloxkeep › Hướng dẫn & góp ý."
+            li "Sửa lỗi báo chưa cài Roblox trong khi đang có cửa sổ Roblox mở."
+            li "Sửa lỗi báo Roblox cũ khi Roblox đưa máy vào bản thử nghiệm."
+            li "Sửa lỗi chống AFK dừng ở mọi cửa sổ khi một cửa sổ đang chờ xác minh bot."
+            li "Sửa lỗi cửa sổ đã ẩn và thu nhỏ hiện lại trên thanh tác vụ sau khi chống AFK."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q
         p.wn-star
           span "Thấy Bloxkeep có ích? Tặng một sao trên GitHub để nhiều người biết đến hơn."
-          button.wn-go [type="button" FOCUSED] "Mở GitHub"
+          button.wn-go [type="button"] "Mở GitHub"
             svg.i #1g7f83q
       div.modal-foot
         button.btn.primary "Đã hiểu"

@@ -9,6 +9,7 @@
 //   node Tests/ui/run.mjs --lang en        one language
 //   node Tests/ui/run.mjs --update         save what the page shows now as the expected copy
 //   node Tests/ui/run.mjs --shots          also screenshots, in Tests/ui/out/shots, to look at
+//   UI_SCALE=1.5 node Tests/ui/run.mjs --shots   screenshots at 1.5x (the pictures in What's new are cut from these)
 //   node Tests/ui/run.mjs --layout         also each element's position and size, against a copy kept on this PC only
 //                                          (Tests/ui/out/layout: positions differ a little between PCs)
 //   node Tests/ui/run.mjs --pixels         also every screenshot pixel by pixel, against copies kept on this PC only
@@ -191,7 +192,7 @@ async function runOne(b, { sc, lang }) {
   try {
     b.problems.length = 0;
     const [w, h] = sc.size || SIZE;
-    await b.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+    await b.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: Number(process.env.UI_SCALE) || 1, mobile: false });
     await b.send('Storage.clearDataForOrigin', { origin: base, storageTypes: 'all' });
     // The app's page, or another of ui/dev's previews (the tray's: page: 'tray-preview.html').
     await b.goto(`${base}/ui/dev/${sc.page || 'preview.html'}?lang=${lang}${sc.query ? '&' + sc.query : ''}`);

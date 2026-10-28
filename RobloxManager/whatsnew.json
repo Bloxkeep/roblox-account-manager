@@ -1,5 +1,92 @@
 [
   {
+    "version": "1.0.12",
+    "date": "2026-10-29",
+    "highlights": [
+      {
+        "icon": "discord",
+        "go": "settings:discord",
+        "image": "whatsnew/1.0.12-discord.{lang}.webp",
+        "en": [
+          "Control from Discord",
+          "Type /pc in Discord to see which accounts are in a game, run a preset, close windows or switch server on your PC, from anywhere.",
+          "Turn it on"
+        ],
+        "vi": [
+          "Điều khiển từ Discord",
+          "Gõ /pc trong Discord để xem tài khoản nào đang trong game, chạy preset, đóng cửa sổ hay đổi server trên máy, ở đâu cũng được.",
+          "Bật ngay"
+        ]
+      },
+      {
+        "icon": "eyeOff",
+        "image": "whatsnew/1.0.12-hide.{lang}.webp",
+        "en": [
+          "Hide Roblox windows",
+          "Hide a window while its game keeps running, from the account menu or with Ctrl+Alt+H. Ctrl+Alt+A arranges the windows."
+        ],
+        "vi": [
+          "Ẩn cửa sổ Roblox",
+          "Ẩn cửa sổ mà game vẫn chạy, từ menu tài khoản hoặc bằng Ctrl+Alt+H. Ctrl+Alt+A để xếp cửa sổ."
+        ]
+      },
+      {
+        "icon": "shield",
+        "image": "whatsnew/1.0.12-botcheck.{lang}.webp",
+        "en": [
+          "Roblox's bot check",
+          "When Roblox asks a joining account to prove it isn't a bot, its card says so and Verify opens the check in Bloxkeep's window."
+        ],
+        "vi": [
+          "Xác minh không phải bot",
+          "Khi Roblox bắt tài khoản đang vào game xác minh không phải bot, thẻ tài khoản sẽ báo và nút Xác minh mở bước kiểm tra trong cửa sổ của Bloxkeep."
+        ]
+      }
+    ],
+    "new": {
+      "en": [
+        "Switch to another server from the account menu.",
+        "Roblox VNG can be picked in Settings › Launching. It is always the last choice, used first only when you pick it.",
+        "When Roblox won't let an account sign in, the error has a button that opens its roblox.com, already signed in, to see why."
+      ],
+      "vi": [
+        "Sang server khác ngay từ menu tài khoản.",
+        "Có thể chọn Roblox VNG trong Cài đặt › Khởi chạy. VNG luôn là lựa chọn cuối, chỉ dùng trước khi bạn tự chọn.",
+        "Khi Roblox không cho một tài khoản đăng nhập, thông báo lỗi có nút mở roblox.com của tài khoản đó, đã đăng nhập sẵn, để xem lý do."
+      ]
+    },
+    "improved": {
+      "en": [
+        "The list shows Online on the Roblox website or app, instead of just Online.",
+        "Fewer notices: none for things you can't act on or already see.",
+        "Dialogs open at their top.",
+        "Notices in the corner sit above the Play bar instead of over its edge.",
+        "Checking sign-ins tells accounts Roblox refuses apart from network problems."
+      ],
+      "vi": [
+        "Danh sách ghi rõ Online trên web hoặc app Roblox, thay vì chỉ Online.",
+        "Bớt thông báo: không báo những việc bạn không làm gì được hoặc đã thấy rồi.",
+        "Hộp thoại mở ra từ đầu.",
+        "Thông báo ở góc nằm trên thanh Vào game, không đè lên mép của nó nữa.",
+        "Kiểm tra đăng nhập tách riêng tài khoản bị Roblox từ chối với lỗi mạng."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Fixed Bloxkeep saying Roblox isn't installed while a Roblox window was open.",
+        "Fixed Roblox being shown as out of date when Roblox put the PC on a test version.",
+        "Fixed anti-AFK stopping for every window while one waited on Roblox's bot check.",
+        "Fixed a hidden, minimised window coming back on the taskbar after anti-AFK."
+      ],
+      "vi": [
+        "Sửa lỗi báo chưa cài Roblox trong khi đang có cửa sổ Roblox mở.",
+        "Sửa lỗi báo Roblox cũ khi Roblox đưa máy vào bản thử nghiệm.",
+        "Sửa lỗi chống AFK dừng ở mọi cửa sổ khi một cửa sổ đang chờ xác minh bot.",
+        "Sửa lỗi cửa sổ đã ẩn và thu nhỏ hiện lại trên thanh tác vụ sau khi chống AFK."
+      ]
+    }
+  },
+  {
     "version": "1.0.11",
     "date": "2026-10-27",
     "highlights": [
