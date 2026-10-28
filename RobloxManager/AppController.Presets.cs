@@ -14,7 +14,7 @@ public sealed partial class AppController
     /// <param name="Asks">With NeedsConfirm, the kinds of warning in the message ("switch", "multiOff", "multiNotReady",
     /// "watch", "memory"): the page offers the fix that goes with one, and "Don't ask again" only for skippable ones.</param>
     sealed record LaunchResult(bool NeedsConfirm = false, string? Message = null, int Launched = 0, List<string>? Errors = null,
-        bool Cancelled = false, string? Notice = null, List<string>? Skipped = null, List<string>? Asks = null);
+        bool Cancelled = false, string? Notice = null, List<string>? Skipped = null, List<string>? Asks = null, List<Guid>? Refused = null);
 
     const int MaxPresets = 50;
     const int MaxPresetName = 60;

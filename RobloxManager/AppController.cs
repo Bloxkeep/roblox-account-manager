@@ -2148,7 +2148,8 @@ public sealed partial class AppController : IDisposable
 
         _checking = true;
         PushState();
-        int ok = 0, bad = 0, failed = 0, refused = 0, done = 0;
+        int ok = 0, bad = 0, failed = 0, done = 0;
+        var refused = new List<Guid>();
         var queue = new Queue<Account>(accounts);
         var rejected = new List<Account>();
         var resumeAt = DateTime.UtcNow;
@@ -2192,7 +2193,7 @@ public sealed partial class AppController : IDisposable
                     catch (RobloxApiException ex) when (!ex.ServerError && !ex.RateLimited)
                     {
                         // Roblox answered and said no (403: a warning waiting to be read, a lock…): not the network.
-                        refused++;
+                        refused.Add(account.Id);
                     }
                     catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                     {
@@ -2257,7 +2258,7 @@ public sealed partial class AppController : IDisposable
         _ = LoadAvatarsAsync(accounts.Select(a => a.UserId));
         if (newlyBanned.Count > 0 && _vault == vault)
             NotifyBanned(newlyBanned);
-        return new { ok, bad, failed, refused, banned = accounts.Count(a => a.Banned == true) };
+        return new { ok, bad, failed, refused = refused.Count, refusedIds = refused, banned = accounts.Count(a => a.Banned == true) };
     }
 
     object Copy(Guid id, string field)
@@ -2944,6 +2945,8 @@ public sealed partial class AppController : IDisposable
         var skipped = new List<string>();
         // Clients open here that a new client closes when Multi-Roblox isn't ready: not drops to rejoin from.
         var replaced = new List<Guid>();
+        // Accounts Roblox wouldn't sign in (a warning to accept, a lock): the page offers their roblox.com, which says why.
+        var refusedSignIn = new List<Guid>();
         int launched = 0;
         // Past the checks and warnings: from then on an error is reported with the result rather than thrown.
         bool started = false;
@@ -3108,6 +3111,8 @@ public sealed partial class AppController : IDisposable
                     // Marked (and said) signed out only when the sign-in check agrees: an outage answers 401 for everyone.
                     bool refused = ex is RobloxApiException { CookieInvalid: true } && !await ConfirmSignedOutAsync(account, ct);
                     errors.Add($"{NameText(account)}: {(refused ? RefusedText : ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))}");
+                    if (ex is RobloxApiException { SignInRefused: true } && Realm.Normalize(account.Realm) != Realm.Vng)
+                        refusedSignIn.Add(account.Id);
                 }
                 PushState();
 
@@ -3184,7 +3189,8 @@ public sealed partial class AppController : IDisposable
         // The page shows the details; while the window is in the background a short notification says so.
         if (errors.Count > 0 && !ct.IsCancellationRequested)
             Notify(L.P(errors.Count, "{0} account didn't open.", "{0} accounts didn't open.", errors.Count), "warn", "launch", toast: false);
-        return new LaunchResult(Launched: launched, Errors: errors, Cancelled: ct.IsCancellationRequested, Skipped: skipped);
+        return new LaunchResult(Launched: launched, Errors: errors, Cancelled: ct.IsCancellationRequested, Skipped: skipped,
+            Refused: refusedSignIn.Count > 0 ? refusedSignIn : null);
     }
 
     /// <summary>Servers found closed in one launch before Roblox is left to pick one for each account.</summary>

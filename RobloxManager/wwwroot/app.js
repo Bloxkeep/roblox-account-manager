@@ -1575,7 +1575,14 @@
       modal({
         title: t(r.launched ? 't.errsSome' : 't.errsAll'),
         body: window.BloxkeepUI.errors(r.errors),
-        actions: [{ text: t('common.close'), kind: 'primary', onClick: ({ close }) => close() }],
+        // Roblox wouldn't sign them in (a warning waiting to be accepted…): their roblox.com, signed in, shows why.
+        actions: [
+          ...(r.refused?.length ? [{ text: tn('t.openRefused', r.refused.length), onClick: ({ close }) => {
+            r.refused.forEach(id => byId(id) && call('openWebsite', { id }));
+            close();
+          } }] : []),
+          { text: t('common.close'), kind: 'primary', onClick: ({ close }) => close() },
+        ],
       });
     }
     if (r.launched) toast(tn(r.cancelled ? 't.launchedStopped' : 't.launched', r.launched), 'ok');
@@ -1877,7 +1884,9 @@
     if (!r) return;
     // Signed-out accounts are gathered under the "Needs sign-in" filter; offer to jump there.
     const show = r.bad && accounts().some(a => a.cookieValid === false)
-      ? { label: t('t.showSignedOut'), run: () => { setView('accounts'); S.filter = 'invalid'; S.group = ''; update(); $('#scroll').scrollTop = 0; } } : null;
+      ? { label: t('t.showSignedOut'), run: () => { setView('accounts'); S.filter = 'invalid'; S.group = ''; update(); $('#scroll').scrollTop = 0; } }
+      : r.refusedIds?.length ? { label: tn('t.openRefused', r.refusedIds.length), run: () => r.refusedIds.forEach(id => byId(id) && call('openWebsite', { id })) }
+      : null;
     // "1 needs", not "1 need": the singular goes by the signed-out count (tn picks it by n).
     // Refused by Roblox (a warning to read, a lock) is said apart from the network: roblox.com shows that account why.
     const refused = r.refused ? ' ' + tn('t.checkedRefused', r.refused) : '';

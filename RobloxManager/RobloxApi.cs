@@ -92,6 +92,9 @@ public sealed class RobloxApiException(string message, bool cookieInvalid = fals
 
     /// <summary>Roblox answered 5xx (down or busy): worth trying again later, unlike a refusal (400, 403).</summary>
     public bool ServerError { get; } = serverError;
+
+    /// <summary>Roblox wouldn't give the account a sign-in ticket (4xx, not 401/429): its roblox.com says why.</summary>
+    public bool SignInRefused { get; init; }
 }
 
 /// <summary>
@@ -1363,8 +1366,8 @@ public static class RobloxApi
         if ((int)res.StatusCode >= 500)
             throw new RobloxApiException(L.F("Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment.", (int)res.StatusCode),
                 serverError: true);
-        throw new RobloxApiException(L.F("Roblox refused to sign this account in (HTTP {0}). Sign in to it on roblox.com to see why.",
-            (int)res.StatusCode));
+        throw new RobloxApiException(L.F("Roblox refused to sign this account in (HTTP {0}). Open its roblox.com to see why.",
+            (int)res.StatusCode)) { SignInRefused = true };
     }
 
     /// <summary>
