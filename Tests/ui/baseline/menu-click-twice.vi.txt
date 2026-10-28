@@ -397,10 +397,16 @@ html [data-theme="dark" lang="vi"]
                 svg.i #1e3syqr
                 span "Cửa sổ"
 #layer
-  div.menu.menu-snap [role="menu" style="left:901px;top:311.469px"]
+  div.menu.menu-snap [role="menu" style="left:901px;top:239.469px"]
     button [role="menuitem"]
       svg.i #1y8kmj1
       span "Chỉ mở Roblox"
+    button [role="menuitem"]
+      svg.i #1xzadie
+      span "Ẩn mọi cửa sổ Roblox"
+    button [role="menuitem" disabled]
+      svg.i #1pcfgz
+      span "Hiện mọi cửa sổ Roblox"
     hr
     div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
       div.snap-label "Xếp cửa sổ Roblox"

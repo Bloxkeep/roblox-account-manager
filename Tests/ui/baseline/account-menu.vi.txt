@@ -397,7 +397,7 @@ html [data-theme="dark" lang="vi"]
                 svg.i #1e3syqr
                 span "Cửa sổ"
 #layer
-  div.menu [role="menu" style="left:961px;top:205px"]
+  div.menu [role="menu" style="left:961px;top:169px"]
     button [role="menuitem"]
       svg.i #1ewcuky
       span "Vào game (2 tài khoản)"
@@ -422,6 +422,9 @@ html [data-theme="dark" lang="vi"]
     button [role="menuitem" disabled]
       svg.i #ej9lod
       span "Vào cùng server"
+    button [role="menuitem"]
+      svg.i #1xzadie
+      span "Ẩn cửa sổ Roblox"
     button [role="menuitem" disabled]
       svg.i #g81ucr
       span "Sang server khác"

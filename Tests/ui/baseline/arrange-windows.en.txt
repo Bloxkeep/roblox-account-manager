@@ -395,10 +395,16 @@ html [data-theme="dark" lang="en"]
                 svg.i #1e3syqr
                 span "Windows"
 #layer
-  div.menu.menu-snap [role="menu" style="left:901px;top:311.469px"]
+  div.menu.menu-snap [role="menu" style="left:901px;top:239.469px"]
     button [role="menuitem" disabled]
       svg.i #1y8kmj1
       span "Open Roblox only"
+    button [role="menuitem"]
+      svg.i #1xzadie
+      span "Hide all Roblox windows"
+    button [role="menuitem" disabled]
+      svg.i #1pcfgz
+      span "Show all Roblox windows"
     hr
     div.snap [role="group" aria-label="Arrange Roblox windows"]
       div.snap-label "Arrange Roblox windows"

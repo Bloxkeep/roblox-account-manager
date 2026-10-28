@@ -1866,6 +1866,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* Gives way first on a narrow card (a six-digit PID next to "12 giờ 5 phút"): the RAM and time chips keep their text. */
 .pid { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; height: 26px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 8px; background: transparent; font: 600 11.5px var(--font); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: copy; }
 .pid:hover { color: var(--text); border-color: var(--line-3); background: var(--hover); }
+.pid.hidden-win { flex: none; display: inline-grid; place-items: center; padding: 0 6px; margin-right: 6px; cursor: pointer; color: var(--accent); }
 .row-live { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: auto; min-width: 0; }
 .row-live .pid { height: 24px; padding: 0 7px; }
 /* Playing here: how long, after the game's name, which gives way first when the row is short of room. */

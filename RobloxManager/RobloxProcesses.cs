@@ -217,7 +217,11 @@ public static class RobloxProcesses
 
     public static int[] GetPlayerPids() => GetPlayers().Select(p => p.Pid).ToArray();
 
-    /// <summary>Visible top-level windows of several processes, found in a single pass over the desktop's windows.</summary>
+    /// <summary>
+    /// Visible top-level windows of several processes, found in a single pass over the desktop's windows. A window
+    /// Bloxkeep hid (<see cref="HideWindows"/>) counts as visible: its game runs on, and every check that a client has
+    /// its window (not Roblox's copy in the notification area, closed gracefully, matched to its launch) still holds.
+    /// </summary>
     public static Dictionary<int, List<IntPtr>> VisibleWindows(IEnumerable<int> pids)
     {
         var result = pids.Distinct().ToDictionary(pid => pid, _ => new List<IntPtr>());
@@ -226,11 +230,121 @@ public static class RobloxProcesses
         EnumWindows((hWnd, _) =>
         {
             GetWindowThreadProcessId(hWnd, out uint owner);
-            if (result.TryGetValue((int)owner, out var list) && IsWindowVisible(hWnd) && GetWindow(hWnd, GW_OWNER) == IntPtr.Zero)
+            if (result.TryGetValue((int)owner, out var list) && (IsWindowVisible(hWnd) || IsHidden(hWnd)) && GetWindow(hWnd, GW_OWNER) == IntPtr.Zero)
                 list.Add(hWnd);
             return true;
         }, IntPtr.Zero);
         return result;
+    }
+
+    // ───────── windows hidden while their game runs ─────────
+    // Settings' "Hide" (the account menu, the Windows button, a hotkey): the window and its taskbar button go, the game
+    // goes on. Bloxkeep shows them again when it closes, and at its next start if it didn't get to (a crash, a power cut):
+    // the windows it hid are written down (pid and window) in the data folder.
+
+    const int SW_HIDE = 0, SW_SHOWNA = 8;
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr hWnd);
+    static readonly HashSet<IntPtr> _hidden = new();
+    static string HiddenFile => Path.Combine(Vault.DataDir, "hidden-windows.txt");
+
+    /// <summary>Whether Bloxkeep hid this window (and it still exists).</summary>
+    public static bool IsHidden(IntPtr hWnd)
+    {
+        lock (_hidden)
+            return _hidden.Contains(hWnd);
+    }
+
+    /// <summary>Whether any window of this client is hidden by Bloxkeep.</summary>
+    public static bool HasHidden(int pid)
+    {
+        lock (_hidden)
+            return _hidden.Any(h => GetWindowThreadProcessId(h, out uint owner) != 0 && owner == pid);
+    }
+
+    /// <summary>Hides each client's main window (its game keeps running). Returns how many were hidden now.</summary>
+    public static int HideWindows(IEnumerable<int> pids)
+    {
+        int count = 0;
+        foreach (int pid in pids)
+        {
+            var hWnd = MainWindow(pid);
+            if (hWnd == IntPtr.Zero || IsHidden(hWnd))
+                continue;
+            lock (_hidden)
+                _hidden.Add(hWnd);
+            ShowWindowAsync(hWnd, SW_HIDE);
+            count++;
+        }
+        SaveHidden();
+        return count;
+    }
+
+    /// <summary>Shows again the windows Bloxkeep hid of these clients (all of them when null), as they were (a minimized one stays so).</summary>
+    public static int ShowWindows(IEnumerable<int>? pids = null)
+    {
+        var only = pids?.ToHashSet();
+        List<IntPtr> shown;
+        lock (_hidden)
+        {
+            shown = _hidden.Where(h => only is null || GetWindowThreadProcessId(h, out uint owner) != 0 && only.Contains((int)owner)).ToList();
+            _hidden.ExceptWith(shown);
+        }
+        foreach (var hWnd in shown)
+            ShowWindowAsync(hWnd, SW_SHOWNA);
+        SaveHidden();
+        return shown.Count;
+    }
+
+    /// <summary>
+    /// At start: the windows a run that ended without showing them left hidden are shown again (only those still
+    /// there, of the same process, and still hidden).
+    /// </summary>
+    public static int ShowLeftHidden()
+    {
+        int shown = 0;
+        try
+        {
+            if (!File.Exists(HiddenFile))
+                return 0;
+            foreach (string line in File.ReadAllLines(HiddenFile))
+            {
+                var parts = line.Split(' ');
+                if (parts.Length == 2 && int.TryParse(parts[0], out int pid) && long.TryParse(parts[1], out long handle)
+                    && new IntPtr(handle) is var hWnd && IsWindow(hWnd) && !IsWindowVisible(hWnd)
+                    && GetWindowThreadProcessId(hWnd, out uint owner) != 0 && owner == pid)
+                {
+                    ShowWindowAsync(hWnd, SW_SHOWNA);
+                    shown++;
+                }
+            }
+            File.Delete(HiddenFile);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Write(ex);
+        }
+        return shown;
+    }
+
+    static void SaveHidden()
+    {
+        try
+        {
+            List<string> lines;
+            lock (_hidden)
+            {
+                _hidden.RemoveWhere(h => !IsWindow(h));
+                lines = _hidden.Select(h => GetWindowThreadProcessId(h, out uint owner) != 0 ? $"{owner} {h.ToInt64()}" : null).OfType<string>().ToList();
+            }
+            if (lines.Count == 0)
+                File.Delete(HiddenFile);
+            else
+                File.WriteAllLines(HiddenFile, lines);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Write(ex);
+        }
     }
 
     static List<IntPtr> TopLevelWindows(int pid) => VisibleWindows([pid])[pid];
@@ -609,7 +723,8 @@ public static class RobloxProcesses
     /// (<see cref="RaiseAsync"/>). Zero leaves the order of the PC's windows as it is (tiling after a launch).</param>
     public static Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false,
         IntPtr app = default, Size custom = default) =>
-        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !(skipMinimized && IsIconic(h))).ToList(), area, layout, app, custom);
+        // A hidden window isn't tiled: it would be placed unseen, a gap among the others.
+        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !IsHidden(h) && !(skipMinimized && IsIconic(h))).ToList(), area, layout, app, custom);
 
     /// <summary>
     /// Tiles these windows (see <see cref="ArrangeGridAsync"/>). Roblox keeps its window at least 800 × 600 in its own

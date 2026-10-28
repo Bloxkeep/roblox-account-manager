@@ -36,6 +36,9 @@ export default [
   S('accounts-full', 'phase=full&queue=3'),
   S('accounts-teleporting', 'phase=teleporting'),
   S('accounts-join-failed', 'phase=joinFailed'),
+  // A window hidden while its game runs: the eye before its PID shows it again; the account menu hides or shows.
+  S('accounts-window-hidden', 'winhidden=1', async s => { await s.click({ css: '[data-act="show-window"]' }); }),
+  S('accounts-window-hide-menu', '', async s => { await s.click({ css: '.card[data-id="00000000-0000-4000-8000-000000000001"] [data-act="card-menu"]' }); await s.snap('menu'); await s.click(key('m.hideWindow')); }),
   // Roblox holds the join for its bot check: Verify is the card's and the row's main button.
   S('accounts-challenged', 'phase=challenged', async s => { await s.click({ css: '[data-act="bot-check"]' }); }),
   S('accounts-challenged-list', 'phase=challenged', async s => { await s.click(key('layout.list')); }),

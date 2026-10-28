@@ -59,7 +59,7 @@
     { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', alias: tx('Main', 'Tài khoản chính'), label: tx('Main', 'Tài khoản chính'), group: 'Main', note: tx("My main account, don't farm on it", 'Tài khoản chơi chính, đừng dùng farm'),
       hasPassword: true, hasAuthenticator: true, cookieValid: true, robux: 12450, autoRejoin: true, lastUsed: minsAgo(3), avatarUrl: face('#2b3a55', '#f2c94c', '#3b82f6'), state: 'running',
       presence: { type: 'ingame', game: games[2753915549].name, placeId: 2753915549, iconUrl: games[2753915549].iconUrl },
-      session: { pid: 1111, since: minsAgo(47), game: g(2753915549), connection: 'ingame' } },
+      session: { pid: 1111, since: minsAgo(47), game: g(2753915549), connection: 'ingame', hidden: params.has('winhidden') } },
     { id: id(2), userId: 5140000002, username: 'pixelfarmer01', displayName: 'pixelfarmer01', alias: 'Farm 1', label: 'Farm 1', group: 'Farm', note: '',
       hasPassword: false, cookieValid: true, robux: 80, lastUsed: minsAgo(2), avatarUrl: face('#1f3b2d', '#f2c94c', '#22c55e'), state: 'running',
       presence: { type: 'online' }, session: { pid: 2222, since: minsAgo(params.has('kicked') ? 12 : 1), game: g(2753915549), connection: params.has('kicked') ? 'disconnected' : params.get('phase') === 'joinFailed' ? 'menu' : 'joining',

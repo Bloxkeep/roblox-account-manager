@@ -354,7 +354,12 @@ function Live({ a, row }: { a: Account; row?: boolean }) {
 /** The client's process id, for tools that pick a Roblox window by it; a click copies it. Nothing until the window is there. */
 function Pid({ a }: { a: Account }) {
   const { t } = useHost();
-  return a.session?.pid > 0 ? <button className="pid" data-act="copy-pid" title={t('card.pidTip')}>{`PID ${a.session.pid}`}</button> : null;
+  if (!(a.session?.pid > 0)) return null;
+  const pid = <button className="pid" data-act="copy-pid" title={t('card.pidTip')}>{`PID ${a.session.pid}`}</button>;
+  // Its window hidden by Bloxkeep while the game runs: said, and a click shows it again.
+  return a.session.hidden
+    ? <><button className="pid hidden-win" data-act="show-window" title={`${t('card.hidden')} · ${t('m.showWindow')}`} aria-label={t('m.showWindow')}><Icon name="eyeOff" /></button>{pid}</>
+    : pid;
 }
 /** A list row's columns after the status: each column the list has, in every row, as wide as its longest (Sizer). */
 function RowColumns({ a, c, local }: { a: Account; c: Cols; local: boolean }) {

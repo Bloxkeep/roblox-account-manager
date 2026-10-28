@@ -2059,6 +2059,11 @@
       // Roblox holds its join for a bot check: solved in Bloxkeep's own window, then the window opens again.
       ...(!many && a.session?.phase === 'challenged' ? [{ icon: 'shield', text: t('m.botCheck'), run: () => call('solveBotCheck', { id }) }] : []),
       { icon: 'server', text: t('m.follow'), disabled: many || !serverOf(a), run: () => { const s = serverOf(a); useServer(s.placeId, s.jobId); toast(t('srv.followed', { name: a.label }), 'ok'); } },
+      // The window goes (and its taskbar button), the game runs on; shown again from here, the Windows button or a hotkey.
+      ...(ids.some(i => isLocal(byId(i) || {}) && !byId(i).session?.hidden)
+        ? [{ icon: 'eyeOff', text: t('m.hideWindow'), run: () => call('hideWindows', { ids }) }] : []),
+      ...(ids.some(i => byId(i)?.session?.hidden)
+        ? [{ icon: 'eye', text: t('m.showWindow'), run: () => call('showWindows', { ids }) }] : []),
       // The window closes and opens again into another server of its game (those of the same game together).
       { icon: 'shuffle', text: t('m.switchServer'), disabled: !ids.some(i => isLocal(byId(i) || {}) && serverOf(byId(i))), run: () => call('switchServer', { ids }) },
       // Ticked as the card shows it (a running window's preset may decide), and says so when it does.
@@ -2456,6 +2461,7 @@
       case 'bot-check': return busy(el, () => call('solveBotCheck', { id }));
       case 'cancel-rejoin': return call('cancelRejoin', { id }); // the card shows it at once
       case 'copy-pid': return copy(id, 'pid');
+      case 'show-window': return call('showWindows', { ids: [id] });
       case 'edit': return editAccount(id);
       case 'card-menu': {
         const r = el.getBoundingClientRect();
@@ -2553,6 +2559,9 @@
         const st = S.app.settings || {};
         return menuAt(el, [
           { icon: 'monitor', text: t('dock.openAppTip'), disabled: !S.selected.size, run: () => launch([...S.selected], true) },
+          // Every Roblox window of this PC hidden (their games run on), or shown again.
+          { icon: 'eyeOff', text: t('m.hideAll'), disabled: !accounts().some(a => isLocal(a) && !a.session?.hidden), run: () => call('hideWindows', {}) },
+          { icon: 'eye', text: t('m.showAll'), disabled: !accounts().some(a => a.session?.hidden), run: () => call('showWindows', {}) },
           '-',
           {
             text: t('m.arrange'), snap: { value: st.windowLayout || 'fill', width: st.windowWidth || 640, height: st.windowHeight || 480 },

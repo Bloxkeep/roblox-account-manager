@@ -483,6 +483,8 @@ public sealed partial class AppController : IDisposable
         "checkAccounts" => CheckAccountsAsync(Ids(a)),
         "solveBotCheck" => SolveBotCheckAsync(Id(a)),
         "switchServer" => SwitchServerAsync(Ids(a)),
+        "hideWindows" => Done(HideWindows(Ids(a))),
+        "showWindows" => Done(ShowWindows(Ids(a))),
         "refreshPresence" => RefreshPresenceAsync(),
         "copy" => Done(Copy(Id(a), Str(a, "field"))),
         "resolveGame" => ResolveGameAsync(Str(a, "input")),
@@ -853,6 +855,8 @@ public sealed partial class AppController : IDisposable
                 bannedByGame = _logs.StateOf(run.Pid) is { Status: "disconnected", BannedByGame: true } || BannedWindow(a, run) is not null,
                 jobId = _logs.StateOf(run.Pid)?.JobId,
                 jobPlaceId = _logs.StateOf(run.Pid)?.PlaceId,
+                // Its window hidden by Bloxkeep while its game runs (RobloxProcesses.HideWindows).
+                hidden = RobloxProcesses.HasHidden(run.Pid),
                 // The preset that opened it may turn auto-rejoin on or off for this client.
                 autoRejoin = RejoinOn(a, run.Launch.PresetId),
             }

@@ -92,6 +92,7 @@ static class Program
         }
 
         Vault.Tidy(); // before anything opens the files it moves
+        RobloxProcesses.ShowLeftHidden(); // Roblox windows a run that ended suddenly had hidden
         Prefs.Load();
         Vaults.Load(); // the vault the lock screen offers (and an update's restart opens): the last one used
         BrowserLoginForm.CleanupLeftoverProfiles();
@@ -122,6 +123,8 @@ static class Program
         }
         finally
         {
+            // Nobody could show them once Bloxkeep is gone.
+            RobloxProcesses.ShowWindows();
             wait.Unregister(null);
             quitWait.Unregister(null);
         }
