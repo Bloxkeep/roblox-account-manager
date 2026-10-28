@@ -2666,7 +2666,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 
 #toasts { position: fixed; right: 22px; bottom: 22px; z-index: 70; display: grid; gap: 10px; justify-items: end; pointer-events: none; }
 /* Only the Accounts tab has the dock at the bottom: toasts sit above it there, in the corner everywhere else. */
-body:has(#view-accounts:not([hidden])) #toasts { bottom: 138px; } /* clear of the dock */
+body:has(#view-accounts:not([hidden])) #toasts { bottom: var(--dock-clear, 138px); } /* clear of the dock (Dock measures it) */
 /* Under a dialog's backdrop or a menu while one is up: never over its edge or its text. */
 #toasts.behind { z-index: 45; }
 .toast.again { animation: nudge .3s ease; }
@@ -2816,7 +2816,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .brand { padding-bottom: 10px; }
   .lock-card { padding: 26px 28px 20px; }
   .lock-card .logo-img { width: 56px; height: 56px; }
-  body:has(#view-accounts:not([hidden])) #toasts { bottom: 114px; }
+  body:has(#view-accounts:not([hidden])) #toasts { bottom: var(--dock-clear, 114px); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

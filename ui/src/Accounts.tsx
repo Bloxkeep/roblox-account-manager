@@ -534,7 +534,27 @@ export function Dock() {
   const g = page.game;
   // A public game found in the box: its servers can be listed (a private server's link goes straight to its server).
   const canList = !page.progress && !!g && !g.loading && g.ok && !!g.placeId && g.kind !== 'private' && g.kind !== 'share';
-  return <div className="dock">
+  // Toasts sit just above the dock, however tall it is now (its game line, a narrow window, a long translation): a fixed
+  // gap left the dock's top edge under them.
+  const dock = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = dock.current;
+    if (!el) return;
+    // In a style sheet of its own rather than on <html>: nothing in the page's markup changes with it.
+    const sheet = new CSSStyleSheet();
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    const place = () => sheet.replaceSync(`:root { --dock-clear: ${Math.round(window.innerHeight - el.getBoundingClientRect().top + 12)}px; }`);
+    const watch = new ResizeObserver(place);
+    watch.observe(el);
+    window.addEventListener('resize', place);
+    place();
+    return () => {
+      watch.disconnect();
+      window.removeEventListener('resize', place);
+      document.adoptedStyleSheets = document.adoptedStyleSheets.filter(s => s !== sheet);
+    };
+  }, []);
+  return <div className="dock" ref={dock}>
     <button className="game-thumb" id="game-thumb" data-act="browse-games" title={t('dock.browseTip')}>
       <GameIcon key={page.game?.iconUrl || ''} url={page.game?.iconUrl} holder={() => page.game?.iconUrl ? <span className="gph"><Icon name="gamepad" /></span> : <Icon name="gamepad" />} /></button>
     <div className="picker" id="picker" hidden={!P.open}>{P.open ? <Picker P={P} /> : null}</div>
