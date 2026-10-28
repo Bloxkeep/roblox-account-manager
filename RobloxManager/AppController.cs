@@ -771,9 +771,12 @@ public sealed partial class AppController : IDisposable
         // Roblox (or its launcher) put a new build in place since the last look — or an older one (a launcher set to a
         // version, an older copy chosen), which isn't an update.
         // (The Store edition has no build folder: switching to or from it says nothing.)
-        if (before is { Length: > 0 } && _installs.Client is { Folder.Length: > 0 } now && now.Folder != before)
+        // Going to an older build while the newer one stays installed is Roblox switching channel (RobloxInstalls.HasBuild):
+        // nothing to say.
+        if (before is { Length: > 0 } && _installs.Client is { Folder.Length: > 0 } now && now.Folder != before
+            && (Version.TryParse(now.Version, out var have) && Version.TryParse(beforeVersion, out var had) && have < had) is var older
+            && !(older && RobloxInstalls.HasBuild(now.Exe, before)))
         {
-            bool older = Version.TryParse(now.Version, out var have) && Version.TryParse(beforeVersion, out var had) && have < had;
             string updated = older ? L.F("Roblox went back to version {0}.", now.Version) : L.F("Roblox updated to {0}.", now.Version);
             Toast(updated, "ok");
             NoteActivity("robloxUpdated", text: updated, tone: "info");
@@ -798,7 +801,12 @@ public sealed partial class AppController : IDisposable
             && _latestRoblox?.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase) == true;
         bool? upToDate = installed is null || _latestRoblox is null ? null
             : sameBuild || newer || (!foldersKnown && installed.Version == _latestRoblox.Version);
-        return new RobloxVersionInfo(installed?.Version, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct",
+        // The links on another channel's build (Roblox puts some accounts on test builds), with the newest build
+        // installed beside it: that one is what an account on the main channel starts.
+        string? shown = installed?.Version;
+        if (upToDate == false && RobloxInstalls.HasBuild(installed!.Exe, _latestRoblox!.Folder))
+            (shown, upToDate) = (_latestRoblox.Version, true);
+        return new RobloxVersionInfo(shown, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct",
             _vault?.Data.Settings.LaunchVia == "store", _updaterExe is { } updater ? Path.GetFileNameWithoutExtension(updater) : null, _robloxUpdating);
     }
 
@@ -2140,7 +2148,7 @@ public sealed partial class AppController : IDisposable
 
         _checking = true;
         PushState();
-        int ok = 0, bad = 0, failed = 0, done = 0;
+        int ok = 0, bad = 0, failed = 0, refused = 0, done = 0;
         var queue = new Queue<Account>(accounts);
         var rejected = new List<Account>();
         var resumeAt = DateTime.UtcNow;
@@ -2180,6 +2188,11 @@ public sealed partial class AppController : IDisposable
                         if (wait > resumeAt)
                             resumeAt = wait;
                         continue;
+                    }
+                    catch (RobloxApiException ex) when (!ex.ServerError && !ex.RateLimited)
+                    {
+                        // Roblox answered and said no (403: a warning waiting to be read, a lock…): not the network.
+                        refused++;
                     }
                     catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                     {
@@ -2244,7 +2257,7 @@ public sealed partial class AppController : IDisposable
         _ = LoadAvatarsAsync(accounts.Select(a => a.UserId));
         if (newlyBanned.Count > 0 && _vault == vault)
             NotifyBanned(newlyBanned);
-        return new { ok, bad, failed, banned = accounts.Count(a => a.Banned == true) };
+        return new { ok, bad, failed, refused, banned = accounts.Count(a => a.Banned == true) };
     }
 
     object Copy(Guid id, string field)

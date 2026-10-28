@@ -99,6 +99,7 @@ public static class L
         ["Roblox isn't working properly right now (HTTP {0}). Try again in a moment."] = "Roblox đang trục trặc (HTTP {0}). Thử lại sau giây lát.",
         ["This account was signed out — sign in to it again."] = "Tài khoản này đã bị đăng xuất. Hãy đăng nhập lại.",
         ["Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment."] = "Không lấy được vé đăng nhập từ Roblox (HTTP {0}). Thử lại sau giây lát.",
+        ["Roblox refused to sign this account in (HTTP {0}). Sign in to it on roblox.com to see why."] = "Roblox không cho tài khoản này đăng nhập (HTTP {0}). Đăng nhập nó trên roblox.com để xem lý do.",
         ["Couldn't open the private server link (HTTP {0}). Check the link, or try again in a moment."] = "Không mở được link server riêng (HTTP {0}). Kiểm tra lại link hoặc thử lại sau giây lát.",
         ["The private server link is invalid or has expired."] = "Link server riêng không hợp lệ hoặc đã hết hạn.",
         ["Roblox is rate-limiting requests; try again shortly."] = "Roblox đang tạm chặn vì có quá nhiều yêu cầu. Chờ chút rồi thử lại.",

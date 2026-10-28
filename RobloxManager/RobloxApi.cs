@@ -1358,9 +1358,13 @@ public static class RobloxApi
             throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
         string text = await res.Content.ReadAsStringAsync(ct);
         Log.Note($"Sign-in ticket{(realm == Realm.Vng ? " (VNG)" : "")}: HTTP {(int)res.StatusCode}, errors {Errors(text).Summary}");
-        // A 5xx is Roblox's problem; anything else (a ban, a challenge, a bad request) won't change by retrying.
-        throw new RobloxApiException(L.F("Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment.", (int)res.StatusCode),
-            serverError: (int)res.StatusCode >= 500);
+        // A 5xx is Roblox's problem; anything else (a ban, a warning to read, a challenge) won't change by retrying, and
+        // roblox.com shows the account why.
+        if ((int)res.StatusCode >= 500)
+            throw new RobloxApiException(L.F("Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment.", (int)res.StatusCode),
+                serverError: true);
+        throw new RobloxApiException(L.F("Roblox refused to sign this account in (HTTP {0}). Sign in to it on roblox.com to see why.",
+            (int)res.StatusCode));
     }
 
     /// <summary>

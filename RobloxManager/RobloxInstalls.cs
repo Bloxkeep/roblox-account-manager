@@ -115,6 +115,27 @@ public static class RobloxInstalls
 
     static string? Newest(IEnumerable<string> paths) => paths.OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
 
+    /// <summary>
+    /// Whether the build folder ("version-…") is installed next to this client, in the same Versions folder. Roblox
+    /// keeps a build per channel side by side and starts the one of the signed-in account's channel: on 2026-10-29 its
+    /// installer put this PC's links on a test channel's build (0.744.478) while an account on the main channel
+    /// started 0.745 from the folder next to it.
+    /// </summary>
+    public static bool HasBuild(string? exe, string? folder)
+    {
+        if (exe is null || folder is null || !folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase))
+            return false;
+        try
+        {
+            return Path.GetDirectoryName(Path.GetDirectoryName(exe)) is { } versions
+                && File.Exists(Path.Combine(versions, folder, "RobloxPlayerBeta.exe"));
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Newest client installed by Roblox's own installer.</summary>
     public static string? FindOfficialClient()
     {

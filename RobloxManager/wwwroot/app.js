@@ -1879,7 +1879,9 @@
     const show = r.bad && accounts().some(a => a.cookieValid === false)
       ? { label: t('t.showSignedOut'), run: () => { setView('accounts'); S.filter = 'invalid'; S.group = ''; update(); $('#scroll').scrollTop = 0; } } : null;
     // "1 needs", not "1 need": the singular goes by the signed-out count (tn picks it by n).
-    toast(tn(r.failed ? 't.checkedFail' : 't.checked', r.bad, { ok: r.ok, bad: r.bad, f: r.failed }), r.bad ? 'warn' : 'ok', show);
+    // Refused by Roblox (a warning to read, a lock) is said apart from the network: roblox.com shows that account why.
+    const refused = r.refused ? ' ' + tn('t.checkedRefused', r.refused) : '';
+    toast(tn(r.failed ? 't.checkedFail' : 't.checked', r.bad, { ok: r.ok, bad: r.bad, f: r.failed }) + refused, r.bad || r.refused ? 'warn' : 'ok', show);
   }
 
   /** force: end the clients at once (frozen ones) instead of closing their windows first. */

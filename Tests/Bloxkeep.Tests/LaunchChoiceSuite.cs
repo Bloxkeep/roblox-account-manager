@@ -43,6 +43,14 @@ static class LaunchChoiceSuite
             c.Check("a Roblox client on the PC: not said to be missing", state.GetType().GetProperty("robloxInstalled")!.GetValue(state) is true);
         }
 
+        // Roblox keeps a build per channel side by side (2026-10-29: its links on a test channel's 0.744.478, the main
+        // channel's 0.745 next to it): the newest build being there is what the version card asks.
+        string live = Client("Roblox", "version-live");
+        c.Check("the newest build next to the links' one is found", RobloxInstalls.HasBuild(global, "version-live"));
+        c.Check("…and one that isn't there isn't", !RobloxInstalls.HasBuild(global, "version-gone") && !RobloxInstalls.HasBuild(global, "")
+            && !RobloxInstalls.HasBuild(null, "version-live"));
+        File.Delete(live);
+
         // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
         Directory.Delete(Path.Combine(local, "Roblox"), recursive: true);
         if (RobloxInstalls.FindAnyClient() is null)
