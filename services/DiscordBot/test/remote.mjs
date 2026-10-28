@@ -41,7 +41,13 @@ const rest = http.createServer((req, res) => {
   let body = '';
   req.on('data', c => { body += c; });
   req.on('end', () => {
-    calls.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : null });
+    const call = { method: req.method, url: req.url, body: body ? JSON.parse(body) : null };
+    calls.push(call);
+    // An application not set up for installs on people's own accounts: commands that ask for it are refused.
+    if (req.method === 'PUT' && call.body?.some(c => c.integration_types?.includes(1))) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ message: 'Invalid Form Body', code: 50035 }));
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(req.method === 'PUT' ? [] : { id: 'm1' }));
   });
@@ -108,6 +114,11 @@ const SECRET_A = crypto.randomBytes(32).toString('base64url'), SECRET_B = crypto
 try {
   startDev();
   check('wrangler dev serves the worker', await devUp());
+  await fetch(`http://127.0.0.1:${DEV}/__scheduled?cron=*+*+*+*+*`).catch(() => {});
+  const puts = () => calls.filter(c => c.method === 'PUT' && c.url === '/applications/app1/commands');
+  check("Discord refusing /pc on people's own accounts: the commands go in all the same, /pc for servers and DMs only",
+    await waitFor(() => puts().length >= 2, 8000) && puts()[1].body.find(c => c.name === 'pc')?.integration_types.join() === '0'
+    && !puts()[1].body.find(c => c.name === 'pc').contexts.includes(2), JSON.stringify(puts().map(p => p.body.find(c => c.name === 'pc'))));
 
   // ── connecting ──
   const short = app('too-short');

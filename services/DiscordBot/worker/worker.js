@@ -297,10 +297,18 @@ export class Gateway extends DurableObject {
     const want = await tokenHash(JSON.stringify(COMMANDS));
     if ((await this.ctx.storage.get('commands')) === want)
       return;
-    const res = await api(this.env, 'PUT', `/applications/${this.env.DISCORD_APP_ID}/commands`, COMMANDS);
+    let res = await api(this.env, 'PUT', `/applications/${this.env.DISCORD_APP_ID}/commands`, COMMANDS);
+    // Refused (the application not set up for installs on people's own accounts yet, Developer Portal › Installation):
+    // /pc in servers and the bot's DMs only, rather than no commands updated at all.
+    let note = 'registered';
+    if (res.status === 400) {
+      res = await api(this.env, 'PUT', `/applications/${this.env.DISCORD_APP_ID}/commands`,
+        COMMANDS.map(c => c.integration_types ? { ...c, integration_types: [0], contexts: c.contexts.filter(k => k !== 2) } : c));
+      note = 'registered without user installs';
+    }
     if (res.ok)
       await this.ctx.storage.put('commands', want);
-    this.log('commands', res.ok ? 'registered' : `HTTP ${res.status}`);
+    this.log('commands', res.ok ? note : `HTTP ${res.status}`);
   }
 
   // ── Bloxkeep from Discord (remote.js) ──
