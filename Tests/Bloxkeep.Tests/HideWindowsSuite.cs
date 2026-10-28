@@ -11,6 +11,8 @@ namespace Bloxkeep.Tests;
 static class HideWindowsSuite
 {
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr hWnd, int cmd);
 
     public static Task Run(Checks c, string dir)
     {
@@ -66,17 +68,45 @@ static class HideWindowsSuite
         c.Check("anti-AFK on a hidden window: shown for its key, hidden again after", (!nudge.Result.Contains(hWnd) || wasShownForKey) && !Visible()
             && RobloxProcesses.HasHidden(me), $"reached {nudge.Result.Count}, shown {wasShownForKey}");
 
+        // Hidden while minimized: the nudge restores it, and it went back to the screen minimized (2026-10-28).
+        RobloxProcesses.ShowWindows([me]);
+        Visible();
+        form.WindowState = FormWindowState.Minimized;
+        Visible();
+        int hidMin = RobloxProcesses.HideWindows([me]);
+        string before = $"hid {hidMin}, visible after hide {Visible()}, iconic {IsIconic(hWnd)}";
+        var nudgeMin = (Task<List<IntPtr>>)afk.GetMethod("NudgeAsync", Harness.F)!.Invoke(null,
+            [(IReadOnlyList<IntPtr>)[hWnd], (Func<bool>)(() => true), (Func<IntPtr, Task>)(_ => Task.CompletedTask)])!;
+        while (!nudgeMin.IsCompleted)
+        {
+            Application.DoEvents();
+            Thread.Sleep(20);
+        }
+        c.Check("anti-AFK on a hidden, minimized window: hidden again after, not back on the taskbar", !Visible() && RobloxProcesses.HasHidden(me),
+            $"{before}; visible {IsWindowVisible(hWnd)}, iconic {IsIconic(hWnd)}, reached {nudgeMin.Result.Count}");
+        RobloxProcesses.ShowWindows([me]);
+        Visible();
+        form.WindowState = FormWindowState.Normal;
+        RobloxProcesses.HideWindows([me]);
+
         int shown = RobloxProcesses.ShowWindows([me]);
         c.Check("shown again", shown == 1 && Visible() && !RobloxProcesses.HasHidden(me), shown);
         c.Check("…and no longer written down", !File.Exists(file));
 
         // A run that ended without showing it: Bloxkeep's memory of it is gone, the file is left.
         RobloxProcesses.HideWindows([me]);
-        var hidden = (System.Collections.Generic.HashSet<IntPtr>)typeof(RobloxProcesses).GetField("_hidden", Harness.F)!.GetValue(null)!;
+        var hidden = (Dictionary<IntPtr, int>)typeof(RobloxProcesses).GetField("_hidden", Harness.F)!.GetValue(null)!;
         lock (hidden)
             hidden.Clear();
         c.Check("crashed with it hidden: hidden, and no longer known", !Visible() && !RobloxProcesses.HasHidden(me));
         int back = RobloxProcesses.ShowLeftHidden();
         c.Check("the next start shows it again from the file", back == 1 && Visible() && !File.Exists(file), back);
+
+        // A client that ended hidden: known to have been (its rejoin's window is hidden too), then forgotten.
+        RobloxProcesses.HideWindows([me]);
+        c.Check("a client that ended with its window hidden is said so", RobloxProcesses.ForgetHidden(me) && !RobloxProcesses.HasHidden(me) && !File.Exists(file));
+        c.Check("…once", !RobloxProcesses.ForgetHidden(me));
+        ShowWindowAsync(hWnd, 8);
+        Visible();
     }
 }

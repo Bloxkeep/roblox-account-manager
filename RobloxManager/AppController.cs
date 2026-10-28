@@ -3845,6 +3845,9 @@ public sealed partial class AppController : IDisposable
             if (log is null && !closedByRoblox && !_closingForRejoin.Contains(info.Pid) && ChildrenOf(info.Pid).Any(trays.Contains))
                 log = new RobloxLogWatcher.ClientState("left", info.Launch.Target?.PlaceId, info.Launch.Target?.JobId, null, now);
             _endedHere[id] = (log?.JobId ?? info.Launch.Target?.JobId, log?.PlaceId ?? info.Launch.Target?.PlaceId, now);
+            // Its window was hidden: the one auto-rejoin opens for it is hidden too, once in its game (RejoinFromLogs).
+            if (RobloxProcesses.ForgetHidden(info.Pid))
+                _hideWhenIn.Add(id);
             EndPlay(id, log, now);
             RefreshPresenceSoon(TimeSpan.FromSeconds(8));
             // The first process may only bootstrap and hand over to a child: wait for that only when a new,
@@ -4380,6 +4383,12 @@ public sealed partial class AppController : IDisposable
         {
             if (_logs.StateOf(info.Pid) is not { } state || _closingForRejoin.Contains(info.Pid))
                 continue;
+            // A rejoin of a window that was hidden: hidden again once in its game (a window opened by hand stays shown).
+            if (state.Status == "ingame" && _hideWhenIn.Remove(id) && info.Launch.Rejoin)
+            {
+                RobloxProcesses.HideWindows([info.Pid]);
+                PushState();
+            }
             // A window held as banned that got a server since, or where the person started a game (another, or the same
             // again): not held any more.
             if (state is { Status: "ingame" } or { Status: "joining", JobId: not null } or { Status: "joining", PersonStarted: true })
@@ -4753,10 +4762,13 @@ public sealed partial class AppController : IDisposable
         _afkAdopted = true;
         if (_nudging)
             return;
-        // A window held on Roblox's bot check: the person is likely solving it, and a nudge brings another window to the
+        // A window held on Roblox's bot check: the person may be solving it, and a nudge brings another window to the
         // front for a moment. The check was cancelled twice while another window was due a nudge (2026-10-27), so
-        // none goes until it is gone (solved, or the window closed).
-        if (windows.Keys.Any(pid => _logs.JoinChallengedAt(pid) is not null && _logs.StateOf(pid) is { Status: "joining" }))
+        // none goes while it is in front or for BotCheckHold after it came. Not for good: a check nobody solves left
+        // every other window without anti-AFK, kicked after 20 minutes.
+        int front = RobloxProcesses.ForegroundPid();
+        if (windows.Keys.Any(pid => _logs.JoinChallengedAt(pid) is { } at && _logs.StateOf(pid) is { Status: "joining" }
+                                    && (pid == front || now - at < BotCheckHold)))
             return;
         var due = AntiAfkDue(now, on, windows, AntiAfk.Locked(), AntiAfk.IdleTime(), RobloxProcesses.ForegroundPid(), AntiAfk.FullScreenInFront);
         if (due.Count > 0)
@@ -4951,6 +4963,10 @@ public sealed partial class AppController : IDisposable
     static readonly TimeSpan MemoryHoldRecheck = TimeSpan.FromSeconds(30);
     /// <summary>Accounts told their rejoin waits for virtual memory (once, until it goes ahead).</summary>
     readonly HashSet<Guid> _memoryHeldTold = new();
+    /// <summary>How long anti-AFK waits after a window was held on Roblox's bot check (its nudges would take the front).</summary>
+    static readonly TimeSpan BotCheckHold = TimeSpan.FromMinutes(5);
+    /// <summary>Accounts whose window was hidden when their client ended: the window their rejoin opens is hidden too.</summary>
+    readonly HashSet<Guid> _hideWhenIn = new();
     /// <summary>Accounts whose client just ended out of memory (its log said so): its drop is said so.</summary>
     readonly HashSet<Guid> _ranOutOfMemory = new();
 
@@ -4958,6 +4974,8 @@ public sealed partial class AppController : IDisposable
     {
         var vault = _vault;
         var account = FindAccount(request.AccountId);
+        // Sent to another server by the person (AppController.ServerHop.cs): taken here, even by a rejoin that stops below.
+        bool hopping = _hopping.Remove(request.AccountId);
         if (vault is null || account is null || !request.Restart && !RejoinOn(account, request.PresetId) || account.Banned == true
             // Banned by that game since it was queued (or before Bloxkeep restarted): only Join Error 600 again. A
             // followed player's game is the one that counts, looked at once they are found (FollowTargetAsync).
@@ -4979,7 +4997,7 @@ public sealed partial class AppController : IDisposable
             }
             // Its preset's "Rejoin server" (a drop or its timed restart): the server another of its accounts plays in, when
             // one will take it. Not when the person sent it to another server.
-            else if (!_hopping.Remove(account.Id) && await TeammateTargetAsync(account, request, cts.Token) is { } teammate)
+            else if (!hopping && await TeammateTargetAsync(account, request, cts.Token) is { } teammate)
             {
                 target = teammate;
             }

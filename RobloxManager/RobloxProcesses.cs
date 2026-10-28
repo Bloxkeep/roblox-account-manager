@@ -244,21 +244,45 @@ public static class RobloxProcesses
 
     const int SW_HIDE = 0, SW_SHOWNA = 8;
     [DllImport("user32.dll")] static extern bool IsWindow(IntPtr hWnd);
-    static readonly HashSet<IntPtr> _hidden = new();
+    /// <summary>The windows Bloxkeep hid, each with its client: a handle Windows gives another window once this one is
+    /// gone is never shown or counted for it, and a client that ended hidden is still known to have been.</summary>
+    static readonly Dictionary<IntPtr, int> _hidden = new();
     static string HiddenFile => Path.Combine(Vault.DataDir, "hidden-windows.txt");
+
+    /// <summary>This window, of the client Bloxkeep hid it in, is still there.</summary>
+    static bool StillOf(IntPtr hWnd, int pid) => IsWindow(hWnd) && GetWindowThreadProcessId(hWnd, out uint owner) != 0 && owner == pid;
 
     /// <summary>Whether Bloxkeep hid this window (and it still exists).</summary>
     public static bool IsHidden(IntPtr hWnd)
     {
         lock (_hidden)
-            return _hidden.Contains(hWnd);
+            return _hidden.TryGetValue(hWnd, out int pid) && StillOf(hWnd, pid);
     }
 
     /// <summary>Whether any window of this client is hidden by Bloxkeep.</summary>
     public static bool HasHidden(int pid)
     {
         lock (_hidden)
-            return _hidden.Any(h => GetWindowThreadProcessId(h, out uint owner) != 0 && owner == pid);
+            return _hidden.Any(h => h.Value == pid && StillOf(h.Key, pid));
+    }
+
+    /// <summary>
+    /// Forgets a client that ended: true when its window was hidden then, so that the window auto-rejoin opens for its
+    /// account is hidden too once in its game.
+    /// </summary>
+    public static bool ForgetHidden(int pid)
+    {
+        bool was;
+        lock (_hidden)
+        {
+            var its = _hidden.Where(h => h.Value == pid).Select(h => h.Key).ToList();
+            foreach (var hWnd in its)
+                _hidden.Remove(hWnd);
+            was = its.Count > 0;
+        }
+        if (was)
+            SaveHidden();
+        return was;
     }
 
     /// <summary>Hides each client's main window (its game keeps running). Returns how many were hidden now.</summary>
@@ -271,7 +295,7 @@ public static class RobloxProcesses
             if (hWnd == IntPtr.Zero || IsHidden(hWnd))
                 continue;
             lock (_hidden)
-                _hidden.Add(hWnd);
+                _hidden[hWnd] = pid;
             ShowWindowAsync(hWnd, SW_HIDE);
             count++;
         }
@@ -283,14 +307,16 @@ public static class RobloxProcesses
     public static int ShowWindows(IEnumerable<int>? pids = null)
     {
         var only = pids?.ToHashSet();
-        List<IntPtr> shown;
+        List<KeyValuePair<IntPtr, int>> shown;
         lock (_hidden)
         {
-            shown = _hidden.Where(h => only is null || GetWindowThreadProcessId(h, out uint owner) != 0 && only.Contains((int)owner)).ToList();
-            _hidden.ExceptWith(shown);
+            shown = _hidden.Where(h => only is null || only.Contains(h.Value)).ToList();
+            foreach (var h in shown)
+                _hidden.Remove(h.Key);
         }
-        foreach (var hWnd in shown)
-            ShowWindowAsync(hWnd, SW_SHOWNA);
+        shown.RemoveAll(h => !StillOf(h.Key, h.Value));
+        foreach (var h in shown)
+            ShowWindowAsync(h.Key, SW_SHOWNA);
         SaveHidden();
         return shown.Count;
     }
@@ -310,8 +336,7 @@ public static class RobloxProcesses
             {
                 var parts = line.Split(' ');
                 if (parts.Length == 2 && int.TryParse(parts[0], out int pid) && long.TryParse(parts[1], out long handle)
-                    && new IntPtr(handle) is var hWnd && IsWindow(hWnd) && !IsWindowVisible(hWnd)
-                    && GetWindowThreadProcessId(hWnd, out uint owner) != 0 && owner == pid)
+                    && new IntPtr(handle) is var hWnd && StillOf(hWnd, pid) && !IsWindowVisible(hWnd))
                 {
                     ShowWindowAsync(hWnd, SW_SHOWNA);
                     shown++;
@@ -332,10 +357,7 @@ public static class RobloxProcesses
         {
             List<string> lines;
             lock (_hidden)
-            {
-                _hidden.RemoveWhere(h => !IsWindow(h));
-                lines = _hidden.Select(h => GetWindowThreadProcessId(h, out uint owner) != 0 ? $"{owner} {h.ToInt64()}" : null).OfType<string>().ToList();
-            }
+                lines = _hidden.Where(h => StillOf(h.Key, h.Value)).Select(h => $"{h.Value} {h.Key.ToInt64()}").ToList();
             if (lines.Count == 0)
                 File.Delete(HiddenFile);
             else
