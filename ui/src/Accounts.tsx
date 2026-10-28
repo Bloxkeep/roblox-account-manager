@@ -459,7 +459,8 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
   // A ban or a lost sign-in is the red pill in front; a lost sign-in needs no words after it.
   switch (p?.type) {
     case 'ingame': return { cls: 'ingame', text: `${t('row.elsewhere')} · ${p.game || t('act.hidden')}` };
-    case 'online': return { cls: 'online', text: t('act.online') };
+    // Roblox's status, not a window here: said where, as the card does (a bare "Online" read as running).
+    case 'online': return { cls: 'online', text: t('row.onlineWeb') };
     case 'studio': return { cls: 'studio', text: t('act.studio') };
     case 'offline':
     case 'invisible': return a.cookieValid === false && !a.banned ? { cls: 'signedout', text: '' } : { cls: 'offline', text: t('act.offline') };

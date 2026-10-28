@@ -144,7 +144,7 @@ html [data-theme="dark" lang="vi"]
                 div.row-name
                   b [title="Farm 1"] "Farm 1"
                   small [title="@pixelfarmer01"] "@pixelfarmer01"
-                div.online.row-status [title="Online"] "Online"
+                div.online.row-status [title="Online trên web hoặc app Roblox"] "Online trên web hoặc app Roblox"
                 div.row-meta
                   span.cell.end
                     span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "80"

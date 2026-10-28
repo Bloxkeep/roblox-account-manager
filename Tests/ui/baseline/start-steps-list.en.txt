@@ -168,7 +168,7 @@ html [data-theme="dark" lang="en"]
                 div.row-name
                   b [title="Farm 1"] "Farm 1"
                   small [title="@pixelfarmer01"] "@pixelfarmer01"
-                div.online.row-status [title="Online"] "Online"
+                div.online.row-status [title="Online on the Roblox website or app"] "Online on the Roblox website or app"
                 div.row-meta
                   span.cell.end
                     span.robux [title="Robux on this account, checked every 30 minutes"] "80"
