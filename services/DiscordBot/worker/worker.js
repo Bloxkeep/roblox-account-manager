@@ -16,6 +16,7 @@ import { onceMore } from './calls.js';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
+import { APP_COMMANDS, ANSWER_WAIT, CODE_FOR, COMMANDS_PER_MINUTE, MAX_MESSAGE, MAX_PCS, PC_TEXT, TOKEN_FOR, choices, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
 import { setupServer } from './setup.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -103,6 +104,19 @@ export class Gateway extends DurableObject {
       // nothing leads back to an id or links one day's list to another's: only each day's number stays.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS seen (day TEXT NOT NULL, key TEXT NOT NULL, PRIMARY KEY (day, key))');
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS people (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
+      // Bloxkeep on people's PCs, controlled from Discord (remote.js): each PC linked to one Discord account, and the
+      // PC's name as its app last said it (to name it while it's offline).
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS links (pc TEXT PRIMARY KEY, user TEXT NOT NULL, label TEXT NOT NULL, at INTEGER NOT NULL)');
+      // Codes waiting to be typed (code → { pc, until }), commands waiting for their PC's answer (id → { pc, done }),
+      // commands whose outcome may still be followed up (id → { pc, token, until }), each person's last commands, and
+      // the names Discord shows linked people by (for their app's Settings).
+      this.codes = new Map();
+      this.answers = new Map();
+      this.tokens = new Map();
+      this.sent = new Map();
+      this.names = new Map();
+      // An app's "ping" keeping its socket open is answered without waking anything.
+      ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
       this.dayKey = (await ctx.storage.get('dayKey')) ?? null; // { day, key }
       this.here = new Map([...ctx.storage.sql.exec('SELECT * FROM online')].map(r => [r.id, { until: r.until, app: r.app, lang: r.lang }]));
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
@@ -289,11 +303,199 @@ export class Gateway extends DurableObject {
     this.log('commands', res.ok ? 'registered' : `HTTP ${res.status}`);
   }
 
+  // ── Bloxkeep from Discord (remote.js) ──
+
+  /** A Bloxkeep app connecting (worker.js /remote/connect): its socket, one per PC; told at once whether it's linked. */
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname !== '/remote/connect' || request.headers.get('Upgrade') !== 'websocket')
+      return new Response('not found', { status: 404 });
+    const pc = await pcId((request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, ''));
+    if (!pc)
+      return new Response('no key', { status: 401 });
+    for (const old of this.ctx.getWebSockets(pc))
+      old.close(4000, 'connected again');
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server, [pc]);
+    server.serializeAttachment({ pc, hello: null });
+    server.send(JSON.stringify(this.linkState(pc)));
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** Whether this PC is linked, and to whom (the name Discord showed them by when they last used /pc). */
+  linkState(pc) {
+    const link = [...this.ctx.storage.sql.exec('SELECT user FROM links WHERE pc = ?', pc)][0];
+    return { t: 'link', linked: !!link, user: link ? this.names.get(link.user) ?? null : null };
+  }
+
+  /** The socket of a PC's app, and what it said about itself, while connected. */
+  appOf(pc) {
+    const ws = this.ctx.getWebSockets(pc)[0];
+    return ws ? { ws, hello: ws.deserializeAttachment()?.hello ?? null } : null;
+  }
+
+  async webSocketMessage(ws, raw) {
+    if (typeof raw !== 'string' || raw.length > MAX_MESSAGE)
+      return ws.close(1009, 'too large');
+    let m;
+    try {
+      m = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    const me = ws.deserializeAttachment() ?? {}, pc = me.pc, sql = this.ctx.storage.sql;
+    if (!pc || !m || typeof m !== 'object')
+      return;
+    if (m.t === 'hello') { // its PC's, accounts' and presets' names (autocomplete), sent again when they change
+      me.hello = readHello(m);
+      ws.serializeAttachment(me);
+      sql.exec('UPDATE links SET label = ? WHERE pc = ?', me.hello.name, pc);
+      return;
+    }
+    if (m.t === 'code') { // a code to link it, replacing any earlier one
+      const now = Date.now();
+      for (const [code, c] of this.codes)
+        if (c.pc === pc || c.until < now)
+          this.codes.delete(code);
+      const code = makeCode(c => this.codes.has(c)), until = now + CODE_FOR;
+      this.codes.set(code, { pc, until });
+      ws.send(JSON.stringify({ t: 'code', code, until }));
+      return;
+    }
+    if (m.t === 'unlink') { // turned off in the app, or unlinked there
+      sql.exec('DELETE FROM links WHERE pc = ?', pc);
+      for (const [code, c] of this.codes)
+        if (c.pc === pc)
+          this.codes.delete(code);
+      ws.send(JSON.stringify(this.linkState(pc)));
+      return;
+    }
+    if (m.t === 'answer' && typeof m.id === 'string') {
+      const waiting = this.answers.get(m.id);
+      if (waiting?.pc === pc)
+        waiting.done(readAnswer(m));
+      return;
+    }
+    if (m.t === 'later' && typeof m.id === 'string') { // how it went, once done (a preset's windows all open)
+      const t = this.tokens.get(m.id);
+      if (t?.pc === pc && t.until > Date.now())
+        await api(this.env, 'POST', `/webhooks/${this.env.DISCORD_APP_ID}/${t.token}`, readAnswer(m)).catch(() => {});
+    }
+  }
+
+  webSocketClose(ws, code) {
+    try {
+      ws.close(code === 1005 || code === 1006 ? 1000 : code, 'bye');
+    } catch {}
+  }
+
+  /** The PCs a Discord account linked, oldest first. */
+  pcsOf(user) {
+    return [...this.ctx.storage.sql.exec('SELECT pc, label FROM links WHERE user = ? ORDER BY at', user)];
+  }
+
+  /** The PC a command is for: the one named, else the only one, else the only one connected. A string says why none. */
+  pickPc(pcs, wanted) {
+    if (!pcs.length)
+      return PC_TEXT.noPc;
+    if (wanted) {
+      const named = pcs.filter(p => p.label.toLowerCase() === String(wanted).toLowerCase());
+      return named.length ? named.find(p => this.appOf(p.pc)) ?? named[0] : PC_TEXT.unknownPc(wanted);
+    }
+    if (pcs.length === 1)
+      return pcs[0];
+    const up = pcs.filter(p => this.appOf(p.pc));
+    return up.length === 1 ? up[0] : PC_TEXT.whichPc(pcs.map(p => `**${p.label}**`).join(', '));
+  }
+
+  /** /pc: link, unlink here, or a command handed to the PC and its answer shown (edited in when it comes late). */
+  async pcCommand(i) {
+    const user = i.member?.user ?? i.user, sub = i.data.options?.[0], opt = n => sub?.options?.find(o => o.name === n)?.value;
+    const mine = data => ({ type: 4, data: { allowed_mentions: { parse: [] }, ...data, flags: 64 } });
+    const sql = this.ctx.storage.sql, now = Date.now();
+    if (!user?.id)
+      return mine({ content: '?' });
+    this.names.set(user.id, user.global_name || user.username || null);
+    const times = (this.sent.get(user.id) ?? []).filter(t => t > now - 60_000);
+    if (times.length >= COMMANDS_PER_MINUTE)
+      return mine({ content: PC_TEXT.tooFast });
+    this.sent.set(user.id, [...times, now]);
+    if (sub?.name === 'link') {
+      const typed = readCode(opt('code')), code = this.codes.get(typed);
+      if (!code || code.until < now)
+        return mine({ content: PC_TEXT.badCode });
+      const pcs = this.pcsOf(user.id);
+      if (!pcs.some(p => p.pc === code.pc) && pcs.length >= MAX_PCS)
+        return mine({ content: PC_TEXT.tooManyPcs });
+      this.codes.delete(typed);
+      const app = this.appOf(code.pc), label = app?.hello?.name ?? 'PC';
+      sql.exec('INSERT OR REPLACE INTO links (pc, user, label, at) VALUES (?, ?, ?, ?)', code.pc, user.id, label, now);
+      app?.ws.send(JSON.stringify(this.linkState(code.pc)));
+      return mine({ content: PC_TEXT.linked(label) });
+    }
+    const pc = this.pickPc(this.pcsOf(user.id), opt('pc'));
+    if (typeof pc === 'string')
+      return mine({ content: pc });
+    const app = this.appOf(pc.pc);
+    if (sub?.name === 'unlink') {
+      sql.exec('DELETE FROM links WHERE pc = ?', pc.pc);
+      app?.ws.send(JSON.stringify(this.linkState(pc.pc)));
+      return mine({ content: PC_TEXT.unlinked(pc.label) });
+    }
+    if (!Object.hasOwn(APP_COMMANDS, sub?.name ?? ''))
+      return mine({ content: '?' });
+    if (!app)
+      return mine({ content: PC_TEXT.offline(pc.label) });
+    const id = crypto.randomUUID(), field = APP_COMMANDS[sub.name];
+    for (const [k, t] of this.tokens)
+      if (t.until < now)
+        this.tokens.delete(k);
+    this.tokens.set(id, { pc: pc.pc, token: i.token, until: now + TOKEN_FOR });
+    const answer = new Promise(resolve => {
+      const timer = setTimeout(() => resolve(null), Number(this.env.ANSWER_WAIT_MS ?? ANSWER_WAIT));
+      this.answers.set(id, { pc: pc.pc, done: a => { clearTimeout(timer); resolve(a); } });
+    });
+    app.ws.send(JSON.stringify({ t: 'command', id, command: sub.name, value: field ? String(opt(field) ?? '') : null }));
+    const quick = await answer;
+    if (quick) {
+      this.answers.delete(id);
+      return { type: 4, data: quick };
+    }
+    // Slow (a busy PC): "thinking…" now, the answer edited in when it comes, or a word that it didn't after a minute.
+    const edit = data => api(this.env, 'PATCH', `/webhooks/${this.env.DISCORD_APP_ID}/${i.token}/messages/@original`, data).catch(() => {});
+    const late = setTimeout(() => {
+      if (this.answers.delete(id))
+        edit({ content: PC_TEXT.noAnswer(pc.label), allowed_mentions: { parse: [] } });
+    }, Number(this.env.ANSWER_LATE_MS ?? 60_000));
+    this.answers.set(id, { pc: pc.pc, done: a => { clearTimeout(late); this.answers.delete(id); edit(a); } });
+    return { type: 5, data: { flags: 64 } };
+  }
+
+  /** /pc's autocomplete: the person's PCs, and the chosen (or only) PC's presets or accounts, as its app last said them. */
+  pcChoices(i) {
+    const user = (i.member?.user ?? i.user)?.id, sub = i.data?.options?.[0], options = sub?.options ?? [];
+    const focused = options.find(o => o.focused), pcs = user ? this.pcsOf(user) : [];
+    const answer = list => ({ type: 8, data: { choices: choices(list, focused?.value) } });
+    if (!focused)
+      return answer([]);
+    if (focused.name === 'pc')
+      return answer(pcs.map(p => p.label));
+    const pc = this.pickPc(pcs, options.find(o => o.name === 'pc')?.value);
+    const hello = typeof pc === 'string' ? null : this.appOf(pc.pc)?.hello;
+    if (focused.name === 'name')
+      return answer(hello?.presets ?? []);
+    if (focused.name === 'account')
+      return answer([...(sub.name === 'close' ? [PC_TEXT.allAccounts] : []), ...(hello?.accounts ?? [])]);
+    return answer([]);
+  }
+
   /** A slash command (worker.js checked Discord's signature): the reply Discord shows. */
   async interaction(i) {
     const l = lang(i.locale ?? i.guild_locale), r = replies(l), name = i.data?.name;
     // Seen only by who asked (mine): flag 64, besides a card's own.
     const reply = (data, mine = false) => ({ type: 4, data: { ...data, allowed_mentions: { parse: [] }, ...(mine ? { flags: (data.flags ?? 0) | 64 } : {}) } });
+    if (name === 'pc')
+      return this.pcCommand(i);
     const snap = await this.snapshot();
     switch (name) {
       case 'help':
@@ -1173,6 +1375,11 @@ export default {
         ? new Response(dashboardPage(), { headers: { 'Content-Type': 'text/html; charset=utf-8', ...noStore } })
         : Response.json(await ask(env, g => g.onlineNow()), { headers: noStore });
     }
+    if (url.pathname === '/remote/connect') { // a Bloxkeep app that can be controlled from Discord (remote.js)
+      if (env.PING_LIMITER && !(await env.PING_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' })).success)
+        return new Response('rate', { status: 429 });
+      return gateway.fetch(request);
+    }
     if (url.pathname === '/interactions' && request.method === 'POST') {
       const body = await request.text();
       if (!await verify(env.DISCORD_PUBLIC_KEY, request.headers.get('X-Signature-Ed25519'), request.headers.get('X-Signature-Timestamp'), body))
@@ -1190,6 +1397,8 @@ export default {
         ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.name ?? '', Date.now() - started));
         return Response.json(reply);
       }
+      if (i.type === 4) // what to suggest while someone types (/pc)
+        return Response.json(await ask(env, g => g.pcChoices(i)));
       if (i.type === 3 || i.type === 5) { // a button pressed, a form sent (/verify)
         const started = Date.now(), { reply, png } = await ask(env, g => g.component(i));
         ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.custom_id ?? '', Date.now() - started));

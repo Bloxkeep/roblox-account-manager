@@ -118,6 +118,16 @@ html [data-theme="dark" lang="en"]
                         label.switch
                           input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
                           span
+                div.set-grp [id="sec-dc-remote"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Control from Discord"
+                        div.d "Type /pc in Discord to see your accounts, run a preset, close windows or switch server on this PC, from anywhere."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-remote" type="checkbox" aria-label="Control from Discord" checked=false]
+                          span
                 div.set-grp [id="sec-discord"]
                   div.set-card
                     div.set-row

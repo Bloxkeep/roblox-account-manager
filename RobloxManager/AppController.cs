@@ -556,6 +556,8 @@ public sealed partial class AppController : IDisposable
         "setDiscord" => Done(SetDiscord(a)),
         "setDiscordPresence" => Done(SetDiscordPresence(Bool(a, "enabled"))),
         "setDiscordWebhook" => Done(SetDiscordWebhook(Str(a, "url"))),
+        "setRemote" => Done(SetRemote(Bool(a, "enabled"))),
+        "remoteCode" => Done(RemoteNewCode()),
         "revealDiscordWebhook" => Done(RevealDiscordWebhook()),
         "discordTest" => SendDiscordNowAsync(summary: false),
         "discordSummaryNow" => SendDiscordNowAsync(summary: true),
@@ -570,6 +572,8 @@ public sealed partial class AppController : IDisposable
         // Bloxkeep's Discord bot sends this on to an invite into the community server that works (services/DiscordBot/worker
         // invite()): a new one is made whenever the last stops working, so this address never changes.
         "openDiscord" => Done(OpenUrl("https://bloxkeep-bot.bloxkeep-app.workers.dev/discord")),
+        // Bloxkeep's app added to the person's own Discord account, so /pc works in any DM (Control from Discord).
+        "openDiscordApp" => Done(OpenUrl("https://discord.com/oauth2/authorize?client_id=1561788269933498408&integration_type=1&scope=applications.commands")),
         "feedbackPreview" => Done(FeedbackPreview(a)),
         "sendFeedback" => SendFeedbackAsync(a),
         _ => throw new UserError(L.F("Unknown command: {0}", cmd)),
@@ -690,6 +694,7 @@ public sealed partial class AppController : IDisposable
         // An update found before the unlock, which the lock screen gives its place to; go: its answer (null: not yet).
         lockUpdate = UpdateOffersAtLock ? new { go = _updateAtLock } : null,
         countOnline = Prefs.CountOnline,
+        remote = RemoteDto(),
         robloxVersion = RobloxVersionDto(),
         robloxUpdates = RobloxUpdatesDto(),
         whatsNew = _updatedFrom is not null && Open is not null
@@ -4026,6 +4031,7 @@ public sealed partial class AppController : IDisposable
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
         Step(() => TickDiscordPresence(now)); // Settings › Discord › Show on my Discord profile, locked or not
         Step(() => TickOnline(now)); // Settings › Bloxkeep › Add me to the online count, locked or not
+        Step(TickRemote); // Settings › Discord › Control from Discord, locked or not (locked, it says only that)
         // Also while locked: windows go on running, and one that ends soon after the commit limit ran out ran out of memory.
         MemoryStatus memory = default;
         Step(() =>
@@ -5794,6 +5800,7 @@ public sealed partial class AppController : IDisposable
         _discordPresence.Dispose(); // the profile stops showing Bloxkeep
         _robloxInput?.Dispose();
         SayOfflineOnExit(); // no longer counted as open (not for an update in the background, back within seconds)
+        StopRemote(); // Discord says the PC isn't connected
         _procTimer.Dispose();
         _homeSession?.Dispose();
         _homeSession = null;

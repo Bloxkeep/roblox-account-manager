@@ -141,6 +141,12 @@
   let dailySignInCheck = true;
   let betaUpdates = params.has('beta'); // ?beta=1: Settings › Get beta versions on
   let countOnline = !params.has('offline'); // ?offline: Settings › Add me to the online count off
+  // ?remote=code|linked|connecting: Settings › Discord › Control from Discord on, waiting for its code to be typed, linked,
+  // or not connected yet.
+  const remoteCode = () => ({ on: true, connected: true, linked: false, user: null, code: 'K7MX4P', codeUntil: Date.now() + 9.5 * 60_000, pc: 'GAMING-PC' });
+  let remote = params.get('remote') === 'linked' ? { on: true, connected: true, linked: true, user: 'Minh', code: null, codeUntil: null, pc: 'GAMING-PC' }
+    : params.get('remote') === 'connecting' ? { on: true, connected: false, linked: null, user: null, code: null, codeUntil: null, pc: 'GAMING-PC' }
+    : params.get('remote') === 'code' ? remoteCode() : { on: false, connected: false, linked: null, pc: 'GAMING-PC' };
   const skipConfirm = [];
   const lastSignInCheck = minsAgo(60 * 5);
   let miniOpen = params.has('mini'); // ?mini=1: the mini window counts as open
@@ -300,6 +306,7 @@
         quiet: params.get('update') === 'quiet', progress: 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(23) },
     lockUpdate: locked && !screenLock && lockUpdate !== null ? { go: lockUpdateGo } : null,
     countOnline,
+    remote,
     installs: { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
     monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: LONG ? 'C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep' : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep', paths: { vault: locked ? null : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv', log: 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log', app: 'C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current' },
     hotkeys: { on: !params.has('nohotkeys'), taken: params.has('keystaken') ? ['Ctrl+Alt+H'] : [] },
@@ -397,6 +404,9 @@
         case 'setDailySignInCheck': dailySignInCheck = a.enabled; push(); return null;
         case 'setBetaUpdates': betaUpdates = a.enabled; push(); return null;
         case 'setCountOnline': countOnline = a.enabled; push(); return null;
+        case 'setRemote': remote = a.enabled ? remoteCode() : { on: false, connected: false, linked: null, pc: 'GAMING-PC' }; push(); return null;
+        case 'remoteCode': remote = { ...remoteCode(), code: 'Q2W8RN' }; push(); return null;
+        case 'openDiscordApp': return null;
         case 'skipConfirm': if (!skipConfirm.includes(a.key)) skipConfirm.push(a.key); push(); return null;
         case 'resetSkipConfirm': { const n = skipConfirm.length; skipConfirm.length = 0; push(); return n; }
         case 'toggleMini': miniOpen = !miniOpen; push(); return null;

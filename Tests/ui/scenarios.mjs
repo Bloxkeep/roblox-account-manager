@@ -1099,6 +1099,16 @@ export default [
   }),
   S('settings-discord-nolink', 'settings=discord', async s => { await s.click({ css: 'label:has(#s-dc-on)' }); }),
   S('settings-discord-gone', 'settings=discord&dcgone=1'),
+  // Control from Discord: turned on, its code to type into /pc link (and a new one); linked; not connected yet.
+  S('settings-discord-remote', 'settings=discord', async s => {
+    await s.click({ css: 'label:has(#s-dc-remote)' });
+    await s.wait(300);
+    await s.snap('code');
+    await s.click(key('dc.remoteNewCode'));
+    await s.wait(300);
+  }),
+  S('settings-discord-remote-linked', 'settings=discord&remote=linked'),
+  S('settings-discord-remote-connecting', 'settings=discord&remote=connecting'),
   S('settings-discord-fail', 'settings=discord&discord=1&dcfail=1', async s => { await s.click(key('dc.test')); await s.wait(500); }),
   S('settings-discord-reveal', 'settings=discord&discord=1', async s => {
     await s.click({ css: '#s-dc-reveal' });
