@@ -147,6 +147,14 @@ html [data-theme="dark" lang="en"]
                           span
                     div.set-row
                       div
+                        div.t "Hotkeys"
+                        div.d "Ctrl+Alt+H hides or shows every Roblox window, Ctrl+Alt+A arranges them, from any app."
+                      div.ctl
+                        label.switch
+                          input [id="s-hotkeys" type="checkbox" aria-label="Hotkeys" checked=true]
+                          span
+                    div.set-row
+                      div
                         div.t "Hardware acceleration"
                         div.d "Off uses less RAM. Turns off automatically if your graphics driver acts up."
                       div.ctl

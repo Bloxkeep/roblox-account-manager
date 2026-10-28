@@ -451,6 +451,7 @@ public sealed partial class AppController : IDisposable
         "pickThemePicture" => Done(PickThemePicture()),
         "clearThemePicture" => Done(ClearThemePicture()),
         "setCloseToTray" => Done(SetCloseToTray(Bool(a, "enabled"))),
+        "setHotkeys" => Done(SetHotkeys(Bool(a, "enabled"))),
         "setHideNames" => Done(SetHideNames(Bool(a, "enabled"))),
         "createVault" => CreateVaultAsync(Str(a, "password"), Str(a, "name")),
         "unlock" => UnlockAsync(Str(a, "password")),
@@ -674,6 +675,7 @@ public sealed partial class AppController : IDisposable
         themeApplied = Themes.Current.Id,
         customTheme = CustomThemeDto(),
         closeToTray = Prefs.CloseToTray,
+        hotkeys = new { on = Prefs.GlobalHotkeys, taken = HotkeysTaken },
         hideNames = Prefs.HideNames,
         notifications = Prefs.Notifications,
         notifyOff = Prefs.NotifyOff.Where(NotifyKinds.Contains).Order().ToArray(),
@@ -1149,6 +1151,15 @@ public sealed partial class AppController : IDisposable
         if (action is not ("close" or "minimize" or "zoom"))
             throw new UserError(L.T("Unknown window action."));
         WindowControl?.Invoke(action);
+        return null;
+    }
+
+    object? SetHotkeys(bool enabled)
+    {
+        Prefs.GlobalHotkeys = enabled;
+        Prefs.Save();
+        HotkeysChanged?.Invoke();
+        PushState();
         return null;
     }
 

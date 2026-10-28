@@ -4353,3 +4353,4 @@ body.tray-page { background: var(--surface); overflow: hidden; }
 .tray.tray-menu .tray-list .tray-row { min-height: 38px; }
 .tray :focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .tray:focus { outline: none; }
+.set-row .d .warn-text { color: var(--warn-ink); }

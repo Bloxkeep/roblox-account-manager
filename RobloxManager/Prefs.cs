@@ -24,6 +24,8 @@ public static class Prefs
 
     /// <summary>The close button hides the window to the notification area; the app quits from the tray icon.</summary>
     public static bool CloseToTray { get; set; } = true;
+    /// <summary>Ctrl+Alt+H (hide or show every Roblox window) and Ctrl+Alt+A (arrange them), from any app.</summary>
+    public static bool GlobalHotkeys { get; set; } = true;
 
     /// <summary>Accounts show as "Account 1", "Account 2"… instead of their names (see AppController.Names.cs).</summary>
     public static bool HideNames { get; set; }
@@ -243,6 +245,8 @@ public static class Prefs
                     Text(custom, "picture") is { } picture && Themes.IsPictureName(picture) ? picture : null);
             if (root.TryGetProperty("closeToTray", out var tray) && tray.ValueKind == JsonValueKind.False)
                 CloseToTray = false;
+            if (root.TryGetProperty("globalHotkeys", out var keys) && keys.ValueKind == JsonValueKind.False)
+                GlobalHotkeys = false;
             if (root.TryGetProperty("hideNames", out var hide) && hide.ValueKind == JsonValueKind.True)
                 HideNames = true;
             if (root.TryGetProperty("trayHintShown", out var hint) && hint.ValueKind == JsonValueKind.True)
@@ -352,7 +356,7 @@ public static class Prefs
             Directory.CreateDirectory(Vault.DataDir);
             var values = new Dictionary<string, object?>
             {
-                ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
+                ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["globalHotkeys"] = GlobalHotkeys, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
                 ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId,
                 ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture },

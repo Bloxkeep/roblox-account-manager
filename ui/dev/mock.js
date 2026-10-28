@@ -302,6 +302,7 @@
     countOnline,
     installs: { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
     monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: LONG ? 'C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep' : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep', paths: { vault: locked ? null : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv', log: 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log', app: 'C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current' },
+    hotkeys: { on: !params.has('nohotkeys'), taken: params.has('keystaken') ? ['Ctrl+Alt+H'] : [] },
     robloxInstalled: !params.has('noroblox'),
     launching: false, checking: false, multi, settings: locked ? null : settings, accounts: locked ? [] : accounts, discord: locked ? null : discord,
   });
