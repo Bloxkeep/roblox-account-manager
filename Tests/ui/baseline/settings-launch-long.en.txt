@@ -267,6 +267,7 @@ html [data-theme="dark" lang="en"]
                           option [value="roblox" disabled] "Roblox (official) — not installed"
                           option [value="direct"] "RobloxPlayerBeta directly (skip launchers)"
                           option [value="custom"] "Your launcher: Froststrap-Custom-Launcher-With-A-Long-Name"
+                          option [value="vng" disabled] "Roblox VNG — not installed"
                         button.btn.sm [title="Choose another launcher…"] "Choose…"
                     div [id="s-store"]
                     div.set-row

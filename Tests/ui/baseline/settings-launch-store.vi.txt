@@ -268,6 +268,7 @@ html [data-theme="dark" lang="vi"]
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
                           option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
                           option [value="store"] "Roblox (Microsoft Store, thử nghiệm)"
+                          option [value="vng" disabled] "Roblox VNG (chưa cài)"
                         button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
                     div [id="s-store"]
                       div.set-note
@@ -560,6 +561,7 @@ html [data-theme="dark" lang="vi"]
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
                           option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
                           option [value="store"] "Roblox (Microsoft Store, thử nghiệm)"
+                          option [value="vng" disabled] "Roblox VNG (chưa cài)"
                         button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
                     div [id="s-store"]
                     div.set-row

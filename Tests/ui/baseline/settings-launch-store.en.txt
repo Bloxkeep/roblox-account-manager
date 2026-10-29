@@ -268,6 +268,7 @@ html [data-theme="dark" lang="en"]
                           option [value="roblox" disabled] "Roblox (official) — not installed"
                           option [value="direct"] "RobloxPlayerBeta directly (skip launchers)"
                           option [value="store"] "Roblox (Microsoft Store) — being tested"
+                          option [value="vng" disabled] "Roblox VNG — not installed"
                         button.btn.sm [title="Choose another launcher…"] "Choose…"
                     div [id="s-store"]
                       div.set-note
@@ -560,6 +561,7 @@ html [data-theme="dark" lang="en"]
                           option [value="roblox" disabled] "Roblox (official) — not installed"
                           option [value="direct"] "RobloxPlayerBeta directly (skip launchers)"
                           option [value="store"] "Roblox (Microsoft Store) — being tested"
+                          option [value="vng" disabled] "Roblox VNG — not installed"
                         button.btn.sm [title="Choose another launcher…"] "Choose…"
                     div [id="s-store"]
                     div.set-row

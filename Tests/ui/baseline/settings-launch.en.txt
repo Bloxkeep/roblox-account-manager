@@ -266,6 +266,7 @@ html [data-theme="dark" lang="en"]
                           option [value="fishstrap" disabled] "Fishstrap — not installed"
                           option [value="roblox" disabled] "Roblox (official) — not installed"
                           option [value="direct"] "RobloxPlayerBeta directly (skip launchers)"
+                          option [value="vng" disabled] "Roblox VNG — not installed"
                         button.btn.sm [title="Choose another launcher…"] "Choose…"
                     div [id="s-store"]
                     div.set-row

@@ -266,6 +266,7 @@ html [data-theme="dark" lang="vi"]
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
                           option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
+                          option [value="vng" disabled] "Roblox VNG (chưa cài)"
                         button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
                     div [id="s-store"]
                     div.set-row
@@ -582,6 +583,7 @@ html [data-theme="dark" lang="vi"]
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
                           option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
+                          option [value="vng" disabled] "Roblox VNG (chưa cài)"
                         button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
                     div [id="s-store"]
                     div.set-row
@@ -892,6 +894,7 @@ html [data-theme="dark" lang="vi"]
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
                           option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
+                          option [value="vng" disabled] "Roblox VNG (chưa cài)"
                         button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
                     div [id="s-store"]
                     div.set-row
