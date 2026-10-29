@@ -4210,7 +4210,7 @@ public sealed partial class AppController : IDisposable
     /// <summary>
     /// Warns when the PC runs low on RAM. With "save RAM on background windows", Roblox windows you aren't playing get a
     /// low memory priority (Windows takes RAM from them first, only when it runs short — nothing changes while there is
-    /// plenty), and when the PC is really short of RAM they are asked to give some back, at most every two minutes.
+    /// plenty). Their RAM is no longer emptied outright (see the note at the end).
     /// A window gets its normal priority back as soon as it is in front, or when the option is turned off.
     /// </summary>
     void GuardResources(List<RobloxProcesses.PlayerProcess> players, MemoryStatus memory, DateTime now)
