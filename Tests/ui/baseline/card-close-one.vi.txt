@@ -344,7 +344,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #1u22jvi
               input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
             div.dock-info [id="dock-info" aria-live="polite"]
-              span.gname [title="Blox Fruits"] "Blox Fruits"
+              span.gname.gname-link [role="button" title="Mở trang của game này" tabindex="0"] "Blox Fruits"
               span.players "412.873 đang chơi"
               button.srv-open.srv-save [title="Lưu link server riêng hoặc code game yêu cầu để vào lại từ tab Đã lưu." aria-label="Lưu server"]
                 svg.i #1c3gvph

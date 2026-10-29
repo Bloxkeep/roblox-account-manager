@@ -589,8 +589,11 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
   else if (g.kind === 'share') info = <><span className="kind">{t('dock.share')}</span><span>{t('dock.shareNote')}</span>
     <button className="srv-open srv-save" data-act="save-server" title={t('sv.saveTip')} aria-label={t('sv.save')}><Icon name="bookmark" /></button></>;
   else info = <>
+    {/* A public game's name opens its page. A span acting as a button, not a <button>: a button measures a few px wider,
+        and the bar then dropped a recent game to make room for it (wide-1600, 2026-10-29). */}
     {g.placeId && g.kind !== 'private' && g.kind !== 'server'
-      ? <button className="gname" data-act="game-page" title={t('gp.open')}>{g.name || `Place ${g.placeId}`}</button>
+      ? <span className="gname gname-link" role="button" tabIndex={0} data-act="game-page" title={t('gp.open')}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>{g.name || `Place ${g.placeId}`}</span>
       : <span className="gname" title={g.name}>{g.name || `Place ${g.placeId}`}</span>}
     {g.kind === 'private' ? <span className="kind">{t('dock.private')}</span> : g.kind === 'server' ? <span className="kind">{t('dock.server')}</span> : null}
     {g.creator ? <span className="creator">{t('dock.by', { c: g.creator })}</span> : null}
