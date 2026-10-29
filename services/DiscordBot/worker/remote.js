@@ -76,7 +76,7 @@ const text = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
 const list = v => Array.isArray(v) ? v.slice(0, MAX_LIST).map(x => text(x, MAX_NAME)).filter(Boolean) : [];
 
 /** What the app says about itself when it connects (and when its names change): only names, cut short. */
-export const readHello = m => ({ name: text(m.name, MAX_NAME) || 'PC', accounts: list(m.accounts), presets: list(m.presets), lang: m.lang === 'vi' ? 'vi' : 'en' });
+export const readHello = m => ({ name: text(m.name, MAX_NAME) || 'PC', accounts: list(m.accounts), presets: list(m.presets), lang: m.lang === 'vi' ? 'vi' : 'en', ask: m.ask === true });
 
 /**
  * The app's answer to a command, as Discord takes it: text and embeds only (no mentions, no files, no components), seen

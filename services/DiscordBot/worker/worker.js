@@ -487,6 +487,12 @@ export class Gateway extends DurableObject {
       if (!app)
         return mine({ content: PC_TEXT.offline(label) });
       this.codes.delete(typed);
+      // An app from before links could be allowed (1.0.12, which never says it can ask): linked at once, as it was.
+      if (!app.hello?.ask) {
+        sql.exec('INSERT OR REPLACE INTO links (pc, user, label, at) VALUES (?, ?, ?, ?)', code.pc, user.id, label, now);
+        app.ws.send(JSON.stringify(this.linkState(code.pc)));
+        return mine({ content: PC_TEXT.linked(label) });
+      }
       // Not linked yet: the person at the PC allows it in Bloxkeep first, which says who asks (and whom it replaces).
       const before = this.asking.get(code.pc);
       if (before)

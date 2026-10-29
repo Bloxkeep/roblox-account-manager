@@ -68,6 +68,8 @@ sealed class RemoteLink : IDisposable
         string hello = new JsonObject
         {
             ["t"] = "hello", ["name"] = name, ["lang"] = language,
+            // It asks before a link is made (the bot links an app that doesn't say so at once, as 1.0.12 did).
+            ["ask"] = true,
             ["accounts"] = new JsonArray(accounts.Select(a => (JsonNode)a).ToArray()),
             ["presets"] = new JsonArray(presets.Select(p => (JsonNode)p).ToArray()),
         }.ToJsonString();

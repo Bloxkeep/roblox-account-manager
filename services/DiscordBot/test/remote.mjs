@@ -145,7 +145,7 @@ try {
   let a = app(SECRET_A, answers);
   check('an app connects with its secret', await a.open());
   check('…and is told at once that it is not linked yet', await waitFor(() => a.last('link'), 3000) && a.last('link').linked === false, JSON.stringify(a.heard));
-  a.send({ t: 'hello', name: 'GAMING-PC', accounts: ['Alpha', 'Beta'], presets: ['Farm', 'Daily'], lang: 'en' });
+  a.send({ t: 'hello', name: 'GAMING-PC', accounts: ['Alpha', 'Beta'], presets: ['Farm', 'Daily'], lang: 'en', ask: true });
   a.send({ t: 'code' });
   check('…asks for a code: six letters and digits', await waitFor(() => a.last('code'), 3000) && /^[A-Z2-9]{6}$/.test(a.last('code').code), JSON.stringify(a.last('code')));
   const code = a.last('code').code;
@@ -221,10 +221,10 @@ try {
   await a2.open();
   check('the same PC connecting again: the older socket is closed', await waitFor(() => a.closed === 4000, 3000), a.closed);
   a = a2;
-  a.send({ t: 'hello', name: 'GAMING-PC', accounts: ['Alpha', 'Beta'], presets: ['Farm', 'Daily'] });
+  a.send({ t: 'hello', name: 'GAMING-PC', accounts: ['Alpha', 'Beta'], presets: ['Farm', 'Daily'], ask: true });
   const b = app(SECRET_B, () => ({ content: 'from the laptop' }));
   await b.open();
-  b.send({ t: 'hello', name: 'LAPTOP', accounts: [], presets: [] });
+  b.send({ t: 'hello', name: 'LAPTOP', accounts: [], presets: [], ask: true });
   b.send({ t: 'code' });
   await waitFor(() => b.last('code'), 3000);
   r = await interact(pc('link', { code: b.last('code').code }));
@@ -256,6 +256,17 @@ try {
   r = await interact(pc('status'));
   check('…and Discord can\'t reach it any more', /No PC is linked/.test(contentOf(r)), contentOf(r));
   a.ws.close();
+
+  // ── an app from 1.0.12 (it never says it can ask): linked at once, as before ──
+  const old = app(crypto.randomBytes(32).toString('base64url'));
+  await old.open();
+  old.send({ t: 'hello', name: 'OLD-PC', accounts: [], presets: [] });
+  old.send({ t: 'code' });
+  await waitFor(() => old.last('code'), 3000);
+  r = await interact(pc('link', { code: old.last('code').code }, { user: 'u10', name: 'Ten' }));
+  check('an app from before links could be allowed (1.0.12): linked at once, as before', /Linked: \*\*OLD-PC\*\*/.test(contentOf(r))
+    && await waitFor(() => old.last('link')?.linked, 3000) && !old.last('ask'), contentOf(r));
+  old.ws.close();
 
   // ── an app sending far more than an app does: its socket is closed ──
   const flood = app(crypto.randomBytes(32).toString('base64url'));
