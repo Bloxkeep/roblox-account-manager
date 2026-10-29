@@ -54,6 +54,9 @@ public static class Prefs
     /// </summary>
     public static string? OnlineId { get; set; }
 
+    /// <summary>The bot was told this copy's first "open" (a new install, AppController.Online.cs): told once.</summary>
+    public static bool FirstOpenTold { get; set; }
+
     /// <summary>Settings › Discord › Control from Discord: off until the person turns it on (AppController.Remote.cs).</summary>
     public static bool RemoteControl { get; set; }
 
@@ -274,6 +277,7 @@ public static class Prefs
             if (Text(root, "onlineId") is { } onlineId && Guid.TryParseExact(onlineId, "N", out _))
                 OnlineId = onlineId;
             RemoteControl = root.TryGetProperty("remoteControl", out var remote) && remote.ValueKind == JsonValueKind.True;
+            FirstOpenTold = root.TryGetProperty("firstOpenTold", out var told) && told.ValueKind == JsonValueKind.True;
             RemoteKey = Text(root, "remoteKey");
             if (root.TryGetProperty("notifications", out var notify) && notify.ValueKind == JsonValueKind.False)
                 Notifications = false;
@@ -370,7 +374,7 @@ public static class Prefs
                 ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["globalHotkeys"] = GlobalHotkeys, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
                 ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId,
-                ["remoteControl"] = RemoteControl, ["remoteKey"] = RemoteKey,
+                ["remoteControl"] = RemoteControl, ["remoteKey"] = RemoteKey, ["firstOpenTold"] = FirstOpenTold,
                 ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture },
                 ["notifications"] = Notifications, ["notifyOff"] = NotifyOff.Order(StringComparer.Ordinal).ToArray(),
                 // The first vault's backup state also where builds before several vaults read it.

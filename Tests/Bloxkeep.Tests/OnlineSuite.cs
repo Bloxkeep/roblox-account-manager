@@ -71,17 +71,21 @@ static class OnlineSuite
         var names = first.EnumerateObject().Select(p => p.Name).Order().ToArray();
         string? pc = (string?)typeof(AppController).GetMethod("OnlineIdForThisPc", Harness.F)!.Invoke(null, null);
         c.Check("…with this PC's id (32 hex digits, not Windows' own id), the version and the language, nothing else",
-            string.Join(",", names) == "app,id,language" && pc is { Length: 32 } && pc.All(Uri.IsHexDigit) && pc == pc.ToLowerInvariant()
+            string.Join(",", names) == "age,app,first,id,language" && pc is { Length: 32 } && pc.All(Uri.IsHexDigit) && pc == pc.ToLowerInvariant()
             && first.GetProperty("id").GetString() == id && id == pc && !first.ToString().Contains(MachineGuid(), StringComparison.OrdinalIgnoreCase)
             && first.GetProperty("app").GetString() == Harness.Get<AppUpdater>(app, "_updater").CurrentVersion
             && first.GetProperty("language").GetString() is "en" or "vi", first);
         string prefs = File.ReadAllText(Path.Combine(dir, "prefs.json"));
         c.Check("…the id kept in prefs.json, outside the vault", prefs.Contains($"\"onlineId\":\"{id}\""), prefs);
         c.Check("…and the next beat when the bot says (2 minutes here)", Near(Next(), TimeSpan.FromMinutes(2)), Next());
+        // How long this PC has had Bloxkeep (its data folder, made just now here): a day at most; and this new install's
+        // first open, told once.
+        c.Check("…how long it has had Bloxkeep, roughly (under a day here), and that it's a new install's first open",
+            first.GetProperty("age").GetString() == "new" && first.GetProperty("first").GetBoolean() && Prefs.FirstOpenTold, first);
 
         c.Check("nothing before then", await Beat(DateTime.UtcNow, 1) && Count() == 1, Count());
         answer = """{"next":86400}""";
-        c.Check("then the same id again", await Beat(DateTime.UtcNow.AddMinutes(3), 2) && Last().GetProperty("id").GetString() == id, Last());
+        c.Check("then the same id again, no longer a first open", await Beat(DateTime.UtcNow.AddMinutes(3), 2) && Last().GetProperty("id").GetString() == id && !Last().GetProperty("first").GetBoolean(), Last());
         c.Check("…and a gap longer than six hours is held to six", Near(Next(), TimeSpan.FromHours(6)), Next());
         answer = """{"next":5}""";
         await Beat(DateTime.UtcNow.AddHours(7), 3);

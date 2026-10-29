@@ -107,6 +107,11 @@ export class Gateway extends DurableObject {
       // nothing leads back to an id or links one day's list to another's: only each day's number stays.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS seen (day TEXT NOT NULL, key TEXT NOT NULL, PRIMARY KEY (day, key))');
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS people (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
+      // Who stays, counted the same way (numbers per day, nothing per PC): new installs (an app's first "open"), the
+      // day's people by how long they've had Bloxkeep, and removals by reason (from the uninstaller).
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS installs (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS ages (day TEXT NOT NULL, age TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, age))');
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS removals (day TEXT NOT NULL, why TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, why))');
       // Bloxkeep on people's PCs, controlled from Discord (remote.js): each PC linked to one Discord account, and the
       // PC's name as its app last said it (to name it while it's offline).
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS links (pc TEXT PRIMARY KEY, user TEXT NOT NULL, label TEXT NOT NULL, at INTEGER NOT NULL)');
@@ -718,15 +723,24 @@ export class Gateway extends DurableObject {
    */
   async beat(b) {
     const now = Date.now();
+    const sql = this.ctx.storage.sql, day = dayOf(now);
     if (b.gone) {
       if (this.here.delete(b.id))
-        this.ctx.storage.sql.exec('DELETE FROM online WHERE id = ?', b.id);
+        sql.exec('DELETE FROM online WHERE id = ?', b.id);
+      // A removal counts once a day per PC (the day's list, under a key of its own), whatever is sent again.
+      if (b.removed && await this.notePerson('removed:' + b.id, now, false))
+        sql.exec('INSERT INTO removals (day, why, n) VALUES (?, ?, 1) ON CONFLICT (day, why) DO UPDATE SET n = n + 1', day, b.why ?? 'none');
       return {};
     }
-    // Counted among the day's people once (a restart forgets that it was: the day's list then says so).
+    // Counted among the day's people once (a restart forgets that it was: the day's list then says so), and only then
+    // by how long it has had Bloxkeep and as a new install, so a beat sent again counts nothing twice.
     const counted = this.here.get(b.id)?.counted;
-    if (counted !== dayOf(now))
-      await this.notePerson(b.id, now);
+    if (counted !== day && await this.notePerson(b.id, now)) {
+      if (b.age)
+        sql.exec('INSERT INTO ages (day, age, n) VALUES (?, ?, 1) ON CONFLICT (day, age) DO UPDATE SET n = n + 1', day, b.age);
+      if (b.first)
+        sql.exec('INSERT INTO installs (day, n) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET n = n + 1', day);
+    }
     this.here.set(b.id, { until: now, app: b.app, lang: b.lang, counted: dayOf(now) });
     const count = this.countHere(now), next = this.beatEvery(count), until = now + this.onlineFor(next);
     this.here.get(b.id).until = until;
@@ -741,7 +755,8 @@ export class Gateway extends DurableObject {
   }
 
   /** One of the day's people: their id scrambled with the day's key, counted if the day's list hasn't it yet. */
-  async notePerson(id, now) {
+  /** Notes a PC in the day's list (scrambled); whether it is new there today. person: counted among the day's people. */
+  async notePerson(id, now, person = true) {
     const day = dayOf(now);
     if (this.dayKey?.day !== day) {
       this.dayKey = { day, key: crypto.randomUUID() + crypto.randomUUID() };
@@ -749,8 +764,10 @@ export class Gateway extends DurableObject {
       this.ctx.storage.sql.exec('DELETE FROM seen WHERE day < ?', day);
     }
     const key = await scramble(this.dayKey.key, id);
-    if (this.ctx.storage.sql.exec('INSERT OR IGNORE INTO seen (day, key) VALUES (?, ?)', day, key).rowsWritten > 0)
+    const fresh = this.ctx.storage.sql.exec('INSERT OR IGNORE INTO seen (day, key) VALUES (?, ?)', day, key).rowsWritten > 0;
+    if (fresh && person)
       this.ctx.storage.sql.exec('INSERT INTO people (day, n) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET n = n + 1', day);
+    return fresh;
   }
 
   /** How long a beat that says the next comes in `next` seconds keeps its app online (shorter in the checks). */
@@ -790,10 +807,17 @@ export class Gateway extends DurableObject {
       days.push(dayOf(now - n * 86_400_000));
     const peaks = new Map([...this.ctx.storage.sql.exec('SELECT * FROM peaks WHERE day >= ?', days[0])].map(p => [p.day, p]));
     const people = new Map([...this.ctx.storage.sql.exec('SELECT * FROM people WHERE day >= ?', days[0])].map(p => [p.day, p.n]));
+    const installs = new Map([...this.ctx.storage.sql.exec('SELECT * FROM installs WHERE day >= ?', days[0])].map(p => [p.day, p.n]));
+    const ages = new Map(), why = new Map();
+    for (const r of this.ctx.storage.sql.exec('SELECT * FROM ages WHERE day >= ?', days[0]))
+      ages.set(r.day, { ...ages.get(r.day), [r.age]: r.n });
+    for (const r of this.ctx.storage.sql.exec('SELECT * FROM removals WHERE day >= ?', days[0]))
+      why.set(r.day, { ...why.get(r.day), [r.why]: r.n });
     // People: none counted yet today is 0; an earlier day without a number is one from before they were counted (null).
     const today = days.at(-1);
     const shown = days.map(day => ({ day, peak: peaks.get(day)?.peak ?? 0, at: peaks.get(day)?.at ?? null,
-      people: people.get(day) ?? (day === today ? 0 : null) }));
+      people: people.get(day) ?? (day === today ? 0 : null), installs: installs.get(day) ?? 0, ages: ages.get(day) ?? {},
+      removed: Object.values(why.get(day) ?? {}).reduce((a, n) => a + n, 0), why: why.get(day) ?? {} }));
     return {
       now: count, at: new Date(now).toISOString(), forMinutes: Math.round(this.onlineFor(this.beatEvery(count)) / 60_000),
       today: shown.at(-1), days: shown, apps: tally('app'), languages: tally('lang'),

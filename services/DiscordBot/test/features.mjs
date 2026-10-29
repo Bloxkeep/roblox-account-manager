@@ -398,6 +398,22 @@ try {
   check('…and no ids among them', !JSON.stringify(o).includes(C) && !JSON.stringify(o).toLowerCase().includes(B.toLowerCase()));
   await beat({ id: B, gone: true });
   await beat({ id: C, gone: true });
+  // Who stays: a new install's first open, the day's people by how long they've had it, removals by reason. Each counts
+  // once a day per PC, whatever is sent again; nothing per PC is kept.
+  const D = 'd'.repeat(32), E = 'e'.repeat(32);
+  await beat({ id: D, app: '1.0.13', language: 'en', age: 'new', first: true });
+  await beat({ id: D, app: '1.0.13', language: 'en', age: 'new', first: true }); // sent again (no answer came)
+  await beat({ id: E, app: '1.0.13', language: 'vi', age: 'old', first: false });
+  await beat({ id: D, gone: true, removed: true, why: 'hard' });
+  await beat({ id: D, gone: true, removed: true, why: 'hard' });
+  await beat({ id: E, gone: true, removed: true });
+  await beat({ id: E, gone: true });
+  o = await numbers();
+  check('new installs, how long they have had it and removals by reason: each PC once a day',
+    o.today.installs === 1 && o.today.ages.new === 1 && o.today.ages.old === 1 && o.today.removed === 2 && o.today.why.hard === 1 && o.today.why.none === 1
+    && o.today.people === 5, JSON.stringify(o.today));
+  check('…shown in /online too', textsOf({ body: (await interact(asDeveloper)).json?.data }).join('\n').includes('**Today** 1 new install · had it a day 1, a week 0, longer 1 · removed 2 (too hard 1)'));
+  check('…and no ids among them', !JSON.stringify(o).includes(D) && !JSON.stringify(o).includes(E));
 
   // A build on Roblox's test channel, checked by the watch: "coming", to both news channels, pinging r1 in g1.
   const base = () => ({ c1: posts('c1').length, c3: posts('c3').length, patches: patches().length });

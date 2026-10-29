@@ -20,8 +20,10 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
@@ -103,7 +105,12 @@ namespace BloxkeepSetup
                     if (shot != null)
                         code = new SetupWindow(true, root).SaveShot(shot, Arg(args, "--page"));
                     else if (silent)
+                    {
+                        bool told = Ops.CountsOnline;
                         code = Ops.Uninstall(root, Has(args, "--delete-data"));
+                        if (code == 0 && told)
+                            Ops.SayRemoved(null);
+                    }
                     else
                     {
                         var window = new SetupWindow(true, root);
@@ -357,6 +364,82 @@ namespace BloxkeepSetup
         }
 
         public static bool HasData { get { return File.Exists(Path.Combine(DataDir, "vault.rmv")); } }
+
+        /// <summary>
+        /// Settings › Bloxkeep › Add me to the online count, as the app saved it (on unless turned off): read before
+        /// uninstalling, which may delete prefs.json.
+        /// </summary>
+        public static bool CountsOnline
+        {
+            get
+            {
+                try
+                {
+                    string prefs = Path.Combine(DataDir, "prefs.json");
+                    return !File.Exists(prefs) || !System.Text.RegularExpressions.Regex.IsMatch(File.ReadAllText(prefs), "\"countOnline\"\\s*:\\s*false");
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>The id the app counts this PC under (AppController.OnlineIdForThisPc): Windows' id for the PC, hashed.</summary>
+        static string OnlineId()
+        {
+            try
+            {
+                using (var hive = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = hive.OpenSubKey(@"SOFTWARE\Microsoft\Cryptography"))
+                {
+                    string guid = key == null ? null : key.GetValue("MachineGuid") as string;
+                    if (string.IsNullOrEmpty(guid) || guid.Trim().Length == 0)
+                        return null;
+                    using (var sha = System.Security.Cryptography.SHA256.Create())
+                    {
+                        byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes("bloxkeep-online:" + guid.Trim().ToLowerInvariant()));
+                        var hex = new StringBuilder();
+                        for (int i = 0; i < 16; i++)
+                            hex.Append(hash[i].ToString("x2"));
+                        return hex.ToString();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Tells Bloxkeep's Discord bot this PC removed Bloxkeep, with the reason picked (or none): it only counts how
+        /// many, by reason, per day. Only for someone who counts online; a few seconds at most, nothing if offline.
+        /// </summary>
+        public static void SayRemoved(string why)
+        {
+            string id = OnlineId();
+            if (id == null)
+                return;
+            try
+            {
+                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072; // TLS 1.2
+                string url = Environment.GetEnvironmentVariable("BLOXKEEP_ONLINE_URL");
+                var request = (HttpWebRequest)WebRequest.Create(string.IsNullOrEmpty(url) ? "https://bloxkeep-bot.bloxkeep-app.workers.dev/online/ping" : url);
+                request.Method = "POST";
+                request.ContentType = "application/json";
+                request.Timeout = request.ReadWriteTimeout = 4000;
+                byte[] body = Encoding.UTF8.GetBytes("{\"id\":\"" + id + "\",\"gone\":true,\"removed\":true" + (why == null ? "" : ",\"why\":\"" + why + "\"") + "}");
+                request.ContentLength = body.Length;
+                using (var stream = request.GetRequestStream())
+                    stream.Write(body, 0, body.Length);
+                using (request.GetResponse()) { }
+            }
+            catch (Exception)
+            {
+                // Offline, or the bot not answering: not counted.
+            }
+        }
 
 #if WEB
         /// <summary>Downloaded while installing (Web.cs).</summary>
@@ -1021,6 +1104,8 @@ namespace BloxkeepSetup
         readonly Panel _footer = new Panel();
         string _page, _target, _error;
         bool _deleteData, _openApp = true;
+        /// <summary>Whether this PC counts online (read before uninstalling); whether the removal was told already.</summary>
+        bool _countsOnline, _removalTold;
         Bar _bar;
         Label _status, _sub;
         /// <summary>The web installer's Cancel, while it downloads.</summary>
@@ -1604,6 +1689,7 @@ namespace BloxkeepSetup
         void Remove()
         {
             bool delete = _deleteData;
+            _countsOnline = Ops.CountsOnline;
             ShowPage("removing");
             Work(delegate { return Ops.Uninstall(_root, delete); }, delegate (int code)
             {
@@ -1635,7 +1721,43 @@ namespace BloxkeepSetup
                     "Tài khoản và cài đặt vẫn còn trong {0}, cài lại Bloxkeep là dùng tiếp như cũ."), Ops.DataDir)
                 : _deleteData ? T.S("Your accounts and settings were deleted too.", "Tài khoản và cài đặt cũng đã được xóa.")
                 : T.S("Thanks for using Bloxkeep.", "Cảm ơn bạn đã dùng Bloxkeep."), S(112), Theme.Text);
-            Button(T.S("Close", "Đóng"), true, delegate { Result = 0; Close(); });
+            Button(T.S("Close", "Đóng"), true, delegate { TellRemoved(null); Result = 0; Close(); });
+            // Why, if they like (only asked of someone who counts online): one click, then the window closes.
+            if (!_countsOnline && !_shooting)
+                return;
+            Para(T.S("Why did you remove it? (optional)", "Vì sao bạn gỡ Bloxkeep? (không bắt buộc)"), S(184), Theme.Muted);
+            string[][] reasons =
+            {
+                new[] { "broken", T.S("It didn't work for me", "Không dùng được") },
+                new[] { "unneeded", T.S("I don't need it any more", "Không cần nữa") },
+                new[] { "hard", T.S("Too hard to use", "Khó dùng quá") },
+                new[] { "other", T.S("Something else", "Lý do khác") },
+            };
+            int x = S(32), y = S(212);
+            foreach (string[] reason in reasons)
+            {
+                string why = reason[0];
+                var b = new Btn(Theme.Field, Theme.FieldHover, Theme.Text) { Text = reason[1], Font = new Font("Segoe UI", 9.25f) };
+                b.Size = new Size(TextRenderer.MeasureText(b.Text, b.Font).Width + S(28), S(32));
+                if (x + b.Width > ClientSize.Width - S(32))
+                {
+                    x = S(32);
+                    y += S(40);
+                }
+                b.Location = new Point(x, y);
+                b.Click += delegate { TellRemoved(why); Result = 0; Close(); };
+                Add(b);
+                x += b.Width + S(8);
+            }
+        }
+
+        /// <summary>The removal told once, with its reason if one was picked (the window closing without one: none).</summary>
+        void TellRemoved(string why)
+        {
+            if (_removalTold || !_countsOnline || _shooting)
+                return;
+            _removalTold = true;
+            Ops.SayRemoved(why);
         }
 
         // ---- "Restart to update" ----------------------------------------------------------------------------------

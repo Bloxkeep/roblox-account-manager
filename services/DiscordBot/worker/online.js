@@ -38,17 +38,25 @@ export async function scramble(key, id) {
   return [...mac.slice(0, 16)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** What the app sent, checked: { id, app, lang } or { id, gone: true }; null for anything else. */
+/** How long a PC has had Bloxkeep, as the app says it (its data folder's age): a day, a week, longer. */
+export const AGES = ['new', 'week', 'old'];
+/** Why someone removed Bloxkeep, as its uninstaller's buttons say it. */
+export const WHY = ['broken', 'unneeded', 'hard', 'other'];
+
+/**
+ * What the app sent, checked: { id, app, lang, first, age } or { id, gone: true, removed, why }; null for anything else.
+ * first: the first time this copy says it's open (a new install); removed: its uninstaller saying so.
+ */
 export function readBeat(body) {
   const id = typeof body?.id === 'string' ? body.id.toLowerCase() : '';
   if (!/^[0-9a-f]{32}$/.test(id))
     return null;
   if (body.gone === true)
-    return { id, gone: true };
+    return { id, gone: true, removed: body.removed === true, why: body.removed === true && WHY.includes(body.why) ? body.why : null };
   const app = typeof body.app === 'string' && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(body.app) && body.app.length <= 30 ? body.app : null;
   if (!app)
     return null;
-  return { id, app, lang: body.language === 'vi' ? 'vi' : 'en' };
+  return { id, app, lang: body.language === 'vi' ? 'vi' : 'en', first: body.first === true, age: AGES.includes(body.age) ? body.age : null };
 }
 
 /** The dashboard's key, made from the bot's token: only the link /online gives opens it, and a new token changes it. */
@@ -61,6 +69,7 @@ export async function dashboardKey(token) {
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WHY_WORDS = { broken: "didn't work", unneeded: 'not needed', hard: 'too hard', other: 'other' };
 
 /**
  * The last 7 days as a bar chart, drawn by QuickChart (quickchart.io, Chart.js) from those numbers alone: each day's
@@ -102,6 +111,11 @@ export function onlineMessage(o, link) {
   const peak = o.today.peak ? `Peak today **${o.today.peak}**, at ${time(o.today.at)} · **${o.today.people ?? 0}** ${o.today.people === 1 ? 'person' : 'people'} today`
     : 'Nobody yet today';
   const versions = o.apps.map(r => `${r.name} **${r.n}**`).join(' · ');
+  // Who stays: today's new installs, the people by how long they've had it, and who removed it (and why).
+  const t = o.today, ages = t.ages ?? {};
+  const why = Object.entries(t.why ?? {}).filter(([k]) => k !== 'none').map(([k, n]) => `${WHY_WORDS[k] ?? k} ${n}`).join(', ');
+  const stay = `**Today** ${t.installs ?? 0} new ${t.installs === 1 ? 'install' : 'installs'} · had it a day ${ages.new ?? 0}, a week ${ages.week ?? 0}, longer ${ages.old ?? 0}`
+    + ` · removed ${t.removed ?? 0}${why ? ` (${why})` : ''}`;
   return {
     flags: 1 << 15,
     components: [{
@@ -110,7 +124,7 @@ export function onlineMessage(o, link) {
         // No chart of seven empty days.
         ...(o.days.slice(-7).some(d => d.peak)
           ? [{ type: 12, items: [{ media: { url: weekChart(o.days, o.today.day) }, description: "Each day's most at once and its people, the last 7 days" }] }] : []),
-        text([...(versions ? [`**Versions** ${versions}`] : []),
+        text([stay, ...(versions ? [`**Versions** ${versions}`] : []),
           `-# The chart: each day's most at once and how many different PCs had Bloxkeep open, the last 7 days. An app counts while it said it's open within ${o.forMinutes} minutes.`].join('\n')),
         ...(link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : []),
       ],
@@ -197,6 +211,11 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
     <div class="card"><div class="label" data-t="peak">Peak today</div><div class="big" id="peak">–</div><div class="sub" id="peakSub"></div></div>
     <div class="card"><div class="label" data-t="people">People today</div><div class="big" id="people">–</div><div class="sub" data-t="peopleSub"></div></div>
   </div>
+  <div class="tiles">
+    <div class="card"><div class="label" data-t="installs">New installs today</div><div class="big" id="installs">–</div><div class="sub" data-t="installsSub"></div></div>
+    <div class="card"><div class="label" data-t="ages">Today, they've had it</div><div class="big" id="ages">–</div><div class="sub" data-t="agesSub"></div></div>
+    <div class="card"><div class="label" data-t="removed">Removed today</div><div class="big" id="removed">–</div><div class="sub" id="removedSub"></div></div>
+  </div>
   <div class="card">
     <h2 data-t="days">Online, day by day</h2>
     <div class="chart" id="chart" role="img"></div>
@@ -214,11 +233,15 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
 const vi = (navigator.language || '').toLowerCase().startsWith('vi');
 const T = vi ? {
   now: 'Đang online', peak: 'Cao nhất hôm nay', people: 'Người dùng hôm nay', peopleSub: 'Số máy khác nhau đã mở Bloxkeep', most: 'Cao nhất cùng lúc', peopleDay: 'Người dùng trong ngày', days: 'Số người online mỗi ngày', table: 'Xem dạng bảng', byApp: 'Đang online, theo phiên bản',
+  installs: 'Cài mới hôm nay', installsSub: 'Máy mở Bloxkeep lần đầu', ages: 'Hôm nay, đã dùng', agesSub: '1 ngày / 1 tuần / lâu hơn', removed: 'Gỡ hôm nay',
+  why: { broken: 'không dùng được', unneeded: 'không cần nữa', hard: 'khó dùng', other: 'lý do khác', none: 'không nói' }, installsDay: 'Cài mới', removedDay: 'Gỡ',
   byLang: 'Đang online, theo ngôn ngữ', nobody: 'Chưa có ai', at: t => 'lúc ' + t, none: 'Chưa có ai trong hôm nay', day: 'Ngày',
   foot: m => 'Tính các app Bloxkeep đã báo đang mở trong ' + m + ' phút qua. Tự cập nhật mỗi 30 giây.', error: 'Không tải được số liệu. Thử lại sau ít phút.',
   langs: { vi: 'Tiếng Việt', en: 'Tiếng Anh' }, updated: t => 'Cập nhật lúc ' + t,
 } : {
   now: 'Online now', peak: 'Peak today', people: 'People today', peopleSub: 'Different PCs that opened Bloxkeep', most: 'Most at once', peopleDay: 'People that day', days: 'Online, day by day', table: 'As a table', byApp: 'Online now, by version',
+  installs: 'New installs today', installsSub: 'PCs that opened Bloxkeep for the first time', ages: "Today, they've had it", agesSub: 'a day / a week / longer', removed: 'Removed today',
+  why: { broken: "didn't work", unneeded: 'not needed', hard: 'too hard', other: 'other', none: 'no reason' }, installsDay: 'New installs', removedDay: 'Removed',
   byLang: 'Online now, by language', nobody: 'Nobody', at: t => 'at ' + t, none: 'Nobody today yet', day: 'Day',
   foot: m => "Counts the Bloxkeep apps that said they're open in the last " + m + ' minutes. Updates every 30 seconds.',
   error: "Couldn't load the numbers. Try again in a few minutes.", langs: { vi: 'Vietnamese', en: 'English' }, updated: t => 'Updated ' + t,
@@ -236,6 +259,11 @@ function draw(o) {
   $('peak').textContent = o.today.peak;
   $('peakSub').textContent = o.today.peak ? T.at(clock(o.today.at)) : T.none;
   $('people').textContent = o.today.people ?? 0;
+  $('installs').textContent = o.today.installs ?? 0;
+  const ages = o.today.ages || {};
+  $('ages').textContent = (ages.new || 0) + ' / ' + (ages.week || 0) + ' / ' + (ages.old || 0);
+  $('removed').textContent = o.today.removed ?? 0;
+  $('removedSub').textContent = Object.entries(o.today.why || {}).map(([k, n]) => (T.why[k] || k) + ' ' + n).join(' · ');
   const max = Math.max(1, ...o.days.map(d => Math.max(d.peak, d.people ?? 0)));
   const step = max <= 5 ? 1 : Math.ceil(max / 4);
   const top = Math.ceil(max / step) * step;
@@ -250,8 +278,9 @@ function draw(o) {
   $('chart').setAttribute('aria-label', T.days);
   $('from').textContent = shortDay(o.days[0].day);
   $('to').textContent = shortDay(o.days[o.days.length - 1].day);
-  $('dayTable').innerHTML = '<tr><td>' + T.day + '</td><td>' + T.most + '</td><td>' + T.peopleDay + '</td></tr>'
-    + o.days.slice().reverse().map(d => '<tr><td>' + shortDay(d.day) + '</td><td>' + d.peak + '</td><td>' + (d.people ?? '–') + '</td></tr>').join('');
+  $('dayTable').innerHTML = '<tr><td>' + T.day + '</td><td>' + T.most + '</td><td>' + T.peopleDay + '</td><td>' + T.installsDay + '</td><td>' + T.removedDay + '</td></tr>'
+    + o.days.slice().reverse().map(d => '<tr><td>' + shortDay(d.day) + '</td><td>' + d.peak + '</td><td>' + (d.people ?? '–') + '</td><td>' + (d.installs ?? 0)
+      + '</td><td>' + (d.removed ?? 0) + '</td></tr>').join('');
   $('apps').innerHTML = rows(o.apps, n => 'Bloxkeep ' + n);
   $('langs').innerHTML = rows(o.languages, n => T.langs[n] || n);
   $('foot').textContent = T.foot(o.forMinutes);
