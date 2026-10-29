@@ -1,8 +1,6 @@
-// The Accounts tab: its heading line (how many, how many playing, the selection), the bar under it (status chips, cards
-// or list, group, sort), the accounts as cards or rows, and the dock at the bottom (the game box and its picker, the
-// game found, recent games, and the buttons that open the selected accounts). What is selected, the filters and the
-// game are app.js's (S, P), read through host.page(); what the buttons do is app.js's too (its click handler by
-// data-act, its keys), so the elements keep the same data-* it looks for.
+// The Accounts tab: heading line, bar (chips, layout, group, sort), cards or rows, and the dock. The selection, filters
+// and game are app.js's (S, P), read through host.page(); buttons act through app.js's click handler by data-act and
+// its keys, so the elements keep the data-* it looks for.
 import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, useAppState, useHost, useMetrics, usePage, type PageState } from './host';
 import { richNodes } from './rich';
@@ -26,7 +24,6 @@ const presenceType = (a: Account) => !isLocal(a) ? a.presence?.type || ''
   : a.session?.connection === 'disconnected' ? 'kicked' : a.session?.connection === 'menu' ? 'online'
   : a.session?.connection === 'signedout' ? 'offline' : 'ingame';
 const ringOf = (a: Account) => { const p = presenceType(a); return a.cookieValid === false || a.banned ? 'invalid' : ['ingame', 'online', 'kicked'].includes(p) ? p : ''; };
-/** A game's icon; a placeholder in its place when it has none or it doesn't load. */
 function GameIcon({ url, className, holder }: { url?: string | null; className?: string; holder: () => ReactNode }) {
   const [failed, setFailed] = useState('');
   return url && failed !== url ? <img className={className} src={url} alt="" loading={className ? 'lazy' : undefined} decoding={className ? 'async' : undefined} onError={() => setFailed(url)} /> : <>{holder()}</>;
@@ -51,11 +48,8 @@ export function AccountsHead() {
       : list.length ? <><span className="sep">·</span>{richNodes(t('acc.selectAll'))}</> : null}</p>;
 }
 
-/**
- * The bar: one row of status chips (counting within the chosen group; those needing something done right after All),
- * cards or list, the group menu's button, the sort menu's. The chip row scrolls sideways with the wheel when it holds
- * more than fits, its edges fading on the side(s) with more; a chip chosen half under the fade slides into view.
- */
+// The bar: status chips (counted within the group; those needing something done right after All), layout, group, sort.
+// The chip row scrolls sideways with the wheel, edges fading where there is more; a chip chosen under the fade slides in.
 export function AccountsBar() {
   const { t, compareText } = useHost();
   const app = useAppState();
@@ -140,11 +134,8 @@ export function AddOptions() {
   </>;
 }
 
-/**
- * Getting started, until Bloxkeep has opened Roblox for an account once: add an account, pick a game in the dock, select
- * accounts and press Play. Each step is ticked as it is done; the line goes for good once an account has been opened
- * (its "last opened" is set), so it never shows again to someone who already plays.
- */
+// Getting started (add an account, pick a game, select and Play), each step ticked when done; gone for good once
+// Bloxkeep has opened Roblox for an account (its "last opened" is set).
 export function StartSteps() {
   const { t } = useHost();
   const app = useAppState();
@@ -161,11 +152,8 @@ export function StartSteps() {
   </ol>;
 }
 
-/**
- * Every account shown, as cards or rows. One Tab stop for the whole list (roving tabindex): the card with the focus,
- * else the first selected one, else the first; the arrow keys walk the cards (app.js moveCardFocus). A card redrawn
- * or moved (Play → Close, a sort) keeps the focus: on the same button if it is still there, else on the card.
- */
+// Every account, as cards or rows, with one Tab stop (app.js setTabStop, moveCardFocus). A card redrawn or moved
+// (Play → Close, a sort) keeps the focus: on the same button if it is still there, else on the card.
 export function AccountGrid() {
   const host = useHost();
   const { t, logo } = host;
@@ -178,8 +166,7 @@ export function AccountGrid() {
   const all: Account[] = app.accounts || [];
   const shown = all.length ? host.visible() : [];
   const asList = page.layout === 'list';
-  // Relative times ("5 min ago") and countdowns drift: the cards are drawn again once a minute while the window is
-  // visible, whether or not the app pushed anything meanwhile.
+  // Relative times ("5 min ago") and countdowns drift: drawn again once a minute while the window is visible.
   const [minute, tick] = useState(0);
   useEffect(() => {
     const again = () => { if (!document.hidden) tick(n => n + 1); };
@@ -224,10 +211,8 @@ export function AccountGrid() {
   </div>;
 }
 
-/**
- * The list's columns after the status, and the longest thing each shows among the rows shown: VNG, Robux, the group,
- * auto-rejoin, PID and memory ("" or false: no row has it, no column). As text, so the rows drawn again only when it changes.
- */
+// The list's columns after the status, as the longest value among the rows shown ("" or false: no column). Strings, so
+// the rows are drawn again only when it changes.
 type Cols = { vng: boolean; robux: string; group: string; rejoin: boolean; pid: string; live: boolean };
 function listColumns(shown: Account[], fmtNum: (n: number) => string): string {
   const longest = (list: string[]) => list.reduce((a, b) => (b.length > a.length ? b : a), '');
@@ -242,10 +227,7 @@ function listColumns(shown: Account[], fmtNum: (n: number) => string): string {
   return JSON.stringify(cols);
 }
 
-/**
- * An unseen copy of the longest thing in a list column, under what the row shows: every row's cell is then as wide,
- * whatever the font, so the columns stand straight.
- */
+/** An unseen copy of a column's longest value under each cell, so the columns stand straight whatever the font. */
 const Sizer = ({ children }: { children: ReactNode }) => <span className="sizer" aria-hidden="true">{children}</span>;
 
 /** The list's box: cards fade in only the first time it is drawn, not on every update. */
@@ -340,7 +322,6 @@ function Activity({ a }: { a: Account }) {
   }
 }
 
-/** A running account's live figures: its window's memory and how long it has been open. */
 function Live({ a, row }: { a: Account; row?: boolean }) {
   const { t, fmtMb, duration } = useHost();
   const m = useMetrics();
@@ -402,8 +383,7 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
     : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>
     : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null;
   const sub = [a.username ? `@${a.username}` : '', a.displayName && a.displayName !== a.username && a.displayName !== a.label ? a.displayName : ''].filter(Boolean).join(' · ');
-  // The main button, by what it does (a new one, not the old one changed: the focus then goes as it did, to the card).
-  // A window held on Roblox's bot check: Verify, in Bloxkeep's own window (Close stays in the menu).
+  // A new button, not the old one changed (the focus then goes to the card). Held on Roblox's bot check: Verify, in Bloxkeep's own window.
   const action = held(a)
     ? <button key="bot-check" className="pill-btn relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" />{t('card.botCheck')}</button>
     : local || a.state === 'launching'
@@ -481,7 +461,6 @@ function RowAction({ children }: { children: ReactNode }) {
       <Sizer key={k}><span className="row-act"><Icon name={icon} /><span>{t(k)}</span></span></Sizer>)}</span>;
 }
 
-/** A window of this PC held on Roblox's bot check (the window's log said so). */
 const held = (a: Account) => isLocal(a) && a.session?.phase === 'challenged';
 
 /** One line per account for the compact list; the same actions as a card (select, right-click menu, play). */
@@ -491,8 +470,7 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
   const local = isLocal(a), pType = presenceType(a);
   const st = statusLine(t, a);
   const up = local && st.cls === 'ingame' && a.session ? duration(a.session.since) : '';
-  // The card's main button with its words too (a bare icon read as a mystery), each as wide as the longest of the four
-  // (RowAction's Sizers): the buttons stand in a straight column.
+  // The card's main button with its words (a bare icon read as a mystery), as wide as the widest of the four (RowAction).
   const action = held(a) ? <button key="bot-check" className="row-act relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" /><span>{t('card.botCheck')}</span></button>
     : local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one"><Icon name="power" /><span>{t('card.close')}</span></button>
     : a.rejoin ? <button key="cancel-rejoin" className="row-act stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" /><span>{t('rj.cancel')}</span></button>
@@ -519,13 +497,9 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
 
 /* ───────────── the dock ───────────── */
 
-/**
- * The dock, in the order a launch goes: 1 the game (its picture opens the picker, the game box with its picker, what
- * the box holds and recent games to pick again), 2 the server (the Job ID box, the game's server list, Join a player),
- * 3 Play for the selected accounts, with Presets, Close and Windows under it. Each step has a numbered caption and every
- * button its words, so the order reads at a glance. The two boxes keep what is typed themselves: app.js reads and
- * fills them.
- */
+// The dock, in launch order: 1 the game (its picture opens the picker, the box, recent games), 2 the server (Job ID
+// box, server list, Join a player), 3 Play with Presets, Close and Windows. Numbered captions show the order at a glance.
+// The two boxes keep what is typed themselves: app.js reads and fills them.
 export function Dock() {
   const { t } = useHost();
   const app = useAppState();
@@ -534,8 +508,7 @@ export function Dock() {
   const g = page.game;
   // A public game found in the box: its servers can be listed (a private server's link goes straight to its server).
   const canList = !page.progress && !!g && !g.loading && g.ok && !!g.placeId && g.kind !== 'private' && g.kind !== 'share';
-  // Toasts sit just above the dock, however tall it is now (its game line, a narrow window, a long translation): a fixed
-  // gap left the dock's top edge under them.
+  // Toasts sit just above the dock however tall it is now: a fixed gap left the dock's top edge under them.
   const dock = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = dock.current;
@@ -583,7 +556,6 @@ export function Dock() {
   </div>;
 }
 
-/** A dock step's caption: its number, what it is, and "optional" for the server. */
 function StepCap({ n, text, note }: { n: number; text: string; note?: string }) {
   return <div className="step-cap"><b>{n}</b><span>{text}</span>{note ? <small>{note}</small> : null}</div>;
 }
@@ -592,8 +564,7 @@ function DockButtons({ page, accounts }: { page: PageState; accounts: Account[] 
   const { t } = useHost();
   const n = page.selected.size;
   const anyLocal = accounts.some(a => page.selected.has(a.id) && isLocal(a));
-  // With nothing selected the main button says so; with no game in the box it opens Roblox on its home screen (one
-  // window per account).
+  // Nothing selected: the main button says so. No game in the box: Roblox's home screen, one window per account.
   return <>
     <button className="play-btn" data-act="launch" disabled={!n}><Icon name={!n || page.hasGame ? 'play' : 'monitor'} /><span>{t(!n ? 'dock.pick' : page.hasGame ? 'dock.play' : 'dock.openHome')}</span>{n ? <em>{n}</em> : null}</button>
     <div className="dock-sub">
@@ -604,10 +575,8 @@ function DockButtons({ page, accounts }: { page: PageState; accounts: Account[] 
   </>;
 }
 
-/**
- * What the game box holds, and recent games to pick again. The recent games are a shortcut (the picker's Recent tab has
- * them too), the game's name is not: they go from the end, then the whole row, until the name has room to be read.
- */
+// What the game box holds, and recent games to pick again. The recents are a shortcut (the picker has them too), the
+// name is not: they go from the end, then the whole row, until the name can be read.
 function DockInfo({ page, recentGames }: { page: PageState; recentGames: { placeId: number; name: string; iconUrl?: string }[] }) {
   const { t, fmtNum } = useHost();
   const box = useRef<HTMLDivElement>(null);
@@ -627,7 +596,6 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
     {/* Only its icon (its name on hover): with words it took the room of the recent games beside it. */}
     {g.placeId ? <button className="srv-open srv-save" data-act="save-server" title={t('sv.saveTip')} aria-label={t('sv.save')}><Icon name="bookmark" /></button> : null}
   </>;
-  // The game already in the box isn't offered again as a shortcut.
   const recents = page.progress ? [] : recentGames.filter(r => r.placeId !== g?.placeId).slice(0, 3);
   const fit = () => {
     const row = box.current?.querySelector<HTMLElement>('.recents');
@@ -661,10 +629,7 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
 
 const TABS = ['recent', 'pinned', 'saved', 'favorites', 'popular'];
 
-/**
- * The game box's list: recent, pinned, saved servers, favourite and popular games while it is empty, a search's results
- * once typed in. Saved servers come with the app's state (they change as they are saved), the rest with gameLists.
- */
+// The game box's list: recent, pinned, saved, favourite and popular games while empty, a search's results once typed.
 function Picker({ P }: { P: PageState['picker'] }) {
   // The game box drives the list (arrow keys, Enter, Esc), as a combobox's list is: its buttons take no Tab stop, so Tab
   // and Shift+Tab leave the box for what is next to it.

@@ -1,11 +1,10 @@
 namespace RobloxManager;
 
 /// <summary>
-/// Each account's Robux on its card: asked with the account's own cookie (Roblox VNG's service for a VNG account), a
-/// few accounts at a time, right at unlocking (alongside the loading screen's status and avatars) and then every half
-/// hour while unlocked; an account not asked yet (just added, or signed in again) at the next look. Kept in memory only,
-/// never in the vault or a log. An account that gets no answer (signed out, offline, a refusal) keeps the last number it
-/// had. Until its first answer the card keeps the number's place ("…"), so the row doesn't move when it comes.
+/// Each account's Robux on its card: asked with its own cookie (Roblox VNG's service for a VNG account), a few at a time,
+/// at unlock and then every half hour; an account not asked yet (just added, signed in again) at the next look. Kept in
+/// memory only, never in the vault or a log. No answer (signed out, offline, refused) keeps the last number; until the
+/// first, the card keeps the number's place ("…") so the row doesn't move.
 /// </summary>
 public sealed partial class AppController
 {
@@ -26,7 +25,6 @@ public sealed partial class AppController
 
     static bool HasRobux(Account a) => a.UserId > 0 && a.Cookie.Length > 0 && a.CookieValid != false && a.Banned != true;
 
-    /// <summary>From the process timer, and at unlocking: starts a round once it is due, or for accounts not asked yet.</summary>
     void RefreshRobuxIfDue(DateTime now)
     {
         if (_vault is not { } vault)
@@ -73,7 +71,6 @@ public sealed partial class AppController
                     }
                     catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                     {
-                        // Offline or refused: the card keeps what it showed; the next round asks again.
                         cutShort |= !NetworkUp;
                     }
                     if (_vault == vault)
@@ -112,7 +109,6 @@ public sealed partial class AppController
 
     long? RobuxOf(Account a) => _robux.TryGetValue(a.Id, out long robux) ? robux : null;
 
-    /// <summary>The account's first number is on its way: the card keeps its place.</summary>
     bool RobuxWaiting(Account a) =>
         _robuxVault == _vault && !_robux.ContainsKey(a.Id) && !_robuxAsked.Contains(a.Id) && HasRobux(a) && _networkUp;
 }

@@ -7,26 +7,22 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>
-/// Follows Roblox's own client logs (%LOCALAPPDATA%\Roblox\logs — every client writes one, whichever launcher started
-/// it) to know within a second or two when a window joins a server, changes server, leaves, or is kicked, without
-/// asking Roblox's servers. Each log is tied to its window through Windows' Restart Manager (which process has the
-/// file open). The log format is not an official API, so Roblox's presence stays as the fallback.
+/// Follows Roblox's client logs (every client writes one, whichever launcher started it) to know within a second or two
+/// when a window joins, changes server, leaves or is kicked. Each log is tied to its window by Windows' Restart Manager
+/// (who has the file open). The format is not an official API, so Roblox's presence stays as the fallback.
 /// </summary>
 public sealed class RobloxLogWatcher
 {
     /// <param name="Status">joining, ingame, left (back in the app, by choice), disconnected, or signedout (signed out inside the window).</param>
-    /// <param name="Reason">Roblox's disconnect code when it gave one (278 = idle for 20 minutes).</param>
+    /// <param name="Reason">278 = idle for 20 minutes.</param>
     /// <param name="ChosenPlace">
-    /// The game the person last started in this window themselves (left a game or was kicked, then started one from
-    /// Roblox's own screens); null while it is still in the game it was opened into. Teleports inside that game keep it.
+    /// The game the person last started in this window from Roblox's own screens; null while still in the game it was
+    /// opened into. Teleports inside that game keep it.
     /// </param>
-    /// <param name="PersonStarted">This join comes from a game start the person made in the window, not Bloxkeep's.</param>
-    /// <param name="KickMessage">The game's own words when it kicked or banned the player (null when it gave none).</param>
-    /// <param name="BannedByGame">The game banned the player (Roblox's ban API), rather than kicked: Roblox gives both code 267.</param>
-    /// <param name="TeleportStarted">When the teleport under way started (Roblox's doTeleport), until the next server is reached.</param>
+    /// <param name="BannedByGame">Roblox's ban API, rather than a kick: Roblox gives both code 267.</param>
+    /// <param name="TeleportStarted">Roblox's doTeleport, until the next server is reached.</param>
     /// <param name="NeverJoined">
-    /// Left before any server took it: Roblox's join failed and its error's Leave was clicked, or the wait was given up
-    /// (2026-10-21: ten such launches, none logging why; Roblox's join error lines are switched off).
+    /// Left before any server took it (2026-10-21: ten such launches, none logging why; Roblox's join error lines are off).
     /// </param>
     public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At, long? ChosenPlace = null,
         bool PersonStarted = false, string? KickMessage = null, bool BannedByGame = false, DateTime? TeleportStarted = null, bool NeverJoined = false);
@@ -51,19 +47,15 @@ public sealed class RobloxLogWatcher
         public bool OwnStart;
         /// <summary>Servers connected to ("serverId:") and not yet left (a disconnect line ends one).</summary>
         public int Connections;
-        /// <summary>When the client logged that another Roblox client's start told it to close (see <see cref="ClosedByNewWindowAt"/>).</summary>
         public DateTime? ClosedByNewWindow;
-        /// <summary>When the client first logged that Windows refused it memory (see <see cref="OutOfMemoryAt"/>).</summary>
         public DateTime? OutOfMemory;
-        /// <summary>When the client logged closing its window in order (see <see cref="ClosedInOrderAt"/>).</summary>
         public DateTime? ClosedInOrder;
-        /// <summary>When the join under way was held for Roblox's bot check (see <see cref="JoinChallengedAt"/>).</summary>
         public DateTime? JoinChallenged;
     }
 
     /// <summary>
-    /// The usual client's logs, and the Microsoft Store edition's and Roblox VNG's (each writes to a folder of its own).
-    /// BLOXKEEP_ROBLOX_LOGS (set by the tests only) points at a folder of made-up logs instead.
+    /// The usual client's, the Microsoft Store edition's and Roblox VNG's. BLOXKEEP_ROBLOX_LOGS (tests only) points at
+    /// made-up logs instead.
     /// </summary>
     static readonly string[] LogDirs = Environment.GetEnvironmentVariable("BLOXKEEP_ROBLOX_LOGS") is { Length: > 0 } testLogs
         ? [testLogs]
@@ -74,7 +66,6 @@ public sealed class RobloxLogWatcher
             // Roblox VNG's client keeps its own folder (seen 2026-10-19), and opens global accounts too.
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCVNG", "logs"),
         ];
-    /// <summary>Where Roblox writes its clients' logs (the Microsoft Store edition has its own folder).</summary>
     internal static IReadOnlyList<string> Folders => LogDirs;
     // A game start, logged before "Joining game" (seen 2026-10-13 in 0.742, and in the Store edition): a launch that
     // stalls while loading never gets further, so it counts as joining from here.
@@ -82,27 +73,22 @@ public sealed class RobloxLogWatcher
     // Lines seen in Roblox 0.742 logs.
     static readonly Regex JoiningLine = new(@"\[FLog::Output\] ! Joining game '([0-9a-fA-F-]+)' place (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     static readonly Regex ReasonLine = new(@"setting replicator disconnect reason to (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    // A second source of the reason, used only when the replicator line gave none (285: the player left). Not yet
-    // seen on a real kick, so it may come before or after the disconnect line.
+    // Used only when the replicator line gave none (285: the player left). Not yet seen on a real kick, so it may
+    // come before or after the disconnect line.
     static readonly Regex NotificationReasonLine = new(@"Disconnection Notification\. Reason: (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    // The server's own code, as the client got it ("[FLog::Network] Disconnect reason received: %d" in the 0.744 client;
-    // not seen in a log yet).
+    // The server's own code, from the 0.744 client's strings; not seen in a log yet.
     static readonly Regex ReceivedReasonLine = new(@"\[FLog::Network\] Disconnect reason received: (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     /// <summary>
-    /// Roblox's DisconnectClientRequest: the client's own disconnect, which its notification line can repeat after the
-    /// server's reason (a teleport's or a close's); never over a reason already known.
+    /// DisconnectClientRequest: the notification line can repeat it after the server's reason, so it never overrides one.
     /// </summary>
     const int ClientRequest = 285;
-    // A third source, the reason in words: "[FLog::Network] Client has been disconnected with reason: You have been kicked
-    // from the game" (also "Lost connection with reason : …"). Roblox 0.744 often logs only these words, no code (2026-10-21:
-    // a game's kick and a sign-in on another device), so a kick read as a lost connection and a sign-in elsewhere was
-    // rejoined over.
+    // The reason in words. Roblox 0.744 often logs only these, no code (2026-10-21: a game's kick and a sign-in on
+    // another device), so a kick read as a lost connection and a sign-in elsewhere was rejoined over.
     const string ReasonWordsMark = "[FLog::Network] Client has been disconnected with reason: ",
         LostWithReasonMark = "[FLog::Network] Lost connection with reason : ";
     /// <summary>
-    /// Roblox's words after "disconnected with reason:", with their code in Roblox's Enum.ConnectionError: the words as
-    /// the client holds them (RobloxPlayerBeta.exe 0.744, next to that log line's own format), each matched to the code
-    /// its name describes. Words not listed leave the reason unknown, as before.
+    /// The words as RobloxPlayerBeta.exe 0.744 holds them, each matched to the Enum.ConnectionError code its name
+    /// describes. Words not listed leave the reason unknown.
     /// </summary>
     internal static readonly IReadOnlyDictionary<string, int> ReasonWords = new Dictionary<string, int>(StringComparer.Ordinal)
     {
@@ -145,17 +131,13 @@ public sealed class RobloxLogWatcher
     // Signing out inside the Roblox window (seen 2026-10-13): the window stays open on the sign-in screen.
     const string SignedOutMark = "logout sync cookie to native";
     const string DisconnectedMark = "[FLog::Network] Time to disconnect replication data";
-    // A game moving the player to another of its places (seen 2026-10-13): doTeleport, then the same disconnect line
-    // as a kick, then "Teleported." and a new "Joining game" a fraction of a second later. Or the other way round (seen
-    // 2026-10-19 on 0.743, a move to another server of the same place): "Teleported." and the new "Joining game"
-    // first, and the old server's disconnect line a fraction of a second after them.
+    // A teleport (seen 2026-10-13): doTeleport, the same disconnect line as a kick, then "Teleported." and a new
+    // "Joining game". Or (2026-10-19, 0.743, same place) "Teleported." and "Joining game" first, the disconnect after.
     const string TeleportMark = "UgcExperienceController: doTeleport";
     // A teleport that never got that far (it failed) must not turn a kick minutes later into "joining".
     static readonly TimeSpan TeleportWindow = TimeSpan.FromSeconds(30);
-    // Every client waits for word that a newer one started (seen 2026-10-13 in 0.742): it logs
-    // "waitForNewPlayerProcess new waiting for mutex result is 0X000102" (nothing yet) four times a second. A result
-    // of 0X000001, or "WindowsAppReloadTelemetry EventWaitResultUpdate", is that word arriving, and the client then
-    // closes: Roblox making room for the new window, which is what Multi-Roblox is meant to prevent.
+    // Every client polls for a newer one (0.742): "waiting for mutex result is 0X000102" means nothing yet; 0X000001
+    // or "EventWaitResultUpdate" means one started, and the client closes to make room: what Multi-Roblox prevents.
     const string WndCheckMark = "[FLog::WndProcessCheck]";
     const string NewProcessEventMark = "WindowsAppReloadTelemetry EventWaitResultUpdate";
     const string NewProcessMutexMark = "waiting for mutex result is 0X000001";
@@ -164,60 +146,48 @@ public sealed class RobloxLogWatcher
     // "RBXCRASH: OutOfMemoryGraphics" (2026-10-22, two windows of six, Windows' low-virtual-memory event at 99.7 %).
     const string MimallocMark = "[DFLog::Mimalloc]";
     const string CommitRefusedMark = "cannot commit OS memory", AllocationRefusedMark = "out-of-memory on OS allocation", OutOfMemoryCrashMark = "RBXCRASH: OutOfMemory";
-    // A window closed in order (the person's X, a close message, Roblox making room for a new window) logs Roblox starting
-    // its notification-area copy, then shutting down: "[FLog::Systray] Successfully launched new process in systray mode",
-    // "[FLog::SingleSurfaceApp] shutDown: (stage:UGCGame)." A crash or a killed process writes neither (2026-10-22: 7 of
-    // 40 logs on the owner's PC had both, the 2 crashes neither, each with Roblox's crash report instead).
+    // A window closed in order (X, a close message, making room) logs its tray copy starting, then shutDown. A crash or
+    // a kill writes neither (2026-10-22: 7 of 40 logs on the owner's PC had both, the 2 crashes neither).
     const string ShutDownMark = "[FLog::SingleSurfaceApp] shutDown:", TrayRelaunchMark = "Successfully launched new process in systray mode";
-    // The client's join request held for Roblox's check that the account isn't a bot: "[DFLog::HttpTraceError]
-    // HttpResponse(…)status:403 bodySize:82 url:{ "https://gamejoin.roblox.com/v1/join-game" } … challengedByGcs" (Roblox's
-    // generic challenge service). The window then shows Roblox's "Security" page, blank where its check can't load
-    // (Vietnam, 2026-10-23), and Join Error 529 once closed. Three windows logged it that day, no other log of 80.
+    // The join held for Roblox's bot check: "[DFLog::HttpTraceError] HttpResponse(…)status:403 … url:{
+    // "https://gamejoin.roblox.com/v1/join-game" } … challengedByGcs". The window shows Roblox's "Security" page, blank
+    // where the check can't load (Vietnam, 2026-10-23), and Join Error 529 once closed.
     const string ChallengedMark = "challengedByGcs", GameJoinMark = "gamejoin.", JoinRequestMark = "/v1/join-";
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
     readonly HashSet<string> _foreign = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>
-    /// Clients without a log yet: since when, and when to look again. Each miss waits longer (3 s up to 30 s), and
-    /// one still without a log after two minutes (a copy that writes none) is left alone — the folder scan and the
+    /// Clients without a log yet. Each miss waits longer (3 s up to 30 s); after two minutes one is left alone: the
     /// "who has this file open" questions aren't free.
     /// </summary>
     readonly Dictionary<int, (DateTime FirstSeen, DateTime NextTry, TimeSpan Wait)> _unmatched = new();
     static readonly TimeSpan FirstWait = TimeSpan.FromSeconds(3), MaxWait = TimeSpan.FromSeconds(30), GiveUp = TimeSpan.FromMinutes(2);
 
-    /// <summary>How long a client's log is looked for before it is taken as one that writes none.</summary>
     public static TimeSpan SearchLimit => GiveUp;
 
     public ClientState? StateOf(int pid) => _tails.GetValueOrDefault(pid)?.State;
 
     /// <summary>
-    /// When this client's log said a newer Roblox client told it to close; null when it didn't (or its log isn't
-    /// followed). Read after <see cref="LastStateOf"/>, which takes in the client's last lines.
+    /// A newer Roblox client told it to close. These lookups are null when not logged (or the log isn't followed);
+    /// read them after <see cref="LastStateOf"/>, which takes in the client's last lines.
     /// </summary>
     public DateTime? ClosedByNewWindowAt(int pid) => _tails.GetValueOrDefault(pid)?.ClosedByNewWindow;
 
-    /// <summary>
-    /// When this client's log first said Windows refused it memory (its commit limit used up); null when it didn't (or its
-    /// log isn't followed). Read after <see cref="LastStateOf"/>, which takes in the client's last lines.
-    /// </summary>
+    /// <summary>Windows first refused it memory (its commit limit used up).</summary>
     public DateTime? OutOfMemoryAt(int pid) => _tails.GetValueOrDefault(pid)?.OutOfMemory;
 
-    /// <summary>
-    /// When this client's log said it closed its window in order (shut down, its notification-area copy started); null
-    /// when it didn't: a crash, a killed process, or a log not followed. Read after <see cref="LastStateOf"/>.
-    /// </summary>
+    /// <summary>It closed its window in order; null for a crash or a killed process.</summary>
     public DateTime? ClosedInOrderAt(int pid) => _tails.GetValueOrDefault(pid)?.ClosedInOrder;
 
     /// <summary>
-    /// When this client's log said Roblox held its join for a bot check (see <see cref="ChallengedMark"/>); null when it
-    /// didn't, or a game started or a server was reached since.
+    /// Roblox held its join for a bot check (<see cref="ChallengedMark"/>); cleared once a game starts or a server is reached.
     /// </summary>
     public DateTime? JoinChallengedAt(int pid) => _tails.GetValueOrDefault(pid)?.JoinChallenged;
 
     /// <summary>
-    /// What a client that has just quit logged last, including the lines written in its final moments (a leave by
-    /// choice, a disconnect): read now, since the next <see cref="Poll"/> drops its log unread.
+    /// For a client that has just quit, with its final lines (a leave, a disconnect): the next <see cref="Poll"/> drops
+    /// its log unread.
     /// </summary>
     public ClientState? LastStateOf(int pid)
     {
@@ -227,7 +197,7 @@ public sealed class RobloxLogWatcher
         return tail.State;
     }
 
-    /// <summary>Reads what the clients with these process ids logged since the last call; true when a state changed.</summary>
+    /// <summary>True when a state changed.</summary>
     public bool Poll(IReadOnlyCollection<int> pids)
     {
         foreach (int gone in _tails.Keys.Where(pid => !pids.Contains(pid)).ToList())
@@ -242,15 +212,14 @@ public sealed class RobloxLogWatcher
             _unmatched.TryAdd(pid, (now, now, FirstWait));
         if (_search is null && _unmatched.Any(u => now >= u.Value.NextTry && now - u.Value.FirstSeen < GiveUp))
         {
-            // Every client without a log takes part (a log found is a log found); only a due one starts the search.
+            // Only a due client starts the search, but every client without a log takes part.
             StartSearch(pids);
             foreach (var (pid, u) in _unmatched.ToList())
                 _unmatched[pid] = (u.FirstSeen, now + u.Wait, TimeSpan.FromTicks(Math.Min(u.Wait.Ticks * 2, MaxWait.Ticks)));
         }
-        // What the last read found is taken in, and the next read starts: the files are read on a worker, as reading a
-        // log Roblox is writing can take a second or more (2026-10-29, the owner's PC: the logs' part of the process
-        // check, on the window's thread, at 0.2-1.8 s, 1,315 checks over 100 ms in an hour). Its lines are applied
-        // here, so the states are only ever changed on the window's thread; they come a poll (a second) later.
+        // Read on a worker: reading a log Roblox is writing can take a second or more (2026-10-29, the owner's PC:
+        // 0.2-1.8 s on the window's thread, 1,315 checks over 100 ms in an hour). Lines are applied here, so states
+        // only change on the window's thread, a poll later.
         bool changed = TakeReads();
         if (_reading is null && _tails.Count > 0)
         {
@@ -260,12 +229,11 @@ public sealed class RobloxLogWatcher
         return changed;
     }
 
-    /// <summary>The logs being read on a worker, each with the offset read from, the new one and the text (null: nothing new).</summary>
+    /// <summary>Each log with the offset read from, the new one and the text (null: nothing new).</summary>
     Task<List<(Tail Tail, long From, (long Offset, string? Text) Chunk)>>? _reading;
 
     /// <summary>
-    /// The finished read's text applied to the logs still followed. A log dropped or followed anew meanwhile is skipped,
-    /// and so is one read since on the window's thread (<see cref="LastStateOf"/>): the next read goes on from there.
+    /// Skips a log dropped or followed anew meanwhile, or read since on the window's thread (<see cref="LastStateOf"/>).
     /// </summary>
     bool TakeReads()
     {
@@ -290,15 +258,12 @@ public sealed class RobloxLogWatcher
         return changed;
     }
 
-    /// <param name="Found">Logs held open by a client looked for, already read up to their end then.</param>
+    /// <param name="Found">Already read up to their end then.</param>
     /// <param name="Foreign">Old logs no client looked for holds: not asked about again.</param>
-    /// <param name="Listed">The recent logs the search went through.</param>
     sealed record LogSearch(List<Tail> Found, List<string> Foreign, List<string> Listed);
 
     /// <summary>
-    /// A search for the logs of clients without one, on a worker: asking Windows who holds a file open takes 15-50 ms
-    /// a file (more right after Bloxkeep starts, with up to 40 recent logs to ask about), too long for the window's
-    /// thread. Its result is taken in at the next poll.
+    /// On a worker: asking Windows who holds a file open takes 15-50 ms a file (up to 40 logs right after a start).
     /// </summary>
     Task<LogSearch>? _search;
 
@@ -309,7 +274,6 @@ public sealed class RobloxLogWatcher
         _search = Task.Run(() => FindLogs(wanted, skip));
     }
 
-    /// <summary>The finished search's logs are followed (for clients still running and still without one).</summary>
     void TakeSearch(IReadOnlyCollection<int> pids)
     {
         if (_search is not { IsCompleted: true } search)
@@ -322,7 +286,7 @@ public sealed class RobloxLogWatcher
             return;
         }
         var result = search.Result;
-        // Only logs still among the recent ones are remembered: the list doesn't grow with every client ever started.
+        // So the list doesn't grow with every client ever started.
         if (result.Listed.Count > 0)
             _foreign.IntersectWith(result.Listed);
         _foreign.UnionWith(result.Foreign);
@@ -333,7 +297,6 @@ public sealed class RobloxLogWatcher
         }
     }
 
-    /// <summary>A new client opens a new log; ask Windows which of the recent logs each client looked for holds open.</summary>
     static LogSearch FindLogs(HashSet<int> wanted, HashSet<string> skip)
     {
         var result = new LogSearch([], [], []);
@@ -361,8 +324,7 @@ public sealed class RobloxLogWatcher
             if (owner is int pid)
             {
                 found.Add(pid);
-                // From the start, a few MB at a time: the client's state is wherever its last join, leave or
-                // disconnect is, hours back for one that has run long (at about 0.4 MB of log an hour).
+                // From the start: the last join, leave or disconnect may be hours back (about 0.4 MB of log an hour).
                 var tail = new Tail(log.FullName, pid);
                 while (tail.Offset < log.Length && ReadMore(tail))
                 {
@@ -377,7 +339,7 @@ public sealed class RobloxLogWatcher
         return result;
     }
 
-    /// <summary>Like <see cref="Read"/>, for a tail read up to an offset: true while something was read.</summary>
+    /// <summary>True while something was read.</summary>
     static bool ReadMore(Tail tail)
     {
         long before = tail.Offset;
@@ -391,7 +353,6 @@ public sealed class RobloxLogWatcher
         return text is not null && ApplyText(tail, text);
     }
 
-    /// <summary>A log's text from an offset (up to <see cref="MaxRead"/>) and the offset after it; no text when nothing new.</summary>
     static (long Offset, string? Text) ReadChunk(string path, long offset)
     {
         try
@@ -412,7 +373,6 @@ public sealed class RobloxLogWatcher
         }
     }
 
-    /// <summary>A log's new text (after what was left of its last line), line by line: whether its state changed.</summary>
     static bool ApplyText(Tail tail, string read)
     {
         string text = tail.Partial + read;
@@ -429,8 +389,7 @@ public sealed class RobloxLogWatcher
 
     static void Apply(Tail tail, string line)
     {
-        // A number too big for its type (a line not in the format seen so far) reads as no place, never as an error
-        // that would stop the process check.
+        // A number too big for its type reads as no place, never as an error that would stop the process check.
         if (line.Contains("! Joining game", StringComparison.Ordinal) && JoiningLine.Match(line) is { Success: true } join)
         {
             // A teleport stays open: its old server's disconnect line may still come (see TeleportMark).
@@ -450,9 +409,8 @@ public sealed class RobloxLogWatcher
             tail.TeleportAt = null;
             tail.PendingReason = null;
             (tail.PendingKickMessage, tail.PendingBan) = (null, false);
-            // Bloxkeep's own start is a window's first (it opens a new window for every launch); a later one is the
-            // person picking a game on Roblox's screens, after leaving one or being kicked (seen 2026-10-19: a kick, Leave,
-            // then a game start in the same window).
+            // Bloxkeep's start is a window's first; a later one is the person picking a game on Roblox's screens after
+            // leaving or a kick (seen 2026-10-19).
             tail.OwnStart = tail.State is not null;
             tail.State = new ClientState("joining", null, null, null, TimeOf(line), tail.State?.ChosenPlace, tail.OwnStart);
             tail.JoinChallenged = null;
@@ -511,11 +469,10 @@ public sealed class RobloxLogWatcher
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.State is { } state)
         {
             var at = TimeOf(line);
-            // A join under way while a server is still connected: this line ends that old server, whatever order
-            // Roblox logged them in (a teleport, a game started in the window), and the join goes on.
+            // A join under way while a server is still connected: this line ends the old server, in whatever order
+            // Roblox logged them, and the join goes on.
             bool oldServer = state is { Status: "joining" } && tail.Connections > 0;
             tail.Connections = Math.Max(0, tail.Connections - 1);
-            // Leaving the old place on the way to the next one: still in the game, about to join.
             bool teleporting = tail.TeleportAt is { } teleport && at - teleport < TeleportWindow;
             // The new server already named since the teleport: this line is the old one's, and the new state stands.
             bool joinedSince = tail.TeleportAt is { } since && state.At >= since;
@@ -555,8 +512,8 @@ public sealed class RobloxLogWatcher
             tail.JoinChallenged ??= TimeOf(line);
     }
 
-    // Preserve the source's strength after showing the disconnect too: a numeric code can arrive later than words.
-    // Replicator (3) > numeric notification (2) > mapped words (1). Equal-strength repeats retain the first result.
+    // A numeric code can arrive after the words. Replicator (3) > numeric notification (2) > mapped words (1); equal
+    // ranks keep the first.
     static void RememberReason(Tail tail, int code, int rank)
     {
         if (tail.State is { Status: "disconnected" } shown)
@@ -574,10 +531,7 @@ public sealed class RobloxLogWatcher
         }
     }
 
-    /// <summary>
-    /// A kick line's metadata says it is a ban: Roblox's ban API names who banned (moderatorType) and since when; a plain
-    /// kick leaves it empty.
-    /// </summary>
+    /// <summary>Roblox's ban API fills moderatorType and beginTimestamp; a plain kick leaves the metadata empty.</summary>
     internal static bool IsBan(string metadata)
     {
         if (!metadata.TrimStart().StartsWith('{'))
@@ -594,7 +548,6 @@ public sealed class RobloxLogWatcher
         }
     }
 
-    /// <summary>The code of the reason a disconnect line gives in words (<see cref="ReasonWords"/>); null for words not listed.</summary>
     internal static int? ReasonOfWords(string line)
     {
         int tag = line.IndexOf('[');
@@ -609,8 +562,7 @@ public sealed class RobloxLogWatcher
     }
 
     /// <summary>
-    /// Roblox's idle kick in words, before its minutes ("You were disconnected for being idle 20 minutes"): the client's
-    /// own prompt for DisconnectIdle (278) reads the same, so anti-AFK's kicks are told on Roblox 0.744 too.
+    /// The client's prompt for DisconnectIdle (278), before its minutes, so idle kicks are told on Roblox 0.744 too.
     /// </summary>
     const string IdleWords = "You were disconnected for being idle ";
 

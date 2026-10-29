@@ -3,12 +3,10 @@ using System.Runtime.InteropServices;
 namespace RobloxManager;
 
 /// <summary>
-/// The fast cores for the window being played: a Roblox window in the background runs in Windows' efficiency mode, as
-/// Task Manager's: power saving (EcoQoS), which leans it on the CPU's efficiency cores (on CPUs that have two kinds:
-/// Intel 12th gen and later, recent laptop Ryzens), and a below-normal priority, so it gives way to the one in front,
-/// which runs on every core at full speed. Never pinned to the efficiency cores: pinned, 4 windows filled them while
-/// the fast cores idled, and a window got 2-5 % of a core at times (the owner's PC, 2026-10-21); in efficiency mode
-/// Windows still gives them a fast core that is free. Only Windows' own switches: nothing in Roblox is touched.
+/// Background Roblox windows run in Windows' efficiency mode (EcoQoS, leaning on efficiency cores where the CPU has them,
+/// and below-normal priority), giving way to the one in front. Never pinned to the efficiency cores: pinned, 4 windows
+/// filled them while the fast cores idled and one got 2-5 % of a core (the owner's PC, 2026-10-21). Only Windows'
+/// switches: nothing in Roblox is touched.
 /// </summary>
 static class CpuCores
 {
@@ -94,12 +92,8 @@ static class CpuCores
     /// <summary>What a client gets: the efficiency cores and power saving, every core at full speed, or Windows' own choice.</summary>
     public enum Role { Background, Front, Default }
 
-    /// <summary>
-    /// A client in the background: Windows' efficiency mode (power saving, below-normal priority). In front: full speed,
-    /// normal priority. Default (the setting turned off, Bloxkeep closing): Windows deciding the speed, as before Bloxkeep
-    /// touched it. Every core in all three (also undoing the efficiency-cores-only of 1.0.8-beta.9 and before). False
-    /// when Windows refused the handle.
-    /// </summary>
+    /// <summary>Default (setting off, Bloxkeep closing) gives the choice back to Windows. Every core in all three roles
+    /// (undoing the efficiency-cores-only pinning of 1.0.8-beta.9 and before). False when Windows refused the handle.</summary>
     public static bool Set(int pid, Role role)
     {
         IntPtr handle = OpenProcess(PROCESS_SET_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION, false, pid);

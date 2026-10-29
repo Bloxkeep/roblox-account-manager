@@ -1,8 +1,6 @@
-// Accounts from another Bloxkeep vault file (another PC's, or a backup): pick the file, type that file's own master
-// password, tick what to bring over. The app keeps the opened file; this page only ever sees names and states, never
-// cookies or passwords. app.js's dialog keeps its Cancel and the main button, whose words and state this sets for each
-// step (Choose file… / Open, or Wait N s after three wrong passwords / Import); the button asks this to go on (next).
-// The password box keeps what is typed itself (not React's state), as the lock screen's does.
+// Accounts from another vault file: pick it, type that file's own master password, tick what to bring over. The app keeps
+// the opened file; this page sees only names and states, never cookies or passwords. The main button (app.js's) gets its
+// words and state per step from here (Choose file… / Open / Wait N s / Import) and calls next. The password box isn't React state.
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
@@ -37,7 +35,6 @@ export function ImportVault({ api, primary, finished }: {
     return () => clearInterval(timer);
   }, [waiting]);
 
-  // The main button follows the step: its words, and off with nothing ticked or while a wrong password waits.
   const n = preview ? preview.accounts.filter(a => ticked.has(a.key)).length : 0;
   useLayoutEffect(() => {
     const btn = primary();

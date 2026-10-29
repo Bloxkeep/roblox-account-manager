@@ -1,6 +1,5 @@
-// The captcha newcomers solve in Discord (/verify): five letters and numbers drawn into a PNG, each one tilted, moved
-// and coloured its own way, crossed by wavy lines and sprinkled with dots, so that a script can't simply read it. Made
-// here, without a library: a 5×7 font drawn as joined round strokes, and a PNG written by hand (zlib from the platform).
+// The /verify captcha: five characters drawn into a PNG, each tilted, moved and coloured on its own, crossed by wavy lines
+// and dots so a script can't simply read it. No library: a 5×7 font as joined round strokes, a PNG written by hand.
 
 // Letters and numbers that can't be mistaken for one another (no 0/O, 1/I/L, 2/Z, 5/S, 6/G, 8/B).
 const ALPHABET = 'ACDEFHJKMNPRTUVWXY3479';
@@ -41,7 +40,6 @@ const between = (a, b) => a + random() * (b - a);
 export async function captcha(fixed) {
   const code = fixed || Array.from({ length: CODE_LENGTH }, () => ALPHABET[Math.floor(random() * ALPHABET.length)]).join('');
   const rgb = new Uint8Array(WIDTH * HEIGHT * 3);
-  // A light background, each pixel a little different.
   for (let i = 0; i < WIDTH * HEIGHT; i++) {
     const shade = 236 + Math.floor(random() * 16);
     rgb.set([shade, shade - Math.floor(random() * 6), shade - Math.floor(random() * 10)], i * 3);
@@ -66,7 +64,6 @@ export async function captcha(fixed) {
     for (let x = 0; x < WIDTH; x++)
       dot(x, y0 + amp * Math.sin(x * freq + phase), color, r);
   };
-  // Pale wavy lines behind the letters.
   wave(pale(), 1.4);
   wave(pale(), 1.4);
   // The letters: the cells of the 5×7 font joined into strokes (sideways, down, and across a corner when nothing else

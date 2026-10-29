@@ -1536,7 +1536,7 @@ b, strong { font-weight: 650; }
 .wn-feat.plain { display: block; }
 .wn-shot { display: flex; align-items: center; justify-content: center; align-self: stretch; padding: 20px; background: var(--bg); border-right: 1px solid var(--line); }
 .wn-feat.wide .wn-shot { border-right: 0; border-bottom: 1px solid var(--line); }
-.wn-shot img { display: block; max-width: 100%; max-height: 300px; width: auto; height: auto; border-radius: 10px; box-shadow: 0 10px 28px var(--shadow); }
+.wn-shot img { display: block; max-width: 100%; max-height: 360px; width: auto; height: auto; object-fit: contain; border-radius: 10px; box-shadow: 0 10px 28px var(--shadow); }
 .wn-feat-text { display: flex; flex-direction: column; gap: 6px; padding: 18px 22px; }
 .wn-feat h3 { margin: 0; font: 650 17px/1.3 var(--font-display); letter-spacing: -.01em; color: var(--text); }
 .wn-feat p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }

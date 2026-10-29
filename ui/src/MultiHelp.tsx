@@ -1,6 +1,5 @@
-// Multi-Roblox: the body of its dialog. Off: what it does, and Turn on. On and working: a tick. On but blocked (Roblox
-// was open before): the steps to clear it. Then, when on, how the windows open (windowed, tiled). It follows the app's
-// state, so the steps give way to the tick as soon as Multi-Roblox works. The footer (Turn off, Done) is app.js's.
+// Multi-Roblox's dialog body: off, what it does and Turn on; on and working, a tick; blocked (Roblox was open before), the
+// steps to clear it, giving way to the tick as soon as it works. Then, when on, how windows open. The footer is app.js's.
 import { useEffect, useState } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';

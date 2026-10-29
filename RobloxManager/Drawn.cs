@@ -3,11 +3,8 @@ using System.Drawing.Text;
 
 namespace RobloxManager;
 
-/// <summary>
-/// What Bloxkeep's own native windows and menus draw with (the tray's menu and quick panel, and in time the mini window
-/// and the dialogs), so they look like the page and not like stock Windows controls: Windows' icon font, rounded
-/// shapes, the page's switch, account pictures in a circle. Sizes are in device pixels; callers scale by their dpi.
-/// </summary>
+/// <summary>Drawing helpers so Bloxkeep's native windows look like the page, not stock Windows controls. Sizes are in
+/// device pixels; callers scale by their dpi.</summary>
 static class Drawn
 {
     /// <summary>Windows 11's icon font, or Windows 10's (the same code points for the glyphs used here).</summary>

@@ -2,11 +2,9 @@ using System.Text.Json;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Servers saved to join again, in the game picker's Saved tab: a Roblox private server's link (picking it puts the
-/// link in the game box, so Play sends the selected accounts there), or a code a game asks for inside it to join a
-/// server of its own (picking it puts the game in the box and copies the code; Bloxkeep never types into Roblox).
-/// </summary>
+/// <summary>Servers saved to join again (the game picker's Saved tab): a private server's link (put in the game box, so Play
+/// sends the accounts there), or a code a game asks for inside it (puts the game in the box and copies the code; Bloxkeep never
+/// types into Roblox).</summary>
 public sealed partial class AppController
 {
     const int MaxSavedServers = 100;
@@ -25,10 +23,7 @@ public sealed partial class AppController
         iconUrl = _games.GetValueOrDefault(s.PlaceId)?.IconUrl ?? _iconByUniverse.GetValueOrDefault(s.UniverseId),
     };
 
-    /// <summary>
-    /// Saves a server: a private server's link, a code the game asks for, or both. The same link saved again updates the
-    /// one already there instead of adding a second.
-    /// </summary>
+    /// <summary>Saves a private server's link, a game's code, or both; the same link saved again updates the existing one.</summary>
     object SaveServer(JsonElement a)
     {
         var list = RequireVault().Data.Settings.SavedServers;

@@ -1,6 +1,5 @@
-// The parts of Bloxkeep's interface drawn with React, for app.js to put where it wants them: each draws into an element
-// app.js made (a dialog's body…) and returns how to take it down again. While the move to React goes on, app.js still
-// draws the rest; it reaches these as window.BloxkeepUI (ui.js loads before it).
+// The parts drawn with React, for app.js to put where it wants: each draws into an element app.js made and returns how
+// to take it down. app.js reaches them as window.BloxkeepUI (ui.js loads before it).
 import { StrictMode, createRef, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
@@ -24,10 +23,8 @@ import { type StatsApi } from './StatsView';
 import { TrayView, type TrayApi, type TrayViewApi } from './Tray';
 import { WhatsNew, type Release } from './WhatsNew';
 
-/**
- * Draws into el now (app.js focuses the first control right after, so the content must be there), until unmount.
- * keep: the focus is kept on what is drawn again (keepFocus); a frame drawn once (a dialog's, a menu) needs none.
- */
+/** Draws into el now (app.js focuses the first control right after, so it must be there). keep: keepFocus on redraws;
+ * a frame drawn once (a dialog's, a menu) needs none. */
 function mount(el: HTMLElement, host: Host, node: ReactNode, keep = true): () => void {
   // Marked as React's: the page-wide fallback for broken game pictures (app.js) leaves its elements alone.
   el.dataset.react = '';
@@ -38,14 +35,9 @@ function mount(el: HTMLElement, host: Host, node: ReactNode, keep = true): () =>
   return () => { stop(); root.unmount(); delete el.dataset.react; };
 }
 
-/**
- * A control with the focus that React draws away (a list redrawn without it, a row moved to its new place: Edge drops
- * the focus of a moved element too) hands the focus back: to itself when it is still there, else, within the part it
- * was taken out of, to the same control drawn anew or the one now in its place, as app.js's setHtml does within what it
- * redraws ("Use OneDrive" after "Use Google Drive" went; the next row's Edit after a row was deleted; nothing once
- * Show more is gone with all shown). Focus the person moved away (a click elsewhere) stays where they put it: only a
- * loss the redraw itself caused is undone.
- */
+// A control with the focus that React draws away (a list redrawn, a row moved: Edge drops a moved element's focus too)
+// hands it back: to itself if still there, else to the same control drawn anew or the one in its place, as app.js's
+// setHtml does. Only a loss the redraw itself caused is undone; focus the person moved elsewhere stays.
 function keepFocus(el: HTMLElement, host: Host): () => void {
   let last: Element | null = null, key: unknown = null, lost: Element | null = null;
   const focused = (e: FocusEvent) => { last = e.target as Element; key = host.focusKey(last, el); };
@@ -96,17 +88,14 @@ const BloxkeepUI = {
   flush(fn: () => void) {
     flushSync(fn);
   },
-  /** What's new into the body of the dialog app.js opened for it; close closes that dialog. */
   whatsNew(el: HTMLElement, host: Host, releases: Release[], close: () => void) {
     return mount(el, host, <WhatsNew releases={releases} close={close} />);
   },
-  /** Send feedback's form into its dialog's body; the footer's buttons use form (FeedbackApi). */
   feedback(el: HTMLElement, host: Host, locked: boolean) {
     const form = createRef<FeedbackApi>();
     const unmount = mount(el, host, <Feedback locked={locked} api={form} />);
     return { unmount, form: form.current! };
   },
-  /** Join a player's form into its dialog's body; "Find and join" (submit) uses form (JoinPlayerApi). */
   joinPlayer(el: HTMLElement, host: Host, count: number, submit: () => void) {
     const form = createRef<JoinPlayerApi>();
     const unmount = mount(el, host, <JoinPlayer count={count} submit={submit} api={form} />);
@@ -123,21 +112,16 @@ const BloxkeepUI = {
     const unmount = mount(el, host, <LaunchOrder accounts={accounts} api={list} />);
     return { unmount, list: list.current! };
   },
-  /** The preset form into its dialog's body; Save, Esc and the X use form (PresetFormApi). */
   presetForm(el: HTMLElement, host: Host, opts: { base: PresetBase; isNew: boolean; accounts: OrderAccount[]; ticked: string[]; gone: number }) {
     const form = createRef<PresetFormApi>();
     const unmount = mount(el, host, <PresetForm {...opts} api={form} />);
     return { unmount, form: form.current! };
   },
-  /**
-   * A game's servers (your private servers, the selected accounts' friends in it, its public servers) into the Servers
-   * dialog's body; chosen picks a server by its job, chosenPrivate one of your private servers by its access code.
-   */
+  /** A game's servers into the Servers dialog; chosen picks a server by its job, chosenPrivate a private server by its access code. */
   servers(el: HTMLElement, host: Host, placeId: number, ids: string[], chosen: (placeId: number, jobId: string) => void,
     chosenPrivate: (placeId: number, accessCode: string) => void) {
     return mount(el, host, <Servers placeId={placeId} ids={ids} chosen={chosen} chosenPrivate={chosenPrivate} />);
   },
-  /** The sign-in screen (username and password, the other ways around it) into its dialog's body; way opens another way. */
   passwordLogin(el: HTMLElement, host: Host, forRealm: string | null, way: (way: string, realm: string) => void) {
     const api = createRef<PasswordLoginApi>();
     const unmount = mount(el, host, <PasswordLogin forRealm={forRealm} api={api} way={way} />);
@@ -150,7 +134,6 @@ const BloxkeepUI = {
     return { unmount, api: api.current! };
   },
 
-  /** Quick search's box and list into its dialog's body; close closes the dialog. */
   palette(el: HTMLElement, host: Host, entries: PaletteEntry[], close: () => void) {
     return mount(el, host, <Palette entries={entries} close={close} />);
   },
@@ -160,7 +143,6 @@ const BloxkeepUI = {
     const unmount = mount(el, host, <ImportVault api={api} primary={primary} finished={finished} />);
     return { unmount, api: api.current! };
   },
-  /** Adding (account null) or editing an account, into its dialog's body; Save uses form (AccountFormApi). */
   accountForm(el: HTMLElement, host: Host, account: object | null, browser: () => void) {
     const form = createRef<AccountFormApi>();
     const unmount = mount(el, host, <AccountForm account={account as never} api={form} browser={browser} />);

@@ -1,8 +1,6 @@
-// Adding an account by its cookie, or editing one: alias, group, password, (an account already here) its authenticator
-// key, note. The authenticator: the saved key's code of the moment with Copy and Remove, or a box for a key; the key
-// itself never comes to the page, and one typed here is checked by the app as it is typed (it says what's wrong, or
-// shows the code it makes, to compare with the authenticator app before saving). app.js's dialog keeps the title, the
-// buttons and the error line's place; it asks this form what to save (collect) and whether anything changed (dirty).
+// Adding an account by its cookie, or editing one: alias, group, password, authenticator key (accounts already here), note.
+// The key itself never comes to the page: a saved one shows only its current code; a typed one is checked by the app as it
+// is typed (it shows the code it makes, to compare). app.js's dialog asks this form what to save (collect) and if dirty.
 import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
@@ -37,8 +35,7 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
   const [note, setNote] = useState(a?.note || '');
   const [key, setKey] = useState('');
   const [removeKey, setRemoveKey] = useState(false);
-  // Secret boxes shown as text; a secret box counts as changed once something was typed in it (a saved password only
-  // shown isn't an edit).
+  // Secret boxes shown as text; one counts as changed once typed in (a saved password only shown isn't an edit).
   const [shown, setShown] = useState<Record<string, boolean>>({});
   const typed = useRef(new Set<string>());
   const [error, setError] = useState('');
@@ -154,7 +151,6 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
       : <div className="acc-head"><div className="avatar"><Avatar a={a} /></div>
         <div><b>{a.label}</b><div className="muted">{[a.username ? `@${a.username}` : '', hide ? '' : `ID ${a.userId}`].filter(Boolean).join(' · ')}</div></div></div>}
     <div className="form">
-      {/* A new account: the cookie (the one box it needs) comes first, then the optional ones. */}
       {isNew ? <label>{t('am.cookie')}
         <div className="pw"><input className="field mono" type={shown.cookie ? 'text' : 'password'} name="cookie" maxLength={4096} placeholder="_|WARNING:-DO-NOT-SHARE-THIS…"
           spellCheck={false} value={cookie} onChange={typedIn('cookie', setCookie)} />{eye('cookie', cookie, setCookie)}</div></label> : null}

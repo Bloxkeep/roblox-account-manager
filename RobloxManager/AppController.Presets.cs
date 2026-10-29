@@ -2,17 +2,14 @@ using System.Text.Json;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Launch presets: saved accounts, game and kind of server, run from the dock or by schedule (AppController.Schedule.cs).
-/// Servers other than "any" and a fixed Job ID are picked here when the preset runs, so a scheduled run needs no page.
-/// </summary>
+/// <summary>Launch presets: saved accounts, game and server kind, run from the dock or by schedule (AppController.Schedule.cs).
+/// Servers other than "any" and a fixed Job ID are picked when the preset runs, so a scheduled run needs no page.</summary>
 public sealed partial class AppController
 {
     /// <param name="NeedsConfirm">Nothing was opened yet: <paramref name="Message"/> says what to look at before opening anyway.</param>
     /// <param name="Notice">Something the person should know that isn't an error (no server had room).</param>
     /// <param name="Skipped">Accounts left as they were because they were already open where asked.</param>
-    /// <param name="Asks">With NeedsConfirm, the kinds of warning in the message ("switch", "multiOff", "multiNotReady",
-    /// "watch", "memory"): the page offers the fix that goes with one, and "Don't ask again" only for skippable ones.</param>
+    /// <param name="Asks">With NeedsConfirm, the warning kinds in the message: the page offers each one's fix, and "Don't ask again" for skippable ones.</param>
     sealed record LaunchResult(bool NeedsConfirm = false, string? Message = null, int Launched = 0, List<string>? Errors = null,
         bool Cancelled = false, string? Notice = null, List<string>? Skipped = null, List<string>? Asks = null, List<Guid>? Refused = null);
 
@@ -52,7 +49,6 @@ public sealed partial class AppController
         running = PresetWindows(p.Id).Length,
     };
 
-    /// <summary>The accounts whose window the preset opened and that are still open, opening, or about to rejoin for it.</summary>
     Guid[] PresetWindows(Guid presetId) =>
         _running.Where(r => r.Value.Launch.PresetId == presetId).Select(r => r.Key)
             .Concat(_pending.Where(l => l.PresetId == presetId).Select(l => l.AccountId))
@@ -72,7 +68,6 @@ public sealed partial class AppController
         p.PlaceInput.Length > 0 && GameTarget.TryParse(p.PlaceInput, "", out var target, out _) && target!.ShareCode is null && target.PlaceId > 0
             ? target.PlaceId : null;
 
-    /// <summary>Adds a preset, or replaces the one with the given id. Returns its id.</summary>
     async Task<object?> SavePresetAsync(JsonElement a)
     {
         var vault = RequireVault();
@@ -85,8 +80,7 @@ public sealed partial class AppController
         if (ids.Count == 0)
             throw new UserError(L.T("Select at least one account."));
         string place = Str(a, "placeInput").Trim();
-        // Without a game the preset just opens Roblox, so there is no server to choose; following a player needs none
-        // (the game is the one they are in).
+        // Without a game there's no server to choose; following a player needs none (their game is used).
         string requested = Str(a, "server");
         string server = requested == "follow" ? "follow" : place.Length == 0 ? "any" : PresetServers.Contains(requested) ? requested : "any";
         string job = server == "job" ? Str(a, "jobId").Trim() : "";
@@ -98,8 +92,7 @@ public sealed partial class AppController
             rejoinWith = "";
         int? delay = Has(a, "delaySeconds", JsonValueKind.Number) ? (int)Math.Clamp(Long(a, "delaySeconds"), 0, 120) : null;
         string profile = Str(a, "profile") == AfkProfile ? AfkProfile : "";
-        // A restart opens the same game again (or follows the player again); a preset without one only opens Roblox, so
-        // there is nothing to restart.
+        // A restart opens the same game again (or follows again); a preset without a game has nothing to restart.
         int restartHours = (place.Length > 0 || server == "follow") && RestartChoices.Contains((int)Long(a, "restartHours")) ? (int)Long(a, "restartHours") : 0;
         var schedule = ParseSchedule(a, vault.Data.Settings.Presets.FirstOrDefault(p => p.Id == Id(a))?.Schedule);
         // Its own Discord channel: absent keeps the one saved, "" goes back to Settings' one, a link replaces it.
@@ -167,10 +160,7 @@ public sealed partial class AppController
         return preset.Id;
     }
 
-    /// <summary>
-    /// At most <paramref name="max"/> UTF-16 units, cut between whole characters as shown (never in the middle of an
-    /// emoji, or between a letter and its accent).
-    /// </summary>
+    /// <summary>At most <paramref name="max"/> UTF-16 units, cut between whole text elements (never inside an emoji or accent).</summary>
     static string CutText(string text, int max)
     {
         if (text.Length <= max)
@@ -190,10 +180,8 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// A copy placed right after the original (and its earlier copies), named "… (copy)" (numbered when taken). Its schedule comes along switched
-    /// off, so the two don't start the same accounts at the same minute. Returns the copy's id.
-    /// </summary>
+    /// <summary>A copy right after the original (and its earlier copies), named "… (copy)" or numbered. Its schedule comes along
+    /// off, so the two don't start the same accounts at the same minute.</summary>
     object? DuplicatePreset(Guid id)
     {
         var presets = RequireVault().Data.Settings.Presets;
@@ -267,10 +255,7 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// The Presets tab's switch: the saved schedule on or off as it is. Turning it on checks it like the form does
-    /// (a one-off whose date has passed can't be turned on).
-    /// </summary>
+    /// <summary>The Presets tab's schedule switch; turning it on checks it like the form (a passed one-off can't be turned on).</summary>
     object? SetPresetSchedule(Guid id, bool enabled)
     {
         var preset = RequireVault().Data.Settings.Presets.FirstOrDefault(p => p.Id == id) ?? throw new UserError(L.T("Preset not found."));
@@ -307,15 +292,11 @@ public sealed partial class AppController
     /// <summary>The page's command: the same run, typed for the dispatcher (the schedule calls <see cref="StartPresetAsync"/>).</summary>
     async Task<object?> RunPresetAsync(Guid id, bool force) => await StartPresetAsync(id, force);
 
-    /// <summary>
-    /// Opens the preset's accounts that still exist, in its order, through the same launch as the dock's Play button
-    /// (same waits, warnings, Stop button and progress text).
-    /// </summary>
+    /// <summary>Opens the preset's remaining accounts in order through the dock's Play launch (same waits, warnings, Stop, progress).</summary>
     async Task<LaunchResult> StartPresetAsync(Guid id, bool force)
     {
         var vault = RequireVault();
         var preset = vault.Data.Settings.Presets.FirstOrDefault(p => p.Id == id) ?? throw new UserError(L.T("Preset not found."));
-        // Accounts deleted since the preset was saved are left out.
         var accounts = preset.AccountIds.Distinct().Select(FindAccount).OfType<Account>().ToList();
         if (accounts.Count == 0)
             throw new UserError(L.T("This preset has no accounts left."));
@@ -351,11 +332,9 @@ public sealed partial class AppController
         return result with { Notice = notice };
     }
 
-    /// <summary>
-    /// The server a preset that follows a player opens into: the one the player is in now, as Roblox shows it to the
-    /// preset's accounts (or, failing them, the others signed in), its rejoins following them too. When Roblox won't
-    /// show one (offline, the website, Studio, a hidden server), the preset doesn't run and says why.
-    /// </summary>
+    /// <summary>Where a follow-a-player preset opens: the player's server now, as Roblox shows it to the preset's accounts (failing
+    /// them, the other signed-in ones); rejoins follow too. When Roblox won't show one (offline, website, Studio, hidden), the
+    /// preset doesn't run and says why.</summary>
     async Task<GameTarget> PresetFollowTargetAsync(Vault vault, LaunchPreset preset, IReadOnlyList<Account> accounts)
     {
         if (preset.FollowUserId <= 0)
@@ -380,10 +359,8 @@ public sealed partial class AppController
         };
     }
 
-    /// <summary>
-    /// A public server with room for all the accounts: the fullest or emptiest (Roblox's own order), the lowest average
-    /// ping over two pages, or one at random. With none, or no answer from Roblox, Roblox picks as it normally does.
-    /// </summary>
+    /// <summary>A public server with room for all accounts: fullest or emptiest (Roblox's order), lowest ping over two pages, or
+    /// random. With none, or no answer, Roblox picks as usual.</summary>
     async Task<(GameTarget Target, string? Note)> PickServerAsync(GameTarget target, string choice, int party, CancellationToken ct)
     {
         if (party == 0)
@@ -420,27 +397,21 @@ public sealed partial class AppController
     }
 
     // ───────── options of the windows a preset opened ─────────
-    // A client remembers the preset that opened it (PendingLaunch.PresetId, kept through auto-rejoins and restarts and
-    // saved with the open sessions). Its options are read from the preset as it is now, so an edit applies at once; a
-    // deleted preset, or a client opened by Play, follows the usual settings.
+    // A client remembers the preset that opened it (PendingLaunch.PresetId, kept through rejoins, restarts and saved sessions).
+    // Options are read from the preset as it is now, so edits apply at once; a deleted preset or Play follows the usual settings.
 
     LaunchPreset? PresetFor(Guid? id) =>
         id is Guid preset ? _vault?.Data.Settings.Presets.FirstOrDefault(p => p.Id == preset) : null;
 
-    /// <summary>Auto-rejoin for a client: its preset's option when it sets one, else the account's own switch.</summary>
     static bool AutoRejoinFor(LaunchPreset? preset, Account account) => preset?.AutoRejoin ?? account.AutoRejoin;
 
-    /// <summary>Anti-AFK for a client: its preset's option when it sets one, else Settings.</summary>
     static bool AntiAfkFor(LaunchPreset? preset, AppSettings settings) => preset?.AntiAfk ?? settings.AntiAfk;
 
     bool RejoinOn(Account account, Guid? presetId) => AutoRejoinFor(PresetFor(presetId), account);
 
-    /// <summary>
-    /// A preset's "Rejoin into" (<see cref="LaunchPreset.RejoinWith"/>): the server its chosen account, or any other
-    /// account whose window it opened, plays in now, as that window's log says. A server Roblox's join answer calls full,
-    /// ended or closed to this account, or a game that banned it, is passed over; none left (or nobody in a game): null,
-    /// and the rejoin goes to any server of its game, as without the option.
-    /// </summary>
+    /// <summary>A preset's "Rejoin into" (<see cref="LaunchPreset.RejoinWith"/>): the server its chosen account, or any other window
+    /// it opened, plays in now per that window's log. Servers Roblox calls full, ended or closed to this account, or a game that banned
+    /// it, are passed over; none left: null, and the rejoin goes to any server of its game.</summary>
     async Task<GameTarget?> TeammateTargetAsync(Account account, RejoinRequest request, CancellationToken ct)
     {
         if (PresetFor(request.PresetId) is not { RejoinWith.Length: > 0 } preset || request.Target.IsPrivate || request.Target.ShareCode is not null)
@@ -481,10 +452,8 @@ public sealed partial class AppController
     /// <summary>Windows of a light-AFK preset already minimised once in their game (by process id).</summary>
     readonly HashSet<int> _afkMinimised = new();
 
-    /// <summary>
-    /// A light-AFK preset's window is minimised once its log says it's in the game (Roblox draws less while minimised).
-    /// Only once, so a window the person brings back up stays up; one they're using at that moment is left alone.
-    /// </summary>
+    /// <summary>A light-AFK preset's window is minimised once in its game (Roblox draws less then). Only once, so a window brought
+    /// back up stays up; one in use at that moment is left alone.</summary>
     void MinimiseAfkWindows(Dictionary<int, List<IntPtr>> windows)
     {
         _afkMinimised.RemoveWhere(pid => !windows.ContainsKey(pid));
@@ -510,13 +479,10 @@ public sealed partial class AppController
     /// <summary>Roblox gives its window its size as it finishes starting up: a window not in a game yet is left this long first.</summary>
     static readonly TimeSpan MaximiseWithoutLog = TimeSpan.FromSeconds(10);
 
-    /// <summary>
-    /// Settings' "Maximise" for windows as they open: each window Bloxkeep opened in this run is maximised once it has
-    /// been up a few seconds or is in a game, and again when it joins a game if Roblox sized it otherwise meanwhile. A
-    /// maximised window is still a window, so the windows don't fight over Roblox's one fullscreen switch. Not a light-AFK
-    /// preset's (minimised), nor one a preset tiles, nor one the person minimised; and not while they're busy in another
-    /// window, since Windows brings a maximised window to the front.
-    /// </summary>
+    /// <summary>Settings' "Maximise" for windows Bloxkeep opened this run: once up a few seconds or in a game, and again on joining if
+    /// Roblox resized it. Maximised, not fullscreen, so windows don't fight over Roblox's one fullscreen switch. Not light-AFK or
+    /// tiled presets' windows, nor one the person minimised; not while they're busy in another window (Windows brings a maximised
+    /// one to the front).</summary>
     void MaximiseNewWindows(DateTime now, Dictionary<int, List<IntPtr>> windows)
     {
         foreach (int gone in _maximised.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
@@ -528,8 +494,7 @@ public sealed partial class AppController
         int? foreground = null;
         foreach (var run in _running.Values)
         {
-            // Only windows opened since Bloxkeep started: ones it picked up again after a restart (an update) were
-            // sized by the person already.
+            // Only windows opened since Bloxkeep started: ones picked up after a restart were sized by the person already.
             if (run.Launch.StartedAt < _started || !windows.TryGetValue(run.Pid, out var list) || list.Count == 0)
                 continue;
             if (PresetFor(run.Launch.PresetId) is { } preset && (preset.Profile == AfkProfile || preset.Arrange == true))
@@ -554,14 +519,10 @@ public sealed partial class AppController
     /// <summary>A client asked to close for a restart that is still there after this is left alone (tried again later).</summary>
     static readonly TimeSpan RestartCloseTimeout = TimeSpan.FromMinutes(1);
 
-    /// <summary>
-    /// A preset's "restart every N hours": a client of it that has run that long is closed and opened again through
-    /// auto-rejoin's path, one client at a time. Only a client in its game: one in the menu or on an error screen is
-    /// auto-rejoin's to handle. A window in front while the person is at the PC is being used, so it waits for a later
-    /// tick; one that is merely in front of an idle PC (the newest window takes the focus) is restarted like the rest.
-    /// A client that couldn't be opened again (Multi-Roblox not ready with other windows open, a signed-out or banned
-    /// account) is left running instead of being closed for good.
-    /// </summary>
+    /// <summary>A preset's "restart every N hours": a client in its game that ran that long is closed and reopened through auto-rejoin's
+    /// path, one at a time (menu or error screens are auto-rejoin's). A window in use while the person is at the PC waits; one merely
+    /// in front of an idle PC is restarted. A client that couldn't be reopened (Multi-Roblox not ready with other windows, a signed-out
+    /// or banned account) is left running.</summary>
     void RestartDueClients(DateTime now)
     {
         foreach (var (id, restart) in _restarts.ToList())
@@ -596,11 +557,8 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// Where a restart goes: back into the server the client is in while that is the game it was opened into (accounts
-    /// a preset opened together stay together), else the same game or private server, as auto-rejoin does. A game the
-    /// person picked in the window since is the one it is playing: the restart goes back into that one.
-    /// </summary>
+    /// <summary>Where a restart goes: the client's current server while it's the game it was opened into (a preset's accounts stay
+    /// together), else the same game or private server. A game picked in the window since is the one it goes back into.</summary>
     GameTarget RestartTarget((int Pid, PendingLaunch Launch) run)
     {
         var target = run.Launch.Target!;

@@ -1,7 +1,6 @@
 'use strict';
-// The tray's page (tray.html, in TrayWindow.cs's window): draws the quick panel or the menu (ui/src/Tray.tsx) with what
-// the app sends as "tray" (which part, its state, the theme and the language), and hands back what is clicked ("act")
-// and how big the page is ("size"), in the same messages as the app's own page.
+// The tray's page (tray.html in TrayWindow.cs's window): draws the quick panel or menu (ui/src/Tray.tsx) from the app's
+// "tray" message, and sends back clicks ("act") and its size ("size"), in the same messages as the app's own page.
 (() => {
   const { ICONS, LOGO, customVars } = window.BloxkeepShared;
   const DICT = window.I18N;

@@ -3,10 +3,9 @@ using System.Text.Json;
 namespace RobloxManager;
 
 /// <summary>
-/// Events that matter while the person isn't looking (an account dropped, auto-rejoin slowed down, a scheduled preset,
-/// a sign-in to renew, low RAM, a launch that failed) also go out as Windows notifications when the window is
-/// hidden, minimised or behind another program. Settings has one switch for all of them and one per kind. The same
-/// events feed Discord (AppController.Discord.cs), with switches of their own.
+/// Events that matter while the person isn't looking (a drop, auto-rejoin slowed, a scheduled preset, a sign-in to
+/// renew, low RAM, a failed launch) also go out as Windows notifications when the window isn't in front. Settings has
+/// one switch for all and one per kind; Discord (AppController.Discord.cs) has switches of its own.
 /// </summary>
 public sealed partial class AppController
 {
@@ -30,17 +29,14 @@ public sealed partial class AppController
         _ => null,
     };
 
-    /// <summary>
-    /// The usual in-app toast, plus a Windows notification while the window isn't in front — at most one per account
-    /// and event type every five minutes, and only for the kinds left on in Settings (the toast shows either way).
-    /// </summary>
+    /// <summary>The in-app toast, plus a Windows notification while the window isn't in front: at most one per account and
+    /// event type every five minutes, kinds left on in Settings only (the toast shows either way).</summary>
     /// <param name="toast">false when the page shows its own message for this (a launch result).</param>
     void Notify(string text, string kind, string type, Guid account = default, bool toast = true)
     {
         // Statistics › Activity keeps the text in both languages: like Discord's copy, before any other L.F.
         NoteNotified(text, kind, type, account);
-        // First, while the L.F that made the text is still the last one (Discord may want it in another language, or
-        // with account names shown or hidden by its own switch).
+        // First, while the L.F that made the text is still the last (Discord may want another language or its own name switch).
         NotifyDiscord(text, type, account);
         if (toast)
             Toast(text, kind);
@@ -62,26 +58,19 @@ public sealed partial class AppController
             _notified[key] = now;
     }
 
-    /// <summary>
-    /// The launch warnings that offer "Don't ask again", each on its own: Multi-Roblox off (someone who switches accounts
-    /// one at a time on purpose), the Roblox watch's warning and low RAM. Accounts being moved out of what they're
-    /// playing, and Multi-Roblox turned on but not working, are always asked. A skipped one doesn't hold back a
-    /// scheduled preset either.
-    /// </summary>
+    /// <summary>Launch warnings with "Don't ask again", each on its own: Multi-Roblox off (someone switching accounts one at a
+    /// time on purpose), the Roblox watch's warning and low RAM. Moving accounts out of a game and Multi-Roblox not working
+    /// always ask. A skipped one doesn't hold back a scheduled preset either.</summary>
     static readonly string[] SkippableLaunchWarnings = ["multiOff", "watch", "memory"];
 
     static string LaunchWarningKey(string kind) => "launch." + kind;
 
-    /// <summary>
-    /// The questions that offer "Don't ask again": ones asked often whose yes can be undone (a preset deleted, windows
-    /// closed, a launch despite one kind of warning, Multi-Roblox switched on, a form's typing left, the app locked).
-    /// Deleting accounts, restoring a backup and removing the Discord link always ask. (Before 1.1.0 one "openAnyway"
-    /// answered every launch warning at once; it is no longer read, so those are asked again.)
-    /// </summary>
+    /// <summary>Questions with "Don't ask again": often asked, and their yes can be undone. Deleting accounts, restoring a
+    /// backup and removing the Discord link always ask. (Before 1.1.0 one "openAnyway" answered every launch warning; it is
+    /// no longer read, so those are asked again.)</summary>
     static readonly string[] SkippableConfirms = ["deletePreset", "closeAll", "killAll", "multi", "discard", "lock",
         .. SkippableLaunchWarnings.Select(LaunchWarningKey)];
 
-    /// <summary>A question answered "Don't ask again": from now on its yes is assumed.</summary>
     public object? SkipConfirm(string key)
     {
         if (!SkippableConfirms.Contains(key))

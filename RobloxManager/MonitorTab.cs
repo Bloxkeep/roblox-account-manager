@@ -1,12 +1,10 @@
 namespace RobloxManager;
 
 /// <summary>
-/// The live pictures of the page's "Game monitor" tab. A web page can't show other programs' windows, so the app lays
-/// a <see cref="WindowThumbnails"/> over the tab's empty content area, which the page reports in its own pixels
-/// (<see cref="SetArea"/>) whenever it moves, and withdraws (null) whenever the page must be seen there instead:
-/// another tab, a dialog or menu, the lock screen, the window hidden. Windows draws the pictures above every child
-/// window, the browser included, so nothing of the page could show through them. A click brings that Roblox to the
-/// front; right-click shows, closes or copies its process id.
+/// The "Game monitor" tab's live pictures: a web page can't show other windows, so a <see cref="WindowThumbnails"/>
+/// lies over the tab's area, which the page reports (<see cref="SetArea"/>) and withdraws (null) whenever the page must
+/// show there instead (another tab, a dialog or menu, the lock screen). Windows draws the pictures above every child
+/// window, the browser included, so nothing of the page can show through them.
 /// </summary>
 sealed class MonitorTab : IDisposable
 {
@@ -39,10 +37,8 @@ sealed class MonitorTab : IDisposable
         Place();
     }
 
-    /// <summary>
-    /// Puts the pictures where the page last said, or takes them away; called again when the window is minimised,
-    /// hidden or back (the page also says so, but a moment later).
-    /// </summary>
+    /// <summary>Puts the pictures where the page last said, or takes them away; also called when the window is minimised,
+    /// hidden or back (before the page says so).</summary>
     public void Place()
     {
         if (Bounds() is not { } bounds)

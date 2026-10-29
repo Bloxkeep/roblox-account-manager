@@ -10,9 +10,8 @@ static class Program
     [STAThread]
     static void Main(string[] args)
     {
-        // Out of the program folder first: every program Bloxkeep starts (Roblox through Bloxstrap, a browser) starts
-        // "in" the same folder, and one that keeps running (Bloxstrap stays while Roblox does) made an update fail —
-        // Windows won't let Velopack move a folder some process is in. Nothing here uses relative paths.
+        // Out of the program folder first: programs Bloxkeep starts inherit it, and one still running (Bloxstrap stays
+        // while Roblox does) made updates fail, as Velopack can't move a folder a process is in. No relative paths here.
         try
         {
             Environment.CurrentDirectory = Path.GetTempPath();
@@ -20,10 +19,8 @@ static class Program
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
         }
-        // The installer and updater run the app with special arguments for install/update/uninstall steps; those
-        // are handled here (and exit) before anything else starts. Uninstalling removes the program folder, the
-        // shortcuts and the interface caches; the accounts and settings in %LOCALAPPDATA%\Bloxkeep go only when the
-        // person chooses so.
+        // Install/update/uninstall steps from Velopack are handled (and exit) before anything else. Uninstalling keeps
+        // the accounts and settings in %LOCALAPPDATA%\Bloxkeep unless the person chooses otherwise.
         VelopackApp.Build()
             .OnBeforeUninstallFastCallback(_ =>
             {
@@ -61,9 +58,8 @@ static class Program
             e.SetObserved();
         };
 
-        // Clicked open while an update installs in the background (Bloxkeep is gone for a few seconds): this start waits
-        // for the run the update starts and brings that one to the front. Taking its place made that run, which carries
-        // the unlocked vault over, give way as a second launch, and Bloxkeep came back locked (seen 2026-10-20, 8:43).
+        // Opened during a background update: wait for the run the update starts and bring it forward. Taking its place
+        // made that run (which carries the unlocked vault) give way, and Bloxkeep came back locked (seen 2026-10-20).
         if (!Relaunch.IsUpdateRun(args) && Relaunch.HandOverWaiting())
         {
             var waiting = System.Diagnostics.Stopwatch.StartNew();
@@ -114,8 +110,7 @@ static class Program
             return;
         }
         var wait = ThreadPool.RegisterWaitForSingleObject(activate, (_, _) => OnShell(shell, shell.BringToFront), null, Timeout.Infinite, executeOnlyOnce: false);
-        // The uninstaller asks the running app to quit (even when it would only hide to the tray), so nothing it uses
-        // stays locked.
+        // The uninstaller asks the app to quit (not hide to the tray), so nothing it uses stays locked.
         var quitWait = ThreadPool.RegisterWaitForSingleObject(quit, (_, _) => OnShell(shell, shell.Quit), null, Timeout.Infinite, executeOnlyOnce: true);
         try
         {
@@ -154,12 +149,8 @@ static class Program
         }
     }
 
-    /// <summary>
-    /// Before uninstalling: asks a running Bloxkeep to close and waits (up to 15 s of the hook's 60) until it has,
-    /// so its files and browser cache can be removed. Velopack 1.2 ends every process running from the program folder
-    /// before this hook, so normally there is nothing left to ask; this covers a copy it couldn't see (one running
-    /// elevated), and it cannot stop a killed copy's tray icon from lingering until the mouse passes over it.
-    /// </summary>
+    /// <summary>Before uninstalling: asks a running Bloxkeep to close and waits up to 15 s (of the hook's 60). Velopack 1.2
+    /// already ends processes in the program folder; this covers one it couldn't see (running elevated).</summary>
     static void CloseRunningApp()
     {
         if (!EventWaitHandle.TryOpenExisting(QuitEvent, out var quit))
@@ -185,10 +176,8 @@ static class Program
         Thread.Sleep(1500);
     }
 
-    /// <summary>
-    /// Velopack's uninstall run directly, without Bloxkeep's uninstaller window: asks whether the accounts go too. Kept
-    /// when there is no answer by <paramref name="deadline"/>, before Velopack's minute for this step runs out.
-    /// </summary>
+    /// <summary>Velopack's uninstall run without Bloxkeep's uninstaller window: asks whether the accounts go too; kept when
+    /// unanswered by <paramref name="deadline"/>, before Velopack's minute for this step runs out.</summary>
     static bool AskToDeleteData(DateTime deadline)
     {
         Prefs.Load();
@@ -208,12 +197,8 @@ static class Program
         return picked == 1;
     }
 
-    /// <summary>
-    /// Installed apps › Uninstall opens Bloxkeep's uninstaller window (BloxkeepUninstall.exe, shipped with the app)
-    /// rather than Velopack's bare one. Bloxkeep's installer sets this; doing it at every start keeps it after an update
-    /// rewrites the entry. Nothing to do for the portable copy or a development build (no entry, no uninstaller).
-    /// A quiet fix also shows there as the version it fixes.
-    /// </summary>
+    /// <summary>Installed apps › Uninstall opens BloxkeepUninstall.exe rather than Velopack's bare one. Set at every start
+    /// because an update rewrites the entry; nothing to do for the portable copy or a development build.</summary>
     static void UseOurUninstaller()
     {
         try

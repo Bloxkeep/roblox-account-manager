@@ -9,19 +9,14 @@ namespace RobloxManager;
 /// <summary>
 /// The app window: hosts the HTML interface embedded in the exe. The page may only load its own files and
 /// Roblox CDN images (see the CSP in index.html); every network call goes through <see cref="AppController"/>.
-/// The interface is drawn by WebView2 on the graphics card; if the GPU or its driver keeps crashing, or a start
-/// never got the page on screen, it switches to drawing on the CPU and reloads without losing the session.
-/// With "keep running when closed" on, the close button hides the window to the notification area so auto-rejoin and
-/// Multi-Roblox keep working; the tray icon brings it back or quits.
+/// If the GPU driver keeps crashing, or a start never got the page on screen, it reloads drawing on the CPU.
+/// With "keep running when closed" on, closing hides it to the tray so auto-rejoin and Multi-Roblox keep working.
 /// </summary>
 public sealed class ShellForm : Form
 {
     internal const string Origin = "https://bloxkeep.local/";
     const int MaxAutomaticRestarts = 3;
-    /// <summary>
-    /// After this long without a browser failure the counts start again: crashes days apart (a GPU reset after a
-    /// sleep, a browser ended by an antivirus) aren't a broken driver, nor a reason to stop restarting the page.
-    /// </summary>
+    /// <summary>Failure counts reset after this long: crashes days apart (a GPU reset after sleep, an antivirus) aren't a broken driver.</summary>
     static readonly TimeSpan BrowserHealthyAfter = TimeSpan.FromMinutes(30);
     long _lastBrowserFailure = long.MinValue / 2;
 
@@ -38,24 +33,19 @@ public sealed class ShellForm : Form
     readonly System.Windows.Forms.Timer _balloonTimer = new();
     const int BalloonMs = 8000;
     readonly NotifyIcon _tray;
-    /// <summary>The tray icon's quick panel (a left click); made with the icon, hidden until then.</summary>
     readonly TrayWindow _trayWindow = new();
     /// <summary>Until when the newest notification balloon may be on screen; the icon isn't hidden before that.</summary>
     DateTime _balloonUntil;
     WebView2? _web;
     /// <summary>The small always-on-top window, made the first time it is opened and kept (hidden) from then on.</summary>
     MiniForm? _mini;
-    /// <summary>The live pictures over the page's game monitor tab.</summary>
     readonly MonitorTab _monitor;
     string _themeId;
     int _gpuCrashes, _automaticRestarts;
     bool _restarting, _released, _quitting, _hiding, _minimizeReady, _minimizing;
     /// <summary>The page got on screen at least once this run (so the start marker may go).</summary>
     bool _pageLoaded;
-    /// <summary>
-    /// The page as it looked when the window went away (JPEG), shown over the window while a released browser
-    /// starts again, so coming back looks instant instead of half a second of empty window.
-    /// </summary>
+    /// <summary>The page as it looked when the window went away (JPEG), shown while a released browser starts again.</summary>
     byte[]? _snapshot;
     bool _snapshotUnlocked;
     string? _snapshotTheme;
@@ -134,8 +124,7 @@ public sealed class ShellForm : Form
         Size = Fit(preferred, area);
         if (preferred.Width > area.Width || preferred.Height > area.Height)
             WindowState = FormWindowState.Maximized;
-        // The place, size and maximised state it was left in come back instead (put in OnLoad); the fit above is
-        // for a first start, or when that place is on no screen any more.
+        // The saved place, size and maximised state win (put in OnLoad); the fit above is for a first start or a lost screen.
         if (SavedPlace(out _))
         {
             StartPosition = FormStartPosition.Manual;
@@ -183,7 +172,6 @@ public sealed class ShellForm : Form
     readonly string? _resumeWindow;
     /// <summary>Stays in the tray at start (it was there when the update in the background began).</summary>
     bool _startHidden;
-    /// <summary>Comes up without taking the keyboard from the program the person is in.</summary>
     bool _showQuietly;
 
     protected override bool ShowWithoutActivation => _showQuietly;
@@ -200,8 +188,7 @@ public sealed class ShellForm : Form
 
     protected override void SetVisibleCore(bool value)
     {
-        // An update in the background that began with the window in the tray: back in the tray, no window. The
-        // window (and its browser) is made the first time it is opened from there.
+        // Updated while in the tray: back in the tray; the window and its browser are made when first opened.
         if (value && _startHidden)
         {
             _startHidden = false;
@@ -292,10 +279,8 @@ public sealed class ShellForm : Form
         return tray;
     }
 
-    /// <summary>
-    /// A Windows notification (the tray icon's balloon, which Windows 10/11 show as a toast) while the window is
-    /// hidden, minimised or behind another program; false when it is in front, so the page's own toast is enough.
-    /// </summary>
+    /// <summary>A Windows notification (tray balloon, shown as a toast) while the window is hidden, minimised or behind
+    /// another program; false when it is in front, so the page's own toast is enough.</summary>
     bool ShowNotification(string text, string kind)
     {
         if (IsDisposed || _quitting || (!InBackground && InFront))
@@ -336,8 +321,7 @@ public sealed class ShellForm : Form
             _ = HideToTrayAsync();
             return;
         }
-        // Changes that still can't be written (the file held by an antivirus) would be gone with the window; the
-        // person decides, except when Windows itself is shutting down.
+        // Changes that can't be written yet (file held by an antivirus) would be lost: ask, unless Windows is shutting down.
         if (!_app.SaveBeforeClosing() && e.CloseReason != CloseReason.WindowsShutDown
             && !Ui.Modal(() => Dialog.Confirm(this, L.T("Couldn't save your changes. Quit anyway and lose them?"),
                 L.T("Quit anyway"), L.T("Keep Bloxkeep open"), danger: true)))
@@ -442,10 +426,7 @@ public sealed class ShellForm : Form
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, int modifiers, int key);
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-    /// <summary>
-    /// Ctrl+Alt+H and Ctrl+Alt+A from any app (AppController.Hotkeys.cs), while the switch is on; one another app
-    /// already holds is said in Settings rather than taken from it.
-    /// </summary>
+    /// <summary>Ctrl+Alt+H and Ctrl+Alt+A from any app while the switch is on; one another app holds is reported in Settings.</summary>
     void RegisterHotkeys()
     {
         if (!IsHandleCreated)
@@ -463,10 +444,8 @@ public sealed class ShellForm : Form
         _app.HotkeysTaken = taken;
     }
 
-    /// <summary>
-    /// Minimising waits for a picture of the page first (a few dozen milliseconds): a minimised window's page isn't
-    /// drawn any more, so it can't be captured afterwards. The minimise is then sent again and goes through.
-    /// </summary>
+    /// <summary>Minimising waits for a picture of the page first (a few dozen ms): a minimised window's page isn't
+    /// drawn, so it can't be captured afterwards. The minimise is then sent again.</summary>
     protected override void WndProc(ref Message m)
     {
         if (m.Msg == WM_HOTKEY)
@@ -543,8 +522,7 @@ public sealed class ShellForm : Form
     {
         var bytes = _snapshot;
         _snapshot = null;
-        // Not a picture of the accounts after a lock, not one in a theme that changed meanwhile (Windows switching
-        // light/dark), and not one drawn for another window size or screen scale.
+        // Not a picture from before a lock, in a theme changed since (Windows light/dark), or for another size or scale.
         if (bytes is null || _snapshotUnlocked != _app.Unlocked || _snapshotTheme != Themes.Current.Id)
             return;
         try
@@ -581,11 +559,8 @@ public sealed class ShellForm : Form
         _coverTimer.Start();
     }
 
-    /// <summary>
-    /// On the app's start, the logo in the middle of the window while the browser starts, instead of an empty window;
-    /// the page's own loading screen takes over once it is drawn. The browser can take a while to start on a slow
-    /// PC (or after an update), so the fallback is long.
-    /// </summary>
+    /// <summary>At start, the logo in the window until the page's loading screen is drawn. The browser can be slow to
+    /// start on a slow PC or after an update, so the fallback is long.</summary>
     void ShowStartCover()
     {
         if (Ui.AppIcon is not { } icon)
@@ -606,13 +581,10 @@ public sealed class ShellForm : Form
         cover.Dispose();
     }
 
-    /// <summary>Minimised, or hidden in the notification area.</summary>
     bool InBackground => !Visible || WindowState == FormWindowState.Minimized;
 
-    /// <summary>
-    /// This window, or a dialog it owns, is the one the person is working in. Asked of Windows rather than
-    /// Form.ActiveForm, which can be null while the keyboard focus sits in the browser's own child window.
-    /// </summary>
+    /// <summary>This window or a dialog it owns is active. Asked of Windows: Form.ActiveForm can be null while the
+    /// keyboard focus sits in the browser's own child window.</summary>
     bool InFront
     {
         get
@@ -706,12 +678,9 @@ public sealed class ShellForm : Form
         UpdateBackground();
     }
 
-    /// <summary>
-    /// In the background, hide the page and put it to sleep (the browser stops its timers and drawing and Windows takes
-    /// its memory back), and poll less; it wakes in a few dozen milliseconds when the window comes back (made again,
-    /// as before, it took about 2.5 s: Tests/perf/TrayBench). Only when Windows is short of memory is the browser
-    /// closed entirely, leaving the small core running until the window comes back.
-    /// </summary>
+    /// <summary>In the background, hide the page, put it to sleep (no timers or drawing, memory back to Windows) and poll
+    /// less; it wakes in a few dozen ms, where recreating took about 2.5 s (Tests/perf/TrayBench). Only when Windows is
+    /// short of memory is the browser closed entirely.</summary>
     void UpdateBackground()
     {
         if (!IsHandleCreated)
@@ -736,9 +705,8 @@ public sealed class ShellForm : Form
             }
             else
             {
-                // The page stayed open but was hidden, and the browser may need a moment to draw it again: the
-                // picture covers that too (the page says when it is visible and drawn). What it kept of its view is
-                // stale from here on (a page recreated after a crash must not put it back).
+                // The browser may need a moment to draw the hidden page again: the picture covers that too. What it kept
+                // of its view is stale from here on (a page recreated after a crash must not put it back).
                 if (_snapshot is not null && _web is not null)
                     ShowCover();
                 _snapshot = null;
@@ -766,10 +734,8 @@ public sealed class ShellForm : Form
         _app.PageAsleep = false; // what it missed, and a fresh state
     }
 
-    /// <summary>
-    /// The hidden page asleep (TrySuspend): nothing is sent to it meanwhile (AppController.PageAsleep), so nothing wakes
-    /// it before the window does. A page that won't sleep keeps getting states, with its memory level low instead.
-    /// </summary>
+    /// <summary>TrySuspend on the hidden page; nothing is sent to it meanwhile (AppController.PageAsleep), so nothing wakes
+    /// it early. A page that won't sleep keeps getting states, with its memory level low instead.</summary>
     async Task SleepAsync(CoreWebView2 core)
     {
         // The browser hears it is hidden on a later turn of the message loop; asked to sleep before that, it refuses.
@@ -818,18 +784,14 @@ public sealed class ShellForm : Form
         _app.PageGone();
         Controls.Remove(web);
         web.Dispose();
-        // Hand the freed memory back to Windows while the app waits in the background.
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
         SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
     }
 
-    /// <summary>
-    /// When to look again, 0 to close the browser now: every half minute in the background, closed once Windows is short
-    /// of memory. Otherwise it stays, asleep: it holds about 180 MB of virtual memory but next to no RAM, and waking it
-    /// takes a few dozen milliseconds where making it again took about 2.5 s.
-    /// </summary>
+    /// <summary>When to look again, 0 to close the browser now (Windows short of memory). Asleep it holds about 180 MB of
+    /// virtual memory but next to no RAM.</summary>
     static int ReleaseWait(long hiddenMs, MemoryStatus memory) => AppController.MemoryTight(memory) ? 0 : TightReleaseAfterMs;
 
     async Task RecreateWebViewAsync()
@@ -852,10 +814,7 @@ public sealed class ShellForm : Form
         }
     }
 
-    /// <summary>
-    /// A browser that didn't start is dropped rather than left as an empty control, and the window counts as released
-    /// again, so the next time it comes to the front another one is tried.
-    /// </summary>
+    /// <summary>Drops a browser that didn't start and marks the window released, so coming to the front tries again.</summary>
     void BrowserFailed(Exception ex)
     {
         DropWebView();
@@ -929,10 +888,8 @@ public sealed class ShellForm : Form
             WebView2Setup.MainWindowOptions());
     }
 
-    /// <param name="firstStart">
-    /// The app's own start, which the marker file watches (a browser recreated later is not a start that could fail
-    /// for lack of a page; the marker left by a quit meanwhile would wrongly switch to CPU drawing).
-    /// </param>
+    /// <param name="firstStart">The app's own start, which the marker file watches. Not for a browser recreated later: a
+    /// quit meanwhile would leave the marker and wrongly switch to CPU drawing.</param>
     async Task AttachWebViewAsync(CoreWebView2Environment env, bool firstStart = false)
     {
         var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Themes.Current.Background };
@@ -940,8 +897,7 @@ public sealed class ShellForm : Form
         _cover?.BringToFront();
         _web = web;
         await web.EnsureCoreWebView2Async(env);
-        // Only once a browser exists: a start that fails before this (the profile still held by the copy an update
-        // replaced) says nothing about the graphics card, and must not leave the marker behind.
+        // Only once a browser exists: a start failing before (profile held by the copy an update replaced) says nothing about the GPU.
         if (firstStart)
             TryMarkStarting(true);
         Configure(web.CoreWebView2, env);
@@ -1101,8 +1057,7 @@ public sealed class ShellForm : Form
     internal static void ServeAsset(CoreWebView2Environment env, CoreWebView2WebResourceRequestedEventArgs e)
     {
         string path = new Uri(e.Request.Uri).AbsolutePath.TrimStart('/');
-        // The custom theme's picture, from the data folder's pictures (AppController.CustomTheme.cs): only a file of that name, read
-        // whole so no handle stays open on it (a new picture deletes the old one).
+        // The custom theme's picture: only a file of that name, read whole so no handle stays open (a new picture deletes the old one).
         string? picture = path.StartsWith("user/", StringComparison.Ordinal) && Themes.IsPictureName(path[5..]) ? Path.Combine(Vault.PicturesDir, path[5..]) : null;
         // One Vault.Tidy couldn't move yet is still at the top.
         if (picture is not null && !File.Exists(picture))
@@ -1157,8 +1112,7 @@ public sealed class ShellForm : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
-        // A run whose page did get on screen was a good one, even when it ends mid-way through a browser restart; so
-        // was one the person quit (from the tray, before the page was up on a slow PC) or Windows shut down.
+        // A run whose page got on screen was good, even ending mid browser restart; so was one quit by the person or Windows.
         if (_pageLoaded || _quitting || e.CloseReason == CloseReason.WindowsShutDown)
             TryMarkStarting(false);
         _tray.Visible = false;

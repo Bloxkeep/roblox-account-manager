@@ -4,10 +4,9 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>
-/// Copies of the encrypted vault in a folder of the person's choice, typically one their Google Drive or OneDrive
-/// client syncs, so the accounts survive a dead PC. Bloxkeep never talks to those services itself: a backup is a byte
-/// copy of vault.rmv (already encrypted with the master password), and the live vault never moves into the synced
-/// folder, where the sync client could lock it mid-save.
+/// Copies of the encrypted vault in a folder of the person's choice, typically one Google Drive or OneDrive syncs, so
+/// accounts survive a dead PC. Bloxkeep never talks to those services: a backup is a byte copy of vault.rmv, and the
+/// live vault never moves into the synced folder, where the sync client could lock it mid-save.
 /// </summary>
 static class Backup
 {
@@ -24,10 +23,8 @@ static class Backup
 
     public static string FileName(string? vaultId, DateTime at) => $"{Prefix}{(vaultId is null ? "" : vaultId + "-")}{at:yyyyMMdd-HHmmss}.rmv";
 
-    /// <summary>
-    /// Writes the vault's bytes (read by the caller, so no save can run meanwhile) into the folder under a temp
-    /// name, then renames it so the sync client never sees a half file. Safe on a worker thread.
-    /// </summary>
+    /// <summary>Writes the vault's bytes under a temp name, then renames it so the sync client never sees a half file. Safe
+    /// on a worker thread (the caller read the bytes, so no save runs meanwhile).</summary>
     /// <param name="previousIds">Ids the vault had before its password changed (<see cref="AppSettings.PreviousVaultIds"/>).</param>
     public static string Write(string folder, byte[] vault, IReadOnlyCollection<string>? previousIds = null)
     {
@@ -51,12 +48,10 @@ static class Backup
     static readonly TimeSpan StaleTemp = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Keeps the newest 10, plus the newest of each day in the last 30 days. Only this vault's backups count: two PCs
-    /// with different vaults may share one synced folder. A vault's ids are its current one and the ones it had under
-    /// earlier passwords. A file from before the id was in the name is this vault's when its header says so.
-    /// The names carry the PC's clock, which can go back (a reset clock, a manual change, another time zone): a copy
-    /// named later than now is older than the ones made since, so it ranks after them, and the copy just written
-    /// (<paramref name="justWritten"/>) is never the one removed.
+    /// Keeps the newest 10, plus the newest of each day in the last 30 days. Only this vault's backups count (current and
+    /// earlier-password ids; an old-format file by its header): PCs with different vaults may share one synced folder.
+    /// Names carry the PC's clock, which can go back: a copy named later than now ranks after newer ones, and
+    /// <paramref name="justWritten"/> is never removed.
     /// </summary>
     public static void Prune(string folder, IReadOnlySet<string> vaultIds, string? justWritten = null)
     {
@@ -93,10 +88,7 @@ static class Backup
         }
     }
 
-    /// <summary>
-    /// The id in an old-format file's header, read once per file: reading a cloud-only copy downloads it, and the
-    /// size and time say whether the file changed since.
-    /// </summary>
+    /// <summary>An old-format file's header id, read once per size and time: reading a cloud-only copy downloads it.</summary>
     static string? HeaderId(string path)
     {
         long size;

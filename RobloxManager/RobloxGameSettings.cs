@@ -7,11 +7,10 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>
-/// Roblox keeps its in-game settings (graphics, frame rate limit, volume…) in one file for the whole PC, shared by every
-/// account: %LOCALAPPDATA%\Roblox\GlobalBasicSettings_*.xml. A client reads it when it starts, so writing the wanted
-/// values just before opening an account gives that account its own setup. Only those values are changed (the rest
-/// of the file stays byte for byte). The person's own values are put back as soon as that client has started, so a
-/// Roblox they open themselves always gets their own setup.
+/// Roblox keeps its in-game settings (graphics, FPS limit, volume…) in one file shared by every account:
+/// %LOCALAPPDATA%\Roblox\GlobalBasicSettings_*.xml, read as a client starts. Writing values just before opening an
+/// account gives it its own setup; only those values change (the rest stays byte for byte), and the person's own are
+/// put back once that client has started.
 /// </summary>
 public static class RobloxGameSettings
 {
@@ -71,21 +70,16 @@ public static class RobloxGameSettings
     /// <summary>The graphics slider (1–10) as Roblox's internal quality level (1–21) in the same file.</summary>
     public static int EngineQuality(int slider) => slider >= 10 ? 21 : slider * 2 - 1;
 
-    /// <summary>
-    /// A preset's light AFK profile: the lowest graphics, the lowest frame rate limit Roblox's own menu offers (30; a
-    /// lower number written to the file is untested) and no sound. Passed to <see cref="PrepareFor"/> as a setup in use.
-    /// </summary>
+    /// <summary>A preset's light AFK profile: lowest graphics, the lowest FPS limit Roblox's menu offers (30; lower is
+    /// untested) and no sound.</summary>
     public static RobloxConfig LightAfk => new() { Mode = "all", Graphics = 1, Fps = 30, Volume = 0 };
 
     /// <summary>
-    /// Before opening an account: the shared setup if the account uses it, and the person's own values for everything
-    /// else Bloxkeep manages (so an account never inherits what an earlier one got, such as a light-AFK preset's 30 FPS
-    /// under a setup that only sets graphics). <paramref name="windowed"/>: Roblox's fullscreen switch off too — every
-    /// client reads the one switch, and those that save it while others start (Roblox saves when it joins a game) left
-    /// some windows fullscreen and some not. The person's own values are what the file holds, except a value still
-    /// equal to what Bloxkeep last wrote (the rule <see cref="Restore"/> follows): a setting changed meanwhile in a
-    /// Roblox window is theirs, and an older copy is never written over it. Returns false when there was nothing to
-    /// write, or the file couldn't be written.
+    /// Before opening an account: the shared setup if it uses it, the person's own values for everything else managed
+    /// (so an account never inherits an earlier one's, such as a light-AFK preset's 30 FPS). <paramref name="windowed"/>:
+    /// fullscreen off too, since every client reads the one switch and saves it as it joins a game. The person's values
+    /// are what the file holds, except a value still equal to what Bloxkeep last wrote (as in <see cref="Restore"/>).
+    /// False when there was nothing to write or the write failed.
     /// </summary>
     public static bool PrepareFor(RobloxConfig config, bool useConfig, bool windowed)
     {
@@ -105,9 +99,8 @@ public static class RobloxGameSettings
         }
         else
         {
-            // What the file holds now is the person's own, unless it is still what Bloxkeep wrote: a setting changed in
-            // a Roblox window since the copy was taken, or one the copy was taken without (by a version that didn't
-            // manage it).
+            // What the file holds now is the person's own unless it is still what Bloxkeep wrote: changed in a Roblox
+            // window since the copy, or missing from the copy (an older version didn't manage it).
             bool refreshed = false;
             foreach (var (name, value) in Current(text))
             {
@@ -154,11 +147,9 @@ public static class RobloxGameSettings
 
     static (string? File, DateTime Time, long Length) _lastSeen;
 
-    /// <summary>
-    /// Puts the person's own values back once a client has read Bloxkeep's, and again whenever such a client writes
-    /// them into the file (Roblox saves its settings when it joins a game). A value the person changed themselves —
-    /// it no longer equals what Bloxkeep wrote — is kept. <paramref name="final"/>: Roblox is closed, forget the copy.
-    /// </summary>
+    /// <summary>Puts the person's values back once a client has read Bloxkeep's, and again whenever one saves them (Roblox
+    /// saves as it joins a game). A value no longer equal to what Bloxkeep wrote is the person's and is kept.
+    /// <paramref name="final"/>: Roblox is closed, forget the copy.</summary>
     public static void Restore(bool final)
     {
         string? file = SettingsFile(cached: !final);

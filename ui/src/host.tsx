@@ -1,16 +1,11 @@
-// What the React parts use of the page around them (RobloxManager/wwwroot/app.js hands it over as uiHost()): its words
-// in the chosen language, its icons, the commands to the app, and where its buttons lead.
+// What the React parts use of the page around them (app.js uiHost()): words, icons, commands to the app, link targets.
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 
 /** What the app last pushed (its state event: accounts, settings…), as app.js keeps it in S.app. */
 export type AppState = Record<string, any>;
 
-/**
- * Settings › Appearance › Custom: the background and accent (#rrggbb), how much of the background lies over the picture
- * (0 to 90), how much the picture is blurred (0 to 30 px), the picture (or video) to load.
- */
+/** Settings › Appearance › Custom: background and accent (#rrggbb), fade over the picture 0–90, blur 0–30 px, the picture (or video). */
 export interface CustomTheme { background: string; accent: string; fade: number; blur?: number; picture: string | null; video?: boolean }
-/** A custom theme kept by name (Settings › Appearance › Your themes). */
 export interface SavedTheme { id: string; name: string; look: CustomTheme }
 
 /** The live figures the app sends every few seconds (its metrics event): Roblox's windows and the PC's memory. */
@@ -47,7 +42,6 @@ export interface Host {
   locale: string;
   /** An icon's drawing (the inside of its 24×24 <svg>), by its name in app.js's ICONS. */
   iconPaths(name: string): string;
-  /** The app's logo (an image path inside the page). */
   logo: string;
   /** A command to the app (the bridge); failures show a toast there and resolve to undefined. */
   call(cmd: string, args?: Record<string, unknown>, opts?: { silent?: boolean }): Promise<unknown>;
@@ -57,9 +51,7 @@ export interface Host {
   saveView(restart?: boolean): void;
   /** Multi-Roblox on (after the risk warning) or off (app.js setMulti); whether it was done. */
   setMulti(on: boolean): Promise<boolean>;
-  /** A password's strength, only a guide (app.js strengthLevel). */
   strength(password: string): 'weak' | 'ok' | 'strong';
-  /** How long ago a time was, in words ("5 min ago"; app.js ago). */
   ago(iso: string): string;
   /** A Settings page was drawn (again): app.js searches it again if the search box has words in it. */
   settingsDrawn(): void;
@@ -71,26 +63,20 @@ export interface Host {
   previewTheme(id: string): void;
   /** Settings › Appearance › Custom: its colours and picture as shown now (a change not saved yet included); subscribe tells when they change. */
   customTheme(): CustomTheme | null;
-  /** The page's colour tokens for a custom theme, and whether it is dark or light (app.js customVars). */
   customVars(theme: CustomTheme): { tone: 'dark' | 'light'; vars: Record<string, string>; swatch: string };
   /** Shows a change to the custom theme at once and saves it once the changes rest (app.js previewCustom). */
   previewCustom(change: Partial<CustomTheme>): void;
   /** The dialog asking for a Discord webhook link; thenTurnOn: sending goes on once it is saved. */
   discordLink(thenTurnOn: boolean): void;
-  /**
-   * fn runs each time app.js gives the signal: "hideDiscordLink" (a shown webhook link goes: Settings or its page left,
-   * the window left), "clearPassword" (typed passwords go: Settings left), "presetQuery" (the Presets search was put
-   * back: presetQuery), "presetsShown" (the Presets tab was opened), "statsShown" / "statsHidden" (the Statistics tab
-   * came on screen or went), "settled" (the app has settled after an unlock, or for a new page: tabs not open yet get
-   * ready). Returns how to stop.
-   */
+  /** fn runs on each app.js signal: hideDiscordLink (Settings, its page or the window left), clearPassword (Settings
+   * left), presetQuery (its search put back), presetsShown, statsShown / statsHidden, settled (after an unlock or for a
+   * new page: tabs not open yet get ready). Returns how to stop. */
   on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden' | 'settled', fn: () => void): () => void;
   /** The Presets tab's search, as app.js keeps it (a page restarted comes back with it), and a new one typed. */
   presetQuery(): string;
   setPresetQuery(q: string): void;
   /** "Mon–Fri 20:00", "Every day 20:00" or a one-off's date (app.js scheduleText). */
   scheduleText(schedule: { time: string; date?: string; days?: number[] }): string;
-  /** "Next: Today 20:00" for a scheduled preset, empty otherwise (app.js nextRunText). */
   nextRunText(preset: { nextRun?: string }): string;
   /** The options a preset sets differently from the usual settings, in one line (app.js presetOptionsText). */
   presetOptionsText(preset: object): string;
@@ -98,15 +84,12 @@ export interface Host {
   copyField(id: string, field: string): void;
   /** Runs a preset (app.js runPreset: one at a time, asking when Roblox is busy). */
   runPreset(id: string): Promise<unknown>;
-  /** Deletes a preset after asking (app.js deletePreset). */
   deletePreset(preset: object): Promise<unknown>;
-  /** The preset editor for a preset (app.js presetModal). */
   editPreset(preset: object): void;
   /** The browser's own storage for this page's small choices (app.js store; never fails: the fallback instead). */
   store: { get(key: string, fallback: string): string; set(key: string, value: string): void };
   /** Short weekday names from the browser's own calendar (0 = Sunday, like the app; app.js weekdayName). */
   weekdayName(day: number): string;
-  /** A number as the interface writes it (thousands separated; app.js fmtNum). */
   fmtNum(n: number): string;
   /** A link, Place ID or roblox:// address rather than a name to search (app.js looksLikeTarget). */
   looksLikeTarget(value: string): boolean;
@@ -118,13 +101,11 @@ export interface Host {
   rememberSearch(query: string, rows: unknown[]): void;
   /** Where a control is (app.js focusKey: what it does, its row, its place), to find it, or one in its place, again. */
   focusKey(node: Element, root: Element): unknown;
-  /** Focuses that control again within root, or the one now in its place (app.js refocus). */
   refocus(root: Element, key: unknown): void;
   /** Somewhere a button leads: "settings:<page or group>", "guide", "web" (roblox.com), "feedback", "github". */
   go(target: string): void;
   /** Runs fn with the button turned off and its spinner showing (app.js busy), its answer when done. */
   busy(button: HTMLElement, fn: () => Promise<unknown>): Promise<unknown>;
-  /** A message in the corner (app.js toast). */
   toast(text: string, kind?: 'info' | 'ok' | 'warn' | 'error'): void;
   /** The app's state now, and a way to hear when a new one comes (returns how to stop listening). */
   state(): AppState;
@@ -135,7 +116,6 @@ export interface Host {
   /** The live figures now (the last metrics event), and a way to hear when new ones come. */
   metrics(): Metrics;
   subscribeMetrics(listener: () => void): () => void;
-  /** Megabytes as the interface writes them ("850 MB", "1.7 GB"; app.js fmtMb). */
   fmtMb(mb: number): string;
   /** How long since a time, "47 min" or "2 h 5 min" (app.js duration). */
   duration(iso: string): string;
@@ -149,7 +129,6 @@ export interface Host {
   setTabStop(box: Element, stop?: Element | null): void;
 }
 
-/** The app's state, drawn again whenever the app pushes a new one. */
 export function useAppState(): AppState {
   const { state, subscribe } = useHost();
   return useSyncExternalStore(subscribe, state);
@@ -161,7 +140,6 @@ export function usePage<T>(pick: (page: PageState) => T): T {
   return useSyncExternalStore(subscribePage, () => pick(page()));
 }
 
-/** The live figures (Roblox's windows, memory), drawn again with each metrics event. */
 export function useMetrics(): Metrics {
   const { metrics, subscribeMetrics } = useHost();
   return useSyncExternalStore(subscribeMetrics, metrics);
@@ -181,10 +159,8 @@ export function Icon({ name, className = '' }: { name: string; className?: strin
   return <svg className={`i ${className}`} viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: iconPaths(name) }} />;
 }
 
-/**
- * How long ago a time was, in words, kept fresh while shown. tpl, if given, places it in a sentence: that key's {t}
- * ("Last backup: {t}"). Not marked data-ago: app.js's patchTimes would write over React's text.
- */
+/** How long ago a time was, kept fresh while shown; tpl's {t} places it in a sentence ("Last backup: {t}").
+ * Not data-ago: app.js's patchTimes would write over React's text. */
 export function Ago({ iso, tpl }: { iso: string; tpl?: string }) {
   const { t, ago } = useHost();
   const [, tick] = useState(0);

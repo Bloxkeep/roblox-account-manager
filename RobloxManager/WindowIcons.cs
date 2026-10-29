@@ -5,10 +5,9 @@ using System.Runtime.InteropServices;
 namespace RobloxManager;
 
 /// <summary>
-/// Each account's Roblox window carries the account's picture as its icon (the taskbar, Alt+Tab, the title bar), so the
-/// windows are told apart at a glance; the account's initials on its colour when it has no picture (yet). Roblox keeps
-/// an icon set on its window (seen on 0.743); a window that drops it gets it again at its next check (<see cref="CheckEvery"/>).
-/// Given back (Roblox's own icon) when the setting is turned off. UI thread only.
+/// Each account's Roblox window gets the account's picture (or initials on its colour) as its icon: taskbar, Alt+Tab,
+/// title bar. Roblox keeps an icon set on its window (seen on 0.743); one that drops it gets it again at its next
+/// check (<see cref="CheckEvery"/>). UI thread only.
 /// </summary>
 static class WindowIcons
 {
@@ -19,12 +18,9 @@ static class WindowIcons
     const int WM_GETICON = 0x7F, WM_SETICON = 0x80, ICON_SMALL = 0, ICON_BIG = 1, SMTO_ABORTIFHUNG = 2;
     static readonly IntPtr ICON_SMALL_W = 0, ICON_BIG_W = 1;
 
-    /// <summary>
-    /// How often a client's windows are asked whether they still have their icon, one client at a time
-    /// (<see cref="NextToCheck"/>). Asking waits for Roblox's window to answer (up to 300 ms, while Bloxkeep's window
-    /// answers nothing), and Roblox keeps the icon. Every window used to be asked at every process check (1.5 s): six
-    /// windows busy loading a game could hold Bloxkeep's window up to 1.8 s a check.
-    /// </summary>
+    /// <summary>How often a client's windows are asked whether they still have their icon, one client at a time. Asking
+    /// waits for Roblox's window (up to 300 ms, Bloxkeep's window frozen meanwhile): asking all at every 1.5 s check let
+    /// six windows loading a game hold Bloxkeep up to 1.8 s.</summary>
     static readonly TimeSpan CheckEvery = TimeSpan.FromSeconds(30);
 
     /// <summary>The checks' clock (Tests/Bloxkeep.Tests): when set, it stands in for Environment.TickCount64. The app never sets it.</summary>
@@ -64,11 +60,8 @@ static class WindowIcons
         }
     }
 
-    /// <summary>
-    /// The client of these whose windows are checked this time: the one checked longest ago, once that is
-    /// <see cref="CheckEvery"/> ago (null when none is due yet), noted as checked now. One a process check, so a busy
-    /// Roblox holds up Bloxkeep's window once at most, and every client gets its turn.
-    /// </summary>
+    /// <summary>The client checked longest ago, once <see cref="CheckEvery"/> has passed (null when none is due), noted as
+    /// checked now. One per process check, so a busy Roblox holds Bloxkeep up once at most.</summary>
     public static int? NextToCheck(IEnumerable<int> pids)
     {
         long now = Now;
@@ -98,7 +91,6 @@ static class WindowIcons
         Destroy(made);
     }
 
-    /// <summary>The icons of clients that have closed go.</summary>
     public static void Forget(IReadOnlySet<int> alive)
     {
         foreach (int pid in ByPid.Keys.Where(pid => !alive.Contains(pid)).ToList())

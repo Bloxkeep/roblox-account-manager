@@ -3,15 +3,12 @@ using System.Runtime.InteropServices;
 namespace RobloxManager;
 
 /// <summary>
-/// Which window the person's own input reached, for anti-AFK's count of each Roblox window's last input. Windows' last
-/// input time (GetLastInputInfo) says only that the PC was used: with a Roblox window in front, a mouse moved on another
-/// monitor counted as its input, which Roblox never got (on 2026-10-19 a window was kicked for being idle 8 minutes after
-/// Bloxkeep last counted input for it). Windows' raw input names the device of every key press and mouse move, also while
-/// Bloxkeep is in the background (RIDEV_INPUTSINK); input from no device, sent by a program (anti-AFK's own F15, a
-/// Vietnamese input method typing its letters), is left out (seen on this PC 2026-10-22: a mouse move sent with SendInput
-/// came with no device, the keys typed with one). A key counts for the window in front, the mouse for the window in front
-/// when the pointer is over it. Nothing of the input itself (which key, where) is read. It runs on a thread of its own: a
-/// mouse sends up to thousands of moves a second, which mustn't queue up behind Bloxkeep's window.
+/// Which window the person's own input reached, for anti-AFK. GetLastInputInfo only says the PC was used: a mouse moved
+/// on another monitor counted for the Roblox window in front (2026-10-19: a window was kicked for idling 8 minutes after
+/// Bloxkeep last counted input for it). Raw input (RIDEV_INPUTSINK) names each event's device; input with none, sent by a
+/// program (anti-AFK's F15, a Vietnamese input method), is left out (seen 2026-10-22). Keys count for the window in
+/// front, the mouse only when over it; which key or where is never read. Runs on its own thread: a mouse sends up to
+/// thousands of moves a second.
 /// </summary>
 sealed class RobloxInput : IDisposable
 {
@@ -128,10 +125,8 @@ sealed class RobloxInput : IDisposable
             return _reached.TryGetValue(pid, out var at) ? at : null;
     }
 
-    /// <summary>
-    /// The process a piece of the person's input reached, or 0: a key goes to the window in front; the mouse only when
-    /// the pointer is over that window (a move on another monitor, or over a window behind, isn't the one in front's).
-    /// </summary>
+    /// <summary>The process an input reached, or 0: a key goes to the window in front, the mouse only when the pointer is
+    /// over it.</summary>
     internal static int Reached(bool keyboard, int front, int underPointer) => front != 0 && (keyboard || underPointer == front) ? front : 0;
 
     void Note(IntPtr input)

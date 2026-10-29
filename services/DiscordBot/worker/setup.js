@@ -1,8 +1,7 @@
-// Bloxkeep's community server, set up by the bot itself with /setup (Bloxkeep's developers only): its roles, categories
-// and channels, who may post where, Community on, AutoMod
-// (spam, mention raids, bad words, and a Roblox cookie or a free-Robux scam pasted in chat), #dont-type-here (a trap:
-// whoever posts there is banned, worker.js trap), its icon, the rules and welcome posts. Run again, it only adds what is missing and updates its own posts: nothing is made twice. A step
-// Discord refuses is reported, and the others still run.
+// Bloxkeep's community server, set up by the bot itself with /setup (developers only): roles, categories, channels, who
+// may post where, Community, AutoMod (spam, mention raids, bad words, a Roblox cookie or free-Robux scam pasted in chat),
+// #dont-type-here (a trap: whoever posts there is banned, worker.js trap), its icon, the rules and welcome posts. Run again,
+// it only adds what is missing and updates its own posts. A step Discord refuses is reported; the others still run.
 import { api } from './discord.js';
 import { REPO } from './sources.js';
 import { COUNT_CHANNEL, LOGO, SITE, countChannelName } from './texts.js';
@@ -23,10 +22,8 @@ const DESCRIPTION = "Bloxkeep: the free Roblox account manager for Windows. Help
 // Permission overwrites: a role (type 0) or the bot itself (type 1, by its user id).
 const ow = (id, type, allow = 0n, deny = 0n) => ({ id, type, allow: String(allow), deny: String(deny) });
 const botCan = bot => ow(bot, 1, P.VIEW | P.SEND | P.EMBED | P.HISTORY);
-// Everyone reads, nobody but moderators and the bot posts.
 const readOnly = (everyone, mod, bot) => [
   ow(everyone, 0, 0n, P.SEND | P.PUBLIC_THREADS | P.PRIVATE_THREADS | P.SEND_IN_THREADS), ow(mod, 0, P.SEND), botCan(bot)];
-// Seen by these roles only.
 const only = (everyone, roles, bot) => [ow(everyone, 0, 0n, P.VIEW), ...roles.map(r => ow(r, 0, P.VIEW)), botCan(bot)];
 
 const RULES = [
@@ -103,15 +100,13 @@ export async function setupServer(env, guildId, bot, runner) {
   if (theirs(VOICE) && theirs(VOICE).name !== 'General')
     await step('rename General', async () => Object.assign(theirs(VOICE), await call('PATCH', `/channels/${theirs(VOICE).id}`, { name: 'General' })));
 
-  // Categories and the channels that need nothing more than a server.
   const info = await channel('Info', CATEGORY, null);
   const community = await channel('Community', CATEGORY, null);
   const support = await channel('Support', CATEGORY, null);
   const staff = await channel('Staff', CATEGORY, null, { permission_overwrites: only(everyone, [mod.id], bot) });
   // The trap: everyone may post, and whoever does is banned (scam bots and hacked accounts post in every channel).
-  // How many have Bloxkeep open now, as a voice channel's name at the very top, in no category (Discord puts a category's
-  // voice channels after its text ones): seen by everyone, joined by nobody, renamed by the bot (worker.js
-  // updateCountChannel), which may manage this channel alone. One found (by its name) stays where it is.
+  // The count as a voice channel's name at the very top, in no category (Discord puts a category's voice channels after its
+  // text ones): seen by all, joined by none, renamed by the bot alone (updateCountChannel). One found by name stays put.
   const count = channels.find(x => x.type === VOICE && COUNT_CHANNEL.test(x.name)) ?? await step('online count', async () => {
     const c = await call('POST', `${g}/channels`, {
       name: countChannelName(0), type: VOICE,
@@ -130,7 +125,6 @@ export async function setupServer(env, guildId, bot, runner) {
   const modChat = await channel('mod-chat', TEXT, staff, { permission_overwrites: only(everyone, [mod.id], bot) });
   const modLog = await channel('mod-log', TEXT, staff, { topic: 'AutoMod alerts and Discord updates', permission_overwrites: only(everyone, [mod.id], bot) });
 
-  // Discord's voice channel into Community, its categories gone once empty.
   for (const v of channels.filter(c => c.type === VOICE && defaults.some(d => d.id === c.parent_id)))
     await step(`move ${v.name}`, async () => Object.assign(v, await call('PATCH', `/channels/${v.id}`, { parent_id: community.id })));
   for (const d of defaults) {
@@ -141,8 +135,7 @@ export async function setupServer(env, guildId, bot, runner) {
       });
   }
 
-  // Community: announcement channels and forums. Members verified (an account older than 5 minutes), media
-  // scanned for everyone, notifications for mentions only.
+  // Community: announcement channels and forums; members verified (an account older than 5 minutes), media scanned for all, notifications for mentions only.
   if (!guild.features.includes('COMMUNITY')) {
     await step('Community', async () => {
       await call('PATCH', g, {
@@ -161,7 +154,6 @@ export async function setupServer(env, guildId, bot, runner) {
   const bugs = await forum('bug-reports', "One bug per post: the steps, what happened, what you expected. Settings › Send feedback can attach the error log.", ['Bug', 'Crash', 'Fixed', "Can't reproduce"]);
   const ideas = await forum('ideas', 'One idea per post. React to the ones you want.', ['Idea', 'Planned', 'Done', 'Not planned']);
 
-  // The order people see.
   await step('order', () => call('PATCH', `${g}/channels`, [
     [info, community, support, staff],
     [trap, welcome, rules, announcements, updates],
@@ -201,7 +193,6 @@ export async function setupServer(env, guildId, bot, runner) {
     }
   });
 
-  // The server's icon, the logo, unless it has one.
   if (!guild.icon) {
     await step('icon', async () => {
       const bytes = new Uint8Array(await (await fetch(env.ICON_URL || ICON)).arrayBuffer());

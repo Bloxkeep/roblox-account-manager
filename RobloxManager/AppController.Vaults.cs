@@ -1,21 +1,18 @@
 namespace RobloxManager;
 
 /// <summary>
-/// Several vaults (<see cref="Vaults"/>): the lock screen's picker, Steam-like ("Who's using Bloxkeep?"), shown at
-/// start when asked for (<see cref="Prefs.AskVault"/>) or from Switch vault; adding, naming, a picture, taking one off
-/// the list. Opening the picker (or the form for a new vault) over an open vault leaves it open, so Back returns to it
-/// without the password; only picking or setting up another vault locks it. Its Roblox windows keep running then, its
-/// auto-rejoin, schedules and Discord wait for it like when it is locked.
+/// Several vaults (<see cref="Vaults"/>): the lock screen's Steam-like picker ("Who's using Bloxkeep?"), shown at start
+/// when asked for (<see cref="Prefs.AskVault"/>) or from Switch vault. Opening the picker or the new-vault form over an
+/// open vault leaves it open, so Back returns without the password; only picking or setting up another vault locks it
+/// (its Roblox windows keep running; auto-rejoin, schedules and Discord wait as when locked).
 /// </summary>
 public sealed partial class AppController
 {
     /// <summary>The picker is up instead of the password (start, or Switch vault).</summary>
     bool _vaultPick = Prefs.AskVault && Prefs.VaultList.Count > 1;
 
-    /// <summary>
-    /// A vault being added: the form sets it up (name and master password) before it joins the list. The vault the
-    /// lock screen offers (or the one open) stays the active one until then.
-    /// </summary>
+    /// <summary>A vault being added: the form sets it up (name, master password) before it joins the list; the vault offered
+    /// (or open) stays the active one until then.</summary>
     Prefs.VaultEntry? _newVault;
 
     /// <summary>Adding started from the picker: Cancel goes back to it, else to the screen it came from.</summary>
@@ -35,7 +32,6 @@ public sealed partial class AppController
         ask = Prefs.AskVault,
     };
 
-    /// <summary>"Switch vault" (in the app or on the lock screen): the picker shows; an open vault stays open behind it.</summary>
     object? ShowVaultPicker()
     {
         _newVault = null;
@@ -52,10 +48,8 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// A vault chosen in the picker. The one open right now: back to it as it was. Another: the open one locks and
-    /// the lock screen asks for the chosen one's master password.
-    /// </summary>
+    /// <summary>A vault chosen in the picker: the open one, back to it as it was; another, the open one locks and the lock
+    /// screen asks for the chosen one's master password.</summary>
     object? SelectVault(string id)
     {
         var entry = Prefs.VaultList.FirstOrDefault(v => v.Id == id) ?? throw new UserError(L.T("That vault is no longer on this PC."));
@@ -73,10 +67,8 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// "Add a vault" (the picker's +, or the lock screen's Create a new vault): a form for its name and own master
-    /// password. An open vault stays open until the new one is set up (Cancel goes back to it).
-    /// </summary>
+    /// <summary>"Add a vault" (the picker's +, or the lock screen's Create a new vault): a form for its name and own master
+    /// password; an open vault stays open until the new one is set up.</summary>
     object? AddVault()
     {
         _addFromPicker = _vaultPick;
@@ -86,7 +78,6 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>Adding cancelled: back to the picker, or to the screen it came from (an open vault still open).</summary>
     object? CancelAddVault()
     {
         _newVault = null;
@@ -105,7 +96,6 @@ public sealed partial class AppController
         Vaults.Use(_newVault);
     }
 
-    /// <summary>A vault just set up (the first one, or one being added) joins the list under the name typed.</summary>
     void JoinVaultList(string? name)
     {
         var entry = _newVault ?? Vaults.Current ?? Vaults.New(); // the first vault on this PC: vault.rmv, "Vault 1"
@@ -179,10 +169,8 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// A vault off this PC's list (one whose password is lost, say): its file is set aside, not deleted
-    /// (<see cref="Vault.SetAside"/>), and can come back with Restore from a backup. Not the vault open right now.
-    /// </summary>
+    /// <summary>Takes a vault off this PC's list (its password lost, say): its file is set aside, not deleted
+    /// (<see cref="Vault.SetAside"/>), and can come back with Restore from a backup. Not the vault open right now.</summary>
     object? RemoveVault(string id)
     {
         var entry = Prefs.VaultList.FirstOrDefault(v => v.Id == id) ?? throw new UserError(L.T("That vault is no longer on this PC."));

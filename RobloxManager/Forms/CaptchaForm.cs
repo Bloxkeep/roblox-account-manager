@@ -8,15 +8,13 @@ using Microsoft.Web.WebView2.WinForms;
 namespace RobloxManager;
 
 /// <summary>
-/// Shows the captcha Roblox put in front of a password sign-in, for the user to solve, as roblox.com would show it:
+/// Shows the captcha Roblox put in front of a password sign-in, as roblox.com would:
 /// <list type="bullet">
-/// <item>Arkose Labs' FunCaptcha ("captcha"), loaded from arkoselabs.roblox.com; <see cref="Token"/> is its token.</item>
-/// <item>HUMAN Security's press-and-hold ("captchav2"), fetched from apis.roblox.com/v2/captcha; <see cref="Token"/> is
-/// Roblox's redemption token.</item>
+/// <item>Arkose Labs' FunCaptcha ("captcha") from arkoselabs.roblox.com; <see cref="Token"/> is its token.</item>
+/// <item>HUMAN's press-and-hold ("captchav2") from apis.roblox.com/v2/captcha; <see cref="Token"/> is Roblox's redemption token.</item>
 /// </list>
-/// The page that hosts the puzzle is served by the app itself under the realm's site (www.roblox.com), because that site is unreachable
-/// from some networks (Vietnam) while the captcha and API hosts are not. HUMAN's "first-party" requests, which would go
-/// to www.roblox.com as well, are passed on to HUMAN's own hosts.
+/// The host page is served by the app under the realm's site (www.roblox.com), which some networks (Vietnam) block while
+/// the captcha and API hosts aren't; HUMAN's "first-party" requests there are passed on to HUMAN's own hosts.
 /// </summary>
 public sealed class CaptchaForm : Form
 {
@@ -41,11 +39,8 @@ public sealed class CaptchaForm : Form
     readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
     bool _readyNoted;
 
-    /// <summary>
-    /// One browser profile kept for the puzzle windows (not a fresh one each time): Arkose's scripts stay cached and it
-    /// sees a browser it already knows, so its "Verifying browser…" step doesn't start from nothing every time. It
-    /// only ever holds the puzzle pages' own data — never a Roblox sign-in, which goes through the app.
-    /// </summary>
+    /// <summary>One kept profile for the puzzle windows, so Arkose's scripts stay cached and its "Verifying browser…" step
+    /// knows the browser. It holds only the puzzle pages' data, never a Roblox sign-in.</summary>
     public static string ProfileDir => Vault.CacheFolder("captcha");
 
     public string? Token { get; private set; }
@@ -295,12 +290,9 @@ public sealed class CaptchaForm : Form
         </html>
         """;
 
-    /// <summary>
-    /// Mirrors roblox.com's captchav2 flow (Challenge.js, Oct 2026): load HUMAN's sensor and wait briefly for its _px3
-    /// cookie, POST {challenge_id} to /v2/captcha. 200 carries the redemption token; 403 carries the press-and-hold
-    /// puzzle (window._px* settings and a block script); once it's solved, HUMAN calls _pxOnCaptchaSuccess and the POST
-    /// is sent again.
-    /// </summary>
+    /// <summary>Mirrors roblox.com's captchav2 flow (Challenge.js, Oct 2026): load HUMAN's sensor, wait briefly for its _px3
+    /// cookie, POST {challenge_id} to /v2/captcha. 200 carries the redemption token; 403 the puzzle (window._px* settings
+    /// and a block script), after which HUMAN calls _pxOnCaptchaSuccess and the POST is sent again.</summary>
     static string HumanPage(string apiBase, string challengeId) => $$"""
         <!doctype html>
         <html lang="{{Lang}}">

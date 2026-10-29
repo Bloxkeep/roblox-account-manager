@@ -77,14 +77,10 @@
   };
   const LOGO = 'logo.svg';
 
-  /**
-   * Settings › Appearance › Custom: app.css's colour tokens worked out from the person's two colours. Dark or light by
-   * the background, as Themes.cs decides it (relative luminance under 0.179: white words read better); surfaces a step
-   * from it the way Dark and Light have theirs; words in its own hue; buttons and switches in the accent. With a
-   * picture (or video) the page goes behind glass like the scenery themes, the background colour lying over it as much
-   * as asked. The picture itself shows in a layer of its own under the page (app.js showCustomMedia), so it can be
-   * blurred or be a video: the page's own backdrop is then clear, and swatch is what its swatch shows instead.
-   */
+  // Settings › Appearance › Custom: app.css's colour tokens from the person's two colours. Dark or light by the background,
+  // as Themes.cs decides (relative luminance under 0.179: white words); surfaces a step from it like Dark and Light; words in
+  // its own hue; controls in the accent. With a picture (or video) the page goes behind glass like the scenery themes; the
+  // picture is a layer under the page (app.js showCustomMedia), so it can blur or move: the backdrop is clear, swatch shows instead.
   function customVars(ct) {
     const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
     const hex = c => '#' + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');

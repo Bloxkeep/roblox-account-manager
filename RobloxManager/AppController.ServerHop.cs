@@ -1,10 +1,8 @@
 namespace RobloxManager;
 
 /// <summary>
-/// "Switch to another server" (the account menu, on accounts playing): each window in a public server is closed and
-/// opened again into another server of the same game, picked at random among those with room; accounts of the same game
-/// switched together go to the same server, as they were before. Private servers, share links and a followed player
-/// have no other server to go to, and are left as they are.
+/// "Switch to another server": each window in a public server reopens into a random other server of its game with room;
+/// accounts of one game switched together stay together. Private servers, share links and follows are left as they are.
 /// </summary>
 public sealed partial class AppController
 {

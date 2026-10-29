@@ -1,7 +1,5 @@
-// Settings › Bloxkeep, the app itself: Updates (the version and where the update check stands, with What's new, and
-// Check now or Restart to update; the automatic updates and beta versions switches), This app (keep running in the
-// tray, hardware acceleration), Help & feedback (the guide, feedback, Bloxkeep's Discord server, a GitHub star), then
-// Privacy (being counted among the people using Bloxkeep now).
+// Settings › Bloxkeep: Updates (version, update check, What's new, automatic and beta switches), This app (tray, hardware
+// acceleration), Help & feedback (guide, feedback, Discord server, GitHub star), Privacy (being counted among people online).
 import { useEffect, useState } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';

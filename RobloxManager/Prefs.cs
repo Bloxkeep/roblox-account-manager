@@ -2,10 +2,7 @@ using System.Text.Json;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Settings needed before the vault is unlocked (language, theme, safe rendering), kept in prefs.json.
-/// Nothing in here is secret.
-/// </summary>
+/// <summary>Settings needed before the vault is unlocked (language, theme, safe rendering), in prefs.json. Nothing here is secret.</summary>
 public static class Prefs
 {
     static string PrefsPath => Path.Combine(Vault.DataDir, "prefs.json");
@@ -15,11 +12,8 @@ public static class Prefs
     /// <summary>A theme id from <see cref="Themes"/>.</summary>
     public static string Theme { get; set; } = Themes.Default;
 
-    /// <summary>
-    /// Settings › Appearance › Custom: the page's colour and its accent (#rrggbb), how much of that colour lies over the
-    /// picture (0 to 90 %), the picture's (or video's) file in the data folder (theme-background-*.png…) when there is
-    /// one, and how much it is blurred (0 to 30 px).
-    /// </summary>
+    /// <summary>Settings › Appearance › Custom: page colour and accent (#rrggbb), how much colour lies over the picture (0 to
+    /// 90 %), the picture's or video's file in the data folder (theme-background-*.png…), and its blur (0 to 30 px).</summary>
     public sealed record CustomTheme(string Background, string Accent, int Fade, string? Picture, int Blur = 0);
     public static CustomTheme Custom { get; set; } = new("#141a26", "#22c55e", 45, null);
 
@@ -53,10 +47,8 @@ public static class Prefs
     /// <summary>Settings › Bloxkeep › Add me to the online count: on until the person turns it off (AppController.Online.cs).</summary>
     public static bool CountOnline { get; set; } = true;
 
-    /// <summary>
-    /// The id that says "Bloxkeep is open on this PC" (AppController.Online.cs), made from the PC at its first beat (the same
-    /// after a reinstall); linked to nothing else. Forgotten when that is turned off.
-    /// </summary>
+    /// <summary>The online count's id for this PC, made from the PC at its first beat (the same after a reinstall) and linked
+    /// to nothing else (AppController.Online.cs). Forgotten when the count is turned off.</summary>
     public static string? OnlineId { get; set; }
 
     /// <summary>The bot was told this copy's first "open" (a new install, AppController.Online.cs): told once.</summary>
@@ -65,10 +57,8 @@ public static class Prefs
     /// <summary>Settings › Discord › Control from Discord: off until the person turns it on (AppController.Remote.cs).</summary>
     public static bool RemoteControl { get; set; }
 
-    /// <summary>
-    /// The secret this PC's Bloxkeep proves itself with to Bloxkeep's Discord bot, made the first time Control from
-    /// Discord is turned on; kept encrypted for this Windows user (AppController.Remote.cs). A new one unlinks the PC.
-    /// </summary>
+    /// <summary>The secret this PC proves itself with to Bloxkeep's Discord bot, made when Control from Discord is first
+    /// turned on; encrypted for this Windows user (AppController.Remote.cs). A new one unlinks the PC.</summary>
     public static string? RemoteKey { get; set; }
 
     /// <summary>The version that last ran here; a newer one means the app was updated (see <see cref="WhatsNew"/>).</summary>
@@ -77,10 +67,8 @@ public static class Prefs
     /// <summary>Important events reach the person as Windows notifications while the window is hidden or in the background.</summary>
     public static bool Notifications { get; set; } = true;
 
-    /// <summary>
-    /// Kinds of event turned off one by one under that switch (see AppController.Notify.cs); every kind is on until
-    /// listed here. Names this build doesn't know (a newer one wrote them) are kept as they are.
-    /// </summary>
+    /// <summary>Event kinds turned off one by one under that switch (AppController.Notify.cs). Names this build doesn't know
+    /// (a newer one wrote them) are kept.</summary>
     public static HashSet<string> NotifyOff { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Questions answered with "Don't ask again" (see AppController.SkippableConfirms): their yes is assumed.</summary>
@@ -105,10 +93,8 @@ public static class Prefs
     }
     static DateTime? _lastBackup;
 
-    /// <summary>
-    /// A change worth a backup was saved and not copied yet; cleared by the copy. Set when the app closed first (killed,
-    /// or the copy on exit took too long), so the next unlock makes it. Each vault has its own.
-    /// </summary>
+    /// <summary>A change worth a backup was saved and not copied yet; still set if the app closed first (killed, or the copy
+    /// on exit took too long), so the next unlock makes it. Each vault has its own.</summary>
     public static bool BackupPending
     {
         get => Vaults.Current is { } v ? v.BackupPending : _backupPending;
@@ -122,11 +108,8 @@ public static class Prefs
     }
     static bool _backupPending;
 
-    /// <summary>
-    /// The vaults on this PC, in the order they were added (the lock screen's picker, see <see cref="Vaults"/>): each
-    /// its own file in the data folder with its own master password. Their names and pictures show before anything is
-    /// unlocked, so nothing in here is secret.
-    /// </summary>
+    /// <summary>A vault on this PC (the lock screen's picker, <see cref="Vaults"/>): its own file and master password. Names
+    /// and pictures show before anything is unlocked, so nothing here is secret.</summary>
     public sealed class VaultEntry
     {
         public string Id { get; set; } = "";
@@ -161,7 +144,6 @@ public static class Prefs
     /// <summary>The main window's place and size when not maximised, "x,y,w,h" in screen pixels; null until it was first moved, resized or closed.</summary>
     public static string? MainWindow { get; set; }
 
-    /// <summary>The main window was maximised when last left.</summary>
     public static bool MainMaximized { get; set; }
 
     /// <param name="At">When the build was installed (its folder's time), or first seen for the first entry.</param>
@@ -179,31 +161,22 @@ public static class Prefs
 
     public static DateTime? RobloxClosedNotified { get; set; }
 
-    /// <summary>
-    /// Roblox builds (folder names) on which two windows played together here with Multi-Roblox on, oldest first: what
-    /// "it works" looks like, so a warning from the Roblox watch about that build no longer applies.
-    /// </summary>
+    /// <summary>Roblox builds (folder names) on which two windows played together here with Multi-Roblox on, oldest first,
+    /// so a Roblox watch warning about that build no longer applies.</summary>
     public static List<string> MultiWorked { get; } = new();
 
-    /// <summary>
-    /// The vaults unlocked on this PC (<see cref="Vault.Id"/>, a hash of the salt, nothing secret), with the ids they had
-    /// before a password change: a backup restored with an id not in here was made somewhere else.
-    /// </summary>
+    /// <summary>Ids of vaults unlocked here (<see cref="Vault.Id"/>, a hash of the salt), old ids included: a restored backup
+    /// with an id not in here was made somewhere else.</summary>
     public static HashSet<string> KnownVaultIds { get; } = new(StringComparer.Ordinal);
 
-    /// <summary>
-    /// The id of a vault restored from a backup made somewhere else (AppController.RestoreBackup), until it is first
-    /// unlocked: the program it names for opening Roblox and its Discord links are dropped then.
-    /// </summary>
+    /// <summary>A vault restored from another PC's backup, until first unlocked: its Roblox launcher and Discord links are
+    /// dropped then (AppController.RestoreBackup).</summary>
     public static string? ForeignRestore { get; set; }
 
     public static bool IsVaultId(string? id) => id is { Length: 8 } && id.All(char.IsAsciiHexDigitLower);
 
-    /// <summary>
-    /// Multi-Roblox was on in the vault last opened: it is taken as Bloxkeep starts, before the master password, so
-    /// Roblox windows opened any way (roblox.com in any browser, the Roblox app) run side by side even while Bloxkeep
-    /// waits at the lock screen. A copy of the vault's setting, kept in step by AppController.
-    /// </summary>
+    /// <summary>A copy of the last vault's Multi-Roblox switch, taken at start before the master password so Roblox windows
+    /// opened any way run side by side even at the lock screen. Kept in step by AppController.</summary>
     public static bool MultiRobloxAtStart { get; set; }
 
     static readonly string[] Known =

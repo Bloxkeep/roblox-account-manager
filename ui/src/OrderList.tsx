@@ -1,6 +1,5 @@
-// Accounts in an order to change: rows are dragged (anywhere on the row) into another order, or moved with the arrow
-// buttons (keyboard). The launch-order dialog numbers them; the preset form ticks them instead (a click on the row
-// ticks it too), and the ticked ones, in this order, are the preset's launch order.
+// Accounts in an order to change: dragged (anywhere on the row) or moved with the arrow buttons. The launch-order dialog
+// numbers them; the preset form ticks them (a row click too), the ticked ones in this order being its launch order.
 import { useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { flushSync } from 'react-dom';
 import { Icon, useHost } from './host';

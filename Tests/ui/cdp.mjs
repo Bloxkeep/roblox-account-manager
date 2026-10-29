@@ -76,6 +76,8 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
   });
   const b = {
     send, problems,
+    /** fn hears every event the page sends (a screencast's frames, say). */
+    on: fn => listeners.push(fn),
     async goto(url) {
       const loaded = new Promise(res => {
         const f = m => { if (m.method === 'Page.loadEventFired') { listeners.splice(listeners.indexOf(f), 1); res(); } };

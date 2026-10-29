@@ -3,11 +3,10 @@ using System.Globalization;
 namespace RobloxManager;
 
 /// <summary>
-/// Discord's alerts (see docs/discord-style.md): each event the Windows notifications get becomes a short news title
-/// coloured by what it means, the account it is about with its Roblox avatar above it, the game's icon beside it, and
-/// the facts (game, time played, Roblox's reason) side by side. Made when the event happens, from the sentence and
-/// values the notification was made from: in Discord's language, with names shown or hidden by Discord's switch.
-/// Events within a few seconds go out as one message, a field per event.
+/// Discord's alerts (see docs/discord-style.md): each event the Windows notifications get becomes a short title coloured
+/// by what it means, the account with its Roblox avatar above it, the game's icon beside it, and the facts side by side.
+/// Made when the event happens from the notification's sentence and values, in Discord's language, names shown or
+/// hidden by Discord's switch. Events within a few seconds go out as one message, a field per event.
 /// </summary>
 public sealed partial class AppController
 {
@@ -22,14 +21,10 @@ public sealed partial class AppController
         public string? Thumbnail { get; init; }
     }
 
-    /// <summary>The account an event is about, as Discord shows it, with the game and the stay it was in (when known).</summary>
     sealed record AlertSubject(string Name, string? Icon, long? PlaceId, string? Game, string? GameIcon, TimeSpan? Played, string? Reason);
 
-    /// <summary>
-    /// The alert for an event of <paramref name="type"/> about <paramref name="subject"/> (an account, or a preset for a
-    /// schedule's), from the sentence and values its notification was made from (<paramref name="made"/>; null when
-    /// unknown: then its <paramref name="text"/> as it is).
-    /// </summary>
+    /// <summary>The alert for <paramref name="type"/> about <paramref name="subject"/> (an account, or a schedule's preset), from
+    /// the notification's sentence and values (<paramref name="made"/>; null: <paramref name="text"/> as it is).</summary>
     DiscordAlert AlertFor(string type, Guid subject, (string English, object?[] Args)? made, string text, DateTime now)
     {
         string en = made?.English ?? "";
@@ -96,11 +91,9 @@ public sealed partial class AppController
             case "schedule" or "scheduleFail" or "scheduleMissed" or "scheduleStop":
                 return PresetAlert(type, en, subject, Arg, Count, why, now);
         }
-        // An event without words of its own here: the notification's sentence.
         return Plain(EventTitle(type == "banned" ? type : NotifyKind(type) ?? type), DiscordWebhook.Escape(text), DiscordWebhook.Yellow);
     }
 
-    /// <summary>A scheduled preset's alert: started, already open, didn't run (and why), missed, finished.</summary>
     DiscordAlert PresetAlert(string type, string en, Guid presetId, Func<int, string> arg, Func<int, long> count, string? why, DateTime now)
     {
         var preset = PresetFor(presetId);
@@ -127,7 +120,6 @@ public sealed partial class AppController
         return Threes(new DiscordAlert(title, text, fields, color, now) { Thumbnail = (place is long p ? GameIcon(p, 0) : null) ?? DiscordWebhook.Logo });
     }
 
-    /// <summary>The alert about one account: its name and avatar above the title, its game's icon beside it, the game, time played and Roblox's reason.</summary>
     DiscordAlert AccountAlert(AlertSubject who, string title, string? text, int color, DateTime at, bool facts = true)
     {
         var fields = new List<DiscordField>();
@@ -143,10 +135,7 @@ public sealed partial class AppController
         });
     }
 
-    /// <summary>
-    /// Discord puts three short fields to a row: one that would sit alone on the last row goes to a small line under
-    /// the description instead.
-    /// </summary>
+    /// <summary>Discord puts three short fields to a row: a lone one on the last row goes to a small line under the description.</summary>
     static DiscordAlert Threes(DiscordAlert alert)
     {
         var (fields, text) = Threes(alert.Fields, alert.Text);
@@ -194,7 +183,6 @@ public sealed partial class AppController
     string GameName(long placeId, string? noted) =>
         _games.GetValueOrDefault(placeId)?.Name is { Length: > 0 } name ? name : noted is { Length: > 0 } ? noted : DF("Place {0}", placeId);
 
-    /// <summary>A game's icon from Roblox's image servers, when it is known.</summary>
     string? GameIcon(long placeId, long universeId) => IconOf(placeId, universeId) is { } icon && DiscordWebhook.IsRobloxPicture(icon) ? icon : null;
 
     /// <summary>Roblox's disconnect code in plain words (as KickReason words them), with the code: "Connection lost `277`".</summary>
@@ -269,9 +257,8 @@ public sealed partial class AppController
         }
         // All about one account: it goes above the title once, not into every field.
         string? one = alerts.Select(a => a.Author).Distinct().Count() == 1 ? alerts[0].Author : null;
-        // A field each: its text (a field has no small line: a side note joins it), then its facts on one line, the
-        // game and Roblox's reason as they are, the others named; facts the field before gave about the same account
-        // aren't repeated.
+        // A field each: its text (a side note joins it: a field has no small line), then its facts on one line; facts the
+        // field before gave about the same account aren't repeated.
         string game = DT("Game"), reason = DT("Reason");
         (string? Author, string Facts)? before = null;
         var fields = alerts.Select(a =>

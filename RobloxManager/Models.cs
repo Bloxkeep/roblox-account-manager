@@ -34,7 +34,6 @@ public sealed class Account
     public TotpKey? Authenticator { get; set; }
     /// <summary>What Roblox's public profile of the account said at the last check (see AppController.Health.cs); null until asked.</summary>
     public bool? Banned { get; set; }
-    /// <summary>When the ban was first noticed; null while not banned.</summary>
     public DateTime? BannedSince { get; set; }
     /// <summary>Games that banned this account (the game's own ban, not Roblox's), as Bloxkeep saw them: no auto-rejoin into those.</summary>
     public List<GameBan> GameBans { get; set; } = new();
@@ -62,12 +61,9 @@ public sealed class AppSettings
     public bool? WindowPictures { get; set; }
     /// <summary>Taskbar buttons: "roblox" (one for every Roblox window, Windows' own), "account" (one each) or "preset" (one group per preset).</summary>
     public string TaskbarGroups { get; set; } = "roblox";
-    /// <summary>
-    /// How Arrange windows lays the Roblox windows out: "fill" (the whole screen, as many tiles as windows); a grid of
-    /// the screen, "<cols>x<rows>" ("2x2", "4x4"…), each window one of its cells from the top-left whatever their number
-    /// (two windows can be tiny too); "custom": every window <see cref="WindowWidth"/> × <see cref="WindowHeight"/>; or,
-    /// saved by older versions, fixed tiles "small" / "medium" / "large".
-    /// </summary>
+    /// <summary>How Arrange windows lays them out: "fill" (whole screen, one tile per window); "<cols>x<rows>" ("2x2"…), a
+    /// screen grid filled from the top-left whatever the window count; "custom": every window <see cref="WindowWidth"/> ×
+    /// <see cref="WindowHeight"/>; or, from older versions, "small" / "medium" / "large".</summary>
     public string WindowLayout { get; set; } = "fill";
     /// <summary>The "custom" layout's window size, in screen pixels (the whole window, title bar too).</summary>
     public int WindowWidth { get; set; } = 640;
@@ -81,17 +77,13 @@ public sealed class AppSettings
     public string Layout { get; set; } = "";
     public string Sort { get; set; } = "";
     public int LaunchDelaySeconds { get; set; } = 8;
-    /// <summary>
-    /// Minutes without a person's keyboard or mouse input (anywhere on the PC) before Bloxkeep shows its lock screen
-    /// again; 0 never. Roblox windows and what runs in the background carry on (see AppController.ScreenLock).
-    /// </summary>
+    /// <summary>Minutes without keyboard or mouse input anywhere on the PC before the lock screen shows; 0 never. Roblox
+    /// windows and background work carry on (see AppController.ScreenLock).</summary>
     public int AutoLockMinutes { get; set; }
     public bool MemoryWarnings { get; set; } = true;
     public bool TrimBackground { get; set; }
-    /// <summary>
-    /// Roblox windows in the background run in Windows' efficiency mode (power saving, below-normal priority, leaning on
-    /// the efficiency cores); the one in front at full speed (AppController.Cores.cs). Off until the person turns it on.
-    /// </summary>
+    /// <summary>Background Roblox windows run in Windows' efficiency mode (below-normal priority, efficiency cores); the one
+    /// in front at full speed (AppController.Cores.cs). Off by default.</summary>
     public bool SplitCores { get; set; }
     /// <summary>Off until the user opts in: it briefly brings Roblox windows to the front while the PC is idle.</summary>
     public bool AntiAfk { get; set; }
@@ -107,10 +99,7 @@ public sealed class AppSettings
     public List<LaunchPreset> Presets { get; set; } = new();
     /// <summary>Accounts in the order Play opens them; accounts missing here (added later) come after, as listed.</summary>
     public List<Guid> LaunchOrder { get; set; } = new();
-    /// <summary>
-    /// Ids this vault had before its password changes (see <see cref="Vault.Id"/>): backups made under them are still
-    /// this vault's to prune.
-    /// </summary>
+    /// <summary>Ids this vault had before password changes (<see cref="Vault.Id"/>): backups under them are still its to prune.</summary>
     public List<string> PreviousVaultIds { get; set; } = new();
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
@@ -139,15 +128,12 @@ public sealed class LaunchPreset
     public PresetSchedule? Schedule { get; set; }
     /// <summary>When it last opened accounts (by hand or by schedule), UTC; null if it hasn't since this was added.</summary>
     public DateTime? LastRunAt { get; set; }
-    // Options for the Roblox windows this preset opens (missing in older vaults: they follow the usual settings).
     /// <summary>Anti-AFK for its windows; null follows Settings.</summary>
     public bool? AntiAfk { get; set; }
     /// <summary>Auto-rejoin for its windows; null follows each account's own switch.</summary>
     public bool? AutoRejoin { get; set; }
-    /// <summary>
-    /// Where a dropped window rejoins: "" any server of the game, "any" the server another of its accounts plays in, or
-    /// one of its accounts' id, that account's server (see AppController.TeammateTargetAsync).
-    /// </summary>
+    /// <summary>Where a dropped window rejoins: "" any server, "any" a server another of its accounts plays in, or an
+    /// account id, that account's server (see AppController.TeammateTargetAsync).</summary>
     public string RejoinWith { get; set; } = "";
     /// <summary>"" (Roblox as set up) or "afk": lowest graphics, 30 FPS, no sound, minimised once in the game.</summary>
     public string Profile { get; set; } = "";
@@ -155,10 +141,8 @@ public sealed class LaunchPreset
     public int RestartHours { get; set; }
     /// <summary>Its windows are arranged (Settings' layout) once it has opened them; null follows Settings.</summary>
     public bool? Arrange { get; set; }
-    /// <summary>
-    /// Its own Discord webhook (see AppController.Discord.cs): its schedule messages, the summary after its scheduled
-    /// stop and the alerts about the windows it opened go there. "" sends them to the one in Settings.
-    /// </summary>
+    /// <summary>Its own Discord webhook for its schedule messages, stop summary and window alerts; "" uses the one in
+    /// Settings (see AppController.Discord.cs).</summary>
     public string DiscordWebhook { get; set; } = "";
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
@@ -183,10 +167,8 @@ public sealed class PresetSchedule
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
-/// <summary>
-/// A server saved to join again (AppController.SavedServers.cs): a Roblox private server's link, or a code a game asks
-/// for inside it to join a server of its own (Bloxkeep opens the game and copies the code; it never types it in).
-/// </summary>
+/// <summary>A server saved to join again: a private server's link, or a code a game asks for inside it (Bloxkeep opens
+/// the game and copies the code; it never types it in).</summary>
 public sealed class SavedServer
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -328,10 +310,8 @@ public sealed class ActivityEntry
 {
     /// <summary>When it happened (UTC).</summary>
     public DateTime At { get; set; }
-    /// <summary>
-    /// "opened", "rejoined", "joined", "left", "disconnected", "signedOut", "closed", "closedByRoblox", or the type of
-    /// a notification (AppController.Notify.cs), whose own sentence is in <see cref="Text"/>.
-    /// </summary>
+    /// <summary>"opened", "rejoined", "joined", "left", "disconnected", "signedOut", "closed", "closedByRoblox", or a
+    /// notification's type (AppController.Notify.cs), whose sentence is in <see cref="Text"/>.</summary>
     public string Kind { get; set; } = "";
     public Guid? AccountId { get; set; }
     /// <summary>The account's name then, shown once the account is deleted.</summary>
@@ -344,11 +324,9 @@ public sealed class ActivityEntry
     /// <summary>A notification's own sentence, in English and in Vietnamese, so it shows in the language chosen later.</summary>
     public string? Text { get; set; }
     public string? TextVi { get; set; }
-    /// <summary>
-    /// The accounts <see cref="Text"/> names, in the order of its placeholders (U+E000, the number, U+E001): written out
-    /// when the log is shown, with the name each has then ("Account N" while names are hidden), so a sentence never
-    /// holds a name. Null in entries without names, and in older ones (which hold the names themselves).
-    /// </summary>
+    /// <summary>The accounts <see cref="Text"/> names, in the order of its placeholders (U+E000, the number, U+E001),
+    /// filled in when shown with each one's name then, so a sentence never holds a name. Null in entries without names
+    /// and in older ones (which hold the names themselves).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<ActivityName>? Names { get; set; }
     /// <summary>"ok", "info", "warn" or "error", as the notification was shown; null for the kinds above.</summary>
@@ -367,10 +345,8 @@ public sealed class ActivityName
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
-/// <summary>
-/// A game's ban of an account (Roblox's ban API, used by the game or its moderators), seen when it put the account out of
-/// a game, or when Roblox refused a join to it (Join Error 600). Dropped once the account gets into that game again.
-/// </summary>
+/// <summary>A game's own ban (Roblox's ban API), seen when the game put the account out or Roblox refused a join (Join
+/// Error 600). Dropped once the account gets into that game again.</summary>
 public sealed class GameBan
 {
     /// <summary>The place it was banned from (the game's start place when known).</summary>
@@ -381,10 +357,8 @@ public sealed class GameBan
     public string? Message { get; set; }
 }
 
-/// <summary>
-/// A Roblox client that ended on this PC lately, and the server and game it was in: Roblox keeps reporting the account
-/// there for minutes, which must not read as "playing on another device" after Bloxkeep restarts (an update) either.
-/// </summary>
+/// <summary>A client that ended here lately, with its server and game: Roblox keeps reporting the account there for
+/// minutes, which must not read as "playing on another device", even after Bloxkeep restarts.</summary>
 public sealed class EndedSession
 {
     public Guid AccountId { get; set; }

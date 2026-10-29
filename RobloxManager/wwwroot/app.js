@@ -15,12 +15,9 @@
     if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
     return s;
   }
-  /**
-   * A count in a sentence: the key's "1" form for exactly one when the language has it ("Opened 1 account."), else the
-   * key itself (Vietnamese has no plural, so it needs no "1" forms).
-   */
+  /** The key's "1" form for exactly one when the language has it ("Opened 1 account."); Vietnamese has no plural. */
   const tn = (key, n, vars = {}) => t(n === 1 && `${key}1` in DICT[lang] ? `${key}1` : key, { n, ...vars });
-  document.documentElement.lang = lang; // the page's language from the start, not only after a change
+  document.documentElement.lang = lang;
   const locale = () => (lang === 'vi' ? 'vi-VN' : 'en-US');
 
   /* ───────────────────────── bridge ─────────────────────────
@@ -107,23 +104,16 @@
   const inGame = a => (isLocal(a) && !isStranded(a)) || a.presence?.type === 'ingame';
   const isOnline = a => isLocal(a) || ['online', 'ingame', 'studio'].includes(a.presence?.type);
 
-  /**
-   * Settings › Appearance › Hide account names (screenshots, streams): each account shows as "Account 1", "Account 2"…
-   * (its place in the list, as the app numbers them in toasts and window titles) and the @username lines go. The real
-   * names stay in a.real for the search box and the name sort only; copying a username asks the app, which has it.
-   */
+  // Settings › Appearance › Hide account names: each account shows as "Account 1"… (its place in the list, as the app
+  // numbers them in toasts and window titles). Real names stay in a.real for the search and the name sort only.
   const hidingNames = () => !!S.app?.hideNames;
-  /**
-   * The accounts as last shown, by id: one whose data didn't change keeps its object, so the React parts (which skip
-   * what they drew from the same object) draw only the cards that changed with a state push, not every card.
-   */
+  // An account whose data didn't change keeps its object, so React redraws only the cards that changed.
   let shownAccounts = new Map();
   function maskNames(st) {
     if (!st.accounts) return;
     const next = new Map();
     // Copies: what the bridge handed over stays as it came (the preview's fake bridge hands over its own objects).
     st.accounts = st.accounts.map((a, i) => {
-      // What the copy shown depends on: the account's own data and, while names are hidden, its place and the language.
       const key = `${st.hideNames ? `${lang}|${i}` : ''}|${JSON.stringify(a)}`;
       const was = shownAccounts.get(a.id);
       let shown = was?.key === key ? was.account : null;
@@ -152,10 +142,7 @@
     const m = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
     return m < 60 ? t('dur.min', { m }) : t('dur.hour', { h: Math.floor(m / 60), m: m % 60 });
   }
-  /**
-   * One Intl formatter per language and options, made once: making one per number or date was most of the time a push
-   * spent on the preset rows and the RAM figures. ('n' numbers, 'd' dates and times.)
-   */
+  // One Intl formatter per language and options: making one per number or date was most of a push's time. ('n' numbers, 'd' dates.)
   const INTL = new Map();
   const intl = (kind, opts = {}) => {
     const key = `${kind}|${locale()}|${JSON.stringify(opts)}`;
@@ -173,11 +160,8 @@
   const fmtMb = mb => mb >= 1024 ? `${intl('n', { maximumFractionDigits: 1 }).format(mb / 1024)} GB` : `${Math.round(mb)} MB`;
 
   /* ───────────────────────── toasts ───────────────────────── */
-  /**
-   * A message in the corner. @param action optional { label, run } shown as a button; the toast then stays a little
-   * longer. Drawn by React (ui/src/Overlays.tsx Toasts): how long each stays, three at most, the same one again.
-   */
-  let toastUi = null; // mounted once the page has started (below, before getState)
+  /** A message in the corner; action { label, run } adds a button and keeps it longer. Drawn by ui/src/Overlays.tsx Toasts. */
+  let toastUi = null;
   function toast(text, kind = 'info', action = null) {
     // Not over the lock screen that came up by itself: an answer still on its way could name an account.
     if (!text || S.app?.screenLock) return;
@@ -193,10 +177,8 @@
 
   /* ───────────────────────── modal & menu ───────────────────────── */
   let openModals = 0, busyModals = 0, pageBusy = false;
-  /**
-   * Tells the app when the page is in the middle of something it would lose with the browser (a form being typed
-   * in, a sign-in under way) so it isn't closed in the background. A list or a notice open is no reason to keep it.
-   */
+  // Tells the app when the page would lose something with the browser (a form being typed in, a sign-in) so it isn't
+  // closed in the background. A list or a notice open doesn't count.
   function syncBusy() {
     const busy = busyModals > 0;
     if (busy === pageBusy) return;
@@ -212,20 +194,17 @@
   function modal({ title, body, actions = [], onMount, onClose, dismissable = true, busy: keepsPage = false, enterSubmits = false, askClose = null, top = false, onRemoved,
     boxClass, bodyClass, label, footError }) {
     closeMenu();
-    // Gets the focus back on close. Opened from a busy button (What's new, Run's "Open anyway?"), which lost the focus
-    // when it was turned off: that button.
+    // Gets the focus back on close, also to a busy button that opened it (What's new, Run's "Open anyway?").
     const opener = document.activeElement && document.activeElement !== document.body ? document.activeElement
       : busyFocused?.isConnected ? busyFocused : null;
     // A card's button that opened it may be rebuilt meanwhile (Edit → save): the same button on the new card then.
     const openerCard = opener?.closest('.card')?.dataset.id, openerAct = opener?.dataset.act;
     const openerHost = opener?.parentElement?.closest('[id]:not(#app, main, .view, #layer)'), openerCls = opener?.classList[0];
     const el = document.createElement('div');
-    // top: a box whose content changes height after it opens (steps, lists that load) sits near the top instead of
-    // in the middle, so a change moves only its bottom edge, not what is being read.
+    // top: a box whose height changes after it opens sits near the top, so only its bottom edge moves.
     el.className = top ? 'overlay at-top' : 'overlay';
     const titleId = `mdl-${++modalSeq}`;
-    // The frame is React's (ui/src/Overlays.tsx ModalFrame); its body too when given as one of its parts (an ask, the
-    // errors…), else a React part goes into .modal-body in onMount.
+    // The frame is React's (ui/src/Overlays.tsx ModalFrame), its body too when given as parts; else onMount fills .modal-body.
     const unmountFrame = window.BloxkeepUI.modalFrame(el, uiHost(), {
       title, titleId, body: body || null, actions: actions.map(a => ({ text: a.text, kind: a.kind })),
       act: (i, btn) => actions[i].onClick?.({ ...api, btn }), close: () => tryClose(), boxClass, bodyClass, label, footError,
@@ -306,29 +285,25 @@
     const api = {
       el,
       close: () => { if (!held) close(); },
-      /** Runs a save with the dialog kept open meanwhile (Cancel, the X and Esc wait for it). */
       hold: async job => { held++; try { return await job(); } finally { held--; } },
     };
     $('#layer').append(el);
     onMount?.(api);
-    // Most modals focus one of their fields themselves; the rest start at their first control, without scrolling to it:
-    // a dialog opens at its top (What's new's first button can be its last line).
+    // Fields that don't focus themselves: the first control, without scrolling (a dialog opens at its top).
     setTimeout(() => {
       if (closed || el.contains(document.activeElement)) return;
       (el.querySelector('.modal-body').querySelector('button:not(:disabled), input, select, textarea, a[href]') || el.querySelector('.modal-foot .btn.primary') || el.querySelector('[data-x]')).focus({ preventScroll: true });
     }, 60);
     return api;
   }
-  /** Closes every open modal, e.g. when the vault locks or the language changes. */
   function closeAllModals() {
     document.querySelectorAll('#layer .overlay:not(.out)').forEach(x => x._close?.());
   }
   let modalSeq = 0;
 
   /**
-   * @param danger a destructive answer: the focus starts on Cancel, so a stray Enter doesn't delete or restore.
-   * @param remember the question offers "Don't ask again" (the app's SkippableConfirms): once ticked with a yes, it
-   * isn't asked any more and its yes is assumed.
+   * @param danger the focus starts on Cancel, so a stray Enter doesn't delete or restore.
+   * @param remember offers "Don't ask again" (the app's SkippableConfirms): once ticked with a yes, the yes is assumed.
    */
   function confirmBox(message, { title = t('common.confirm'), ok = 'OK', danger = false, remember = null } = {}) {
     if (remember && S.app?.skipConfirm?.includes(remember)) return Promise.resolve(true);
@@ -352,8 +327,7 @@
   }
 
   let menuEl = null, menuOpener = null, menuUnmount = null;
-  // The button whose menu is open, and the button a press on which just closed its menu: the click that ends that
-  // press doesn't open it again, so a second click on a menu's button closes the menu (it used to close and reopen).
+  // So a second click on a menu's button closes it: the click ending the press that closed the menu doesn't reopen it.
   let menuButton = null, closedByButton = null;
   /** @param refocus true (from the keyboard) puts the focus back on the button that opened the menu. */
   function closeMenu(refocus = false) {
@@ -370,11 +344,9 @@
     menuOpener = null;
   }
   /**
-   * Items: each an icon, text, title, hint, danger, checked, disabled and run, or '-' for a line; their words as they
-   * read (not HTML). split: the items before the first line scroll in a list of their own (the dock's presets).
-   * above: where the menu's bottom goes instead when it doesn't fit under y (a button low in the window, as in the dock):
-   * it opens upwards rather than being pushed up over the button that opened it. button: the button that opened it
-   * (a second click on it closes the menu).
+   * Items: { icon, text, title, hint, danger, checked, disabled, run } or '-' for a line; text as it reads (not HTML).
+   * split: items before the first line scroll on their own (the dock's presets). above: the menu's bottom when it
+   * doesn't fit under y, so it opens upwards, not over its button. button: a second click on it closes the menu.
    */
   function openMenu(items, x, y, { cls = '', split = false, above = null, button = null } = {}) {
     closeMenu();
@@ -386,7 +358,6 @@
     el.className = cls ? `menu ${cls}` : 'menu';
     el.setAttribute('role', 'menu');
     $('#layer').append(el);
-    // The items are React's (ui/src/Overlays.tsx MenuItems).
     menuUnmount = window.BloxkeepUI.menu(el, uiHost(), items, (i, kb, arg) => {
       closeMenu(kb); // picked with the keyboard: the focus goes back to the button first
       items[i].run(arg);
@@ -398,8 +369,7 @@
     // Upwards only when the whole menu then fits in the window (a button scrolled out of view would put it partly off).
     const up = above !== null && y + r.height > innerHeight - 8 && above - r.height >= 8 && above <= innerHeight - 8;
     const top = up ? above - r.height : Math.max(8, Math.min(y, innerHeight - r.height - 8));
-    // Too tall for under or over its button (a long menu in a short window): beside the button rather than over it,
-    // so the button is still there to click again.
+    // Too tall for under or over its button: beside it, so the button can still be clicked again.
     const b = button?.getBoundingClientRect();
     if (b && top < b.bottom && top + r.height > b.top && left < b.right && left + r.width > b.left)
       left = b.right + 6 + r.width <= innerWidth - 8 ? b.right + 6 : Math.max(8, b.left - 6 - r.width);
@@ -426,8 +396,7 @@
     if (btn?.disabled) return undefined;
     // A disabled button loses the focus; it gets it back afterwards unless the focus went somewhere else meanwhile.
     const focused = btn && document.activeElement === btn;
-    // The answer's state push may draw the button anew (Back up now, Send test, a preset's Run): the new one is found
-    // by what it does.
+    // The answer's state push may redraw the button (Back up now, a preset's Run): the new one is found by what it does.
     const key = focused ? focusKey(btn, document.body).sel : '';
     btn?.classList.add('busy');
     if (btn) btn.disabled = true;
@@ -474,18 +443,14 @@
     closeAllModals();
     syncMonitor();
     takeDownUiParts();
-    // The screen is React's (ui/src/Lock.tsx); the vault it opens comes back here. Locked while in use (not at
-    // start-up), it says what waits for the unlock.
+    // The screen is React's (ui/src/Lock.tsx); the vault it opens comes back here.
     const notice = mode === 'create' ? '' : S.app.screenLock ? t('lock.auto', { t: autoLockText(S.app.screenLock.minutes) }) : S.lockedInUse ? t('lock.paused') : '';
     $('#app').innerHTML = '';
     uiParts.push(window.BloxkeepUI.lock($('#app'), uiHost(), { mode, notice, kept }, applyState));
   }
 
-  /**
-   * The picker (Switch vault) or the form for a new vault over the open vault, which stays open behind them: Back (or
-   * picking the open vault, or Cancel) returns to it without the password. Picking or setting up another vault locks
-   * it (the app does), and the lock screen takes over from here.
-   */
+  // Switch vault's picker or new-vault form over the open vault: Back, Cancel or the open vault return to it without the
+  // password. Picking or setting up another vault locks it (the app does) and the lock screen takes over.
   function syncVaultOverlay() {
     const v = S.app.vaults || {};
     const mode = S.app.locked ? null : v.pick ? 'pick' : v.adding ? 'create' : null;
@@ -516,11 +481,9 @@
     S.shell = true;
     S.lockMode = null;
     S.lockedInUse = false;
-    // Dialogs stay open (the lock screen already closed them): a language change from elsewhere mustn't throw away a
-    // form being typed in. They keep their old language until closed.
+    // Dialogs stay open with their old language: a language change mustn't throw away a form being typed in.
     takeDownUiParts();
-    // The page is React's (ui/src/Shell.tsx): the tabs, Settings' pages, Presets and Statistics; the parts it marks
-    // data-vanilla are still drawn here (update).
+    // The page is React's (ui/src/Shell.tsx); parts it marks data-vanilla are still drawn here (update).
     $('#app').innerHTML = '';
     const shell = window.BloxkeepUI.shell($('#app'), uiHost(), {
       pages: SET_PAGES.map(([id, ic]) => ({ id, icon: ic, title: setPageTitle(id) })), page: setPage, preview: !(window.chrome && window.chrome.webview),
@@ -532,7 +495,6 @@
     $('#place').value = st.lastPlaceInput || '';
     $('#job').value = st.lastJobId || '';
     $('#q').value = S.query;
-    // Filter once typing pauses, not on every key.
     let searchTimer = 0;
     $('#q').addEventListener('input', e => {
       S.query = e.target.value;
@@ -540,9 +502,8 @@
       searchTimer = setTimeout(pageChanged, 120);
     });
     $('#place').addEventListener('input', onPlaceInput);
-    // Into the box, the list opens whatever is in it, like a browser's address bar: a game or link already there gets
-    // the tabs (recent, pinned, saved…) with its text selected, so typing replaces it and searches; words typed earlier
-    // get their results again. No more emptying the box to reach the list.
+    // Focusing the box opens the list like a browser's address bar: a game already there gets the tabs with its text
+    // selected, so typing replaces it; words typed earlier get their results again.
     let selectOnUp = false;
     $('#place').addEventListener('mousedown', () => { selectOnUp = document.activeElement !== $('#place'); });
     // The click that focused the box would put the caret where it landed; a drag that selected part of it stays.
@@ -598,8 +559,7 @@
       if (id !== S.app.theme) await call('setTheme', { theme: id });
       if (S.themePending !== id) return;
       setThemePending(null);
-      // The state that came with the answer was held back while this pick waited ("Sync with Windows" has no
-      // preview of its own): the theme the app applied shows now.
+      // The state that came with the answer was held back while this pick waited: the theme the app applied shows now.
       document.documentElement.dataset.theme = S.app.themeApplied || S.app.theme;
     }, 400);
   }
@@ -628,11 +588,8 @@
     // So the next start shows it from the first frame, before the app's state comes.
     try { localStorage.setItem('customTheme', JSON.stringify(ct)); } catch { /* the page still shows it now */ }
   }
-  /**
-   * The custom theme's picture or video, in a layer under the page (#ct-media), blurred as asked; gone with no picture
-   * or another theme. A video plays muted and on a loop, only while the window shows (paused in the tray, so it costs
-   * nothing while Roblox runs), and stays on its first frame when Windows' animation effects are off.
-   */
+  // The custom theme's picture or video in a layer under the page (#ct-media), blurred as asked. A video plays muted on a
+  // loop only while the window shows (paused in the tray, so it costs nothing while Roblox runs); still with animations off.
   const stillMotion = matchMedia('(prefers-reduced-motion: reduce)');
   function showCustomMedia(ct) {
     let layer = document.getElementById('ct-media');
@@ -709,7 +666,7 @@
       }
     }
     S.view = view;
-    pageChanged(); // the sidebar's tabs
+    pageChanged();
     $('#view-accounts').hidden = view !== 'accounts';
     $('#view-presets').hidden = view !== 'presets';
     if (view === 'presets') uiSignal('presetsShown');
@@ -723,12 +680,8 @@
     if (view === 'settings' && !S.app.locked) call('backupSuggestions', {}, { silent: true });
   }
 
-  /** The account groups in use, sorted by name. */
   const accountGroups = () => [...new Set(accounts().map(a => a.group).filter(Boolean))].sort(compareText);
-  /**
-   * A group or status chip that no longer has a place (its accounts gone, renamed) goes back to all: the Accounts tab's
-   * bar (React) shows the groups in use, and the chips that apply (Needs sign-in, Banned, Open here only when some do).
-   */
+  // A group or status chip with nothing left in it (accounts gone, renamed) goes back to all.
   function syncFilters() {
     if (S.group && !accountGroups().includes(S.group)) S.group = '';
     const list = accounts();
@@ -753,8 +706,7 @@
     // "@name" finds the username too.
     const q = fold(S.query.trim().replace(/^@/, ''));
     const f = S.filter;
-    // Name means the name: groups have their own menu to narrow the list. The real names, also while they are hidden,
-    // so hiding them doesn't reshuffle the list.
+    // Name means the name (groups have their own menu); real names even while hidden, so hiding doesn't reshuffle the list.
     const real = a => a.real || a;
     const byName = (x, y) => compareText(real(x).label, real(y).label) || compareText(real(x).username || '', real(y).username || '');
     // A user ID is matched whole (or by its start from 6 digits on): "1" mustn't find nearly every account.
@@ -780,11 +732,8 @@
     }).sort(compare);
   }
 
-  /**
-   * One Tab stop for the whole list (roving tabindex, like the theme swatches), so the dock is a Tab away with hundreds
-   * of accounts; the arrow keys walk the cards (moveCardFocus). The stop is the card with the focus, else the first
-   * selected one, else the first. Only that card's own buttons are Tab stops too: 200 accounts mustn't be 600 presses.
-   */
+  // One Tab stop for the whole list (roving tabindex): the card with the focus, else the first selected, else the first.
+  // The arrow keys walk the cards (moveCardFocus); only that card's buttons are Tab stops: 200 accounts mustn't be 600 presses.
   function setTabStop(box, stop = null) {
     const items = [...box.children];
     const active = document.activeElement?.closest?.('.card');
@@ -792,8 +741,7 @@
     for (const c of items) {
       const want = c === stop ? 0 : -1;
       if (c.tabIndex !== want) c.tabIndex = want;
-      // Every time: React may have drawn a button anew (Play → Close). Set as an attribute even where it is the
-      // default (0), as it always was.
+      // Every time: React may have drawn a button anew (Play → Close).
       for (const b of c.querySelectorAll('button')) if (b.getAttribute('tabindex') !== String(want)) b.tabIndex = want;
     }
   }
@@ -844,11 +792,7 @@
   }
 
   /* ───────────────────────── settings ───────────────────────── */
-  /**
-   * Settings is a list of pages on the left (with a search box over all of them) and the chosen page on the right:
-   * its title, then groups — a small heading over a card of rows — so a page and a group inside it never look alike.
-   * The page shown last is remembered in this browser.
-   */
+  // Pages on the left (with a search over all of them), the chosen page on the right; the page shown last is remembered.
   const SET_PAGE_KEY = 'rm.settingsPage';
   /** [id, icon, title key]; Discord is a name, not translated. */
   const SET_PAGES = [
@@ -858,7 +802,6 @@
   ];
   const setPageTitle = id => { const key = SET_PAGES.find(p => p[0] === id)?.[2]; return key ? t(key) : 'Discord'; };
   let setPage = (() => { const id = store.get(SET_PAGE_KEY, 'launch'); return SET_PAGES.some(p => p[0] === id) ? id : 'launch'; })();
-  /* Settings › Discord: what a summary can list. */
   const DC_PARTS = ['total', 'accounts', 'games', 'sessions', 'kicks'];
 
   function wireSettings() {
@@ -928,7 +871,6 @@
     modal({
       title: t('dc.pasteTitle'),
       body: window.BloxkeepUI.discordLink(),
-      // The "not a webhook link" note goes as soon as the box changes.
       onMount: ({ el }) => el.querySelector('#dc-link').addEventListener('input', () => setText(el.querySelector('#dc-link-err'), '')),
       busy: true,
       enterSubmits: true,
@@ -949,10 +891,7 @@
     });
   }
 
-  /**
-   * A shown webhook link (Settings › Discord's Show) goes back to its masked form: when Settings or its page is left, or
-   * the window loses focus.
-   */
+  // A shown webhook link goes back to masked when Settings or its page is left, or the window loses focus.
   const hideDiscordLink = () => uiSignal('hideDiscordLink');
   window.addEventListener('blur', () => hideDiscordLink());
 
@@ -1010,15 +949,9 @@
     });
   }
 
-  /**
-   * What the React parts (ui/src, built into ui.js) use of this page: its words, icons and commands, and where their
-   * buttons lead. Made afresh for each part (a language change closes every dialog first).
-   */
+  // What the React parts (ui/src, built into ui.js) use of this page: words, icons, commands, where buttons lead. Made afresh per part.
   const uiListeners = new Set();
-  /**
-   * The page's own state the React parts draw (host.page): the tab shown, the live figures. pageChanged() after any of
-   * it changes; the snapshot is made again only when asked for after that.
-   */
+  // The page's own state React draws (host.page). pageChanged() after any change; the snapshot is rebuilt only when next asked for.
   const pageListeners = new Set(), metricsListeners = new Set();
   let pageSnap = null;
   /** Drawn at once (flushSync): what runs next may look for what was drawn (a card to focus, a scroll to reset). */
@@ -1087,10 +1020,7 @@
     },
   });
 
-  /**
-   * Release notes: shown once after an update, and any time from Settings › Updates. The dialog is drawn here; what is
-   * in it (headline cards, New / Improved / Fixed, older releases folded) by React (ui/src/WhatsNew.tsx).
-   */
+  // Release notes: once after an update, and from Settings › Updates. The dialog is here; its content is ui/src/WhatsNew.tsx.
   function showWhatsNew(releases, onClose) {
     if (!releases?.length) return;
     const [latest] = releases;
@@ -1134,7 +1064,7 @@
     }
     setPage = id;
     store.set(SET_PAGE_KEY, id);
-    if (id !== 'discord') hideDiscordLink(); // a shown webhook link goes when its page is left
+    if (id !== 'discord') hideDiscordLink();
     for (const el of document.querySelectorAll('#view-settings .set-page')) el.hidden = el.dataset.page !== id;
     for (const b of document.querySelectorAll('#view-settings [data-set-page]')) {
       if (b.dataset.setPage !== id) {
@@ -1148,11 +1078,8 @@
     else $('#view-settings .set-scroll').scrollTop = 0;
   }
 
-  /**
-   * The search box: the rows of every page whose title or description matches (all of a group or page whose heading
-   * matches), under their page's title; empty, it shows the chosen page again. A part that isn't a row (the theme
-   * picker, a note) goes with the row before it.
-   */
+  // Rows of every page whose title or description matches (all of a group or page whose heading does), under their page's
+  // title; empty, the chosen page again. A part that isn't a row (the theme picker, a note) goes with the row before it.
   function searchSettings(text) {
     const q = fold(text.trim());
     const root = $('#view-settings');
@@ -1205,11 +1132,9 @@
         delete more.dataset.was;
       }
     }
-    // New words start at the top of the results; the same words searched again (a state push, a switch flipped in the
-    // results) keep the place being read.
+    // New words start at the top; the same words again (a state push, a switch flipped) keep the place being read.
     if (q && q !== lastSetQuery) root.querySelector('.set-scroll').scrollTop = 0;
     lastSetQuery = q;
-    // A shown Discord link doesn't stay behind on a page the search hides.
     if (root.querySelector('.set-page[data-page="discord"]')?.hidden) hideDiscordLink();
   }
   let lastSetQuery = '';
@@ -1232,8 +1157,7 @@
   }
 
   /* ───────────────────────── game picker ─────────────────────────
-     Typing a name searches Roblox; going into the box (empty, or with a game or link in it) offers recent, pinned,
-     saved, favourite and popular games. */
+     Typing searches Roblox; going into the box offers recent, pinned, saved, favourite and popular games. */
   const P = { open: false, mode: 'browse', tab: 'recent', lists: null, results: [], query: '', index: -1, seq: 0, loading: false };
   const TABS = ['recent', 'pinned', 'saved', 'favorites', 'popular'];
   const looksLikeTarget = v => /^\d+$/.test(v) || /roblox\.com|roblox:\/\//i.test(v);
@@ -1355,10 +1279,8 @@
     resolveGame();
     scheduleSaveInputs();
   }
-  /**
-   * A saved server into the dock: its private server's link (Play sends the selected accounts there), or its game; a
-   * code the game asks for goes on the clipboard, to paste in the game once in (Bloxkeep never types into Roblox).
-   */
+  // A saved server into the dock: its private server's link, or its game. A code the game asks for goes on the clipboard,
+  // to paste in the game (Bloxkeep never types into Roblox).
   async function pickSaved(s) {
     $('#place').value = s.link || `https://www.roblox.com/games/${s.placeId}`;
     $('#job').value = '';
@@ -1401,7 +1323,6 @@
             if (!r) return;
             close();
             toast(t('sv.saved', { name: r.name }), 'ok');
-            // Where it went, at once: the game box's list on its Saved tab.
             P.tab = 'saved';
             if (document.activeElement === $('#place')) openPicker('browse'); else $('#place').focus();
           },
@@ -1410,7 +1331,6 @@
     });
   }
 
-  /** Puts a game and one of its servers in the dock; Play then sends the selected accounts there. */
   function useServer(placeId, jobId) {
     S.jobPlace = placeId;
     if ($('#place').value.trim() !== `https://www.roblox.com/games/${placeId}`) {
@@ -1421,10 +1341,8 @@
     scheduleSaveInputs();
   }
 
-  /**
-   * One of your private servers in the dock (its access code, from Browse servers): the game box holds it as a deep link
-   * that GameTarget reads (roblox://placeId=…&accessCode=…), so it is saved, shown and launched like a private link.
-   */
+  // A private server (its access code, from Browse servers) goes in the game box as a deep link GameTarget reads
+  // (roblox://placeId=…&accessCode=…), so it is saved, shown and launched like a private link.
   function usePrivateServer(placeId, accessCode) {
     S.jobPlace = null;
     $('#job').value = '';
@@ -1433,11 +1351,8 @@
     scheduleSaveInputs();
   }
 
-  /**
-   * The game's servers, to pick one to join: your private servers, the selected accounts' friends in it, then its
-   * public servers (like the Servers tab on its Roblox page). Drawn by React (ui/src/Servers.tsx); a pick goes in the
-   * dock's Job ID box, a private server in the game box.
-   */
+  // The game's servers (ui/src/Servers.tsx): your private servers, the selected accounts' friends in it, then public ones.
+  // A pick goes in the dock's Job ID box, a private server in the game box.
   function openServers() {
     const g = S.game;
     if (!g?.placeId) return;
@@ -1446,8 +1361,7 @@
       title: t('srv.title', { game: esc(g.name || `Place ${g.placeId}`) }),
       top: true,
       body: '',
-      // Its layout (only the list scrolls) hangs on this class: a :has() rule did it, which re-styled the whole page on
-      // every change anywhere in it.
+      // Its layout hangs on this class: a :has() rule did it and re-styled the whole page on every change.
       bodyClass: 'srv-body',
       actions: [{ text: t('common.close'), onClick: ({ close }) => close() }],
       onRemoved: () => unmount?.(),
@@ -1521,7 +1435,6 @@
     S.anchor = id;
     renderSelection();
   }
-  /** The selection changed: the cards, the heading line and the dock's buttons follow (React). */
   const renderSelection = () => pageChanged();
   /** "Select all" means what is on screen: it replaces a selection that included accounts now hidden. */
   function selectAllVisible() {
@@ -1558,10 +1471,8 @@
     return launchDone(r, force => launch(ids, appOnly, force));
   }
 
-  /**
-   * Locking keeps the Roblox windows open but pauses what Bloxkeep does for them until it is unlocked (AppController.Lock):
-   * auto-rejoin, scheduled presets and Discord. When any of that is in use, it says so first.
-   */
+  // Locking keeps the Roblox windows open but pauses auto-rejoin, scheduled presets and Discord until unlocked
+  // (AppController.Lock); when any of that is in use, it says so first.
   async function lockApp() {
     const paused = [];
     const rejoining = accounts().filter(a => (isLocal(a) && rejoinOn(a)) || a.rejoin).length;
@@ -1576,11 +1487,9 @@
 
   /** The launch warnings with their own "Don't ask again" (AppController.SkippableLaunchWarnings). */
   const SKIPPABLE_ASKS = ['multiOff', 'watch', 'memory'];
-  /**
-   * The warnings before a launch, each with the way out that goes with it: Multi-Roblox off → turn it on and play; on
-   * but not working → its fix. "Don't ask again" only when every warning shown can be skipped, and then for those kinds
-   * alone (never for accounts being moved out of their game). Resolves 'open', 'multi', 'fix', or null for Cancel.
-   */
+  // Launch warnings, each with its way out: Multi-Roblox off → turn it on and play; on but not working → its fix. "Don't
+  // ask again" only when every warning shown can be skipped, and only for those (never for accounts moved out of their
+  // game). Resolves 'open', 'multi', 'fix', or null for Cancel.
   function launchAsk(r) {
     const asks = r.asks || [];
     const canSkip = asks.length > 0 && asks.every(k => SKIPPABLE_ASKS.includes(k));
@@ -1613,8 +1522,7 @@
       const answer = await launchAsk(r);
       if (S.app.locked) return;
       if (answer === 'open') return retry(true);
-      // Turned on, the launch runs again with its other questions still asked (and Multi-Roblox's own, if Roblox was
-      // already open and it can't work yet).
+      // Turned on, the launch runs again with its other questions still asked (Multi-Roblox's own too, if Roblox was open).
       if (answer === 'multi' && await setMulti(true)) return retry(false);
       if (answer === 'fix') multiHelp();
       return;
@@ -1674,7 +1582,6 @@
   const launchOrder = () => S.app.settings?.launchOrder || [];
   const orderRank = () => new Map(launchOrder().map((id, i) => [id, i]));
 
-  /** Opens above the dock button: the presets to run, then save / edit. */
   function presetMenu(btn) {
     const list = presets();
     menuAt(btn, [
@@ -1686,8 +1593,7 @@
       { icon: 'plus', text: t('ps.save'), run: newPreset },
       { icon: 'edit', text: t('ps.manage'), run: () => setView('presets') },
     ], 300, { cls: 'preset-menu', split: true });
-    // The dock is at the bottom: open above the button, right edges lined up. A long list scrolls inside the menu;
-    // Save and Edit stay at its foot.
+    // Above the button, right edges lined up; a long list scrolls while Save and Edit stay at its foot.
     const r = btn.getBoundingClientRect();
     menuEl.style.maxHeight = `${Math.max(180, r.top - 14)}px`;
     const m = menuEl.getBoundingClientRect();
@@ -1756,8 +1662,7 @@
         {
           text: t('ps.saveBtn'), kind: 'primary', onClick: async ({ el, close, btn, hold }) => {
             if (btn.disabled) return;
-            // A refused save is said in the form, above its buttons (a toast sits behind the dialog), and the box to fix
-            // is brought into view and focused.
+            // A refused save is said in the form (a toast sits behind the dialog); the box to fix is scrolled to and focused.
             const errBox = el.querySelector('.ps-err');
             errBox.hidden = true;
             const fail = (msg, box) => {
@@ -1771,7 +1676,7 @@
             let refused = null;
             await busy(btn, () => hold(() => bridge.call('savePreset', r.args)).catch(e => { refused = e; }));
             if (refused) return fail(refused.message || t('common.unknownError'), ui.form.refusedBox());
-            close(); // the list shows it saved
+            close();
           },
         },
       ],
@@ -1810,15 +1715,13 @@
           },
         },
       ],
-      // Its text and the list are React's (ui/src/OrderList.tsx).
       onMount: ({ el }) => { ui = window.BloxkeepUI.launchOrder(el.querySelector('.modal-body'), uiHost(), list); },
       onRemoved: () => ui?.unmount(),
     });
   }
 
   /* ───────────────────────── presets tab ─────────────────────────
-     Drawn by React (ui/src/PresetsView.tsx): every preset as a row, run, edit, duplicate, delete, its schedule, its
-     place in the list. What it uses of this page comes through uiHost(): scheduleText, nextRunText, runPreset… */
+     Drawn by React (ui/src/PresetsView.tsx); what it uses of this page comes through uiHost(). */
   const PV = { query: '' }; // the Presets tab's search (PresetsView.tsx), kept with the view
   const MAX_PRESETS = 50; // the app's own limit (MaxPresets); checked here so a full list doesn't open an empty form
   /** "Mon, Wed, Fri 20:00", "Every day 20:00", or the date of a one-off. */
@@ -1854,14 +1757,10 @@
   /* ───────────────────────── adding accounts ───────────────────────── */
   /** The sign-in screen lists every way to add an account. */
   const addChooser = () => passwordLogin();
-  /** Picking a way closes the chooser it was picked from. */
   const leaveChooser = el => el.closest('.overlay')?.querySelector('[data-x]')?.click();
 
-  /**
-   * The sign-in screen: username + password, with the other ways (phone, browser) under it. Works on a PC with no
-   * phone and no roblox.com: the values go only to Roblox's/VNG's official auth host, over HTTPS. Handles a 2-step code
-   * and a captcha (shown in its own window, for the user to solve).
-   */
+  // The sign-in screen: username + password, other ways (phone, browser) under it. Works with no phone and no roblox.com:
+  // the values go only to Roblox's/VNG's official auth host, over HTTPS. Handles a 2-step code and a captcha (own window).
   function passwordLogin(forRealm) {
     let ui = null;
     const m = modal({
@@ -1895,10 +1794,7 @@
     });
   }
 
-  /**
-   * Quick Login: Roblox shows a code that the user confirms on any device already signed in (phone, or the Roblox app).
-   * The code is renewed after each account, so several can be added in a row, like the browser sign-in.
-   */
+  // Quick Login: the user confirms Roblox's code on a signed-in device; a new code after each account, so several can be added.
   /** @param forName the account being signed in again (Sign in on a signed-out card), named at the top. */
   function quickLogin(forRealm, forName = '') {
     let ui = null;
@@ -1935,9 +1831,8 @@
       ? { label: t('t.showSignedOut'), run: () => { setView('accounts'); S.filter = 'invalid'; S.group = ''; update(); $('#scroll').scrollTop = 0; } }
       : r.refusedIds?.length ? { label: tn('t.openRefused', r.refusedIds.length), run: () => r.refusedIds.forEach(id => byId(id) && call('openWebsite', { id })) }
       : null;
-    // "1 needs", not "1 need": the singular goes by the signed-out count (tn picks it by n).
-    // Refused by Roblox (a warning to read, a lock) is said apart from the network: roblox.com shows that account why.
-    // All of them held for a notice to accept ("User is moderated"): said so, rather than "refused".
+    // tn picks "1 needs" by the signed-out count. Refused by Roblox (a warning, a lock) is said apart from the network,
+    // and all of them held for a notice to accept ("User is moderated") is said so.
     const refused = r.refused ? ' ' + tn(r.moderated === r.refused ? 't.checkedModerated' : 't.checkedRefused', r.refused) : '';
     toast(tn(r.failed ? 't.checkedFail' : 't.checked', r.bad, { ok: r.ok, bad: r.bad, f: r.failed }) + refused, r.bad || r.refused ? 'warn' : 'ok', show);
   }
@@ -1981,8 +1876,7 @@
   }
 
   const confirmMulti = () => confirmBox(t('set.multiConfirm'), { title: t('set.multiConfirmTitle'), ok: t('set.multiOk'), remember: 'multi' });
-  /** Turns Multi-Roblox on (after the risk warning) or off; a switch that was flipped goes back if the warning is declined. */
-  /** @returns whether the change was made. */
+  /** Multi-Roblox on (after the risk warning) or off; a flipped switch goes back if declined. Returns whether it changed. */
   async function setMulti(on) {
     const box = typeof on === 'object' ? on : null;
     const enable = box ? box.checked : on;
@@ -1993,11 +1887,9 @@
     return (await call('setSettings', { multiInstance: enable })) !== undefined;
   }
 
-  /**
-   * Accounts from another Bloxkeep vault file (another PC's, or a backup): pick the file, type that file's own master
-   * password, tick what to bring over. The app keeps the opened file; this page only ever sees names and states,
-   * never cookies or passwords. Closing the dialog (or locking) makes the app forget it.
-   */
+  // Accounts from another vault file: pick it, type that file's own master password, tick what to bring over. The app
+  // keeps the opened file; this page sees only names and states, never cookies or passwords. Closing (or locking) makes
+  // the app forget it.
   function importVault() {
     let done = false, ui = null;
     const m = modal({
@@ -2104,8 +1996,7 @@
   function cardMenu(id, x, y, opts) {
     const a = byId(id);
     if (!a) return;
-    // On a selected account the menu acts on the whole selection; on any other it acts on that account alone and
-    // leaves the ticks as they are (opening ⋮ used to tick the account and untick the rest).
+    // On a selected account the menu acts on the whole selection; on any other, on that account alone, ticks left as they are.
     const ids = S.selected.has(id) ? [...S.selected] : [id];
     const many = ids.length > 1;
     openMenu([
@@ -2156,10 +2047,7 @@
     o.close();
     multiHelp();
   }
-  /**
-   * Send feedback: an idea or a bug report for Bloxkeep's developer. Preview shows exactly what goes, the error log
-   * with account names already taken out by the app.
-   */
+  /** Send feedback to Bloxkeep's developer. Preview shows exactly what goes; the app takes account names out of the error log. */
   function feedbackModal() {
     let ui = null;
     const written = () => { const v = ui?.form.values(); return !!v && (v.text.trim() !== '' || v.contact.trim() !== ''); };
@@ -2264,18 +2152,16 @@
   let statsUi = null;
 
   /* ───────────────────────── game monitor ─────────────────────────
-     A page can't show other programs' windows: the live pictures of the Roblox windows are the app's, laid over this
-     tab's empty area. The page tells the app where that area is (CSS pixels and the pixel ratio) whenever it may have
-     moved, and { hidden } whenever something of the page must show there: another tab, a dialog or menu, the lock
-     screen, the window hidden. Windows draws the pictures above the whole page, so nothing could show through them. */
+     A page can't show other programs' windows: the app lays live pictures of the Roblox windows over this tab's empty area.
+     The page reports that area (CSS pixels and pixel ratio) whenever it may move, and { hidden } whenever something of the
+     page must show there (another tab, a dialog or menu, the lock screen): Windows draws the pictures above the whole page. */
   const MON = { sent: null, frame: 0, dpr: null };
   function monitorArea() {
     const area = $('#mon-area');
     if (!S.shell || S.view !== 'monitor' || !area || document.hidden || openModals > 0 || menuEl) return { hidden: true };
     const r = area.getBoundingClientRect();
     let w = r.width, h = r.height;
-    // Toasts show at the bottom right: while they overlap the area, the pictures make room on whichever side keeps
-    // more of them (usually the right, so a toast doesn't halve the pictures' height).
+    // While toasts overlap the area, the pictures make room on whichever side keeps more of them (usually the right).
     const toasts = $('#toasts');
     const tr = toasts?.children.length ? toasts.getBoundingClientRect() : null;
     if (tr && tr.width && tr.left < r.right && tr.right > r.left && tr.top < r.bottom && tr.bottom > r.top) {
@@ -2300,8 +2186,7 @@
     }
     MON.frame ||= requestAnimationFrame(send);
   }
-  /** Follows the tab's area (a resize, the header wrapping, toasts coming and going) and the pixel ratio (another screen). */
-  // Toasts coming and going one after another settle first, so the pictures aren't laid out again for each.
+  // Follows the tab's area and the pixel ratio; toasts coming and going settle first, so the pictures aren't laid out for each.
   let toastSettle = 0;
   const monitorObserver = new ResizeObserver(entries => {
     if (entries.every(e => e.target.id === 'toasts')) {
@@ -2327,10 +2212,8 @@
   document.addEventListener('visibilitychange', syncMonitor);
 
   /* ───────────────────────── quick search (Ctrl+K) ─────────────────────────
-     One box for everything on the page: accounts, presets, recent and pinned games, the tabs, Settings sections and
-     the app's own actions. paletteEntries() is the registry, built from the state each time the box opens; an entry
-     is { id, text, hint, keywords, icon | img | avatar, run, alts }, so a new action is one line in its list. The box,
-     the list, the ranking and the keys are React's (ui/src/Palette.tsx). */
+     One box for accounts, presets, games, the tabs, Settings sections and the app's actions. paletteEntries() is the registry,
+     built each time the box opens; an entry is { id, text, hint, keywords, icon | img | avatar, run, alts }. UI: ui/src/Palette.tsx. */
   const PAL = { close: null };
 
   /** Puts a game in the dock's game box (no server), as the recent-game chips do. */
@@ -2436,9 +2319,8 @@
   }
 
   /* ───────────────────────── join a player ─────────────────────────
-     The selected accounts open into the server a Roblox user is in. The app looks the name up and asks Roblox where
-     that person is with the selected accounts' own sign-ins; when Roblox won't say (privacy settings, offline, in
-     Studio, on the website) the dialog says exactly that and nothing opens. Names looked up are kept in the vault. */
+     The selected accounts open into a Roblox user's server, looked up with their own sign-ins. When Roblox won't say (privacy,
+     offline, Studio, the website) the dialog says so and nothing opens. Names looked up are kept in the vault. */
   function joinPlayerModal() {
     const ids = [...S.selected];
     if (!ids.length) return toast(t('t.selectFirst'), 'warn');
@@ -2490,10 +2372,7 @@
       onRemoved: () => ui?.unmount(),
     });
   }
-  /**
-   * Opens the accounts into the server found, through the usual launch: its warnings ask first, as Play's do. With
-   * follow ticked, their rejoins go to wherever that player is by then.
-   */
+  // Through the usual launch, so its warnings ask first; with follow ticked, rejoins go wherever that player is by then.
   async function joinServer(ids, placeId, jobId, force = false, follow = {}) {
     if (inFlight.has('launch')) return;
     inFlight.add('launch');
@@ -2527,7 +2406,6 @@
         const r = el.getBoundingClientRect();
         return cardMenu(id, r.left, r.bottom + 6, { above: r.top - 6, button: el });
       }
-      // The app answers with a state push in the new language.
       // Settings › Appearance › Custom: a picture behind the page, or none.
       case 'ct-pick': return busy(el, () => call('pickThemePicture'));
       case 'ct-clear': return call('clearThemePicture');
@@ -2613,8 +2491,8 @@
       case 'launch': return launch([...S.selected], false);
       case 'open-app': return launch([...S.selected], true);
       case 'arrange': return arrange(el);
-      // The dock's Windows menu: Open Roblox only, then Arrange windows' layouts as pictures (as Windows' snap layouts):
-      // picking one keeps it and arranges the windows in it at once; the size of one's own is typed in Settings.
+      // The dock's Windows menu: Open Roblox only, then Arrange's layouts as pictures (like Windows' snap layouts); picking one
+      // arranges the windows at once.
       case 'dock-more': {
         const st = S.app.settings || {};
         return menuAt(el, [
@@ -2649,9 +2527,8 @@
       case 'multi-help': return multiHelp();
       case 'ru-notes': return call('openReleaseNotes', { version: el.dataset.v });
       case 'ru-hide': return call('hideRobloxClosed');
-      // Roblox's launcher here installs the new Roblox without opening it. With windows open it may close them (when it
-      // can't update in the background), so that is asked first. Not busy(): the button stays disabled from the app's
-      // state ("Updating…") until the launcher is done, which busy() would undo when the call returns.
+      // Roblox's launcher installs the new Roblox without opening it, but may close open windows: asked first. Not busy(): the
+      // app's state keeps the button disabled ("Updating…") until the launcher is done, which busy() would undo.
       case 'rbx-update': return (async () => {
         const rv = S.app.robloxVersion || {}, n = S.metrics.robloxCount;
         if (rv.updating || (n && !await confirmBox(tn('rbx.updateQ', n, { l: rv.updater }), { title: t('rbx.updateTitle'), ok: t('rbx.updateOk') }))) return;
@@ -2693,8 +2570,7 @@
       case 'bk-import': return importVault();
       // First-run screen: the chosen file becomes the vault; the app then shows the unlock screen.
       case 'restore-backup': return busy(el, () => call('restoreBackup'));
-      // Several vaults (RobloxManager/AppController.Vaults.cs): the picker, a vault picked or added, and each one's name
-      // and picture. Switching locks the open vault first; its Roblox windows keep running.
+      // Several vaults (AppController.Vaults.cs). Switching locks the open vault first; its Roblox windows keep running.
       case 'vault-pick': return busy(el, () => call('pickVault'));
       case 'vault-select': return call('selectVault', { id: el.dataset.id });
       case 'vault-add': return call('addVault');
@@ -2707,8 +2583,7 @@
       })();
       case 'vault-picture': return busy(el, () => call('pickVaultPicture', { id: el.dataset.id }));
       case 'vault-picture-clear': return call('clearVaultPicture', { id: el.dataset.id });
-      // First start without a vault: Multi-Roblox only, for someone who signs in to Roblox in their own browser. It
-      // asks the same as the sidebar's switch, then Bloxkeep goes to the tray.
+      // First start without a vault: Multi-Roblox only (for signing in from one's own browser), then Bloxkeep goes to the tray.
       case 'multi-only': return (async () => {
         if (!await confirmBox(t('set.multiConfirm'), { title: t('set.multiConfirmTitle'), ok: t('set.multiOk') })) return;
         if (await call('multiOnly', { on: true }) === undefined) return;
@@ -2729,8 +2604,7 @@
         const list = await call('whatsNew');
         if (list?.length) showWhatsNew(list); else if (list) toast(t('wn.none'), 'info');
       });
-      // Bloxkeep closes and reopens as the new version; Roblox windows stay open.
-      // busy(): a second click while it closes mustn't start a second update.
+      // Restarts as the new version, Roblox windows stay open. busy(): a second click mustn't start a second update.
       case 'apply-update': return busy(el, () => call('applyUpdate'));
       case 'browse-games': return P.open && P.mode === 'browse' ? closePicker() : openPicker('browse');
       case 'picker-tab':
@@ -2805,8 +2679,7 @@
         return;
       }
     }
-    // Ctrl+K: quick search, from anywhere on the page (also while typing in a box); again closes it. Not over another
-    // dialog, whose form it would hide, and not on the lock screen.
+    // Ctrl+K from anywhere (also while typing); again closes it. Not over another dialog, nor on the lock screen.
     if (e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === 'k' && S.shell && !S.app?.locked) {
       e.preventDefault();
       if (PAL.close) PAL.close();
@@ -2828,7 +2701,6 @@
       e.preventDefault();
       // The Presets tab has its own search (shown once there is a preset).
       if (S.view === 'presets' && !$('#pv-tools').hidden) return $('#pv-q').focus();
-      // So does Settings.
       if (S.view === 'settings') { $('#set-q').focus(); $('#set-q').select(); return; }
       setView('accounts');
       $('#q').focus();
@@ -2867,11 +2739,9 @@
   });
 
   /* ───────────────────────── wiring ───────────────────────── */
-  /**
-   * Control from Discord: someone typed this PC's code into /pc link. Nothing is linked until the person here allows
-   * it (a code seen on a stream, or given to someone who asked for it, links nothing by itself); the question comes up
-   * wherever they are in the app, Don't allow first. Answered elsewhere or given up on by the bot: the box goes.
-   */
+  // Control from Discord: someone typed this PC's code into /pc link. Nothing links until the person here allows it (a
+  // code seen on a stream links nothing by itself); asked wherever they are, Don't allow first. Answered elsewhere or
+  // given up on by the bot: the box goes.
   let remoteBox = null, remoteAsked = '';
   function askRemote(r) {
     const ask = r?.ask, key = ask ? `${ask.user}|${ask.replacing ?? ''}` : '';
@@ -2908,8 +2778,7 @@
       // Rebuild everything in the new language; inputs come back from settings / page state.
       S.shell = false;
       S.lockMode = null;
-      // What was being typed in Settings (a search, a new master password) and the sections left open aren't settings:
-      // put back into the rebuilt page.
+      // What was typed in Settings (a search, a new master password) isn't a setting: put back into the rebuilt page.
       const typed = ['#set-q', '#pw-cur', '#pw-new', '#pw-new2'].map(sel => [sel, $(sel)?.value]).filter(([, v]) => v);
       const open = [...document.querySelectorAll('details.set-more')].map(d => d.open);
       setTimeout(() => {
@@ -2960,8 +2829,7 @@
     }
     const ids = new Set(st.accounts.map(a => a.id));
     for (const id of [...S.selected]) if (!ids.has(id)) S.selected.delete(id);
-    // Right after unlocking, a loading screen (like other apps have at start) with the app's real steps, so the
-    // accounts appear with their status and avatars instead of "unknown". Never longer than BOOT_MAX.
+    // After unlocking, a loading screen with the app's real steps, so accounts appear with status and avatars. At most BOOT_MAX.
     if (!S.shell && !S.bootDone) {
       if (st.boot && !S.bootTimedOut) {
         showBoot(st.boot);
@@ -2991,9 +2859,8 @@
   }
 
   /* ───────────────────────── loading screen ─────────────────────────
-     A progress bar driven by the app's real steps ({ stage, percent }). While a step runs the bar creeps towards the
-     next step's mark but never past it, and jumps when the step finishes — the way browsers and Discord do it.
-     Reusable for any long start: add a stage here with its label and where it ends. */
+     A progress bar driven by the app's real steps ({ stage, percent }): while a step runs it creeps towards the next step's
+     mark but never past it, and jumps when the step finishes. */
   const BOOT_MAX = 8000;
   const BOOT_STEPS = {
     status: { label: 'boot.status', end: 0.8 },
@@ -3060,10 +2927,8 @@
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) metricsListeners.forEach(f => f()); });
 
-  /**
-   * The browser is closed while the window stays minimised (and recreated when GPU drawing is switched); the app
-   * keeps the view in memory meanwhile, so the page comes back exactly as it was. Nothing is written to disk.
-   */
+  // The browser is closed while the window stays minimised (and recreated when GPU drawing is switched); the app keeps the
+  // view in memory, never on disk, so the page comes back exactly as it was.
   /** @param restart the page itself asks for a browser restart next (the app otherwise only keeps a view sent from the background). */
   function saveView(restart = false) {
     if (!S.shell) return;
@@ -3105,10 +2970,8 @@
 
   // A page hidden in the background is drawn again when the window comes back; the app covers that moment too.
   document.addEventListener('visibilitychange', () => { if (!document.hidden) pageShown(); });
-  /**
-   * The app covers the window (its logo on start, a picture of the old page after the browser was closed in the
-   * background) until the page is on screen: tell it once a frame (with the visible avatars, briefly waited for) is drawn.
-   */
+  // The app covers the window (its logo, or a picture of the old page) until the page is on screen: told once a frame
+  // (with the visible avatars, briefly waited for) is drawn.
   function pageShown() {
     const imgs = [...document.querySelectorAll('#scroll img')].slice(0, 40).map(img => img.decode().catch(() => {}));
     Promise.race([Promise.all(imgs), new Promise(r => setTimeout(r, 400))])

@@ -6,12 +6,9 @@ using System.Text.RegularExpressions;
 
 namespace RobloxManager;
 
-/// <summary>
-/// What a message says, before it is shaped: the same content goes out as an embed or as plain text. Shaped the way
-/// docs/discord-style.md says: a short title, colour by meaning, facts in short fields, "Bloxkeep · …" in the footer.
-/// </summary>
+/// <summary>What a message says before it is shaped (embed or plain text), as docs/discord-style.md says: a short title,
+/// colour by meaning, facts in short fields, "Bloxkeep · …" in the footer.</summary>
 /// <param name="Title">The news in a few words (markdown: names in it are escaped).</param>
-/// <param name="Footer">"Bloxkeep · Alerts" and the like; shown with the logo beside it.</param>
 /// <param name="Timestamp">When it happened: shown by Discord under an embed, in each reader's own time zone.</param>
 public sealed record DiscordMessage(string Title, string Text, IReadOnlyList<DiscordField> Fields, string? Footer = null, int Color = DiscordWebhook.Blue, DateTime? Timestamp = null)
 {
@@ -21,13 +18,11 @@ public sealed record DiscordMessage(string Title, string Text, IReadOnlyList<Dis
     public string? AuthorIcon { get; init; }
     /// <summary>A picture in the top-right corner: the game's icon from Roblox's servers, or the logo.</summary>
     public string? Thumbnail { get; init; }
-    /// <summary>More embeds after this one, in the same message (a summary's presets).</summary>
     public IReadOnlyList<DiscordMessage> More { get; init; } = [];
     /// <summary>A summary's picture: drawn when it goes out and attached to the message, shown in this embed.</summary>
     public SummaryCardData? Card { get; init; }
 }
 
-/// <summary>A file sent with a message (a summary's picture).</summary>
 public sealed record DiscordFile(string Name, byte[] Data);
 
 public sealed record DiscordField(string Name, string Value, bool Inline = false);
@@ -62,11 +57,9 @@ public enum DiscordOutcome { Sent, RateLimited, Gone, MessageGone, Rejected, Off
 /// <param name="Error">Discord's own reason (a 400) or the network error; never contains the link.</param>
 public sealed record DiscordResult(DiscordOutcome Outcome, string? MessageId = null, TimeSpan Wait = default, string? Error = null);
 
-/// <summary>
-/// Posts to a Discord webhook the person pasted in Settings › Discord: builds the message within Discord's limits,
-/// with <c>allowed_mentions</c> naming exactly who may be pinged, and reports how the post went. Only discord.com is
-/// ever contacted, and the link (whose token is the only key to the webhook) never reaches a log or an error text.
-/// </summary>
+/// <summary>Posts to the webhook the person pasted in Settings › Discord: builds the message within Discord's limits, with
+/// <c>allowed_mentions</c> naming exactly who may be pinged. Only discord.com is ever contacted, and the link (its token is
+/// the only key to the webhook) never reaches a log or an error text.</summary>
 public static partial class DiscordWebhook
 {
     // Discord's limits (docs.discord.com, Resources › Message / Webhook).
@@ -115,10 +108,8 @@ public static partial class DiscordWebhook
         return m.Success ? $"discord.com/api/webhooks/…{m.Groups[1].Value[^4..]}/••••••" : "";
     }
 
-    /// <summary>
-    /// Names and game titles are shown as typed: Discord's formatting characters in them are escaped (and a name
-    /// like "@everyone" or "&lt;@123&gt;" shows as text; allowed_mentions already keeps it from pinging).
-    /// </summary>
+    /// <summary>Names and game titles show as typed: Discord's formatting characters are escaped, so "@everyone" or
+    /// "&lt;@123&gt;" shows as text (allowed_mentions already keeps it from pinging).</summary>
     public static string Escape(string? text) =>
         Regex.Replace(text ?? "", @"[\\*_~`|>\[\]<@]", @"\$0");
 
@@ -143,10 +134,8 @@ public static partial class DiscordWebhook
         return text[..end] + "…";
     }
 
-    /// <summary>
-    /// The JSON Discord gets: an embed (or plain text) within every limit, the pings first in <c>content</c>, and
-    /// <c>allowed_mentions</c> listing exactly those, so a name like "@everyone" inside the text pings nobody.
-    /// </summary>
+    /// <summary>The JSON Discord gets: an embed (or plain text) within every limit, pings first in <c>content</c> and
+    /// <c>allowed_mentions</c> listing exactly those, so "@everyone" inside the text pings nobody.</summary>
     /// <param name="picture">The name of a picture sent with it (<see cref="DiscordFile"/>): the first embed shows it.</param>
     public static JsonObject Build(DiscordMessage message, DiscordPing ping, bool embed, string? username, string? avatarUrl, string? picture = null)
     {
@@ -156,7 +145,6 @@ public static partial class DiscordWebhook
         if (ping.Everyone)
             mentions.Add("@everyone");
         string pings = string.Join(' ', mentions);
-        // The person's own name and picture (Settings › Discord), else Bloxkeep's.
         var payload = new JsonObject
         {
             ["username"] = Cut(string.IsNullOrWhiteSpace(username) ? DefaultName : username.Trim(), MaxUsername),
@@ -244,10 +232,8 @@ public static partial class DiscordWebhook
     [GeneratedRegex(@"\[((?:\\.|[^\]\\])*)\]\(https://[^)\s]+\)")]
     private static partial Regex LinkPattern();
 
-    /// <summary>
-    /// The embed as plain text: the account and the title in bold, the description, a line per short fact
-    /// ("**Game:** …", a fact of several lines joined with " · "), a list under its name, the footer in small text.
-    /// </summary>
+    /// <summary>The embed as plain text: account and title in bold, the description, a line per short fact ("**Game:** …",
+    /// several lines joined with " · "), a list under its name, the footer in small text.</summary>
     static string PlainText(DiscordMessage m)
     {
         var sb = new StringBuilder("**");
@@ -268,18 +254,15 @@ public static partial class DiscordWebhook
         return LinkPattern().Replace(sb.ToString(), "$1");
     }
 
-    /// <summary>
-    /// Posts a new message (<paramref name="wait"/>: Discord answers with it, for its id) or edits one this webhook
-    /// sent. Never throws for Discord's or the network's answers: the outcome says what happened.
-    /// </summary>
+    /// <summary>Posts a new message (<paramref name="wait"/>: Discord answers with it, for its id) or edits one this webhook
+    /// sent. Never throws for Discord's or the network's answers: the outcome says what happened.</summary>
     /// <param name="file">Sent with a new message (a summary's picture), as multipart form data.</param>
     public static async Task<DiscordResult> SendAsync(string url, JsonObject payload, string? editMessageId, bool wait, CancellationToken ct = default, DiscordFile? file = null)
     {
         bool edit = !string.IsNullOrEmpty(editMessageId);
         if (!TryNormalize(url, out string target) || (edit && !IsId(editMessageId)))
             return new DiscordResult(DiscordOutcome.Gone);
-        // An edit changes only the fields it names: the other form (embed or plain text) is cleared, or a switch
-        // between them would leave both on the message.
+        // An edit changes only the fields it names: the other form (embed or text) is cleared, or a switch would leave both.
         if (edit)
         {
             payload["content"] ??= "";

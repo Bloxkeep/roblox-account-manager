@@ -1,8 +1,6 @@
-// The preset form (new or edit): name, game (the box works like the dock's: recent, pinned, favourite and popular
-// games, a name searched, or a link or Place ID pasted, the chosen game shown under it), kind of server, wait between
-// accounts, Job ID; the accounts, ticked, in their launch order; options for the windows it opens; its own Discord
-// channel; the schedule. app.js's dialog keeps the title, the buttons and where a refused save says why; it asks this
-// form for what to save (collect), which box a refusal is about (refusedBox) and whether anything changed (dirty).
+// The preset form (new or edit): name, game, kind of server, wait between accounts, Job ID, the ticked accounts in launch
+// order, options for its windows, its own Discord channel, the schedule. app.js's dialog keeps the title and buttons; it
+// asks this form what to save (collect), which box a refusal is about (refusedBox) and whether anything changed (dirty).
 import { useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { OrderList, type OrderAccount, type OrderListApi } from './OrderList';
@@ -86,8 +84,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
     // Checked here rather than clamped quietly by the app: 1000 hours or a quarter hour would save as something else.
     const h = +hours.trim();
     if (schOn && stop === 'after' && !(h >= 0.5 && h <= 168 && Number.isInteger(h * 2))) return { error: t('ps.schHoursBad'), box: boxes.current.hours };
-    // Its own Discord channel: undefined keeps the saved link, '' goes back to Settings' channel, a link replaces it;
-    // chosen but no link pasted is said here, next to the box.
+    // Its own Discord channel: undefined keeps the saved link, '' goes back to Settings' channel, a link replaces it.
     let discordWebhook: string | undefined;
     if (dcMode !== 'own') discordWebhook = base.discord ? '' : undefined;
     else if (dcLink.trim()) discordWebhook = dcLink.trim();
@@ -100,8 +97,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
         delaySeconds: d === '' ? null : Math.min(120, Math.max(0, Math.round(+d) || 0)),
         antiAfk: fromTri(afk), autoRejoin: fromTri(rejoin), rejoinWith: withOn ? withShown : '', profile, restartHours: +restart || 0, arrange: fromTri(arrange),
         discordWebhook,
-        // A schedule never set up (off, no start time) is saved as none: no "Schedule off" row, no switch that couldn't
-        // be turned on.
+        // A schedule never set up (off, no start time) is saved as none: no "Schedule off" row with a switch that can't turn on.
         schedule: !schOn && !time.trim() ? null : {
           enabled: schOn, time: time.trim(), days: mode === 'once' ? [] : WEEK.filter(x => days.includes(x)),
           date: mode === 'once' ? date.trim() : '', stop, stopHours: +hours.trim() || 0, stopTime: stopTime.trim(),
@@ -131,7 +127,6 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
   const tickedIds = order.current?.ticked() ?? ticked;
   const withOn = !!place.trim() && server !== 'follow' && rejoin !== 'off';
   const withShown = rejoinWith === '' || rejoinWith === 'any' || tickedIds.includes(rejoinWith) ? rejoinWith : '';
-  // One short note under the options, only for a choice that needs explaining (a line each).
   const optNote = [withOn && withShown ? t('ps.opt.withNote') : '', profile === 'afk' ? t('ps.opt.lightNote') : '', +restart ? t(place.trim() || server === 'follow' ? 'ps.opt.restartNote' : 'ps.opt.restartNoGame') : '']
     .filter(Boolean).join('\n');
   const followSet = (on: boolean | number) => t('ps.opt.followSet',
@@ -236,12 +231,8 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
   </>;
 }
 
-/**
- * The game box with its list: focusing it empty offers recent, pinned, favourite and popular games, typing a name
- * searches Roblox, and a link or Place ID can be pasted (the game it is shows under the box). The same keys as the
- * dock's box: arrows walk the list, Enter picks, Esc closes the list (and only the list: the dialog's own Esc and Enter
- * stand back while aria-expanded says a list is open).
- */
+// The game box with its list, keyed like the dock's box: arrows walk the list, Enter picks, Esc closes only the list
+// (the dialog's own Esc and Enter stand back while aria-expanded says a list is open).
 function GameBox({ place, setPlace, chose }: { place: string; setPlace: (v: string) => void; chose: (g: Game) => void }) {
   const host = useHost();
   const { t, call } = host;
@@ -278,7 +269,6 @@ function GameBox({ place, setPlace, chose }: { place: string; setPlace: (v: stri
     setCard(g);
     chose(g);
   };
-  // A link or Place ID typed or pasted: show which game it is.
   const resolve = async (value: string) => {
     if (!value || !host.looksLikeTarget(value)) return setCard(null);
     const r = await call('resolveGame', { input: value }, { silent: true }) as (Game & { ok?: boolean }) | undefined;

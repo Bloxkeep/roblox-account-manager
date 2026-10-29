@@ -1,9 +1,7 @@
-// The sign-in screen: username and password, with the other ways (phone, browser, cookie, a vault file) around it.
-// Works on a PC with no phone and no roblox.com: the values go only to Roblox's (or Roblox VNG's) official sign-in
-// host, over HTTPS. It handles a 2-step code (authenticator, email or SMS; a code filled in from a key saved here), a
-// captcha (shown in a window of its own, for the person to solve), and "Try again" when Roblox signed in but the account
-// couldn't be looked up. Several accounts can be added in a row. app.js's dialog keeps its frame and what closing does
-// (the app drops the half-done sign-in; what was added gets selected); a way picked closes it and opens that way.
+// The sign-in screen: username and password, the other ways (phone, browser, cookie, a vault file) around it. Works with
+// no phone and no roblox.com: the values go only to Roblox's (or VNG's) official sign-in host, over HTTPS. Handles a
+// 2-step code (authenticator, email, SMS; or filled from a key saved here), a captcha (own window), and "Try again" when
+// Roblox signed in but the account couldn't be looked up. app.js's dialog keeps the frame and what closing does.
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
 import { Icon, useHost } from './host';
 
@@ -20,7 +18,6 @@ export interface PasswordLoginApi {
   stop(): void;
 }
 
-/** A sentence with a name in bold in its {name} ("Enter the 6-digit code for **farm1**."). */
 const boldIn = (text: string, name: string) => text.split('\u0000').map((part, n) => <Fragment key={n}>{n ? <b>{name}</b> : null}{part}</Fragment>);
 
 export function PasswordLogin({ forRealm, api, way }: {
@@ -39,17 +36,15 @@ export function PasswordLogin({ forRealm, api, way }: {
   // The 2-step methods this account has that take a typed code (the app asks Roblox), the preferred one first.
   const [methods, setMethods] = useState(['authenticator', 'email']);
   const [method, setMethod] = useState('authenticator');
-  // A sign-in request on its way: every button that would send another stays off until the answer, so one click never
-  // sends the password twice.
+  // A request on its way: every button that would send another stays off, so one click never sends the password twice.
   const [pending, setPending] = useState(false);
   const [sending, setSending] = useState(false);
   const [added, setAdded] = useState<Added[]>([]);
   const [, tick] = useState(0);
   // Each time the screen is drawn anew (a step, a realm, an account added) its first box takes the focus.
   const [drawn, setDrawn] = useState(0);
-  // Email/SMS ways a code has gone out by (Roblox sends one by the preferred way itself) and when "Resend" works again
-  // for each; when Verify (and Send) work again after "too many tries"; the authenticator code filled in from a key
-  // saved here (never sent by itself, nor another after Roblox refused one). One code screen's, all of it.
+  // Per code screen: the ways a code went out by and when "Resend" works again, when Verify works again after "too many
+  // tries", the authenticator code filled from a saved key (never sent by itself, nor another after Roblox refused one).
   const s = useRef({ sent: new Set<string>(), resendAt: {} as Record<string, number>, verifyAt: 0, autofill: false, filled: '', fillTimer: 0, fillSeq: 0,
     pending: false, alive: true, added: [] as Added[], method: 'authenticator', code: '' });
   s.current.method = method;
@@ -89,9 +84,8 @@ export function PasswordLogin({ forRealm, api, way }: {
   // Back on the first screen the password goes with the attempt that used it (the username stays).
   const draw = (next: Step, error = '') => { setStep(next); setErr(error); if (next === 'login') setPass(''); setDrawn(n => n + 1); };
 
-  // The buttons busy() also turns off and back on (its spinner): their state is put on them after every drawing. A
-  // disabled prop alone isn't enough: React skips it when it didn't change, after busy() had turned the button back on
-  // ("Resend in 30 s" or "Verify in 60 s" clickable).
+  // Buttons busy() also toggles get their state put on after every drawing: React skips an unchanged disabled prop after
+  // busy() had turned the button back on ("Resend in 30 s" clickable).
   const wasSent = s.current.sent.has(method), held = s.current.verifyAt > now;
   useLayoutEffect(() => {
     const set = (k: string, off: boolean) => { const b = box.current[k] as HTMLButtonElement | null; if (b && !b.classList.contains('busy')) b.disabled = off; };
@@ -134,7 +128,6 @@ export function PasswordLogin({ forRealm, api, way }: {
     s.current.fillTimer = window.setTimeout(fillCode, Math.max(1, r.seconds) * 1000 + 300);
   };
 
-  /** One sign-in request at a time. */
   const request = async (btn: HTMLElement | null, cmd: string, args: Record<string, unknown>) => {
     if (s.current.pending) return undefined;
     try {
@@ -147,8 +140,7 @@ export function PasswordLogin({ forRealm, api, way }: {
 
   const handle = (r: Reply | undefined) => {
     if (!r || !s.current.alive) return;
-    // The attempt is over (wrong password, account locked, too many tries), or what it asked for was answered and then
-    // failed: back to the first step with the reason, the username kept.
+    // The attempt is over (wrong password, account locked, too many tries) or failed: back to the first step with the reason.
     if (r.status === 'login') { resetTwoStep(); return draw('login', r.error || ''); }
     // Signed in, but the account couldn't be looked up: "Try again" only does that.
     if (r.status === 'finish') { resetTwoStep(); return draw('finish', r.error || ''); }
@@ -171,8 +163,7 @@ export function PasswordLogin({ forRealm, api, way }: {
       resetTwoStep();
       const known = (r.methods || []).filter(x => METHOD_LABEL[x]);
       const list = known.length ? known : ['authenticator', 'email'];
-      // Roblox may already have sent the code a given way (e.g. by email): start on that tab, and it sends the code by
-      // the preferred way (or the one it named) as soon as it asks for it.
+      // Roblox may have sent the code a given way already (e.g. email): start on that tab; it sends by the preferred way when asked.
       const first = list.includes(r.media || '') ? r.media! : list[0];
       if (first === 'email' || first === 'sms') { s.current.sent.add(first); s.current.resendAt[first] = Date.now() + RESEND_WAIT; }
       s.current.autofill = !!r.autofill;
@@ -286,11 +277,9 @@ export function PasswordLogin({ forRealm, api, way }: {
       <form id="pw-two" className="auth-form" autoComplete="off" onSubmit={submitTwoStep}>
         <input className="field auth-code" id="pw-otp" ref={ref('otp')} inputMode="numeric" maxLength={40} autoComplete="one-time-code" placeholder="000000" aria-label={t('pw.code')}
           value={code} onChange={e => {
-            // A pasted "123 456" or "123-456" keeps its six digits; letters can't be typed.
             const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
             setCode(digits);
             s.current.code = digits;
-            // Typed over: the person's own code now, left alone.
             if (digits !== s.current.filled) setFilledNote(false);
           }} />
         <p className="auth-hint" id="pw-filled" hidden={!filledNote}>{t('pw.filled')}</p>
@@ -306,8 +295,7 @@ export function PasswordLogin({ forRealm, api, way }: {
       </form>
     </>;
   } else {
-    // The phone comes first (no password, no puzzle); the browser sign-in is roblox.com only, so it isn't offered for
-    // Roblox VNG.
+    // The phone first (no password, no puzzle); the browser sign-in is roblox.com only, so not offered for Roblox VNG.
     screen = <>
       <div className="auth-head"><img src={host.logo} alt="" /><h3>{t('pw.title')}</h3></div>
       <div className="seg wide" role="tablist">

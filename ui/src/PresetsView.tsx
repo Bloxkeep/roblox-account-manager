@@ -1,6 +1,5 @@
-// The Presets tab: the saved presets, each a row with its game, what it does in one plain line, when it runs next and
-// last, its accounts, its schedule switch, Run (or Close while its windows are open) and Edit / Duplicate / Delete; a
-// search over names and games; the order Play's menu shows them in, changed with the arrows or by dragging the handle.
+// The Presets tab: each preset as a row (game, a plain summary, next and last run, accounts, schedule switch, Run or
+// Close, Edit / Duplicate / Delete), a search over names and games, and their order (arrows or dragging the handle).
 import { Fragment, useEffect, useRef, useState, type DragEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { Ago, Icon, useAppState, useHost } from './host';
@@ -29,7 +28,6 @@ export function PresetsView() {
   const app = useAppState();
   const all: Preset[] = app.settings?.presets || NONE;
   const byId = new Map<string, Account>((app.accounts || []).map((a: Account) => [a.id, a]));
-  /** The preset's accounts that still exist (deleted ones are skipped when it runs). */
   const accountsOf = (p: Preset) => p.accountIds.map(id => byId.get(id)).filter((a): a is Account => !!a);
   const accCount = (n: number) => t(n === 1 ? 'ps.acc1' : 'ps.accN', { n });
   const list = useRef<HTMLDivElement>(null);
@@ -47,8 +45,7 @@ export function PresetsView() {
   const q = fold(shownQuery.trim());
   const shown = q ? all.filter(p => fold(`${p.name}\n${p.placeInput ? p.gameName || p.placeInput : t('ps.noGame')}`).includes(q)) : all;
 
-  // The tab just opened, or the app has settled (so they are there when it first opens): game icons not known yet are
-  // asked for (at most every few minutes).
+  // On opening, or once the app has settled: game icons not known yet are asked for (at most every few minutes).
   const iconsAt = useRef(0), latest = useRef(all);
   latest.current = all;
   useEffect(() => {
@@ -61,8 +58,7 @@ export function PresetsView() {
     return () => stops.forEach(stop => stop());
   }, [on, call]);
 
-  // Dragging a row by its handle (only the handle starts a drag, so the row's buttons and switch work as usual): the
-  // rows show the new order as it goes and keep it until the app answers; Esc, or a drop outside, puts them back.
+  // Dragging by the handle only: the rows show the new order and keep it until the app answers; Esc or a drop outside undoes.
   const [armed, setArmed] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ id: string; order: string[]; done?: boolean } | null>(null);
   const rows = drag ? drag.order.map(id => all.find(p => p.id === id)).filter((p): p is Preset => !!p) : shown;
@@ -118,7 +114,6 @@ export function PresetsView() {
   };
 
   const scheduled = all.filter(p => p.schedule?.enabled).length;
-  // Counts only, like the other tabs; the empty state says what a preset is.
   const sub = all.length ? [t(all.length === 1 ? 'pv.count1' : 'pv.countN', { n: all.length }),
     scheduled ? t('pv.scheduled', { n: scheduled }) : '', all.length >= MAX_PRESETS ? t('pv.atMax') : ''].filter(Boolean) : [];
   const ordered = !q && all.length > 1;
@@ -126,7 +121,6 @@ export function PresetsView() {
   return <>
     <header className="top">
       <div className="top-title"><h1>{t('ps.listTitle')}</h1><p id="pv-sub">{sub.map((s, i) => <Fragment key={i}>{i ? <span className="sep">·</span> : null}{richNodes(s)}</Fragment>)}</p></div>
-      {/* The empty state has its own New button. */}
       <div className="top-tools" id="pv-tools" hidden={!all.length}>
         <label className="search"><Icon name="search" /><input id="pv-q" placeholder={t('pv.search')} maxLength={100} aria-label={t('pv.search')} value={query}
           onChange={e => { setQuery(e.target.value); host.setPresetQuery(e.target.value); }} /></label>
@@ -167,7 +161,6 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
   const game = p.server === 'follow' ? t('ps.following', { name: p.followPlayer || '' }) : p.placeInput ? p.gameName || p.placeInput : t('ps.noGame');
   const sc = p.schedule;
   const delay = p.delaySeconds ?? null;
-  // What it does, in one plain line: server · wait · schedule · options set differently from Settings.
   const summary = [
     p.placeInput && p.server !== 'follow' ? t(`ps.srv.${p.server}`) : '',
     delay === null ? t('pv.delayDefault', { n: delayDefault }) : delay === 0 ? t('pv.delay0') : t('pv.delayN', { n: delay }),

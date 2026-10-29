@@ -39,11 +39,8 @@ public sealed class SummaryCardAccount
     public int Hue { get; init; }
 }
 
-/// <summary>
-/// Draws a summary's picture: play time by hour (or day) in a stacked chart coloured by game, then one row per account
-/// with its Roblox avatar and a bar split by game. A PNG for Discord (attached to the message, so nothing is uploaded
-/// anywhere else). Avatars come from Roblox's image servers only; one that can't be fetched shows initials.
-/// </summary>
+/// <summary>A summary's PNG for Discord (attached, so nothing is uploaded elsewhere): play time by hour or day stacked by
+/// game, then a row per account with its avatar (Roblox's image servers only) and a bar split by game.</summary>
 public static class SummaryCard
 {
     // Discord shows it about 450 px wide: drawn at twice that, with text sized to read there.

@@ -3,12 +3,9 @@ using System.Text.RegularExpressions;
 
 namespace RobloxManager;
 
-/// <summary>
-/// "Join a player…": the selected accounts open into the server a Roblox user is in. A username is looked up publicly
-/// (no cookie). Where the person is comes from Roblox's presence, asked with the selected accounts' own sign-ins one
-/// at a time until one is shown the server: Roblox tells it only to people the player's privacy settings let join
-/// them. Bloxkeep never works around that (no follow, no friend request); it says what Roblox told it.
-/// </summary>
+/// <summary>"Join a player…": the selected accounts open into a Roblox user's server. A username is looked up publicly; where
+/// they are comes from presence asked with each selected account's own sign-in until one is shown the server (Roblox shows it
+/// only to people the player's privacy lets join). Bloxkeep never works around that (no follow, no friend request).</summary>
 public sealed partial class AppController
 {
     const int MaxRecentPlayers = 8;
@@ -17,11 +14,8 @@ public sealed partial class AppController
     /// <summary>Who each name typed this session is, so looking the same one up again (a retry) needs no request.</summary>
     readonly Dictionary<string, RobloxUser> _players = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// {input, ids}: where the player is, as the selected accounts are allowed to see it. Status "found" (with placeId,
-    /// jobId and the game's name), "hidden" (in a game, server not shown), "studio", "website" (online, not in a game),
-    /// "offline" (or hiding that they're online) or "notFound" (no such user).
-    /// </summary>
+    /// <summary>{input, ids}: where the player is, as the selected accounts may see it: "found" (with placeId, jobId, game name),
+    /// "hidden", "studio", "website", "offline" or "notFound".</summary>
     async Task<object?> FindPlayerAsync(JsonElement a)
     {
         var vault = RequireVault();
@@ -84,14 +78,10 @@ public sealed partial class AppController
         _ => 1,
     };
 
-    /// <summary>"found" (a server to join), "hidden" (in a game, its server not shown), "studio", "website" or "offline".</summary>
     static string PlayerStatus(Presence p) => PresenceRank(p) switch { 5 => "found", 4 => "hidden", 3 => "studio", 2 => "website", _ => "offline" };
 
-    /// <summary>
-    /// Where a player is, as Roblox shows it to these accounts, asked with each one's own sign-in in turn until one is
-    /// shown a server: Roblox tells it only to people the player's privacy settings let join them. The most any was
-    /// told, or null with the last failure when none could ask. Bloxkeep locked meanwhile: a UserError.
-    /// </summary>
+    /// <summary>Where a player is, asked with each account's own sign-in in turn until one is shown a server. The most any was told,
+    /// or null with the last failure when none could ask. Bloxkeep locked meanwhile: a UserError.</summary>
     async Task<(Presence? Seen, Exception? Failed)> WherePlayerIsAsync(long userId, IReadOnlyList<Account> viewers, Vault vault, CancellationToken ct = default)
     {
         Presence? seen = null;
@@ -121,10 +111,7 @@ public sealed partial class AppController
         return (seen, failed);
     }
 
-    /// <summary>
-    /// The user a username, user ID or profile link stands for; null when Roblox knows nobody by it. Digits alone are
-    /// tried as an ID first, then as a username (Roblox allows those too).
-    /// </summary>
+    /// <summary>The user a username, user ID or profile link stands for, or null. Digits alone: tried as an ID, then a username.</summary>
     async Task<RobloxUser?> LookUpPlayerAsync(string input)
     {
         if (input.Length == 0)
@@ -174,12 +161,9 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// {ids, placeId, jobId, force, follow, followUserId, followName}: the selected accounts open into the server
-    /// <see cref="FindPlayerAsync"/> found, through the usual launch (its warnings and confirmation included). The dock's
-    /// game box is left as it is. With follow, their rejoins follow that player (see <see cref="FollowTargetAsync"/>);
-    /// the box's choice is remembered for next time.
-    /// </summary>
+    /// <summary>{ids, placeId, jobId, force, follow, followUserId, followName}: the selected accounts open into the server
+    /// <see cref="FindPlayerAsync"/> found, through the usual launch. With follow, their rejoins follow that player (see
+    /// <see cref="FollowTargetAsync"/>); the box's choice is remembered.</summary>
     async Task<object?> JoinServerAsync(JsonElement a)
     {
         var vault = RequireVault();
@@ -216,14 +200,10 @@ public sealed partial class AppController
     /// <summary>Why each account waits for its followed player, as last said: said again only when the reason changes.</summary>
     readonly Dictionary<Guid, string> _followWaitTold = new();
 
-    /// <summary>
-    /// Where a rejoin that follows a player goes: the server the player is in now, as Roblox shows it to this account
-    /// (asked first) or another signed-in one, checked with Roblox's join answer as a Roblox window asks it. When they
-    /// can't be followed there yet (offline, on the website or in Studio, a server Roblox won't show, a full or ended
-    /// server, a game that bans or refuses this account), the rejoin waits <see cref="FollowRecheck"/> and looks again,
-    /// said once per reason, and null comes back: no window opens meanwhile. A request Roblox couldn't answer at all (no
-    /// connection, a rate limit) throws, so the rejoin's usual retry takes it.
-    /// </summary>
+    /// <summary>Where a following rejoin goes: the player's server now, as Roblox shows it to this account (first) or another signed-in
+    /// one, checked with Roblox's join answer. When they can't be followed yet (offline, website, Studio, hidden, full or ended server,
+    /// a game that bans or refuses this account), the rejoin waits <see cref="FollowRecheck"/>, said once per reason, and null comes
+    /// back. No answer at all (no connection, rate limit) throws, so the rejoin's usual retry takes it.</summary>
     async Task<GameTarget?> FollowTargetAsync(Account account, RejoinRequest request, CancellationToken ct)
     {
         var vault = RequireVault();
@@ -250,9 +230,8 @@ public sealed partial class AppController
         // A game that has banned this account: its server would only show the ban (Join Error 600).
         if (GameBanOf(account, target.PlaceId) is not null)
             return Wait("banned", L.F("{0} waits to join {1}: the game {1} is in has banned this account. Bloxkeep looks again every minute.", Name(account), player));
-        // Roblox's own answer, as the Roblox window would get it: a full or ended server, or a game that won't take this
-        // account, would only open a window that fails. No answer (a refused request, no network): the window is opened
-        // and its join tells as usual.
+        // Roblox's own join answer: a full or ended server or a game refusing this account would only open a failing window.
+        // No answer (refused request, no network): the window opens and its join tells as usual.
         var answer = await CheckJoinAsync(account, target, "Following a player for a rejoin", ct);
         ct.ThrowIfCancellationRequested();
         if (answer is { Full: true })

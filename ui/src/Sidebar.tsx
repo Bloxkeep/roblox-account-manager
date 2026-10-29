@@ -1,7 +1,5 @@
-// The sidebar: the window's buttons (macOS themes), the logo with the button to Bloxkeep's Discord server, the tabs,
-// then at the bottom what is going on with Roblox
-// on this PC (its windows and memory, the Roblox version), Multi-Roblox's card, the update waiting for a restart and
-// Lock. Buttons keep their data-act: app.js's one click handler does what they do.
+// The sidebar: window buttons (macOS themes), the logo with the Discord button, the tabs, then Roblox on this PC,
+// Multi-Roblox's card, a waiting update and Lock. Buttons keep their data-act for app.js's one click handler.
 import { useLocal } from './settings/parts';
 import { Icon, useAppState, useHost, useMetrics, usePage } from './host';
 import { VaultFace, type VaultInfo } from './Vaults';
@@ -17,13 +15,11 @@ export function Sidebar() {
   const app = useAppState();
   const view = usePage(p => p.view);
   const accounts: any[] = app.accounts || [];
-  // The mini window's buttons (the card's, and the icon the narrow sidebar keeps) read as pressed while it is open
-  // (the tray menu and Esc can change that too).
+  // The mini window's buttons read as pressed while it is open (the tray menu and Esc can change that too).
   const mini = t(app.miniOpen ? 'sys.miniHide' : 'sys.mini');
   const nav = (v: string, icon: string, extra?: React.ReactNode) =>
     <button className={`nav ${view === v ? 'on' : ''}`} data-act="view" data-view={v} title={t(`nav.${v}`)}><Icon name={icon} /><span>{t(`nav.${v}`)}</span>{extra}</button>;
   const u = app.update;
-  // The open vault, for Switch vault (once there is a list of them).
   const vault: VaultInfo | null = (app.vaults?.list || []).find((v: VaultInfo) => v.id === app.vaults?.open) || null;
   return <aside className="side">
     <div className="lights">{(['close', 'min', 'zoom'] as const).map(w =>
@@ -88,11 +84,9 @@ function SysCard({ mini }: { mini: string }) {
   </div>;
 }
 
-/**
- * Multi-Roblox: on or off, and whether it works. Roblox closed windows when another one opened, or the Roblox watch
- * found the lock changed in the build it meets next (Settings › Roblox updates): the card says so and leads there. The
- * light and words open the details; the switch turns it on (after the risk warning) or off right here.
- */
+// Multi-Roblox: on or off, and whether it works. When Roblox closed windows or the watch found the lock changed in the
+// next build, the card says so and leads to Settings › Roblox updates. The light and words open the details; the switch
+// turns it on (after the risk warning) or off.
 function MultiCard() {
   const { t, setMulti } = useHost();
   const app = useAppState();

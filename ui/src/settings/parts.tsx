@@ -1,14 +1,11 @@
-// The pieces Settings pages are made of, drawn as app.js's settingsHtml() draws them: a page (its title, then groups),
-// a group (a small heading over a card of rows), a row (title and description on the left, its control on the right),
-// a switch. Buttons keep their data-act: app.js's one click handler for the whole page still does what they do.
+// The pieces Settings pages are made of, as app.js's settingsHtml() draws them: page, group, row, switch. Buttons keep
+// their data-act: app.js's one click handler still does what they do.
 import { useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { Icon, useHost } from '../host';
 import { TimeInput } from '../TimeField';
 
-/**
- * A control's value that answers a click at once, and follows the app's state when that comes (confirming it or not).
- * A new again (a count) puts the saved value back even when it didn't change: after a value the app refused.
- */
+/** A value that answers a click at once and follows the app's state when it comes. A new again (a count) puts the saved
+ * value back even when it didn't change: after a value the app refused. */
 export function useLocal<T>(value: T, again = 0): [T, (v: T) => void] {
   const [local, setLocal] = useState(value);
   useEffect(() => setLocal(value), [value, again]);
@@ -42,11 +39,8 @@ export function Switch({ id, label, title, checked, disabled, onChange }:
     onChange={e => onChange(e.target.checked)} /><span /></label>;
 }
 
-/**
- * A text box saved when it is left or on Enter (its own change event), not on every key. commit gets what is in it and
- * answers false when it is refused here first: the box is marked (.bad) and keeps it. The saved value comes back, and
- * the mark goes, when the app's value or again changes.
- */
+/** A text box saved when left or on Enter (its change event), not on every key. commit answers false when refused here:
+ * the box is marked (.bad) and keeps it; the saved value comes back, unmarked, when the app's value or again changes. */
 export function TextBox({ saved, again = 0, commit, className, ref, ...attrs }: {
   saved: string; again?: number; commit: (value: string) => boolean | void; className: string; ref?: Ref<HTMLInputElement>;
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'className'>) {

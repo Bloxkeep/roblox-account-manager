@@ -12,7 +12,6 @@ class Guard extends Component<{ name: string; retry: unknown; children: ReactNod
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-/** children, or nothing while they fail to draw (tried again when the app pushes a new state). */
 export function Guarded({ name, children }: { name: string; children: ReactNode }) {
   return <Guard name={name} retry={useAppState()}>{children}</Guard>;
 }

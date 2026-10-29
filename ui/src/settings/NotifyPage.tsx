@@ -20,7 +20,6 @@ export function NotifyPage({ title }: { title: string }) {
       </Row>
     </Group>
     <Group id="notify-kinds" title={t('set.notifyKinds')}>
-      {/* The per-kind switches only mean something while the main one is on. */}
       <div className={`set-sub${notify ? '' : ' off'}`} id="s-notify-kinds">
         {NOTIFY_KINDS.map(kind => <Row key={kind} title={t(`set.notify.${kind}`)}>
           <Switch id={`s-notify-${kind}`} label={t(`set.notify.${kind}`)} checked={!off.includes(kind)} disabled={!notify}

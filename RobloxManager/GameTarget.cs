@@ -9,17 +9,12 @@ public sealed record FollowedPlayer(long UserId, string Name);
 /// <summary>Where to send an account: a place, optionally a specific server (job) or a private server.</summary>
 public sealed record GameTarget(long PlaceId, string? JobId = null, string? LinkCode = null, string? ShareCode = null)
 {
-    /// <summary>
-    /// The player this account follows ("Join a player…" with its box ticked, or a preset that follows one): kept through
-    /// rejoins and restarts, and saved with the open and waiting sessions, so each rejoin looks the player up again and
-    /// goes to their server of the moment instead of this place.
-    /// </summary>
+    /// <summary>The player this account follows, kept through rejoins, restarts and saved sessions: each rejoin looks the
+    /// player up again and goes to their current server instead of this place.</summary>
     public FollowedPlayer? Follow { get; init; }
 
-    /// <summary>
-    /// A private server's access code, from the list of private servers an account can join (Browse servers): Roblox
-    /// lets in only accounts that own it or were invited, unlike a link code, which lets in anyone with the link.
-    /// </summary>
+    /// <summary>A private server's access code (Browse servers): only accounts that own it or were invited get in, unlike a
+    /// link code, which lets in anyone with the link.</summary>
     public string? AccessCode { get; init; }
 
     /// <summary>A private server, by its link or by its access code.</summary>
@@ -30,12 +25,9 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
     // A pair also right after "roblox://" or at the start ("placeId=…&gameInstanceId=…"), not only after ? or &.
     static readonly Regex QueryPair = new(@"(?:[?&]|//|^)([^=&#\s/?]+)=([^&#\s]*)", RegexOptions.CultureInvariant);
 
-    /// <summary>
-    /// Accepts a place id, a roblox.com/games/… link (with privateServerLinkCode or gameInstanceId),
-    /// a roblox.com/share?code=…&amp;type=Server link (also as the roblox://navigation/share_links form, or wrapped
-    /// in a ro.blox.com link), or a roblox:// deep link with placeId (after ? or directly after the scheme), also with
-    /// accessCode (what Browse servers puts in the game box for one of your private servers).
-    /// </summary>
+    /// <summary>Accepts a place id, a roblox.com/games/… link (privateServerLinkCode, gameInstanceId), a
+    /// roblox.com/share?code=…&amp;type=Server link (also roblox://navigation/share_links or wrapped in ro.blox.com), or
+    /// a roblox:// deep link with placeId, also with accessCode (what Browse servers puts in the game box).</summary>
     public static bool TryParse(string placeInput, string jobInput, out GameTarget? target, out string error) =>
         TryParse(placeInput, jobInput, out target, out error, depth: 0);
 

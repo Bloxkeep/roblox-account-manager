@@ -1,19 +1,15 @@
-// How many people have Bloxkeep open right now. While it is open, the app says so every minute, further apart once
-// many have it open (POST /online/ping: an id made from that PC, scrambled so it leads back to nothing, the same after
-// Bloxkeep is reinstalled; its version and its language), and says goodbye as it closes. Whoever said so within one and
-// a half of those gaps and a minute more is online; the id is forgotten once they aren't. The bot keeps no IP address and no history of who was online when: only the day's peak,
-// one number a day, and how many different PCs had it open that day (each id scrambled with a key made for that day; the
-// list and the key go when the day is over).
-// Bloxkeep's developers see it with /online (worker.js), on a page that link opens (dashboardPage), and anyone sees how
-// many are online in the bot's custom status (texts.js presenceLines).
+// How many people have Bloxkeep open right now. While open, the app beats POST /online/ping every minute (further apart
+// when many have it open) with an id made from that PC (scrambled so it leads back to nothing, the same after a
+// reinstall), its version and language, and says goodbye as it closes. Online = a beat within 1.5 gaps and a minute;
+// the id is forgotten once they aren't. No IP address and no history of who was online when: only each day's peak, and
+// how many different PCs had it open (ids scrambled with a key made for that day; the list and the key go with the day).
+// Seen with /online (worker.js), its dashboard (dashboardPage), and as a count in the bot's status (texts.js presenceLines).
 
 /** How often the app says it's open while few have it open (the app does what each answer says: changed here alone). */
 export const BEAT_SECONDS = 60;
-/**
- * Beats a day the bot takes at most: with more people online they come further apart (beatEvery), so that they and the
- * bot's own work stay within Cloudflare's free plan (100,000 requests, and as many rows written, a day for the whole
- * account). Past that, the bot itself would stop answering (slash commands, the app's Discord button) until the next day.
- */
+// Beats a day the bot takes at most: with more online they come further apart (beatEvery), so they and the bot's own work
+// stay within Cloudflare's free plan (100,000 requests, and as many rows written, a day for the whole account). Past that,
+// the bot itself would stop answering (slash commands, the app's Discord button) until the next day.
 export const BEAT_BUDGET = 40_000;
 /** The longest the app is told to wait between beats (about 10,000 online); it never waits longer, whatever it's told. */
 export const MAX_BEAT_SECONDS = 6 * 3600;
@@ -25,10 +21,8 @@ export const GRACE_SLACK_SECONDS = 60;
 export const beatEvery = (online, budget = BEAT_BUDGET) => Math.min(MAX_BEAT_SECONDS, Math.max(BEAT_SECONDS, Math.ceil(online * 86_400 / budget)));
 /** Days run on Vietnam's time (UTC+7, no summer time), the developer's. */
 const DAY_OFFSET = 7 * 3600_000;
-/** Days the dashboard shows. */
 export const DAYS_SHOWN = 30;
 
-/** Day's date (YYYY-MM-DD, Vietnam time) of a moment. */
 export const dayOf = ms => new Date(ms + DAY_OFFSET).toISOString().slice(0, 10);
 
 /** An id scrambled with the day's key (HMAC-SHA-256, 32 hex digits): the same all day, nothing to go back from. */
@@ -43,10 +37,8 @@ export const AGES = ['new', 'week', 'old'];
 /** Why someone removed Bloxkeep, as its uninstaller's buttons say it. */
 export const WHY = ['broken', 'unneeded', 'hard', 'other'];
 
-/**
- * What the app sent, checked: { id, app, lang, first, age } or { id, gone: true, removed, why }; null for anything else.
- * first: the first time this copy says it's open (a new install); removed: its uninstaller saying so.
- */
+/** What the app sent, checked: { id, app, lang, first, age } or { id, gone: true, removed, why }; null for anything else.
+ * first: a new install's first beat; removed: its uninstaller saying so. */
 export function readBeat(body) {
   const id = typeof body?.id === 'string' ? body.id.toLowerCase() : '';
   if (!/^[0-9a-f]{32}$/.test(id))
@@ -71,11 +63,8 @@ export async function dashboardKey(token) {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WHY_WORDS = { broken: "didn't work", unneeded: 'not needed', hard: 'too hard', other: 'other' };
 
-/**
- * The last 7 days as a bar chart, drawn by QuickChart (quickchart.io, Chart.js) from those numbers alone: each day's
- * most at once (the darker bars) and its people (different PCs, the brighter ones), each number over its bar, on
- * Discord's dark grey.
- */
+// The last 7 days as a bar chart drawn by QuickChart (quickchart.io, Chart.js) from those numbers alone: each day's peak
+// (darker bars) and its people (different PCs, brighter), each number over its bar, on Discord's dark grey.
 export function weekChart(days, today) {
   const week = days.slice(-7);
   const label = d => (d.day === today ? 'Today' : `${WEEKDAYS[new Date(`${d.day}T00:00:00Z`).getUTCDay()]} ${Number(d.day.slice(8))}`);
@@ -101,10 +90,7 @@ export function weekChart(days, today) {
   return `https://quickchart.io/chart?v=4&w=640&h=240&devicePixelRatio=2&bkg=${encodeURIComponent('#2b2d31')}&c=${encodeURIComponent(JSON.stringify(chart))}`;
 }
 
-/**
- * /online's answer, a card: how many use Bloxkeep now as its heading with today's peak under it, the last 7 days'
- * peaks as a chart, the versions in use, and the dashboard's link.
- */
+/** /online's card: online now with today's peak, the last 7 days' peaks as a chart, the versions in use, the dashboard link. */
 export function onlineMessage(o, link) {
   const time = at => `<t:${Math.floor(at / 1000)}:t>`;
   const text = content => ({ type: 10, content });
@@ -132,10 +118,8 @@ export function onlineMessage(o, link) {
   };
 }
 
-/**
- * The dashboard: online now, today's peak, the peak of each of the last 30 days, and who is online by version and
- * language. It reads /online.json with the same key every 30 seconds. English, or Vietnamese for a Vietnamese browser.
- */
+// The dashboard: online now, today's peak, the last 30 days' peaks, who is online by version and language. Reads
+// /online.json with the same key every 30 seconds. English, or Vietnamese for a Vietnamese browser.
 export function dashboardPage() {
   return `<!doctype html>
 <html lang="en">

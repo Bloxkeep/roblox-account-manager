@@ -1,9 +1,6 @@
-// What's new: the release notes, shown once after an update and any time from Settings › Bloxkeep updates. The body of
-// the dialog app.js opens (its title, close button and Got it stay there). The newest release first: its headline
-// features, one per row, each with a picture or a short moving demo of it in the app and a button to try it; its other notes; then
-// New, Improved and Fixed as plain lists under small labels. No icon beside each note: the pictures carry the page
-// (the owner found the icon tiles old-fashioned, 2026-10-26). The older releases skipped over are folded below; last,
-// a line asking for a GitHub star.
+// What's new: the body of the dialog app.js opens after an update or from Settings › Bloxkeep updates. Newest release
+// first: headline features with a picture or short demo and a button to try it, then New, Improved and Fixed lists. No
+// icon beside each note (the owner found the icon tiles old-fashioned, 2026-10-26). Older skipped releases fold below.
 import { useState } from 'react';
 import { Icon, useHost } from './host';
 
@@ -19,10 +16,7 @@ export interface Release {
   fixed?: Notes | null;
   removed?: Notes | null;
 }
-/**
- * A headline feature: [title, one or two sentences, button] in each language, where the button leads, and its picture
- * (a page file, "{lang}" standing for en or vi).
- */
+/** A headline feature: [title, text, button] per language, where the button leads, and its picture ("{lang}": en or vi). */
 export interface Highlight { icon?: string; go?: string | null; image?: string | null; en: string[]; vi: string[] }
 export interface Notes { en: string[]; vi: string[] }
 
@@ -38,13 +32,19 @@ function splitNote(note: string, locale: string): [string, string] {
 
 /** The pictures are made at 1.5 times the app's size (sharp on a scaled screen): shown at the size they are in the app. */
 const SHOT_SCALE = 1.5;
+/** The tallest a picture is shown (app.css .wn-shot img max-height). */
+const SHOT_MAX_HEIGHT = 360;
 
 /** One headline feature: a wide picture (a row of settings, a message) above the words, a tall one (a menu) beside them. */
 function Feature({ image, eager, children }: { image?: string | null; eager: boolean; children: React.ReactNode }) {
   const [size, setSize] = useState<{ w: number; wide: boolean } | null>(null);
   return <article className={`wn-feat${image ? (size?.wide ? ' wide' : '') : ' plain'}`}>
     {image ? <div className="wn-shot"><img src={image} alt="" loading={eager ? 'eager' : 'lazy'} style={size ? { width: size.w } : undefined}
-      onLoad={e => { const i = e.currentTarget; setSize({ w: Math.round(i.naturalWidth / SHOT_SCALE), wide: i.naturalWidth >= i.naturalHeight * 2 }); }} /></div> : null}
+      onLoad={e => {
+        // Never wider than its height cap allows (app.css .wn-shot img): a tall picture set to its full width was squashed.
+        const i = e.currentTarget, w = Math.min(i.naturalWidth / SHOT_SCALE, SHOT_MAX_HEIGHT * i.naturalWidth / i.naturalHeight);
+        setSize({ w: Math.round(w), wide: i.naturalWidth >= i.naturalHeight * 2 });
+      }} /></div> : null}
     <div className="wn-feat-text">{children}</div>
   </article>;
 }

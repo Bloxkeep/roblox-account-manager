@@ -1,7 +1,5 @@
-// Settings › Roblox version & graphics. Roblox updates: Roblox closing windows (the warning), the installed build and
-// the newest Roblox serves, what the Roblox watch found in the build Multi-Roblox meets next and in the one Roblox is
-// about to release, and the builds seen on this PC, newest first, each with a link to Roblox's release notes for its
-// version. Then the settings Bloxkeep gives Roblox before it opens (graphics, FPS, volume), for every account or some.
+// Settings › Roblox version & graphics: Roblox closing windows, the installed and newest builds, what the watch found in
+// the next builds, builds seen here (with release-notes links); then the settings Bloxkeep gives Roblox before it opens.
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, useLocal } from './parts';
@@ -28,10 +26,7 @@ export function RobloxPage({ title }: { title: string }) {
   /** A date and time in the app's language ("Oct 13, 2026, 8:25 PM"; 24-hour in Vietnamese). */
   const fmtWhen = (iso: string) => new Date(iso).toLocaleString(locale, lang === 'vi'
     ? { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23' } : { dateStyle: 'medium', timeStyle: 'short' });
-  /**
-   * What Bloxkeep's Roblox watch found in a build, as [tone, words]: two windows having played together on it here
-   * outweighs that; null when the watch hasn't checked it.
-   */
+  /** The watch's verdict on a build as [tone, words]; two windows having played together on it here outweigh it; null if unchecked. */
   const watchWord = (check: string | null, worked?: boolean, where = 'rw'): [string, string] | null => {
     const key = worked ? 'worked' : check === 'same' || check === 'first' ? 'same' : ['changed', 'renamed', 'gone'].includes(check || '') ? check : null;
     return key ? [key === 'worked' || key === 'same' ? 'ok' : 'warn', t(`${where}.${key}`)] : null;
@@ -124,10 +119,7 @@ export function RobloxPage({ title }: { title: string }) {
   </Page>;
 }
 
-/**
- * One of the settings Bloxkeep gives Roblox: a value its list doesn't offer shows the first choice ("leave as is"); all
- * but the mode wait while it is off.
- */
+/** A Roblox setting: a value its list doesn't offer shows the first choice ("leave as is"); all but the mode wait while it's off. */
 function RcSelect({ name, rc }: { name: string; rc: Record<string, string | number> }) {
   const { t, call } = useHost();
   const list = RC_LISTS[name];

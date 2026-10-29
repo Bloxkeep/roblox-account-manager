@@ -77,10 +77,8 @@ sealed class RobloxHomeSession : IDisposable
         }
     }
 
-    /// <summary>
-    /// Query each process identity once; a reused PID is a new identity. Failure to inspect an unknown client keeps
-    /// the locks held until its path can be confirmed or it exits, rather than risking an early unlock.
-    /// </summary>
+    /// <summary>Each process identity (a reused PID is a new one) is queried once; an unknown client that can't be inspected
+    /// keeps the locks held until confirmed or gone, rather than risking an early unlock.</summary>
     public (int[] Pids, bool Uncertain) FindClients(IReadOnlyList<RobloxProcesses.PlayerProcess> players, Func<int, long, string?>? query = null)
     {
         query ??= RobloxProcesses.LaunchPath;

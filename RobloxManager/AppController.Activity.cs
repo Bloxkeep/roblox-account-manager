@@ -5,12 +5,10 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>
-/// Statistics › Activity: what Bloxkeep saw happen, newest first. Accounts opened and auto-rejoined, games joined and
-/// left, drops (with Roblox's reason), windows closed (by anyone, or by Roblox when another one opened), and what the
-/// notifications report (schedules, sign-ins to renew, launch problems, updates). Noted at a few central points
-/// rather than everywhere: <see cref="StartSessionAsync"/>, a stay's start and end (AppController.Stats.cs),
-/// <see cref="OnSessionEnded"/> and <see cref="Notify"/>. The last 1000 stay in the vault, since they name accounts;
-/// for backups they are bookkeeping, like play time (see ContentHash): they never make one due by themselves.
+/// Statistics › Activity: what Bloxkeep saw happen, newest first (launches, rejoins, joins, drops with Roblox's reason,
+/// closed windows, notifications). Noted at a few central points: <see cref="StartSessionAsync"/>, a stay's start and
+/// end (AppController.Stats.cs), <see cref="OnSessionEnded"/> and <see cref="Notify"/>. The last 1000 stay in the vault
+/// since they name accounts; for backups they are bookkeeping (see ContentHash) and never make one due.
 /// </summary>
 public sealed partial class AppController
 {
@@ -18,10 +16,7 @@ public sealed partial class AppController
     const int ActivityPage = 100;
     /// <summary>The kinds of event the page filters by (see <see cref="ActivityGroup"/>).</summary>
     static readonly string[] ActivityGroups = ["play", "drops", "schedule", "signin", "updates"];
-    /// <summary>
-    /// Notification types not noted: a drop has entries of its own (disconnected, closed, rejoined), and low-RAM
-    /// warnings would only bury the rest.
-    /// </summary>
+    /// <summary>Not noted: a drop has entries of its own (disconnected, closed, rejoined); low-RAM warnings would bury the rest.</summary>
     static readonly HashSet<string> NotNoted = ["drop", "afk", "ram"];
     /// <summary>Noted while Bloxkeep was locked (a window closed meanwhile): added once a vault is open again.</summary>
     readonly List<ActivityEntry> _activityWhileLocked = new();
@@ -61,9 +56,9 @@ public sealed partial class AppController
     static readonly Regex NamePlaceholder = new("\uE000([0-9]{1,3})\uE001", RegexOptions.CultureInvariant);
 
     /// <summary>
-    /// A notification's sentence in English and in Vietnamese. One that L.F made with account names (<see cref="Name"/>,
-    /// <see cref="Names"/>) gets a placeholder for each instead, so the log keeps no name: one hidden at the time would
-    /// stay "Account 1" for good (another account once the list changes), and one shown then would show while hidden.
+    /// A notification's sentence in English and Vietnamese. Account names L.F put in (<see cref="Name"/>, <see cref="Names"/>)
+    /// become placeholders, so the log keeps no name: one hidden then would stay "Account 1" for good, one shown then would
+    /// show while hidden.
     /// </summary>
     (string English, string Vietnamese, List<ActivityName>? Names) ActivitySentences(string text)
     {
@@ -107,10 +102,7 @@ public sealed partial class AppController
             list.RemoveRange(0, list.Count - MaxActivity);
     }
 
-    /// <summary>
-    /// What was noted while locked joins the vault now open, for its own accounts only: another vault may have been
-    /// opened (a restored backup), whose list mustn't get this one's accounts.
-    /// </summary>
+    /// <summary>Entries noted while locked join the vault now open, its own accounts only (it may be another vault: a restored backup).</summary>
     void AddLockedActivity(Vault vault)
     {
         if (_activityWhileLocked.Count == 0)
@@ -141,7 +133,6 @@ public sealed partial class AppController
         NoteActivity(_closedByRoblox.Contains(accountId) ? "closedByRoblox" : _restarts.ContainsKey(accountId) ? "restarted" : "closed",
             accountId, lastLog?.PlaceId ?? launch.Target?.PlaceId);
 
-    /// <summary>A Bloxkeep update finished downloading: noted once per version.</summary>
     void NoteUpdateReady()
     {
         if (_updater.Status != "ready" || _updater.NewVersion is not { } version || version == _updateNoted || WhatsNew.IsQuietUpdate(version, _updater.CurrentVersion))
@@ -215,10 +206,7 @@ public sealed partial class AppController
         };
     }
 
-    /// <summary>
-    /// Who an entry is about: the account's name now (its name then, once deleted), or "Account 3" while Settings ›
-    /// Appearance hides names (its place in the list, as everywhere else in Bloxkeep).
-    /// </summary>
+    /// <summary>Who an entry is about: the account's name now (its name then, once deleted), or "Account 3" while names are hidden.</summary>
     string? ActivityAccount(ActivityEntry e)
     {
         if (e.AccountId is not { } id)
@@ -231,10 +219,7 @@ public sealed partial class AppController
 
     string HiddenName(Account account) => string.Format(L.T("Account {0}"), (_vault?.Data.Accounts.IndexOf(account) ?? 0) + 1);
 
-    /// <summary>
-    /// While names are hidden, swaps them inside sentences too (a notification's names its accounts): whole words,
-    /// names of three characters or more, longest first.
-    /// </summary>
+    /// <summary>While names are hidden, swaps them inside sentences too: whole words, three characters or more, longest first.</summary>
     Func<string, string> ActivityNames(Vault vault)
     {
         if (!Prefs.HideNames)
@@ -255,10 +240,7 @@ public sealed partial class AppController
         return text => pattern.Replace(text, m => HiddenName(byName[m.Value]));
     }
 
-    /// <summary>
-    /// Entries of a place that wasn't looked up when they were noted get its name from what is known now: the lookup
-    /// cache, a stay at that place, or the recent games.
-    /// </summary>
+    /// <summary>Names places that weren't looked up when noted, from the lookup cache, a stay there or the recent games.</summary>
     /// <returns>true when a name was filled in (worth saving).</returns>
     bool NameActivityGames(Vault vault, List<ActivityEntry> entries)
     {
@@ -280,10 +262,7 @@ public sealed partial class AppController
         return named;
     }
 
-    /// <summary>
-    /// The entry's sentence as the page and the export show it: the accounts it names as they are called now, or
-    /// "Account 3" while names are hidden (<paramref name="names"/> swaps names an older entry holds itself).
-    /// </summary>
+    /// <summary>The sentence as page and export show it; <paramref name="names"/> swaps names an older entry holds itself.</summary>
     string ActivitySentence(ActivityEntry e, Func<string, string> names)
     {
         string text = names(ActivityText(e));
@@ -345,10 +324,8 @@ public sealed partial class AppController
         _ => L.F("Roblox code {0}", code),
     };
 
-    /// <summary>
-    /// {account?, group?}: the entries the page shows, all of them, into a CSV file the person picks (newest first, the
-    /// times in this PC's time zone). Returns how many, or null when the dialog was cancelled.
-    /// </summary>
+    /// <summary>{account?, group?}: every entry the page shows, into a CSV the person picks (newest first, this PC's time
+    /// zone). Returns how many, or null when cancelled.</summary>
     object? ExportActivity(JsonElement a)
     {
         var vault = RequireVault();
@@ -403,10 +380,7 @@ public sealed partial class AppController
         _ => L.T("Disconnects and problems"),
     };
 
-    /// <summary>
-    /// One CSV line. A cell a spreadsheet would take for a formula (an account or game named "=…") starts with an
-    /// apostrophe, so opening the file never runs anything.
-    /// </summary>
+    /// <summary>One CSV line; a cell a spreadsheet would take for a formula ("=…") gets a leading apostrophe, so opening it runs nothing.</summary>
     static void CsvRow(StringBuilder csv, params string[] cells)
     {
         for (int i = 0; i < cells.Length; i++)

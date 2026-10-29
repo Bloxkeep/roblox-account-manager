@@ -5,13 +5,11 @@ using Microsoft.Web.WebView2.WinForms;
 namespace RobloxManager;
 
 /// <summary>
-/// One tab of Bloxkeep's own browser (<see cref="WebsiteForm"/>): www.roblox.com signed in as a saved account, or blank
-/// for the person to sign in on the site (Save to Bloxkeep then keeps that account). Every tab is an InPrivate profile of
-/// its own, so several accounts can be open side by side: a session cookie lives only in that profile, in memory, is
-/// never written to disk and never reaches the person's Chrome or Edge; a blank tab's sign-in is gone when it closes,
-/// unless saved. All tabs share one browser (one temporary folder in %TEMP%), deleted when the last tab closes.
-/// Once the tab is a saved account's, signing out on the site would end the saved session too, so it is stopped and
-/// explained instead.
+/// One tab of Bloxkeep's browser (<see cref="WebsiteForm"/>): www.roblox.com signed in as a saved account, or blank for
+/// signing in on the site (Save to Bloxkeep keeps that account). Each tab is its own InPrivate profile: the session cookie
+/// lives only there, in memory, never on disk or in the person's Chrome or Edge. All tabs share one browser (a %TEMP%
+/// folder deleted when the last tab closes). A saved account's sign-out on the site would end the saved session too,
+/// so it is stopped and explained.
 /// </summary>
 public sealed class WebsiteTab : UserControl
 {
@@ -32,8 +30,8 @@ public sealed class WebsiteTab : UserControl
     readonly Func<string, RobloxUser, (Guid Id, string Name, string Message)> _save;
     readonly ToolTip _tips = new();
     readonly System.Windows.Forms.Timer _slow = new() { Interval = (int)SlowAfter.TotalMilliseconds };
-    // A saved account's: Roblox may hand the site a new session cookie (after "Log out of all other sessions", for one),
-    // read back now and then so the account keeps a session that works. A blank tab's: who signed in there, soon.
+    // A saved account's tab reads back a cookie Roblox renewed (e.g. after "Log out of all other sessions"); a blank tab's
+    // learns who signed in.
     readonly System.Windows.Forms.Timer _sync = new();
     const int SavedSyncMs = 15000, BlankSyncMs = 2000;
     readonly Label _message;
@@ -42,10 +40,9 @@ public sealed class WebsiteTab : UserControl
     string _cookie;
     /// <summary>Who is signed in on a blank tab's site, until saved; null when nobody (or not known yet).</summary>
     RobloxUser? _user;
-    /// <summary>Asks Roblox whose a session cookie is; replaced by the checks.</summary>
+    /// <summary>Replaced by the checks.</summary>
     Func<string, Task<RobloxUser?>> _identify = cookie => RobloxApi.GetAuthenticatedUserAsync(cookie);
     bool _closing, _synced, _syncing, _askingLogout, _hasBrowser, _tornDown;
-    /// <summary>Asks whether to close the tab after a sign-out was stopped; replaced by the checks.</summary>
     Func<WebsiteTab, bool> _askCloseOnLogout = AskCloseOnLogout;
 
     /// <summary>The saved account this tab is signed in as; null for a blank tab not saved (yet).</summary>
@@ -60,16 +57,13 @@ public sealed class WebsiteTab : UserControl
     /// <summary>The tab wants to go: its browser couldn't start, or the person chose Close tab after a stopped sign-out.</summary>
     public event Action? CloseRequested;
 
-    /// <summary>The tab is gone for good (its browser let go).</summary>
     public event Action? Closed;
 
     public bool IsClosed => _tornDown;
 
     /// <param name="accountId">The saved account to open signed in; null for a blank tab at the sign-in page.</param>
-    /// <param name="onSessionChanged">
-    /// Gets a session cookie a saved account's site holds that differs from the one this tab was given, to check and
-    /// save it; false = couldn't tell yet (no internet), ask again at the next read.
-    /// </param>
+    /// <param name="onSessionChanged">Gets a renewed cookie of a saved account's site to check and save; false = couldn't
+    /// tell yet (no internet), ask again at the next read.</param>
     /// <param name="save">Save to Bloxkeep: keeps the account signed in on a blank tab and says how that went.</param>
     public WebsiteTab(Guid? accountId, string? name, string cookie, Func<Guid, string, Task<bool>> onSessionChanged,
         Func<string, RobloxUser, (Guid Id, string Name, string Message)> save)
@@ -141,10 +135,8 @@ public sealed class WebsiteTab : UserControl
         _sync.Tick += async (_, _) => await SyncSessionAsync();
     }
 
-    /// <summary>
-    /// Starts the tab's browser, shown or not: a tab added and hidden again at once (another one opened right after, as
-    /// on a slow PC) would otherwise wait to be shown first, its Load never coming.
-    /// </summary>
+    /// <summary>Starts the browser even while hidden: a tab hidden at once (another opened right after) would otherwise
+    /// never get its Load.</summary>
     public void Start()
     {
         if (_hasBrowser || _tornDown)
@@ -155,10 +147,7 @@ public sealed class WebsiteTab : UserControl
         _ = OpenAsync();
     }
 
-    /// <summary>
-    /// The title: which account this tab is signed in as (follows Settings › Hide account names); for a blank tab the
-    /// name of whoever signed in there (hidden alike), or just Roblox.
-    /// </summary>
+    /// <summary>The title: the account's name (follows Hide account names), whoever signed in on a blank tab, or Roblox.</summary>
     public void SetName(string? name)
     {
         name ??= _user is { } user && !Prefs.HideNames ? user.Name : null;
@@ -169,7 +158,6 @@ public sealed class WebsiteTab : UserControl
         TitleChanged?.Invoke();
     }
 
-    /// <summary>The page gets the keyboard (the tab was just chosen).</summary>
     public void FocusPage()
     {
         if (!_web.IsDisposed)
@@ -244,8 +232,7 @@ public sealed class WebsiteTab : UserControl
 
             core.NewWindowRequested += (_, e) =>
             {
-                // Roblox pages stay in this tab (the account's); anything else opens in the person's own browser, which
-                // has no reason to know this account.
+                // Roblox pages stay in this tab; anything else opens in the person's own browser, without this account.
                 e.Handled = true;
                 if (IsRoblox(e.Uri))
                     core.Navigate(e.Uri);
@@ -330,8 +317,7 @@ public sealed class WebsiteTab : UserControl
         }
         core.WebResourceRequested += (_, e) =>
         {
-            // "Log out of all other sessions" (logoutfromallsessionsandreauthenticate) goes through: this session gets a
-            // new cookie, which SyncSessionAsync saves. A tab not saved signs out like any browser.
+            // "Log out of all other sessions" goes through (SyncSessionAsync saves the new cookie). An unsaved tab signs out freely.
             if (AccountId is null || !IsSignOut(e.Request.Uri) || !e.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                 return;
             e.Response = env.CreateWebResourceResponse(null, 403, "Forbidden", "Content-Type: application/json");

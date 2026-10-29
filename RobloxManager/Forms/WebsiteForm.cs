@@ -3,11 +3,8 @@ using System.Drawing.Drawing2D;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Bloxkeep's own browser for www.roblox.com: one window, one tab per account (<see cref="WebsiteTab"/>, each its own
-/// private sign-in). Account menu › Open website adds that account's tab or goes back to it; the + at the end of the
-/// tabs (and Add account › Open roblox.com) opens a blank one to sign in on the site. Closing the window closes every tab.
-/// </summary>
+/// <summary>Bloxkeep's browser for www.roblox.com: one window, one tab per account (<see cref="WebsiteTab"/>, each its own
+/// private sign-in), plus blank tabs (+) for signing in on the site.</summary>
 public sealed class WebsiteForm : Form
 {
     /// <summary>Windows 11's icon font, or Windows 10's.</summary>
@@ -75,7 +72,6 @@ public sealed class WebsiteForm : Form
         Bounds = new Rectangle(area.Left + (area.Width - size.Width) / 2, area.Top + (area.Height - size.Height) / 2, size.Width, size.Height);
     }
 
-    /// <summary>Adds a tab at the end and shows it.</summary>
     public void AddTab(WebsiteTab tab)
     {
         var chip = new TabChip(_theme) { Title = tab.Title };

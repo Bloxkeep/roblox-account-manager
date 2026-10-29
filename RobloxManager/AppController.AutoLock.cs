@@ -1,14 +1,12 @@
 namespace RobloxManager;
 
 /// <summary>
-/// The lock screen after a while without use (Settings › Vault & security › Lock automatically), like Windows' own: when nobody
-/// has used the PC's keyboard or mouse for the chosen time (anti-AFK's own nudges don't count), the page shows the lock
-/// screen and asks for the master password again. The vault stays open behind it, so Roblox windows, auto-rejoin,
-/// scheduled presets and Discord carry on; nothing of it reaches the page meanwhile (no accounts, settings, toasts or
-/// figures), the commands that would show or change it are refused, and what shows an account on screen goes (the
-/// sign-in and Quick Login windows, websites signed in as one, a secret on the clipboard, the monitor tab's live
-/// pictures). The Lock button still closes
-/// Bloxkeep for real.
+/// The lock screen after a while without use (Settings › Vault & security › Lock automatically), like Windows' own:
+/// after the chosen time with no keyboard or mouse input (anti-AFK's nudges don't count), the page asks for the master
+/// password again. The vault stays open behind it, so Roblox, auto-rejoin, scheduled presets and Discord carry on; the
+/// page gets nothing of it meanwhile, commands that would show or change it are refused, and whatever shows an account
+/// goes (sign-in and Quick Login windows, signed-in websites, a secret on the clipboard, the monitor tab's pictures).
+/// The Lock button still closes Bloxkeep for real.
 /// </summary>
 public sealed partial class AppController
 {
@@ -18,22 +16,16 @@ public sealed partial class AppController
     /// <summary>The lock screen is up with the vault open behind it.</summary>
     bool _screenLocked;
 
-    /// <summary>
-    /// When Bloxkeep last knew someone was there without Windows' input clock saying so (an unlock, the setting
-    /// chosen): the wait counts from the later of the two.
-    /// </summary>
+    /// <summary>When someone was last known to be there without Windows' input clock (an unlock, the setting chosen):
+    /// the wait counts from the later of the two.</summary>
     DateTime _activeAt = DateTime.UtcNow;
 
     /// <summary>The vault, for what the page may see: null while locked, the screen too.</summary>
     Vault? Open => _screenLocked ? null : _vault;
 
-    /// <summary>Whether the lock screen is due: a time chosen, and nobody at the keyboard or mouse that long.</summary>
     public static bool AutoLockDue(int minutes, TimeSpan idle) => minutes > 0 && idle >= TimeSpan.FromMinutes(minutes);
 
-    /// <summary>
-    /// The periodic check: idle is how long since a person last used the keyboard or mouse (AntiAfk.IdleTime), now
-    /// the time of the check.
-    /// </summary>
+    /// <summary>The periodic check; idle comes from AntiAfk.IdleTime.</summary>
     void CheckAutoLock(TimeSpan idle, DateTime now)
     {
         if (_vault is not { } vault || _screenLocked)
@@ -43,7 +35,6 @@ public sealed partial class AppController
             ScreenLock();
     }
 
-    /// <summary>Puts the lock screen up, the vault staying open behind it (see the class summary).</summary>
     void ScreenLock()
     {
         _screenLocked = true;

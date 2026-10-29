@@ -53,10 +53,7 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
   </div>;
 }
 
-/**
- * Settings: the list of pages on the left (a search box over all of them) and the chosen page on the right. app.js
- * shows a page and searches (openSettings, searchSettings); the pages are React's (ui/src/settings).
- */
+/** Settings: the pages listed on the left (a search over all), the chosen one on the right; app.js opens and searches them. */
 function Settings({ pages, page }: { pages: SettingsPageInfo[]; page: string }) {
   const { t } = useHost();
   const body = (id: string, title: string) => {

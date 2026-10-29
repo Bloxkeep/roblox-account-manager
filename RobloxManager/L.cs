@@ -1,9 +1,7 @@
 namespace RobloxManager;
 
-/// <summary>
-/// Language of messages produced by the app (the page has its own strings). English text doubles as the
-/// lookup key, so untranslated text simply stays English. The choice lives in <see cref="Prefs"/>.
-/// </summary>
+/// <summary>The app's own messages (the page has its own strings). English doubles as the lookup key, so untranslated
+/// text stays English.</summary>
 public static class L
 {
     public static string Language => Prefs.Language;
@@ -26,29 +24,21 @@ public static class L
         return string.Format(T(english), args);
     }
 
-    /// <summary>
-    /// <see cref="F"/> with the English singular or plural chosen by <paramref name="count"/> ("1 account", "2 accounts").
-    /// Vietnamese has one form, so both keys are translated alike.
-    /// </summary>
+    /// <summary><see cref="F"/> with the English singular or plural by <paramref name="count"/>; Vietnamese has one form,
+    /// so both keys are translated alike.</summary>
     public static string P(long count, string one, string many, params object?[] args) => F(count == 1 ? one : many, args);
 
     /// <summary>The last <see cref="F"/> on this thread, so <see cref="Made"/> can say the same another way.</summary>
     [ThreadStatic]
     static (string English, object?[] Args)? _lastFormat;
 
-    /// <summary>
-    /// The English sentence and values the last <see cref="F"/> on this thread made <paramref name="text"/> from, to
-    /// make it again another way (a Discord message: its language, account names shown or hidden by its own switch);
-    /// null for any other text.
-    /// </summary>
+    /// <summary>The English sentence and values the last <see cref="F"/> on this thread made <paramref name="text"/> from,
+    /// to remake it another way (a Discord message's language and name hiding); null for any other text.</summary>
     public static (string English, object?[] Args)? Made(string text) =>
         _lastFormat is { } last && string.Format(T(last.English), last.Args) == text ? last : null;
 
-    /// <summary>
-    /// <paramref name="text"/> in English and in Vietnamese, when the last <see cref="F"/> just made it or it is one of
-    /// the sentences here; otherwise as it is, twice. The activity log keeps notifications this way, to show them in
-    /// whichever language is chosen later.
-    /// </summary>
+    /// <summary><paramref name="text"/> in English and Vietnamese when the last <see cref="F"/> made it or it is a sentence
+    /// here; otherwise as it is, twice. The activity log keeps notifications this way.</summary>
     public static (string English, string Vietnamese) Both(string text)
     {
         if (Made(text) is { } made)

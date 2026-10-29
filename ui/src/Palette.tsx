@@ -1,7 +1,6 @@
-// Quick search (Ctrl+K): one box for everything on the page, ranked by a small fuzzy match. app.js builds the entries
-// (paletteEntries: accounts, presets, games, tabs, Settings sections, actions, each { text, hint, keywords, icon |
-// img | avatar, run, alts }) each time it opens; this draws the box and the list. Enter runs the highlighted entry;
-// an account's other actions (Play, Edit) are on Ctrl+Enter and Shift+Enter, and on the highlighted row.
+// Quick search (Ctrl+K): one box, ranked by a small fuzzy match; app.js builds the entries (paletteEntries) each time it
+// opens. Enter runs the highlighted entry; an account's other actions (Play, Edit) are on Ctrl+Enter and Shift+Enter,
+// and on the highlighted row.
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Icon, useHost } from './host';
 import { fold } from './text';
@@ -16,10 +15,8 @@ export type PaletteEntry = {
   run: () => void; alts?: { text: string; run: () => void }[];
 };
 
-/**
- * How well a query matches a text, both folded: the start of the text beats the start of a word, which beats the
- * middle of one, then every word somewhere, then the letters in order (fewer gaps first). -1 for no match.
- */
+// Match quality, both folded: the text's start beats a word's start, then a word's middle, then every word somewhere,
+// then the letters in order (fewer gaps first). -1 for no match.
 const PAL_WORD = /[\s@_\-.·(/:[\]]/;
 const wordStart = (s: string, j: number) => j === 0 || PAL_WORD.test(s[j - 1]);
 function fuzzyScore(q: string, s: string) {
@@ -96,7 +93,6 @@ export function Palette({ entries, close }: { entries: PaletteEntry[]; close: ()
       close();
     }
   };
-  // The kind of each row ("Action", "Account"…) only when the list mixes kinds; a list of one kind needs no label.
   const mixed = new Set(rows.map(e => e.kind)).size > 1;
 
   return <div className="pal">
@@ -122,7 +118,6 @@ export function Palette({ entries, close }: { entries: PaletteEntry[]; close: ()
             }}>
             <Lead e={e} />
             <span className="pal-txt"><b>{e.text}</b>{e.hint ? <small>{e.hint}</small> : null}</span>
-            {/* The other actions show on the highlighted row only, with their keys. */}
             {on && e.alts ? e.alts.map((x, j) => <button key={j} type="button" className="pal-alt" data-alt={j} tabIndex={-1}>{x.text}<kbd>{PAL_ALT_KEYS[j]}</kbd></button>) : null}
             {mixed ? <em className="pal-cat">{t(`pal.cat.${e.kind}`)}</em> : null}
           </div>;

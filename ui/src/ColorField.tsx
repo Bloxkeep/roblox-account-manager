@@ -1,7 +1,5 @@
-// A colour box with Bloxkeep's own picker (Settings › Appearance › Custom). The browser's colour box opens a window of
-// its own in its own colours; this one opens a panel in the page's: a few ready colours, a square for how light and
-// how strong, a strip for the hue, and the #rrggbb to type. Each change is told as it is made (onChange), as the
-// browser's box tells it while its colour is dragged.
+// A colour box with Bloxkeep's own picker (Settings › Appearance › Custom); the browser's opens a window in its own colours.
+// A panel: ready colours, a lightness/strength square, a hue strip, the #rrggbb; onChange fires as it is dragged, like the browser's.
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useHost } from './host';
 import { Popup } from './TimeField';

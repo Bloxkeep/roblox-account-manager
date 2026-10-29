@@ -5,10 +5,8 @@ namespace RobloxManager;
 
 public static class RobloxLauncher
 {
-    /// <summary>
-    /// Values of <see cref="AppSettings.LaunchVia"/>, plus "other:&lt;Name&gt;" for another Bloxstrap-style launcher found on
-    /// this PC and "custom" for one the user picked (<see cref="AppSettings.CustomLauncher"/>).
-    /// </summary>
+    /// <summary>Values of <see cref="AppSettings.LaunchVia"/>, plus "other:&lt;Name&gt;" for another Bloxstrap-style
+    /// launcher found here ("custom" is <see cref="AppSettings.CustomLauncher"/>).</summary>
     public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct", "store", "custom", "vng"];
 
     const string OtherPrefix = "other:";
@@ -24,11 +22,8 @@ public static class RobloxLauncher
     public static bool IsValidOption(string launchVia) =>
         LaunchOptions.Contains(launchVia) || (OtherName(launchVia) is { } name && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0);
 
-    /// <summary>
-    /// A launcher picked by hand that Bloxkeep may look at and start: a program on this PC, not on the network
-    /// (\\server\share, \\?\UNC\…, \\host@SSL\… or a mapped network drive). Windows would reach a network path the moment
-    /// Bloxkeep checked it was there, handing the PC's Windows sign-in to that server, and then run what it serves.
-    /// </summary>
+    /// <summary>A hand-picked launcher on this PC, not the network (\\server\share, \\?\UNC\…, \\host@SSL\…, a mapped drive):
+    /// merely checking a network path hands the PC's Windows sign-in to that server, and then runs what it serves.</summary>
     public static bool IsLocalProgram(string path)
     {
         if (path.Length == 0 || !Path.IsPathFullyQualified(path) || path.StartsWith(@"\\", StringComparison.Ordinal) || path.StartsWith("//", StringComparison.Ordinal))
@@ -52,18 +47,13 @@ public static class RobloxLauncher
         return key is not null;
     }
 
-    /// <summary>
-    /// Whether Default may hand the link to Windows: registered, the program it names is still there, and it isn't
-    /// Roblox VNG's client (whose installer takes the links; Bloxkeep never opens Roblox with it, see IsVngClient).
-    /// </summary>
+    /// <summary>Default may hand the link to Windows: a handler is registered, still there, and not Roblox VNG's client
+    /// (see IsVngClient).</summary>
     static bool LinksOpen() =>
         IsProtocolRegistered() && (RobloxInstalls.ProtocolHandlerPath() is not { } handler || (File.Exists(handler) && !RobloxInstalls.IsVngClient(handler)));
 
-    /// <summary>
-    /// What opens Roblox when the links don't: Bloxstrap or Fishstrap (as their own options start them), another
-    /// Bloxstrap-style launcher, else the newest RobloxPlayerBeta.exe on the PC, and Roblox VNG's client only when
-    /// nothing else is there (the owner's rule, 2026-10-28: VNG is always the last choice). Null when there is none.
-    /// </summary>
+    /// <summary>What opens Roblox when the links don't: Bloxstrap or Fishstrap, another Bloxstrap-style launcher, the newest
+    /// RobloxPlayerBeta.exe, and VNG's client only when nothing else is there (the owner's rule, 2026-10-28).</summary>
     internal static (string Exe, string[] Args)? FallbackLauncher()
     {
         foreach (string name in new[] { "Bloxstrap", "Fishstrap" })
@@ -110,16 +100,11 @@ public static class RobloxLauncher
         return $"roblox-player:1+launchmode:play+gameinfo:{ticket}+launchtime:{now}+placelauncherurl:{placeLauncher}{tail}";
     }
 
-    /// <param name="launchVia">
-    /// "auto" = whatever Windows opens roblox-player: links with; "bloxstrap"/"fishstrap" = that launcher, keeping its
-    /// mods; "roblox" = the official client; "direct" = the newest RobloxPlayerBeta.exe, skipping any launcher;
-    /// "other:&lt;Name&gt;" and "custom" get the link as their first argument, the way Windows hands it to whatever
-    /// handles roblox-player: links.
-    /// </param>
-    /// <returns>
-    /// The link's browser tracker id, new for each launch: the client's command line carries it, so its window is told
-    /// to be this launch's (<see cref="RobloxProcesses.LaunchTrackerOf"/>).
-    /// </returns>
+    /// <param name="launchVia">"auto" = whatever Windows opens roblox-player: links with; "bloxstrap"/"fishstrap" = that
+    /// launcher, keeping its mods; "roblox" = the official client; "direct" = the newest RobloxPlayerBeta.exe;
+    /// "other:&lt;Name&gt;" and "custom" get the link as their first argument, as Windows would.</param>
+    /// <returns>The link's browser tracker id, new per launch: it is on the client's command line, so its window can be
+    /// told apart (<see cref="RobloxProcesses.LaunchTrackerOf"/>).</returns>
     public static string Launch(string ticket, GameTarget? target, string launchVia, string customLauncher = "")
     {
         string tracker = NewBrowserTrackerId();
@@ -161,9 +146,8 @@ public static class RobloxLauncher
             default:
                 if (!LinksOpen())
                 {
-                    // Nothing opens roblox-player: links any more, yet a launcher or client may still be here: another
-                    // Roblox's uninstaller takes the links with it (seen 2026-10-19: Roblox VNG installed, took them from
-                    // Bloxstrap, then removed). Whatever is left opens it, as Windows would have.
+                    // No handler, yet a client may remain: another Roblox's uninstaller takes the links with it (seen
+                    // 2026-10-19: VNG installed over Bloxstrap, then removed). Whatever is left opens it.
                     if (FallbackLauncher() is { } fallback)
                     {
                         Start(fallback.Exe, [.. fallback.Args, uri]);
@@ -191,15 +175,12 @@ public static class RobloxLauncher
         Process.Start(psi)?.Dispose();
     }
 
-    /// <summary>
-    /// Roblox from the Microsoft Store, given the link like the other clients. Started from its Start menu entry (or its
-    /// roblox: links), Microsoft's GameLaunchHelper only brings an open Roblox forward; started inside its package with
-    /// Windows' Invoke-CommandInDesktopPackage, the client keeps the package's sign-in and files and opens a window of
-    /// its own (seen 2026-10-16, Store Roblox 2.743).
-    /// </summary>
     /// <summary>The ticket in a launch link, and any long token-like run (a wrapped line may cut "gameinfo:" off).</summary>
     static readonly System.Text.RegularExpressions.Regex TicketText = new(@"gameinfo:[^+\s'""]*|[A-Za-z0-9_\-]{40,}", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
+    /// <summary>Store Roblox: its Start entry's GameLaunchHelper only brings an open Roblox forward; started inside its
+    /// package (Invoke-CommandInDesktopPackage) the client keeps the package's sign-in and opens its own window (seen
+    /// 2026-10-16, Store Roblox 2.743).</summary>
     static void StartInStorePackage(string exe, string uri)
     {
         static string Quote(string s) => "'" + s.Replace("'", "''") + "'";

@@ -27,19 +27,12 @@ public static class RobloxInstalls
         return space > 0 ? command[..space] : command;
     }
 
-    /// <summary>
-    /// Roblox VNG's client, in a folder of its own (%LOCALAPPDATA%\RobloxPCVNG). Its installer takes the roblox-player:
-    /// links (seen 2026-10-19); Bloxkeep's Default never follows them there, not even for a Roblox VNG account, so
-    /// installing Roblox VNG doesn't change what Bloxkeep opens Roblox with.
-    /// </summary>
+    /// <summary>Roblox VNG's client (%LOCALAPPDATA%\RobloxPCVNG). Its installer takes the roblox-player: links (seen
+    /// 2026-10-19); Bloxkeep's Default never follows them there, not even for a VNG account.</summary>
     public static bool IsVngClient(string path) => path.Contains(@"\RobloxPCVNG\", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Roblox VNG's newest client: its own launch option ("vng"), and the last choice of Default and "direct" when no
-    /// other Roblox is on the PC (never ahead of one; the owner's rule, 2026-10-28). It opened
-    /// global accounts too when their tickets were redeemed (seen 2026-10-19). After Bloxstrap was removed it was the only
-    /// Roblox on the owner's PC (2026-10-28).
-    /// </summary>
+    /// <summary>Roblox VNG's newest client: the "vng" option, and Default's and "direct"'s last resort when no other Roblox
+    /// is installed (never ahead of one; the owner's rule, 2026-10-28). It opens global accounts too (seen 2026-10-19).</summary>
     public static string? FindVngClient() => Newest(ClientsIn(Path.Combine(Local, "RobloxPCVNG")));
 
     /// <summary>The program roblox-player: links open, when it is still there and isn't Roblox VNG's client.</summary>
@@ -67,10 +60,8 @@ public static class RobloxInstalls
     /// <summary>Launchers with their own option in Settings; others of the same family are found by <see cref="FindOtherBootstrappers"/>.</summary>
     static readonly string[] KnownBootstrappers = ["Bloxstrap", "Fishstrap"];
 
-    /// <summary>
-    /// Other Bloxstrap-style launchers (its forks keep its installer): an uninstall entry named after the launcher,
-    /// whose folder holds "&lt;name&gt;.exe" and a Versions folder of Roblox clients. Only what is really there is listed.
-    /// </summary>
+    /// <summary>Other Bloxstrap forks: an uninstall entry named after the launcher, whose folder holds "&lt;name&gt;.exe" and
+    /// a Versions folder of Roblox clients.</summary>
     public static List<string> FindOtherBootstrappers()
     {
         var found = new List<string>();
@@ -115,12 +106,9 @@ public static class RobloxInstalls
 
     static string? Newest(IEnumerable<string> paths) => paths.OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
 
-    /// <summary>
-    /// Whether the build folder ("version-…") is installed next to this client, in the same Versions folder. Roblox
-    /// keeps a build per channel side by side and starts the one of the signed-in account's channel: on 2026-10-29 its
-    /// installer put this PC's links on a test channel's build (0.744.478) while an account on the main channel
-    /// started 0.745 from the folder next to it.
-    /// </summary>
+    /// <summary>Whether the build folder ("version-…") is in this client's Versions folder. Roblox keeps a build per channel
+    /// side by side and starts the account's channel's: on 2026-10-29 the links pointed at a test channel's 0.744.478
+    /// while a main-channel account started 0.745 from the folder next to it.</summary>
     public static bool HasBuild(string? exe, string? folder)
     {
         if (exe is null || folder is null || !folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase))
@@ -205,8 +193,7 @@ public static class RobloxInstalls
             "direct" => FindAnyClient() ?? FindVngClient(), // VNG's only when nothing else is there
             "store" => FindStoreClient(),
             "vng" => FindVngClient(),
-            // Whatever opens roblox-player: links: the client itself, or a bootstrapper with its own copies.
-            // (Not Roblox VNG's client: see IsVngClient.)
+            // Whatever opens roblox-player: links (not VNG's client: see IsVngClient).
             _ => UsableHandlerPath() is { } handler
                 ? Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase)
                     ? handler
@@ -215,12 +202,9 @@ public static class RobloxInstalls
         };
     }
 
-    /// <summary>
-    /// The Bloxstrap-style launcher whose copy of Roblox this launch option starts: run with "-player -nolaunch" it
-    /// installs the newest Roblox without opening it (Bloxstrap 2.11.4 and Fishstrap, read in their source on
-    /// 2026-10-17). Null for Roblox's own copy (its updater's switches aren't known), the Store edition, and a launcher
-    /// picked by hand.
-    /// </summary>
+    /// <summary>The Bloxstrap-style launcher this option starts; with "-player -nolaunch" it installs the newest Roblox
+    /// without opening it (Bloxstrap 2.11.4 and Fishstrap source, 2026-10-17). Null for Roblox's own copy (its
+    /// updater's switches aren't known), the Store edition and a hand-picked launcher.</summary>
     public static string? UpdaterFor(string launchVia, string customLauncher = "")
     {
         if (launchVia is "custom" or "store" or "roblox" or "vng" || ClientFor(launchVia, customLauncher) is not { } client)
@@ -245,8 +229,7 @@ public static class RobloxInstalls
             string version = string.Join('.', (info.FileVersion ?? "").Split(',', '.').Select(part => part.Trim()).Where(part => part.Length > 0));
             if (version.Length == 0)
                 version = $"{info.FileMajorPart}.{info.FileMinorPart}.{info.FileBuildPart}.{info.FilePrivatePart}";
-            // The Store's exe carries no version (it reads 0.0.0.0): its package folder's name has it. That folder isn't
-            // one of Roblox's build ids, so there is no build to note either (Settings › Roblox updates).
+            // The Store's exe reads 0.0.0.0: its package folder's name has the version (and no Roblox build id).
             if (IsStoreClient(exe))
                 return StoreVersion(Path.GetFileName(Path.GetDirectoryName(exe)) ?? "") is { } store ? new ClientVersion(store, "", SourceOf(exe), exe) : null;
             return new ClientVersion(version, Path.GetFileName(Path.GetDirectoryName(exe)) ?? "", SourceOf(exe), exe);
@@ -257,11 +240,9 @@ public static class RobloxInstalls
         }
     }
 
-    /// <summary>
-    /// Roblox from the Microsoft Store (since September 2025 built with Microsoft's game kit; it replaced the old
-    /// ROBLOXCORPORATION.ROBLOX app). Its Start menu entry runs Microsoft's GameLaunchHelper.exe, which only brings an open
-    /// Roblox forward, so Bloxkeep starts its RobloxPlayerBeta.exe inside the package (RobloxLauncher, "store").
-    /// </summary>
+    /// <summary>Roblox from the Microsoft Store (GDK build since September 2025, replacing ROBLOXCORPORATION.ROBLOX). Its
+    /// Start entry runs GameLaunchHelper.exe, which only brings an open Roblox forward, so Bloxkeep starts the package's
+    /// RobloxPlayerBeta.exe (RobloxLauncher, "store").</summary>
     public const string StoreFamily = "ROBLOXCorporation.RobloxGDK_55nm5eh3cm0pr";
     public const string StoreAppId = "Game";
 
@@ -313,11 +294,8 @@ public static class RobloxInstalls
     public static bool IsStoreClient(string exe) =>
         Path.GetFileName(Path.GetDirectoryName(exe) ?? "").StartsWith(StoreFamily.Split('_')[0] + "_", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// The Store client's version in Roblox's own form, from its package folder
-    /// ("ROBLOXCorporation.RobloxGDK_2.743.1134.0_x64__…"): the package numbers it 2.743.1134.0 where the website's
-    /// client is 0.743.0.7431134, so it compares with what Roblox serves. Null when the name isn't of that form.
-    /// </summary>
+    /// <summary>The Store client's version in Roblox's form, from its package folder: "…RobloxGDK_2.743.1134.0_x64__…" gives
+    /// 0.743.0.7431134, comparable with what Roblox serves. Null when the name isn't of that form.</summary>
     public static string? StoreVersion(string packageFolder)
     {
         var name = packageFolder.Split('_');

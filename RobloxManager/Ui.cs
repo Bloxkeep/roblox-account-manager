@@ -12,10 +12,8 @@ static class Ui
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     static extern void SHChangeNotify(int eventId, uint flags, string? item1, IntPtr item2);
 
-    /// <summary>
-    /// Makes Explorer redraw the icons of our shortcuts and exe. An update replaces the program folder the shortcuts
-    /// point into, and Explorer can keep showing the blank icon it cached meanwhile (on the desktop and taskbar).
-    /// </summary>
+    /// <summary>Makes Explorer redraw our shortcuts' icons: an update replaces the program folder, and Explorer can keep a
+    /// blank icon it cached meanwhile.</summary>
     public static void RefreshShellIcons()
     {
         string[] paths =
@@ -113,10 +111,7 @@ static class Ui
         }
     }
 
-    /// <summary>
-    /// Secrets are flagged so Windows keeps them out of clipboard history and cloud clipboard sync,
-    /// and are wiped from the clipboard after 30 seconds.
-    /// </summary>
+    /// <summary>Secrets are kept out of clipboard history and cloud sync, and wiped after 30 seconds.</summary>
     public static bool CopyToClipboard(string text, bool secret)
     {
         if (string.IsNullOrEmpty(text))

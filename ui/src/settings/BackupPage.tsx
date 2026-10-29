@@ -1,6 +1,5 @@
-// Settings › Backup & data: backing up to a folder (which one, folders found on this PC to use instead, a warning when
-// a cloud folder meets an easy password, the last backup and Back up now); then restoring and importing; then where the
-// app keeps its data.
+// Settings › Backup & data: backing up to a folder (folders found here instead, a warning when a cloud folder meets an
+// easy password, the last backup, Back up now); then restoring and importing; then where the app keeps its data.
 import { Ago, Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 

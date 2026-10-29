@@ -3,11 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace RobloxManager;
 
-/// <summary>
-/// A native right-click menu in the app's theme (the game monitor tab's tile menu, <see cref="MonitorTab"/>): its
-/// colours, Windows 11's rounded corners, roomy rows with a soft highlight. Until 2026-10-26 the tray icon's menu used
-/// it too; that menu is drawn by the tray's page now (<see cref="TrayWindow"/>).
-/// </summary>
+/// <summary>A native right-click menu in the app's theme, with Windows 11's rounded corners (the game monitor's tile menu,
+/// <see cref="MonitorTab"/>).</summary>
 static class ThemedMenu
 {
     [DllImport("dwmapi.dll")]

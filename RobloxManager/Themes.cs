@@ -114,10 +114,8 @@ public static class Themes
         }
     }
 
-    /// <summary>
-    /// The custom theme for the window frame, the title bar, the tray menu and the mini window: dark or light by its
-    /// colour (as the page decides it), surfaces a step from it, the words and status colours of Dark or Light.
-    /// </summary>
+    /// <summary>The custom theme for native parts (frame, title bar, mini window): dark or light by its colour as the page
+    /// decides, surfaces a step from it, text and status colours from Dark or Light.</summary>
     static Theme FromCustom(Prefs.CustomTheme custom)
     {
         var bg = Rgb(Convert.ToInt32(custom.Background[1..], 16));
@@ -141,10 +139,8 @@ public static class Themes
     public static string? Hex(string? text) =>
         text is { Length: 7 } && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit) ? text.ToLowerInvariant() : null;
 
-    /// <summary>
-    /// A picture of the person's as kept in the data folder's pictures, the only files the page may load from there: the custom
-    /// theme's (theme-background-&lt;time&gt;.png…) and each vault's (vault-picture-&lt;id&gt;-&lt;time&gt;.png…).
-    /// </summary>
+    /// <summary>The only files the page may load from the pictures folder: the custom theme's (theme-background-&lt;time&gt;.png…)
+    /// and each vault's (vault-picture-&lt;id&gt;-&lt;time&gt;.png…).</summary>
     public static bool IsPictureName(string name) =>
         IsThemeMediaName(name) || System.Text.RegularExpressions.Regex.IsMatch(name, @"^vault-picture-[0-9a-f]{8}-\d{1,20}\.(png|jpe?g|webp|gif|bmp)$");
 

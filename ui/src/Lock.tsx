@@ -1,8 +1,6 @@
-// The lock screen: the master password to open the vault, or, the first time (or for a vault being added), a new one
-// (typed twice, its strength shown) with "Restore a backup" under it; with several vaults, which one it is and Switch
-// vault, or the picker itself (Vaults.tsx). app.js decides which and when (renderLock) and what the opened vault does
-// (applyState); this draws it, checks what was typed and asks the app. The boxes keep what is typed themselves: app.js
-// reads them back when the screen is drawn again in another language.
+// The lock screen: the master password, or the first time (or for a vault being added) a new one, typed twice, with
+// "Restore a backup"; with several vaults, which one and Switch vault, or the picker (Vaults.tsx). app.js decides which
+// (renderLock) and handles the opened vault (applyState). The boxes keep what is typed: app.js reads them back on a redraw.
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Icon, useAppState, useHost, type AppState } from './host';
 import { Rich } from './rich';
@@ -27,7 +25,6 @@ export function Lock({ mode, notice, kept, opened }: {
   // Which vault this is, once there are vaults (or one is being added); its name is typed while it is being added.
   const vaults = app.vaults || {};
   const adding = !!vaults.adding;
-  // Shown once there is a choice (two vaults or more, or one being added); with one vault the screen is as it always was.
   const vault: VaultInfo | null = vaults.current && ((vaults.list || []).length > 1 || adding)
     ? { id: vaults.current, name: vaults.name || '', picture: vaults.picture || null } : null;
   const form = useRef<HTMLFormElement>(null), pw1 = useRef<HTMLInputElement>(null), pw2 = useRef<HTMLInputElement>(null);
@@ -36,10 +33,9 @@ export function Lock({ mode, notice, kept, opened }: {
   const [error, setError] = useState('');
   const [shown, setShown] = useState(false);
   const [caps, setCaps] = useState(false);
-  // An update found before the unlock (AppController.UpdateOffersAtLock): the screen gives it its place while it
-  // downloads and installs, and Bloxkeep opens again here on the new version. Not when something was typed already
-  // (that person is on their way in); the screen's link gives the form back, and the update then waits until Bloxkeep
-  // isn't in use. Decided once per update offered; the app keeps the answer, so a redraw in another language keeps it.
+  // An update found before the unlock (AppController.UpdateOffersAtLock) takes the screen while it installs, and Bloxkeep
+  // reopens here on it. Not once something was typed (they're on their way in); it then waits until Bloxkeep isn't in use.
+  // Decided once per update offered; the app keeps the answer, so a redraw in another language keeps it.
   const offer = mode === 'pick' ? null : app.lockUpdate as { go: boolean | null } | null;
   const [updating, setUpdating] = useState<boolean | null>(null);
   useEffect(() => {
@@ -68,7 +64,6 @@ export function Lock({ mode, notice, kept, opened }: {
     label.current!.className = `pw-strength ${v ? level : ''}`;
   };
   useEffect(() => {
-    // Drawn again in another language (the same screen): what was typed stays.
     if (kept) {
       pw1.current!.value = kept.pw1;
       if (pw2.current) pw2.current.value = kept.pw2;
@@ -161,7 +156,6 @@ export function Lock({ mode, notice, kept, opened }: {
           aria-label={t('vault.name')} spellCheck={false} /> : null}
         <div className="pw"><input className="field" type={shown ? 'text' : 'password'} id="pw1" ref={pw1} placeholder={t('lock.pw')} maxLength={256} aria-label={t('lock.pw')}
           {...typing} onInput={() => { setError(''); if (create) showStrength(pw1.current!.value); }} />
-          {/* Before it is first pressed it reads "Show password", as app.js drew it. */}
           <button type="button" className="icon-btn" id="pw-eye" title={eye} aria-label={eye} aria-pressed={shown} onClick={() => setShown(!shown)}><Icon name={shown ? 'eyeOff' : 'eye'} /></button></div>
         {create ? <>
           <input className="field" type={shown ? 'text' : 'password'} id="pw2" ref={pw2} placeholder={t('lock.pw2')} maxLength={256} aria-label={t('lock.pw2')} {...typing} />
@@ -171,8 +165,7 @@ export function Lock({ mode, notice, kept, opened }: {
       <div className="lock-caps" id="lock-caps" hidden={!caps}><Icon name="alert" />{t('lock.caps')}</div>
       <div className="lock-error" id="lock-error" role="alert">{error}</div>
       <button className="btn primary big w" type="submit" id="lock-btn" ref={btn}>{t(create ? 'lock.create' : 'lock.unlock')}</button>
-      {/* Set up: a backup instead. Unlock: for a forgotten master password (it can't be recovered), a backup whose
-          password is remembered, or another vault (this one stays on the list until it is removed in the picker). */}
+      {/* Set up: a backup instead. Unlock: a backup (a forgotten master password can't be recovered) or another vault. */}
       <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button>
         {create ? null : <><span className="sep">·</span><button type="button" className="link" data-act="vault-add">{t('vault.new')}</button></>}</div>
       {/* For someone who signs in to Roblox only in their own browser: Multi-Roblox without a vault or accounts. */}

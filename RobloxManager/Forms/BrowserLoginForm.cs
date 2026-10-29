@@ -4,11 +4,8 @@ using Microsoft.Web.WebView2.WinForms;
 
 namespace RobloxManager;
 
-/// <summary>
-/// The user signs in on roblox.com inside a throw-away WebView2 profile. Each time a session cookie appears it is
-/// handed to <c>onSignedIn</c>, the profile is deleted and a fresh sign-in page opens for the next account, so
-/// many accounts can be added in one go. The password typed here is never read by the app.
-/// </summary>
+/// <summary>Sign-in on roblox.com in a throw-away WebView2 profile: each new session cookie goes to <c>onSignedIn</c>,
+/// then a fresh profile opens for the next account. The password typed here is never read by the app.</summary>
 public sealed class BrowserLoginForm : Form
 {
     const string ProfilePrefix = "Bloxkeep-login-";

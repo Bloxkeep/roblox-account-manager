@@ -1,7 +1,6 @@
-// Where the bot's news comes from, read every minute by its object (worker.js): Bloxkeep's Roblox watch (the build Roblox
-// serves, the one on its test channel before release, and what each means for Multi-Roblox), Roblox's own status page,
-// and Bloxkeep's newest public release; Roblox's release notes once a release has been announced, until they're out.
-// A source that can't be read is left as it was; nothing is announced from it.
+// Where the bot's news comes from, read every minute (worker.js): Bloxkeep's Roblox watch (the live and test-channel builds
+// and what each means for Multi-Roblox), Roblox's status page, Bloxkeep's newest release, and Roblox's release notes until
+// they're out. A source that can't be read is left as it was; nothing is announced from it.
 export const REPO = 'https://github.com/Bloxkeep/roblox-account-manager';
 const UA = 'BloxkeepBot (https://github.com/Bloxkeep/roblox-account-manager)';
 // Each one's address can be pointed elsewhere (services/DiscordBot/test runs them against its own fakes).
@@ -23,7 +22,6 @@ export function versionKey(v) {
   return String(v ?? '').replace(/^v/, '').split(/[.-]/).map(n => parseInt(n, 10) || 0);
 }
 
-/** a is a later version than b. */
 export function newer(a, b) {
   const x = versionKey(a), y = versionKey(b);
   for (let i = 0; i < Math.max(x.length, y.length); i++) {
@@ -43,12 +41,9 @@ async function getJson(address) {
   return res.json();
 }
 
-/**
- * How many times Bloxkeep's install files were downloaded, over every release on GitHub (betas too), as the Roblox
- * watch workflow last counted them (.github/workflows/roblox-watch.yml, every 10 minutes, with its own token). Asked of
- * GitHub's API from here, the count mostly failed: GitHub takes 60 unsigned calls an hour from one address, and
- * Cloudflare's addresses are shared with everyone's workers.
- */
+// Downloads of Bloxkeep's install files over every release (betas too), as the Roblox watch workflow last counted them
+// (.github/workflows/roblox-watch.yml, every 10 minutes, its own token). Asked from here, it mostly failed: GitHub allows
+// 60 unsigned calls an hour per address, and Cloudflare's addresses are shared with everyone's workers.
 export async function readInstallDownloads(env) {
   const n = (await getJson(url(env, 'DOWNLOADS_URL'))).installs;
   if (!Number.isInteger(n) || n < 0)
@@ -56,10 +51,8 @@ export async function readInstallDownloads(env) {
   return n;
 }
 
-/**
- * The Roblox watch's file: the live build and, when Roblox's test channel offers a newer one, that one, each with its
- * verdict for Multi-Roblox (same, changed, renamed, gone, first; null while the watch hasn't checked it).
- */
+// The Roblox watch's file: the live build and a newer test-channel one, each with its Multi-Roblox verdict (same, changed,
+// renamed, gone, first; null while the watch hasn't checked it).
 export async function readWatch(env) {
   const d = await getJson(url(env, 'WATCH_URL'));
   const entry = hash => (d.builds ?? []).find(b => b.hash === hash);
@@ -69,10 +62,8 @@ export async function readWatch(env) {
   return { live, next: beta && (!live || newer(beta.version, live.version)) ? beta : null };
 }
 
-/**
- * Roblox's status page: the overall state and each part (User, Player, Creator) with status.io's code (100 working,
- * 200 maintenance, 300 slow, 400 partly down, 500 down), and the incident's name when there is one.
- */
+// Roblox's status page: the overall state and each part (User, Player, Creator) with status.io's code (100 working,
+// 200 maintenance, 300 slow, 400 partly down, 500 down), and the incident's name when there is one.
 export async function readStatus(env) {
   const d = (await getJson(url(env, 'STATUS_URL'))).result ?? {};
   const code = Number(d.status_overall?.status_code) || 100;
@@ -92,14 +83,10 @@ export async function readLatestTag(env) {
   return decodeURIComponent(m[1]);
 }
 
-/**
- * A release's highlights in English and Vietnamese: the lines before its first heading, on each side of the
- * "**Tiếng Việt**" line its notes have (release-notes.ps1). Asked only when a new release appears. GitHub's API
- * allows 60 requests an hour without a sign-in, per address, and Cloudflare's addresses are shared: when it doesn't
- * answer (1.0.9 was posted with no highlights on 2026-10-23), they come from the notes the release was built from,
- * whatsnew.json at its tag, written the same way. read: false when neither could be read (not a release without
- * highlights), so the post can wait for them.
- */
+// A release's highlights in English and Vietnamese: the lines before its first heading, each side of its "**Tiếng Việt**"
+// line (release-notes.ps1). GitHub's API allows 60 unsigned requests an hour per (shared) address; when it doesn't answer
+// (1.0.9 was posted with no highlights on 2026-10-23), they come from whatsnew.json at its tag. read: false when neither
+// could be read (not a release without highlights), so the post can wait for them.
 export async function readRelease(env, tag) {
   const page = `${REPO}/releases/tag/${tag}`, version = tag.replace(/^v/, '');
   const highlights = text => text.split(/^#{1,6} /m)[0].trim().slice(0, 1500);
@@ -132,11 +119,8 @@ export async function readRelease(env, tag) {
 /** Where Roblox's notes for a weekly release are read (744 → .../release-notes-744). */
 export const notesPage = (env, n) => url(env, 'NOTES_URL') + n;
 
-/**
- * Roblox's release notes for a weekly release (744), each change with its kind ("Improvements" or "Fixes") and whether
- * it is on already ("Live") or still waits behind a switch ("Pending"); null while Roblox hasn't posted them (the page
- * is missing, or has no changes yet). They come from the data the Creator Hub page carries for its own drawing.
- */
+// Roblox's notes for a weekly release (744): each change's kind ("Improvements"/"Fixes") and whether it is Live or Pending;
+// null while Roblox hasn't posted them. Read from the data the Creator Hub page carries for its own drawing.
 export async function readNotes(env, n) {
   const res = await fetch(notesPage(env, n), { headers: { 'User-Agent': UA, Accept: 'text/html' } });
   if (res.status === 404)
