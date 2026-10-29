@@ -217,6 +217,13 @@ public sealed partial class AppController : IDisposable
         _post = postJson;
         _procTimer.Tick += (_, _) => OnProcTimer();
         _procTimer.Start();
+        // The update check before anything else (not at the first tick): one found before the vault is opened takes the
+        // lock screen's place, so the sooner it's known, the less likely someone has started typing there.
+        if (Prefs.CheckUpdates && _updater.Supported)
+        {
+            _nextUpdateCheck = DateTime.UtcNow + UpdateCheckInterval;
+            _ = _updater.CheckAsync();
+        }
         WatchForeground();
         WatchDrags();
         // Multi-Roblox before the master password (see Prefs.MultiRobloxAtStart).
@@ -4025,6 +4032,7 @@ public sealed partial class AppController : IDisposable
             _nextUpdateCheck = now + UpdateCheckInterval;
             _ = _updater.CheckAsync();
         }
+        Step(() => TickLatest(now)); // a new version, from Bloxkeep's bot: the check above brought forward
         Step(() => RelaunchIfQuiet(now)); // a downloaded update, installed once nobody is using the app
         Step(SayUpdateFailed); // one that didn't install, said once something can show it
 

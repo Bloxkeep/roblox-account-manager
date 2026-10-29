@@ -180,7 +180,7 @@ function startDev(extra = {}) {
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
     RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, DOWNLOADS_URL: `http://127.0.0.1:${SRC}/downloads.json`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', DOWNLOADS_EVERY_MS: '0', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
-    NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', ...extra,
+    NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', LATEST_CACHE_S: '0', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -223,6 +223,8 @@ try {
   check('the commands are put in place, with the bot token', puts.length === 1 && puts[0].url === '/applications/app1/commands' && puts[0].auth === 'Bot test-token'
     && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,online,board,verify,pc', JSON.stringify(puts[0]?.body.map(c => c.name)));
   check('…and the first look announces nothing', calls.filter(c => c.method === 'POST').length === 0, calls.length);
+  let latestNow = await (await fetch(`http://127.0.0.1:${DEV}/latest`)).json();
+  check('/latest says the newest public Bloxkeep, for the apps to update at once', latestNow.version === '1.0.7', JSON.stringify(latestNow));
   await minute();
   check('…nor are the commands put again when unchanged', calls.filter(c => c.method === 'PUT').length === 1);
 
@@ -477,6 +479,10 @@ try {
   // posted; once the notes file at its tag answers, posted with that file's highlights.
   apiDown = fileDown = true;
   latest = 'v1.0.9';
+  before = base();
+  await minute();
+  latestNow = await (await fetch(`http://127.0.0.1:${DEV}/latest`)).json();
+  check('…and /latest has the new one as soon as its tag is out, before its notes can be read', latestNow.version === '1.0.9', JSON.stringify(latestNow));
   before = base();
   await minute();
   check("a new Bloxkeep whose notes can't be read yet: not posted empty, it waits", posts('c1').length === before.c1);

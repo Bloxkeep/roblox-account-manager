@@ -32,8 +32,9 @@ const FATAL = { 4004: 'token refused', 4010: 'bad shard', 4011: 'sharding requir
 const SESSION_GONE = new Set([4007, 4009]);
 const MAX_EVENTS = 2000;
 const MAX_BACKOFF = 60_000;
-// Bloxkeep's releases are looked at every ten minutes (the others every minute).
-const RELEASE_EVERY = 10 * 60_000;
+// Bloxkeep's releases are looked at every two minutes (the others every minute): the apps learn of a new one from
+// /latest, so they update within minutes of it.
+const RELEASE_EVERY = 2 * 60_000;
 // How many looks a new release waits for its notes to be readable before it is posted without them (an hour).
 const RELEASE_TRIES = 6;
 // An outage counts once two looks in a row say so, and is over after two that say all is well (no posts for a blip).
@@ -822,6 +823,12 @@ export class Gateway extends DurableObject {
   // ───────────────────────────── news ─────────────────────────────
 
   /** What the sources said last; read now if never yet (a first command before the first minute's look). */
+  /** The newest public Bloxkeep, for /latest. */
+  async latest() {
+    const snap = await this.snapshot();
+    return snap.latest ?? snap.bloxkeep?.version?.replace(/^v/, '') ?? null;
+  }
+
   async snapshot() {
     return (await this.ctx.storage.get('snap')) ?? await this.poll();
   }
@@ -884,6 +891,9 @@ export class Gateway extends DurableObject {
     }
     if (releaseDue)
       snap.releaseAt = now;
+    // What /latest says, as soon as the tag is out (the post waits for its notes, below).
+    if (tag && !/-/.test(tag))
+      snap.latest = tag.replace(/^v/, '');
     if (tag && tag !== snap.announced.release && !/-/.test(tag)) {
       const rel = await readRelease(this.env, tag);
       // Its notes not readable yet (GitHub not answering): asked again at the next look, for up to RELEASE_TRIES looks,
@@ -1361,6 +1371,23 @@ async function downloadsBadge(env, ctx) {
   return res;
 }
 
+/**
+ * The newest public Bloxkeep, for the apps: { version }. Kept a minute per Cloudflare location, so however many apps
+ * ask, the object answers a few times a minute. Nothing is sent and nothing is kept about who asks.
+ */
+async function latestVersion(env, ctx) {
+  const key = new Request('https://bloxkeep-bot.invalid/latest'), cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit)
+    return hit;
+  const version = await ask(env, g => g.latest()).catch(() => null);
+  const seconds = Number(env.LATEST_CACHE_S ?? 60);
+  const res = Response.json({ version }, { headers: { 'Cache-Control': version && seconds > 0 ? `public, max-age=${seconds}` : 'no-store' } });
+  if (version && seconds > 0)
+    ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 /** The bot's object: made in eastern North America the first time, then wherever it is. */
 const bot = env => env.GATEWAY.get(env.GATEWAY.idFromName(env.OBJECT_NAME || OBJECT), { locationHint: PLACE });
 /** A call someone waits for, made once more if the object was starting over (a deploy: calls.js). */
@@ -1387,6 +1414,8 @@ export default {
         ? new Response(dashboardPage(), { headers: { 'Content-Type': 'text/html; charset=utf-8', ...noStore } })
         : Response.json(await ask(env, g => g.onlineNow()), { headers: noStore });
     }
+    if (url.pathname === '/latest') // which Bloxkeep is out: an open app checks for it at once (rather than within the hour)
+      return latestVersion(env, ctx);
     if (url.pathname === '/remote/connect') { // a Bloxkeep app that can be controlled from Discord (remote.js)
       if (env.PING_LIMITER && !(await env.PING_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' })).success)
         return new Response('rate', { status: 429 });
