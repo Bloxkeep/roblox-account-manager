@@ -1889,7 +1889,8 @@
       : null;
     // "1 needs", not "1 need": the singular goes by the signed-out count (tn picks it by n).
     // Refused by Roblox (a warning to read, a lock) is said apart from the network: roblox.com shows that account why.
-    const refused = r.refused ? ' ' + tn('t.checkedRefused', r.refused) : '';
+    // All of them held for a notice to accept ("User is moderated"): said so, rather than "refused".
+    const refused = r.refused ? ' ' + tn(r.moderated === r.refused ? 't.checkedModerated' : 't.checkedRefused', r.refused) : '';
     toast(tn(r.failed ? 't.checkedFail' : 't.checked', r.bad, { ok: r.ok, bad: r.bad, f: r.failed }) + refused, r.bad || r.refused ? 'warn' : 'ok', show);
   }
 

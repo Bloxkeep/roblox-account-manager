@@ -95,6 +95,12 @@ public sealed class RobloxApiException(string message, bool cookieInvalid = fals
 
     /// <summary>Roblox wouldn't give the account a sign-in ticket (4xx, not 401/429): its roblox.com says why.</summary>
     public bool SignInRefused { get; init; }
+
+    /// <summary>
+    /// Roblox holds the account until a moderation notice (a warning, a ban that ended) is accepted on its roblox.com:
+    /// HTTP 403, "User is moderated" (seen 2026-10-29 for an account warned that day, on the sign-in check).
+    /// </summary>
+    public bool Moderated { get; init; }
 }
 
 /// <summary>
@@ -244,6 +250,10 @@ public static class RobloxApi
         res.Headers.TryGetValues(name, out var values) ? values.FirstOrDefault() : null;
 
     /// <summary>Roblox's error codes, and for the log its error messages: never the rest of a reply (it may name the account).</summary>
+    /// <summary>A 403 whose error says the account is moderated (<see cref="RobloxApiException.Moderated"/>).</summary>
+    static bool IsModerated(HttpStatusCode status, string body) =>
+        status == HttpStatusCode.Forbidden && Errors(body).Summary.Contains("moderated", StringComparison.OrdinalIgnoreCase);
+
     static (List<int> Codes, string Summary) Errors(string body)
     {
         var codes = new List<int>();
@@ -266,6 +276,8 @@ public static class RobloxApi
     {
         int code = (int)status;
         Log.Note($"{what}: HTTP {code}, errors {Errors(body).Summary}");
+        if (IsModerated(status, body))
+            return new RobloxApiException(L.T("Roblox has a notice on this account to accept first. Open its roblox.com and accept it.")) { Moderated = true };
         return new RobloxApiException(code >= 500
                 ? L.F("Roblox isn't working properly right now (HTTP {0}). Try again in a moment.", code)
                 : L.F("Roblox refused the request (HTTP {0}). Try again in a moment.", code),
@@ -1375,6 +1387,8 @@ public static class RobloxApi
         if ((int)res.StatusCode >= 500)
             throw new RobloxApiException(L.F("Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment.", (int)res.StatusCode),
                 serverError: true);
+        if (IsModerated(res.StatusCode, text))
+            throw new RobloxApiException(L.T("Roblox has a notice on this account to accept first. Open its roblox.com and accept it.")) { SignInRefused = true, Moderated = true };
         throw new RobloxApiException(L.F("Roblox refused to sign this account in (HTTP {0}). Open its roblox.com to see why.",
             (int)res.StatusCode)) { SignInRefused = true };
     }

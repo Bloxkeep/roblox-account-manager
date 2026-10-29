@@ -2162,6 +2162,7 @@ public sealed partial class AppController : IDisposable
         PushState();
         int ok = 0, bad = 0, failed = 0, done = 0;
         var refused = new List<Guid>();
+        int moderated = 0;
         var queue = new Queue<Account>(accounts);
         var rejected = new List<Account>();
         var resumeAt = DateTime.UtcNow;
@@ -2206,6 +2207,8 @@ public sealed partial class AppController : IDisposable
                     {
                         // Roblox answered and said no (403: a warning waiting to be read, a lock…): not the network.
                         refused.Add(account.Id);
+                        if (ex.Moderated)
+                            moderated++;
                     }
                     catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                     {
@@ -2270,7 +2273,7 @@ public sealed partial class AppController : IDisposable
         _ = LoadAvatarsAsync(accounts.Select(a => a.UserId));
         if (newlyBanned.Count > 0 && _vault == vault)
             NotifyBanned(newlyBanned);
-        return new { ok, bad, failed, refused = refused.Count, refusedIds = refused, banned = accounts.Count(a => a.Banned == true) };
+        return new { ok, bad, failed, refused = refused.Count, moderated, refusedIds = refused, banned = accounts.Count(a => a.Banned == true) };
     }
 
     object Copy(Guid id, string field)

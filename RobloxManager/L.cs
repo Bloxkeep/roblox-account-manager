@@ -112,6 +112,7 @@ public static class L
         ["{0} has no Roblox window open."] = "{0} không có cửa sổ Roblox nào đang mở.",
         ["Closing {0}…"] = "Đang đóng {0}…",
         ["Didn't switch: no other server of that game has room right now."] = "Chưa chuyển: game đó không còn server nào khác có chỗ.",
+        ["Roblox has a notice on this account to accept first. Open its roblox.com and accept it."] = "Roblox có thông báo cho tài khoản này cần xác nhận trước. Mở roblox.com của tài khoản và bấm đồng ý.",
         ["Roblox refused to sign this account in (HTTP {0}). Open its roblox.com to see why."] = "Roblox không cho tài khoản này đăng nhập (HTTP {0}). Mở roblox.com của nó để xem lý do.",
         ["Couldn't open the private server link (HTTP {0}). Check the link, or try again in a moment."] = "Không mở được link server riêng (HTTP {0}). Kiểm tra lại link hoặc thử lại sau giây lát.",
         ["The private server link is invalid or has expired."] = "Link server riêng không hợp lệ hoặc đã hết hạn.",

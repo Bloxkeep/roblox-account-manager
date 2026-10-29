@@ -193,7 +193,7 @@ static class SignInsSuite
         var heldCheck = await Harness.Call(app, "checkAccounts", new { ids = new[] { a.Id } });
         object? CheckField(string name) => heldCheck?.GetType().GetProperty(name)?.GetValue(heldCheck);
         c.Check("an account Roblox holds (403): counted as refused, not as a network failure, not signed out",
-            CheckField("refused") is 1 && CheckField("failed") is 0 && CheckField("bad") is 0 && a.CookieValid == true
+            CheckField("refused") is 1 && CheckField("moderated") is 1 && CheckField("failed") is 0 && CheckField("bad") is 0 && a.CookieValid == true
             && CheckField("refusedIds") is List<Guid> ids && ids.SequenceEqual([a.Id]), heldCheck);
         Exception? refusal = null;
         try
@@ -206,6 +206,8 @@ static class SignInsSuite
         }
         c.Check("…its sign-in ticket refused: marked so the launch offers its roblox.com",
             refusal is RobloxApiException { SignInRefused: true, ServerError: false }, refusal?.Message);
+        c.Check("…Roblox's reason (\"User is moderated\") named: a notice on the account to accept",
+            refusal is RobloxApiException { Moderated: true } && refusal.Message.Contains("notice on this account"), refusal?.Message);
         roblox.Held.Clear();
 
         // ── Roblox VNG's accounts in the status round ──
@@ -310,7 +312,7 @@ static class SignInsSuite
             {
                 long? user = cookie is not null && Users.TryGetValue(cookie, out long id) ? id : null;
                 res = cookie is not null && Held.Contains(cookie) && (csrf || !uri.AbsolutePath.StartsWith("/v1/authentication-ticket", StringComparison.Ordinal))
-                    ? Refusal(HttpStatusCode.Forbidden, "Forbidden")
+                    ? Refusal(HttpStatusCode.Forbidden, "User is moderated")
                     : uri.AbsolutePath switch
                 {
                     "/v1/users/authenticated" => user is { } u && !Down
