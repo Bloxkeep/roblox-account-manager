@@ -765,9 +765,16 @@ public sealed partial class AppController : IDisposable
     {
         if (_installs is not null && DateTime.UtcNow - _installsReadAt < InstallCacheLifetime)
             return _installs;
-        _installsReadAt = DateTime.UtcNow;
-        string? before = _installs?.Client?.Folder, beforeVersion = _installs?.Client?.Version;
-        _installs = new InstallsInfo(
+        var (via, custom) = (_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "");
+        var (installs, updater) = ReadInstalls(via, custom);
+        return TakeInstalls(installs, updater, DateTime.UtcNow);
+    }
+
+    /// <summary>
+    /// What is installed, read from the disk and the registry: up to a second on a busy PC (2026-10-29, the owner's:
+    /// 0.9 s in a process check), so the process tick reads it on a worker (<see cref="TickRobloxUpdates"/>).
+    /// </summary>
+    static (InstallsInfo Installs, string? Updater) ReadInstalls(string via, string custom) => (new InstallsInfo(
             // What Default opens Roblox with: the links' program, or what stands in for it when they are gone or Roblox
             // VNG's (RobloxLauncher.FallbackLauncher), so Settings names the program really used.
             Handler: (RobloxInstalls.UsableHandlerPath() ?? RobloxLauncher.FallbackLauncher()?.Exe) is { } used
@@ -778,9 +785,17 @@ public sealed partial class AppController : IDisposable
             Roblox: RobloxInstalls.FindOfficialClient() is not null,
             Direct: (RobloxInstalls.FindAnyClient() ?? RobloxInstalls.FindVngClient()) is not null,
             Store: RobloxInstalls.StoreEditionInstalled(),
-            Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")),
-            Vng: RobloxInstalls.FindVngClient() is not null);
-        _updaterExe = RobloxInstalls.UpdaterFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "");
+            Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(via, custom)),
+            Vng: RobloxInstalls.FindVngClient() is not null),
+        RobloxInstalls.UpdaterFor(via, custom));
+
+    /// <summary>A read of what is installed kept, and a new Roblox build since the last one said.</summary>
+    InstallsInfo TakeInstalls(InstallsInfo installs, string? updater, DateTime readAt)
+    {
+        _installsReadAt = readAt;
+        string? before = _installs?.Client?.Folder, beforeVersion = _installs?.Client?.Version;
+        _installs = installs;
+        _updaterExe = updater;
         // Roblox (or its launcher) put a new build in place since the last look — or an older one (a launcher set to a
         // version, an older copy chosen), which isn't an update.
         // (The Store edition has no build folder: switching to or from it says nothing.)
