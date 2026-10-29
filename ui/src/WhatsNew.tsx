@@ -32,13 +32,19 @@ function splitNote(note: string, locale: string): [string, string] {
 
 /** The pictures are made at 1.5 times the app's size (sharp on a scaled screen): shown at the size they are in the app. */
 const SHOT_SCALE = 1.5;
+/** The tallest a picture is shown (app.css .wn-shot img max-height). */
+const SHOT_MAX_HEIGHT = 360;
 
 /** One headline feature: a wide picture (a row of settings, a message) above the words, a tall one (a menu) beside them. */
 function Feature({ image, eager, children }: { image?: string | null; eager: boolean; children: React.ReactNode }) {
   const [size, setSize] = useState<{ w: number; wide: boolean } | null>(null);
   return <article className={`wn-feat${image ? (size?.wide ? ' wide' : '') : ' plain'}`}>
     {image ? <div className="wn-shot"><img src={image} alt="" loading={eager ? 'eager' : 'lazy'} style={size ? { width: size.w } : undefined}
-      onLoad={e => { const i = e.currentTarget; setSize({ w: Math.round(i.naturalWidth / SHOT_SCALE), wide: i.naturalWidth >= i.naturalHeight * 2 }); }} /></div> : null}
+      onLoad={e => {
+        // Never wider than its height cap allows (app.css .wn-shot img): a tall picture set to its full width was squashed.
+        const i = e.currentTarget, w = Math.min(i.naturalWidth / SHOT_SCALE, SHOT_MAX_HEIGHT * i.naturalWidth / i.naturalHeight);
+        setSize({ w: Math.round(w), wide: i.naturalWidth >= i.naturalHeight * 2 });
+      }} /></div> : null}
     <div className="wn-feat-text">{children}</div>
   </article>;
 }
