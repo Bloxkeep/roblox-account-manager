@@ -211,53 +211,54 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.12 · October 29, 2026"
+              small "Bloxkeep 1.0.13 · October 30, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
-          article.wide.wn-feat
+          article.wn-feat
             div.wn-shot
-              img [alt="" style="width:731px" src="whatsnew/1.0.12-discord.en.webp"]
+              img [alt="" style="width:577px" src="whatsnew/1.0.13-themes.en.webp"]
             div.wn-feat-text
-              h3 "Control from Discord"
-              p "Type /pc in Discord to see which accounts are in a game, run a preset, close windows or switch server on your PC, from anywhere."
-              button.wn-go [type="button" FOCUSED] "Turn it on"
+              h3 "Your themes"
+              p "Save your own themes by name, share them as a file, and put a picture or a video behind Bloxkeep."
+              button.wn-go [type="button" FOCUSED] "Make one"
                 svg.i #1g7f83q
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:307px" src="whatsnew/1.0.12-hide.en.webp"]
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "Hide Roblox windows"
-              p "Hide a window while its game keeps running, from the account menu or with Ctrl+Alt+H. Ctrl+Alt+A arranges the windows."
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:304px" src="whatsnew/1.0.12-botcheck.en.webp"]
+              h3 "A page for each game"
+              p "Click a game's name under the game box: its players, your accounts in it this week, the hours it's quiet and its wiki."
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "Roblox's bot check"
-              p "When Roblox asks a joining account to prove it isn't a bot, its card says so and Verify opens the check in Bloxkeep's window."
+              h3 "Fit more accounts"
+              p "Minimized and hidden Roblox windows can keep just 1 GB of RAM each, the rest in virtual memory."
+              button.wn-go [type="button"] "Set it"
+                svg.i #1g7f83q
+          article.plain.wn-feat
+            div.wn-feat-text
+              h3 "See your windows from Discord"
+              p "/pc screenshot shows an account's Roblox window, or all of them, only to you."
         section.new.wn-group
           h4.wn-kind "New"
           ul.wn-notes
-            li "Switch to another server from the account menu."
-            li "Roblox VNG can be picked in Settings › Launching. It is always the last choice, used first only when you pick it."
-            li "When Roblox won't let an account sign in, the error has a button that opens its roblox.com, already signed in, to see why."
+            li "Ctrl+Alt+M minimizes or opens every Roblox window, Ctrl+Alt+N goes to the next one and Ctrl+Alt+B opens Bloxkeep."
+            li "/pc switch can move all accounts to another server at once."
+            li "Light AFK presets also turn off grass and lighting effects, with a plain grey sky."
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
-            li "The list shows Online on the Roblox website or app, instead of just Online."
-            li "None for things you can't act on or already see."
-              b "Fewer notices"
-            li "Dialogs open at their top."
-            li "Notices in the corner sit above the Play bar instead of over its edge."
-            li "Checking sign-ins tells accounts Roblox refuses apart from network problems."
+            li "The RAM shown for each account counts only its own memory, like Task Manager."
+            li "Lists, time and date boxes and colour boxes now open in Bloxkeep's own colours."
+            li "Linking a PC with /pc link waits for you to press Allow in Bloxkeep."
+            li "New versions are found within minutes of their release."
+            li "Bloxkeep stays responsive with many Roblox windows open."
+            li "Roblox VNG always shows in Open Roblox with, marked when it isn't installed."
+            li "An account held by a Roblox notice now says it has a notice to accept."
         section.fixed.wn-group
           h4.wn-kind "Fixed"
           ul.wn-notes
-            li "Fixed Bloxkeep saying Roblox isn't installed while a Roblox window was open."
-            li "Fixed Roblox being shown as out of date when Roblox put the PC on a test version."
-            li "Fixed anti-AFK stopping for every window while one waited on Roblox's bot check."
-            li "Fixed a hidden, minimised window coming back on the taskbar after anti-AFK."
+            li "Fixed a group being given up on when the server it was joining had closed."
+            li "Fixed an account rejoining after you closed its window right after leaving the game."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
