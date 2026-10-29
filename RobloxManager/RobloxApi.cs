@@ -340,14 +340,23 @@ public static class RobloxApi
         /// The server has ended (status 5: Roblox's ConnectionError 517 is PlacelaunchGameEnded, 512 + the status, as 518
         /// is PlacelaunchGameFull for 6; Roblox's API dump).
         /// </summary>
-        public bool Ended => Status == 5;
+        public bool Ended => Status == 5 || ServerGone;
+
+        /// <summary>
+        /// The join named a server (a Job ID) and Roblox refused it without a ban: that server is gone, not the game closed
+        /// to the account. Seen 2026-10-29: a party sent to its first account's server after that server ended with a
+        /// system error ("This experience has ended, or the server became unavailable unexpectedly…", the window's
+        /// PlacelaunchGameEnded) got status 12, "Unable to join Game 311", every time it was asked. Counted as ended, so
+        /// the accounts go to another server instead of not being tried again. Set by the join check, which knows the target.
+        /// </summary>
+        public bool ServerGone { get; init; }
 
         /// <summary>
         /// Roblox refuses the account this game: one of the statuses its own client counts as a join error (its setting
         /// FStringGameJoinStatusConsideredError, "12;29;30;31;32;33;" in 0.744), not a wait. Asked again, it answers the
         /// same. A game's ban is one of them (see <see cref="Banned"/>).
         /// </summary>
-        public bool Refused => Status is 12 or (>= 29 and <= 33);
+        public bool Refused => !ServerGone && Status is 12 or (>= 29 and <= 33);
 
         /// <summary>The number in "Unable to join Game 211": what the window turns into its own error.</summary>
         public int? Code => Message is { } m && System.Text.RegularExpressions.Regex.Match(m, @"Unable to join Game (\d+)") is { Success: true } found

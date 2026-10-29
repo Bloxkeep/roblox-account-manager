@@ -219,6 +219,22 @@ static class RejoinSuite
                 Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
                 partyReply = new(200, 6, "The game you requested is currently full.");
                 c.Check("…full (status 6): closed", await Wait() == "closed");
+                // The server ended with a system error (2026-10-29): Roblox refuses the join to that server with status 12,
+                // "Unable to join Game 311", not a ban. That server is gone: closed, so the party goes to another server
+                // (before, the accounts went there all the same and weren't tried again).
+                Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
+                partyReply = new(200, 12, "Unable to join Game 311");
+                c.Check("…refused for that server without a ban (status 12, 311): closed, the party goes elsewhere", await Wait() == "closed");
+                var asked311 = await (Task<RobloxApi.JoinAnswer?>)t.GetMethod("CheckJoinAsync", Harness.F)!.Invoke(app,
+                    [account, new GameTarget(107778070777162, DeadServer), "test", CancellationToken.None])!;
+                var game311 = await (Task<RobloxApi.JoinAnswer?>)t.GetMethod("CheckJoinAsync", Harness.F)!.Invoke(app,
+                    [account, new GameTarget(107778070777162), "test", CancellationToken.None])!;
+                c.Check("…read as that server gone (ended), not a refusal; the same answer for the game itself (no server named) is a refusal",
+                    asked311 is { ServerGone: true, Ended: true, Refused: false } && game311 is { ServerGone: false, Refused: true });
+                partyReply = new(200, 12, "Unable to join Game 211");
+                var ban211 = await (Task<RobloxApi.JoinAnswer?>)t.GetMethod("CheckJoinAsync", Harness.F)!.Invoke(app,
+                    [account, new GameTarget(107778070777162, DeadServer), "test", CancellationToken.None])!;
+                c.Check("…a ban by the game (211) on a named server stays a ban and a refusal", ban211 is { Banned: true, ServerGone: false, Refused: true });
                 // Roblox would let it in (status 2): the join is slow, not refused. It got its server 2 s on.
                 Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
                 partyReply = new(200, 2, null);

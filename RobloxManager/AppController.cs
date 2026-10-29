@@ -4647,8 +4647,12 @@ public sealed partial class AppController : IDisposable
         try
         {
             var answer = await _askJoin(account, target, ct);
+            // A server named and refused without a ban: that server is gone (RobloxApi.JoinAnswer.ServerGone).
+            if (target.JobId is { Length: > 0 } && answer.Status == 12 && !answer.Banned)
+                answer = answer with { ServerGone = true };
             Log.Note($"{why}: Roblox answered {answer.Http}, status {answer.Status}: {answer.Message ?? "(no message)"}"
-                + (answer.Data is { } data ? $" · statusData {data}" : "") + (answer.Banned ? " (a ban by the game)" : ""));
+                + (answer.Data is { } data ? $" · statusData {data}" : "") + (answer.Banned ? " (a ban by the game)" : "")
+                + (answer.ServerGone ? " (that server is gone)" : ""));
             // Without a status, the request itself was refused (too many requests, a server error, the sign-in): no
             // answer about the join, so it is asked again.
             return answer.Status is null && !answer.Banned ? null : answer;
