@@ -226,13 +226,13 @@ html [data-theme="dark" lang="vi"]
                 svg.i #1g7f83q
           article.wn-feat
             div.wn-shot
-              img [alt="" style="width:532px" src="whatsnew/1.0.12-hide.vi.webp"]
+              img [alt="" style="width:307px" src="whatsnew/1.0.12-hide.vi.webp"]
             div.wn-feat-text
               h3 "Ẩn cửa sổ Roblox"
               p "Ẩn cửa sổ mà game vẫn chạy, từ menu tài khoản hoặc bằng Ctrl+Alt+H. Ctrl+Alt+A để xếp cửa sổ."
           article.wn-feat
             div.wn-shot
-              img [alt="" style="width:312px" src="whatsnew/1.0.12-botcheck.vi.webp"]
+              img [alt="" style="width:304px" src="whatsnew/1.0.12-botcheck.vi.webp"]
             div.wn-feat-text
               h3 "Xác minh không phải bot"
               p "Khi Roblox bắt tài khoản đang vào game xác minh không phải bot, thẻ tài khoản sẽ báo và nút Xác minh mở bước kiểm tra trong cửa sổ của Bloxkeep."

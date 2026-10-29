@@ -226,13 +226,13 @@ html [data-theme="dark" lang="en"]
                 svg.i #1g7f83q
           article.wn-feat
             div.wn-shot
-              img [alt="" style="width:532px" src="whatsnew/1.0.12-hide.en.webp"]
+              img [alt="" style="width:307px" src="whatsnew/1.0.12-hide.en.webp"]
             div.wn-feat-text
               h3 "Hide Roblox windows"
               p "Hide a window while its game keeps running, from the account menu or with Ctrl+Alt+H. Ctrl+Alt+A arranges the windows."
           article.wn-feat
             div.wn-shot
-              img [alt="" style="width:313px" src="whatsnew/1.0.12-botcheck.en.webp"]
+              img [alt="" style="width:304px" src="whatsnew/1.0.12-botcheck.en.webp"]
             div.wn-feat-text
               h3 "Roblox's bot check"
               p "When Roblox asks a joining account to prove it isn't a bot, its card says so and Verify opens the check in Bloxkeep's window."
