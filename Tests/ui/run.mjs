@@ -10,6 +10,9 @@
 //   node Tests/ui/run.mjs --update         save what the page shows now as the expected copy
 //   node Tests/ui/run.mjs --shots          also screenshots, in Tests/ui/out/shots, to look at
 //   UI_SCALE=1.5 node Tests/ui/run.mjs --shots   screenshots at 1.5x (the pictures in What's new are cut from these)
+//   node Tests/ui/run.mjs --popups --size 980x620   instead of comparing: dialogs, menus, toasts and pickers that
+//                                          spill off the window, are cut off by a box around them, or lie over the dock
+//                                          or a button (Tests/ui/out/popups.txt); --size: the window, 1280x800 by default
 //   node Tests/ui/run.mjs --layout         also each element's position and size, against a copy kept on this PC only
 //                                          (Tests/ui/out/layout: positions differ a little between PCs)
 //   node Tests/ui/run.mjs --pixels         also every screenshot pixel by pixel, against copies kept on this PC only
@@ -38,7 +41,9 @@ const UPDATE = flag('--update'), SHOTS = flag('--shots'), LAYOUT = flag('--layou
 const ONLY = opt('--only')?.split(',');
 const JOBS = COVERAGE || JANK ? 1 : Math.max(1, Number(opt('--jobs')) || Math.min(8, Math.floor(os.cpus().length / 2)));
 const LANGS = opt('--lang')?.split(',') || ['en', 'vi'];
-const SIZE = [1280, 800];
+const POPUPS = flag('--popups');
+const SIZE = (opt('--size') ?? '1280x800').split('x').map(Number);
+const popups = [];
 const OUT = path.join(HERE, 'out');
 const BASE_DIR = LAYOUT ? path.join(OUT, 'layout') : path.join(HERE, 'baseline');
 const dirs = { actual: path.join(OUT, 'actual'), shots: path.join(OUT, 'shots'), pixels: path.join(OUT, 'pixels'), pixelDiff: path.join(OUT, 'pixel-diff') };
@@ -98,8 +103,54 @@ if (JANK) {
   console.log(`\n${jank.length} scenario(s) where something jumps after loading (Tests/ui/out/jank.txt):\n${lines.slice(0, 15).join('\n')}`);
   process.exit(0);
 }
+if (POPUPS) {
+  popups.sort();
+  fs.writeFileSync(path.join(OUT, 'popups.txt'), popups.join('\n') + '\n');
+  console.log(`\n${popups.length} popup problem(s) at ${SIZE.join('x')} (Tests/ui/out/popups.txt):\n${popups.slice(0, 40).join('\n')}`);
+  process.exit(0);
+}
 console.log(failed ? `${failed} scenario(s) differ — see Tests/ui/out` : `All ${list.length} scenarios match (${Math.round((Date.now() - started) / 1000)} s).`);
 process.exit(failed);
+
+/**
+ * Every popup on the page now (a dialog, a menu, a toast, a picker, a tooltip-like panel) checked where it stands: past
+ * the window's edge, cut off by a box with hidden overflow around it, or lying over the dock or a button that isn't its
+ * own. Run in the page; gives a line per problem.
+ */
+function popupCheck() {
+  // Not the page's own lists (the account grid is a listbox too): a listbox counts inside a popup only.
+  const sel = '.overlay .modal, .menu, .toast, .picker, [role="dialog"], [role="menu"], .menu [role="listbox"], .picker [role="listbox"], [role="tooltip"], .popover, .pop, .tip-pop, .dd-menu';
+  const seen = new Set(), out = [];
+  const name = el => el.id ? '#' + el.id : el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '');
+  // On screen: its own box and every box around it shown (a tab that isn't open hides its dock).
+  const shown = el => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }); };
+  const W = innerWidth, H = innerHeight;
+  for (const el of document.querySelectorAll(sel)) {
+    if (seen.has(el) || !shown(el) || [...seen].some(s => s.contains(el))) continue;
+    seen.add(el);
+    const r = el.getBoundingClientRect();
+    const off = [r.left < -1 && `left by ${Math.round(-r.left)}`, r.top < -1 && `top by ${Math.round(-r.top)}`,
+      r.right > W + 1 && `right by ${Math.round(r.right - W)}`, r.bottom > H + 1 && `bottom by ${Math.round(r.bottom - H)}`].filter(Boolean);
+    if (off.length) out.push(`${name(el)} past the window (${off.join(', ')})`);
+    for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+      const cs = getComputedStyle(a);
+      if (cs.position === 'fixed' && a !== el) break;
+      if (!/(hidden|auto|scroll|clip)/.test(cs.overflow + cs.overflowX + cs.overflowY)) continue;
+      const b = a.getBoundingClientRect();
+      const cut = [r.left < b.left - 1, r.top < b.top - 1, r.right > b.right + 1, r.bottom > b.bottom + 1].some(Boolean);
+      if (cut) { out.push(`${name(el)} cut off by ${name(a)}`); break; }
+    }
+    if (el.closest('.overlay')) continue;
+    const covered = [...document.querySelectorAll('.dock, button, a[href], input, select, [role="button"]')].filter(c => {
+      if (el.contains(c) || c.contains(el) || !shown(c) || c.closest('.overlay, .menu, #toasts, .picker')) return false;
+      const q = c.getBoundingClientRect();
+      const x = Math.min(r.right, q.right) - Math.max(r.left, q.left), y = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
+      return x > 4 && y > 4 && el.classList.contains('toast');
+    });
+    if (covered.length) out.push(`${name(el)} over ${[...new Set(covered.map(name))].slice(0, 3).join(', ')}`);
+  }
+  return out;
+}
 
 /** One scenario in one language, in Edge b: what to print about it (counting it in failed when it doesn't match). */
 async function runOne(b, { sc, lang }) {
@@ -110,6 +161,7 @@ async function runOne(b, { sc, lang }) {
   const record = async label => {
     const settled = await b.eval('__ui.settle()');
     const snap = await b.eval(`__ui.snap(${JSON.stringify({ layout: LAYOUT })})`);
+    if (POPUPS) for (const p of await b.eval(`(${popupCheck})()`)) popups.push(`${id}${label === 'end' ? '' : ' @' + label}: ${p}`);
     const calls = await b.eval('__ui.calls');
     // Sorted: commands sent together (the page asking for several things as it opens) arrive in any order.
     const fresh = calls.slice(callsSeen).map(c => `  ${c.cmd} ${stable(c.args)}`).sort();
