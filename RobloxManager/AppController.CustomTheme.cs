@@ -4,12 +4,10 @@ using System.Text.Json;
 namespace RobloxManager;
 
 /// <summary>
-/// Settings › Appearance › Custom (<see cref="Prefs.Custom"/>): the person's own background colour and accent, and a
-/// picture of theirs behind the page if they like. The page works out the rest of the colours from those two (app.js
-/// customVars) and shows the picture behind glass, like the scenery themes. The picture is copied into the data folder
-/// and the page loads it from there (ShellForm.ServeAsset, "user/…"): the original can be moved or deleted. A video
-/// (MP4, WebM) can take the picture's place; either can be blurred. Custom themes are kept by name (Your themes,
-/// <see cref="Prefs.SavedThemes"/>) and shared as a .bloxkeeptheme file: a ZIP of theme.json and its picture.
+/// Settings › Appearance › Custom (<see cref="Prefs.Custom"/>): the person's background colour, accent and optional
+/// picture or video (MP4, WebM) behind glass; the page works out the other colours (app.js customVars). The picture is
+/// copied into the data folder and served from there (ShellForm.ServeAsset, "user/…"), so the original can go. Kept by
+/// name (<see cref="Prefs.SavedThemes"/>) and shared as a .bloxkeeptheme file: a ZIP of theme.json and its picture.
 /// </summary>
 public sealed partial class AppController
 {
@@ -22,7 +20,6 @@ public sealed partial class AppController
     const string ThemeFileType = ".bloxkeeptheme";
     const int MaxThemeJson = 16 * 1024;
 
-    /// <summary>The custom theme for the page; its picture as the page loads it.</summary>
     static object CustomThemeDto() => LookDto(Prefs.Custom);
 
     static object LookDto(Prefs.CustomTheme look) => new
@@ -35,13 +32,9 @@ public sealed partial class AppController
         video = Themes.IsVideo(look.Picture),
     };
 
-    /// <summary>Your themes, for Settings › Appearance: each with its look, for its swatch.</summary>
     static object[] SavedThemesDto() => Prefs.SavedThemes.Select(t => (object)new { id = t.Id, name = t.Name, look = LookDto(t.Look) }).ToArray();
 
-    /// <summary>
-    /// New colours (or how much of the colour lies over the picture, how much the picture is blurred); the theme
-    /// becomes the custom one.
-    /// </summary>
+    /// <summary>New colours, fade or blur; the theme becomes the custom one.</summary>
     object? SetCustomTheme(string background, string accent, int? fade, int? blur = null)
     {
         Prefs.Custom = Prefs.Custom with
@@ -94,7 +87,6 @@ public sealed partial class AppController
         return $"theme-background-{ticks}{type}";
     }
 
-    /// <summary>"Remove the picture": the custom theme goes back to its plain colour.</summary>
     object? ClearThemePicture()
     {
         Prefs.Custom = Prefs.Custom with { Picture = null };
@@ -102,10 +94,8 @@ public sealed partial class AppController
         return UseCustomTheme();
     }
 
-    /// <summary>
-    /// "Save": the custom theme as it is now kept under a name. A theme of that name already kept is replaced (the
-    /// same name is the same theme, changed); a new one goes first. At most <see cref="Themes.MaxSaved"/>.
-    /// </summary>
+    /// <summary>"Save": the custom theme kept under a name; the same name replaces that theme, a new one goes first. At
+    /// most <see cref="Themes.MaxSaved"/>.</summary>
     object? SaveTheme(string name)
     {
         string named = Themes.ThemeName(name) ?? throw new UserError(L.T("Give the theme a name."));
@@ -122,7 +112,6 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>A kept theme picked: it becomes the custom theme in use.</summary>
     object? UseSavedTheme(string id)
     {
         var theme = Prefs.SavedThemes.FirstOrDefault(t => t.Id == id) ?? throw new UserError(L.T("That theme isn't there any more."));
@@ -141,7 +130,6 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>"Share": a kept theme written to a .bloxkeeptheme file the person picks where to put.</summary>
     object? ExportTheme(string id)
     {
         var theme = Prefs.SavedThemes.FirstOrDefault(t => t.Id == id) ?? throw new UserError(L.T("That theme isn't there any more."));
@@ -158,7 +146,6 @@ public sealed partial class AppController
         return new { saved = Path.GetFileName(dialog.FileName) };
     }
 
-    /// <summary>"Add from a file…": a .bloxkeeptheme file from the PC, kept and put in use.</summary>
     object? ImportTheme()
     {
         if (Prefs.SavedThemes.Count >= Themes.MaxSaved)
@@ -174,7 +161,6 @@ public sealed partial class AppController
         return AddThemeFile(dialog.FileName);
     }
 
-    /// <summary>A theme file read, kept first among Your themes and put in use.</summary>
     object? AddThemeFile(string path)
     {
         var theme = ReadThemeFile(path);
@@ -205,11 +191,9 @@ public sealed partial class AppController
         File.Move(temp, path, overwrite: true);
     }
 
-    /// <summary>
-    /// A theme file read, someone else's maybe, so nothing in it is trusted: its colours checked, its numbers kept in
-    /// range, its name cleaned; its picture only of a kind and size the page shows, copied out under a name of
-    /// Bloxkeep's own (never a path from the file), read no further than that size whatever the file claims.
-    /// </summary>
+    /// <summary>A theme file, maybe someone else's, so nothing in it is trusted: colours checked, numbers kept in range, name
+    /// cleaned; the picture only of a kind and size the page shows, copied out under a name of Bloxkeep's own (never a path
+    /// from the file), read no further than that size whatever the file claims.</summary>
     static Prefs.SavedTheme ReadThemeFile(string path)
     {
         UserError NotTheme() => new(L.T("That file isn't a Bloxkeep theme."));

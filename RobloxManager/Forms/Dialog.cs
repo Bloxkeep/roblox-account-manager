@@ -3,10 +3,9 @@ using System.Drawing.Drawing2D;
 namespace RobloxManager;
 
 /// <summary>
-/// The app's own message box, in the current theme: Windows' own (a white box with old-style buttons) looked out of
-/// place next to the page. An optional heading, the text, and buttons: side by side, or one under the other with a
-/// line each when they are choices (<see cref="Choice.Detail"/>). Enter presses the default one; Esc, the title bar's
-/// X and the timeout pick the cancel one (the last, unless said otherwise). <see cref="Ui.Modal"/> shows it above the always-on-top windows.
+/// The app's own themed message box (Windows' white one looked out of place). Buttons side by side, or stacked when they
+/// are choices (<see cref="Choice.Detail"/>). Enter presses the default; Esc, the X and the timeout pick the cancel one
+/// (the last by default). <see cref="Ui.Modal"/> shows it above the always-on-top windows.
 /// </summary>
 sealed class Dialog : Form
 {
@@ -159,9 +158,7 @@ sealed class Dialog : Form
     public static void Error(IWin32Window? owner, string text) =>
         Show(owner, text, null, Kind.Error, [new Choice(L.T("OK"))]);
 
-    /// <summary>
-    /// <see cref="Confirm"/> with a "Don't ask again" box: Remember is whether it was ticked, and only with a yes.
-    /// </summary>
+    /// <summary><see cref="Confirm"/> with a "Don't ask again" box; Remember is true only with a yes.</summary>
     public static (bool Yes, bool Remember) ConfirmRemember(IWin32Window? owner, string text, string yes, string no, bool danger = false)
     {
         using var dialog = new Dialog(text, null, danger ? Kind.Warning : Kind.Info, [new Choice(yes, Danger: danger), new Choice(no)],

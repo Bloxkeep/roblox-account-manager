@@ -3,24 +3,21 @@ using System.Text.Json;
 namespace RobloxManager;
 
 /// <summary>
-/// What the tray icon's quick panel and menu (<see cref="TrayWindow"/>) show and does with Bloxkeep in the tray: Multi-Roblox's state
-/// (and turning it off), a new Roblox window, the accounts and presets to open, and closing every Roblox, the same
-/// actions as the page's. With Multi-Roblox only (no vault, see <see cref="MultiOnly"/>) Multi-Roblox turns on and off
-/// from here as well.
+/// What the tray's quick panel and menu (<see cref="TrayWindow"/>) show and do: Multi-Roblox's state, a new Roblox window,
+/// accounts and presets to open, and closing every Roblox, as the page does. With Multi-Roblox only (no vault, see
+/// <see cref="MultiOnly"/>) Multi-Roblox turns on and off here too.
 /// </summary>
 public sealed partial class AppController
 {
     /// <param name="Open">A vault is open and the screen isn't locked: accounts, presets and closing Roblox are offered.</param>
     /// <param name="Multi">"off", "ready" (Multi-Roblox holds Roblox's lock) or "notReady".</param>
     /// <param name="Accounts">The accounts to open, most recently used first (at most 12), and whether each is open.</param>
-    /// <param name="MultiOnly">No vault on this PC (Multi-Roblox only): Multi-Roblox turns on and off from the menu.</param>
     /// <param name="Clients">The accounts' Roblox windows open now, in the launch order (the quick panel's list).</param>
     /// <param name="RamMb">What every Roblox window on this PC holds in RAM together.</param>
     public sealed record TrayInfo(bool Open, string Multi, int RobloxCount, List<(Guid Id, string Name)> Presets,
         List<(Guid Id, string Name, bool Running)>? Accounts = null, bool MultiOnly = false, List<TrayClient>? Clients = null,
         long RamMb = 0);
 
-    /// <summary>One account's Roblox window in the quick panel.</summary>
     public sealed record TrayClient(Guid Id, string Name, string Game, int Pid, long RamMb);
 
     const int TrayAccounts = 12;
@@ -43,16 +40,13 @@ public sealed partial class AppController
     public string? TrayPictureUrl(Guid id) =>
         FindAccount(id) is { UserId: > 0 } account ? _avatarUrls.GetValueOrDefault(account.UserId) : null;
 
-    /// <summary>Settings › Appearance › Custom's colours, for the tray's page in a custom theme.</summary>
     public object TrayCustomTheme() => CustomThemeDto();
 
     /// <summary>The quick panel's eye: the account's Roblox window in front.</summary>
     public void TrayShowClient(int pid) => RobloxProcesses.Focus(pid);
 
-    /// <summary>
-    /// The menu's Multi-Roblox item: off while it is on, as the sidebar's switch does (on asks first: the page). With
-    /// Multi-Roblox only, on and off both (its warning was answered when that was chosen).
-    /// </summary>
+    /// <summary>The menu's Multi-Roblox item: only off while on, like the sidebar's switch (turning on asks first, in the
+    /// page). With Multi-Roblox only, both ways (its warning was answered when that was chosen).</summary>
     public void TrayMulti(bool on)
     {
         if (!Vault.Exists)
@@ -66,11 +60,8 @@ public sealed partial class AppController
         PushState();
     }
 
-    /// <summary>
-    /// First start › "Just use Multi-Roblox": Multi-Roblox without a vault or any account, for someone who signs in to
-    /// Roblox only in their own browser. It is kept on from start-up (<see cref="Prefs.MultiRobloxAtStart"/>); a vault
-    /// made later takes the setting over.
-    /// </summary>
+    /// <summary>First start › "Just use Multi-Roblox": no vault or account, for someone who signs in to Roblox only in their
+    /// browser. Kept on from start-up (<see cref="Prefs.MultiRobloxAtStart"/>); a vault made later takes the setting over.</summary>
     object? MultiOnly(bool on)
     {
         if (Vault.Exists)
@@ -93,10 +84,8 @@ public sealed partial class AppController
     DateTime _homeStartedAt;
     static readonly string HomeAliases = Path.Combine(Vault.CacheDir, "roblox-client-paths");
 
-    /// <summary>
-    /// A new sign-in window without an account or ticket from Bloxkeep. The installed client is opened directly
-    /// through a junction, retaining its installed mods; shared sign-in files stay locked until clients using these aliases close.
-    /// </summary>
+    /// <summary>A new sign-in window without an account or ticket from Bloxkeep: the installed client opened through a
+    /// junction, keeping its mods; shared sign-in files stay locked until clients using these aliases close.</summary>
     public async void TrayNewRoblox()
     {
         if (_disposed || _openingHome || _askingHome || _applyingUpdate || _relaunching)
@@ -262,10 +251,8 @@ public sealed partial class AppController
         RobloxHomeSession.CleanupAliases(HomeAliases);
     }
 
-    /// <summary>
-    /// An account from the menu, as the account card's Play: into the game chosen in the dock, else Roblox's home
-    /// screen. A launch with something to ask first isn't opened from here: that is said, to be done from Bloxkeep.
-    /// </summary>
+    /// <summary>An account from the menu, as its card's Play: into the dock's chosen game, else Roblox's home screen. A
+    /// launch with something to ask first isn't opened from here; that is said, to be done from Bloxkeep.</summary>
     public async void TrayOpenAccount(Guid id)
     {
         void Tell(string text)
@@ -295,10 +282,7 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// A preset from the menu, as the Presets tab's Run. A launch with something to ask first (Multi-Roblox off, low
-    /// RAM…) isn't run from here: that is said, for it to be run from Bloxkeep, where the question shows.
-    /// </summary>
+    /// <summary>A preset from the menu, as the Presets tab's Run; one that would ask first is refused as in <see cref="TrayOpenAccount"/>.</summary>
     public async void TrayRunPreset(Guid id)
     {
         void Tell(string text)

@@ -1,11 +1,9 @@
 ﻿namespace RobloxManager;
 
 /// <summary>
-/// Play-time statistics: one <see cref="PlaySession"/> per stay in a game by a client Bloxkeep opened (or picked up
-/// again), kept in the vault for 90 days. A stay starts when the client's log says it is joining a server (or from
-/// the launch, when the client writes no log) and ends when the log says the person left or was dropped, or when the
-/// client quits. A game moving the player between its own places (a teleport) is the same stay. The page asks for
-/// the figures (playStats) rather than getting them with every state.
+/// Play-time statistics: one <see cref="PlaySession"/> per stay in a game by a client Bloxkeep opened (or picked up),
+/// kept 90 days. A stay starts when the log says it is joining a server (or at launch, with no log) and ends when the log
+/// says the person left or was dropped, or the client quits; a teleport between a game's places is the same stay.
 /// </summary>
 public sealed partial class AppController
 {
@@ -28,19 +26,14 @@ public sealed partial class AppController
     static readonly TimeSpan SleepGap = TimeSpan.FromSeconds(30);
     /// <summary>When the last process check ran (<see cref="Environment.TickCount64"/>, which counts on through a sleep).</summary>
     long _lastCheckTick;
-    /// <summary>
-    /// When Windows said the PC is going to sleep (0: awake), until it wakes: a process check squeezed in before the
-    /// PC stops would begin a stay spanning the sleep. Lapses on its own, in case the sleep was called off.
-    /// </summary>
+    /// <summary>When Windows said the PC is going to sleep (0: awake): a check squeezed in before it stops would begin a
+    /// stay spanning the sleep. Lapses on its own, in case the sleep was called off.</summary>
     long _asleepTick;
     /// <summary>The PC first went to sleep at this time while Bloxkeep was locked: stays still open then end there.</summary>
     DateTime? _sleptWhileLocked;
 
-    /// <summary>
-    /// Each process check, before the rest: one that comes long after the last means the PC slept, which Windows
-    /// doesn't always announce (and its word on waking may come after this check). Stays still open end at the last
-    /// check, as "sleep", and stays begun from now on start no earlier than now.
-    /// </summary>
+    /// <summary>Each check, first: one long after the last means the PC slept, which Windows doesn't always announce (its
+    /// word may come after this check). Open stays end at the last check as "sleep"; new ones start no earlier than now.</summary>
     void NoteCheckGap(DateTime now, DateTime lastCheck)
     {
         long tick = Environment.TickCount64;
@@ -57,7 +50,6 @@ public sealed partial class AppController
             PersistSoon();
     }
 
-    /// <summary>Each process check: opens, continues or ends the stay of every client Bloxkeep follows, from its log.</summary>
     void TrackPlay(DateTime now)
     {
         if (_vault is not { } vault)
@@ -71,14 +63,12 @@ public sealed partial class AppController
             _playing.TryGetValue(id, out var open);
             if (open is not null)
                 open.LastSeenAt = now; // written with the next save, so a crash of Bloxkeep still leaves an end time
-            // A client that was in its game before the PC slept (its stay ended at the sleep) begins a new stay at
-            // the wake, not at the join its log recorded before it.
+            // A client in its game before the PC slept (its stay ended at the sleep) begins a new stay at the wake.
             DateTime SinceWake(DateTime at) => at < _resumedAt ? _resumedAt : at;
             if (log is null)
             {
-                // No log (yet): after a while, taken as playing what it was opened with, since the launch. A client
-                // already open when Bloxkeep started has its log looked for first: a stay it had then is open again
-                // already, and one that had ended must not be counted a second time from the launch.
+                // No log (yet): after a while, playing what it was opened with since the launch. A client open before Bloxkeep started
+                // has its log looked for first: its stay may be open again already, or have ended and mustn't be counted twice.
                 bool before = run.Launch.StartedAt < _started;
                 if (open is null && (before ? now - _started >= RobloxLogWatcher.SearchLimit : now - run.Launch.StartedAt >= NoLogGrace)
                     && run.Launch.Target is { PlaceId: > 0 } target)
@@ -100,9 +90,8 @@ public sealed partial class AppController
             }
             if (log.PlaceId is not > 0)
                 continue;
-            // Taken straight to another game without leaving first (a teleport across games): a new stay. Whether
-            // it is another game is known once the new place has been looked up (asked for by the process check);
-            // until then the stay goes on, rather than being split for a place of the same game.
+            // A teleport across games is a new stay, known once the new place is looked up (the process check asks for it);
+            // until then the stay goes on rather than split for a place of the same game.
             if (open is not null && open.PlaceId != log.PlaceId.Value && !SameGame(open.PlaceId, log.PlaceId.Value))
             {
                 if (!HasGame(log.PlaceId.Value, false) && _gameFetchedAt.TryGetValue(log.PlaceId.Value, out var asked) && now - asked < GameRetry)
@@ -135,10 +124,8 @@ public sealed partial class AppController
             PersistSoon();
     }
 
-    /// <summary>
-    /// The PC is going to sleep: every open stay ends now, as "sleep". The hours asleep aren't play time, and the
-    /// disconnect each client logs at the wake isn't a kick; a client still in its game then begins a new stay.
-    /// </summary>
+    /// <summary>The PC is going to sleep: every open stay ends now as "sleep". Hours asleep aren't play time and the wake's
+    /// disconnect isn't a kick; a client still in its game then begins a new stay.</summary>
     /// <param name="at">When the PC went to sleep: now, or the last process check before a sleep noticed afterwards.</param>
     /// <returns>true when there is something to save.</returns>
     bool SuspendPlay(DateTime at)
@@ -182,10 +169,8 @@ public sealed partial class AppController
             NoteActivity(reason == "signedout" ? "signedOut" : reason, session.AccountId, session.PlaceId, code, session.EndedAt);
     }
 
-    /// <summary>
-    /// The client quit: its stay ends the way its log says (a leave, a drop), else as closed (its X button, Bloxkeep's
-    /// Close, a crash). While locked the vault isn't there to write to, so the end is kept for the next unlock.
-    /// </summary>
+    /// <summary>The client quit: its stay ends as its log says (a leave, a drop), else as closed. While locked the end is
+    /// kept for the next unlock.</summary>
     void EndPlay(Guid accountId, RobloxLogWatcher.ClientState? lastLog, DateTime now)
     {
         var (reason, code, at) = lastLog is { Status: "left" or "disconnected" or "signedout" } ? (lastLog.Status == "signedout" ? "left" : lastLog.Status, lastLog.Reason, lastLog.At) : ("closed", (int?)null, now);
@@ -200,11 +185,8 @@ public sealed partial class AppController
         PersistSoon();
     }
 
-    /// <summary>
-    /// Before the vault goes away (lock, exit, an update's restart): open stays are left open, with the time they
-    /// were last seen, so that after a restart a client still running goes on with its stay instead of starting a
-    /// second one, and one that is gone by then ends at that time (see <see cref="ResumePlaySessions"/>).
-    /// </summary>
+    /// <summary>Before the vault goes away (lock, exit, an update's restart): open stays are left open with their last-seen
+    /// time, so a client still running after a restart goes on with its stay (see <see cref="ResumePlaySessions"/>).</summary>
     /// <returns>true when there is something to save.</returns>
     bool NotePlaySessions()
     {
@@ -216,12 +198,9 @@ public sealed partial class AppController
         return true;
     }
 
-    /// <summary>
-    /// After unlocking: a stay left open by the last run (or before the lock) goes on when its client is still here,
-    /// the same process (picked up by <see cref="AdoptOpenSessions"/>, or followed all along); otherwise it ended
-    /// while Bloxkeep was away, at the last time it was seen. The PC having slept while locked, a stay still going
-    /// then (or one whose client quit only after it) ended at that sleep.
-    /// </summary>
+    /// <summary>After unlocking: a stay left open goes on when its client is still here, the same process (see
+    /// <see cref="AdoptOpenSessions"/>); otherwise it ended while Bloxkeep was away, at its last-seen time. If the PC slept
+    /// while locked, a stay still going then ended at that sleep.</summary>
     void ResumePlaySessions(Vault vault)
     {
         _playing.Clear();
@@ -248,10 +227,8 @@ public sealed partial class AppController
             PersistSoon();
     }
 
-    /// <summary>
-    /// Stays older than 90 days go, and the oldest finished ones when the list is long: first those older than a
-    /// month, so the 30-day view stays whole (many accounts rejoining all day make thousands a week).
-    /// </summary>
+    /// <summary>Stays older than 90 days go, and the oldest finished ones when the list is long: first those older than a
+    /// month, so the 30-day view stays whole (accounts rejoining all day make thousands a week).</summary>
     static bool PrunePlay(List<PlaySession> list, DateTime now)
     {
         var cutoff = now - PlayHistory;
@@ -273,10 +250,8 @@ public sealed partial class AppController
     readonly Dictionary<long, DateTime> _playIconAsked = new();
     static readonly TimeSpan PlayIconRetry = TimeSpan.FromMinutes(10);
 
-    /// <summary>
-    /// <see cref="PlayStats"/> for the page. Games played in the period that no other view loaded (nor the
-    /// presets' games) have no icon yet: those are asked for first, in one request per 100 games.
-    /// </summary>
+    /// <summary><see cref="PlayStats"/> for the page. Games in the period that no other view loaded have no icon yet: those
+    /// are asked for first, one request per 100 games.</summary>
     async Task<object?> PlayStatsAsync(int days)
     {
         var vault = RequireVault();
@@ -321,10 +296,8 @@ public sealed partial class AppController
         _games.GetValueOrDefault(placeId)?.IconUrl
         ?? _iconByUniverse.GetValueOrDefault(universeId > 0 ? universeId : _games.GetValueOrDefault(placeId)?.UniverseId ?? 0);
 
-    /// <summary>
-    /// The figures for the page: today (by hour) or the last 7 or 30 days (by day), in the PC's local time. A stay is
-    /// counted for the part of it inside the period; one still going is counted up to now.
-    /// </summary>
+    /// <summary>The page's figures: today (by hour) or the last 7 or 30 days (by day), in local time. A stay counts for its
+    /// part inside the period, one still going up to now.</summary>
     /// <param name="only">The accounts to count (a Discord summary for chosen accounts); null for all.</param>
     /// <param name="until">The period ends here (UTC) instead of now: a Discord summary sent late covers its own day.</param>
     /// <param name="last24Hours">One day is the 24 hours before the end rather than the calendar day (a Discord summary).</param>
@@ -343,8 +316,7 @@ public sealed partial class AppController
 
         var byAccount = new Dictionary<Guid, (double Seconds, int Sessions, int Kicks, string? Label)>();
         var byGame = new Dictionary<string, (long PlaceId, long UniverseId, string Name, double Seconds, int Sessions)>();
-        // A stay that began before its place was looked up has no game (universe) id; one learned later, from another
-        // stay at that place or the lookup cache, puts it with the rest of its game rather than in an entry of its own.
+        // A stay begun before its place was looked up has no universe id; one learned later puts it with the rest of its game.
         var universeOf = new Dictionary<long, long>();
         foreach (var s in vault.Data.PlaySessions)
         {

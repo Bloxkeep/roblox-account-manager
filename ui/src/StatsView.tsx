@@ -1,7 +1,6 @@
-// The Statistics tab, two things on it one at a time: Statistics (play time per account, game and preset, for a
-// period, with its chart) and Activity (what the app saw happen, newest first, a page at a time, filtered by account
-// or kind). The figures are asked for when the tab opens and every 30 s while it is on screen; they aren't part of the
-// state the app pushes. The chart is plain divs, sized from the busiest bucket.
+// The Statistics tab: Statistics (play time per account, game and preset over a period, with its chart) and Activity
+// (what the app saw, newest first, paged, filtered). Figures are asked for when the tab opens and every 30 s while shown;
+// they aren't part of the pushed state. The chart is plain divs, sized from the busiest bucket.
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Avatar } from './Avatar';
@@ -66,8 +65,7 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
     if (d) setLog(d);
   };
 
-  // While the tab is on screen: fresh figures now and every 30 s (a stay still going grows), not while the window is
-  // hidden, and as soon as it comes back.
+  // While on screen: fresh figures now and every 30 s, not while the window is hidden, and as soon as it comes back.
   const shown = useRef(false);
   useEffect(() => {
     let timer = 0;
@@ -82,8 +80,7 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
     const back = () => { if (!document.hidden && shown.current) { loadStats(); loadActivity(); } };
     const stopShow = on('statsShown', show), stopHide = on('statsHidden', hide);
     document.addEventListener('visibilitychange', back);
-    // Ready before the tab is first opened: the figures and the games' icons (which the app may have to ask Roblox for)
-    // are asked for once the app has settled, so opening Statistics shows them at once instead of after a moment.
+    // Asked for once the app has settled (game icons may need Roblox), so Statistics opens with them already there.
     const stopSettled = on('settled', () => { if (!shown.current) loadStats(); });
     return () => { stopShow(); stopHide(); stopSettled(); clearInterval(timer); document.removeEventListener('visibilitychange', back); };
   }, []); // the loaders read the latest period and filters (now)
@@ -153,7 +150,6 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
         <section className="stat-card alog" id="alog-sec" aria-labelledby="alog-h" hidden={onStats}>
           <div className="alog-head"><h3 id="alog-h">{t('alog.title')}</h3>
             <div className="alog-tools">
-              {/* The accounts as the log names them; the filters as chosen. */}
               <select className="select sm" id="alog-account" aria-label={t('alog.filterAccount')} value={filter.account}
                 onChange={e => setLogFilter({ ...filter, account: e.target.value, limit: AL_PAGE })}>
                 <option value="">{t('alog.allAccounts')}</option>
@@ -197,7 +193,6 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
       : <div className="empty"><span className="spin" /></div>;
   }
   if (!d.sessions) {
-    // The same empty state as the other tabs: the tab's icon, a title, one line.
     return <div className="empty"><span className="pv-empty-icon"><Icon name="clock" /></span>
       {d.recorded ? <h2>{t('stats.emptyPeriod')}</h2> : <><h2>{t('stats.emptyTitle')}</h2><p>{t('stats.emptyText')}</p></>}</div>;
   }
@@ -213,9 +208,8 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
   ];
   // By preset: what each preset's windows played (laid out like Top games: a list fits a narrow column better).
   const presetTop = Math.max(1, ...(d.presets || []).map(p => p.seconds));
-  // The chart's labels: every hour of 6 today, every day of the week, every 5th day of the month counted back from
-  // today (so today always has one). The bar holding this moment is marked as now; on Today the hours still to come
-  // are drawn fainter.
+  // Labels: every 6th hour today, every day of the week, every 5th day of the month counted back from today. The bar
+  // holding now is marked; on Today the hours still to come are fainter.
   const max = Math.max(1, ...d.buckets.map(b => b.seconds));
   const every = d.hourly ? 6 : d.buckets.length > 10 ? 5 : 1;
   const nowMs = Date.now();
@@ -229,7 +223,6 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
     <div className="stat-card"><h3>{t(d.hourly ? 'stats.byHour' : 'stats.byDay')}</h3>
       <div className="sbars" style={{ '--bar-h': `${BAR_HEIGHT}px` } as CSSProperties}>{d.buckets.map((b, i) => {
         const at = new Date(b.start);
-        // Hours as people say them: "6 AM" in English, "06:00" (24-hour) in Vietnamese.
         const label = d.hourly ? at.toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' })
           : every > 1 ? at.toLocaleDateString(locale, { day: 'numeric', month: 'numeric' }) : at.toLocaleDateString(locale, { weekday: 'short' });
         const when = d.hourly ? label : at.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
@@ -244,8 +237,7 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
         <table className="stat-table">
           <thead><tr><th>{t('stats.account')}</th><th className="n">{t('stats.total')}</th><th className="n">{t('stats.sessions')}</th><th className="n">{t('stats.kicks')}</th></tr></thead>
           <tbody>{d.accounts.map(a => {
-            // A deleted account keeps the name it had when it played (older records have none). Names hidden: the
-            // list's "Account N", and a deleted one is just that.
+            // A deleted account keeps the name it had when it played; names hidden: the list's "Account N".
             const label = hide ? byId(a.id)?.label || t('stats.deleted') : a.label || t('stats.deleted');
             return <tr key={a.id}>
               <td><div className="sacc"><span className="avatar sm"><Avatar a={{ avatarUrl: a.avatarUrl, username: hide ? a.id : a.username || a.id, label }} /></span>
@@ -321,7 +313,6 @@ function Log({ log: d, failed, filtered, retry, more }: {
   </>;
 }
 
-/** "5 min ago" in a <time>, kept fresh while shown. */
 function AgoTime({ iso, title }: { iso: string; title: string }) {
   const { ago } = useHost();
   const [, tick] = useState(0);
@@ -332,10 +323,7 @@ function AgoTime({ iso, title }: { iso: string; title: string }) {
   return <time dateTime={iso} title={title}>{ago(iso)}</time>;
 }
 
-/**
- * A game's picture; a broken one becomes the gamepad placeholder. Loaded and decoded while the tab is still hidden (not
- * lazily, when it is first shown), so opening Statistics shows the icons at once.
- */
+/** A game's picture (gamepad placeholder when broken), loaded eagerly while the tab is hidden so the icons show at once. */
 function GameImg({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
   return failed ? <span className="gph"><Icon name="gamepad" /></span>

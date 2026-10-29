@@ -7,24 +7,20 @@ using System.Text.Json.Nodes;
 namespace RobloxManager;
 
 /// <summary>
-/// Vault backups (see <see cref="Backup"/>): a copy after a save that changed data, at most every ten minutes, and
-/// on lock and exit when something changed since the last copy (waited for a few seconds at most, else made at the
-/// next start). Bookkeeping alone (play time, recent games) is copied too, at most every twelve hours. The settings
-/// live in <see cref="Prefs"/> so a restore is possible before unlocking.
+/// Vault backups (see <see cref="Backup"/>): a copy after a data change, at most every ten minutes, and on lock and exit
+/// when something changed (waited for a few seconds at most, else made at the next start). Bookkeeping alone (play
+/// time, recent games) is copied at most every twelve hours. Settings live in <see cref="Prefs"/> so a restore works
+/// before unlocking.
 /// </summary>
 public sealed partial class AppController
 {
     static readonly TimeSpan BackupInterval = TimeSpan.FromMinutes(10);
     static readonly TimeSpan BookkeepingBackupInterval = TimeSpan.FromHours(12);
     System.Windows.Forms.Timer? _backupTimer;
-    /// <summary>The vault's data changed since the last backup.</summary>
     bool _backupDirty;
     /// <summary>Saves since unlocking, and how many of them the last backup holds: when they differ, bookkeeping changed.</summary>
     int _vaultSaves, _backedUpSaves;
-    /// <summary>
-    /// What the vault on disk and the last backup hold, apart from bookkeeping (see <see cref="ContentHash"/>): a
-    /// save that only noted an open client or a last-used time doesn't make a new backup due.
-    /// </summary>
+    /// <summary>The vault on disk and the last backup, hashed without bookkeeping (<see cref="ContentHash"/>).</summary>
     string? _savedHash, _backupHash;
     /// <summary>The copy in progress on a worker thread, so two never run at once.</summary>
     Task<bool>? _backupTask;
@@ -35,10 +31,7 @@ public sealed partial class AppController
     /// <summary>Judged when the password was typed; the password itself is never kept.</summary>
     bool _weakPassword;
     string? _backupError;
-    /// <summary>
-    /// Synced folders found on this PC, looked for when the page loads and when backup settings change rather than
-    /// on every state (that lists the drives each time).
-    /// </summary>
+    /// <summary>Synced folders on this PC; looked for on page load and backup changes only, since it lists the drives.</summary>
     List<Backup.Folder>? _suggestedFolders;
 
     bool BackupReady => Prefs.BackupEnabled && Prefs.BackupFolder is not null;
@@ -65,12 +58,8 @@ public sealed partial class AppController
     static bool SamePath(string a, string? b) =>
         b is not null && string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(a)), Path.TrimEndingDirectorySeparator(Path.GetFullPath(b)), StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// What isn't hashed (<see cref="ContentHash"/>), by the class it belongs to: open clients; play time and the
-    /// activity log (a stay begins or ends every few minutes: copied with the twelve-hourly bookkeeping); last-used and
-    /// last-checked times; recent games and players; when presets and summaries last ran; what the dock showed; the
-    /// list's look.
-    /// </summary>
+    /// <summary>What isn't hashed (<see cref="ContentHash"/>), by class. Play time and activity change every few minutes,
+    /// so they go with the twelve-hourly bookkeeping copy.</summary>
     static readonly Dictionary<Type, string[]> Bookkeeping = new()
     {
         [typeof(VaultData)] = ["OpenSessions", "EndedSessions", "WaitingRejoins", "PlaySessions", "Activity", "ScheduledRuns"],
@@ -103,10 +92,8 @@ public sealed partial class AppController
         },
     };
 
-    /// <summary>
-    /// The vault's contents without bookkeeping (see <see cref="Bookkeeping"/>): the parts whose change makes a backup
-    /// due within minutes. Hashed as it is serialised, so it costs a fraction of a save, whatever the play history.
-    /// </summary>
+    /// <summary>The vault's contents minus <see cref="Bookkeeping"/>: what makes a backup due within minutes. Hashed while
+    /// serialising, so it costs a fraction of a save.</summary>
     static string ContentHash(VaultData data)
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -115,7 +102,6 @@ public sealed partial class AppController
         return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    /// <summary>A stream that only feeds what is written to it into a hash.</summary>
     sealed class HashingStream(IncrementalHash hash) : Stream
     {
         public override bool CanRead => false;
@@ -131,9 +117,7 @@ public sealed partial class AppController
         public override void SetLength(long value) => throw new NotSupportedException();
     }
 
-    /// <summary>
-    /// What the vault holds now apart from bookkeeping, hashed only when a backup needs it (none set up: no hash at all).
-    /// </summary>
+    /// <summary>Hashed only when a backup needs it (none set up: no hash at all).</summary>
     string? SavedHash() => _savedHash ??= _vault is { } vault ? ContentHash(vault.Data) : null;
 
     /// <summary>After each successful save: a backup is due when something other than bookkeeping changed, else later.</summary>
@@ -158,10 +142,7 @@ public sealed partial class AppController
         BackupWhenDue();
     }
 
-    /// <summary>
-    /// Backs up when the last copy is old enough, otherwise when it is; never on the spot, a moment later. A change
-    /// of data waits for the ten-minute interval, bookkeeping alone for the twelve-hour one.
-    /// </summary>
+    /// <summary>Backs up a moment later once the last copy is old enough: ten minutes for data, twelve hours for bookkeeping.</summary>
     void BackupWhenDue()
     {
         if (!BackupReady)
@@ -175,11 +156,8 @@ public sealed partial class AppController
         ScheduleBackup(TimeSpan.FromTicks(Math.Clamp((due - DateTime.UtcNow).Ticks, 0, every.Ticks)));
     }
 
-    /// <summary>
-    /// A change the last run of the app didn't get to copy (see <see cref="Prefs.BackupPending"/>), or no backup yet,
-    /// is copied right after unlocking. A vault merely saved after the last backup holds bookkeeping only (data
-    /// changes are copied on lock and exit), so it waits for the twelve-hour interval.
-    /// </summary>
+    /// <summary>A change the last run didn't copy (<see cref="Prefs.BackupPending"/>), or no backup yet, is copied right
+    /// after unlocking. Otherwise only bookkeeping can be newer (data is copied on lock and exit): the twelve-hour wait.</summary>
     void OnVaultUnlocked()
     {
         _savedHash = null;
@@ -264,19 +242,15 @@ public sealed partial class AppController
         ScheduleBackup(BackupInterval);
     }
 
-    /// <summary>
-    /// The copy made for lock, exit and sleep, where it should be done before going on. The folder may be on a slow or
-    /// synced drive, so the window waits for it a few seconds at most (<see cref="BackupClosingWait"/>); a copy that
-    /// takes longer is left to finish on its own, and <see cref="Prefs.BackupPending"/> has the next unlock make it.
-    /// </summary>
+    /// <summary>The copy for lock, exit and sleep. The folder may be slow or synced, so it waits <see cref="BackupClosingWait"/>
+    /// at most; a slower copy finishes on its own and <see cref="Prefs.BackupPending"/> has the next unlock make it.</summary>
     bool TryBackup(bool push)
     {
         _backupTimer?.Stop();
         var clock = Stopwatch.StartNew();
         TimeSpan Left() => clock.Elapsed < BackupClosingWait ? BackupClosingWait - clock.Elapsed : TimeSpan.Zero;
-        // A copy still being written on its worker thread would use the same temp file: it is given what is left of
-        // the wait. Only its write is waited for; the bookkeeping needs this thread and runs later, if the app is
-        // still there.
+        // A copy still writing on its worker thread would use the same temp file: it gets what is left of the wait. Only
+        // its write is waited for; its bookkeeping needs this thread and runs later, if the app is still there.
         if (_backupWrite is { IsCompleted: false } writing)
         {
             try
@@ -320,11 +294,8 @@ public sealed partial class AppController
         return ok;
     }
 
-    /// <summary>
-    /// The usual copy: written and pruned on a worker thread, since the folder is often on a synced or slow drive.
-    /// A request that arrives while one runs waits for it, then copies what is on disk by then.
-    /// </summary>
-    /// <returns>false when the copy failed.</returns>
+    /// <summary>The usual copy, written and pruned on a worker thread (the folder is often slow or synced). A request
+    /// during one waits for it, then copies what is on disk by then.</summary>
     async Task<bool> TryBackupAsync(bool push)
     {
         _backupTimer?.Stop();
@@ -352,8 +323,7 @@ public sealed partial class AppController
                 // That copy failed; this one is made anyway.
             }
         }
-        // A change still waiting to be saved (or being written in the background) goes into the file first, so the
-        // copy and its hash hold the same.
+        // A change still waiting to be saved (or saving in the background) goes into the file first, so copy and hash match.
         if ((_saveDue is not null || _vault?.SavingInBackground == true) && _vault is not null)
             Persist();
         if (ReadVaultForBackup() is not { } bytes)
@@ -418,7 +388,6 @@ public sealed partial class AppController
         _suggestedFolders = null;
     }
 
-    /// <summary>"Choose…": Windows' own folder dialog; cancelling leaves things as they are.</summary>
     object? PickBackupFolder()
     {
         using var dialog = new FolderBrowserDialog
@@ -457,11 +426,9 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// Before a vault exists (first-run screen) the backup simply becomes the vault. Otherwise (Settings, or the lock
-    /// screen for someone who forgot the master password) an open one is locked and saved first, a copy of the vault
-    /// kept beside the new one, and the person unlocks the restored vault with its own master password.
-    /// </summary>
+    /// <summary>Before a vault exists (first-run screen) the backup simply becomes the vault. Otherwise (Settings, or the
+    /// lock screen after a forgotten password) the open one is locked and saved first, a copy of it kept beside the new
+    /// one; the restored vault unlocks with its own master password.</summary>
     object? RestoreBackup()
     {
         if (_launchCts is not null)
@@ -480,8 +447,7 @@ public sealed partial class AppController
         bool replace = _vault is not null || Vault.Exists;
         try
         {
-            // Checked before locking, so picking a wrong file doesn't cost the person their session. Whether it
-            // opens is only known with its password, once they unlock it.
+            // Checked before locking, so a wrong file doesn't cost the session; whether it opens needs its password.
             if (!Vault.LooksLikeVault(dialog.FileName))
                 throw new UserError(L.T("This file is not a Bloxkeep backup."));
             if (_vault is not null)
@@ -501,19 +467,15 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// A restored backup with an id this PC never had (<see cref="Prefs.KnownVaultIds"/>) was made somewhere else: noted,
-    /// so its first unlock drops what whoever made it chose to run and where to post (<see cref="DropForeignLinks"/>).
-    /// A backup of this PC's own vault keeps everything. Saved with the prefs by the caller.
-    /// </summary>
+    /// <summary>A restored backup with an id this PC never had (<see cref="Prefs.KnownVaultIds"/>) was made elsewhere: noted
+    /// so its first unlock runs <see cref="DropForeignLinks"/>. A backup of this PC's own vault keeps everything. The caller
+    /// saves the prefs.</summary>
     static void NoteRestored(string file) =>
         Prefs.ForeignRestore = Vault.IdOf(file) is { } id && !Prefs.KnownVaultIds.Contains(id) ? id : null;
 
-    /// <summary>
-    /// A vault restored from a backup made somewhere else, at its first unlock: the program it names for opening Roblox
-    /// and the Discord channels it posts to were chosen by whoever made it, so a "backup" someone shares could start
-    /// their program at the next Play, or send this PC's alerts about its accounts to their channel. Dropped before
-    /// anything uses them; the person sets them again if they're theirs.
+    /// <summary>At the first unlock of a vault made elsewhere: its program for opening Roblox and its Discord channels were
+    /// chosen by whoever made it, so a shared "backup" could run their program at the next Play or send this PC's alerts
+    /// about its accounts to their channel. Dropped before anything uses them; the person sets them again if they're theirs.
     /// </summary>
     void DropForeignLinks(Vault vault)
     {
@@ -532,10 +494,8 @@ public sealed partial class AppController
             Toast(L.T("This backup was made on another PC: the program it opened Roblox with and its Discord links were removed. Set them again in Settings if they're yours."));
     }
 
-    /// <summary>
-    /// The vault just unlocked (or given a new password) is one of this PC's from now on, with the ids it had before
-    /// (its older backups carry them); not those of a vault from elsewhere, which wrote that list itself.
-    /// </summary>
+    /// <summary>The vault just unlocked (or given a new password) is this PC's from now on, with the ids it had before (its
+    /// older backups carry them); not those of a vault from elsewhere, which wrote that list itself.</summary>
     void RememberVault(Vault vault, bool foreign)
     {
         bool changed = Prefs.KnownVaultIds.Add(vault.Id);

@@ -13,10 +13,8 @@ public sealed record GameInfo(long PlaceId, long UniverseId, string Name, string
 
 public sealed record GameSummary(long PlaceId, long UniverseId, string Name, long Playing);
 
-/// <summary>
-/// Which Roblox an account signs in to. Roblox VNG (Vietnam) serves the same API under robloxapp.vnggames.com, and its
-/// accounts only work there.
-/// </summary>
+/// <summary>Which Roblox an account signs in to. Roblox VNG (Vietnam) serves the same API under robloxapp.vnggames.com,
+/// and its accounts only work there.</summary>
 public static class Realm
 {
     public const string Global = "";
@@ -31,11 +29,9 @@ public static class Realm
     public static string Website(string realm) => realm == Vng ? "https://www.robloxapp.vnggames.com" : "https://www.roblox.com";
 }
 
-/// <summary>
-/// Roblox's answer to whether an account can play a game (games' multiget-playability-status, which Roblox's own client
-/// asks before joining): <see cref="Status"/> is its PlayabilityStatus (1 playable, 11 account restricted, 26 age check
-/// required…), <see cref="Text"/> Roblox's own words for why not.
-/// </summary>
+/// <summary>Whether an account can play a game (multiget-playability-status, asked by Roblox's client before joining):
+/// <see cref="Status"/> is its PlayabilityStatus (1 playable, 11 account restricted, 26 age check required…),
+/// <see cref="Text"/> Roblox's own words for why not.</summary>
 public sealed record Playability(bool Playable, int? Status, string? Text)
 {
     /// <summary>The names of Roblox's PlayabilityStatus numbers, as its games API documents them: its live answer gives the name.</summary>
@@ -67,10 +63,8 @@ public sealed record ServerInfo(string JobId, int Playing, int MaxPlayers, int P
 /// <param name="Type">0 offline, 1 online (website/app), 2 in game, 3 in Studio, 4 invisible.</param>
 public sealed record Presence(int Type, string? Location, long? PlaceId, long? RootPlaceId, string? JobId, DateTime? LastOnline, long? UniverseId);
 
-/// <summary>
-/// A sign-in cookie Roblox replaced: a request carried <see cref="Sent"/>, and Roblox's answer set <see cref="Renewed"/>
-/// in its place. Both are secrets, so <see cref="ToString"/> leaves them out.
-/// </summary>
+/// <summary>A sign-in cookie Roblox replaced: <see cref="Sent"/> went out, the answer set <see cref="Renewed"/>. Both
+/// are secrets, so <see cref="ToString"/> leaves them out.</summary>
 public sealed record RenewedCookie(string Realm, string Sent, string Renewed)
 {
     public override string ToString() => $"RenewedCookie ({(Realm == RobloxManager.Realm.Vng ? "Roblox VNG" : "Roblox")})";
@@ -96,17 +90,13 @@ public sealed class RobloxApiException(string message, bool cookieInvalid = fals
     /// <summary>Roblox wouldn't give the account a sign-in ticket (4xx, not 401/429): its roblox.com says why.</summary>
     public bool SignInRefused { get; init; }
 
-    /// <summary>
-    /// Roblox holds the account until a moderation notice (a warning, a ban that ended) is accepted on its roblox.com:
-    /// HTTP 403, "User is moderated" (seen 2026-10-29 for an account warned that day, on the sign-in check).
-    /// </summary>
+    /// <summary>Roblox holds the account until a moderation notice (a warning, an ended ban) is accepted on roblox.com:
+    /// HTTP 403, "User is moderated" (seen 2026-10-29 on the sign-in check for an account warned that day).</summary>
     public bool Moderated { get; init; }
 }
 
-/// <summary>
-/// Talks only to official roblox.com endpoints. The cookie is attached per request and never stored by the HTTP stack;
-/// a new one Roblox sets in an answer is queued for the app (<see cref="TryTakeRenewedCookie"/>), which saves it.
-/// </summary>
+/// <summary>Talks only to official roblox.com endpoints. The cookie is attached per request and never stored by the HTTP
+/// stack; a new one Roblox sets is queued for the app to save (<see cref="TryTakeRenewedCookie"/>).</summary>
 public static partial class RobloxApi
 {
     const string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
@@ -129,11 +119,9 @@ public static partial class RobloxApi
     /// <summary>The checks' Roblox (Tests/Bloxkeep.Tests): when set, it answers every request instead of the network. The app never sets it.</summary>
     internal static Func<HttpRequestMessage, Task<HttpResponseMessage>>? StandIn { get; set; }
 
-    /// <summary>
-    /// Cookies Roblox renewed, waiting for the app to save them to their accounts (AppController.SignIns.cs). Roblox
-    /// sends a new .ROBLOSECURITY in Set-Cookie every few hours to days, not on every request, and some months later
-    /// refuses the one it replaced (devforum.roblox.com/t/4328913, announced 2026-02-03, enforced from 2026-05-01).
-    /// </summary>
+    /// <summary>Cookies Roblox renewed, waiting for the app to save them (AppController.SignIns.cs). Roblox sends a new
+    /// .ROBLOSECURITY every few hours to days and months later refuses the one it replaced (devforum.roblox.com/t/4328913,
+    /// announced 2026-02-03, enforced from 2026-05-01).</summary>
     static readonly ConcurrentQueue<RenewedCookie> Renewals = new();
 
     public static bool TryTakeRenewedCookie([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out RenewedCookie? renewed) =>
@@ -153,10 +141,8 @@ public static partial class RobloxApi
         }
     }
 
-    /// <summary>
-    /// The cookie a Roblox answer sets in place of the one its request carried; null when no cookie went, none came
-    /// back, the same one came back, or the answer deletes it (signing out sets an empty one, expired in 1970).
-    /// </summary>
+    /// <summary>The cookie an answer sets in place of the request's; null when none went or came back, the same came back,
+    /// or the answer deletes it (signing out sets an empty one, expired in 1970).</summary>
     internal static RenewedCookie? RenewedBy(HttpRequestMessage request, HttpResponseMessage res)
     {
         if (request.RequestUri is not { } uri || !res.Headers.TryGetValues("Set-Cookie", out var setCookies)
@@ -249,11 +235,11 @@ public static partial class RobloxApi
     static string? Header(HttpResponseMessage res, string name) =>
         res.Headers.TryGetValues(name, out var values) ? values.FirstOrDefault() : null;
 
-    /// <summary>Roblox's error codes, and for the log its error messages: never the rest of a reply (it may name the account).</summary>
     /// <summary>A 403 whose error says the account is moderated (<see cref="RobloxApiException.Moderated"/>).</summary>
     static bool IsModerated(HttpStatusCode status, string body) =>
         status == HttpStatusCode.Forbidden && Errors(body).Summary.Contains("moderated", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Roblox's error codes, and for the log its error messages: never the rest of a reply (it may name the account).</summary>
     static (List<int> Codes, string Summary) Errors(string body)
     {
         var codes = new List<int>();
@@ -284,12 +270,9 @@ public static partial class RobloxApi
             cookieInvalid: cookieInvalid, serverError: code >= 500);
     }
 
-    /// <summary>
-    /// Roblox refused a password sign-in (at /v2/login, or a check answered on the way): its error code in plain
-    /// words. The attempt is over either way, so the person starts again from the username and password. Codes as
-    /// listed in auth.roblox.com's documentation of /v2/login; 16 to 28 are the ones roblox.com's own login page knows
-    /// (screen time, security questions, blocked, account-switch limits, passkey-only).
-    /// </summary>
+    /// <summary>A refused password sign-in (/v2/login or a check on the way) in plain words; the attempt is over either way.
+    /// Codes from auth.roblox.com's /v2/login docs; 16 to 28 only roblox.com's own login page knows (screen time,
+    /// security questions, blocked, account-switch limits, passkey-only).</summary>
     static RobloxApiException LoginRefused(string step, HttpStatusCode status, string body)
     {
         var (codes, summary) = Errors(body);
@@ -330,62 +313,42 @@ public static partial class RobloxApi
             root.GetProperty("displayName").GetString() ?? "");
     }
 
-    /// <summary>Last CSRF token per signed-in session (keyed by a hash of the cookie, never the cookie itself).</summary>
-    /// <summary>
-    /// Roblox's answer to letting an account into a game (gamejoin's join-game, what a Roblox window asks when it joins):
-    /// its HTTP status, its own status number, its message, and its statusData (raw, cut short), whatever that holds.
-    /// The join ticket a successful answer holds is left unread.
-    /// </summary>
+    /// <summary>Roblox's answer to gamejoin's join-game (what a Roblox window asks when it joins): HTTP status, Roblox's
+    /// status, message and statusData (raw, cut short). A successful answer's join ticket is left unread.</summary>
     /// <param name="QueuePosition">The account's place in a full game's line, when Roblox gives one (its client shows "Position in queue is N").</param>
     public sealed record JoinAnswer(int Http, int? Status, string? Message, string? Data = null, int? QueuePosition = null)
     {
         /// <summary>Roblox's bot check holding this join (a 403 with its rblx-challenge-* headers), or null.</summary>
         public JoinChallenge? Challenge { get; init; }
 
-        /// <summary>
-        /// The server or game is full (status 6: Roblox's client says "Requested experience is full" for it, and its
-        /// ConnectionError 518 is PlacelaunchGameFull, 512 + the status, as 524 is for 12).
-        /// </summary>
+        /// <summary>Status 6: "Requested experience is full"; the client's ConnectionError 518 PlacelaunchGameFull (512 +
+        /// the status, as 524 is for 12).</summary>
         public bool Full => Status == 6;
 
-        /// <summary>
-        /// The server has ended (status 5: Roblox's ConnectionError 517 is PlacelaunchGameEnded, 512 + the status, as 518
-        /// is PlacelaunchGameFull for 6; Roblox's API dump).
-        /// </summary>
+        /// <summary>The server has ended: status 5, the client's ConnectionError 517 PlacelaunchGameEnded (Roblox's API dump).</summary>
         public bool Ended => Status == 5 || ServerGone;
 
-        /// <summary>
-        /// The join named a server (a Job ID) and Roblox refused it without a ban: that server is gone, not the game closed
-        /// to the account. Seen 2026-10-29: a party sent to its first account's server after that server ended with a
-        /// system error ("This experience has ended, or the server became unavailable unexpectedly…", the window's
-        /// PlacelaunchGameEnded) got status 12, "Unable to join Game 311", every time it was asked. Counted as ended, so
-        /// the accounts go to another server instead of not being tried again. Set by the join check, which knows the target.
-        /// </summary>
+        /// <summary>The join named a Job ID and Roblox refused it without a ban: the server is gone, not the game closed to
+        /// the account. Seen 2026-10-29: joins to a server that had ended with a system error (PlacelaunchGameEnded) got
+        /// status 12, "Unable to join Game 311", every time. Counted as ended so the accounts try another server. Set by
+        /// the join check, which knows the target.</summary>
         public bool ServerGone { get; init; }
 
-        /// <summary>
-        /// Roblox refuses the account this game: one of the statuses its own client counts as a join error (its setting
-        /// FStringGameJoinStatusConsideredError, "12;29;30;31;32;33;" in 0.744), not a wait. Asked again, it answers the
-        /// same. A game's ban is one of them (see <see cref="Banned"/>).
-        /// </summary>
+        /// <summary>Roblox refuses the account this game, for good: a status its client counts as a join error
+        /// (FStringGameJoinStatusConsideredError, "12;29;30;31;32;33;" in 0.744), not a wait. Includes <see cref="Banned"/>.</summary>
         public bool Refused => !ServerGone && Status is 12 or (>= 29 and <= 33);
 
         /// <summary>The number in "Unable to join Game 211": what the window turns into its own error.</summary>
         public int? Code => Message is { } m && System.Text.RegularExpressions.Regex.Match(m, @"Unable to join Game (\d+)") is { Success: true } found
             && int.TryParse(found.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code) ? code : null;
 
-        /// <summary>
-        /// The game (or its moderators) banned the account. Seen 2026-10-21 for an account a game had banned (its window
-        /// showed Join Error 600, "You were banned by this experience or its moderators"): status 12, "Unable to join
-        /// Game 211". Words about a ban count too.
-        /// </summary>
+        /// <summary>The game or its moderators banned the account: status 12, "Unable to join Game 211" (seen 2026-10-21 with
+        /// the window's Join Error 600, "You were banned by this experience or its moderators"). Words about a ban count too.</summary>
         public bool Banned => (Status == 12 && Code == 211)
             || Message is { } m && (m.Contains("banned", StringComparison.OrdinalIgnoreCase) || m.Contains("bị cấm", StringComparison.OrdinalIgnoreCase));
 
-        /// <summary>
-        /// The game's own words when Roblox gives them: after "Moderation message:", or a message or reason in statusData;
-        /// null otherwise (the 211 answer carries none).
-        /// </summary>
+        /// <summary>The game's own words: after "Moderation message:", or a message or reason in statusData; null otherwise
+        /// (the 211 answer carries none).</summary>
         public string? Reason
         {
             get
@@ -411,10 +374,8 @@ public static partial class RobloxApi
         }
     }
 
-    /// <summary>
-    /// Asks Roblox to let the account into a game (a server of it, or that one server), only to read its answer: Bloxkeep
-    /// asks after a window has waited a minute without getting in, when Roblox logs nothing about why.
-    /// </summary>
+    /// <summary>Asks Roblox to let the account into a game only to read its answer, after a window waited a minute
+    /// without getting in and Roblox logged nothing about why.</summary>
     /// <param name="answered">A check answered (<see cref="ContinueChallengeAsync"/>): the join is asked again carrying it,
     /// as roblox.com retries a request once its check is passed.</param>
     public static async Task<JoinAnswer> JoinCheckAsync(string cookie, long placeId, string? jobId, string realm, CancellationToken ct = default,
@@ -467,10 +428,7 @@ public static partial class RobloxApi
         return new JoinAnswer((int)res.StatusCode, status, message, data, queue) { Challenge = challenge };
     }
 
-    /// <summary>
-    /// The check Roblox put on a join (its rblx-challenge-* headers): its id, its kind ("captcha", "captchav2",
-    /// "proofofwork"…) and what it carries, as JSON.
-    /// </summary>
+    /// <summary>The check on a join (rblx-challenge-* headers): id, kind ("captcha", "captchav2", "proofofwork"…), metadata JSON.</summary>
     public sealed record JoinChallenge(string Id, string Type, string MetadataJson)
     {
         /// <summary>A text field of what the check carries, or null.</summary>
@@ -479,11 +437,8 @@ public static partial class RobloxApi
         public string MetaWith(string name, string value) => WithField(MetadataJson, name, value);
     }
 
-    /// <summary>
-    /// Hands Roblox a check's answer with the account's own sign-in, as roblox.com does, and returns the check the
-    /// retried request carries (Roblox echoes it, sometimes with a new id); a different kind of check after it comes
-    /// back as that one, to answer in turn.
-    /// </summary>
+    /// <summary>Hands Roblox a check's answer with the account's sign-in, as roblox.com does, and returns the check the
+    /// retried request carries (echoed, sometimes with a new id, or a different kind to answer in turn).</summary>
     public static async Task<JoinChallenge> ContinueChallengeAsync(string realm, string cookie, JoinChallenge answered, CancellationToken ct = default)
     {
         string json = JsonSerializer.Serialize(new { challengeId = answered.Id, challengeType = answered.Type, challengeMetadata = answered.MetadataJson });
@@ -525,13 +480,12 @@ public static partial class RobloxApi
         return key.Value.ValueKind == JsonValueKind.String ? key.Value.GetString() : null;
     }
 
+    /// <summary>Last CSRF token per signed-in session (keyed by a hash of the cookie, never the cookie itself).</summary>
     static readonly ConcurrentDictionary<(string Realm, int Session), string> CsrfTokens = new();
 
-    /// <summary>
-    /// POST with Roblox's CSRF handshake: a request without a valid token is answered with 403 and a fresh
-    /// x-csrf-token header, which is then replayed, once. Only that refusal is replayed: any other 403 (a wrong
-    /// password, a locked account, a check) is Roblox's answer, and repeating it could send a password twice.
-    /// </summary>
+    /// <summary>POST with Roblox's CSRF handshake: a 403 with a fresh x-csrf-token is replayed once. Only that refusal:
+    /// any other 403 (wrong password, locked account, a check) is Roblox's answer, and repeating it could send a
+    /// password twice.</summary>
     static async Task<HttpResponseMessage> PostWithCsrfAsync(string url, string cookie, string jsonBody,
         Action<HttpRequestMessage>? configure, CancellationToken ct, string realm = Realm.Global)
     {
@@ -547,8 +501,7 @@ public static partial class RobloxApi
                     req.Headers.TryAddWithoutValidation("x-csrf-token", token);
                 configure?.Invoke(req);
                 req.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-                // Cancelled meanwhile (a sign-in called off while its check was being answered): nothing more goes out.
-                // The same exception a cancelled request throws, so callers see no difference.
+                // Cancelled meanwhile: nothing more goes out; the same exception a cancelled request throws.
                 if (ct.IsCancellationRequested)
                     throw new TaskCanceledException("The request was canceled.", null, ct);
                 res = await Http.SendAsync(req, ct);

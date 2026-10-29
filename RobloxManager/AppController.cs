@@ -8,31 +8,28 @@ namespace RobloxManager;
 public sealed class UserError(string message) : Exception(message);
 
 /// <summary>
-/// Everything behind the web UI: vault, Roblox calls, launching, process tracking, auto-rejoin and the
-/// resource guard. The page sends {id, cmd, args}; each command gets a {type:"reply"} and state changes are
-/// pushed as events. Cookies and passwords only reach the page when the user explicitly reveals one.
+/// Everything behind the web UI. The page sends {id, cmd, args}; each command gets a {type:"reply"} and state
+/// changes are pushed as events. Cookies and passwords reach the page only when the user reveals one.
 /// </summary>
 public sealed partial class AppController : IDisposable
 {
     /// <param name="Rejoin">Started by auto-rejoin rather than by the person.</param>
-    /// <param name="PresetId">The preset that opened the client (its options apply to it), kept through rejoins and restarts.</param>
+    /// <param name="PresetId">The preset that opened the client; kept through rejoins and restarts.</param>
     sealed record PendingLaunch(Guid AccountId, HashSet<int> Before, DateTime StartedAt, GameTarget? Target, bool Rejoin = false, Guid? PresetId = null)
     {
-        /// <summary>Settable: moved back with the clock (see TrackProcesses) so a set-back clock doesn't make the launch wait longer.</summary>
+        /// <summary>Settable: moved back with the clock (see TrackProcesses).</summary>
         public DateTime StartedAt { get; set; } = StartedAt;
-        /// <summary>The browser tracker id in its launch link, which its client's command line carries (see <see cref="ClaimWindows"/>); null when not known.</summary>
+        /// <summary>The tracker id in its launch link, also on its client's command line (see <see cref="ClaimWindows"/>).</summary>
         public string? Tracker { get; init; }
     }
 
     /// <param name="NetworkRetries">Attempts that failed only because there was no connection.</param>
-    /// <param name="PresetId">The preset that opened the client being brought back.</param>
     /// <param name="Restart">Its preset's planned restart, not a drop: it goes ahead whatever auto-rejoin says.</param>
     sealed record RejoinRequest(Guid AccountId, GameTarget Target, DateTime Due, int NetworkRetries = 0, Guid? PresetId = null, bool Restart = false);
 
     static readonly TimeSpan HandOverWindow = TimeSpan.FromSeconds(60);
     static readonly TimeSpan PendingTimeout = TimeSpan.FromSeconds(120);
     static readonly TimeSpan PresenceInterval = TimeSpan.FromSeconds(30);
-    /// <summary>How often everyone's status is asked for while the window is in the background.</summary>
     static readonly TimeSpan BackgroundPresenceInterval = TimeSpan.FromMinutes(4);
     static readonly TimeSpan RejoinDelay = TimeSpan.FromSeconds(10);
     static readonly TimeSpan DisconnectGrace = TimeSpan.FromMinutes(2);
@@ -42,27 +39,21 @@ public sealed partial class AppController : IDisposable
     const int MaxNetworkRetries = 20;
     /// <summary>A refused launch ticket the sign-in check didn't confirm as a sign-out: tried again this many times, then said.</summary>
     const int MaxTicketRetries = 3;
-    /// <summary>What a refused launch ticket is called when the sign-in check says the account is still signed in.</summary>
+    /// <summary>Said for a refused launch ticket when the account is still signed in.</summary>
     static string RefusedText => L.T("Roblox refused to open the game for this account. Try again in a moment.");
-    /// <summary>
-    /// Like the Claude app: a new version is found within the hour, then downloaded and installed by itself. One small
-    /// request to GitHub's API each time, well within its 60 an hour for anonymous callers (several PCs on one IP too).
-    /// </summary>
+    /// <summary>One small GitHub API request an hour, well within its 60 an hour for anonymous callers (several PCs per IP too).</summary>
     static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(1);
     static readonly TimeSpan RobloxVersionInterval = TimeSpan.FromMinutes(30);
     static readonly TimeSpan MemoryWarningInterval = TimeSpan.FromMinutes(5);
-    // Scanning launcher folders and reading the client's file version is the slow part; it is also re-read
-    // whenever the launch option changes or a vault is opened.
+    // Scanning launcher folders and the client's file version is slow; also re-read on a launch option change or vault open.
     static readonly TimeSpan InstallCacheLifetime = TimeSpan.FromMinutes(3);
     static readonly TimeSpan RegistryCacheLifetime = TimeSpan.FromSeconds(30);
     static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(3);
     static readonly TimeSpan BackgroundSweep = TimeSpan.FromSeconds(15);
     const int MemoryWarningLoad = 92;
     const long DefaultClientMb = 900;
-    /// <summary>
-    /// What a Roblox client holds of Windows' commit limit once in a game, when none runs to go by: 2.1–2.4 GB seen on 0.743,
-    /// 3.05–3.16 GB on 0.744 (the three biggest in Windows' low-virtual-memory event of 2026-10-22).
-    /// </summary>
+    /// <summary>A Roblox client's in-game share of Windows' commit limit when none runs to measure: 2.1–2.4 GB on 0.743,
+    /// 3.05–3.16 GB on 0.744 (the three biggest in Windows' low-virtual-memory event of 2026-10-22).</summary>
     const long DefaultClientCommitMb = 3072;
     /// <summary>Below this much of the commit limit left, programs start failing; Windows itself warns at about this point.</summary>
     const long CommitMarginMb = 1024;
@@ -74,36 +65,27 @@ public sealed partial class AppController : IDisposable
     readonly System.Windows.Forms.Timer _procTimer = new() { Interval = 1500 };
     readonly Dictionary<Guid, (int Pid, PendingLaunch Launch)> _running = new();
     readonly List<PendingLaunch> _pending = new();
-    /// <summary>When a client that may belong to each pending launch was last seen running.</summary>
     readonly Dictionary<PendingLaunch, DateTime> _pendingSeenAlive = new(ReferenceEqualityComparer.Instance);
     /// <summary>A launch whose clients have all quit (failed sign-in, closed by the person) stops waiting after this.</summary>
     static readonly TimeSpan PendingGoneGrace = TimeSpan.FromSeconds(5);
     /// <summary>Launches the person closed while still opening: their client is closed as soon as it is claimed.</summary>
     readonly HashSet<PendingLaunch> _closeWhenClaimed = new(ReferenceEqualityComparer.Instance);
-    /// <summary>
-    /// Clients that were in a game and ended (their X button, a crash): the windowless copy Roblox then starts in
-    /// the notification area is their child; it is ended while it appears within this time.
-    /// </summary>
+    /// <summary>Clients that left a game by ending (X button, crash): the windowless tray copy Roblox then starts as
+    /// their child is ended if it appears within <see cref="TraySweep"/>.</summary>
     readonly Dictionary<int, DateTime> _traySweep = new();
     static readonly TimeSpan TraySweep = TimeSpan.FromSeconds(15);
     /// <summary>A log stuck in "joining" (a join or teleport that never finished) stops being trusted after this.</summary>
     static readonly TimeSpan JoiningTimeout = TimeSpan.FromMinutes(2);
-    /// <summary>
-    /// A client that started its game and got no server in this time isn't getting one: the server it was sent to has
-    /// ended or is full (Roblox's join queue), or the join failed. Seen 2026-10-17 (0.743): five clients sent to Steal
-    /// An Egg sat on "This experience has ended, or the server became unavailable…" for three minutes without a
-    /// "Joining game" line, until Bloxkeep's presence check closed them.
-    /// </summary>
+    /// <summary>A client that started its game and got no server in this time isn't getting one (server ended, full, or
+    /// join failed). 2026-10-17 (0.743): five clients sat on "This experience has ended, or the server became unavailable…"
+    /// for three minutes with no "Joining game" line.</summary>
     static readonly TimeSpan GetInTimeout = TimeSpan.FromSeconds(60);
     /// <summary>How long past its time a rejoin kept with the vault is still done after an unlock (see OnUnlocked).</summary>
     static readonly TimeSpan WaitingRejoinKept = TimeSpan.FromMinutes(10);
-    /// <summary>
-    /// When a join not in a server yet is asked about (<see cref="CheckJoinAsync"/>). Most joins name their server
-    /// within 1-2 s, but a join waiting for room logs nothing just as a refused one does: on 2026-10-16 four accounts
-    /// sent to one server waited 17-38 s, silent, then got in. Asking Roblox in that wait might upset it (not known), so
-    /// a first-time refusal is asked about after the longest wait seen; an account the game is known to have banned
-    /// (opened anyway) at once, so its ban is told right away (the owner's wish, 2026-10-21).
-    /// </summary>
+    /// <summary>When a join not in a server yet is asked about (<see cref="CheckJoinAsync"/>). A join waiting for room logs
+    /// nothing, like a refused one: on 2026-10-16 four accounts waited 17-38 s silently, then got in. Asking Roblox in that
+    /// wait might upset it, so wait past the longest seen; an account the game is known to have banned is asked at once
+    /// (the owner's wish, 2026-10-21).</summary>
     TimeSpan JoinCheckAfter(Account account, GameTarget target) =>
         GameBanOf(account, target.PlaceId) is not null ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(40);
     readonly Dictionary<long, string> _avatarUrls = new();
@@ -113,20 +95,15 @@ public sealed partial class AppController : IDisposable
     /// <summary>Accounts whose last presence came from their own cookie (or showed them in a game): trustworthy.</summary>
     readonly HashSet<long> _presenceReliable = new();
     readonly RobloxLogWatcher _logs = new();
-    /// <summary>Clients already being closed because their log showed a kick (so it happens once).</summary>
+    /// <summary>Clients already being closed for a kick in their log (so it happens once).</summary>
     readonly HashSet<int> _closingForRejoin = new();
     /// <summary>Roblox's code for "the same account joined from another device": never fight that with a rejoin.</summary>
     const int SameAccountElsewhere = 273;
-    /// <summary>
-    /// Roblox's DisconnectRejoin (276): the client says the same as for <see cref="SameAccountElsewhere"/> ("Same account
-    /// launched experience from different device"), so it is taken the same way.
-    /// </summary>
+    /// <summary>Roblox's DisconnectRejoin (276): same message as <see cref="SameAccountElsewhere"/>, so taken the same way.</summary>
     static bool SignedInElsewhere(int? code) => code is SameAccountElsewhere or 276;
     /// <summary>
-    /// Roblox's codes whose own error box has no Reconnect button (reconnectDisabledList in its Connection.lua, client
-    /// 0.744): a rejoin would only be refused again (no access to a private server any more, Roblox out of date, the same
-    /// player twice, security checks, Roblox's join refusals). Bloxkeep doesn't rejoin them either, except a game's kick
-    /// (267, also on Roblox's list), which games often ask for ("please rejoin the game") and auto-rejoin is for.
+    /// Codes whose Roblox error box has no Reconnect button (reconnectDisabledList in Connection.lua, client 0.744): a rejoin
+    /// would only be refused again. Bloxkeep skips them too, except a game's kick (267), which games often ask to rejoin after.
     /// </summary>
     static readonly HashSet<int> NoReconnect =
     [
@@ -136,12 +113,8 @@ public sealed partial class AppController : IDisposable
     static bool RobloxWontReconnect(int? code) => code is int c && NoReconnect.Contains(c);
     /// <summary>Roblox's ServerShutdown: the game's server closed (an update, the developer's shutdown).</summary>
     const int ServerShutdown = 288;
-    /// <summary>
-    /// Roblox's codes for a connection that failed on the way: the ones its own error screen reconnects by itself
-    /// (autoReconnectAllowedList in its Connection.lua: the packet errors 260-262, Timeout, HashTimeout, ConnectionLost,
-    /// RaknetErrors, ReplicatorTimeout, NetworkInternal/Send/Timeout). Only these are said as a lost connection; a
-    /// disconnect without a code is said as one whose reason isn't known.
-    /// </summary>
+    /// <summary>Codes Roblox's own error screen reconnects by itself (autoReconnectAllowedList in Connection.lua). Only these
+    /// are said as a lost connection; a disconnect without a code is said as one with an unknown reason.</summary>
     static bool LostConnection(int code) => code is 260 or 261 or 262 or 266 or 269 or 277 or 279 or 290 or 296 or 297 or 298;
     /// <summary>Roblox's code for "kicked for being idle 20 minutes".</summary>
     const int IdleKick = 278;
@@ -159,12 +132,8 @@ public sealed partial class AppController : IDisposable
     /// <summary>Anti-AFK has seen the windows that were already open when Bloxkeep started (or was unlocked).</summary>
     bool _afkAdopted;
 
-    /// <summary>
-    /// Why anti-AFK last held back from a window that was due, since a nudge last reached it: said if Roblox kicks
-    /// that window for idling anyway.
-    /// </summary>
+    /// <summary>Why anti-AFK last held back from a due window: said if Roblox kicks it for idling anyway.</summary>
     readonly Dictionary<int, AfkHeld> _afkHeld = new();
-    /// <summary>Roblox windows currently set to a low memory priority (they are in the background).</summary>
     readonly HashSet<int> _lowMemoryPriority = new();
     /// <summary>The Roblox settings file holds values Bloxkeep wrote; the person's own come back when Roblox is closed.</summary>
     bool _robloxSettingsPending = RobloxGameSettings.HasBaseline;
@@ -176,10 +145,8 @@ public sealed partial class AppController : IDisposable
     readonly Dictionary<Guid, int> _rejoinsInARow = new();
     readonly Dictionary<Guid, int> _offlineStrikes = new();
     readonly AppUpdater _updater = new();
-    /// <summary>
-    /// The first check at the first tick (one small request): an update found before the vault is opened installs at
-    /// the lock screen (see <see cref="UpdateOffersAtLock"/>), so the sooner it is known, the likelier it comes in time.
-    /// </summary>
+    /// <summary>Due at the first tick: an update found before the vault is opened installs at the lock screen
+    /// (see <see cref="UpdateOffersAtLock"/>), so the sooner it is known the better.</summary>
     DateTime _nextUpdateCheck = DateTime.UtcNow;
     DateTime _nextRobloxVersionCheck;
     RobloxInstalls.ClientVersion? _latestRoblox;
@@ -187,10 +154,8 @@ public sealed partial class AppController : IDisposable
     string? _updatedFrom;
     Vault? _vault;
     CancellationTokenSource? _launchCts, _rejoinCts;
-    /// <summary>
-    /// While a launch of several accounts waits between two of them: the accounts it has still to open. Rejoins of the
-    /// others go meanwhile (see RunDueRejoin); null while it opens one, and when no launch is going.
-    /// </summary>
+    /// <summary>While a multi-account launch waits between two: the accounts still to open (rejoins of the others go
+    /// meanwhile, see RunDueRejoin). Null while it opens one or when none is going.</summary>
     HashSet<Guid>? _launchWaiting;
     bool _bootStatusDone, _bootAvatarsDone;
     BootProgress? _boot;
@@ -215,8 +180,7 @@ public sealed partial class AppController : IDisposable
         _post = postJson;
         _procTimer.Tick += (_, _) => OnProcTimer();
         _procTimer.Start();
-        // The update check before anything else (not at the first tick): one found before the vault is opened takes the
-        // lock screen's place, so the sooner it's known, the less likely someone has started typing there.
+        // Checked here, not at the first tick: an update found before unlock replaces the lock screen, best before anyone types.
         if (Prefs.CheckUpdates && _updater.Supported)
         {
             _nextUpdateCheck = DateTime.UtcNow + UpdateCheckInterval;
@@ -247,7 +211,6 @@ public sealed partial class AppController : IDisposable
     /// <summary>Recreates the interface drawing on the CPU (true) or the graphics card (false).</summary>
     public Func<bool, Task>? SetSafeRendering { get; init; }
 
-    /// <summary>The window applies a new theme or close-to-tray choice.</summary>
     public Action? AppearanceChanged { get; init; }
 
     /// <summary>While the window is minimised, poll less often; Roblox status comes back up to date when it shows again.</summary>
@@ -262,18 +225,12 @@ public sealed partial class AppController : IDisposable
         }
     }
 
-    /// <summary>
-    /// A page is there to receive state. False after the window released its browser in the background: building
-    /// and serialising the state for nobody is the costly part of a day in the tray. The next page asks for
-    /// everything with getState.
-    /// </summary>
+    /// <summary>A page is there to receive state. False after the window released its browser in the background (building
+    /// state for nobody is the costly part of a day in the tray); the next page asks with getState.</summary>
     public bool PageAttached { get; set; }
 
-    /// <summary>
-    /// The page sleeps while the window is in the background (ShellForm suspends it): no state is built or sent to it
-    /// (that would wake it, and it is the costly part of a day in the tray), and events wait, the latest few, with every
-    /// reply to a command it sent before. Woken, it gets those, one fresh state and the memory figures.
-    /// </summary>
+    /// <summary>Set while ShellForm suspends the page in the background: no state is built or sent (that would wake it), and
+    /// events wait, the latest few, with every reply. Woken, it gets those, one fresh state and the memory figures.</summary>
     public bool PageAsleep
     {
         get => _pageAsleep;
@@ -318,8 +275,7 @@ public sealed partial class AppController : IDisposable
             return;
         if (_pageAsleep)
         {
-            // States aren't sent to a sleeping page at all (PushState); an event waits for it to wake, the newest kept. A
-            // reply always waits: the page's command would otherwise never finish.
+            // A reply always waits, or the page's command would never finish; only the newest events are kept.
             lock (_asleepEvents)
             {
                 if (_pageAsleep)
@@ -350,11 +306,8 @@ public sealed partial class AppController : IDisposable
             PostState(BuildState(), force: true);
     }
 
-    /// <summary>
-    /// For timers (presence, process checks): the page re-renders on every state, which is the costly part with
-    /// hundreds of accounts, so an identical state isn't sent again. Commands still always push, so a control the
-    /// page changed on its own is put back when the app refused the change.
-    /// </summary>
+    /// <summary>For timers: an identical state isn't sent again (re-rendering is costly with hundreds of accounts). Commands
+    /// always push, so a control the page changed on its own is put back when the app refused the change.</summary>
     void PushStateIfChanged()
     {
         if (PageAttached && !_pageAsleep)
@@ -390,11 +343,8 @@ public sealed partial class AppController : IDisposable
         }
     }
 
-    /// <summary>
-    /// What the person is told about a failure: Bloxkeep's and Roblox's own sentences as they are, anything else a
-    /// short fixed sentence in the app's language. .NET's own texts are in Windows' language and name internals,
-    /// so they go to the log instead.
-    /// </summary>
+    /// <summary>What the person is told: Bloxkeep's and Roblox's own sentences as they are, else a short fixed sentence.
+    /// .NET's texts are in Windows' language and name internals, so they go to the log.</summary>
     static string ErrorText(Exception ex)
     {
         if (ex is UserError or RobloxApiException or InvalidPasswordException)
@@ -414,10 +364,7 @@ public sealed partial class AppController : IDisposable
         };
     }
 
-    /// <summary>
-    /// The lock screen's own commands, the only ones that go through while the screen is locked (see ScreenLock): the
-    /// rest would show or change what is behind it.
-    /// </summary>
+    /// <summary>The only commands allowed while the screen is locked; the rest would show or change what is behind it.</summary>
     static readonly HashSet<string> ScreenLockCommands = ["getState", "keepView", "pageBusy", "pageShown", "monitorArea", "setLanguage", "unlock", "lock"];
 
     /// <summary>A command the lock screen doesn't send, while it is up: refused, and its answer withheld.</summary>
@@ -428,8 +375,7 @@ public sealed partial class AppController : IDisposable
         if (Withheld(cmd))
             throw new UserError(L.T("Bloxkeep is locked."));
         object? result = await DispatchCommandAsync(cmd, a);
-        // The lock screen came up while it ran (a launch, a password being shown): what it did stands, but its answer
-        // (names, a password) doesn't reach the lock screen.
+        // The lock screen came up while it ran: what it did stands, but its answer doesn't reach the lock screen.
         if (Withheld(cmd))
             throw new UserError(L.T("Bloxkeep is locked."));
         return result;
@@ -581,8 +527,7 @@ public sealed partial class AppController : IDisposable
         // The user guide on GitHub, in the app's language (docs/guide.md, docs/guide.vi.md).
         "openGuide" => Done(OpenUrl($"https://github.com/Bloxkeep/roblox-account-manager/blob/main/docs/guide{(L.Language == "vi" ? ".vi" : "")}.md")),
         "openGitHub" => Done(OpenUrl("https://github.com/Bloxkeep/roblox-account-manager")),
-        // Bloxkeep's Discord bot sends this on to an invite into the community server that works (services/DiscordBot/worker
-        // invite()): a new one is made whenever the last stops working, so this address never changes.
+        // The bot redirects to a working community invite (services/DiscordBot/worker invite()), so this address never changes.
         "openDiscord" => Done(OpenUrl("https://bloxkeep-bot.bloxkeep-app.workers.dev/discord")),
         // Bloxkeep's app added to the person's own Discord account, so /pc works in any DM (Control from Discord).
         "openDiscordApp" => Done(OpenUrl("https://discord.com/oauth2/authorize?client_id=1561788269933498408&integration_type=1&scope=applications.commands")),

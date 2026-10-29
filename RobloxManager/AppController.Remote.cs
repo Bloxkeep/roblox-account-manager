@@ -5,12 +5,11 @@ using System.Text.Json.Nodes;
 namespace RobloxManager;
 
 /// <summary>
-/// Settings › Discord › Control from Discord (off until turned on): Bloxkeep's Discord bot hands this PC the person's /pc
-/// commands (RemoteLink, services/DiscordBot/worker/remote.js), once they typed the code shown here into /pc link. What a
-/// command can do is only this: say how the accounts are doing (the status board's card), run a preset, close windows,
-/// switch an account to another server. Nothing is asked of the person on the PC: a preset that would ask first
-/// (Multi-Roblox off…) isn't run. Locked, Bloxkeep answers only that it is locked, and names nothing.
-/// Turned off: the bot is told to forget the link, and the connection closes.
+/// Settings › Discord › Control from Discord (off by default): once the person typed the code shown here into /pc link,
+/// Bloxkeep's bot hands this PC their /pc commands (RemoteLink, services/DiscordBot/worker/remote.js). A command can only
+/// report the accounts (the status board's card), run a preset, close windows or move an account to another server.
+/// Nothing is asked on the PC: a preset that would ask first (Multi-Roblox off…) isn't run. Locked, Bloxkeep answers
+/// only that it is locked and names nothing. Turned off: the bot forgets the link and the connection closes.
 /// </summary>
 public sealed partial class AppController
 {
@@ -21,7 +20,6 @@ public sealed partial class AppController
 
     static readonly byte[] RemoteEntropy = Encoding.UTF8.GetBytes("bloxkeep-remote-key");
 
-    /// <summary>"All accounts", as Discord's suggestion for /pc close says it.</summary>
     const string AllAccounts = "All accounts";
 
     /// <summary>A preset that's still opening after this long is answered "opening…", and its outcome follows up later.</summary>
@@ -103,7 +101,6 @@ public sealed partial class AppController
         PushState();
     }
 
-    /// <summary>The answer to someone linking this PC (the page's Allow / Don't allow).</summary>
     object? RemoteAllow(bool allow)
     {
         _remote?.Answer(allow);
@@ -157,7 +154,6 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>The status board's card, as it is now, named after this PC.</summary>
     JsonObject RemoteStatus()
     {
         var card = BoardMessage(_vault!.Data.Discord, RobloxProcesses.GetPlayers()) with { Footer = "Bloxkeep · " + Environment.MachineName };
@@ -190,7 +186,6 @@ public sealed partial class AppController
         _remote?.Later(id, outcome);
     }
 
-    /// <summary>How a preset's run went: opened how many, what went wrong, or the question it would have asked.</summary>
     JsonObject PresetOutcome(LaunchPreset preset, LaunchResult r)
     {
         if (r.NeedsConfirm)

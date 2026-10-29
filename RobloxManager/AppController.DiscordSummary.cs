@@ -3,10 +3,9 @@ using System.Globalization;
 namespace RobloxManager;
 
 /// <summary>
-/// Discord's play-time summary: one message with an overview (totals against the period before, drops with Roblox's
-/// codes, the longest stay, the most windows at once, the top games), a picture drawn here (play time by hour or day,
-/// coloured by game, and a row per account with its avatar; see <see cref="SummaryCard"/>), and an embed per preset
-/// that played, with its accounts. Play is grouped by the preset whose window it was (<see cref="PlaySession.PresetId"/>).
+/// Discord's play-time summary: an overview (totals against the period before, drops with Roblox's codes, records, top
+/// games), a picture drawn here (<see cref="SummaryCard"/>), and an embed per preset that played with its accounts.
+/// Play is grouped by the preset whose window it was (<see cref="PlaySession.PresetId"/>).
 /// </summary>
 public sealed partial class AppController
 {
@@ -19,9 +18,7 @@ public sealed partial class AppController
         public double Seconds => (To - From).TotalSeconds;
     }
 
-    /// <param name="days">1 (a day), 7 or 30.</param>
     /// <param name="dueAt">When a daily or weekly summary was due (local): the period ends there, also when it goes out late.</param>
-    /// <param name="local">Now, for telling whether it is late.</param>
     /// <param name="today">One day is today so far (after a scheduled preset), not the 24 hours before.</param>
     /// <param name="preset">After that scheduled preset's stop: only its play, under its name.</param>
     /// <param name="kind">"daily", "weekly", "both", "preset" or "now": which summary the footer says it is.</param>
@@ -32,8 +29,7 @@ public sealed partial class AppController
         days = days is 7 or 30 ? days : 1;
         bool hourly = days == 1, late = dueAt is { } due && local is { } at && at - due > DiscordLate;
         var now = DateTime.UtcNow;
-        // A day is the 24 hours up to the summary's time (one at midnight covers the day that just ended); after a
-        // scheduled preset, today so far; 7 or 30 days, whole days up to now.
+        // A day is the 24 hours up to the summary's time; after a scheduled preset, today so far; 7 or 30: whole days to now.
         var to = dueAt is { } end && end.ToUniversalTime() < now ? end.ToUniversalTime() : now;
         var from = today ? DateTime.Today.ToUniversalTime() : hourly ? to.AddDays(-1) : to.ToLocalTime().Date.AddDays(1 - days).ToUniversalTime();
 
@@ -46,7 +42,6 @@ public sealed partial class AppController
         var drops = vault.Data.PlaySessions.Where(s => Counts(s) && s.EndReason == "disconnected" && s.EndedAt >= from && s.EndedAt <= to).ToList();
         var parts2 = d.SummaryParts;
 
-        // Games, most played first; the first few get a colour (the rest share grey).
         var games = parts.GroupBy(p => p.Game)
             .Select(g => (Key: g.Key, Seconds: g.Sum(p => p.Seconds), Stay: g.OrderByDescending(p => p.Session.GameName.Length).First().Session))
             .OrderByDescending(g => g.Seconds).ToList();
@@ -67,8 +62,7 @@ public sealed partial class AppController
         string NameOf(Guid id, string? label) => FindAccount(id) is { } account ? DiscordName(account)
             : !d.HideNames && label is { Length: > 0 } ? label : DT("Deleted account");
 
-        // The title says the period ("in the last 24 hours" only when it is that: a late one says how long); the footer
-        // says which summary it is; a summary after a scheduled preset has the preset above the title.
+        // The title says the period (a late one says how long), the footer which summary; a preset's has the preset above the title.
         string title = days switch
         {
             7 => DT(late ? "Play time for 7 days" : "Play time in the last 7 days"),
@@ -102,7 +96,6 @@ public sealed partial class AppController
                 summaryLine.Add($"**{presetsPlayed}** " + DT(presetsPlayed == 1 ? "preset" : "presets"));
             lines.Add(string.Join(" · ", summaryLine));
 
-            // Six short facts, three to a row: the totals first, then the records.
             if (parts2.Contains("total"))
                 fields.Add(new(DT("Play time"), $"**{Duration((long)total)}**\n{Compared(total, before)}", true));
             int stays = parts.Select(p => p.Session).Distinct().Count();
@@ -237,8 +230,7 @@ public sealed partial class AppController
     /// <summary>The picture's columns: whole clock hours over the period (or days), each split by game.</summary>
     List<SummaryCardBucket> Buckets(List<StayPart> parts, DateTime from, DateTime to, bool hourly, Dictionary<string, int> colour)
     {
-        // The app runs in invariant-globalization mode (RobloxManager.csproj): asking for "en-US" or "vi-VN" throws there.
-        // The invariant culture's month names and AM/PM are English, which is what the English labels want.
+        // Invariant-globalization mode (RobloxManager.csproj): "en-US" or "vi-VN" would throw; its English names suit the labels.
         var culture = CultureInfo.InvariantCulture;
         var localFrom = from.ToLocalTime();
         var start = hourly ? new DateTime(localFrom.Year, localFrom.Month, localFrom.Day, localFrom.Hour, 0, 0, DateTimeKind.Local) : localFrom.Date;
@@ -268,7 +260,6 @@ public sealed partial class AppController
         return now > before ? "▲ " + DF("{0} more than before", Duration(diff)) : "▼ " + DF("{0} less than before", Duration(diff));
     }
 
-    /// <summary>Accounts as a table in a code block: name, h:mm, and a bar against the most played one.</summary>
     string AccountBlock(List<(string Name, double Seconds)> accounts)
     {
         double most = Math.Max(1, accounts.Count > 0 ? accounts.Max(a => a.Seconds) : 1);

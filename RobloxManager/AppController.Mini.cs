@@ -1,12 +1,9 @@
 namespace RobloxManager;
 
-/// <summary>
-/// What the mini window (<see cref="MiniForm"/>) shows and does: the clients open now, taken from what the process
-/// check already tracks (no snapshot of its own), and the same close actions the page has.
-/// </summary>
+/// <summary>What the mini window (<see cref="MiniForm"/>) shows and does: the clients open now, from what the process
+/// check already tracks (no snapshot of its own), and the page's close actions.</summary>
 public sealed partial class AppController
 {
-    /// <summary>One row of the mini window: a client open on this PC and the account it was opened for.</summary>
     public sealed record MiniClient(Guid Id, string Label, string Game, int Pid, long RamMb);
 
     /// <summary>RAM per client as of the last process check (every 1.5–5 s).</summary>
@@ -54,7 +51,6 @@ public sealed partial class AppController
         return _games.GetValueOrDefault(id)?.Name is { Length: > 0 } name ? name : L.F("Place {0}", id);
     }
 
-    /// <summary>Closes one account's client, like the page's "Close Roblox".</summary>
     public void CloseClient(Guid id) => CloseAccounts([id], force: false);
 
     /// <summary>Closes every Roblox on this PC, like the page's "Close all"; the number of clients closed.</summary>

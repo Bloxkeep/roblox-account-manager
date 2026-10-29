@@ -7,10 +7,8 @@ namespace RobloxManager;
 /// <summary>What opening Roblox for an account needs: its sign-in ticket, whether it may play a game, its private servers, its Robux.</summary>
 public static partial class RobloxApi
 {
-    /// <summary>
-    /// Since Sep 2026 roblox.com first fetches a client assertion and posts it as the body of the
-    /// authentication-ticket request. Falls back to the older empty body if the endpoint is unavailable.
-    /// </summary>
+    /// <summary>Since Sep 2026 roblox.com posts a client assertion as the authentication-ticket request's body; the older
+    /// empty body is the fallback if the endpoint is unavailable.</summary>
     static async Task<string?> GetClientAssertionAsync(string cookie, CancellationToken ct, string realm = Realm.Global)
     {
         string url = Realm.Api(realm, "auth") + "/v1/client-assertion/";
@@ -35,11 +33,8 @@ public static partial class RobloxApi
         }
     }
 
-    /// <summary>
-    /// The account's Robux, asked with its own cookie (economy …/v1/users/{id}/currency answers {"robux": n} to the
-    /// account itself; without a sign-in it answers 401, checked on both hosts on 2026-10-19). Null when Roblox didn't
-    /// say: signed out, a refusal, or an answer in another shape. Too many requests (429) throws, so a round stops there.
-    /// </summary>
+    /// <summary>The account's Robux via its own cookie (economy …/v1/users/{id}/currency; 401 without a sign-in, checked on
+    /// both hosts 2026-10-19). Null when Roblox didn't say; 429 throws, so a round stops there.</summary>
     public static async Task<long?> GetRobuxAsync(string cookie, string realm, long userId, CancellationToken ct = default)
     {
         realm = Realm.Normalize(realm);
@@ -68,11 +63,8 @@ public static partial class RobloxApi
         }
     }
 
-    /// <summary>
-    /// One-time ticket that lets the Roblox client sign in as this account, from the account's own Roblox (a Roblox VNG
-    /// account's from Roblox VNG's sign-in service). Roblox VNG's client redeemed tickets from roblox.com at
-    /// auth.robloxapp.vnggames.com (seen 2026-10-19), so the two look like one sign-in service under two names.
-    /// </summary>
+    /// <summary>One-time ticket that signs the Roblox client in as this account, from the account's own realm. VNG's client
+    /// redeemed roblox.com tickets at auth.robloxapp.vnggames.com (seen 2026-10-19): one sign-in service, two names.</summary>
     public static async Task<string> GetAuthTicketAsync(string cookie, CancellationToken ct = default, string realm = Realm.Global)
     {
         realm = Realm.Normalize(realm);
@@ -99,10 +91,8 @@ public static partial class RobloxApi
             (int)res.StatusCode)) { SignInRefused = true };
     }
 
-    /// <summary>
-    /// Whether Roblox lets the account play the game (universe), as its own client asks before joining: GET games'
-    /// /v1/games/multiget-playability-status with the account's cookie. Null when Roblox gave no answer for that game.
-    /// </summary>
+    /// <summary>Whether the account may play the game (universe), as Roblox's client asks before joining
+    /// (multiget-playability-status). Null when Roblox gave no answer for that game.</summary>
     public static async Task<Playability?> GetPlayabilityAsync(string cookie, string realm, long universeId, CancellationToken ct = default)
     {
         realm = Realm.Normalize(realm);
@@ -130,19 +120,13 @@ public static partial class RobloxApi
         return null;
     }
 
-    /// <summary>
-    /// A private server the account can join: one it owns or was invited to. Its access code is what the website's Join
-    /// button sends (PlaceLauncher RequestPrivateGame&amp;accessCode=…); JobId is its running instance, if any.
-    /// </summary>
+    /// <summary>A private server the account owns or was invited to. The access code is what the website's Join button
+    /// sends (RequestPrivateGame&amp;accessCode=…); JobId is its running instance, if any.</summary>
     public sealed record PrivateServer(long Id, string Name, long OwnerId, string OwnerName, string OwnerDisplayName,
         string AccessCode, string? JobId, int Playing, int MaxPlayers);
 
-    /// <summary>
-    /// The game's private servers this account can join, as the Servers tab of its Roblox page lists them: games'
-    /// GET /v1/games/{placeId}/private-servers with the account's cookie (Roblox's API reference, creator-docs
-    /// openapi.json: data[] of id, name, vipServerId, accessCode, owner, playing, maxPlayers; nextPageCursor, asked
-    /// again as exclusiveStartKeyCursor). At most three pages. Too many requests (429) and a lost sign-in throw.
-    /// </summary>
+    /// <summary>The game's private servers this account can join (GET /v1/games/{placeId}/private-servers; nextPageCursor is
+    /// sent back as exclusiveStartKeyCursor). At most three pages; 429 and a lost sign-in throw.</summary>
     public static async Task<List<PrivateServer>> GetPrivateServersAsync(string cookie, long placeId, CancellationToken ct = default)
     {
         var list = new List<PrivateServer>();

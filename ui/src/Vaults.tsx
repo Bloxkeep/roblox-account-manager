@@ -1,7 +1,5 @@
-// Several vaults (RobloxManager/Vaults.cs): each one's face (its picture, or its name's first letter on a colour of its
-// own), and the lock screen's picker, Steam-like ("Who's using Bloxkeep?"): a tile per vault, + to add one, and whether
-// it asks every time Bloxkeep starts. The app decides when the picker shows (its vaults.pick); app.js handles the
-// buttons (data-act vault-*).
+// Several vaults (RobloxManager/Vaults.cs): each one's face (its picture, or its initial on a colour of its own) and the
+// lock screen's Steam-like picker ("Who's using Bloxkeep?"). The app decides when it shows (vaults.pick); app.js handles data-act vault-*.
 import { useState } from 'react';
 import { Icon, useAppState, useHost } from './host';
 
@@ -26,7 +24,6 @@ export function VaultFace({ vault, className = '' }: { vault: VaultInfo; classNa
       {[...vault.name.trim()][0]?.toLocaleUpperCase() || '?'}</span>;
 }
 
-/** The lock screen's picker (inside its frame, Lock.tsx): the vaults on this PC, + to add one, and the switch for asking at every start. */
 export function VaultPicker() {
   const { t, logo, call } = useHost();
   const vaults = useAppState().vaults || {};

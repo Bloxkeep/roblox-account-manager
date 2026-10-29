@@ -4,11 +4,10 @@ using System.Text.Json;
 namespace RobloxManager;
 
 /// <summary>
-/// "Import accounts from a vault file…": accounts from another Bloxkeep vault file (another PC's vault.rmv, or a
-/// backup) are added to this vault and saved under its master password. The other file is only read
-/// (<see cref="Vault.ReadOther"/>), never changed. Its decrypted contents stay in memory only while the preview is
-/// open, under a one-time token; the page gets names and states, never cookies or passwords. They are dropped on
-/// cancel, lock, a new page, the import itself, or after ten minutes.
+/// "Import accounts from a vault file…": accounts from another vault file (another PC's vault.rmv, a backup) are added and
+/// saved under this vault's password; that file is only read (<see cref="Vault.ReadOther"/>). Its decrypted contents stay
+/// in memory only while the preview is open, under a one-time token; the page gets names and states, never cookies or
+/// passwords. Dropped on cancel, lock, a new page, the import itself, or after ten minutes.
 /// </summary>
 public sealed partial class AppController
 {
@@ -27,10 +26,7 @@ public sealed partial class AppController
     /// <summary>Wrong passwords per file (full path) and when the next try is allowed; in memory only.</summary>
     readonly Dictionary<string, (int Wrong, DateTime NextTry)> _vaultImportTries = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// "Choose file…": Windows' own file dialog. Returns the file's name, or null when cancelled (a file picked
-    /// earlier, and its open preview, then stay as they were).
-    /// </summary>
+    /// <summary>"Choose file…": returns the file's name, or null when cancelled (an earlier file and its preview stay).</summary>
     object? VaultImportPick()
     {
         var vault = RequireVault();
@@ -81,10 +77,8 @@ public sealed partial class AppController
         _vaultImportTries.TryGetValue(path, out var tries) && tries.NextTry > DateTime.UtcNow
             ? (int)Math.Ceiling((tries.NextTry - DateTime.UtcNow).TotalSeconds) : 0;
 
-    /// <summary>
-    /// Opens the picked file with its own master password and lists the accounts in it, each marked new or already
-    /// here. A wrong password is an answer, not an error, so the page can count down the wait after three.
-    /// </summary>
+    /// <summary>Opens the picked file with its own master password and lists its accounts, each new or already here. A wrong
+    /// password is an answer, not an error, so the page can count down the wait after three.</summary>
     async Task<object?> VaultImportOpenAsync(string password)
     {
         var vault = RequireVault();
@@ -162,10 +156,8 @@ public sealed partial class AppController
         };
     }
 
-    /// <summary>
-    /// The account here that is the same Roblox account: by user id within its realm (Roblox and Roblox VNG count
-    /// ids apart, as in <see cref="AddOrMerge"/>), or by username (any case) when either side doesn't know the id.
-    /// </summary>
+    /// <summary>The same Roblox account here: by user id within its realm (Roblox and Roblox VNG count ids apart, as in
+    /// <see cref="AddOrMerge"/>), or by username (any case) when either side doesn't know the id.</summary>
     static Account? ImportMatch(List<Account> here, Account other)
     {
         string realm = Realm.Normalize(other.Realm);
@@ -209,18 +201,14 @@ public sealed partial class AppController
         };
     }
 
-    /// <param name="Updated">Accounts already here that took the file's sign-in or password.</param>
     /// <param name="PresetsSkipped">Presets left out: none of their accounts is here, or the preset limit was reached.</param>
     internal sealed record ImportOutcome(List<Account> Added, List<Account> Updated, int PresetsAdded, int PresetsSkipped);
 
-    /// <summary>
-    /// Brings the ticked accounts (<paramref name="keys"/>: their places in the file) into <paramref name="target"/>.
-    /// New ones get a new id here: the file's could already name something in this vault (a deleted account's play
-    /// history, the launch order). One already here only takes the file's sign-in, and its password when it has
-    /// none, if its own sign-in isn't known to work; its name, group and note as set here are never changed. Presets
-    /// come only when asked, schedules switched off and without their own Discord channel. Settings, Discord, the
-    /// launch order and play history stay this vault's own.
-    /// </summary>
+    /// <summary>Brings the ticked accounts (<paramref name="keys"/>: places in the file) into <paramref name="target"/>. New ones
+    /// get a new id (the file's could already name something here: a deleted account's play history, the launch order). One
+    /// already here takes only the file's sign-in (and password when it has none), if its own isn't known to work; never its
+    /// name, group or note. Presets only when asked, schedules off and without their own Discord channel. Settings, Discord,
+    /// the launch order and play history stay this vault's own.</summary>
     internal static ImportOutcome MergeImport(VaultData target, VaultData source, IReadOnlySet<int> keys, bool withPresets)
     {
         var here = target.Accounts;
@@ -363,10 +351,8 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// Forgets the opened file's contents and, unless <paramref name="keepPath"/>, which file was picked. Cookies and
-    /// passwords are .NET strings, which can't be wiped; with every reference gone they go at the next collection.
-    /// </summary>
+    /// <summary>Forgets the opened file's contents and, unless <paramref name="keepPath"/>, which file was picked. Cookies and
+    /// passwords are .NET strings, which can't be wiped; with every reference gone they go at the next collection.</summary>
     object? DropVaultImport(bool keepPath = false)
     {
         if (_vaultImport is { } session)

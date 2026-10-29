@@ -7,11 +7,9 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>
-/// Settings › Bloxkeep › Send feedback: an idea or a bug report for Bloxkeep's developer, with Bloxkeep's
-/// version, Windows' and the language, and when asked for, the end of error.log. Before anything leaves, the log loses
-/// every account's name, id, password and cookie, Discord links, e-mail addresses and the Windows user and PC names,
-/// and the person can see exactly what goes (Preview). It goes to a Cloudflare Worker (services/Feedback/worker in the
-/// repository) that posts it to the developer's Discord channel and keeps that channel's webhook to itself.
+/// Settings › Bloxkeep › Send feedback: an idea or bug report with Bloxkeep's version, Windows' and the language, and on
+/// request the end of error.log, scrubbed first (<see cref="Scrub"/>); Preview shows exactly what goes. A Cloudflare
+/// Worker (services/Feedback/worker) posts it to the developer's Discord channel and keeps that webhook to itself.
 /// </summary>
 public sealed partial class AppController
 {
@@ -82,10 +80,8 @@ public sealed partial class AppController
         return text.Trim().Length == 0 ? null : Scrub(text);
     }
 
-    /// <summary>
-    /// Takes out of a text what could tell whose it is: each account's password, cookie, names and id, cookies and
-    /// Discord links of any kind, e-mail addresses, long tokens, and the Windows user and PC names.
-    /// </summary>
+    /// <summary>Takes out what could tell whose a text is: each account's password, cookie, names and id, any cookies and
+    /// Discord links, e-mail addresses, long tokens, and the Windows user and PC names.</summary>
     string Scrub(string text)
     {
         var words = new List<(string Word, string Mark)>();

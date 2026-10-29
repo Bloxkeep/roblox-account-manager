@@ -1,8 +1,6 @@
-// A game's servers, to pick one to join: the private servers your accounts can join first (owned or invited to), the
-// selected accounts' friends in it, then its public servers (like the Servers tab on its Roblox page). Roblox sorts by player count itself; ping and FPS are sorted here over the
-// servers loaded so far ("ping" is the average ping of the players already in that server, what Roblox reports, not
-// the ping from this PC). Roblox gives only a few lists a minute: when it says to wait, the seconds count down in
-// place and the list is asked for again by itself.
+// A game's servers to join: your accounts' private servers first (owned or invited), the selected accounts' friends, then
+// public ones. Roblox sorts by player count; ping (the players' average as Roblox reports it, not this PC's) and FPS are
+// sorted here over what's loaded. Roblox gives a few lists a minute: when it says to wait, a countdown, then it asks again.
 import { useEffect, useRef, useState } from 'react';
 import { Icon, useHost } from './host';
 
@@ -74,10 +72,8 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
       st.current.next = r.next;
       setMoreUntil(0);
     }
-    // A second page gives sorting by ping or FPS more to choose from.
     if (!more && local(st.current.sort) && r?.next && !r.busy && spare()) load(true);
   };
-  // The wait counts down (once a second) while Roblox has said to wait.
   const waiting = busy || moreUntil > Date.now();
   useEffect(() => {
     if (!waiting) return;
@@ -111,8 +107,7 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
   };
   const moreLabel = moreUntil > Date.now() ? t('srv.moreIn', { n: secondsTo(moreUntil) }) : t('srv.more');
   const more = next ? <button className="btn ghost w" data-more disabled={loading || moreUntil > Date.now()} onClick={() => load(true)}>{moreLabel}</button> : null;
-  // The list keeps its height whatever it shows (app.css), and while another order loads the rows so far stay,
-  // dimmed: the window doesn't shrink to a spinner and grow back.
+  // The list keeps its height (app.css); while another order loads, the rows so far stay dimmed instead of a spinner.
   const rowsShown = !busy && view.length > 0;
 
   return <>

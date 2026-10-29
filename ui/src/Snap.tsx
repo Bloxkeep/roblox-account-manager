@@ -1,7 +1,6 @@
-// How Arrange windows lays the Roblox windows out, picked from small pictures of the screen as Windows' snap layouts:
-// "fill" (as many tiles as windows), grids whose cells are the windows' size whatever their number (two windows can be
-// tiny too), and a size of one's own. Pointing at one lights the cells the windows open now would take. In the dock's
-// Windows menu (picking one arranges them at once) and in Settings › Launching.
+// How Arrange windows lays the windows out, picked from small screen pictures like Windows' snap layouts: "fill", grids
+// whose cells are the windows' size whatever their number, and a size of one's own. Pointing at one lights the cells the
+// open windows would take. In the dock's Windows menu (picking one arranges at once) and Settings › Launching.
 import { useState } from 'react';
 import { useHost, useMetrics } from './host';
 

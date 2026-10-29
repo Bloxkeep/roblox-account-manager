@@ -15,8 +15,7 @@ public sealed partial class AppController
         if (OptStr(a, "lastJobId") is { } job) s.LastJobId = job.Trim();
         if (OptStr(a, "layout") is "cards" or "list") s.Layout = OptStr(a, "layout")!;
         if (OptStr(a, "sort") is "name" or "status" or "recent" or "order") s.Sort = OptStr(a, "sort")!;
-        // Sent while typing in the game box, or when the list's look changes: the page already shows it, so just
-        // remember it.
+        // Sent while typing in the game box or on a list-look change: the page already shows it, so just remember it.
         if (a.ValueKind == JsonValueKind.Object && a.EnumerateObject().Any()
             && a.EnumerateObject().All(p => p.Name is "lastPlaceInput" or "lastJobId" or "layout" or "sort"))
         {
@@ -81,7 +80,6 @@ public sealed partial class AppController
         // Both take effect at the next launch; the person's own fullscreen setting is put back by the process check.
         if (OptBool(a, "multiWindowed") is { } windowed)
             s.MultiInstanceWindowed = windowed;
-        // How windows come up: tiled, maximised, or as Roblox sizes them; one or the other, never both.
         if (OptBool(a, "multiTile") is { } tile)
         {
             s.MultiInstanceTile = tile;
@@ -131,10 +129,7 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// "Choose a launcher…": any program the user picks in Windows' own file dialog. It is then started with the
-    /// roblox-player: link as its first argument, like Windows does for the program that handles those links.
-    /// </summary>
+    /// <summary>"Choose a launcher…": started with the roblox-player: link as its first argument, as Windows does for the link's handler.</summary>
     object? PickLauncher()
     {
         var s = RequireVault().Data.Settings;
@@ -165,10 +160,8 @@ public sealed partial class AppController
     /// <summary>The folder Bloxkeep.exe runs from (an installed copy's current version, or a portable copy's own folder).</summary>
     static string AppFolder => Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
 
-    /// <summary>
-    /// Settings' Show buttons: the open vault's file or the error log selected in Explorer (their folder when the file isn't
-    /// there yet), or the program's folder. Only these: the page never names a path to open.
-    /// </summary>
+    /// <summary>Settings' Show buttons: the vault file or error log selected in Explorer (its folder if not there yet), or the
+    /// program's folder. The page never names a path to open.</summary>
     object? ShowPath(string which)
     {
         string? file = which switch { "vault" => _vault?.FilePath, "log" => LogPath, _ => null };
@@ -215,14 +208,12 @@ public sealed partial class AppController
         _backupTimer?.Dispose();
         DropVaultImport();
         CloseWebsites();
-        // A downloaded update is installed once the app has closed; the next start is the new version (started at
-        // once, carrying on, when this quit is the update in the background).
+        // A downloaded update installs once the app has closed (started again at once when this quit is the background update).
         _updater.ApplyOnExit(_relaunchArgs);
         Ui.ClearSecretClipboard();
         _launchCts?.Cancel();
         _rejoinCts?.Cancel();
-        // The Discord status message says Bloxkeep closed, if Discord answers within a moment; not for an update in
-        // the background, whose next run carries on within seconds.
+        // The Discord status message says Bloxkeep closed (if Discord answers quickly), unless this quit is a background update.
         try
         {
             if (_relaunchArgs is null)

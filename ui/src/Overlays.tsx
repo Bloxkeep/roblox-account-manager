@@ -1,6 +1,5 @@
-// What shows over the page: a dialog's frame (title, close button, body, footer buttons), the bodies of the plain
-// dialogs (a question, a list of errors, the Discord link box), a menu, and the messages in the corner. app.js still
-// decides when they open and close and what their buttons do (modal, confirmBox, openMenu, toast); these draw them.
+// What shows over the page: a dialog's frame, the plain dialogs' bodies, a menu, the messages in the corner. app.js
+// decides when they open and close and what their buttons do (modal, confirmBox, openMenu, toast).
 import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useHost } from './host';
 import { richNodes } from './rich';
@@ -45,7 +44,6 @@ export function AskBody({ message, remember }: { message: string; remember: bool
     {remember ? <label className="dont-ask"><input type="checkbox" id="dont-ask" /><span>{t('common.dontAsk')}</span></label> : null}</>;
 }
 
-/** What went wrong, one line each (a launch's accounts that didn't open). */
 export function ErrorsBody({ errors }: { errors: string[] }) {
   return <ul className="errs">{errors.map((x, i) => <li key={i}>{x}</li>)}</ul>;
 }
@@ -58,10 +56,7 @@ export function DiscordLinkBody() {
     <p className="dc-err" id="dc-link-err" role="alert" /></>;
 }
 
-/**
- * "Save server": what is saved (the private server's link in the game box, or the game with a code it asks for), its
- * name, and the code. app.js reads #sv-name and #sv-code and writes a mistake into #sv-err.
- */
+/** "Save server": what is saved, its name and code. app.js reads #sv-name and #sv-code and writes a mistake into #sv-err. */
 export function SaveServerBody({ game, hasLink }: { game: string; hasLink: boolean }) {
   const { t } = useHost();
   return <>
@@ -74,7 +69,6 @@ export function SaveServerBody({ game, hasLink }: { game: string; hasLink: boole
   </>;
 }
 
-/** What's new's title: the logo, "What's new", and the version and its date under it. */
 export function WhatsNewTitle({ sub }: { sub: string }) {
   const { t, logo } = useHost();
   return <span className="wn-title"><img src={logo} alt="" /><span>{t('wn.heading')}<small>{sub}</small></span></span>;
@@ -86,10 +80,7 @@ export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint
   /** Arrange windows' layouts as pictures (Snap.tsx) in place of a button: run gets the one picked. */
   snap?: { value: string; width: number; height: number } };
 
-/**
- * A menu's items (app.js makes the menu, places it and closes it). For the dock's presets the items before the first
- * line scroll in a list of their own, Save and Edit staying at its foot.
- */
+/** A menu's items (app.js makes, places and closes the menu). split: the dock's presets scroll, Save and Edit stay at its foot. */
 export function MenuItems({ items, pick, split }: { items: MenuItem[]; pick: (i: number, byKeyboard: boolean, arg?: string) => void; split: boolean }) {
   const draw = (it: MenuItem, i: number) => it === '-' ? <hr key={i} />
     : it.snap ? <SnapPicker key={i} {...it.snap} label={it.text} onPick={l => pick(i, false, l)} />
@@ -110,11 +101,9 @@ export interface ToastsApi {
   clear(): void;
 }
 
-/**
- * The messages in the corner, three at most (a stack mustn't cover the page). Each stays long enough to be read (about
- * 60 ms a character, longer for an error or one with a button), held while pointed at or focused; a click on it
- * closes it, like a Windows notification. The same message again while it shows stays longer instead of stacking.
- */
+// Three at most (a stack mustn't cover the page). Each stays about 60 ms a character (longer for an error or a button),
+// held while pointed at or focused; a click closes it, like a Windows notification. The same message again stays longer
+// instead of stacking.
 export function Toasts({ api }: { api: Ref<ToastsApi> }) {
   // The list itself, changed at once (a second message in the same moment sees the first), drawn after.
   const items = useRef<Toast[]>([]);

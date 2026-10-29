@@ -1,6 +1,5 @@
-// Settings › Appearance: the theme (its name, then one small swatch per theme, a line per group; with Custom chosen,
-// its colours, picture or video and how blurred, and saving it by name), your themes (kept by name, shared as a file),
-// the language, and hiding account names.
+// Settings › Appearance: the theme (swatches by group; Custom's colours, picture or video, blur, saving it by name), your
+// themes (kept by name, shared as a file), the language, and hiding account names.
 import { useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent } from 'react';
 import { Icon, useAppState, useHost, type CustomTheme, type SavedTheme } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
@@ -9,8 +8,7 @@ import { ColorInput } from '../ColorField';
 export function AppearancePage({ title }: { title: string }) {
   const { t, tIn, lang, call, toast, busy, themes, themePending, previewTheme, subscribe, customTheme, customVars, previewCustom } = useHost();
   const app = useAppState();
-  // A theme picked with the arrow keys shows at once and is saved once the keys rest (app.js previewTheme); until then
-  // it is the one marked here.
+  // A theme picked with the arrow keys shows at once and saves once the keys rest (app.js previewTheme); marked here meanwhile.
   const pending = useSyncExternalStore(subscribe, themePending);
   const current = pending || app.theme || 'dark';
   // The custom theme as it shows, changes being dragged included: its swatch wears its colours.
@@ -25,8 +23,7 @@ export function AppearancePage({ title }: { title: string }) {
   const inUse = current === 'custom' && custom ? saved.find(s => same(s.look, custom)) : undefined;
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // The swatches are one Tab stop; the arrow keys (Home/End to the ends) move between them and pick as they go, like
-  // radio buttons.
+  // The swatches are one Tab stop; the arrow keys (Home/End to the ends) move between them and pick as they go, like radio buttons.
   const keys = (e: KeyboardEvent<HTMLDivElement>) => {
     const step = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[e.key];
     const from = (e.target as HTMLElement).closest<HTMLElement>('.swatch');
@@ -47,8 +44,7 @@ export function AppearancePage({ title }: { title: string }) {
           <div className="tg-list">
             {ids.map(id => {
               const on = id === current, name = t(`theme.${id}`);
-              // data-name: the name shown on hover and focus. Each swatch carries data-theme, so it shows that theme's
-              // own colours.
+              // data-name: shown on hover and focus; data-theme gives each swatch its theme's own colours.
               return <button key={id} className={`swatch ${on ? 'on' : ''}`} data-act="theme" data-id={id} role="radio" aria-checked={on}
                 tabIndex={on ? 0 : -1} aria-label={name} data-name={name}>
                 {id === 'system' ? <><span data-theme="light" /><span data-theme="dark" /></>

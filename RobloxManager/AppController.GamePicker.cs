@@ -54,7 +54,6 @@ public sealed partial class AppController
         return await GameRowsAsync((await RobloxApi.SearchGamesAsync(query)).Take(12), fetchIcons: false);
     }
 
-    /// <summary>Icons for games already on screen (search results), keyed by universe id.</summary>
     async Task<object?> GameIconsAsync(JsonElement a)
     {
         var ids = a.TryGetProperty("universeIds", out var arr) && arr.ValueKind == JsonValueKind.Array
@@ -82,7 +81,6 @@ public sealed partial class AppController
     async Task<object?> GameListsAsync()
     {
         var vault = RequireVault();
-        // Favourites (first 5 accounts) and the popular list are fetched together, not one after another.
         async Task<List<GameSummary>> Favorites()
         {
             var lists = await Task.WhenAll(vault.Data.Accounts.Where(a => a.UserId > 0).Take(5).Select(async account =>
@@ -119,7 +117,6 @@ public sealed partial class AppController
         var s = vault.Data.Settings;
         var recent = s.RecentGames.Select(g => new GameSummary(g.PlaceId, g.UniverseId, g.Name.Length > 0 ? g.Name : $"Place {g.PlaceId}", 0)).ToList();
         var pinned = s.PinnedGames.Select(g => new GameSummary(g.PlaceId, g.UniverseId, g.Name, 0)).ToList();
-        // Every list's missing icons in one go; the rows below then find them all cached.
         await FetchIconsAsync([.. recent, .. pinned, .. favTask.Result, .. popTask.Result]);
         return new
         {

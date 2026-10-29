@@ -1,13 +1,10 @@
-// Send feedback: the body of the dialog (an idea or a bug report for Bloxkeep's developer). Its Cancel and Send stay in
-// the dialog's footer, which app.js draws: it reads what was written and shows a refusal through FeedbackApi. "See
-// exactly what will be sent" asks the app for the message as it would go, error log included (account names already
-// taken out by the app).
+// Send feedback's dialog body (an idea or a bug report). Cancel and Send are in app.js's footer, which uses FeedbackApi.
+// "See exactly what will be sent" shows the message as it would go, error log included (account names taken out by the app).
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Icon, useHost } from './host';
 
 export interface FeedbackValues { kind: 'bug' | 'idea'; text: string; contact: string; log: boolean }
 
-/** What the dialog's footer (app.js) does with the form. */
 export interface FeedbackApi {
   values(): FeedbackValues;
   /** A message under the form (null: none). */

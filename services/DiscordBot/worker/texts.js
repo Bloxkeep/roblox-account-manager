@@ -1,7 +1,6 @@
-// What the bot says, in English and Vietnamese (a server's own language, from Discord), in Bloxkeep's Discord style
-// (docs/discord-style.md): one embed, the news in the title, the colour for how it went, short fields three to a row,
-// times as Discord timestamps, the Roblox watch's own words for what a build means for Multi-Roblox. A Roblox update is
-// a card instead (Discord's newer message layout): a heading, a picture for what it means, and what changed in it.
+// What the bot says, in English and Vietnamese, in Bloxkeep's Discord style (docs/discord-style.md): one embed, the news in
+// the title, the colour for how it went, short fields three to a row, Discord timestamps, the watch's own words. A Roblox
+// update is a card instead (Discord's newer layout): a heading, a picture for what it means, and what changed in it.
 import { REPO, release } from './sources.js';
 
 export const LOGO = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png';
@@ -19,10 +18,8 @@ export const COLOR = { green: 0x57F287, yellow: 0xFEE75C, red: 0xED4245, blurple
 export const countChannelName = n => `🟢 Using Bloxkeep: ${n}`;
 export const COUNT_CHANNEL = /^🟢 Using Bloxkeep: /u;
 
-/**
- * The bot speaks English by default (Bloxkeep's own convention). The Vietnamese strings below are kept for a later
- * per-server language option; to turn it on, return 'vi' from the server's locale here instead of always 'en'.
- */
+// English by default (Bloxkeep's convention). The Vietnamese strings are kept for a later per-server language option:
+// return 'vi' from the server's locale here to turn it on.
 export const lang = () => 'en';
 
 const VERDICT = {
@@ -149,10 +146,7 @@ export function change(text, max = 110) {
 // Changes for creators rather than players: Studio and its windows, Luau and its type checks, the API.
 const FOR_CREATORS = /\b(Studio|Luau|Type Solver|type checking|plugins?|Assistant|API|Properties window|Explorer|Input Action|StyleEditor|Avatar Settings)\b/i;
 
-/**
- * The few changes shown of each kind: those a player notices first (not for creators, no API names, already on), in
- * Roblox's own order.
- */
+/** The few changes shown of each kind: those a player notices first (not for creators, no API names, already on). */
 function pick(changes, kind, n) {
   const forPlayers = c => (FOR_CREATORS.test(c.text) ? 0 : 4) + (c.text.includes('`') ? 0 : 2) + (c.live ? 1 : 0);
   return changes.map((c, i) => ({ ...c, i })).filter(c => c.kind === kind)
@@ -162,11 +156,8 @@ function pick(changes, kind, n) {
 const text = content => ({ type: 10, content });
 const link = (label, url) => ({ type: 2, style: 5, label, url });
 
-/**
- * A build before release (kind "coming") or as it went live ("live"), as a card: the news and what it means for
- * Multi-Roblox beside its picture, the build, then what's new from Roblox's notes (`notes`, from readNotes), or a line
- * saying they'll come (the bot edits them in once Roblox posts them).
- */
+// A build before release ("coming") or as it went live ("live"), as a card: what it means for Multi-Roblox, the build,
+// then Roblox's notes (`notes`, from readNotes) or a line saying they'll come (edited in once Roblox posts them).
 export function buildMessage(l, kind, build, { notes = null, liveAt = Date.now() } = {}) {
   const w = W[l], [word, color, sentence] = verdict(l, build.verdict), v = `0.${release(build.version)}`;
   const facts = [code(build.version), ...(build.hash ? [code(build.hash)] : []), kind === 'coming' ? w.onTest : `${w.wentLive} ${stamp(liveAt)}`];
@@ -206,7 +197,6 @@ function partFields(l, status) {
   return status.parts.slice(0, 6).map(p => ({ name: PART[l][p.name] ?? p.name, value: `**${state(l, p.code)}**`, inline: true }));
 }
 
-/** Roblox's status page now, as /robloxstatus shows it. */
 export function statusEmbed(l, status) {
   const w = W[l], ok = status.code <= 100;
   return embed(ok ? w.status : w.down, stateColor(status.code), ok ? w.allGood : [w.downSaid, status.incident && `**${w.incident}:** ${status.incident}`].filter(Boolean).join('\n'),
@@ -227,7 +217,6 @@ function duration(l, ms) {
   return l === 'vi' ? (h ? `${h} giờ ${m} phút` : `${m} phút`) : (h ? `${h} h ${m} min` : `${m} min`);
 }
 
-/** A new public Bloxkeep version, with its highlights in the server's language. */
 export function releaseMessage(l, rel) {
   const w = W[l], text = (l === 'vi' ? rel.vi : rel.en) || '';
   return {
@@ -275,10 +264,8 @@ export function boardEmbed(l, snap) {
   ], 'Status board');
 }
 
-/**
- * The lines the bot's custom status moves through (Discord shows one under its name): Roblox and Multi-Roblox now, the
- * build coming, Roblox's status, the newest Bloxkeep, the commands. Only what is known; at least the commands.
- */
+// The lines the bot's custom status moves through: Roblox and Multi-Roblox now, the build coming, Roblox's status, the
+// newest Bloxkeep, the commands. Only what is known; at least the commands.
 export function presenceLines(snap, online = 0) {
   const live = snap?.watch?.live, next = snap?.watch?.next, status = snap?.status;
   const short = v => `0.${release(v)}`;
@@ -325,7 +312,6 @@ export function captchaMessage(l) {
   };
 }
 
-/** The form the code is typed into. */
 export function codeForm(l, length) {
   const w = W[l];
   return {

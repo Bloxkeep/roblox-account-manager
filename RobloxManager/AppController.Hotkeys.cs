@@ -1,9 +1,7 @@
 namespace RobloxManager;
 
-/// <summary>
-/// Hotkeys from any app (ShellForm registers them with Windows): Ctrl+Alt+H hides every Roblox window, or shows them
-/// again when any is hidden; Ctrl+Alt+A arranges them on the main screen. Settings › Bloxkeep › This app turns them off.
-/// </summary>
+/// <summary>Hotkeys from any app (ShellForm registers them with Windows): Ctrl+Alt+H hides every Roblox window, or shows
+/// them again when any is hidden; Ctrl+Alt+A arranges them on the main screen. Settings › Bloxkeep › This app turns them off.</summary>
 public sealed partial class AppController
 {
     public const int HotkeyHide = 1, HotkeyArrange = 2;

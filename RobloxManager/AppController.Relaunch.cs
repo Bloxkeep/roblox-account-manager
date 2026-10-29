@@ -4,62 +4,46 @@ using System.Security.Cryptography;
 namespace RobloxManager;
 
 /// <summary>
-/// Updates installed in the background, without the "Restart to update" click (see <see cref="Relaunch"/>): once one
-/// is downloaded and nobody is using Bloxkeep, the app quits, Velopack installs the update and starts it again, and
-/// the new run carries on where this one stopped. The button stays for anyone who wants it at once.
+/// Updates installed in the background (see <see cref="Relaunch"/>): once one is downloaded and nobody is using
+/// Bloxkeep, the app quits, Velopack installs and restarts it, and the new run carries on where this one stopped.
 /// </summary>
 public sealed partial class AppController
 {
     /// <summary>Closes the app for real (the window's Quit), for the update's restart.</summary>
     public Action? QuitForUpdate { get; init; }
 
-    /// <summary>
-    /// The macOS themes' red, yellow and green buttons: "close" (as the title bar's ✕, so to the tray when that is
-    /// on), "minimize", "zoom" (maximise, or back from it).
-    /// </summary>
+    /// <summary>The macOS themes' buttons: "close" (as the title bar's ✕, so to the tray when that is on), "minimize", "zoom".</summary>
     public Action<string>? WindowControl { get; init; }
 
-    /// <summary>The window now: hidden (in the tray), minimized or shown, whether it is the one in front, and whether the mini window is up.</summary>
+    /// <summary>Window: "hidden" (in the tray), "minimized" or "shown".</summary>
     public Func<(string Window, bool Foreground, bool MiniShown)>? WindowNow { get; init; }
 
-    /// <summary>What Velopack starts the new version with, once the app quits for an update in the background.</summary>
     string[]? _relaunchArgs;
     bool _relaunching;
     /// <summary>Moved back with the clock (see TrackProcesses), like every other start time.</summary>
     DateTime _started = DateTime.UtcNow;
 
-    /// <summary>
-    /// An update in the background didn't take (the run that came back is still the old version): no new try by
-    /// itself for a day, so a failing install can't go round every few minutes. The button still works.
-    /// </summary>
+    /// <summary>After an update that didn't take: no new try by itself for a day, so a failing install can't loop every few
+    /// minutes. The button still works.</summary>
     DateTime _autoRelaunchPausedUntil;
 
-    /// <summary>This run was started again after an update (see <see cref="Resume"/>).</summary>
     Relaunch.State? _resumedFrom;
-    /// <summary>Said once a page (or Windows' notification) can show it: the update this run was meant to be didn't install.</summary>
     string? _updateFailedNotice;
 
-    /// <summary>Not this soon after a start (a restart can never loop), nor while someone used the PC this recently with a window of the app on screen.</summary>
+    /// <summary>Not this soon after a start (so a restart can never loop), nor while the PC was used this recently with the app on screen.</summary>
     static readonly TimeSpan RelaunchAfterStart = TimeSpan.FromMinutes(3);
     static readonly TimeSpan RelaunchIdle = TimeSpan.FromMinutes(10);
 
-    /// <summary>
-    /// The lock screen's answer to the update it was offered (see Lock.tsx): true, it gave the update its place (nothing
-    /// was typed in it), which installs as soon as it is downloaded; false, it kept the form (something was typed, or
-    /// its link was clicked); null, not answered. An unlock, or a download that failed, clears it.
-    /// </summary>
+    /// <summary>The lock screen's answer (see Lock.tsx): true, it gave the update its place (nothing typed); false, it kept the
+    /// form (something typed, or its link clicked); null, not answered. An unlock or a failed download clears it.</summary>
     bool? _updateAtLock;
 
-    /// <summary>
-    /// An update found before the vault is opened (at start-up, or locked by hand) installs there and then, before anyone
-    /// is in the app (the owner's choice, 2026-10-25, as other apps update when opened): the lock screen offers its place
-    /// while it downloads. Found after the unlock, it waits for a quiet moment instead of cutting in (until then one found
-    /// in the first 5 minutes installed at once, unlocked or not).
-    /// </summary>
+    /// <summary>An update found before the vault is opened installs there and then (the owner's choice, 2026-10-25, as other
+    /// apps update when opened); the lock screen offers its place while it downloads. Found after the unlock, it waits
+    /// for a quiet moment instead of cutting in.</summary>
     bool UpdateOffersAtLock => _vault is null && !_screenLocked && Prefs.CheckUpdates && _updater.Status is "downloading" or "ready"
         && DateTime.UtcNow >= _autoRelaunchPausedUntil && !_relaunching && !_applyingUpdate;
 
-    /// <summary>The lock screen's answer to <see cref="UpdateOffersAtLock"/>: its place for the update, or the form kept.</summary>
     object? SetUpdateAtLock(bool go)
     {
         _updateAtLock = UpdateOffersAtLock ? go : null;
@@ -67,10 +51,8 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// At the lock screen, the vault still closed, with the screen given to the update or the window out of sight (in
-    /// the tray at Windows' sign-in, or minimised): nobody is in the app, so a downloaded update goes at once.
-    /// </summary>
+    /// <summary>Vault closed, and the screen given to the update or the window out of sight: nobody is in the app, so a
+    /// downloaded update goes at once.</summary>
     bool UpdateGoesAtLock()
     {
         if (_vault is not null || _screenLocked)
@@ -88,12 +70,9 @@ public sealed partial class AppController
         _ = RelaunchAsync(atLock);
     }
 
-    /// <summary>
-    /// Nobody is using Bloxkeep and it is in the middle of nothing a restart would lose: no launch, rejoin or planned
-    /// restart under way, no sign-in, captcha, message box or half-filled form open, no backup, import or save
-    /// pending. Roblox windows that are simply running don't count: they keep running and are followed again after.
-    /// </summary>
-    /// <param name="atLock">At the lock screen (<see cref="UpdateGoesAtLock"/>): no wait after the start, and nobody's use of it holds the update back.</param>
+    /// <summary>Nobody is using Bloxkeep and nothing a restart would lose is under way. Running Roblox windows don't count:
+    /// they keep running and are followed again after.</summary>
+    /// <param name="atLock">See <see cref="UpdateGoesAtLock"/>: no wait after the start, and nobody's use holds the update back.</param>
     bool QuietForRelaunch(DateTime now, bool atLock = false)
     {
         if ((!atLock && now - _started < RelaunchAfterStart) || Settling || HomeSessionsActive)
@@ -112,27 +91,22 @@ public sealed partial class AppController
         return (window != "shown" && !mini) || AntiAfk.IdleTime() >= RelaunchIdle;
     }
 
-    /// <summary>
-    /// Roblox being opened or rejoined: a launch, a window still awaited (a late one too, whose account a restart
-    /// would forget), a rejoin under way or due within <see cref="RejoinSoon"/>. One waiting longer is kept with the
-    /// vault and picked up after the restart, so it holds no update back: on 2026-10-21 auto-rejoin's wait of the time
-    /// (minutes after failed tries; 10 seconds since), for an account a game had banned, kept "Restart to update"
-    /// refused while nothing was opening.
-    /// </summary>
+    /// <summary>A late window counts too: a restart would forget its account. A rejoin due later than <see cref="RejoinSoon"/>
+    /// is kept with the vault and picked up after the restart: on 2026-10-21 a banned account's long rejoin wait kept
+    /// "Restart to update" refused while nothing was opening.</summary>
     bool OpeningRoblox => _openingHome || _launchCts is not null || _pending.Count > 0 || _late.Count > 0 || _handedOver.Count > 0
         || _rejoinQueue.Any(r => r.Due - DateTime.UtcNow < RejoinSoon) || _rejoining || _closingForRejoin.Count > 0;
 
     static readonly TimeSpan RejoinSoon = TimeSpan.FromSeconds(30);
 
-    /// <param name="atLock">At the lock screen: the "Updating" window shows (when Bloxkeep's is on screen), as for the button.</param>
+    /// <param name="atLock">The "Updating" window shows (when Bloxkeep's is on screen), as for the button.</param>
     async Task RelaunchAsync(bool atLock = false)
     {
         _relaunching = true;
         try
         {
             await SaveViewAsync();
-            // Something may have started meanwhile (or updates were turned off, or the vault was opened): the next
-            // quiet moment then.
+            // Something may have started meanwhile: the next quiet moment then.
             if (_disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || atLock != UpdateGoesAtLock()
                 || !QuietForRelaunch(DateTime.UtcNow, atLock) || !SaveBeforeClosing())
                 return;
@@ -151,16 +125,13 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// "Restart to update": the same restart as an update in the background, at once, with Bloxkeep's own "Updating"
-    /// window over the seconds it takes (Velopack's own is a plain Windows dialog). Roblox windows stay open.
-    /// </summary>
+    /// <summary>"Restart to update": the background restart at once, with Bloxkeep's own "Updating" window (Velopack's is a
+    /// plain Windows dialog). Roblox windows stay open.</summary>
     async Task<object?> ApplyUpdateAsync()
     {
-        // A second click while the first one is on its way out does nothing.
         if (_applyingUpdate || _relaunching)
             return null;
-        // The button can be older than the state (the page pushed before a failed re-check): say why nothing happens.
+        // The button can be older than the state (pushed before a failed re-check): say why nothing happens.
         if (_updater.Status != "ready")
             throw new UserError(_updater.Status is "checking" or "downloading"
                 ? L.T("The update is still downloading. Try again in a moment.")
@@ -206,11 +177,8 @@ public sealed partial class AppController
         await Task.Delay(700);
     }
 
-    /// <summary>
-    /// Writes the hand-over for the next run and quits; once this process is gone Velopack installs the update
-    /// silently and starts the new version with it (see Dispose: ApplyOnExit). When the window refuses to close
-    /// (changes it couldn't save), nothing of it stays: the key mustn't wait on disk.
-    /// </summary>
+    /// <summary>Writes the hand-over and quits; Velopack then installs and starts the new version with it (see Dispose:
+    /// ApplyOnExit). If the window refuses to close, the hand-over is removed: the key mustn't wait on disk.</summary>
     void QuitIntoUpdate(bool showWindow)
     {
         var (window, foreground, _) = WindowNow?.Invoke() ?? ("hidden", false, false);
@@ -244,13 +212,9 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// The watch over the restart, by the installer's window program (shipped beside the app, run from a copy in
-    /// %TEMP% since the program folder is about to be replaced). For "Restart to update" it shows "Updating Bloxkeep
-    /// to x"; in the background it shows nothing. When this process doesn't quit (the close was refused) it goes
-    /// away; when Bloxkeep isn't up again after a minute or so (the install failed, the new version crashed) it
-    /// removes the hand-over, since the key mustn't wait on disk, and starts Bloxkeep itself.
-    /// </summary>
+    /// <summary>The watch over the restart: the installer's program, run from a %TEMP% copy since the program folder is about
+    /// to be replaced. It shows "Updating Bloxkeep to x" (unless quiet); if this process doesn't quit it goes away; if
+    /// Bloxkeep isn't up again after a minute or so it removes the hand-over (the key) and starts Bloxkeep itself.</summary>
     void WatchUpdate(string? version, bool showWindow)
     {
         try
@@ -278,16 +242,13 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// The run that follows an update: unlocked with the key the previous run handed over, its page's view kept for
-    /// the page. When there is no key (it came too late, or Bloxkeep was started by the watch over the update) or
-    /// it doesn't open the vault (the password changed meanwhile), the lock screen asks as usual.
-    /// </summary>
+    /// <summary>Unlocks with the handed-over key and keeps the page's view. No key (too late, or started by the watch) or one
+    /// that doesn't open the vault: the lock screen asks as usual.</summary>
     public void Resume(Relaunch.State state)
     {
         _resumedFrom = state;
         _vaultPick = false; // the vault that was open comes back, not the picker
-        // Still the version it was meant to leave: the install didn't take. No new try by itself for a while.
+        // Still the version it was meant to leave: the install didn't take.
         if (!string.IsNullOrEmpty(state.To) && state.To != _updater.CurrentVersion)
         {
             _autoRelaunchPausedUntil = DateTime.UtcNow.AddDays(1);
@@ -308,7 +269,7 @@ public sealed partial class AppController
                     var vault = Vault.OpenWithKey(Convert.FromBase64String(key), Convert.FromBase64String(salt), state.Iterations);
                     _weakPassword = state.WeakPassword;
                     OnUnlocked(vault);
-                    // Behind the lock screen it was: so it stays, though the key came along for what runs in the background.
+                    // Behind the lock screen it stays, though the key came along for what runs in the background.
                     _screenLocked = state.ScreenLocked;
                 }
                 catch (IOException ex) when (attempt < 3)
@@ -316,7 +277,6 @@ public sealed partial class AppController
                     Log.Write(ex);
                     Thread.Sleep(400);
                 }
-                // Anything else (the password changed meanwhile, a damaged file): the lock screen asks as usual.
                 catch (Exception ex)
                 {
                     Log.Write(ex);
@@ -332,10 +292,8 @@ public sealed partial class AppController
         Log.Note($"{(state.From is { } from ? $"Updated from {from}" : "Started again after an update")}; {(_screenLocked ? "behind the lock screen again" : _vault is not null ? "unlocked again" : "locked")}, window {state.Window}.");
     }
 
-    /// <summary>
-    /// Whether Velopack's last try to install said Bloxkeep's folder was in use (its log, the newest "Applying package"
-    /// onwards): a program Bloxkeep started before 1.0.6 was still running "in" that folder.
-    /// </summary>
+    /// <summary>Velopack's log since the newest "Applying package" says the folder was in use: a program Bloxkeep started
+    /// before 1.0.6 was still running "in" it.</summary>
     static bool UpdateFolderWasBusy()
     {
         try
@@ -353,7 +311,6 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>The failed update, said once the page is up (a toast) or, in the tray, as a Windows notification.</summary>
     void SayUpdateFailed()
     {
         if (_updateFailedNotice is not { } notice || (!PageAttached && !_background))
@@ -362,10 +319,7 @@ public sealed partial class AppController
         Notify(notice, "warn", "updateFailed");
     }
 
-    /// <summary>
-    /// What to tell someone whose Bloxkeep came back locked after an update (a scheduled preset can't run until it is
-    /// unlocked); null when it came back unlocked, or after a normal start.
-    /// </summary>
+    /// <summary>Bloxkeep came back locked after an update (a scheduled preset can't run until unlocked); else null.</summary>
     public string? LockedAfterUpdate()
     {
         if (_resumedFrom is not { } state || _vault is not null)

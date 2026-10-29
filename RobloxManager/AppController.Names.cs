@@ -2,13 +2,10 @@ using System.Text.RegularExpressions;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Settings › Appearance › Hide account names, for screenshots and streams: wherever Bloxkeep writes an account's name
-/// (the page, toasts and notifications, progress text, the mini window, the monitor tab, Roblox's window titles) it
-/// writes "Account 1", "Account 2"… instead: the account's place in the list. The page gets the real names still and
-/// swaps them itself, so its search box finds real names; copying a username or password copies the real one.
-/// Discord has a switch of its own (Settings › Discord), since a channel may be shared while the screen isn't.
-/// </summary>
+/// <summary>Settings › Appearance › Hide account names, for screenshots and streams: wherever Bloxkeep writes an account's name
+/// (page, toasts, notifications, progress, mini window, monitor tab, Roblox window titles) it writes "Account N" (its place in
+/// the list). The page gets the real names and swaps them itself, so search finds them; copying copies the real one. Discord has
+/// its own switch (Settings › Discord), since a channel may be shared while the screen isn't.</summary>
 public sealed partial class AppController
 {
     /// <summary>Set while a Discord copy of a message is made: its switch and language instead of the app's.</summary>
@@ -22,11 +19,8 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// An account's name for a message (toast, notification, progress, error): its label, or "Account 3" while names
-    /// are hidden. Pass it to L.F as it is: it is written out when the text is made, so the Discord copy of the same
-    /// message (<see cref="DiscordText"/>) follows Discord's switch.
-    /// </summary>
+    /// <summary>An account's name for a message: its label, or "Account 3" while hidden. Pass it to L.F as is: it's written out when
+    /// the text is made, so the Discord copy (<see cref="DiscordText"/>) follows Discord's switch.</summary>
     Shown Name(Account account) => new(name => name(account), NameText);
 
     /// <summary>Several accounts' names, comma-separated, written out like <see cref="Name"/>.</summary>
@@ -36,11 +30,8 @@ public sealed partial class AppController
         return new(name => string.Join(", ", list.Select(name)), NameText);
     }
 
-    /// <summary>
-    /// Text that is written out only when the message holding it is (see <see cref="Name"/>), from the accounts it
-    /// names: with their names as they read right now, or (<see cref="Write"/>) another way — the activity log keeps a
-    /// placeholder per account, so its sentences never hold a name (see AppController.Activity.cs).
-    /// </summary>
+    /// <summary>Text written out only when its message is (see <see cref="Name"/>): names as they read now, or another way via
+    /// <see cref="Write"/> (the activity log keeps a placeholder per account, so its sentences never hold a name).</summary>
     sealed class Shown(Func<Func<Account, string>, string> write, Func<Account, string> name)
     {
         public string Write(Func<Account, string> other) => write(other);
@@ -66,10 +57,8 @@ public sealed partial class AppController
     string DiscordName(Account account) =>
         _vault?.Data.Discord.HideNames == true ? MaskedName(account, DiscordLanguage) : account.Label;
 
-    /// <summary>
-    /// An event's text as Discord gets it: made again from the same sentence and values, in Discord's language and
-    /// with names as Discord's switch wants them. Call it before any other L.F (it needs the one that made the text).
-    /// </summary>
+    /// <summary>An event's text for Discord: remade from the same sentence and values in Discord's language and name switch.
+    /// Call it before any other L.F (it needs the one that made the text).</summary>
     string DiscordText(string text)
     {
         bool hide = _vault?.Data.Discord.HideNames == true;
@@ -88,10 +77,8 @@ public sealed partial class AppController
         return hide ? HideNamesIn(text) : text;
     }
 
-    /// <summary>
-    /// A last guard for Discord's switch: a name that reached a message already written out (a launch error kept as
-    /// text) is swapped for "Account N" too. Whole words only, names of three characters or more, in one pass.
-    /// </summary>
+    /// <summary>A last guard for Discord's switch: names in already-written text (a launch error kept as text) become "Account N".
+    /// Whole words only, names of 3+ characters, one pass.</summary>
     string HideNamesIn(string text)
     {
         if (_vault is not { } vault)

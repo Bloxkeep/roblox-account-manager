@@ -5,11 +5,8 @@ using Velopack.Sources;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Keeps an installed (or portable) Bloxkeep up to date from GitHub Releases: checks quietly, downloads the new
-/// version in the background, then offers "Restart to update". A downloaded update is also applied when the app
-/// closes. Copies run from a build folder never update themselves.
-/// </summary>
+/// <summary>Updates an installed or portable Bloxkeep from GitHub Releases: downloads in the background, offers "Restart to
+/// update", and applies on close otherwise. Copies run from a build folder never update.</summary>
 public sealed class AppUpdater
 {
     /// <summary>Where releases come from, set at build time: -p:UpdateRepo=https://github.com/owner/name.</summary>
@@ -64,7 +61,6 @@ public sealed class AppUpdater
         : _offline.Value ? L.T("Couldn't reach the update server. Check your internet connection.")
         : L.T("The update couldn't be checked or downloaded. Bloxkeep tries again later.");
 
-    /// <summary>The last check failed for want of a connection (true) or otherwise (false); null when it didn't fail.</summary>
     bool? _offline;
 
     bool _notFoundLogged;
@@ -130,10 +126,8 @@ public sealed class AppUpdater
     /// <summary>When the last check got its answer (or failed); null before the first.</summary>
     public DateTime? CheckedAt { get; private set; }
 
-    /// <summary>
-    /// Has the downloaded version installed once this process has exited; started again with <paramref name="restartArgs"/>
-    /// when given (an update in the background, see <see cref="Relaunch"/>), else left for the next start.
-    /// </summary>
+    /// <summary>Installs the download once this process exits; restarts with <paramref name="restartArgs"/> when given
+    /// (see <see cref="Relaunch"/>), else it waits for the next start.</summary>
     public void ApplyOnExit(string[]? restartArgs = null)
     {
         if (_manager is null || _ready is null)
@@ -165,10 +159,8 @@ public sealed class AppUpdater
         checkedAt = CheckedAt?.ToString("o"),
     };
 
-    /// <summary>
-    /// GitHub releases, beta versions (pre-releases) among them only while Settings › Get beta versions is on, as it is
-    /// at each check. Turned off on a beta, that beta stays until a regular version newer than it comes out.
-    /// </summary>
+    /// <summary>GitHub releases, pre-releases only while Get beta versions is on at that check. Turned off on a beta, that
+    /// beta stays until a newer regular version comes out.</summary>
     sealed class ReleaseSource(string repo) : IUpdateSource
     {
         readonly GithubSource _regular = new(repo, accessToken: null, prerelease: false);

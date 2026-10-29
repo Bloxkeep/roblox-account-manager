@@ -23,10 +23,8 @@ public sealed class TotpKey
 /// <summary>Why a pasted key was refused; the app words it for the person.</summary>
 public enum TotpProblem { None, NotAKey, BadCharacter, TooShort, CutOff, NotTimeBased, NoSecret, Unsupported }
 
-/// <summary>
-/// Time-based one-time codes (RFC 6238), what an authenticator app shows: an HMAC of the number of 30-second steps
-/// since 1970, cut down to 6 digits. Only arithmetic: nothing here touches the network, the disk or the log.
-/// </summary>
+/// <summary>Time-based one-time codes (RFC 6238), as an authenticator app shows. Only arithmetic: nothing here touches the
+/// network, the disk or the log.</summary>
 public static class Totp
 {
     const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -34,12 +32,8 @@ public static class Totp
     const int MinSecretChars = 16;
     const int MaxSecretChars = 256;
 
-    /// <summary>
-    /// Reads a key the way people paste it: the base32 secret (any case, grouped with spaces or dashes as sites show
-    /// it) or an otpauth://totp/… link (a QR code's text). A typo base32 can't hold is refused rather than kept, since
-    /// it would only ever make wrong codes. A wrong letter that is still base32 can't be told apart: the edit form
-    /// shows the code it makes, to compare with the authenticator app.
-    /// </summary>
+    /// <summary>Reads a key as people paste it: base32 (any case, spaces or dashes) or an otpauth://totp/… link. A typo
+    /// base32 can't hold is refused; one that is still base32 can't be told, so the edit form shows the code it makes.</summary>
     /// <param name="detail">The character refused (<see cref="TotpProblem.BadCharacter"/>) or the setting (<see cref="TotpProblem.Unsupported"/>).</param>
     public static TotpKey? Parse(string? input, out TotpProblem problem, out string detail)
     {
@@ -149,10 +143,8 @@ public static class Totp
     /// <summary>Seconds until the code at <paramref name="at"/> changes (1 to the period).</summary>
     public static int SecondsLeft(TotpKey key, DateTimeOffset at) => PeriodOf(key) - (int)(at.ToUnixTimeSeconds() % PeriodOf(key));
 
-    /// <summary>
-    /// The key's period and length as Parse allows them (10-300 s, 6-8 digits): a vault edited by hand or written by
-    /// another tool may hold anything, and a period of 0 would end in a division by zero.
-    /// </summary>
+    /// <summary>The period and length as Parse allows (10-300 s, 6-8 digits): a vault edited by hand may hold anything, and
+    /// a period of 0 would divide by zero.</summary>
     static int PeriodOf(TotpKey key) => key.Period is >= 10 and <= 300 ? key.Period : 30;
 
     static int DigitsOf(TotpKey key) => key.Digits is >= 6 and <= 8 ? key.Digits : 6;

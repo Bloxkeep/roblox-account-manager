@@ -3,11 +3,9 @@ using System.Runtime.InteropServices;
 namespace RobloxManager;
 
 /// <summary>
-/// A small always-on-top window with the accounts running now — name, game, RAM and process id, with Show and
-/// Close for each — for keeping an eye on things while playing or working in another program. Plain WinForms drawn
-/// in the app's theme rather than a second browser (the point is that it costs next to nothing), so it keeps
-/// working while the main window is hidden in the tray and its browser released. Esc hides it; its place and
-/// height are remembered in <see cref="Prefs"/>.
+/// A small always-on-top window listing the running accounts (name, game, RAM, process id, Show and Close). Plain
+/// WinForms in the app's theme rather than a second browser, so it costs next to nothing and keeps working while the
+/// main window is in the tray with its browser released. Esc hides it; place and height are kept in <see cref="Prefs"/>.
 /// </summary>
 sealed class MiniForm : Form
 {
@@ -28,7 +26,6 @@ sealed class MiniForm : Form
     Themes.Theme _theme = Themes.Current;
     bool _activate = true, _failed;
 
-    /// <summary>Raised after the person hid the window (Esc, its close button).</summary>
     public event Action? Dismissed;
 
     public MiniForm(AppController app, Action openApp)
@@ -48,8 +45,7 @@ sealed class MiniForm : Form
         KeyPreview = true;
         StartPosition = FormStartPosition.Manual;
         ClientSize = new Size(Px(LogicalWidth), Px(360));
-        // Only the height can be changed: the rows are laid out for this width. (A maximum height of 0 would not
-        // mean "any" to Windows' resize limits, so a height taller than any screen stands in.)
+        // Only the height can change. (A maximum height of 0 isn't "any" to Windows' resize limits: a huge one stands in.)
         MinimumSize = new Size(Width, Px(MinHeight));
         MaximumSize = new Size(Width, Px(MaxHeight));
         Bounds = DefaultPlace();
@@ -76,7 +72,6 @@ sealed class MiniForm : Form
     (Font Name, Font Meta) MakeFonts() =>
         (new Font("Segoe UI Semibold", 9.5f * DeviceDpi / 72f, GraphicsUnit.Pixel), new Font("Segoe UI", 8.5f * DeviceDpi / 72f, GraphicsUnit.Pixel));
 
-    /// <summary>Shows the window (or brings it up again); the page's state follows through the owner.</summary>
     /// <param name="activate">false when reopened at start, so the lock screen keeps the keyboard.</param>
     public void Open(bool activate)
     {
@@ -150,9 +145,8 @@ sealed class MiniForm : Form
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
-        // The saved place only now, with the window real: moved to a screen with another scale it then gets a
-        // real dpi change (set before the handle existed, it would keep the main screen's scale there). The height
-        // is saved in logical pixels, so it is the same height on whichever screen.
+        // The saved place only now, with the window real, so a screen with another scale gives a real dpi change (set
+        // before the handle, it would keep the main screen's scale). The height is saved in logical pixels.
         if (SavedPlace(out var saved))
         {
             Location = saved.Location;
@@ -189,7 +183,6 @@ sealed class MiniForm : Form
 
     // ───────────────────────────── place ─────────────────────────────
 
-    /// <summary>A corner of the main screen, for a first open or when the saved place is on no screen any more.</summary>
     Rectangle DefaultPlace()
     {
         var area = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).WorkingArea;
@@ -240,7 +233,6 @@ sealed class MiniForm : Form
         DwmSetWindowAttribute(Handle, DWMWA_BORDER_COLOR, ref border, sizeof(int));
     }
 
-    /// <summary>A new theme from Settings, or Windows switching between light and dark.</summary>
     public void ApplyTheme()
     {
         _theme = Themes.Current;
@@ -287,11 +279,8 @@ sealed class MiniForm : Form
         }
     }
 
-    /// <summary>
-    /// Every two seconds while visible: the rows are matched to the clients open now, texts taken fresh (the
-    /// language can change). A row stays with its account (not its place in the list): when one above it goes
-    /// its row moves up rather than taking over the next account's texts under a hand about to click Close.
-    /// </summary>
+    /// <summary>Every two seconds while visible. A row stays with its account, not its place: when one above goes it
+    /// moves up, rather than taking the next account's texts under a hand about to click Close.</summary>
     void RefreshRows()
     {
         if (!Visible || IsDisposed)
@@ -326,7 +315,6 @@ sealed class MiniForm : Form
         Relayout();
     }
 
-    /// <summary>Three lines of text, or the two buttons, whichever is taller.</summary>
     int RowHeight()
     {
         int lines = TextRenderer.MeasureText("Ag", _nameFont).Height + TextRenderer.MeasureText("Ag", Font).Height
@@ -454,7 +442,7 @@ sealed class MiniForm : Form
             Invalidate();
         }
 
-        /// <summary>Placed by the owner's layout; a row that moved under the pointer ignores clicks for a moment.</summary>
+        /// <summary>A row that moved under the pointer ignores clicks for a moment.</summary>
         public void PlaceAt(int y, int width, int height)
         {
             if (Top != y)
@@ -495,7 +483,7 @@ sealed class MiniForm : Form
         }
     }
 
-    /// <summary>A plain button in the theme's colours: a flat surface with a thin line, no gradient.</summary>
+    /// <summary>A flat button in the theme's colours.</summary>
     sealed class FlatButton : Button
     {
         Themes.Theme? _theme;

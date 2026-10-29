@@ -3,8 +3,7 @@ using System.Drawing;
 namespace RobloxManager;
 
 /// <summary>
-/// The account's picture as its Roblox window's icon (<see cref="WindowIcons"/>), with the account's name in the title
-/// (Settings › Show account names on windows). The pictures are the avatars the page shows, fetched once.
+/// The account's avatar as its Roblox window's icon (<see cref="WindowIcons"/>), fetched once, and its name in the title.
 /// </summary>
 public sealed partial class AppController
 {
@@ -82,9 +81,8 @@ public sealed partial class AppController
     }
 
     /// <summary>
-    /// Settings › Taskbar buttons (<see cref="TaskbarGroups"/>): each account's window under a button of its own, or
-    /// each preset's windows in a group of their own (windows opened without a preset stay in Roblox's); Roblox's one
-    /// button for all of them puts every window's own id back.
+    /// Settings › Taskbar buttons (<see cref="TaskbarGroups"/>): a button per account, or a group per preset (windows
+    /// without one stay in Roblox's); "roblox" puts every window's own id back.
     /// </summary>
     void ApplyTaskbarGroups(IReadOnlySet<int> alive, Dictionary<int, List<IntPtr>> windows)
     {
@@ -108,10 +106,7 @@ public sealed partial class AppController
             TaskbarGroups.Remove(pid, windows.GetValueOrDefault(pid) ?? []);
     }
 
-    /// <summary>
-    /// Bloxkeep closing: the windows get Roblox's own icon back first. The icons are Bloxkeep's, and they go with it: a
-    /// window still pointing at one would show none.
-    /// </summary>
+    /// <summary>Bloxkeep closing: the icons are Bloxkeep's and go with it, so a window left pointing at one would show none.</summary>
     void GiveIconsBack()
     {
         foreach (int pid in WindowIcons.Pids)

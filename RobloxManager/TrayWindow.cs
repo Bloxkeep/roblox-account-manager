@@ -6,12 +6,10 @@ using Microsoft.Web.WebView2.WinForms;
 namespace RobloxManager;
 
 /// <summary>
-/// The tray icon's quick panel (a left click) and menu (a right click): the page tray.html (ui/src/Tray.tsx) in a small
-/// window of its own, without a frame, above the taskbar by the pointer, in the app's own look (until 2026-10-26 both
-/// were drawn by hand in WinForms, which the owner found ugly). Its browser is the main window's (the same profile),
-/// started when the tray is first opened and let go a minute after it was last closed, so the panel costs nothing while
-/// nobody looks at it; the first open after that takes about a second. While open, the page gets the state again every
-/// two seconds. It goes away when something else is clicked, with Esc, or once a command is picked.
+/// The tray icon's quick panel (left click) and menu (right click): tray.html (ui/src/Tray.tsx) in a small frameless
+/// window above the taskbar by the pointer (until 2026-10-26 hand-drawn WinForms, which the owner found ugly). It uses
+/// the main window's browser profile, started on first open and let go a minute after the last close (reopening then
+/// takes about a second). While open, the state is pushed every two seconds.
 /// </summary>
 public sealed class TrayWindow : Form
 {
@@ -238,7 +236,6 @@ public sealed class TrayWindow : Form
 
     static Guid IdOf(JsonElement o) => o.TryGetProperty("id", out var v) && v.ValueKind == JsonValueKind.String && Guid.TryParse(v.GetString(), out var id) ? id : Guid.Empty;
 
-    /// <summary>What was clicked on the page.</summary>
     public void Act(JsonElement a)
     {
         string what = a.TryGetProperty("what", out var w) && w.ValueKind == JsonValueKind.String ? w.GetString()! : "";
@@ -328,10 +325,8 @@ public sealed class TrayWindow : Form
         }
     }
 
-    /// <summary>
-    /// The page's size: the window takes it, by the tray icon; shown now if it was on its way, once the page has drawn
-    /// this opening (<paramref name="opened"/>), not what it showed before.
-    /// </summary>
+    /// <summary>The page's size; the window shows once the page has drawn this opening (<paramref name="opened"/>), not
+    /// what it showed before.</summary>
     void OnSize(int width, int height, int opened)
     {
         if (width <= 0 || height <= 0 || (_showing && opened != _opened))
@@ -352,10 +347,8 @@ public sealed class TrayWindow : Form
         _showing = false;
     }
 
-    /// <summary>
-    /// Above the taskbar by the pointer (beside it, when the taskbar is at a side or the top), inside the screen, at the
-    /// scale of that screen; a change in height keeps the edge by the taskbar where it is.
-    /// </summary>
+    /// <summary>By the pointer next to the taskbar, inside the screen at its scale; a height change keeps the taskbar edge
+    /// in place.</summary>
     void Place()
     {
         var screen = Screen.FromPoint(_anchor);

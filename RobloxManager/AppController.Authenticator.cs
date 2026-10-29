@@ -1,11 +1,8 @@
 namespace RobloxManager;
 
-/// <summary>
-/// Authenticator (2-step) codes per account (<see cref="Totp"/>). The key sits in the vault, encrypted with the rest,
-/// like the saved password. It never goes to the page or the log: the page only gets the code of the moment, for the
-/// edit form, the card menu's "Copy 2FA code" and the password sign-in's code box. Anyone with the vault's master
-/// password can make codes; the edit form says so.
-/// </summary>
+/// <summary>Authenticator (2-step) codes per account (<see cref="Totp"/>). The key sits in the vault, encrypted like the password,
+/// and never goes to the page or the log: the page gets only the current code (edit form, "Copy 2FA code", the sign-in's code box).
+/// Anyone with the master password can make codes; the edit form says so.</summary>
 public sealed partial class AppController
 {
     /// <summary>A key typed in the edit form, as kept; a typo is refused with what's wrong rather than kept to make wrong codes.</summary>
@@ -34,19 +31,14 @@ public sealed partial class AppController
     object AuthenticatorCode(Guid id) =>
         CodeDto(RequireAccount(id).Authenticator ?? throw new UserError(L.T("This account has no authenticator key.")));
 
-    /// <summary>
-    /// A key being typed in the edit form: whether it reads, and the code it makes now, to compare with the
-    /// authenticator app before saving. Nothing is kept.
-    /// </summary>
+    /// <summary>A key being typed: whether it reads and its current code, to compare with the app before saving. Nothing is kept.</summary>
     static object CheckAuthenticator(string input) =>
         Totp.Parse(input, out var problem, out string detail) is { } key
             ? CodeDto(key)
             : new { ok = false, error = AuthenticatorProblem(problem, detail) };
 
-    /// <summary>
-    /// The account a password sign-in's 2-step code is for, when its authenticator key is saved here: the same user id
-    /// (Roblox names it in the challenge), else the same username, on the same Roblox.
-    /// </summary>
+    /// <summary>The account a sign-in's 2-step code is for, when its key is saved here: same user id (named in the challenge), else
+    /// same username, on the same Roblox.</summary>
     Account? AuthenticatorAccount(RobloxApi.TwoStepPrompt prompt)
     {
         if (_vault is not { } vault || !prompt.Methods.Contains("authenticator"))
@@ -57,10 +49,8 @@ public sealed partial class AppController
             ?? withKey.FirstOrDefault(a => prompt.Username.Length > 0 && string.Equals(a.Username, prompt.Username, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>
-    /// The code for the sign-in's 2-step box, filled in for the person, who still presses Verify: Bloxkeep never sends a
-    /// code by itself, nor tries another one after Roblox refused it.
-    /// </summary>
+    /// <summary>The code for the sign-in's 2-step box, filled in for the person, who still presses Verify: Bloxkeep never sends a
+    /// code by itself, nor tries another after Roblox refused one.</summary>
     object LoginTwoStepCode()
     {
         RequireVault();

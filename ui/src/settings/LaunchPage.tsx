@@ -1,5 +1,4 @@
-// Settings › Launching: Multi-Roblox (with whether it is ready), names on windows, how a window opens and how windows
-// are arranged; then what opens Roblox (with a note while the Store edition is involved) and the wait between accounts.
+// Settings › Launching: Multi-Roblox, names on windows, how windows open and are arranged, what opens Roblox, the wait.
 import { useEffect, useRef } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { SIZES, SnapPicker } from '../Snap';
@@ -19,15 +18,13 @@ export function LaunchPage({ title }: { title: string }) {
   // One of three: as Roblox sizes it, maximised, or tiled (the app keeps the other one off).
   const [openAs, setOpenAs] = useLocal(m.tile ? 'tile' : st.maximizeOnOpen ? 'maximize' : 'roblox');
   const [layout, setLayout] = useLocal(st.windowLayout || 'fill');
-  // A size of one's own: the boxes' text as typed (an emptied box stays empty), saved once a box is left (or Enter), held
-  // to what the app takes.
+  // A size of one's own: the boxes' text as typed (an emptied box stays empty), saved once left (or Enter), held to what the app takes.
   const [winW, setWinW] = useLocal<string>(String(st.windowWidth || 640));
   const [winH, setWinH] = useLocal<string>(String(st.windowHeight || 480));
   const saveSize = (w = winW, h = winH) => call('setSettings', { windowWidth: Math.round(+w) || 640, windowHeight: Math.round(+h) || 480 });
   const sized = Object.values(SIZES).flat().find(([w, h]) => w === +winW && h === +winH);
 
-  // [value, words, usable]: other Bloxstrap-style launchers only appear when found on this PC (or still chosen after
-  // being removed).
+  // [value, words, usable]: other Bloxstrap-style launchers only appear when found here (or still chosen after removal).
   const others: string[] = ins.others || [];
   const savedOther = (st.launchVia || '').startsWith('other:') ? st.launchVia.slice(6) : null;
   const options: [string, string, boolean][] = [
@@ -39,9 +36,8 @@ export function LaunchPage({ title }: { title: string }) {
     ['direct', t('launch.direct'), !!ins.direct],
     ...(ins.store || st.launchVia === 'store' ? [['store', t('launch.storeName'), !!ins.store] as [string, string, boolean]] : []),
     ...(st.customLauncher ? [['custom', t('launch.custom', { name: st.customLauncher }), true] as [string, string, boolean]] : []),
-    // Roblox VNG's client, always last (the owner's rule, 2026-10-28: never put first, only used when picked); listed
-    // like Bloxstrap and Fishstrap, dimmed while it isn't on this PC (hidden then, it looked as if Bloxkeep took the
-    // official Roblox for VNG).
+    // Roblox VNG, always last (the owner's rule, 2026-10-28: never first, only used when picked); dimmed while not on this PC
+    // (hidden, it looked as if Bloxkeep took the official Roblox for VNG).
     ['vng', 'Roblox VNG', !!ins.vng],
   ];
   const saved = st.launchVia || 'auto';

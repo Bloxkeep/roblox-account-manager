@@ -14,13 +14,11 @@ public sealed partial class AppController
     static readonly TimeSpan IdleScanInterval = TimeSpan.FromSeconds(15);
     DateTime _lastScan;
     bool _lastScanFoundNone;
-    /// <summary>The clients the last process check found, and when.</summary>
     (List<RobloxProcesses.PlayerProcess> Players, DateTime At)? _lastPlayers;
 
     /// <summary>
-    /// Whether this tick reads the process list: always, unless the window is in the tray, the last read found no
-    /// Roblox client, nothing is opening, closing or waiting to rejoin, and the last read is under 15 s old. A Roblox
-    /// started by hand meanwhile is noticed at the next read; one Bloxkeep starts makes every tick read it again.
+    /// Always, unless in the tray with no client found, nothing opening, closing or waiting to rejoin, and the last
+    /// read under 15 s old. A Roblox started by hand meanwhile is noticed at the next read.
     /// </summary>
     bool ScanDue(DateTime now) =>
         !(_background && _lastScanFoundNone && _running.Count == 0 && _pending.Count == 0 && _late.Count == 0 && _rejoinQueue.Count == 0
@@ -53,7 +51,7 @@ public sealed partial class AppController
         {
             TrackProcesses();
         }
-        // A timer callback must never take the app down; log (once for a failure that repeats) and try again on the next tick.
+        // A timer callback must never take the app down.
         catch (Exception ex)
         {
             LogTickError(ex);
@@ -65,15 +63,10 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// Matches launches to the processes they start, keeps window titles in sync, publishes RAM use, runs
-    /// auto-rejoin and the resource guard, re-arms multi-instance, and schedules presence refreshes.
-    /// </summary>
     void TrackProcesses()
     {
         var now = DateTime.UtcNow;
-        // The clock was set back: everything timed by it would wait that much longer, so periodic work is due again
-        // now, and deadlines and start times are moved back by the same amount.
+        // The clock was set back: periodic work is due now, and deadlines and start times move back by as much.
         if (now < _lastTick)
         {
             var back = _lastTick - now;
@@ -100,8 +93,7 @@ public sealed partial class AppController
         }
         NoteCheckGap(now, _lastTick);
         _lastTick = now;
-        // Windows' process list is the costly part of a tick (a few ms, whatever runs): in the tray with no Roblox
-        // running and nothing on its way, it is read every 15 s rather than every 5.
+        // The process list is the costly part of a tick (a few ms, whatever runs).
         bool scan = ScanDue(now);
         long part = Stopwatch.GetTimestamp();
         var players = scan ? RobloxProcesses.GetPlayers() : [];
@@ -110,18 +102,15 @@ public sealed partial class AppController
         if (scan)
             _lastScan = now;
         var pids = players.Select(p => p.Pid).ToHashSet();
-        // One pass over the desktop's windows serves every window check of this tick.
         part = Stopwatch.GetTimestamp();
         var windows = RobloxProcesses.VisibleWindows(pids);
         Took("window list", part);
         bool HasWindow(int pid) => windows.TryGetValue(pid, out var list) && list.Count > 0;
-        // The same snapshot answers every parent → children question (it has each client's parent).
         Dictionary<int, List<int>>? tree = null;
         List<int> ChildrenOf(int parent) => (tree ??= RobloxProcesses.PlayerChildren(scanned)).GetValueOrDefault(parent) ?? [];
         int ParentOf(int child) => (tree ??= RobloxProcesses.PlayerChildren(scanned)).FirstOrDefault(kv => kv.Value.Contains(child)).Key;
-        // Roblox's copy in the notification area (RobloxProcesses.IsTrayCopy): not a client. It has no window to wait
-        // for or to claim, isn't a start that closed another window, and doesn't count; once a window of ours has
-        // closed, or after Close all, it is ended, since it would take over the next launch and open nothing.
+        // Roblox's copy in the notification area (RobloxProcesses.IsTrayCopy) is not a client. Once a window of ours
+        // closed, or after Close all, it is ended: it would take over the next launch and open nothing.
         part = Stopwatch.GetTimestamp();
         var trays = players.Where(p => !HasWindow(p.Pid) && RobloxProcesses.IsTrayCopy(p.Pid, p.Created)).Select(p => p.Pid).ToHashSet();
         if (now < _sweepBackgroundUntil || _traySweep.Values.Any(until => now <= until))
@@ -136,7 +125,7 @@ public sealed partial class AppController
         players.RemoveAll(p => trays.Contains(p.Pid));
         ReleaseHomeSessionIfIdle(scan, scanned, trays, now);
         NoteClientStarts(pids, now, ParentOf);
-        // The browser tracker id each client's command line names: which launch it is (see ClaimWindows).
+        // The browser tracker id on a client's command line says which launch it is (see ClaimWindows).
         var createdOf = new Dictionary<int, long>();
         foreach (var p in scanned)
             createdOf[p.Pid] = p.Created;
@@ -149,31 +138,26 @@ public sealed partial class AppController
                 continue;
             _running.Remove(id);
             PersistSoon(); // the open clients on disk (see Persist)
-            // Read now, with the log's last lines (a leave by choice logged right before the client quit), before the
-            // log watcher drops the pid below.
+            // Read before the log watcher drops the pid below, with the log's last lines (a leave logged right before quitting).
             var log = EndedState(info.Pid);
-            // Its log said Windows refused it memory: its drop is said as that (QueueRejoin).
             if (_logs.OutOfMemoryAt(info.Pid) is not null)
                 _ranOutOfMemory.Add(id);
-            // Roblox closed it because another client opened: not a hand-over, and no auto-rejoin. Only a window that closed
-            // in order can be that: its log says it shut down, or it left its notification-area copy behind.
+            // Closed by Roblox because another client opened: no hand-over, no auto-rejoin. Only a window that closed in
+            // order can be that: its log says it shut down, or it left its notification-area copy behind.
             bool inOrder = _logs.ClosedInOrderAt(info.Pid) is not null || ChildrenOf(info.Pid).Any(trays.Contains);
             bool closedByRoblox = CheckClosedByRoblox(id, info.Pid, info.Launch.StartedAt, now, inOrder, ChildrenOf);
-            // Its log not followed (not found in time), but it left its notification-area copy behind: Roblox starts
-            // that when its window is closed (the person's X, or Bloxkeep's own close), never on a drop or a crash.
-            // A window the person closed is a leave by choice, not a drop to rejoin.
+            // No log, but a notification-area copy left behind: Roblox starts that only when its window is closed (X or
+            // Bloxkeep's close), never on a drop or crash. So a leave by choice, not a drop to rejoin.
             if (log is null && !closedByRoblox && !_closingForRejoin.Contains(info.Pid) && ChildrenOf(info.Pid).Any(trays.Contains))
                 log = new RobloxLogWatcher.ClientState("left", info.Launch.Target?.PlaceId, info.Launch.Target?.JobId, null, now);
             _endedHere[id] = (log?.JobId ?? info.Launch.Target?.JobId, log?.PlaceId ?? info.Launch.Target?.PlaceId, now);
-            // Its window was hidden: the one auto-rejoin opens for it is hidden too, once in its game (RejoinFromLogs).
+            // Hidden: the window auto-rejoin opens for it is hidden too, once in its game (RejoinFromLogs).
             if (RobloxProcesses.ForgetHidden(info.Pid))
                 _hideWhenIn.Add(id);
             EndPlay(id, log, now);
             RefreshPresenceSoon(TimeSpan.FromSeconds(8));
-            // The first process may only bootstrap and hand over to a child: wait for that only when a new,
-            // unclaimed client is actually running. A window the person closed ends the session right away.
-            // A client that got as far as joining a game (its log says so) was the real one, not a bootstrap: a
-            // windowless child of it is the copy Roblox starts in the notification area, not a hand-over.
+            // The first process may only bootstrap and hand over to a child: wait for that only when a new, unclaimed
+            // client runs. One whose log shows a join was the real one: its windowless child is the tray copy.
             var claimedNow = _running.Values.Select(r => r.Pid).ToHashSet();
             List<int> trayCopies = log is null ? [] : ChildrenOf(info.Pid).Where(p => !HasWindow(p)).ToList();
             if (log is not null)
@@ -195,8 +179,8 @@ public sealed partial class AppController
 
         foreach (var expired in _pending.Where(p => now - p.StartedAt > PendingTimeout).ToList())
         {
-            // No window yet (Roblox updating itself on a slow link, its launcher stuck): one that comes later is still
-            // this launch's client, rather than nobody's, or the next account's (see _late).
+            // No window yet (Roblox updating on a slow link, its launcher stuck): one that comes later is still this
+            // launch's, not the next account's (see _late).
             bool waitLonger = !_closeWhenClaimed.Contains(expired) && !_handedOver.ContainsKey(expired);
             DropPending(expired, late: waitLonger);
             if (waitLonger)
@@ -210,8 +194,7 @@ public sealed partial class AppController
         foreach (var gone in _pendingSeenAlive.Keys.Where(l => !_pending.Contains(l)).ToList())
             _pendingSeenAlive.Remove(gone);
 
-        // The copy Roblox starts in the notification area when a client closes (by its X button, a crash): ended
-        // while it has no window — never one a launch could be waiting for, or one that isn't in this tick's list.
+        // The tray copy left by a closed client: ended while windowless, never one a launch could be waiting for.
         foreach (var (parent, until) in _traySweep.ToList())
         {
             if (now > until)
@@ -249,11 +232,10 @@ public sealed partial class AppController
             if (final)
                 _robloxSettingsPending = false;
         }
-        // Every Roblox window's log: the ones Bloxkeep opened for their status, all of them for anti-AFK.
+        // Every client's log: the ones Bloxkeep opened for their status, all of them for anti-AFK.
         part = Stopwatch.GetTimestamp();
         changed |= _logs.Poll(pids.ToList()) && _running.Count > 0;
         Took("Roblox logs", part);
-        // A client moved to a place not looked up yet: name it now rather than at the next status check.
         var unnamed = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0)
             .Where(id => id > 0 && !HasGame(id, false) && !(_gameFetchedAt.TryGetValue(id, out var asked) && now - asked < GameRetry))
             .Distinct().ToList();
@@ -300,7 +282,6 @@ public sealed partial class AppController
         if (changed)
             PushStateIfChanged();
 
-        // Poll fast only while something is happening; an idle app should cost next to nothing.
         bool active = pids.Count > 0 || _pending.Count > 0 || _rejoinQueue.Count > 0 || now < _sweepBackgroundUntil;
         int interval = _background ? 5000 : active ? 1500 : 4000;
         if (_procTimer.Interval != interval)
@@ -312,8 +293,7 @@ public sealed partial class AppController
             _ = RefreshLatestRobloxAsync();
             _ = RefreshRobloxWatchAsync();
         }
-        // The periodic jobs from here on don't depend on each other: one that fails (logged) doesn't stop the rest,
-        // least of all the vault's save and auto-rejoin.
+        // Independent jobs: one that fails doesn't stop the rest, least of all the save and auto-rejoin.
         Step(() => TickRobloxUpdates(now, pids.Count(pid => _logs.StateOf(pid)?.Status == "ingame")));
 
         if (Prefs.CheckUpdates && _updater.Supported && now >= _nextUpdateCheck)
@@ -329,7 +309,7 @@ public sealed partial class AppController
         Step(() => TickDiscordPresence(now)); // Settings › Discord › Show on my Discord profile, locked or not
         Step(() => TickOnline(now)); // Settings › Bloxkeep › Add me to the online count, locked or not
         Step(TickRemote); // Settings › Discord › Control from Discord, locked or not (locked, it says only that)
-        // Also while locked: windows go on running, and one that ends soon after the commit limit ran out ran out of memory.
+        // Also while locked: a window that ends soon after the commit limit ran out ran out of memory.
         MemoryStatus memory = default;
         Step(() =>
         {
@@ -357,10 +337,7 @@ public sealed partial class AppController
             _ = RefreshPresenceAsync();
     }
 
-    /// <summary>
-    /// One job of the process check, on its own: a failure is logged (see <see cref="LogTickError"/>) and the next job
-    /// runs. Timed as a part of the check (<see cref="NoteTickTime"/>), named by its code.
-    /// </summary>
+    /// <summary>A failure is logged (<see cref="LogTickError"/>) and the next job runs; timed and named by its code.</summary>
     void Step(Action job, [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(job))] string what = "")
     {
         long start = Stopwatch.GetTimestamp();
@@ -378,25 +355,21 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>The parts of the process check under way and how long each took; null between checks.</summary>
+    /// <summary>Null between checks.</summary>
     List<(string What, TimeSpan Took)>? _tickParts;
 
-    /// <summary>A part of the process check under way took from <paramref name="since"/> (a Stopwatch timestamp) until now.</summary>
+    /// <param name="since">A Stopwatch timestamp.</param>
     void Took(string what, long since) => _tickParts?.Add((what, Stopwatch.GetElapsedTime(since)));
 
     /// <summary>
-    /// A process check that took this long goes to the log, with its slowest parts. It runs on the window's thread, so
-    /// Bloxkeep's window answers nothing meanwhile (a click, the page's commands). When all is well a check takes a few
-    /// ms: its costliest part, the process list, takes a few.
+    /// The check runs on the window's thread, so Bloxkeep answers nothing meanwhile. When all is well it takes a few ms.
     /// </summary>
     static readonly TimeSpan SlowTick = TimeSpan.FromMilliseconds(100);
-    /// <summary>When the hour of the slow checks written began, the slowest written in it, and how many came unwritten since the last.</summary>
     (DateTime Since, TimeSpan Slowest, int More)? _slowTick;
 
     /// <summary>
-    /// A slow process check is written once an hour, as <see cref="LogTickError"/> does, and sooner when it took twice
-    /// as long as the slowest written in that hour, so the worst one is in the log with its parts. The parts are named
-    /// by the code (no account data).
+    /// Written once an hour, and sooner when twice as slow as the slowest written that hour, so the worst one is in the
+    /// log with its parts (named by the code: no account data).
     /// </summary>
     void NoteTickTime(TimeSpan took, List<(string What, TimeSpan Took)> parts)
     {
@@ -422,14 +395,12 @@ public sealed partial class AppController
         _slowTick = (since, took, 0);
     }
 
-    /// <summary>The last failure of the process check and how often it came again since it was written.</summary>
     (string Key, DateTime Logged, int Repeats)? _tickError;
-    /// <summary>A failure that keeps coming back is written again at most this often (with how many times it came).</summary>
     static readonly TimeSpan TickErrorRepeat = TimeSpan.FromHours(1);
 
     /// <summary>
-    /// A failure in the process check goes to the log once, not on every tick (every 1.5 s, which would also delete
-    /// and rewrite error.log every few minutes): the same failure again is counted, and written once an hour.
+    /// Once, not every tick (every 1.5 s would rewrite error.log every few minutes): a repeat is counted and written
+    /// once an hour.
     /// </summary>
     void LogTickError(Exception ex)
     {
@@ -472,31 +443,28 @@ public sealed partial class AppController
     }
 
     /// <summary>
-    /// Opening <paramref name="toOpen"/> more Roblox windows, each holding about <paramref name="perClientCommitMb"/> of the
-    /// commit limit, would leave less than the margin of what is left of it and the room the page files may still grow:
-    /// Play's "virtual memory is almost full" warning.
+    /// Opening <paramref name="toOpen"/> more windows would leave less than the margin of the commit room: Play's
+    /// "virtual memory is almost full" warning.
     /// </summary>
     internal static bool VirtualMemoryShort(MemoryStatus memory, int toOpen, long perClientCommitMb) =>
         toOpen > 0 && memory.CommitLimitMb > 0 && memory.CommitRoomMb - toOpen * perClientCommitMb < CommitMarginMb;
 
-    /// <summary>What a Roblox client holds of Windows' commit limit: the average of those running, else <see cref="DefaultClientCommitMb"/>.</summary>
+    /// <summary>The average of those running, else <see cref="DefaultClientCommitMb"/>.</summary>
     static long ClientCommitMb(IReadOnlyCollection<RobloxProcesses.PlayerProcess> players) =>
         players.Count(p => p.Private > 0) is > 0 and var known
             ? Math.Max(DefaultClientCommitMb / 2, players.Where(p => p.Private > 0).Sum(p => p.Private) / known / MB) : DefaultClientCommitMb;
 
     /// <summary>
-    /// Windows is short of memory: another Roblox wouldn't fit in what is left of the commit limit (RAM and paging file
-    /// together, with the room the paging files may still grow), or RAM is nearly all used. The main window then closes its browser sooner in the background.
+    /// Another Roblox wouldn't fit in the commit room, or RAM is nearly all used. The main window then closes its
+    /// browser sooner in the background.
     /// </summary>
     public static bool MemoryTight(MemoryStatus memory) =>
         (memory.CommitLimitMb > 0 && memory.CommitRoomMb < DefaultClientCommitMb + CommitMarginMb)
         || memory.LoadPercent >= MemoryWarningLoad;
 
     /// <summary>
-    /// Warns when the PC runs low on RAM. With "save RAM on background windows", Roblox windows you aren't playing get a
-    /// low memory priority (Windows takes RAM from them first, only when it runs short — nothing changes while there is
-    /// plenty), and when the PC is really short of RAM they are asked to give some back, at most every two minutes.
-    /// A window gets its normal priority back as soon as it is in front, or when the option is turned off.
+    /// Warns when the PC runs low on RAM. With "save RAM on background windows", windows you aren't playing get a low
+    /// memory priority: Windows takes RAM from them first, only when it runs short.
     /// </summary>
     void GuardResources(List<RobloxProcesses.PlayerProcess> players, MemoryStatus memory, DateTime now)
     {
@@ -507,8 +475,7 @@ public sealed partial class AppController
             _lastMemoryWarning = now;
             Notify(L.F("Your PC is using {0}% of its RAM. Close some Roblox windows if things get slow.", memory.LoadPercent), "warn", "ram");
         }
-        // RAM may be fine while Windows' commit limit (RAM and paging file together) is nearly used up, with no room left
-        // for the paging file to grow: a Roblox window that needs more then crashes.
+        // RAM may be fine while the commit limit is nearly used up: a Roblox window that needs more then crashes.
         else if (s.MemoryWarnings && players.Count > 0 && memory.CommitLimitMb > 0 && memory.CommitRoomMb < CommitMarginMb
             && now - _lastMemoryWarning > MemoryWarningInterval)
         {
@@ -547,9 +514,8 @@ public sealed partial class AppController
                 _lowMemoryPriority.Remove(p.Pid);
         }
 
-        // No more emptying their RAM outright every 2 minutes once the PC used 85 % of it: a game in the background needed
-        // it all back at once, and with 5 windows open some of them stuttered, a window grabbed to drag most of all
-        // (the owner's video, 2026-10-21). The low priority lets Windows take RAM from them first, when it runs short.
+        // No emptying their RAM outright: a background game needed it all back at once, and with 5 windows some
+        // stuttered, a window grabbed to drag most of all (the owner's video, 2026-10-21).
         if (refused && !_trimRefusedShown)
         {
             _trimRefusedShown = true;

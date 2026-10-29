@@ -6,35 +6,25 @@ using Microsoft.Web.WebView2.Core;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Installs Microsoft Edge WebView2 Runtime when it is missing, using Microsoft's official bootstrapper.
-/// The download only runs after Windows confirms a valid signature from Microsoft Corporation.
-/// </summary>
+/// <summary>Installs the WebView2 Runtime when missing with Microsoft's bootstrapper, run only after Windows confirms a valid
+/// signature from Microsoft Corporation.</summary>
 static class WebView2Setup
 {
     const string BootstrapperUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
     const string SafeRenderingArgs = "--disable-gpu --disable-gpu-compositing";
 
-    /// <summary>
-    /// Switches for every browser the app opens (the window, sign-in, captcha): drawn on the CPU when the graphics
-    /// driver proved broken (<see cref="Prefs.SafeRendering"/>), otherwise null for the usual GPU drawing.
-    /// </summary>
+    /// <summary>Switches for every browser the app opens: CPU drawing when the graphics driver proved broken
+    /// (<see cref="Prefs.SafeRendering"/>), else null.</summary>
     public static CoreWebView2EnvironmentOptions? EnvironmentOptions() =>
         Prefs.SafeRendering ? new CoreWebView2EnvironmentOptions(SafeRenderingArgs) : null;
 
-    /// <summary>
-    /// The main window's browser shows only Bloxkeep's own page (and the pictures in it), so the browser's own
-    /// background work (fetching its settings and component updates on its own) is left out there. The sign-in,
-    /// captcha and roblox.com windows keep a full browser (<see cref="EnvironmentOptions"/>).
-    /// </summary>
+    /// <summary>The main window shows only Bloxkeep's page, so the browser's own background fetching and component updates
+    /// are left out there; the sign-in, captcha and roblox.com windows keep a full browser.</summary>
     const string MainWindowArgs = "--disable-background-networking --disable-component-update";
 
-    /// <summary>
-    /// With the graphics card on, the page is still painted by the processor and only put together on the card.
-    /// Painting on the card made the browser's GPU process hold about 100 MB more for this small page, which scrolls
-    /// and animates just as smoothly either way (measured 2026-10-18, RTX 4070 laptop, 80 accounts: the whole browser
-    /// 360 → 265 MB when opened, 398 → 265 MB after scrolling and every tab, 254 → 225 MB minimised).
-    /// </summary>
+    /// <summary>Even on the GPU, the page is painted by the CPU and only composited on the card: GPU painting held about
+    /// 100 MB more for no smoother result (2026-10-18, RTX 4070 laptop, 80 accounts: 360 → 265 MB opened, 398 → 265 MB
+    /// after scrolling every tab, 254 → 225 MB minimised).</summary>
     const string GpuArgs = "--disable-gpu-rasterization";
 
     public static CoreWebView2EnvironmentOptions MainWindowOptions() =>

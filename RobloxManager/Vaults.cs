@@ -3,10 +3,9 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>
-/// Several vaults on one PC, picked like Steam's accounts ("Who's using Bloxkeep?" on the lock screen): each its own
-/// file and master password, with its own accounts, presets and settings, and its backups apart (Backup names them by
-/// the vault's own id). The list and the one last used are in prefs.json (<see cref="Prefs.VaultList"/>); the file the
-/// lock screen opens is <see cref="Vault.ActiveFile"/>. Roblox windows opened from one keep running while another is in use.
+/// Several vaults on one PC, picked like Steam's accounts: each its own file, master password and backups (named by vault
+/// id). The list is in prefs.json (<see cref="Prefs.VaultList"/>); the lock screen opens <see cref="Vault.ActiveFile"/>.
+/// Roblox windows opened from one keep running while another is in use.
 /// </summary>
 public static class Vaults
 {
@@ -23,10 +22,8 @@ public static class Vaults
     /// <summary>A name as typed, trimmed and at most 40 characters; null when there is nothing left.</summary>
     public static string? CleanName(string? name) => name?.Trim() is { Length: > 0 } n ? n.Length > 40 ? n[..40].TrimEnd() : n : null;
 
-    /// <summary>
-    /// After prefs.json is read: a vault from before there could be several (vault.rmv) joins the list with the backup
-    /// state kept for it then; vaults whose file is gone leave it; the lock screen offers the last one used.
-    /// </summary>
+    /// <summary>After prefs.json is read: a pre-multi-vault vault.rmv joins the list with its backup state; vaults whose
+    /// file is gone leave it.</summary>
     public static void Load()
     {
         Vault.ActiveFile = FirstFile;

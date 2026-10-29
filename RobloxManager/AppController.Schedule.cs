@@ -3,16 +3,11 @@ using System.Text.Json;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Scheduled presets and the launch order of accounts.
-///
-/// A preset can run by itself at a time on chosen weekdays (or once, on a date) and close the accounts it opened after
-/// some hours or at a time. The process timer checks once per minute of local wall-clock time: a DST change or a
-/// clock set by hand only ever skips a minute or shows one twice, and a preset runs at most once per scheduled minute
-/// and never twice within a day of the PC's own uptime clock. Minutes that passed while Bloxkeep wasn't running are
-/// not caught up. The run asks nobody anything: a launch that would need a confirmation (Multi-Roblox off, low RAM)
-/// is skipped and said so.
-/// </summary>
+/// <summary>Scheduled presets and the launch order of accounts. A preset can run at a time on chosen weekdays (or once, on a
+/// date) and close what it opened after some hours or at a time. Checked once per local wall-clock minute: a DST change or a
+/// hand-set clock only skips or repeats a minute; a preset runs at most once per scheduled minute and never twice within a day
+/// of uptime. Minutes missed while Bloxkeep wasn't running aren't caught up. Nobody is asked anything: a launch needing a
+/// confirmation (Multi-Roblox off, low RAM) is skipped and said.</summary>
 public sealed partial class AppController
 {
     static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -35,7 +30,6 @@ public sealed partial class AppController
     readonly List<ScheduledRun> _scheduledRuns = new();
     /// <summary>Presets whose run stopped while the vault was locked, so the vault still lists it (see <see cref="ResumeSchedules"/>).</summary>
     readonly HashSet<Guid> _stoppedWhileLocked = new();
-    /// <summary>Uptime at which each preset last started by schedule.</summary>
     readonly Dictionary<Guid, long> _scheduledStartTick = new();
     string _lastScheduleMinute = "";
     /// <summary>The local time of the last new-minute check; default after an unlock (the lock's own report covers that gap).</summary>
@@ -48,9 +42,7 @@ public sealed partial class AppController
     DateTime _lockedSince = DateTime.Now;
     /// <summary>Accounts a scheduled stop is closing right now: a start in the same minute waits for them to go.</summary>
     readonly HashSet<Guid> _stopClosing = new();
-    /// <summary>How long a scheduled start waits for a manual launch to finish before giving up.</summary>
     static readonly TimeSpan ScheduleLaunchWait = TimeSpan.FromMinutes(5);
-    /// <summary>How long a scheduled start waits for the clients its own stop (the same minute) is closing.</summary>
     static readonly TimeSpan ScheduleStopWait = TimeSpan.FromSeconds(20);
 
     static string MinuteKey(DateTime local) => local.ToString("yyyy-MM-dd HH:mm", Inv);
@@ -141,11 +133,8 @@ public sealed partial class AppController
         s.Time == local.ToString("HH\\:mm", Inv)
         && (s.Date.Length > 0 ? s.Date == local.ToString("yyyy-MM-dd", Inv) : s.Days.Contains((int)local.DayOfWeek));
 
-    /// <summary>
-    /// A preset's schedule was saved or switched: the minute it is now is looked at again, so one set for this very
-    /// minute still runs (LastRun keeps one that ran from running twice); and a planned stop goes with a schedule
-    /// switched off or set to never stop, since nothing on screen shows it any more.
-    /// </summary>
+    /// <summary>A schedule was saved or switched: the current minute is looked at again so one set for it still runs (LastRun
+    /// prevents twice); a planned stop goes with a schedule switched off or set to never stop, since nothing shows it any more.</summary>
     void ScheduleChanged(LaunchPreset preset)
     {
         _lastScheduleMinute = "";
@@ -182,8 +171,7 @@ public sealed partial class AppController
         // The timer didn't tick for a while (the PC slept, or hung): a run due in between is said to be missed, once.
         if (lastCheck != default && local - lastCheck > TimeSpan.FromSeconds(90))
             ReportScheduleGap(vault, lastCheck, local);
-        // A one-off whose time went by unseen (the PC was off, Bloxkeep closed): over, as if it had run, rather than
-        // left switched on with no next run.
+        // A one-off whose time went by unseen (PC off, Bloxkeep closed): over, as if it had run, not left on with no next run.
         bool over = false;
         foreach (var preset in vault.Data.Settings.Presets)
         {
@@ -244,16 +232,14 @@ public sealed partial class AppController
         // A manual launch under way would refuse this one ("already launching"): it is waited for, within reason.
         for (var until = DateTime.UtcNow + ScheduleLaunchWait; _launchCts is not null && DateTime.UtcNow < until && _vault == vault;)
             await Task.Delay(1000);
-        // A stop of this preset that fired this same minute (stop time = start time) is still closing its clients:
-        // they leave the open list within seconds; waited for, so the start opens them again instead of skipping them.
+        // This preset's stop firing this same minute is still closing its clients: wait, so the start reopens rather than skips them.
         for (var until = DateTime.UtcNow + ScheduleStopWait; preset.AccountIds.Any(id => _stopClosing.Contains(id) && _running.ContainsKey(id)) && DateTime.UtcNow < until && _vault == vault;)
             await Task.Delay(500);
         _stopClosing.ExceptWith(preset.AccountIds);
         if (_vault != vault)
             return;
-        // The newest run owns this preset's stop: a pending one (every day at 20:00, stop after 24 hours — the old
-        // stop falls after the new start) is taken over, its accounts still open counted as this run's, so the old
-        // stop can't close everything minutes after the new start with nothing reopening.
+        // The newest run owns this preset's stop: a pending one (daily 20:00, stop after 24 h) is taken over with its still-open
+        // accounts, so the old stop can't close everything minutes after the new start.
         var taken = _scheduledRuns.Where(r => r.PresetId == preset.Id).ToList();
         _scheduledRuns.RemoveAll(r => r.PresetId == preset.Id);
         var before = OpenOrOpening();
@@ -291,16 +277,12 @@ public sealed partial class AppController
         }
         finally
         {
-            // However the launch ended (an error half way, Stop pressed, a lock, something unexpected), what it opened
-            // gets its stop. Nothing new opened by a start that didn't happen: the old stop still applies.
+            // However the launch ended, what it opened gets its stop; a start that didn't happen leaves the old stop in place.
             ArmScheduledStop(preset, vault, startedAt, before, taken, started);
         }
     }
 
-    /// <summary>
-    /// The stop of a scheduled run that just started. Only what this run opened is closed at its stop (plus what the
-    /// run it took over had opened and is still open); accounts that were already open otherwise stay.
-    /// </summary>
+    /// <summary>The stop of a run that just started: closes only what this run (and the run it took over) opened and is still open.</summary>
     void ArmScheduledStop(LaunchPreset preset, Vault? vault, DateTime startedAt, HashSet<Guid> before, List<ScheduledRun> taken, bool started)
     {
         bool Open(Guid id) => _running.ContainsKey(id) || _pending.Any(p => p.AccountId == id);
@@ -311,8 +293,7 @@ public sealed partial class AppController
             return;
         }
         var opened = fresh.Concat(taken.SelectMany(r => r.Opened).Where(Open)).Distinct().ToList();
-        // Locked meanwhile, the run is kept in memory and written to the vault at the next unlock; another vault
-        // unlocked meanwhile has other accounts.
+        // Locked meanwhile: kept in memory, written at the next unlock; another vault unlocked meanwhile has other accounts.
         if (preset.Schedule is not { } s || s.Stop == "never" || opened.Count == 0 || _vault is not null && _vault != vault)
             return;
         var run = new ScheduledRun { PresetId = preset.Id, Name = preset.Name, Opened = opened };
@@ -350,11 +331,8 @@ public sealed partial class AppController
         PushState();
     }
 
-    /// <summary>
-    /// The account's client is gone for good (closed by the person, a drop auto-rejoin won't undo, never showed up):
-    /// no scheduled stop owns it any more, so a client the person opens for it by hand later isn't closed by one.
-    /// Through an auto-rejoin the stop keeps it.
-    /// </summary>
+    /// <summary>The account's client is gone for good (closed by the person, a drop not rejoined, never showed): no scheduled stop
+    /// owns it, so a client opened by hand later isn't closed by one. Through an auto-rejoin the stop keeps it.</summary>
     void ForgetScheduledOpen(Guid accountId)
     {
         bool changed = false;
@@ -364,10 +342,8 @@ public sealed partial class AppController
             PersistSoon();
     }
 
-    /// <summary>
-    /// Writes the runs whose stop is still to come into the vault, so an exit, update or crash before the stop doesn't
-    /// leave their clients open for good: the next unlock arms them again (see <see cref="ResumeSchedules"/>).
-    /// </summary>
+    /// <summary>Writes runs with a stop still to come into the vault, so an exit, update or crash doesn't leave their clients open
+    /// for good: the next unlock arms them again (see <see cref="ResumeSchedules"/>).</summary>
     /// <returns>true when the list changed, i.e. the vault needs saving.</returns>
     bool NoteScheduledRuns()
     {
@@ -393,12 +369,9 @@ public sealed partial class AppController
         return true;
     }
 
-    /// <summary>
-    /// After unlocking: the runs the last run of the app wrote (its clients were picked up again by
-    /// <see cref="AdoptOpenSessions"/>) are armed again, also when their preset was deleted since (its clients are still
-    /// open); what the app ended in memory meanwhile (a stop fired while locked) wins. The current minute may run
-    /// again (a lock hid it), and runs missed since the app started or the vault locked are reported once.
-    /// </summary>
+    /// <summary>After unlocking: the runs the last app run wrote are armed again (their clients were adopted by <see cref="AdoptOpenSessions"/>),
+    /// even if their preset was deleted; a stop that fired while locked wins. The current minute may run again, and runs missed since
+    /// the app started or the vault locked are reported once.</summary>
     void ResumeSchedules(Vault vault)
     {
         long tick = Environment.TickCount64;
@@ -422,17 +395,13 @@ public sealed partial class AppController
         _stoppedWhileLocked.Clear();
         if (NoteScheduledRuns())
             PersistSoon();
-        // The minute that passed on the lock screen counted as seen: without this the run due right now is skipped
-        // (LastRun keeps one that did run from running twice).
+        // The minute spent on the lock screen counted as seen: without this the run due now is skipped (LastRun prevents twice).
         _lastScheduleMinute = "";
         _lastScheduleCheck = default;
         ReportMissedSchedules(vault);
     }
 
-    /// <summary>
-    /// Runs due in the minutes strictly between two checks (the current minute still runs as usual), each preset's
-    /// latest one said once.
-    /// </summary>
+    /// <summary>Runs due strictly between two checks (the current minute runs as usual), each preset's latest said once.</summary>
     void ReportScheduleGap(Vault vault, DateTime from, DateTime to)
     {
         var fromMinute = new DateTime(from.Year, from.Month, from.Day, from.Hour, from.Minute, 0, from.Kind);

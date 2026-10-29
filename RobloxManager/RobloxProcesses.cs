@@ -5,10 +5,7 @@ using System.Text;
 
 namespace RobloxManager;
 
-/// <summary>
-/// Finds Roblox clients and their windows. Uses process enumeration and window messages; a process handle is
-/// opened only to terminate a client that ignores WM_CLOSE, and for the opt-in memory trimming.
-/// </summary>
+/// <summary>Finds Roblox clients and their windows, closes them, hides and arranges their windows.</summary>
 public static class RobloxProcesses
 {
     const string PlayerProcessName = "RobloxPlayerBeta";
@@ -71,15 +68,13 @@ public static class RobloxProcesses
     [DllImport("user32.dll")]
     static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
-    /// <param name="Parent">The process that started it (which may have exited since); 0 when not known.</param>
-    /// <param name="Created">When it started (a FILETIME, UTC): a process id Windows gave to a newer process has another one. 0 when not known.</param>
-    /// <param name="Private">The memory it holds for itself (its private bytes, its share of Windows' commit limit); 0 when not known.</param>
+    /// <param name="Parent">May have exited since; 0 when not known.</param>
+    /// <param name="Created">A FILETIME, UTC: a pid Windows gave to a newer process has another one. 0 when not known.</param>
+    /// <param name="Private">Private bytes, its share of the commit limit; 0 when not known.</param>
     public readonly record struct PlayerProcess(int Pid, long WorkingSet, int Parent = 0, long Created = 0, long Private = 0);
 
     /// <summary>
-    /// Running clients with their RAM use, parent and start time. All come from one system-wide process snapshot (the
-    /// one Task Manager takes), so no handle to the Roblox process is opened, and one snapshot answers every question
-    /// of a process check.
+    /// From one system-wide snapshot: no handle to Roblox is opened, and one snapshot answers a whole process check.
     /// </summary>
     public static List<PlayerProcess> GetPlayers()
     {
@@ -96,10 +91,10 @@ public static class RobloxProcesses
         return players;
     }
 
-    /// <summary>When each client of the last snapshot started: a pid acted on later must still be that client (see <see cref="Close"/>).</summary>
+    /// <summary>A pid acted on later must still be that client (see <see cref="Close"/>).</summary>
     static readonly Dictionary<int, long> _created = new();
 
-    /// <summary>The snapshot through .NET, without parents or start times: where <see cref="Snapshot"/> can't read one.</summary>
+    /// <summary>Without parents or start times: where <see cref="Snapshot"/> can't read one.</summary>
     static List<PlayerProcess> SnapshotByName()
     {
         Process[] processes;
@@ -127,13 +122,12 @@ public static class RobloxProcesses
 
     const int SystemProcessInformation = 5;
     const int StatusInfoLengthMismatch = unchecked((int)0xC0000004);
-    /// <summary>The buffer the last snapshot needed (a few hundred KB), so the next one usually takes one call.</summary>
+    /// <summary>So the next snapshot usually takes one call.</summary>
     static int _snapshotSize = 512 * 1024;
 
     /// <summary>
-    /// The clients from Windows' process list (NtQuerySystemInformation, which Process.GetProcessesByName also reads),
-    /// with each one's parent and start time, without a string or object per process on the PC. Read with the 64-bit
-    /// layout of SYSTEM_PROCESS_INFORMATION (the same Process uses); null in a 32-bit process or when Windows refuses.
+    /// NtQuerySystemInformation, as Process.GetProcessesByName reads it, but with parents and start times and without
+    /// an object per process. 64-bit SYSTEM_PROCESS_INFORMATION layout; null in a 32-bit process or when refused.
     /// </summary>
     static List<PlayerProcess>? Snapshot()
     {
@@ -218,9 +212,8 @@ public static class RobloxProcesses
     public static int[] GetPlayerPids() => GetPlayers().Select(p => p.Pid).ToArray();
 
     /// <summary>
-    /// Visible top-level windows of several processes, found in a single pass over the desktop's windows. A window
-    /// Bloxkeep hid (<see cref="HideWindows"/>) counts as visible: its game runs on, and every check that a client has
-    /// its window (not Roblox's copy in the notification area, closed gracefully, matched to its launch) still holds.
+    /// One pass over the desktop's windows. A window Bloxkeep hid (<see cref="HideWindows"/>) counts as visible, so
+    /// every check that a client has its window (not a tray copy, matched to its launch) still holds.
     /// </summary>
     public static Dictionary<int, List<IntPtr>> VisibleWindows(IEnumerable<int> pids)
     {
@@ -238,38 +231,30 @@ public static class RobloxProcesses
     }
 
     // ───────── windows hidden while their game runs ─────────
-    // Settings' "Hide" (the account menu, the Windows button, a hotkey): the window and its taskbar button go, the game
-    // goes on. Bloxkeep shows them again when it closes, and at its next start if it didn't get to (a crash, a power cut):
-    // the windows it hid are written down (pid and window) in the data folder.
+    // Shown again when Bloxkeep closes, or at its next start after a crash: the windows it hid are written down (pid
+    // and window) in the data folder.
 
     const int SW_HIDE = 0, SW_SHOWNA = 8;
     [DllImport("user32.dll")] static extern bool IsWindow(IntPtr hWnd);
-    /// <summary>The windows Bloxkeep hid, each with its client: a handle Windows gives another window once this one is
-    /// gone is never shown or counted for it, and a client that ended hidden is still known to have been.</summary>
+    /// <summary>Each with its client: a handle reused by another window is never shown or counted for it.</summary>
     static readonly Dictionary<IntPtr, int> _hidden = new();
     static string HiddenFile => Path.Combine(Vault.DataDir, "hidden-windows.txt");
 
-    /// <summary>This window, of the client Bloxkeep hid it in, is still there.</summary>
     static bool StillOf(IntPtr hWnd, int pid) => IsWindow(hWnd) && GetWindowThreadProcessId(hWnd, out uint owner) != 0 && owner == pid;
 
-    /// <summary>Whether Bloxkeep hid this window (and it still exists).</summary>
     public static bool IsHidden(IntPtr hWnd)
     {
         lock (_hidden)
             return _hidden.TryGetValue(hWnd, out int pid) && StillOf(hWnd, pid);
     }
 
-    /// <summary>Whether any window of this client is hidden by Bloxkeep.</summary>
     public static bool HasHidden(int pid)
     {
         lock (_hidden)
             return _hidden.Any(h => h.Value == pid && StillOf(h.Key, pid));
     }
 
-    /// <summary>
-    /// Forgets a client that ended: true when its window was hidden then, so that the window auto-rejoin opens for its
-    /// account is hidden too once in its game.
-    /// </summary>
+    /// <summary>True when the ended client's window was hidden, so the window auto-rejoin opens is hidden too.</summary>
     public static bool ForgetHidden(int pid)
     {
         bool was;
@@ -285,7 +270,7 @@ public static class RobloxProcesses
         return was;
     }
 
-    /// <summary>Hides each client's main window (its game keeps running). Returns how many were hidden now.</summary>
+    /// <summary>Returns how many were hidden now.</summary>
     public static int HideWindows(IEnumerable<int> pids)
     {
         int count = 0;
@@ -303,7 +288,7 @@ public static class RobloxProcesses
         return count;
     }
 
-    /// <summary>Shows again the windows Bloxkeep hid of these clients (all of them when null), as they were (a minimized one stays so).</summary>
+    /// <summary>All when null; a minimized one stays so.</summary>
     public static int ShowWindows(IEnumerable<int>? pids = null)
     {
         var only = pids?.ToHashSet();
@@ -321,10 +306,7 @@ public static class RobloxProcesses
         return shown.Count;
     }
 
-    /// <summary>
-    /// At start: the windows a run that ended without showing them left hidden are shown again (only those still
-    /// there, of the same process, and still hidden).
-    /// </summary>
+    /// <summary>At start: shows windows a crashed run left hidden (only those still there, of the same process).</summary>
     public static int ShowLeftHidden()
     {
         int shown = 0;
@@ -395,8 +377,8 @@ public static class RobloxProcesses
         }
     }
 
-    /// <summary>A client being closed: when to end it if its windows didn't close, how long to end its children for.</summary>
-    /// <param name="created">When it started (0 when not known): a process that has its id later is another one.</param>
+    /// <summary>When to end it if its windows didn't close, how long to end its children for.</summary>
+    /// <param name="created">0 when not known: a process that has its id later is another one.</param>
     sealed class Closing(DateTime? killAt, DateTime until, IntPtr handle, long created)
     {
         public DateTime? KillAt = killAt;
@@ -428,11 +410,10 @@ public static class RobloxProcesses
     }
 
     /// <summary>
-    /// Whether <paramref name="pid"/> is still the Roblox client the last snapshot saw under it: the id of a client
-    /// that ended a moment ago (between two process checks) may already belong to another program, or a new client.
-    /// Asked of the handle when Windows gives one (then the id can't change hands meanwhile), else of a fresh snapshot.
+    /// The id of a client that ended between two process checks may already belong to another process. Asked of the
+    /// handle when Windows gives one (then the id can't change hands), else of a fresh snapshot.
     /// </summary>
-    /// <param name="created">When the process with this id now started, as far as it is known (0 when not).</param>
+    /// <param name="created">When the process with this id now started (0 when not known).</param>
     /// <param name="expected">When the client the last snapshot saw started (0 when not known).</param>
     static bool StillTheClient(int pid, IntPtr handle, out long created, out long expected)
     {
@@ -470,25 +451,21 @@ public static class RobloxProcesses
     static readonly TimeSpan CloseGrace = TimeSpan.FromSeconds(2), ChildSweep = TimeSpan.FromSeconds(10), SweepTick = TimeSpan.FromMilliseconds(500);
 
     /// <summary>
-    /// Ends a client for good. Normally its windows are asked to close like their X button would, and the process is
-    /// terminated if it is still there 2 s later; <paramref name="force"/> terminates it at once (a frozen client).
-    /// When a client closes, Roblox starts a copy of itself in the notification area ("--launch-to-tray", seen in
-    /// client 0.742's logs) as a child of the closing client; that copy is ended too, so nothing is left running.
-    /// Every client being closed shares one sweep, so closing ten takes no more process snapshots than closing one.
+    /// Asks its windows to close like their X, and terminates it 2 s later if still there; <paramref name="force"/>
+    /// terminates at once. The tray copy Roblox starts as a child of the closing client is ended too. All closes share
+    /// one sweep, so closing ten takes no more snapshots than one.
     /// </summary>
     public static void Close(int pid, bool force = false)
     {
-        // A real handle, held open until the sweep ends, so Windows can't give this pid to a new process
-        // meanwhile (its children would then be someone else's). Zero when Roblox's anti-tamper refuses it.
+        // Held open until the sweep ends, so Windows can't give this pid to a new process meanwhile. Zero when
+        // Roblox's anti-tamper refuses it.
         IntPtr keep = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
-        // The client ended by itself since the last process check, and its id went to another program (or a new
-        // client): nothing is closed. The process check ends its session.
+        // It ended since the last process check and its id went to another process: nothing is closed.
         if (!StillTheClient(pid, keep, out long created, out long expected))
         {
             if (keep != IntPtr.Zero)
                 CloseHandle(keep);
-            // Nothing of it is left to close, but the copy it may have started in the notification area as it ended
-            // is still swept (only clients started after it).
+            // The tray copy it may have started as it ended is still swept.
             lock (_closing)
             {
                 if (!_closing.ContainsKey(pid))
@@ -507,8 +484,8 @@ public static class RobloxProcesses
         {
             if (_closing.TryGetValue(pid, out var again))
             {
-                // Closed a second time: the sweep may be looking at the first entry right now and closes its handle
-                // when it is done with it, so that entry is kept and stretched; the handle just opened is the spare.
+                // Closed again: the sweep may hold the first entry and closes its handle, so that entry is stretched
+                // and the handle just opened is the spare.
                 if (windows.Count > 0 && !(again.KillAt is { } at && at < now + CloseGrace))
                     again.KillAt = now + CloseGrace;
                 again.Until = now + ChildSweep;
@@ -521,7 +498,7 @@ public static class RobloxProcesses
         }
     }
 
-    /// <summary>One process snapshot per tick for every client being closed: ends the stubborn ones and their children.</summary>
+    /// <summary>One snapshot per tick for every client being closed.</summary>
     static async Task SweepClosingAsync()
     {
         while (true)
@@ -531,7 +508,7 @@ public static class RobloxProcesses
             {
                 SweepOnce();
             }
-            // One bad tick must not end the sweep: the loop would be gone for good and later closes never swept.
+            // One bad tick must not end the loop for good.
             catch (Exception ex)
             {
                 Log.Write(ex);
@@ -562,7 +539,6 @@ public static class RobloxProcesses
             tree = PlayerChildren(players);
             alive = players.Select(p => p.Pid).ToHashSet();
         }
-        // A pid of a later process than the client being closed (its id went to a new client) is not touched.
         var created = players?.ToDictionary(p => p.Pid, p => p.Created) ?? [];
         bool Same(int pid, long since) => since == 0 || !created.TryGetValue(pid, out long at) || at == since;
         bool Newer(int child, long since) => since == 0 || !created.TryGetValue(child, out long at) || at >= since;
@@ -627,13 +603,11 @@ public static class RobloxProcesses
     static extern bool Process32NextW(IntPtr snapshot, ref PROCESSENTRY32W entry);
 
     /// <summary>
-    /// Every Roblox client by the process that started it (which may have exited already; the record stays), from a
-    /// snapshot <see cref="GetPlayers"/> took, so a process check asks Windows once. A client started before the
-    /// running process its parent's id now belongs to isn't that process's child (the id was handed on).
+    /// Clients by parent (which may have exited). A client started before the process its parent's id now belongs to
+    /// isn't that process's child (the id was handed on).
     /// </summary>
     public static Dictionary<int, List<int>> PlayerChildren(IReadOnlyList<PlayerProcess> players)
     {
-        // A snapshot without parents (taken through .NET): Windows is asked for them.
         if (players.Count > 0 && players.All(p => p.Parent == 0))
             return PlayerChildren(out _);
         var created = players.ToDictionary(p => p.Pid, p => p.Created);
@@ -648,7 +622,6 @@ public static class RobloxProcesses
         return tree;
     }
 
-    /// <param name="alive">The clients running right now.</param>
     public static Dictionary<int, List<int>> PlayerChildren(out HashSet<int> alive)
     {
         var tree = new Dictionary<int, List<int>>();
@@ -676,7 +649,6 @@ public static class RobloxProcesses
         return tree;
     }
 
-    /// <summary>Brings a client's window to the front, restoring it if minimised.</summary>
     public static void Focus(int pid)
     {
         var hWnd = MainWindow(pid);
@@ -690,8 +662,7 @@ public static class RobloxProcesses
     public static bool IsMinimised(IntPtr hWnd) => IsIconic(hWnd);
 
     /// <summary>
-    /// Maximises a window that has a title bar (Roblox in a window; its fullscreen has none and is left alone), unless it
-    /// is minimised or maximised already. A window message only; Windows brings the window to the front with it.
+    /// Only a window with a title bar (Roblox's fullscreen has none). Windows brings the window to the front with it.
     /// </summary>
     /// <returns>false when it left the window as it was.</returns>
     public static bool Maximise(IntPtr hWnd)
@@ -701,7 +672,7 @@ public static class RobloxProcesses
         return ShowWindowAsync(hWnd, SW_SHOWMAXIMIZED);
     }
 
-    /// <summary>Minimises a window without bringing another one to the front (a window message only).</summary>
+    /// <summary>Without bringing another one to the front.</summary>
     public static void Minimise(IntPtr hWnd)
     {
         if (hWnd != IntPtr.Zero && !IsIconic(hWnd))
@@ -719,43 +690,36 @@ public static class RobloxProcesses
 
     static IntPtr MainWindow(int pid) => MainWindowOf(TopLevelWindows(pid));
 
-    /// <summary>The game window among a client's visible windows (the one titled "Roblox…"), else its first; zero for none.</summary>
+    /// <summary>The one titled "Roblox…", else the first; zero for none.</summary>
     public static IntPtr MainWindowOf(IReadOnlyList<IntPtr> windows) =>
         windows.FirstOrDefault(h => GetTitle(h).StartsWith("Roblox", StringComparison.Ordinal)) is var main && main != IntPtr.Zero
             ? main
             : windows.FirstOrDefault();
 
-    /// <summary>The smallest and largest window the "custom" layout gives.</summary>
     public static readonly Size LeastWindow = new(160, 120), MostWindow = new(7680, 4320);
 
-    /// <summary>A layout Arrange windows knows (see <see cref="Settings.WindowLayout"/>): grids up to 8 × 8.</summary>
+    /// <summary>See <see cref="Settings.WindowLayout"/>: grids up to 8 × 8.</summary>
     public static bool IsLayout(string layout) =>
         layout is "fill" or "small" or "medium" or "large" or "custom" || GridOf(layout) is not null;
 
-    /// <summary>A grid layout's columns and rows ("3x2"), else null.</summary>
     static (int Cols, int Rows)? GridOf(string layout) =>
         layout.Length == 3 && layout[1] == 'x' && layout[0] is >= '1' and <= '8' && layout[2] is >= '1' and <= '8'
             ? (layout[0] - '0', layout[2] - '0') : null;
 
-    /// <summary>Tiles the clients' windows over a screen area, in the given order. Window messages only.</summary>
-    /// <param name="layout">"fill" spreads them over the whole area; a grid ("2x2") gives each one of its cells from the
-    /// top-left; "custom" gives each window <paramref name="custom"/>; "small" / "medium" / "large" are fixed tiles.</param>
-    /// <param name="skipMinimized">Leave minimised windows as they are (and give them no tile).</param>
+    /// <summary>In the given order. Window messages only.</summary>
+    /// <param name="layout">See <see cref="GridCells"/>.</param>
     /// <param name="app">Bloxkeep's window, when Arrange windows was clicked in it: the windows come over every other app
-    /// (<see cref="RaiseAsync"/>). Zero leaves the order of the PC's windows as it is (tiling after a launch).</param>
+    /// (<see cref="RaiseAsync"/>). Zero leaves the order of the PC's windows as it is.</param>
     public static Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false,
         IntPtr app = default, Size custom = default) =>
         // A hidden window isn't tiled: it would be placed unseen, a gap among the others.
         ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !IsHidden(h) && !(skipMinimized && IsIconic(h))).ToList(), area, layout, app, custom);
 
     /// <summary>
-    /// Tiles these windows (see <see cref="ArrangeGridAsync"/>). Roblox keeps its window at least 800 × 600 in its own
-    /// units (1224 × 957 pixels on a 150 % screen) by answering the "changing" message a move sends: tiles smaller than
-    /// that left the windows at that size, over each other and past the screen's edge (5 windows on a 150 % laptop
-    /// screen, 2026-10-21). The tiles are given without that message (SWP_NOSENDCHANGING), so Roblox takes them and draws
-    /// the game at that size (tried on the owner's PC, 853 × 764, the same day). A window that grows back all the same is
-    /// spread evenly over the area instead (<see cref="OverlapSpots"/>), each over the one before it, so every title bar
-    /// shows; so are more windows than a grid has cells, or "custom" windows too many to fit side by side.
+    /// Roblox keeps its window at least 800 × 600 in its own units (1224 × 957 px at 150 %) by answering the "changing"
+    /// message a move sends: smaller tiles left windows overlapping past the screen's edge (2026-10-21). Sent without
+    /// it (SWP_NOSENDCHANGING), Roblox takes the size (tried on the owner's PC, 853 × 764). A window that grows back
+    /// anyway, or more windows than fit, are spread with <see cref="OverlapSpots"/> so every title bar shows.
     /// </summary>
     static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout, IntPtr app = default, Size custom = default)
     {
@@ -793,9 +757,8 @@ public static class RobloxProcesses
     }
 
     /// <summary>
-    /// The windows at these spots, overlapping: the last one keeps its place among the PC's other windows; each one before
-    /// it goes just under the next, in turn (each moves on its own window's thread), so a later one lies over an earlier
-    /// one's body, not its title bar.
+    /// Each window goes just under the next, in turn (each moves on its own thread), so a later one lies over an
+    /// earlier one's body, not its title bar.
     /// </summary>
     static async Task StackAsync(List<IntPtr> windows, List<Point> spots, Size size, uint flags = 0)
     {
@@ -809,10 +772,8 @@ public static class RobloxProcesses
     }
 
     /// <summary>
-    /// The windows over every other app at once (clicking each grouped taskbar button in turn was the only way,
-    /// 2026-10-21): each just under the next, the last just under <paramref name="app"/>, Bloxkeep's window (Windows
-    /// lets an app stack windows under the one in front, never over it: tried on the owner's PC), then that window under
-    /// them all and the last one in front (Bloxkeep, in front as it was clicked, may hand that on).
+    /// Windows lets an app stack windows under the one in front, never over it (tried on the owner's PC, 2026-10-21):
+    /// so each goes under the next, the last under <paramref name="app"/>, then app under them all and the last in front.
     /// </summary>
     static async Task RaiseAsync(List<IntPtr> windows, IntPtr app)
     {
@@ -837,11 +798,10 @@ public static class RobloxProcesses
     [DllImport("user32.dll")]
     static extern int GetSystemMetricsForDpi(int index, uint dpi);
 
-    /// <summary>A window's place on the screen (its whole frame); null once it is gone.</summary>
+    /// <summary>The whole frame; null once it is gone.</summary>
     public static Rectangle? WindowRect(IntPtr hWnd) =>
         GetWindowRect(hWnd, out var r) ? Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom) : null;
 
-    /// <summary>Whether a window is a Roblox client's (RobloxPlayerBeta).</summary>
     public static bool IsPlayerWindow(IntPtr hWnd)
     {
         GetWindowThreadProcessId(hWnd, out uint pid);
@@ -856,7 +816,7 @@ public static class RobloxProcesses
         }
     }
 
-    /// <summary>How far in from a window's frame the mouse grabs an edge to size it (Windows' resize border, at the window's DPI).</summary>
+    /// <summary>Windows' resize border, at the window's DPI.</summary>
     public static int ResizeBorder(IntPtr hWnd)
     {
         const int SM_CXSIZEFRAME = 32, SM_CXPADDEDBORDER = 92;
@@ -864,14 +824,13 @@ public static class RobloxProcesses
         return GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi) + 2;
     }
 
-    /// <summary>A window put there at that size, as Arrange gives its tiles (without Roblox's least size).</summary>
+    /// <summary>As Arrange gives its tiles (without Roblox's least size).</summary>
     public static void PlaceWindow(IntPtr hWnd, Rectangle r) =>
         SetWindowPos(hWnd, IntPtr.Zero, r.X, r.Y, r.Width, r.Height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
 
     /// <summary>
-    /// The size a window's edge was dragged to, when the window kept a bigger one (Roblox's least size); null when it took
-    /// what the mouse asked or the drag moved it. The edges grabbed are those the mouse was on at the start (within
-    /// <paramref name="border"/> of the frame); each moves as far as the mouse did, no smaller than <see cref="LeastWindow"/>.
+    /// The size a window's edge was dragged to, when it kept a bigger one (Roblox's least size); null when it took it or
+    /// the drag moved it. Each grabbed edge moves as far as the mouse did, no smaller than <see cref="LeastWindow"/>.
     /// </summary>
     public static Rectangle? AfterDrag(Rectangle start, Rectangle end, Point grab, Point release, int border)
     {
@@ -897,9 +856,8 @@ public static class RobloxProcesses
     }
 
     /// <summary>
-    /// The size the windows kept when they were given <paramref name="cell"/>, when they refused to get that small (a
-    /// window's least size); null when they took it. Read until it holds (each window moves on its own thread): the
-    /// smallest of them, as one still moving is larger, never smaller.
+    /// The size kept when they refused <paramref name="cell"/>; null when they took it. Read until it holds: the
+    /// smallest, as one still moving is larger, never smaller.
     /// </summary>
     static async Task<Size?> KeptSizeAsync(List<IntPtr> windows, Size cell)
     {
@@ -924,9 +882,8 @@ public static class RobloxProcesses
     }
 
     /// <summary>
-    /// Where <paramref name="count"/> windows of <paramref name="size"/> go when they don't fit side by side: a
-    /// near-square grid's columns and rows spread evenly from the top-left to the bottom-right of <paramref name="area"/>
-    /// (never further apart than side by side), so every window stays on the screen and overlaps the next ones evenly.
+    /// When they don't fit side by side: a near-square grid spread evenly over <paramref name="area"/>, so every window
+    /// stays on the screen and overlaps the next evenly.
     /// </summary>
     public static List<Point> OverlapSpots(int count, Rectangle area, Size size)
     {
@@ -939,10 +896,9 @@ public static class RobloxProcesses
     }
 
     /// <summary>
-    /// Columns and tile size for <paramref name="count"/> windows. "fill": a near-square grid over the whole area. A grid
-    /// ("4x4"): its cells, whatever the count (more windows than cells don't fit, see <see cref="ArrangeAsync"/>).
-    /// "custom": <paramref name="custom"/>, held to the screen, as many across as fit. Fixed tiles: 8 / 6 / 4 across (small / medium / large) at a 8:7 shape, rows from the top-left, the rest of the
-    /// screen left free — and more, smaller tiles only when the rows wouldn't fit on the screen.
+    /// "fill": a near-square grid over the whole area. A grid ("4x4"): its cells, whatever the count. "custom":
+    /// <paramref name="custom"/>, held to the screen. small / medium / large: 8 / 6 / 4 across at 8:7 from the top-left,
+    /// more and smaller only when the rows wouldn't fit.
     /// </summary>
     public static (int Cols, int Width, int Height) GridCells(int count, Size area, string layout, Size custom = default)
     {
@@ -970,7 +926,6 @@ public static class RobloxProcesses
         }
     }
 
-    /// <summary>Asks Windows to page out a client's idle memory. Roblox's anti-tamper may refuse the handle.</summary>
     [StructLayout(LayoutKind.Sequential)]
     struct MEMORY_PRIORITY_INFORMATION
     {
@@ -980,10 +935,7 @@ public static class RobloxProcesses
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool SetProcessInformation(IntPtr process, int infoClass, ref MEMORY_PRIORITY_INFORMATION info, int size);
 
-    /// <summary>
-    /// Low memory priority for a window in the background: Windows takes RAM from it first, and only when it runs short
-    /// (the same thing Windows does for background apps). Normal again when it comes to the front.
-    /// </summary>
+    /// <summary>Low: Windows takes RAM from it first, only when it runs short (as it does for background apps).</summary>
     public static bool SetMemoryPriority(int pid, bool background)
     {
         const uint PROCESS_SET_INFORMATION = 0x0200;
@@ -1006,9 +958,8 @@ public static class RobloxProcesses
     static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
 
     /// <summary>
-    /// Whether the process has ended (no process has the id any more, or it has exited while a handle still holds it,
-    /// as Bloxkeep's own close keeps one): a change to a client that failed then had nothing left to change, and
-    /// Windows refused nothing. Pid lists come from the last scan, so a client may have closed since.
+    /// Also when it exited while a handle still holds it (Bloxkeep's close keeps one). A change that failed on an ended
+    /// client is no refusal: pid lists come from the last scan.
     /// </summary>
     public static bool Ended(int pid)
     {
@@ -1026,7 +977,6 @@ public static class RobloxProcesses
         }
     }
 
-    /// <param name="force">End every client at once instead of closing their windows first.</param>
     /// <param name="forceWhen">Pids to end at once even without <paramref name="force"/> (clients in a game).</param>
     public static int CloseAll(bool force = false, Func<int, bool>? forceWhen = null)
     {
@@ -1041,15 +991,13 @@ public static class RobloxProcesses
 
     const int ProcessCommandLineInformation = 60;
     const uint ProcessQueryLimitedInformation = 0x1000;
-    /// <summary>Clients already looked at, by pid and start time (a pid Windows gives to a newer process is asked again).</summary>
+    /// <summary>By pid and start time, so a reused pid is asked again.</summary>
     static readonly Dictionary<(int Pid, long Created), bool> _trayCopies = new();
 
     /// <summary>
-    /// The copy Roblox leaves in the notification area when its window closes (0.743, seen 2026-10-16 with the website
-    /// client, through Bloxstrap and from the Microsoft Store): the closing client logs "Successfully launched new process
-    /// in systray mode" and starts "RobloxPlayerBeta.exe --launch-to-tray", whose log says "AppState/TrayMode". It has
-    /// no window and gets none; a Roblox started while it runs hands its launch to it and quits ("NoReload Detector:
-    /// WebPlay NoReload with Tray only!"), so no window opens. Told by its command line.
+    /// The copy Roblox leaves in the notification area when its window closes (0.743, 2026-10-16, website, Bloxstrap
+    /// and Store): "RobloxPlayerBeta.exe --launch-to-tray". It never gets a window; a Roblox started while it runs hands
+    /// its launch to it and quits ("NoReload Detector: WebPlay NoReload with Tray only!"), so no window opens.
     /// </summary>
     public static bool IsTrayCopy(int pid, long created)
     {
@@ -1066,15 +1014,12 @@ public static class RobloxProcesses
         return tray;
     }
 
-    /// <summary>Roblox's updater, which an outdated client starts and hands its launch to.</summary>
     const string UpdaterProcessName = "RobloxPlayerInstaller";
 
     /// <summary>
-    /// Whether Roblox's updater (RobloxPlayerInstaller.exe) is running, started at or after <paramref name="sinceUtc"/>.
-    /// An outdated client starts it and quits, and the updated client comes from it: the client's own lines
-    /// ("[FLog::UpdateController] WindowsUpdateController: updaterFullPath: …", "Update thread: start …", the updater
-    /// named RobloxPlayerInstaller.exe in it, 0.744). Where Bloxstrap installs Roblox the client finds no updater
-    /// ("Updater not found. Skipping update", every log on the owner's PC): Bloxstrap updates before starting it.
+    /// An outdated client starts the updater and quits, and the updated client comes from it ("[FLog::UpdateController]
+    /// WindowsUpdateController: updaterFullPath: …", 0.744). Under Bloxstrap the client finds no updater ("Updater not
+    /// found. Skipping update"): Bloxstrap updates before starting it.
     /// </summary>
     public static bool UpdaterRunningSince(DateTime sinceUtc)
     {
@@ -1113,11 +1058,9 @@ public static class RobloxProcesses
         System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     /// <summary>
-    /// The browser tracker id a client was started with. Each launch link Bloxkeep makes has a new one
-    /// ("+browsertrackerid:N"), and the link reaches RobloxPlayerBeta.exe as it is: Bloxstrap's Bootstrapper starts it with
-    /// its launch arguments untouched, and Roblox's own link handler and Bloxkeep's other launch options give it the link;
-    /// Roblox's launcher of old passed it as "-b N". "" when the command line names none, null when it can't be read
-    /// (gone, not ours). Nothing else of the command line is kept: the sign-in ticket is in it.
+    /// Each launch link Bloxkeep makes has a new one ("+browsertrackerid:N"), and every launcher (Bloxstrap included)
+    /// passes the link to RobloxPlayerBeta.exe untouched; the old launcher passed "-b N". "" when none, null when
+    /// unreadable. Nothing else of the command line is kept: the sign-in ticket is in it.
     /// </summary>
     public static string? LaunchTrackerOf(int pid, long created)
     {
@@ -1139,7 +1082,7 @@ public static class RobloxProcesses
         return tracker;
     }
 
-    /// <summary>A process's command line (Windows 8.1 and later), or null when it can't be read (gone, not ours).</summary>
+    /// <summary>Windows 8.1 and later; null when it can't be read (gone, not ours).</summary>
     static string? CommandLineOf(int pid, long expectedCreation = 0)
     {
         IntPtr handle = OpenProcess(ProcessQueryLimitedInformation, false, pid);
@@ -1169,10 +1112,7 @@ public static class RobloxProcesses
         }
     }
 
-    /// <summary>
-    /// Ends Roblox's notification-area copies (see <see cref="IsTrayCopy"/>) before a launch, which they would
-    /// otherwise take over and open no window for. Returns how many were ended.
-    /// </summary>
+    /// <summary>Before a launch, which they would take over (<see cref="IsTrayCopy"/>). Returns how many were ended.</summary>
     public static int CloseTrayCopies()
     {
         var players = GetPlayers();

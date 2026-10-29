@@ -1,8 +1,6 @@
-// Time and date boxes with Bloxkeep's own picker. The box is still the browser's (typing a time or a date works as it
-// always did, and its value is "HH:mm" or "yyyy-mm-dd"), but its own drop-down is hidden: that one is drawn by the
-// browser in its own colours, and a second click on its clock didn't close it. Here the button opens and closes a
-// list in the page's colours; a pick goes into the box as typing would (its input and change events), so whatever
-// listens to the box (a form, TextBox's save on change) hears it the same way.
+// Time and date boxes with Bloxkeep's own picker. The box is still the browser's (typing works, value "HH:mm" or
+// "yyyy-mm-dd"), but its own drop-down is hidden: drawn in the browser's colours, and a second click didn't close it. A
+// pick goes in as typing would (input and change events), so whatever listens to the box hears it the same way.
 import { useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon, useHost } from './host';
@@ -56,11 +54,8 @@ function Field({ kind, className, ref, ...attrs }: BoxProps & { kind: 'time' | '
   </span>;
 }
 
-/**
- * The list under (or over, near the bottom) its button, in the dialog it belongs to so the dialog's keys and focus
- * still hold. Closes on the button again, a click outside, Escape (before the dialog hears it), Enter, or the window
- * changing size.
- */
+// The list under (or over, near the bottom) its button, inside its dialog so the dialog's keys and focus still hold.
+// Closes on the button again, a click outside, Escape (before the dialog hears it), Enter, or the window resizing.
 export function Popup({ anchor, close, label, children }: { anchor: HTMLElement; close: (refocus: boolean) => void; label: string; children: ReactNode }) {
   const panel = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
@@ -126,7 +121,6 @@ function TimeList({ value, pick }: { value: string; pick: (v: string) => void })
 
 function Column({ label, items, pick }: { label: string; items: { key: number; text: string; on: boolean }[]; pick: (key: number) => void }) {
   const list = useRef<HTMLDivElement>(null);
-  // The chosen one in sight, near the top, when the list opens.
   useLayoutEffect(() => {
     const on = list.current!.querySelector<HTMLElement>('.on');
     if (on) list.current!.scrollTop = on.offsetTop - list.current!.offsetTop - 4;

@@ -60,11 +60,8 @@ public static partial class RobloxApi
             .ToList();
     }
 
-    /// <summary>
-    /// The user with this username (not display name), or null when nobody has it or the account is banned; no cookie
-    /// involved. Roblox answers {"data":[{"requestedUsername","hasVerifiedBadge","id","name","displayName"}]}, an
-    /// empty list for an unknown name (checked on 2026-10-14).
-    /// </summary>
+    /// <summary>The user with this username (not display name); null when nobody has it or it is banned (Roblox answers
+    /// an empty "data" list for an unknown name, checked 2026-10-14).</summary>
     public static async Task<RobloxUser?> GetUserByNameAsync(string username, CancellationToken ct = default)
     {
         using var req = Request(HttpMethod.Post, "https://users.roblox.com/v1/usernames/users", null);
@@ -111,11 +108,8 @@ public static partial class RobloxApi
         return result;
     }
 
-    /// <summary>
-    /// Whether Roblox reports the user as banned, from the public profile anyone can read (users.roblox.com/v1/users/{id},
-    /// no cookie; its "isBanned" was confirmed on 2026-10-14). Null when it couldn't tell: no such user, or an answer
-    /// without the field.
-    /// </summary>
+    /// <summary>The public profile's "isBanned" (users.roblox.com/v1/users/{id}, no cookie; confirmed 2026-10-14). Null
+    /// when it couldn't tell: no such user, or an answer without the field.</summary>
     public static async Task<bool?> GetBannedAsync(long userId, string realm = Realm.Global, CancellationToken ct = default)
     {
         using var req = Request(HttpMethod.Get, Realm.Api(realm, "users") + $"/v1/users/{userId}", null);
@@ -146,11 +140,9 @@ public static partial class RobloxApi
         return games.TryGetValue(universeId, out var info) ? info with { PlaceId = placeId } : null;
     }
 
-    /// <summary>
-    /// Details of many games at once, keyed by universe: three requests per 50 games, sent together. Since 2026
-    /// games.roblox.com hides titles from anonymous callers, so names come from develop.roblox.com and the player
-    /// count needs a cookie. Games without a name in the answer are left out (and asked again later).
-    /// </summary>
+    /// <summary>Many games' details, keyed by universe, three requests per 50 games. Since 2026 games.roblox.com hides titles
+    /// from anonymous callers, so names come from develop.roblox.com and the player count needs a cookie. Games without
+    /// a name are left out (and asked again later).</summary>
     public static async Task<Dictionary<long, GameInfo>> GetGamesAsync(IEnumerable<long> universeIds, string? cookie = null, CancellationToken ct = default)
     {
         var result = new Dictionary<long, GameInfo>();
@@ -274,9 +266,8 @@ public static partial class RobloxApi
         return placeId > 0 && name.Length > 0 ? new GameSummary(placeId, Num(universeField), name, Num("playerCount")) : null;
     }
 
-    // Roblox lets one internet connection load server lists only a few times a minute (its answers say
-    // "x-ratelimit-limit: 3, 3;w=60", October 2026), whatever the game or order. What it said is kept, so a request
-    // that would be refused isn't sent: it would only be refused, and the wait reads from Roblox's own clock.
+    // Roblox allows one connection only a few server lists a minute ("x-ratelimit-limit: 3, 3;w=60", October 2026),
+    // whatever the game. What it said is kept so a request it would refuse isn't sent.
     static readonly object ServerListGate = new();
     static int _serverListLeft = -1;
     static DateTime _serverListReset;
@@ -287,10 +278,7 @@ public static partial class RobloxApi
         get { lock (ServerListGate) return DateTime.UtcNow >= _serverListReset ? -1 : _serverListLeft; }
     }
 
-    /// <summary>
-    /// A page of a game's public servers (the "Servers" tab of the game's page), busiest or emptiest first, without
-    /// full ones. <paramref name="cursor"/> continues a previous page.
-    /// </summary>
+    /// <summary>A page of a game's public servers, busiest or emptiest first, without full ones.</summary>
     public static async Task<(List<ServerInfo> Servers, string? Next)> GetServersAsync(long placeId, bool fewestFirst, string? cursor, CancellationToken ct = default)
     {
         lock (ServerListGate)
@@ -330,12 +318,9 @@ public static partial class RobloxApi
         return (ReadServers(doc.RootElement), next);
     }
 
-    /// <summary>
-    /// The servers of a page of the list, without empty ones: a server whose last player has left is closing, and
-    /// joining it ends on "This experience has ended, or the server became unavailable…". Seen 2026-10-17 (Steal An
-    /// Egg, 7 players a server): the emptiest-first list sometimes starts with one that has no player count but still a
-    /// ping (its last player's, from moments before), the very server a party of 5 was sent to.
-    /// </summary>
+    /// <summary>The page's servers without empty ones: a server whose last player left is closing, and joining it ends on
+    /// "This experience has ended…". Seen 2026-10-17: the emptiest-first list sometimes started with one that had no
+    /// player count but still a ping, the very server a party of 5 was sent to.</summary>
     internal static List<ServerInfo> ReadServers(JsonElement root)
     {
         var servers = new List<ServerInfo>();
@@ -375,10 +360,8 @@ public static partial class RobloxApi
         return result;
     }
 
-    /// <summary>
-    /// Online / in-game status. With a cookie, Roblox also reveals the game for that account and for anyone
-    /// whose privacy settings allow it.
-    /// </summary>
+    /// <summary>Online / in-game status. With a cookie Roblox also reveals the game for that account and for anyone whose
+    /// privacy settings allow it.</summary>
     public static async Task<Dictionary<long, Presence>> GetPresenceAsync(string? cookie, IReadOnlyCollection<long> userIds, string realm = Realm.Global, CancellationToken ct = default)
     {
         var result = new Dictionary<long, Presence>();

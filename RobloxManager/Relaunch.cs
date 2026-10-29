@@ -4,12 +4,11 @@ using System.Text.Json;
 namespace RobloxManager;
 
 /// <summary>
-/// Updating without a "Restart to update" click, as the Claude app does: once an update is downloaded and nobody is
-/// using Bloxkeep, it writes down what the next run needs to carry on unnoticed, lets Velopack install the update and
-/// start it again, and the new run picks that up — unlocked, with the window as it was (hidden in the tray, minimised,
-/// or open on the same view, without taking the keyboard), and the Roblox windows followed again (AdoptOpenSessions).
-/// The vault key travels in a file only this Windows user can read (DPAPI), mixed with a random value that only the
-/// new process's command line carries; the file is deleted as it is read, and refused once a couple of minutes old.
+/// Updating without a "Restart to update" click: once an update is downloaded and Bloxkeep is idle, the run writes what
+/// the next one needs, Velopack installs and restarts, and the new run carries on unlocked, with the window as it was
+/// and the Roblox windows followed again (AdoptOpenSessions). The vault key travels in a DPAPI file for this Windows
+/// user, mixed with a random value only the new process's command line carries; the file is deleted as it is read and
+/// refused once a couple of minutes old.
 /// </summary>
 public static class Relaunch
 {
@@ -57,10 +56,8 @@ public static class Relaunch
         return [Arg, Convert.ToHexString(entropy)];
     }
 
-    /// <summary>
-    /// An update is installing right now: the last run handed over to the one Velopack is about to start (the hand-over
-    /// is fresh and not taken yet). A start by hand meanwhile waits for that run instead of taking its place (Program).
-    /// </summary>
+    /// <summary>An update is installing now (a fresh hand-over not taken yet); a start by hand waits for that run instead
+    /// of taking its place (Program).</summary>
     public static bool HandOverWaiting()
     {
         try
@@ -89,16 +86,12 @@ public static class Relaunch
         }
     }
 
-    /// <summary>
-    /// What the previous run left, when this run was started by it (and in time); null otherwise. The file goes
-    /// either way, so a key never stays on disk.
-    /// </summary>
+    /// <summary>What the previous run left, when it started this one in time; null otherwise. The file goes either way, so a
+    /// key never stays on disk.</summary>
     public static State? Take(string[] args) => Read(args) ?? AfterUpdate(args);
 
-    /// <summary>
-    /// Started after an update without a usable hand-over (it came too late, or Bloxkeep was started by the watch over
-    /// the update): back in the tray, locked, saying so, rather than a lock screen popping up over what the person is doing.
-    /// </summary>
+    /// <summary>Started after an update without a usable hand-over: back in the tray, locked, saying so, rather than a lock
+    /// screen popping up over what the person is doing.</summary>
     static State? AfterUpdate(string[] args)
     {
         int at = Array.IndexOf(args, AfterUpdateArg);

@@ -5,18 +5,13 @@ using System.Runtime.InteropServices;
 namespace RobloxManager;
 
 /// <summary>
-/// A grid of live pictures of other programs' windows, one tile each, with a caption drawn above every picture.
-/// The pictures are DWM thumbnails (what the taskbar shows when hovering a button): Windows draws the window's
-/// current frame straight into this control's top-level window, so nothing is copied or polled here. A minimised
-/// window has no live frame, so its tile shows a note instead. Knows nothing of the app: it is given window handles
-/// and caption texts (<see cref="SetItems"/>) and raises <see cref="TileClicked"/>; the layout is pure arithmetic
+/// A grid of captioned tiles of other programs' windows, live as DWM thumbnails (what the taskbar shows on hover):
+/// Windows draws each frame straight into this control's top-level window, so nothing is copied or polled. A minimised
+/// window has no live frame, so its tile shows a note. Knows nothing of the app; the layout is pure arithmetic
 /// (<see cref="TileRects"/>) so it can be checked without a window.
 /// </summary>
-/// <remarks>
-/// Thumbnail lifetime: a thumbnail exists only while this control has a handle, <see cref="Live"/> is true and its
-/// window is still in the item list. Every other path (an item dropped, the window gone, Live off, the handle
-/// destroyed, Dispose) unregisters it, so none is leaked or left pointing at a dead window.
-/// </remarks>
+/// <remarks>A thumbnail exists only while this control has a handle, <see cref="Live"/> is on and its window is in the
+/// item list; every other path unregisters it, so none leaks or points at a dead window.</remarks>
 sealed class WindowThumbnails : ScrollableControl
 {
     /// <summary>A window to show: its handle, the caption's two lines, and a short tag at the right of each line.</summary>
@@ -120,11 +115,8 @@ sealed class WindowThumbnails : ScrollableControl
         }
     }
 
-    /// <summary>
-    /// Whether pictures are drawn. Off (the default, and what the owner sets while its window is hidden or
-    /// minimised) every thumbnail is unregistered so Windows composes nothing for nobody; the items are kept and
-    /// registered again when it goes on.
-    /// </summary>
+    /// <summary>Off (the default, and while the owner is hidden or minimised) every thumbnail is unregistered so Windows
+    /// composes nothing; the items are kept and registered again when it goes on.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool Live
     {
@@ -146,10 +138,8 @@ sealed class WindowThumbnails : ScrollableControl
 
     static int Scale(int logical, int dpi) => (int)Math.Round(logical * dpi / 96.0);
 
-    /// <summary>
-    /// Columns for this many tiles in a client this wide: 1, 2, 2×2, 3×2, 3×3, 4×3, 4×4, then a square-ish grid; fewer
-    /// when that would make tiles narrower than <see cref="MinTileWidth"/> (a tall narrow window stacks them).
-    /// </summary>
+    /// <summary>Columns: 1, 2, 2×2, 3×2, 3×3, 4×3, 4×4, then a square-ish grid; fewer when tiles would be narrower than
+    /// <see cref="MinTileWidth"/> (a tall narrow window stacks them).</summary>
     public static int Columns(int count, int width, int dpi)
     {
         if (count <= 1)
@@ -161,11 +151,8 @@ sealed class WindowThumbnails : ScrollableControl
         return cols;
     }
 
-    /// <summary>
-    /// The tiles' rectangles, in device pixels from the client's top-left, for this many tiles in a client this
-    /// size at this dpi. Rows share the height; when that would make tiles shorter than <see cref="MinTileHeight"/>
-    /// they keep that height and <paramref name="contentHeight"/> exceeds the client (the owner scrolls).
-    /// </summary>
+    /// <summary>The tiles' rectangles in device pixels. Rows share the height; tiles never go below
+    /// <see cref="MinTileHeight"/>, and then <paramref name="contentHeight"/> exceeds the client (the owner scrolls).</summary>
     public static Rectangle[] TileRects(int count, Size client, int dpi, out int contentHeight)
     {
         contentHeight = 0;
@@ -225,11 +212,8 @@ sealed class WindowThumbnails : ScrollableControl
     /// <summary>The top-level window the thumbnails are drawn into (DWM accepts no child window as destination).</summary>
     IntPtr Destination => FindForm() is { IsHandleCreated: true } form ? form.Handle : IntPtr.Zero;
 
-    /// <summary>
-    /// The windows to show, in tile order. Tiles of windows already shown stay (their thumbnail with them); new
-    /// ones are registered, dropped ones unregistered. Call every second or two: it also follows minimising and a
-    /// window that has gone meanwhile.
-    /// </summary>
+    /// <summary>The windows to show, in tile order; existing tiles keep their thumbnail. Call every second or two: it also
+    /// follows minimising and windows that have gone.</summary>
     public void SetItems(IReadOnlyList<Item> items)
     {
         var keep = new Dictionary<IntPtr, Tile>();
@@ -345,9 +329,8 @@ sealed class WindowThumbnails : ScrollableControl
                 var cut = visible;
                 visible.Offset(origin);
                 props.rcDestination = new RECT(visible);
-                // The part of the window shown, given every time since Windows keeps the last one: a tile half
-                // scrolled out of view shows the matching half rather than a squashed whole, and the whole window
-                // again once it is back in full. (Counted from the client area, as the picture is.)
+                // The part of the window shown, given every time since Windows keeps the last one: a tile half scrolled
+                // out shows the matching half, not a squashed whole. (Counted from the client area, as the picture is.)
                 if (sized)
                 {
                     props.dwFlags |= DWM_TNP_RECTSOURCE;
@@ -391,8 +374,7 @@ sealed class WindowThumbnails : ScrollableControl
     protected override void OnLocationChanged(EventArgs e)
     {
         base.OnLocationChanged(e);
-        // Moved without a resize (laid over another part of its window): the pictures are placed in the window's
-        // pixels, not this control's, so they must be moved with it.
+        // Moved without a resize: the pictures are placed in the window's pixels, not this control's, so move them too.
         if (IsHandleCreated)
             Relayout();
     }
@@ -532,8 +514,7 @@ sealed class WindowThumbnails : ScrollableControl
 
             if (tile.Minimized || tile.Thumb == IntPtr.Zero)
             {
-                // No live frame: the window is minimised (Windows keeps only its last picture), or it couldn't be
-                // registered. Only the first is worth a word; the second shows as an empty tile.
+                // No live frame: minimised (worth a note), or it couldn't be registered (an empty tile).
                 if (tile.Minimized && tile.Picture.Height > 0)
                     TextRenderer.DrawText(g, MinimizedText, Font, tile.Picture, _theme.Text2,
                         TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);

@@ -1,9 +1,6 @@
-// The tray icon's quick panel (a left click) and its menu (a right click), drawn in the app's own look in a small
-// window of their own (RobloxManager/TrayWindow.cs, page tray.html): until 2026-10-26 they were drawn by hand in
-// WinForms, which the owner found ugly. The panel: Bloxkeep's name with what runs, the mini window and Bloxkeep itself,
-// Multi-Roblox's switch, the Roblox windows running (show or close each, close all with a second click), then Play,
-// Presets and a new Roblox window. The menu: the same commands as a list, its submenus as pages with a way back.
-// Whatever is clicked goes to the app (api.act); the window goes away by itself once something else is clicked.
+// The tray icon's quick panel (left click) and menu (right click), in the app's own look in a small window of their own
+// (TrayWindow.cs, tray.html); until 2026-10-26 they were hand-drawn WinForms, which the owner found ugly. Whatever is
+// clicked goes to the app (api.act); the window goes away by itself once something else is clicked.
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { Avatar } from './Avatar';
 import { Icon, useHost } from './host';
@@ -30,7 +27,6 @@ export interface TrayApi {
 /** What tray.js holds: show draws the given part with the given state (opened: a new count each time it opens). */
 export interface TrayViewApi { show(mode: 'panel' | 'menu', state: TrayState, opened: number): void }
 
-/** Holds the latest state tray.js handed over; nothing until the first. */
 export function TrayView({ api, handle }: { api: TrayApi; handle: Ref<TrayViewApi> }) {
   const [now, setNow] = useState<{ mode: 'panel' | 'menu'; state: TrayState; opened: number } | null>(null);
   useImperativeHandle(handle, () => ({ show: (mode, state, opened) => setNow({ mode, state, opened }) }), []);
@@ -47,8 +43,7 @@ export function Tray({ mode, state, opened, api }: { mode: 'panel' | 'menu'; sta
   const [page, setPage] = useState('home');
   const [confirmUntil, setConfirmUntil] = useState(0);
   const root = useRef<HTMLDivElement>(null);
-  // Each time it opens: its first page, the keyboard on the card itself (Tab then goes to the first button), so no
-  // button wears a focus ring for a click with the mouse.
+  // Each opening: its first page, the keyboard on the card itself (Tab then reaches the first button), so a click shows no focus ring.
   useEffect(() => { setPage('home'); setConfirmUntil(0); root.current?.focus({ preventScroll: true }); }, [opened, mode]);
   // Windows hands the window the keyboard once it shows, and the browser gives it to the first button then: back to
   // the card, unless a key was pressed since.
@@ -73,7 +68,6 @@ export function Tray({ mode, state, opened, api }: { mode: 'panel' | 'menu'; sta
     watch.observe(el);
     return () => watch.disconnect();
   });
-  // Esc: back a page, else away.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;

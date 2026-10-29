@@ -5,11 +5,8 @@ using System.Text.Json;
 
 namespace RobloxManager;
 
-/// <summary>
-/// "Playing Bloxkeep" on the person's Discord profile (Rich Presence): Bloxkeep talks to the Discord app running on
-/// this PC through its local pipe (discord-ipc-0 to 9), the way games do. No server and no token: an application id
-/// is public. While Discord isn't running nothing happens, and it is tried again a little later.
-/// </summary>
+/// <summary>"Playing Bloxkeep" on the Discord profile (Rich Presence) through the local Discord app's pipe (discord-ipc-0
+/// to 9), as games do. No server or token: an application id is public. Retried later while Discord isn't running.</summary>
 public sealed class DiscordPresence : IDisposable
 {
     /// <summary>What the profile shows; the application's icon and name come with it.</summary>

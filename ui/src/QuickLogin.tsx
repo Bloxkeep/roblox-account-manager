@@ -1,14 +1,11 @@
-// Quick Login: Roblox's own way of adding an account from a phone already signed in. Bloxkeep asks Roblox for a code
-// (shown with its QR), the phone confirms it, and the account comes in; then a new code, so several can be added in a
-// row. Roblox VNG accounts (Vietnam) confirm the code in the Roblox VNG app. app.js's dialog keeps its buttons (Sign in
-// with the browser, which is roblox.com only, and Done) and what closing does (forgetting the code, selecting what was
-// added); this asks for codes, watches them and says how it goes.
+// Quick Login: Roblox's own way of adding an account from a signed-in phone. Bloxkeep shows Roblox's code (with its QR),
+// the phone confirms, the account comes in, then a new code. VNG accounts confirm in the Roblox VNG app. app.js's dialog
+// keeps its buttons (browser sign-in, roblox.com only; Done) and what closing does (forget the code, select what was added).
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { useAppState, useHost } from './host';
 
 type Added = { id: string; label: string; merged?: boolean };
 export interface QuickLoginApi {
-  /** The accounts added so far, in order. */
   added(): Added[];
   /** The dialog is closing: no more polls or codes (the app forgets the code). */
   stop(): void;
@@ -108,7 +105,6 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
     st.current.timer = window.setTimeout(() => poll(my), 2500);
   };
   useEffect(() => { start(); }, []); // the first code as the dialog opens
-  // The browser sign-in is roblox.com only.
   useEffect(() => { const b = browserButton(); if (b) b.hidden = realm === 'vng'; }, [realm]);
 
   const again = () => { st.current.expiredInRow = 0; start(); };

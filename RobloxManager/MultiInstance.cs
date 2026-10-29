@@ -5,13 +5,10 @@ namespace RobloxManager;
 public sealed record TrayAutostart(string ValueName, bool Enabled);
 
 /// <summary>
-/// Roblox allows one client per Windows session through a named event, "ROBLOX_singletonEvent": a client opening
-/// it tells the one already running to close. Taking that name first with an object of another kind (a mutex) makes
-/// Roblox's own create fail, so it never sets up the check and several clients run side by side — Windows lets one
-/// object own a name, whatever its kind. Holding the event itself stopped working with Roblox's October 2026 builds
-/// (the clients open it and use it to close each other). Nothing is injected into, or read from, the Roblox process.
-/// When Roblox renames that object, Bloxkeep's Roblox watch says what to hold instead (<see cref="RobloxWatch"/>), and
-/// those names are taken the same way, next to this one.
+/// Roblox allows one client per session through a named event, "ROBLOX_singletonEvent": a client opening it tells the
+/// running one to close. Taking the name first as a mutex makes Roblox's create fail (one object per name, whatever its
+/// kind), so clients run side by side. Holding the event itself stopped working with October 2026 builds. Nothing is
+/// injected into or read from Roblox. Names the Roblox watch finds (<see cref="RobloxWatch"/>) are taken the same way.
 /// </summary>
 public static class MultiInstance
 {
@@ -32,10 +29,7 @@ public static class MultiInstance
     /// <summary>The names held besides <see cref="EventName"/> (the Roblox watch's), for the page.</summary>
     public static IReadOnlyList<string> ExtraHeld => Armed ? _heldNames.Skip(1).ToArray() : [];
 
-    /// <summary>
-    /// Held, but the names to hold changed since (the Roblox watch found Roblox renamed its lock): taken again once no
-    /// Roblox client is running, like <see cref="Enable"/> after a client got there first.
-    /// </summary>
+    /// <summary>Held, but the names to hold changed since: taken again once no Roblox client is running.</summary>
     public static bool Stale => Armed && !_heldNames.SequenceEqual(Wanted());
 
     /// <summary>Names to hold next to <see cref="EventName"/> from the next <see cref="Enable"/> on.</summary>
@@ -84,10 +78,7 @@ public static class MultiInstance
         Armed = false;
     }
 
-    /// <summary>
-    /// Roblox can register itself to start with Windows in the tray ("--launch-to-tray"); that hidden client
-    /// grabs the singleton objects before this app does.
-    /// </summary>
+    /// <summary>Roblox's start-with-Windows entry ("--launch-to-tray"), whose hidden client grabs the singleton first.</summary>
     public static TrayAutostart? FindTrayAutostart()
     {
         using var run = Registry.CurrentUser.OpenSubKey(RunKey);

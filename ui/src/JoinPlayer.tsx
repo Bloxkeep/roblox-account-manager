@@ -1,17 +1,13 @@
-// Join a player: the body of the dialog (a Roblox name or user ID, the names looked up before, and what the lookup
-// said). The lookup and the launch stay in app.js, behind the dialog's "Find and join": it reads the name and writes the
-// answer here through JoinPlayerApi. The recent names follow the app's state, so a name forgotten or newly remembered
-// shows as soon as the app says.
+// Join a player's dialog body: a Roblox name or user ID, the names looked up before, what the lookup said. The lookup and
+// the launch stay in app.js behind "Find and join", which reads and writes here through JoinPlayerApi.
 import { Fragment, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 
 export type Tone = 'info' | 'warn' | 'error';
 export interface JoinPlayerApi {
   name(): string;
-  /**
-   * What the lookup said ('' hides it): with a spinner while looking, or a name in bold where the words have a NUL
-   * character in its place ("{name} isn't in a game" asked for with name '\u0000').
-   */
+  /** What the lookup said ('' hides it), with a spinner while looking; a NUL in the words is replaced by the name in bold
+   * ("{name} isn't in a game" asked for with name '\u0000'). */
   say(text: string, tone?: Tone, opts?: { spin?: boolean; bold?: string }): void;
   /** Back to the name box, its text selected when asked (to type another name over it). */
   focusName(select?: boolean): void;

@@ -3,11 +3,9 @@ using System.Runtime.InteropServices;
 namespace RobloxManager;
 
 /// <summary>
-/// Which taskbar button a Roblox window sits under. Windows groups windows by their AppUserModelID, so every Roblox
-/// window shares one button; giving a window an id of its own (one per account, or one per preset) gives it its own
-/// button or group, which also shows the window's icon (<see cref="WindowIcons"/>). This is a property Windows keeps
-/// on the window: nothing in Roblox is touched, and each window's own id is put back when it is turned off or
-/// Bloxkeep closes. UI thread only.
+/// Which taskbar button a Roblox window sits under: Windows groups by AppUserModelID, so an id per account or preset
+/// gives its own button, which also shows the window's icon (<see cref="WindowIcons"/>). A window property only, nothing
+/// in Roblox is touched; each window's own id is put back when turned off or on close. UI thread only.
 /// </summary>
 static class TaskbarGroups
 {

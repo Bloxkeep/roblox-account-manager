@@ -3,10 +3,9 @@ using System.Globalization;
 namespace RobloxManager;
 
 /// <summary>
-/// Settings › Roblox updates: the Roblox builds seen on this PC (kept in prefs.json, not the vault, so it also works
-/// while locked), and noticing when Roblox starts closing its other windows as soon as one more opens — what an
-/// update that stops Multi-Roblox working looks like from here. Next to that, what Bloxkeep's Roblox watch found in
-/// each build before it got here (<see cref="RobloxWatch"/>), and the builds two windows played together on.
+/// Settings › Roblox updates: Roblox builds seen on this PC (in prefs.json, so it works while locked), and noticing when
+/// Roblox closes its other windows as one more opens (an update breaking Multi-Roblox), beside what the Roblox watch found
+/// in each build (<see cref="RobloxWatch"/>) and the builds two windows played together on.
 /// </summary>
 public sealed partial class AppController
 {
@@ -29,23 +28,19 @@ public sealed partial class AppController
     readonly HashSet<Guid> _closedByRoblox = new();
     /// <summary>Tracked clients that ended right after another one started, without the log line saying why.</summary>
     readonly List<(Guid Account, DateTime At, bool Counted)> _suspectEnds = new();
-    /// <summary>Windows counted for the notice about to go out.</summary>
     int _closedPending;
     DateTime? _closedNoticeDue;
     /// <summary>When Windows' commit limit was last all but used up (read every tick, also while locked): clients ending soon after it ran out of memory.</summary>
     DateTime? _memoryShortAt;
-    /// <summary>How long after the commit limit was all but used up clients that end count as having run out of memory.</summary>
     static readonly TimeSpan MemoryCrashWindow = TimeSpan.FromSeconds(30);
     /// <summary>Two clients in a game together this long, none closed by Roblox since: Multi-Roblox works again.</summary>
     static readonly TimeSpan WorkingAgain = TimeSpan.FromSeconds(10);
     /// <summary>Since when two or more clients have been in a game at once (Multi-Roblox armed); null after a close by Roblox or under two.</summary>
     DateTime? _togetherSince;
 
-    /// <summary>
-    /// Notes the Roblox clients that appeared since the last tick: not the ones already running when Bloxkeep started,
-    /// and not the windowless copy a client starts in the notification area as it closes (its parent is that client,
-    /// running or just gone) — counted as a new window, two closing at once looked as if each had closed the other.
-    /// </summary>
+    /// <summary>Notes the Roblox clients that appeared since the last tick: not those running when Bloxkeep started, nor the
+    /// windowless copy a client starts in the notification area as it closes (its parent is that client) — counted as new,
+    /// two closing at once looked as if each had closed the other.</summary>
     /// <param name="parentOf">The process that started a client (0 when unknown); asked only for a client not seen before.</param>
     void NoteClientStarts(HashSet<int> pids, DateTime now, Func<int, int> parentOf)
     {
@@ -67,19 +62,16 @@ public sealed partial class AppController
         _clientsSeen = true;
     }
 
-    /// <summary>The windowless copy Roblox starts in the notification area when a window closes is not a new window.</summary>
     void ForgetClientStart(int pid) => _clientStarts.Remove(pid);
 
     /// <summary>
-    /// A tracked client ended (read before auto-rejoin decides): did Roblox close it because another client opened?
-    /// Its log saying so, with another client started in the last 20 s, is enough. Without that line, two or more
-    /// tracked clients that closed in order (<paramref name="inOrder"/>) ending within 5 s of each other right after a new
-    /// client started. A crash or a killed process never counts: on 2026-10-22 three windows that ran out of memory at once
-    /// were taken for Roblox closing them. Closes Bloxkeep made itself (Close, a rejoin restart) never count.
+    /// A tracked client ended (read before auto-rejoin decides): did Roblox close it because another opened? Its log saying
+    /// so with another client started in the last 20 s is enough; without that line, two or more tracked clients that closed
+    /// in order (<paramref name="inOrder"/>) within 5 s of each other right after a new one started. Crashes, killed processes
+    /// (2026-10-22: three windows out of memory at once were taken for this) and Bloxkeep's own closes never count.
     /// </summary>
     /// <param name="inOrder">It closed in order: its log says it shut down, or it left its notification-area copy.</param>
     /// <param name="childrenOf">Child processes by parent: the ended client's own notification-area copy isn't a new window.</param>
-    /// <returns>true when this one counts as closed by Roblox (auto-rejoin then leaves it closed).</returns>
     bool CheckClosedByRoblox(Guid account, int pid, DateTime startedAt, DateTime now, bool inOrder, Func<int, List<int>> childrenOf)
     {
         // Without Multi-Roblox holding Roblox's single-window lock, Roblox closing the older window is how it always works.
@@ -104,9 +96,8 @@ public sealed partial class AppController
             CountClosedByRoblox(1, now);
             return true;
         }
-        // Out of memory (its own log says Windows refused it memory, or the commit limit was all but used up just now):
-        // clients ending together then crashed for want of it, as on 2026-10-22 (6 windows, Windows' low-virtual-memory
-        // event at 99.7 %), not Roblox closing them for a new one, and Multi-Roblox is fine.
+        // Out of memory (its log says Windows refused it memory, or the commit limit was nearly used up just now): a crash, as on
+        // 2026-10-22 (6 windows, Windows' low-virtual-memory event at 99.7 %), not Roblox closing them; Multi-Roblox is fine.
         if (!inOrder || _logs.OutOfMemoryAt(pid) is not null || _memoryShortAt is { } shortAt && now >= shortAt && now - shortAt <= MemoryCrashWindow)
             return false;
         _suspectEnds.RemoveAll(e => now - e.At > CloseBurst || now < e.At || e.Account == account);
@@ -142,13 +133,10 @@ public sealed partial class AppController
         Prefs.Save();
     }
 
-    /// <summary>
-    /// Settings › Roblox version › Update now: the launcher that keeps this copy of Roblox installs the newest one
-    /// without opening it (<see cref="RobloxInstalls.UpdaterFor"/>). Bloxstrap does it in the background, leaving open
-    /// Roblox windows alone, when it can (its own setting, at most one version behind, 5 GB free); otherwise it closes
-    /// every Roblox window first, so the page asks before when some are open. The result shows as the usual
-    /// "Roblox updated to …"; the launcher ending without a new build is said too.
-    /// </summary>
+    /// <summary>Settings › Roblox version › Update now: this Roblox copy's launcher installs the newest build without opening
+    /// it (<see cref="RobloxInstalls.UpdaterFor"/>). Bloxstrap does it in the background, leaving windows open, when it can
+    /// (its own setting, at most one version behind, 5 GB free); otherwise it closes every Roblox window, so the page asks
+    /// first. The result shows as "Roblox updated to …"; a launcher ending without a new build is said too.</summary>
     object? UpdateRoblox()
     {
         if (_robloxUpdating)
@@ -168,10 +156,7 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// Until the client's build changes, or the launcher's processes started for it (its window, its background
-    /// updater) have all ended, at most 15 minutes.
-    /// </summary>
+    /// <summary>Until the client's build changes or the launcher's processes for it have all ended, at most 15 minutes.</summary>
     async Task WatchRobloxUpdateAsync(string launcher, string? before, DateTime startedAt)
     {
         var until = DateTime.UtcNow + TimeSpan.FromMinutes(15);
@@ -225,18 +210,14 @@ public sealed partial class AppController
         return false;
     }
 
-    /// <summary>
-    /// From the process tick: looks for a new Roblox build at the install check's own pace (every 3 minutes), also
-    /// while the window is in the tray, and sends the "Roblox closed windows" notice — at most one a day. The warning
-    /// goes by itself once two clients have been in a game at the same time for a few seconds (what "it works" looks
-    /// like) with none closed by Roblox since, or once a newer Roblox build is installed (what it said may not hold for it).
-    /// </summary>
+    /// <summary>From the process tick: looks for a new Roblox build every 3 minutes (also from the tray) and sends the "Roblox
+    /// closed windows" notice, at most one a day. The warning clears once two clients have been in a game together for a few
+    /// seconds with none closed by Roblox since, or once a newer build is installed (what it said may not hold for it).</summary>
     /// <param name="inGame">Roblox clients in a game now, by their logs.</param>
     void TickRobloxUpdates(DateTime now, int inGame)
     {
-        // What is installed, read again on a worker a little before the cached read runs out (so nothing else has to
-        // read it on the window's thread), and taken in at the next tick. A read started before a vault or launch
-        // option change (which drops the cache) is left unused.
+        // What is installed is read again on a worker a little before the cached read runs out, and taken in at the next tick.
+        // A read started before a vault or launch option change (which drops the cache) is left unused.
         if (_installsReading is { IsCompleted: true } reading)
         {
             _installsReading = null;
@@ -302,10 +283,8 @@ public sealed partial class AppController
         PushStateIfChanged();
     }
 
-    /// <summary>
-    /// Adds a client build not seen before to the history: the first one as "first seen", later ones timed by when
-    /// their folder was made. A build older than the last one (another launcher's copy) isn't an update.
-    /// </summary>
+    /// <summary>Adds a client build not seen before: the first as "first seen", later ones timed by when their folder was
+    /// made. A build older than the last one (another launcher's copy) isn't an update.</summary>
     static void NoteRobloxBuild(RobloxInstalls.ClientVersion? client)
     {
         if (client is null || client.Folder.Length == 0 || client.Version.Length == 0)
@@ -399,10 +378,8 @@ public sealed partial class AppController
     void ApplyWatchNames() =>
         MultiInstance.SetExtraNames(RobloxWatch.ExtraNames(Installs().Client?.Folder, MultiInstance.EventName));
 
-    /// <summary>
-    /// The build Multi-Roblox meets next and what the Roblox watch says about it: the installed one, or the live one
-    /// when a launcher updates to it before starting Roblox (an older build here, not started directly).
-    /// </summary>
+    /// <summary>The build Multi-Roblox meets next and what the watch says about it: the installed one, or the live one when a
+    /// launcher updates to it before starting Roblox (an older build here, not started directly).</summary>
     /// <returns>Worked: two windows played together on that build here, which outweighs anything the watch says.</returns>
     (string? Version, string? Hash, RobloxWatch.Build? Check, bool Worked) WatchedBuild()
     {
@@ -415,10 +392,8 @@ public sealed partial class AppController
         return (version, hash, RobloxWatch.For(hash), hash is not null && Prefs.MultiWorked.Contains(hash));
     }
 
-    /// <summary>
-    /// Said before opening several windows when the Roblox watch found the single-window lock changed in the build they
-    /// will run, and two windows haven't played together on that build here since.
-    /// </summary>
+    /// <summary>Said before opening several windows when the Roblox watch found the single-window lock changed in their build
+    /// and two windows haven't played together on it here since.</summary>
     string? WatchWarning()
     {
         var (version, _, check, worked) = WatchedBuild();

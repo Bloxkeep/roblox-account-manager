@@ -5,10 +5,9 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>
-/// What Bloxkeep's Roblox watch (services/RobloxWatch/watch.py in the repository, docs/roblox-watch.md) found in each Roblox
-/// build: whether the single-window lock Multi-Roblox relies on changed since the build before, and which lock names to
-/// hold for it when Roblox renamed that lock. Read from the repository's roblox-status branch. Only the verdicts and
-/// names shaped like Roblox's own lock objects are taken from it; anything else in it is ignored.
+/// What the Roblox watch (services/RobloxWatch/watch.py, docs/roblox-watch.md) found per build: whether Multi-Roblox's
+/// single-window lock changed, and which names to hold if renamed. Read from the roblox-status branch; only verdicts and
+/// names shaped like Roblox's lock objects are taken.
 /// </summary>
 public static class RobloxWatch
 {
@@ -105,10 +104,8 @@ public static class RobloxWatch
     public static Build? For(string? hash) =>
         hash is { Length: > 0 } && Current?.ByHash.TryGetValue(hash, out var build) == true ? build : null;
 
-    /// <summary>
-    /// Lock names to hold besides Multi-Roblox's own: those of the installed build and of the live one (a launcher
-    /// updates to it before starting Roblox), when the watch found Roblox renamed its lock.
-    /// </summary>
+    /// <summary>Renamed lock names to hold besides Multi-Roblox's own, for the installed and the live build (a launcher
+    /// updates to it before starting Roblox).</summary>
     public static string[] ExtraNames(string? installedHash, string ownName) =>
         new[] { For(installedHash), Current?.Live }
             .SelectMany(b => b?.Hold ?? [])

@@ -3,11 +3,9 @@ using Microsoft.Win32;
 
 namespace RobloxManager;
 
-/// <param name="CommitLimitMb">
-/// How much memory programs may hold in all, RAM and page file together (Windows' commit limit); 0 when not known.
-/// A program that asks for more past it fails even with RAM free: Roblox crashes as it opens (Hyperion's "Memory dump
-/// captured"), as seen on a 32 GB PC whose page file was fixed at 4 GB.
-/// </param>
+/// <param name="CommitLimitMb">Windows' commit limit (RAM plus page files); 0 when not known. Past it allocations fail
+/// even with RAM free: Roblox crashes as it opens (Hyperion's "Memory dump captured"; seen on a 32 GB PC with a 4 GB
+/// page file).</param>
 /// <param name="CommitAvailableMb">What of <paramref name="CommitLimitMb"/> programs don't hold yet.</param>
 /// <param name="PageFileRoomMb">How much the commit limit may still grow with the page files (<see cref="SystemMemory.PageFileRoomMb"/>).</param>
 public readonly record struct MemoryStatus(long TotalMb, long AvailableMb, int LoadPercent, long CommitLimitMb = 0, long CommitAvailableMb = 0, long PageFileRoomMb = 0)
@@ -57,27 +55,18 @@ public static class SystemMemory
     }
 
     /// <summary>
-    /// How much the page files may still grow, in MB. Windows grows a page file as the commit limit is reached, up to its
-    /// largest size, so a limit nearly used up isn't full while that room is left (a 32 GB PC whose page file was set to
-    /// 16–32 GB had grown it to 17.5 GB, 15 GB still to go, and was told virtual memory was almost full). Each page file
-    /// Windows has counts, from its size now up to its largest: the one set for it, or for one Windows sizes by itself
-    /// ("system managed", Windows' default; "?:" for every drive) Microsoft's: 3 × RAM or 4 GB, whichever is larger, limited
-    /// to its drive's size ÷ 8 (learn.microsoft.com, "How to determine the appropriate page file size for 64-bit versions
-    /// of Windows"; past that only for a crash dump, not counted). Each within its drive's free space less 1 GB.
-    /// A page file set but never made counts for nothing: on 2026-10-22 the owner's E: page file (set to 16–32 GB) didn't
-    /// exist (BitLocker's PagefileOnOsVolume = 1 has Windows make page files on the system drive only as it starts; one
-    /// added while it runs lasts until the next start), the commit limit stayed at RAM + C:'s 4 GB, and counting E:'s 32 GB
-    /// as room to grow kept "virtual memory is almost full" quiet while 6 Roblox windows opened into a full commit limit
-    /// (Windows' low-virtual-memory event at 99.7 %, two of them crashing on ERROR_COMMITMENT_LIMIT).
+    /// How much the page files may still grow, in MB: Windows grows them as the commit limit is reached, so a nearly used
+    /// limit isn't full while that room is left (a PC with a 16–32 GB page file grown to 17.5 GB was wrongly told virtual
+    /// memory was almost full). Each existing page file counts from its size now up to its largest: the one set, or for a
+    /// system-managed one ("?:" for every drive) Microsoft's 3 × RAM or 4 GB, whichever is larger, capped at its drive's
+    /// size ÷ 8 (learn.microsoft.com, page file size for 64-bit Windows); each within its drive's free space less 1 GB.
+    /// A page file set but never made counts for nothing: on 2026-10-22 the owner's E: one (16–32 GB) didn't exist
+    /// (BitLocker's PagefileOnOsVolume = 1 makes page files only on the system drive at boot), and counting it kept the
+    /// warning quiet while 6 Roblox windows filled the commit limit (99.7 %, two crashed on ERROR_COMMITMENT_LIMIT).
     /// </summary>
-    /// <param name="pagingFiles">
-    /// Windows' PagingFiles setting: "c:\pagefile.sys 1024 4096" (path, initial and largest size in MB); "0 0" or no sizes
-    /// for one Windows sizes by itself; "?:\pagefile.sys" for system-managed ones on the drives Windows picks.
-    /// </param>
+    /// <param name="pagingFiles">Windows' PagingFiles: "c:\pagefile.sys 1024 4096" (initial and largest MB); "0 0" or no
+    /// sizes for system-managed; "?:\pagefile.sys" for system-managed ones on drives Windows picks.</param>
     /// <param name="made">The page files Windows has now, by drive ("C:\"), with their size now in MB (<see cref="PageFilesNow"/>); null when not known: none counts.</param>
-    /// <param name="ramMb">The PC's RAM.</param>
-    /// <param name="freeMb">A drive's free space.</param>
-    /// <param name="sizeMb">A drive's size.</param>
     internal static long PageFileRoomMb(IReadOnlyList<string> pagingFiles, IReadOnlyDictionary<string, long>? made, long ramMb,
         Func<string, long> freeMb, Func<string, long> sizeMb)
     {
@@ -113,10 +102,7 @@ public static class SystemMemory
 
     static (DateTime At, string[] Files, Dictionary<string, long>? Made, Dictionary<string, (long Free, long Size)> Drives) _paging;
 
-    /// <summary>
-    /// Windows' PagingFiles setting, the page files Windows has now and the free space and size of their drives, read
-    /// again once a minute.
-    /// </summary>
+    /// <summary>PagingFiles, the existing page files and their drives' free space and size; read again once a minute.</summary>
     static (string[] Files, IReadOnlyDictionary<string, long>? Made, Func<string, long> Free, Func<string, long> Size) PagingFiles()
     {
         var p = _paging;
@@ -145,11 +131,8 @@ public static class SystemMemory
         return (p.Files, p.Made, root => p.Drives.GetValueOrDefault(root).Free, root => p.Drives.GetValueOrDefault(root).Size);
     }
 
-    /// <summary>
-    /// The page files Windows has now, by drive ("C:\"), with their size now in MB, from the kernel's own list of them
-    /// (what Task Manager counts); null when it can't be read. A page file set in PagingFiles may not be there: Windows
-    /// makes them as it starts.
-    /// </summary>
+    /// <summary>The page files Windows has now by drive ("C:\"), size in MB, from the kernel's list (what Task Manager counts);
+    /// null when unreadable. One set in PagingFiles may not exist: Windows makes them as it starts.</summary>
     internal static Dictionary<string, long>? PageFilesNow()
     {
         for (int length = 4096; length <= 1 << 20; length *= 4)

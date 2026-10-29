@@ -9,12 +9,10 @@ namespace RobloxManager;
 public sealed record RemoteCommand(string Id, string Name, string? Value);
 
 /// <summary>
-/// The connection to Bloxkeep's Discord bot that Settings › Discord › Control from Discord keeps open
-/// (services/DiscordBot/worker/remote.js): a WebSocket the bot hands this PC's commands down, kept open while it's on,
-/// connected again after a drop (2 s, then longer, up to a minute). The PC proves itself with its secret, which only the
-/// bot's hash of it is kept against. What goes up: the PC's name and its accounts' and presets' names (for Discord's
-/// suggestions while typing), answers to commands, a code when asked for one. Everything else stays here.
-/// Its callbacks run on the thread that made it (the window's).
+/// The WebSocket to Bloxkeep's Discord bot for Control from Discord (services/DiscordBot/worker/remote.js), reconnected
+/// after a drop (2 s, backing off to a minute). The PC proves itself with its secret; the bot keeps only its hash. What
+/// goes up: the PC's, accounts' and presets' names (for Discord's suggestions), command answers, a link code. Nothing
+/// else. Callbacks run on the thread that made it (the window's).
 /// </summary>
 sealed class RemoteLink : IDisposable
 {
@@ -33,7 +31,6 @@ sealed class RemoteLink : IDisposable
     string? _hello;
     bool _wantCode;
 
-    /// <summary>Connected to the bot now.</summary>
     public bool Connected { get; private set; }
     /// <summary>Linked to a Discord account (null until the bot said).</summary>
     public bool? Linked { get; private set; }
@@ -42,10 +39,8 @@ sealed class RemoteLink : IDisposable
     /// <summary>The code to type in Discord (/pc link), and until when it works.</summary>
     public string? Code { get; private set; }
     public DateTime? CodeUntil { get; private set; }
-    /// <summary>
-    /// Someone typed this PC's code into /pc link: the Discord account (the name Discord shows), and the one it would
-    /// replace. Nothing is linked until it is answered (<see cref="Answer"/>).
-    /// </summary>
+    /// <summary>Someone typed this PC's code into /pc link: that Discord account and the one it would replace. Nothing is
+    /// linked until <see cref="Answer"/>.</summary>
     public (string User, string? Replacing)? Asking { get; private set; }
     /// <summary>The bot had no room for a new code just now.</summary>
     public bool Busy { get; private set; }

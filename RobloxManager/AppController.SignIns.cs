@@ -1,13 +1,10 @@
 namespace RobloxManager;
 
-/// <summary>
-/// Keeping saved sign-ins working. Roblox replaces an account's .ROBLOSECURITY every few hours to days and, some months
-/// later, refuses the one it replaced (devforum.roblox.com/t/4328913: announced 2026-02-03, enforced from 2026-05-01).
-/// A new cookie comes in the Set-Cookie of an answer Roblox gives with the old one (RobloxApi queues it), and is saved
-/// to the account once Roblox says it is the same user. Bloxkeep never asks for one (auth's /v1/session/refresh): that
-/// ends the session it renews, so an account pasted from a browser or shared with another app would be signed out
-/// there (the owner's choice, 2026-10-22).
-/// </summary>
+/// <summary>Keeping saved sign-ins working. Roblox replaces an account's .ROBLOSECURITY every few hours to days and, months
+/// later, refuses the replaced one (devforum.roblox.com/t/4328913: announced 2026-02-03, enforced from 2026-05-01). The new
+/// cookie comes in the Set-Cookie of an answer to the old one (RobloxApi queues it) and is saved once Roblox says it's the same
+/// user. Bloxkeep never asks for one (auth's /v1/session/refresh): that ends the session it renews, signing out a browser or
+/// another app sharing the account (the owner's choice, 2026-10-22).</summary>
 public sealed partial class AppController
 {
     /// <summary>Tries at asking Roblox whose a renewed cookie is, before it is let go.</summary>
@@ -36,11 +33,8 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// Saves a renewed cookie to the account(s) the old one was saved for, once Roblox says it signs in that same user:
-    /// never another user's sign-in in an account's place. A renewal for a cookie no account holds (deleted, another
-    /// vault's, replaced meanwhile) is let go.
-    /// </summary>
+    /// <summary>Saves a renewed cookie to the account(s) holding the old one, once Roblox says it signs in that same user. One no
+    /// account holds (deleted, another vault's, replaced meanwhile) is let go.</summary>
     async Task SaveRenewedSignInAsync(RenewedCookie renewed)
     {
         var vault = _vault;
@@ -54,10 +48,8 @@ public sealed partial class AppController
                 user = await RobloxApi.GetAuthenticatedUserAsync(renewed.Renewed, renewed.Realm);
                 break;
             }
-            // Offline for a moment, or Roblox asked to slow down: asked again a little later, the new one not let go at
-            // the first failure.
-            // A notice on the account to accept (403 "User is moderated") stays until the person accepts it, so asking
-            // again only adds requests (2026-10-29, the owner's PC: 46 in five minutes, every renewal asked up to 4 times).
+            // Offline or rate-limited: asked again a little later. Not a notice to accept (403 "User is moderated"): it stays until
+            // the person accepts, so asking again only adds requests (2026-10-29, the owner's PC: 46 in five minutes).
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex) && attempt < RenewedCheckTries && ex is not RobloxApiException { Moderated: true })
             {
                 await Task.Delay(TimeSpan.FromSeconds(10 * attempt * attempt));
@@ -87,8 +79,7 @@ public sealed partial class AppController
             account.LastChecked = DateTime.Now;
             account.Username = user.Name;
             account.DisplayName = user.DisplayName;
-            // A request made with the old cookie after Roblox replaced it may have been refused, and the account
-            // taken for signed out meanwhile.
+            // A request with the old cookie after the swap may have been refused and the account taken for signed out.
             SignedInAgain(account);
         }
         Persist(); // on disk at once: the cookie it replaced may stop working any time now

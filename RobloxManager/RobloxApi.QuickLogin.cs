@@ -9,10 +9,8 @@ public static partial class RobloxApi
 {
     static string QuickLoginBase(string realm) => Realm.Api(realm, "apis") + "/auth-token-service/v1/login/";
 
-    /// <summary>
-    /// Starts a Quick Login: Roblox hands out a short code (and a QR picture of it) that the user confirms on a device
-    /// already signed in to Roblox. <see cref="QuickLoginCode.PrivateKey"/> proves we created the code; keep it in memory only.
-    /// </summary>
+    /// <summary>Starts a Quick Login code to confirm on a signed-in device. <see cref="QuickLoginCode.PrivateKey"/> proves we
+    /// created it; keep it in memory only.</summary>
     public static async Task<QuickLoginCode> CreateQuickLoginAsync(string realm, CancellationToken ct = default)
     {
         using var res = await PostWithCsrfAsync(QuickLoginBase(realm) + "create", "", "{}", null, ct, realm);

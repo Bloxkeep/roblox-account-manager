@@ -1,16 +1,11 @@
-// Bloxkeep's Discord bot, online around the clock (the green dot) without a server of its own: a Durable Object holds the
-// bot's Gateway connection on Cloudflare's free plan. One object, awake all day, is about 11,000 of the 13,000 GB-s a day
-// the plan includes. Heartbeats run on the object's alarm rather than a timer, so they survive Cloudflare restarting it;
-// after a restart the next alarm, or the minute's cron at the latest, connects again and resumes the session. Every
-// connect, close and restart is logged, and /status says how long the bot has been online, to prove it holds up.
+// Bloxkeep's Discord bot, online around the clock without a server of its own: a Durable Object holds the Gateway
+// connection on Cloudflare's free plan (one object awake all day is about 11,000 of the 13,000 GB-s a day included).
+// Heartbeats run on the object's alarm, not a timer, so they survive Cloudflare restarting it; the next alarm, or the
+// minute's cron at the latest, connects again and resumes. Every connect, close and restart is logged for /status.
 //
-// The same object reads the news every minute (sources.js): a Roblox build coming (from the Roblox watch, before release)
-// or live, Roblox having problems or working again, a new public Bloxkeep version. Each is posted once to the channels
-// servers chose with /notify (a Roblox update as a card, edited once Roblox's release notes are out), and every board
-// (/board) is edited when what it shows changes. Slash commands come over
-// HTTP (/interactions, signed by Discord), so they work even while the object reconnects; so do the Verify button and
-// its form (/verify: a captcha drawn by captcha.js, solved in Discord, for a role). It also counts how many people have
-// Bloxkeep open right now (online.js): the app says so to /online/ping while it's open.
+// Every minute it reads the news (sources.js) and posts each change once to the channels chosen with /notify, editing
+// every /board. Slash commands, the Verify button and its form come over HTTP (/interactions, signed by Discord), so
+// they work while the object reconnects. online.js counts the apps open now (/online/ping).
 import { DurableObject } from 'cloudflare:workers';
 import { onceMore } from './calls.js';
 import { CODE_LENGTH, captcha } from './captcha.js';
@@ -32,8 +27,7 @@ const FATAL = { 4004: 'token refused', 4010: 'bad shard', 4011: 'sharding requir
 const SESSION_GONE = new Set([4007, 4009]);
 const MAX_EVENTS = 2000;
 const MAX_BACKOFF = 60_000;
-// Bloxkeep's releases are looked at every two minutes (the others every minute): the apps learn of a new one from
-// /latest, so they update within minutes of it.
+// Bloxkeep's releases are looked at every two minutes (the others every minute): the apps learn of one from /latest.
 const RELEASE_EVERY = 2 * 60_000;
 // How many looks a new release waits for its notes to be readable before it is posted without them (an hour).
 const RELEASE_TRIES = 6;
@@ -41,12 +35,11 @@ const RELEASE_TRIES = 6;
 const OUTAGE_LOOKS = 2;
 // A Roblox update posted before Roblox's notes were out: they're looked for this often, for this long, and edited in.
 const NOTES_EVERY = 10 * 60_000, NOTES_FOR = 14 * 24 * 3600_000;
-// The community server's channel that shows how many have Bloxkeep open: renamed at most this often (Discord allows two
-// renames of a channel in ten minutes), and looked for this often while there is none (made by hand, say).
+// The "using Bloxkeep" channel: renamed at most this often (Discord allows two renames of a channel in ten minutes),
+// and looked for this often while there is none.
 const COUNT_EVERY = 6 * 60_000, COUNT_LOOK = 10 * 60_000;
-// The bot's object, kept in eastern North America, next to Discord: slash commands come from Discord's servers there,
-// and the posts go back to them. The first object ("bot") was made where the first look at /status came from (Asia),
-// which put about 200 ms of ocean on every command; this one takes over its servers' choices and boards (migrate()).
+// The bot's object lives in eastern North America, next to Discord. The first ("bot") was made in Asia, where the first
+// look at /status came from: ~200 ms of ocean on every command. This one took over its servers' choices (migrate()).
 const OBJECT = 'bot-na', OLD_OBJECT = 'bot', PLACE = 'enam';
 // The worker's own address: the dashboard's link (/online) points here.
 const PUBLIC_URL = 'https://bloxkeep-bot.bloxkeep-app.workers.dev';
@@ -59,8 +52,7 @@ const INTENTS = 1 << 9;
 const CAPTCHA_FOR = 5 * 60_000, CAPTCHAS_PER = 5, CAPTCHA_WINDOW = 10 * 60_000;
 // The community server's invite (/discord) is asked Discord whether it still works at most this often.
 const INVITE_RECHECK = 60_000;
-// The README's downloads badge: the count is read at most every 10 minutes (the Roblox watch counts that often), and
-// 5 minutes after it couldn't be.
+// The downloads badge's count: read at most every 10 minutes (as often as the Roblox watch counts), 5 after a failure.
 const DOWNLOADS_EVERY = 10 * 60_000, DOWNLOADS_RETRY = 5 * 60_000;
 // Who Bloxkeep's developers are (the application's owner, or its team's owner and admins) is asked Discord this often.
 const DEVELOPERS_RECHECK = 10 * 60_000;
@@ -92,13 +84,11 @@ export class Gateway extends DurableObject {
       this.traps = new Map([...ctx.storage.sql.exec('SELECT * FROM traps')].map(t => [t.guild, { ...t, exempt: JSON.parse(t.exempt) }]));
       // Each server's verification (/verify): the role whoever solves the captcha gets, and the button's message.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS verify (guild TEXT PRIMARY KEY, channel TEXT NOT NULL, role TEXT NOT NULL, message TEXT)');
-      // The captchas waiting for an answer, and when each person asked for theirs (kept in memory: after a restart,
-      // pressing Verify again is all it takes).
+      // The captchas waiting for an answer, and when each person asked (in memory only: after a restart, press Verify again).
       this.captchas = new Map();
       this.asked = new Map();
-      // The Bloxkeep apps open now (online.js): each one's id, until when it counts as online (its next beat is due well
-      // before), its version and language. Kept on disk only so that a restart doesn't make everyone vanish until their
-      // next beat; a row goes once it's stale.
+      // The apps open now (online.js): id, until when it counts as online, version and language. On disk only so a restart
+      // doesn't make everyone vanish until their next beat; a row goes once it's stale.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS online (id TEXT PRIMARY KEY, until INTEGER NOT NULL, app TEXT NOT NULL, lang TEXT NOT NULL)');
       // The most online at once on each day (Vietnam time), and when.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS peaks (day TEXT PRIMARY KEY, peak INTEGER NOT NULL, at INTEGER NOT NULL)');
@@ -115,9 +105,8 @@ export class Gateway extends DurableObject {
       // Bloxkeep on people's PCs, controlled from Discord (remote.js): each PC linked to one Discord account, and the
       // PC's name as its app last said it (to name it while it's offline).
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS links (pc TEXT PRIMARY KEY, user TEXT NOT NULL, label TEXT NOT NULL, at INTEGER NOT NULL)');
-      // Codes waiting to be typed (code → { pc, until }), commands waiting for their PC's answer (id → { pc, done }),
-      // commands whose outcome may still be followed up (id → { pc, token, until }), each person's last commands, and
-      // the names Discord shows linked people by (for their app's Settings).
+      // Codes waiting to be typed (code → { pc, until }), commands waiting for an answer (id → { pc, done }) or a follow-up
+      // (id → { pc, token, until }), each person's last commands, and the names Discord shows linked people by.
       this.codes = new Map();
       this.answers = new Map();
       this.tokens = new Map();
@@ -135,8 +124,7 @@ export class Gateway extends DurableObject {
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
       this.stopped = (await ctx.storage.get('stopped')) ?? null;
       this.retired = (await ctx.storage.get('retired')) ?? false; // handed over to the object that replaced it
-      // A new instance: the first one, or Cloudflare restarted the object (the connection went with it). The time of the
-      // old one's last heartbeat answer marks when it stopped being online.
+      // A new instance (the first, or Cloudflare restarted it): the old one's last heartbeat answer marks when it went offline.
       this.log('woke', String((await ctx.storage.get('lastBeat')) ?? ''));
       // Woken by anything (a deploy, a restart, a look at /status): connect in a moment rather than at the next cron.
       if (env.DISCORD_TOKEN && !this.stopped && !this.retired && (await ctx.storage.getAlarm()) == null)
@@ -173,11 +161,8 @@ export class Gateway extends DurableObject {
 
   // ───────────────────────────── moving ─────────────────────────────
 
-  /**
-   * Once: the old object's servers' choices, boards, news state and log copied here, and the old one told to stop (it
-   * drops its connection and never connects again). Tried again every minute until the old one answers: just after a
-   * deploy it may still run code from before this existed. True once done (or when there is nothing to take over).
-   */
+  // Once: the old object's servers' choices, boards, news state and log copied here, and the old one told to stop for good.
+  // Tried every minute until it answers (just after a deploy it may run older code). True once done or nothing to take over.
   async migrate() {
     if (await this.ctx.storage.get('migrated'))
       return true;
@@ -224,11 +209,8 @@ export class Gateway extends DurableObject {
     };
   }
 
-  /**
-   * Where the app's Discord button goes (/discord): an invite into Bloxkeep's community server that never expires, made
-   * by the bot in the channel newcomers see (the /verify channel). Made again whenever it stops working (someone deleted
-   * it, or Discord dropped it); while that can't be done, Bloxkeep's website.
-   */
+  // /discord: a never-expiring invite into the community server, made by the bot in the /verify channel; made again when it
+  // stops working (deleted, or dropped by Discord). Meanwhile, Bloxkeep's website.
   async invite() {
     const guild = this.env.COMMUNITY_GUILD;
     if (!guild || !this.env.DISCORD_TOKEN)
@@ -261,11 +243,8 @@ export class Gateway extends DurableObject {
     return `https://discord.gg/${code}`;
   }
 
-  /**
-   * The install files' downloads for the README's badge (null before the count was first read): the Roblox watch's
-   * count (sources.js readInstallDownloads), read at most every 10 minutes. When it can't be read, the last count stays
-   * rather than the badge going to "unknown".
-   */
+  // The downloads badge's count (null before first read): the Roblox watch's count (sources.js readInstallDownloads), read
+  // at most every 10 minutes. When it can't be read, the last count stays rather than "unknown".
   async downloads() {
     const every = Number(this.env.DOWNLOADS_EVERY_MS ?? DOWNLOADS_EVERY);
     const kept = (await this.ctx.storage.get('downloads')) ?? { n: null, next: 0 };
@@ -444,7 +423,6 @@ export class Gateway extends DurableObject {
     } catch {}
   }
 
-  /** The PCs a Discord account linked, oldest first. */
   pcsOf(user) {
     return [...this.ctx.storage.sql.exec('SELECT pc, label FROM links WHERE user = ? ORDER BY at', user)];
   }
@@ -659,10 +637,8 @@ export class Gateway extends DurableObject {
     return reply({ content: '?' }, true);
   }
 
-  /**
-   * A press on Verify (a new captcha, its picture in `png`), on "Enter the code" (the form), or the code typed in (the
-   * role, when right). Everything is seen only by that person; worker.js sends Discord the answer, with the picture.
-   */
+  // A press on Verify (a new captcha, its picture in `png`), on "Enter the code" (the form), or the code typed in (the role,
+  // when right). Seen only by that person; worker.js sends Discord the answer, with the picture.
   async component(i) {
     const l = lang(i.locale ?? i.guild_locale), r = replies(l), id = i.data?.custom_id;
     const mine = data => ({ type: 4, data: { ...data, flags: 64, allowed_mentions: { parse: [] } } });
@@ -717,10 +693,8 @@ export class Gateway extends DurableObject {
 
   // ───────────────────────────── online now ─────────────────────────────
 
-  /**
-   * A beat from a Bloxkeep app (online.js readBeat): open now, or closing. The answer says when to send the next: later
-   * the more are online, so that all the beats together stay within the bot's daily budget (online.js beatEvery).
-   */
+  // A beat from an app (online.js readBeat): open now, or closing. The answer says when to send the next: later the more
+  // are online, so all the beats stay within the bot's daily budget (online.js beatEvery).
   async beat(b) {
     const now = Date.now();
     const sql = this.ctx.storage.sql, day = dayOf(now);
@@ -754,7 +728,6 @@ export class Gateway extends DurableObject {
     return beatEvery(count, Number(this.env.BEAT_BUDGET) || undefined);
   }
 
-  /** One of the day's people: their id scrambled with the day's key, counted if the day's list hasn't it yet. */
   /** Notes a PC in the day's list (scrambled); whether it is new there today. person: counted among the day's people. */
   async notePerson(id, now, person = true) {
     const day = dayOf(now);
@@ -786,7 +759,6 @@ export class Gateway extends DurableObject {
     return this.here.size;
   }
 
-  /** Today's peak, raised when more are online than ever before today. */
   notePeak(count, now) {
     const day = dayOf(now);
     if (this.peak?.day !== day)
@@ -873,10 +845,8 @@ export class Gateway extends DurableObject {
     ].join('\n'));
   }
 
-  /**
-   * A message in a server: posted in that server's trap channel by anyone but its owner, a moderator, an admin or a
-   * bot, it gets its sender banned, with their messages from the last hour deleted, and says so in #mod-log.
-   */
+  // A message in a server's trap channel by anyone but its owner, a moderator, an admin or a bot: its sender is banned,
+  // their messages from the last hour deleted, and #mod-log says so.
   async trap(d) {
     const t = d.guild_id ? this.traps.get(d.guild_id) : null;
     if (!t || d.channel_id !== t.channel || d.author?.bot || d.webhook_id)
@@ -910,7 +880,6 @@ export class Gateway extends DurableObject {
 
   // ───────────────────────────── news ─────────────────────────────
 
-  /** What the sources said last; read now if never yet (a first command before the first minute's look). */
   /** The newest public Bloxkeep, for /latest. */
   async latest() {
     const snap = await this.snapshot();
@@ -921,10 +890,8 @@ export class Gateway extends DurableObject {
     return (await this.ctx.storage.get('snap')) ?? await this.poll();
   }
 
-  /**
-   * Every minute: the sources read again, each change posted once to the servers that want that kind of news, and the
-   * boards edited where what they show has changed. The first look only takes note (nothing old is announced).
-   */
+  // Every minute: the sources read again, each change posted once to the servers that want it, boards edited where changed.
+  // The first look only takes note (nothing old is announced).
   async poll() {
     const prev = (await this.ctx.storage.get('snap')) ?? null, now = Date.now();
     const snap = prev ? structuredClone(prev) : { announced: {}, outage: { down: false, bad: 0, good: 0, since: null } };
@@ -984,8 +951,7 @@ export class Gateway extends DurableObject {
       snap.latest = tag.replace(/^v/, '');
     if (tag && tag !== snap.announced.release && !/-/.test(tag)) {
       const rel = await readRelease(this.env, tag);
-      // Its notes not readable yet (GitHub not answering): asked again at the next look, for up to RELEASE_TRIES looks,
-      // rather than posted without its highlights.
+      // Notes not readable yet (GitHub not answering): asked again next look, up to RELEASE_TRIES, rather than posted without.
       const tries = snap.releaseTries?.tag === tag ? snap.releaseTries.n + 1 : 1;
       if (!rel.read && tries < RELEASE_TRIES) {
         snap.releaseTries = { tag, n: tries };
@@ -1009,11 +975,8 @@ export class Gateway extends DurableObject {
     return snap;
   }
 
-  /**
-   * The community server's channel that shows how many have Bloxkeep open now ("🟢 Using Bloxkeep: 3": /setup makes it,
-   * or one named so by hand that the bot may manage): renamed when the number changes, at most every six minutes, and
-   * looked for every ten minutes while there is none.
-   */
+  // The "🟢 Using Bloxkeep: 3" channel (/setup makes it, or one named so by hand that the bot may manage): renamed when the
+  // number changes, at most every six minutes; looked for every ten minutes while there is none.
   async updateCountChannel(now) {
     if (!this.env.DISCORD_TOKEN || !this.env.COMMUNITY_GUILD)
       return;
@@ -1040,10 +1003,8 @@ export class Gateway extends DurableObject {
       await this.ctx.storage.put('countChannel', c);
   }
 
-  /**
-   * One post to every server that wants this kind of news, in its language, pinging its role if it chose one. A Roblox
-   * update still `waiting` for Roblox's notes is kept, to edit them in once they're out.
-   */
+  // One post to every server that wants this kind of news, in its language, pinging its role if it chose one. A Roblox
+  // update still `waiting` for Roblox's notes is kept, to edit them in once they're out.
   async broadcast(kind, make, waiting) {
     if (!this.env.DISCORD_TOKEN)
       return;
@@ -1057,18 +1018,15 @@ export class Gateway extends DurableObject {
         if (waiting)
           sql.exec('INSERT INTO waiting VALUES (?, ?, ?, ?, ?, ?, ?, ?)', release(waiting.build.version), waiting.kind, JSON.stringify(waiting.build),
             s.channel, id, s.locale ?? null, s.role ?? null, Date.now());
-        // Published, for the servers following an announcement channel (a text channel: Discord says no). An edit
-        // reaches them too.
+        // Published for servers following an announcement channel (a text channel: Discord says no); an edit reaches them too.
         await api(this.env, 'POST', `/channels/${s.channel}/messages/${id}/crosspost`);
       }
       this.log('posted', `${kind} ${s.guild} ${res.status}`);
     }
   }
 
-  /**
-   * Roblox's notes looked for (every ten minutes, for two weeks) for each release posted without them; once they're out,
-   * each of its posts is edited to show them. A post that was deleted, or can't be edited any more, is let go.
-   */
+  // Releases posted without Roblox's notes: looked for every ten minutes for two weeks, then each post edited to show them.
+  // A post deleted, or no longer editable, is let go.
   async addNotes(now) {
     const sql = this.ctx.storage.sql;
     sql.exec('DELETE FROM waiting WHERE at < ?', now - NOTES_FOR);
@@ -1306,10 +1264,7 @@ export class Gateway extends DurableObject {
     sql.exec('DELETE FROM events WHERE rowid IN (SELECT rowid FROM events ORDER BY at DESC LIMIT -1 OFFSET ?)', MAX_EVENTS);
   }
 
-  /**
-   * How the bot is doing, and how long it has been online since it first connected (to judge the green dot over days;
-   * the time before, without a token, isn't counted).
-   */
+  /** How the bot is doing, and its online time since it first connected (the time before, without a token, isn't counted). */
   async status() {
     const all = [...this.ctx.storage.sql.exec('SELECT at, kind, detail FROM events ORDER BY at, rowid')];
     const first = all.findIndex(e => e.kind === 'connect');
@@ -1381,12 +1336,9 @@ async function tokenHash(token) {
   return [...new Uint8Array(digest)].slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Whether whoever used the command could give this role by hand, by Discord's own rule: Manage Roles (or Administrator)
- * and the role below their highest one, the server's owner above all; never @everyone or a role an app manages. The bot
- * gives /verify's role to anyone who solves the captcha, so without this Manage Server alone would hand out any role
- * under the bot's own (a moderator's, say).
- */
+// Whether whoever used the command could give this role by hand, by Discord's rule: Manage Roles (or Administrator) and
+// the role below their highest (the owner above all); never @everyone or an app's role. /verify gives the role to anyone
+// who solves the captcha, so without this Manage Server alone would hand out any role under the bot's (a moderator's).
 async function mayGive(env, i, role) {
   const perms = BigInt(i.member?.permissions ?? 0);
   if (!(perms & (1n << 28n)) && !(perms & (1n << 3n)))
@@ -1411,10 +1363,8 @@ function boardShown(l, snap) {
   return rest.fields;
 }
 
-/**
- * A Bloxkeep app saying it's open (or closing). Small bodies only, and a few dozen a minute from one address at most
- * (an internet café's PCs share one); the address is only the rate limit's key, never kept.
- */
+// A Bloxkeep app saying it's open (or closing). Small bodies only, and a few dozen a minute from one address at most (an
+// internet café's PCs share one); the address is only the rate limit's key, never kept.
 async function ping(request, env, gateway) {
   if (env.PING_LIMITER && !(await env.PING_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' })).success)
     return Response.json({ error: 'rate' }, { status: 429 });
@@ -1436,11 +1386,8 @@ async function ping(request, env, gateway) {
   }
 }
 
-/**
- * The README's downloads badge (shields.io's endpoint badge reads this): the install files' downloads, as the bot's
- * object last read them (Gateway.downloads), kept as long per Cloudflare location. "unknown" only before the count was
- * ever read.
- */
+// The README's downloads badge (shields.io's endpoint badge): the count the object last read (Gateway.downloads), kept
+// that long per Cloudflare location. "unknown" only before the count was ever read.
 async function downloadsBadge(env, ctx) {
   const key = new Request('https://bloxkeep-bot.invalid/badge/downloads'), cache = caches.default;
   const hit = await cache.match(key);
@@ -1459,10 +1406,8 @@ async function downloadsBadge(env, ctx) {
   return res;
 }
 
-/**
- * The newest public Bloxkeep, for the apps: { version }. Kept a minute per Cloudflare location, so however many apps
- * ask, the object answers a few times a minute. Nothing is sent and nothing is kept about who asks.
- */
+// The newest public Bloxkeep for the apps: { version }. Kept a minute per Cloudflare location, so the object answers a few
+// times a minute however many ask. Nothing is sent and nothing is kept about who asks.
 async function latestVersion(env, ctx) {
   const key = new Request('https://bloxkeep-bot.invalid/latest'), cache = caches.default;
   const hit = await cache.match(key);

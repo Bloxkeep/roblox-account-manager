@@ -19,11 +19,9 @@ public sealed class Vault : IDisposable
     const int DefaultIterations = 600_000;
     static readonly byte[] Magic = "RMV1"u8.ToArray();
 
-    /// <summary>
-    /// %LOCALAPPDATA%\Bloxkeep by default; the installed program lives apart in %LOCALAPPDATA%\BloxkeepApp, which
-    /// uninstalling deletes, so accounts survive it. The portable zip, or a "data" folder next to the exe, keeps
-    /// data beside the app instead; BLOXKEEP_DATA overrides all of these.
-    /// </summary>
+    /// <summary>%LOCALAPPDATA%\Bloxkeep by default, apart from the program (%LOCALAPPDATA%\BloxkeepApp, which uninstalling
+    /// deletes), so accounts survive an uninstall. The portable zip, or a "data" folder next to the exe, keeps data beside
+    /// the app; BLOXKEEP_DATA overrides all of these.</summary>
     public static string DataDir { get; } = ResolveDataDir();
 
     /// <summary>Old copies of vaults: one taken off the list (vault-removed-…), the one a restore replaced (vault-before-restore-…).</summary>
@@ -47,12 +45,9 @@ public sealed class Vault : IDisposable
     }
     static readonly string[] CacheFolders = ["webview", "webview-safe", "captcha", "roblox-client-paths"];
 
-    /// <summary>
-    /// Builds before 1.0.11 kept everything at the top of the data folder: their old vault copies, pictures and caches
-    /// move into old-vaults, pictures and cache. Run at start, before anything opens them; whatever won't move
-    /// (held by another program) stays where it is and is tried again next start. The vaults, their .bak and .tmp
-    /// copies, settings and the log stay at the top. Never stops the start: anything unexpected is only logged.
-    /// </summary>
+    /// <summary>Moves what builds before 1.0.11 kept at the top of the data folder into old-vaults, pictures and cache. Run
+    /// at start, before anything opens them; what won't move (held by another program) is tried next start. The vaults,
+    /// their .bak and .tmp copies, settings and the log stay at the top. Never stops the start: errors are only logged.</summary>
     public static void Tidy()
     {
         try
@@ -150,11 +145,8 @@ public sealed class Vault : IDisposable
             }
         }
     }
-    /// <summary>
-    /// For an uninstall the person asked to take everything: the vault with its spare copies, settings, logs and caches.
-    /// Only Bloxkeep's own files go (DataDir may be a folder BLOXKEEP_DATA points at); the folder too once empty.
-    /// Backups in the backup folder stay.
-    /// </summary>
+    /// <summary>An uninstall that takes everything: vaults with their spare copies, settings, logs and caches. Only Bloxkeep's
+    /// own files (DataDir may be a folder BLOXKEEP_DATA points at), then the folder once empty. Backups stay.</summary>
     public static void DeleteAllData()
     {
         if (!Directory.Exists(DataDir))
@@ -198,11 +190,8 @@ public sealed class Vault : IDisposable
         }
     }
 
-    /// <summary>
-    /// The vault file the lock screen opens or sets up (see <see cref="Vaults"/>): vault.rmv for the first vault on this
-    /// PC, vault-&lt;id&gt;.rmv for each one added since. An open vault keeps writing to its own file whatever this
-    /// becomes meanwhile.
-    /// </summary>
+    /// <summary>The vault file the lock screen opens or sets up (<see cref="Vaults"/>): vault.rmv for the first, vault-&lt;id&gt;.rmv
+    /// for each added since. An open vault keeps writing to its own file whatever this becomes.</summary>
     public static string ActiveFile { get; set; } = "vault.rmv";
     public static string VaultPath => Path.Combine(DataDir, ActiveFile);
     static string BackupPath => VaultPath + ".bak";
@@ -290,10 +279,8 @@ public sealed class Vault : IDisposable
         return vault;
     }
 
-    /// <summary>
-    /// Opens vault.rmv, or the previous save (vault.rmv.bak) when the main file turns out damaged: cut short by a
-    /// power cut, or mangled by an antivirus. The damaged file is kept beside the vault, never deleted.
-    /// </summary>
+    /// <summary>Opens vault.rmv, or the previous save (vault.rmv.bak) when the main file is damaged (a power cut, an
+    /// antivirus). The damaged file is kept beside the vault, never deleted.</summary>
     /// <exception cref="InvalidPasswordException">The password does not decrypt the file.</exception>
     public static Vault Open(string password)
     {
@@ -325,11 +312,8 @@ public sealed class Vault : IDisposable
         throw new InvalidDataException(L.T("The data file is not in the right format or is damaged."));
     }
 
-    /// <summary>
-    /// Opens the vault with the key the previous run handed over for an update's restart (see <see cref="Relaunch"/>)
-    /// instead of the password. Only the main file, and only while it still has that key's salt (the password wasn't
-    /// changed meanwhile); otherwise the lock screen asks as usual.
-    /// </summary>
+    /// <summary>Opens with the key the previous run handed over for an update's restart (<see cref="Relaunch"/>). Only the
+    /// main file, and only while it still has that key's salt; otherwise the lock screen asks as usual.</summary>
     /// <exception cref="InvalidPasswordException">The key doesn't open the file.</exception>
     public static Vault OpenWithKey(byte[] key, byte[] salt, int iterations)
     {
@@ -418,11 +402,10 @@ public sealed class Vault : IDisposable
     }
 
     /// <summary>
-    /// A save writes vault.rmv.tmp, then swaps it in and keeps the file it replaced as vault.rmv.bak. When that swap
-    /// is cut short (antivirus holding the file, power cut) vault.rmv can be gone while .bak/.tmp survive, and the app
-    /// would offer to set up a new vault over them. The .tmp is the newest save, written in full before the swap
-    /// began, so it goes back with .bak left in place as its fallback: should it turn out damaged after all, opening
-    /// it falls back to the previous save (see <see cref="Open"/>). Without a usable .tmp the previous save goes back.
+    /// A save writes vault.rmv.tmp, then swaps it in and keeps the replaced file as vault.rmv.bak. A swap cut short
+    /// (antivirus, power cut) can leave no vault.rmv but .bak/.tmp, and the app would offer a new vault over them.
+    /// The .tmp, written in full before the swap, goes back with .bak kept as its fallback (see <see cref="Open"/>);
+    /// without a usable .tmp the previous save goes back.
     /// </summary>
     static void RestoreIfMissing()
     {
@@ -458,10 +441,9 @@ public sealed class Vault : IDisposable
     public const long MaxOtherSize = 50L * 1024 * 1024;
 
     /// <summary>
-    /// Opens another vault file (one from another PC, or a backup) with its own master password, to bring accounts
-    /// over. Read-only: the file is never written, and this vault's key and files aren't touched. The key it derives
-    /// is wiped before returning, as is the decrypted JSON (see <see cref="Decrypt"/>). Slow (key stretching), so
-    /// call it off the UI thread.
+    /// Opens another vault file (from another PC, or a backup) with its own master password, to bring accounts over.
+    /// Read-only: neither that file nor this vault's key and files are touched. The derived key and the decrypted JSON
+    /// are wiped before returning (see <see cref="Decrypt"/>). Slow (key stretching): call it off the UI thread.
     /// </summary>
     /// <returns>The data when <see cref="OtherStatus.Opened"/>; null otherwise.</returns>
     public static (OtherStatus Status, VaultData? Data) ReadOther(string path, string password)
@@ -542,26 +524,18 @@ public sealed class Vault : IDisposable
     readonly object _queueGate = new();
     Pending? _queued;
     Task _background = Task.CompletedTask;
-    /// <summary>
-    /// Every save is numbered as it takes the vault (under _sync), and the file gate keeps the number of the newest one
-    /// written: a background save that took the vault before a save made now but reaches the file after it (its worker
-    /// had taken it from the queue, so the save made now had nothing to drop) is left out, so the file never goes back
-    /// to an older vault, nor to an old password.
-    /// </summary>
+    /// <summary>Saves are numbered as they take the vault (under _sync); the file gate keeps the newest written. A background
+    /// save that took the vault before a save made now but reaches the file after it is left out, so the file never goes
+    /// back to an older vault, nor to an old password.</summary>
     long _taken, _written;
 
-    /// <summary>
-    /// The checks' pause (Tests/Bloxkeep.Tests): when set, a background save calls it once it has taken the vault to
-    /// write and before it reaches the file, as a busy PC may hold it there. The app never sets it.
-    /// </summary>
+    /// <summary>Test hook (Tests/Bloxkeep.Tests): a background save calls it between taking the vault and reaching the
+    /// file, as a busy PC may pause there. The app never sets it.</summary>
     internal static Action? BeforeBackgroundWrite { get; set; }
 
-    /// <summary>
-    /// Takes the vault as it is now (on the caller's thread, so nothing changes under it) and has it encrypted, written
-    /// and flushed to disk on a worker, which is most of a save's time: the window doesn't stall for it. One write at a
-    /// time; a newer save replaces one still waiting. The task ends once the vault as of this call (or newer) is on
-    /// disk, faulted when that write failed (it is then tried again with the next save).
-    /// </summary>
+    /// <summary>Takes the vault now (on the caller's thread, so nothing changes under it) and encrypts, writes and flushes
+    /// it on a worker. One write at a time; a newer save replaces one still waiting. The task ends once this vault (or
+    /// newer) is on disk, faulted when that write failed (it is then tried again with the next save).</summary>
     public Task SaveInBackground()
     {
         Pending next;
@@ -742,10 +716,8 @@ public sealed class Vault : IDisposable
         return (DeriveKey(newPassword, salt, DefaultIterations), salt);
     }
 
-    /// <summary>
-    /// Writes the vault under the new password and only then switches to it: if the write fails (file locked by an
-    /// antivirus, disk full) the old password keeps working, both on disk and for later saves.
-    /// </summary>
+    /// <summary>Writes the vault under the new password and only then switches to it: if the write fails (antivirus lock,
+    /// disk full) the old password keeps working, on disk and for later saves.</summary>
     public void ChangePassword((byte[] Key, byte[] Salt) prepared)
     {
         lock (_sync)
@@ -770,10 +742,8 @@ public sealed class Vault : IDisposable
         }
     }
 
-    /// <summary>
-    /// A short id of the vault these bytes belong to (from the salt in the header, so it needs no password); null
-    /// when they aren't a vault. Backups carry it in their name, so vaults sharing a folder don't prune each other's.
-    /// </summary>
+    /// <summary>A short id from the header's salt (no password needed); null when not a vault. Backups carry it in their
+    /// name, so vaults sharing a folder don't prune each other's.</summary>
     public static string? IdOf(byte[] file) =>
         HeaderOk(file, out _, out byte[] salt) ? IdOfSalt(salt) : null;
 

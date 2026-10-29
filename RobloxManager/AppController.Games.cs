@@ -6,7 +6,6 @@ public sealed partial class AppController
     static readonly TimeSpan GameRetry = TimeSpan.FromMinutes(2);
     /// <summary>The longest a place Roblox keeps answering without (unpublished, private) waits before it is asked again.</summary>
     static readonly TimeSpan MaxGameRetry = TimeSpan.FromHours(1);
-    /// <summary>Places looked up so far; the ones looked up longest ago go first beyond this.</summary>
     const int MaxCachedGames = 1000;
     /// <summary>Lookups in a row that Roblox answered without the place: each one doubles the wait before the next.</summary>
     readonly Dictionary<long, int> _gameMisses = new();
@@ -16,20 +15,14 @@ public sealed partial class AppController
         _games.TryGetValue(placeId, out var cached)
         && ((cached is not null && !fresh) || DateTime.UtcNow - _gameFetchedAt.GetValueOrDefault(placeId) < GameRetryFor(placeId, cached, fresh));
 
-    /// <summary>
-    /// How long a lookup holds: two minutes, and for a place Roblox answered without (asked again by every status
-    /// check and process tick while a client is in it) 2, 4, 8 … up to 60 minutes. A lookup the person asked for
-    /// (fresh) waits two minutes at most.
-    /// </summary>
+    /// <summary>How long a lookup holds: two minutes; for a place Roblox answered without (asked by every status check while a
+    /// client is in it) 2, 4, 8 … up to 60 minutes. A lookup the person asked for (fresh) waits two minutes at most.</summary>
     TimeSpan GameRetryFor(long placeId, GameInfo? cached, bool fresh = false) =>
         !fresh && cached is null && _gameMisses.TryGetValue(placeId, out int misses)
             ? TimeSpan.FromTicks(Math.Min(MaxGameRetry.Ticks, GameRetry.Ticks << Math.Min(misses - 1, 6)))
             : GameRetry;
 
-    /// <summary>
-    /// Fills the game cache for many places with one batch of requests. Presence already says which universe a
-    /// place belongs to; other places are looked up first. Failed lookups are retried after two minutes.
-    /// </summary>
+    /// <summary>Fills the game cache in one batch; places whose universe isn't known from presence are looked up first.</summary>
     async Task LoadGamesAsync(IEnumerable<(long PlaceId, long UniverseId)> places, bool fresh = false)
     {
         var wanted = places.Where(p => p.PlaceId > 0 && !HasGame(p.PlaceId, fresh)).DistinctBy(p => p.PlaceId).ToList();
@@ -101,16 +94,12 @@ public sealed partial class AppController
         return _games.GetValueOrDefault(placeId);
     }
 
-    // A minute: Roblox gives a few server lists a minute (RobloxApi.ServerListLeft), so switching the order back and
-    // forth within it shows what was already loaded instead of spending another.
+    // Roblox gives a few server lists a minute (RobloxApi.ServerListLeft): switching order back and forth reuses what's loaded.
     static readonly TimeSpan ServerListLifetime = TimeSpan.FromSeconds(60);
     readonly Dictionary<(long, bool, string), (List<ServerInfo> Servers, string? Next, DateTime At)> _serverPages = new();
 
-    /// <summary>
-    /// A page of a game's public servers. Pages are kept for a minute; left says how many more Roblox would give now
-    /// (-1: unknown), so the window spends them only on what was asked for. When Roblox says to wait, the page says so
-    /// (busy) with the seconds Roblox gave (retryIn), and the window tries again by itself then.
-    /// </summary>
+    /// <summary>A page of a game's public servers, kept a minute. left: how many more Roblox would give now (-1: unknown). When
+    /// Roblox says to wait, busy with its seconds (retryIn); the window retries by itself then.</summary>
     async Task<object?> ServersAsync(long placeId, bool fewestFirst, string? cursor)
     {
         if (placeId <= 0)
@@ -151,11 +140,8 @@ public sealed partial class AppController
         return ids;
     }
 
-    /// <summary>
-    /// Friends of your accounts who are playing this game, with the server they are in. Each account's friends are
-    /// asked about with that account's own cookie: Roblox only tells a friend the server when that person's privacy
-    /// settings let them join. At most 3 accounts are used (the selected ones first) to keep the requests few.
-    /// </summary>
+    /// <summary>Friends of your accounts playing this game, with their server. Each account asks with its own cookie: Roblox gives
+    /// the server only when that friend's privacy lets them join. At most 3 accounts (selected first) to keep requests few.</summary>
     async Task<object?> FriendServersAsync(long placeId, Guid[] preferred)
     {
         var vault = RequireVault();
@@ -243,11 +229,8 @@ public sealed partial class AppController
     sealed record PrivateFound(RobloxApi.PrivateServer Server, List<Guid> Via);
     readonly Dictionary<(long PlaceId, string Viewers), (List<PrivateFound> Servers, int Asked, bool Failed, DateTime At)> _privateServers = new();
 
-    /// <summary>
-    /// The game's private servers your accounts can join (owned, or invited to), for Browse servers. Roblox answers each
-    /// account with its own list, so the selected accounts are asked (up to 6; with none selected, up to 3 others) and
-    /// each server says which of them can join it: Roblox lets in only those, whatever the others try.
-    /// </summary>
+    /// <summary>The game's private servers your accounts can join, for Browse servers. Roblox answers each account with its own
+    /// list, so the selected accounts are asked (up to 6; none selected, 3 others), and each server lists who can join it.</summary>
     async Task<object?> PrivateServersAsync(long placeId, Guid[] selected)
     {
         var vault = RequireVault();
@@ -300,7 +283,6 @@ public sealed partial class AppController
         return PrivateServersDto(servers, viewers.Count, allFailed);
     }
 
-    /// <summary>The private servers as the page gets them, the accounts that can join each named as they read now.</summary>
     object PrivateServersDto(List<PrivateFound> servers, int asked, bool failed) => new
     {
         asked,

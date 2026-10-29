@@ -21,16 +21,12 @@ public sealed partial class AppController
         return new { resume, view, state = BuildState() };
     }
 
-    /// <summary>
-    /// What the page had on screen (selection, filter, search, scroll), kept in memory only while the browser is
-    /// closed in the background, so a recreated page looks exactly the same. Written to disk only inside the
-    /// encrypted hand-over of an update in the background (see <see cref="Relaunch"/>).
-    /// </summary>
+    /// <summary>What the page had on screen (selection, filter, search, scroll), kept in memory while the browser is closed in
+    /// the background so a recreated page looks the same. On disk only inside an update's encrypted hand-over (see <see cref="Relaunch"/>).</summary>
     /// <param name="restart">Sent right before the page asks for a browser restart (GPU switch), while the window is in front.</param>
     object? KeepView(string view, bool restart)
     {
-        // Sent when the page goes hidden; one that arrives after the window is already back (a quick minimise and
-        // restore) is stale, and would put an old selection back the next time the browser is recreated.
+        // One that arrives after the window is already back (a quick minimise and restore) is stale.
         if (!_background && !restart)
             return null;
         _pageView = view.Length <= 256 * 1024 ? view : null;
@@ -45,10 +41,7 @@ public sealed partial class AppController
             _pageView = null;
     }
 
-    /// <summary>
-    /// The page has something open that closing the browser would lose (a form being filled in, a sign-in under way):
-    /// the window keeps the browser alive in the background meanwhile.
-    /// </summary>
+    /// <summary>The page has something closing the browser would lose (a form, a sign-in): the window keeps it alive.</summary>
     public bool PageBusy { get; private set; }
 
     object? SetPageBusy(bool busy)
@@ -57,10 +50,8 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// The page is going away (browser released or recreated): nothing it was in the middle of survives, least of
-    /// all a sign-in prompt holding a password or a Quick Login code waiting to be approved.
-    /// </summary>
+    /// <summary>The page is going away (browser released or recreated): nothing it was doing survives, least of all a
+    /// sign-in prompt holding a password or a Quick Login code waiting for approval.</summary>
     public void PageGone()
     {
         PageAttached = false; // the next page asks for everything with getState
@@ -114,7 +105,6 @@ public sealed partial class AppController
         // The lock screen after a while without use: Bloxkeep is open behind it, Roblox and the background carry on.
         screenLock = _screenLocked ? new { minutes = _vault?.Data.Settings.AutoLockMinutes ?? 0 } : null,
         dataPath = Vault.DataDir,
-        // Settings › Backup & data › Data: the open vault's file, the error log, the program's folder.
         paths = new { vault = _vault?.FilePath, log = LogPath, app = AppFolder },
         // Not only the roblox-player: links: another Roblox's uninstaller takes them with it (Roblox VNG's, 2026-10-28)
         // while a client, a launcher or the Store edition is still here, and Default opens that one (FallbackLauncher).
@@ -145,7 +135,6 @@ public sealed partial class AppController
     /// <param name="UpToDate">null until both versions are known.</param>
     /// <param name="Store">Roblox from the Microsoft Store is chosen: the Store installs its updates, not Roblox itself.</param>
     /// <param name="Updater">The launcher that can update this copy of Roblox now (its name), when there is one.</param>
-    /// <param name="Updating">It is doing so (Settings › Roblox version › Update now).</param>
     sealed record RobloxVersionInfo(string? Installed, string? Latest, bool? UpToDate, bool Direct, bool Store = false, string? Updater = null,
         bool Updating = false);
 
@@ -169,10 +158,8 @@ public sealed partial class AppController
         return TakeInstalls(installs, updater, DateTime.UtcNow);
     }
 
-    /// <summary>
-    /// What is installed, read from the disk and the registry: up to a second on a busy PC (2026-10-29, the owner's:
-    /// 0.9 s in a process check), so the process tick reads it on a worker (<see cref="TickRobloxUpdates"/>).
-    /// </summary>
+    /// <summary>What is installed, from disk and registry: up to a second on a busy PC (2026-10-29, the owner's: 0.9 s in a
+    /// process check), so the process tick reads it on a worker (<see cref="TickRobloxUpdates"/>).</summary>
     static (InstallsInfo Installs, string? Updater) ReadInstalls(string via, string custom) => (new InstallsInfo(
             // What Default opens Roblox with: the links' program, or what stands in for it when they are gone or Roblox
             // VNG's (RobloxLauncher.FallbackLauncher), so Settings names the program really used.
@@ -195,11 +182,9 @@ public sealed partial class AppController
         string? before = _installs?.Client?.Folder, beforeVersion = _installs?.Client?.Version;
         _installs = installs;
         _updaterExe = updater;
-        // Roblox (or its launcher) put a new build in place since the last look — or an older one (a launcher set to a
-        // version, an older copy chosen), which isn't an update.
-        // (The Store edition has no build folder: switching to or from it says nothing.)
-        // Going to an older build while the newer one stays installed is Roblox switching channel (RobloxInstalls.HasBuild):
-        // nothing to say.
+        // A new build since the last look, or an older one (a launcher pinned to a version), which isn't an update. The Store
+        // edition has no build folder, so switching to or from it says nothing. Going older while the newer build stays installed
+        // is Roblox switching channel (RobloxInstalls.HasBuild): nothing to say.
         if (before is { Length: > 0 } && _installs.Client is { Folder.Length: > 0 } now && now.Folder != before
             && (Version.TryParse(now.Version, out var have) && Version.TryParse(beforeVersion, out var had) && have < had) is var older
             && !(older && RobloxInstalls.HasBuild(now.Exe, before)))
@@ -212,10 +197,8 @@ public sealed partial class AppController
         return _installs;
     }
 
-    /// <summary>
-    /// The Roblox version the chosen launcher starts, next to the newest one Roblox serves. An older client updates
-    /// itself on its next start (that first window takes longer), except when started directly.
-    /// </summary>
+    /// <summary>The version the chosen launcher starts, next to the newest Roblox serves. An older client updates itself on
+    /// its next start (that window takes longer), except when started directly.</summary>
     RobloxVersionInfo RobloxVersionDto()
     {
         var installed = Installs().Client;
@@ -295,7 +278,6 @@ public sealed partial class AppController
                 bannedByGame = _logs.StateOf(run.Pid) is { Status: "disconnected", BannedByGame: true } || BannedWindow(a, run) is not null,
                 jobId = _logs.StateOf(run.Pid)?.JobId,
                 jobPlaceId = _logs.StateOf(run.Pid)?.PlaceId,
-                // Its window hidden by Bloxkeep while its game runs (RobloxProcesses.HideWindows).
                 hidden = RobloxProcesses.HasHidden(run.Pid),
                 // The preset that opened it may turn auto-rejoin on or off for this client.
                 autoRejoin = RejoinOn(a, run.Launch.PresetId),
@@ -307,11 +289,9 @@ public sealed partial class AppController
             : null,
     };
 
-    /// <summary>
-    /// What a client open on this PC is doing: "ingame"; "joining" (just started, or not known yet); "menu" (opened
-    /// without a game, or left it); "disconnected" (kicked or lost connection — the window stays open on Roblox's error
-    /// screen). The client's own log says so at once; without one, Roblox's status for the account is used.
-    /// </summary>
+    /// <summary>What a client here is doing: "ingame", "joining" (just started or not known), "menu" (no game, or left it),
+    /// "disconnected" (kicked or lost connection; the window stays on Roblox's error screen). Its log says so at once;
+    /// without one, Roblox's status for the account is used.</summary>
     string Connection(Account a, int pid, PendingLaunch launch)
     {
         if (_logs.StateOf(pid) is { } log)
@@ -337,12 +317,9 @@ public sealed partial class AppController
     /// <summary>How long a teleport is shown as one: Roblox's took 0.5-3.6 s here (2026-10-21); one that failed leaves the window where it was.</summary>
     static readonly TimeSpan TeleportShown = TimeSpan.FromMinutes(1);
 
-    /// <summary>
-    /// What a client's log says beyond <see cref="Connection"/>: "teleporting" (on its way to another place or server),
-    /// "waiting" (started, no server yet: normally a second, longer in a full server's line or on a join error, which
-    /// Roblox's log doesn't tell apart), "full" (still waiting, and Roblox's join answer says the server is full),
-    /// "joinFailed" (left before any server took it), or null.
-    /// </summary>
+    /// <summary>What a client's log says beyond <see cref="Connection"/>: "teleporting"; "waiting" (no server yet: normally a
+    /// second, longer in a full server's line or on a join error, which the log doesn't tell apart); "full" (Roblox's join
+    /// answer says so); "joinFailed" (left before any server took it); or null.</summary>
     string? Phase(int pid) => _logs.StateOf(pid) switch
     {
         { Status: "ingame" or "joining", TeleportStarted: { } t } when DateTime.UtcNow - t < TeleportShown => "teleporting",
@@ -361,10 +338,8 @@ public sealed partial class AppController
             PushStateIfChanged();
     }
 
-    /// <summary>
-    /// The game a client here is in: the place its log reports, named once that place is looked up; until then the
-    /// game it was opened with (a game often moves players to another of its places right after they join).
-    /// </summary>
+    /// <summary>The game a client here is in: the place its log reports once that place is named, else the game it was opened
+    /// with (games often move players to another of their places right after they join).</summary>
     object? SessionGameDto(int pid, PendingLaunch launch)
     {
         long? logged = _logs.StateOf(pid)?.PlaceId, opened = launch.Target?.PlaceId;
@@ -376,14 +351,10 @@ public sealed partial class AppController
         ? new { placeId = id, name = _games.GetValueOrDefault(id)?.Name ?? "", iconUrl = _games.GetValueOrDefault(id)?.IconUrl }
         : null;
 
-    /// <summary>
-    /// Clients that ended on this PC, with the game and server they were in. Roblox keeps reporting the account in
-    /// that game long after the client left: on 2026-10-13 a clean leave logged at 00:02:19 UTC was still "in game"
-    /// in every presence answer at 00:06, and answers flipped between in game and offline. Until Roblox reports
-    /// something else, the same server (or the same game, when Roblox doesn't say which server) is taken as that
-    /// stale report instead of "playing elsewhere". Kept in the vault too (NoteOpenSessions), so a restart right after
-    /// (Restart to update: three clients closed at 09:13:21-33, the update at 09:13:46) or a lock doesn't forget them.
-    /// </summary>
+    /// <summary>Clients that ended here, with their game and server. Roblox keeps reporting the account in that game long after:
+    /// on 2026-10-13 a clean leave at 00:02:19 UTC was still "in game" at 00:06, flipping with offline. Until Roblox says otherwise,
+    /// the same server (or game, when no server is given) is taken as stale, not "playing elsewhere". Kept in the vault
+    /// (NoteOpenSessions) so a restart to update right after, or a lock, doesn't forget them.</summary>
     readonly Dictionary<Guid, (string? JobId, long? PlaceId, DateTime At)> _endedHere = new();
     static readonly TimeSpan StalePresence = TimeSpan.FromMinutes(15);
 
@@ -467,10 +438,7 @@ public sealed partial class AppController
 
     Account? FindAccount(Guid id) => _vault?.Data.Accounts.FirstOrDefault(a => a.Id == id);
 
-    /// <summary>
-    /// Saves a few seconds later, so a burst of small changes (typing a game link) writes the encrypted vault once.
-    /// Anything still waiting is saved on lock and on exit.
-    /// </summary>
+    /// <summary>Saves a few seconds later, so a burst of changes writes the encrypted vault once; on lock and exit too.</summary>
     void PersistSoon() => _saveDue ??= DateTime.UtcNow + SaveDelay;
 
     void PersistIfDue(DateTime now)
@@ -479,11 +447,9 @@ public sealed partial class AppController
             _ = PersistInBackgroundAsync();
     }
 
-    /// <summary>
-    /// The usual save, of the last few seconds' changes: the vault is taken here and encrypted, written and flushed
-    /// to disk on a worker (<see cref="Vault.SaveInBackground"/>), which took the window 20-70 ms with a long play
-    /// history. A save that must be on disk before going on (lock, exit, a deleted account) is <see cref="Persist"/>.
-    /// </summary>
+    /// <summary>The usual save: encrypted, written and flushed on a worker (<see cref="Vault.SaveInBackground"/>), which took the
+    /// window 20-70 ms with a long play history. A save that must be on disk before going on (lock, exit, a deleted
+    /// account) is <see cref="Persist"/>.</summary>
     async Task PersistInBackgroundAsync()
     {
         _saveDue = null;
@@ -517,8 +483,7 @@ public sealed partial class AppController
         _saveDue = null;
         if (_vault is null)
             return true;
-        // Every save holds the clients open now, not only the one on lock or exit: after a crash (or the app being
-        // ended) the next unlock still finds them, with their auto-rejoin and scheduled stop.
+        // Every save holds the clients open now, so after a crash the next unlock still finds them (auto-rejoin, scheduled stop).
         NoteOpenSessions();
         try
         {
@@ -535,10 +500,8 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// Try again shortly (and on lock or exit); an antivirus usually lets go within seconds. Say so once. A file that
-    /// stays locked (a sync client, a read-only folder) is tried less and less often, up to every 5 minutes.
-    /// </summary>
+    /// <summary>Retried shortly, then less and less often up to every 5 minutes (an antivirus usually lets go within seconds; a
+    /// sync client or read-only folder may not). Said once.</summary>
     void SaveFailed(Exception ex)
     {
         _saveDue = DateTime.UtcNow + TimeSpan.FromTicks(Math.Min(SaveDelay.Ticks << Math.Min(_saveFailures, 7), MaxSaveRetry.Ticks));
@@ -548,11 +511,9 @@ public sealed partial class AppController
         _saveFailed = true;
     }
 
-    /// <summary>
-    /// Before the vault goes away (lock, exit, an update's restart) or the PC sleeps: what is still waiting, and
-    /// which clients are open, is written now. Tried a few times, since an antivirus usually lets go of the file
-    /// within a second; false when it still couldn't be written, so the caller can refuse rather than lose changes.
-    /// </summary>
+    /// <summary>Before the vault goes away (lock, exit, an update's restart) or the PC sleeps: writes what waits and which clients
+    /// are open. Tried a few times, since an antivirus usually lets go within a second; false when it still couldn't be written,
+    /// so the caller can refuse rather than lose changes.</summary>
     public bool SaveBeforeClosing()
     {
         // A save still being written in the background is written again now, so a failure is known here.

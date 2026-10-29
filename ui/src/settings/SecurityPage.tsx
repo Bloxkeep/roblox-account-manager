@@ -1,8 +1,7 @@
-// Settings › Security: this vault (its name, picture, the picker at every start, Switch vault), changing the master password, and locking by itself after a while without use (the lock screen
-// comes up with Bloxkeep open behind it: Roblox and the background keep going). The password boxes keep what is typed
-// themselves (not React's state):
-// app.js empties them when Settings is left (the "clearPassword" signal) and, rebuilding the page in another language,
-// puts back what was typed and says so with an input event.
+// Settings › Security: this vault (name, picture, the picker at every start, Switch vault), the master password, and
+// locking by itself after a while unused (Bloxkeep stays open behind the lock screen; Roblox keeps going). The password
+// boxes aren't React state: app.js empties them when Settings is left (clearPassword) and puts typed text back, with an
+// input event, after a rebuild in another language.
 import { useEffect, useRef, useState } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { VaultFace } from '../Vaults';
@@ -23,7 +22,6 @@ export function SecurityPage({ title }: { title: string }) {
   const cur = useRef<HTMLInputElement>(null), next = useRef<HTMLInputElement>(null), next2 = useRef<HTMLInputElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
 
-  // Typed passwords don't stay in the page once Settings is left.
   useEffect(() => on('clearPassword', () => {
     for (const box of [cur, next, next2]) if (box.current) box.current.value = '';
     setMsg({ text: '', kind: '' });
@@ -34,7 +32,6 @@ export function SecurityPage({ title }: { title: string }) {
       onInput={e => onInput(e.currentTarget.value)} />;
   const dropError = () => { if (msg.text && msg.kind === 'err') pwMsg(''); };
 
-  // This vault: its name and picture (shown on the lock screen, before unlocking), the picker at every start, Switch vault.
   const vaults = app.vaults || {};
   const vault = (vaults.list || []).find((v: { id: string }) => v.id === vaults.open) || null;
   const [vaultName, setVaultName] = useLocal(vault?.name || '');

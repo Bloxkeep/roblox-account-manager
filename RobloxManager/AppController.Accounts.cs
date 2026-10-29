@@ -57,10 +57,7 @@ public sealed partial class AppController
         return new { code = login.Code, qr, seconds };
     }
 
-    /// <summary>
-    /// Called every couple of seconds while the window is open. Once the user confirms on their device the code is
-    /// traded for a session and the account is saved, just like signing in through the browser.
-    /// </summary>
+    /// <summary>Polled while the window is open; once confirmed on the device the code is traded for a session and saved.</summary>
     async Task<object?> QuickLoginPollAsync()
     {
         if (_quickLogin is not { } login || _quickLoginFinishing)
@@ -97,9 +94,8 @@ public sealed partial class AppController
                     });
                     return new { status = "added", added };
                 }
-                // A network hiccup or Roblox down right after the person approved on their phone: the next poll tries
-                // again a couple of times rather than making them start over. A refusal (403, 429) is final: the code
-                // may be spent. Once the session is in hand, only the account lookup is repeated.
+                // A network hiccup right after the person approved: the next poll retries a couple of times rather than making
+                // them start over. A refusal (403, 429) is final: the code may be spent. With the session in hand, only the lookup is repeated.
                 catch (Exception ex) when ((IsNetworkError(ex) || _quickLoginCookie is { } got && ReferenceEquals(got.Login, login)
                                                && RobloxApi.IsExpectedError(ex)) && ++_quickLoginFinishTries < 3)
                 {
@@ -144,10 +140,8 @@ public sealed partial class AppController
     }
 
     // A two-step prompt or captcha waiting for the user; held only while the sign-in is in progress, never persisted.
-    /// <summary>
-    /// The password sign-in window closed: drop the half-done sign-in, which still holds the password. A reply still
-    /// on its way belongs to the sign-in before this (see <see cref="_loginGeneration"/>) and is dropped too.
-    /// </summary>
+    /// <summary>The password sign-in window closed: drop the half-done sign-in, which holds the password. A late reply to
+    /// an earlier sign-in is dropped too (see <see cref="_loginGeneration"/>).</summary>
     object? LoginCancel()
     {
         _loginGeneration++;
@@ -178,10 +172,8 @@ public sealed partial class AppController
     /// <summary>Puzzles asked for again in this attempt after their window was closed; each one sends the password again.</summary>
     int _freshPuzzles;
     const int MaxFreshPuzzles = 3;
-    /// <summary>
-    /// A session Roblox handed out whose account couldn't be looked up yet (a network hiccup): "Try again" only looks it
-    /// up again, instead of signing in again with the password or a code that is spent.
-    /// </summary>
+    /// <summary>A session whose account couldn't be looked up yet (network hiccup): "Try again" only looks it up again,
+    /// rather than resending the password or a spent code.</summary>
     (string Cookie, string Realm)? _loginCookie;
     /// <summary>Roblox said "too many tries" to a 2-step code: Verify and Send wait until then.</summary>
     DateTime _twoStepWaitUntil;
@@ -193,11 +185,9 @@ public sealed partial class AppController
 
     bool HasLoginPrompt => _twoStep is not null || _captcha is not null || _humanCaptcha is not null;
 
-    /// <summary>
-    /// One step of a password sign-in. Roblox ending the attempt (a wrong password, a locked account, too many tries)
-    /// isn't an error of this step: the prompt, which holds the password, is dropped, so nothing can send it again,
-    /// and the page goes back to the username and password with the reason ({ status: "login", error }).
-    /// </summary>
+    /// <summary>One step of a password sign-in. Roblox ending the attempt (wrong password, locked account, too many tries) isn't
+    /// an error of this step: the prompt holding the password is dropped so nothing can resend it, and the page goes back to
+    /// the username and password with the reason ({ status: "login", error }).</summary>
     /// <param name="newAttempt">A new password sign-in: whatever attempt was going on is dropped, and a late reply to it too.</param>
     async Task<object?> LoginStepAsync(Func<Task<object?>> step, bool newAttempt = false)
     {
@@ -229,9 +219,8 @@ public sealed partial class AppController
             _twoStepWaitUntil = DateTime.UtcNow + TwoStepWait;
             return new { status = "wait", error = ex.Message, seconds = (int)TwoStepWait.TotalSeconds };
         }
-        // The step spent its prompt (the puzzle or the code was answered) and then failed: nothing is left to answer on
-        // this screen, so the page goes back to the username and password with the reason. A session already handed
-        // out is kept, and only looked up again.
+        // The step spent its prompt (puzzle or code answered), then failed: back to username and password with the reason.
+        // A session already handed out is kept and only looked up again.
         catch (Exception ex) when (ex is UserError || RobloxApi.IsExpectedError(ex))
         {
             if (generation != _loginGeneration)
@@ -256,9 +245,8 @@ public sealed partial class AppController
     /// <returns>null when the sign-in was cancelled (or the vault locked) while Roblox was answering: nothing is kept.</returns>
     async Task<object?> HandleLoginAsync(RobloxApi.LoginResult result, string realm, int generation)
     {
-        // Proof-of-work needs no input: solve it and carry on. Once: answering it repeats the password sign-in, which
-        // happens at most once per click — and not at all once the sign-in was cancelled or Bloxkeep locked, also
-        // while the puzzle is being solved (the token stops it before anything more is sent).
+        // Proof-of-work needs no input: solve it and carry on. Answering repeats the password sign-in, so at most once per click,
+        // and not once the sign-in was cancelled or Bloxkeep locked (the token stops it mid-solve).
         if (result.ProofOfWork is { } pow)
         {
             if (generation != _loginGeneration)
@@ -389,7 +377,6 @@ public sealed partial class AppController
         return await HandleLoginAsync(result, prompt.Realm, generation);
     }
 
-    /// <summary>Has Roblox send the code (again) by email or SMS, when the user asks for it.</summary>
     async Task<object?> LoginTwoStepSendAsync(string method)
     {
         RequireVault();
@@ -407,7 +394,6 @@ public sealed partial class AppController
     static string TwoStepMethod(RobloxApi.TwoStepPrompt prompt, string method) =>
         prompt.Methods.Contains(method) ? method : prompt.Methods[0];
 
-    /// <summary>Roblox said "too many tries" a moment ago: nothing goes to it until the minute is over.</summary>
     void WaitForTwoStep()
     {
         var left = _twoStepWaitUntil - DateTime.UtcNow;
@@ -430,10 +416,9 @@ public sealed partial class AppController
 
     async Task<object?> SaveLoginAsync(string cookie, string realm, int generation)
     {
-        // Held until the account is saved: a failed lookup is tried again without signing in again.
         _loginCookie = (cookie, realm);
         var user = await RobloxApi.GetAuthenticatedUserAsync(cookie, realm);
-        // Locked or cancelled meanwhile: the account isn't saved (RequireVault would say so anyway when locked).
+        // Locked or cancelled meanwhile: the account isn't saved.
         if (generation != _loginGeneration)
             return null;
         if (user is null)
@@ -489,21 +474,15 @@ public sealed partial class AppController
         account.AutoRejoin = true;
     }
 
-    /// <summary>
-    /// Roblox accepted the account's sign-in (a call made with it went through): not signed out, and auto-rejoin back on
-    /// if a sign-out switched it off. Before, a sign-out marked in an outage stayed: a later accepted call set the account
-    /// signed in with auto-rejoin still off.
-    /// </summary>
+    /// <summary>Roblox accepted a call made with the account's sign-in: not signed out, and auto-rejoin back on if a sign-out switched it off.</summary>
     static void SignInAccepted(Account account)
     {
         account.CookieValid = true;
         SignedInAgain(account);
     }
 
-    /// <summary>
-    /// Adding an account that is already in the list just refreshes its cookie. Roblox and Roblox VNG count user ids
-    /// apart, so the same id in the other realm is another account.
-    /// </summary>
+    /// <summary>An account already in the list just gets its cookie refreshed. Roblox and Roblox VNG count user ids apart,
+    /// so the same id in the other realm is another account.</summary>
     AddResult AddOrMerge(Account incoming)
     {
         var vault = RequireVault();
@@ -648,8 +627,7 @@ public sealed partial class AppController
         var data = RequireVault().Data;
         int removed = data.Accounts.RemoveAll(a => set.Contains(a.Id));
         CloseWebsites(set);
-        // Gone from the presets too; one left with no account has nothing to run, so its schedule goes off rather than
-        // reporting "no accounts left" every day.
+        // Gone from presets too; a preset left empty gets its schedule off rather than reporting "no accounts left" daily.
         foreach (var preset in data.Settings.Presets)
         {
             if (preset.AccountIds.RemoveAll(set.Contains) > 0 && preset.AccountIds.Count == 0 && preset.Schedule is { Enabled: true } schedule)
@@ -680,11 +658,9 @@ public sealed partial class AppController
 
     const int CheckParallelism = 6;
 
-    /// <summary>
-    /// Asks Roblox who each saved sign-in belongs to: the same read-only call the website makes on every page.
-    /// A rejected sign-in means Roblox ended that session (password change, "log out everywhere", security).
-    /// Six accounts are checked at a time; when Roblox asks to slow down, all checks pause and try again.
-    /// </summary>
+    /// <summary>Asks Roblox who each saved sign-in belongs to (the read-only call the website makes on every page). A rejected
+    /// sign-in means Roblox ended that session (password change, "log out everywhere", security). Six at a time; when Roblox
+    /// asks to slow down, all checks pause.</summary>
     async Task<object?> CheckAccountsAsync(Guid[] ids)
     {
         var vault = RequireVault();
@@ -752,8 +728,7 @@ public sealed partial class AppController
                     }
                     break;
                 }
-                // A ban, from the account's public profile (no cookie). No clear answer leaves it as it was. Roblox asking
-                // to slow down pauses every check, like the sign-in call above.
+                // A ban, from the public profile (no cookie); no clear answer leaves it as it was. Rate limits pause every check.
                 for (int attempt = 1; _vault == vault; attempt++)
                 {
                     if (resumeAt > DateTime.UtcNow)
@@ -784,9 +759,8 @@ public sealed partial class AppController
         {
             Progress(L.F("Checking sign-ins… {0}/{1}", 0, accounts.Count));
             await Task.WhenAll(Enumerable.Range(0, Math.Min(CheckParallelism, accounts.Count)).Select(_ => WorkAsync()));
-            // Another account accepted in this check: Roblox's sign-in service is up, so a rejection means a sign-out.
-            // With none accepted, an outage answers 401 to everyone: each is marked only if Roblox accepts another account
-            // now (ConfirmSignedOutAsync), else counted as not checked.
+            // One accepted means Roblox's sign-in service is up, so a rejection is a sign-out. With none, an outage answers 401 to
+            // everyone: each is marked only if Roblox accepts another account now (ConfirmSignedOutAsync), else not checked.
             foreach (var account in rejected)
             {
                 if (_vault != vault)
@@ -830,7 +804,6 @@ public sealed partial class AppController
             throw new UserError(L.T(missing));
         if (!Ui.CopyToClipboard(value, secret))
             throw new UserError(L.T("Couldn't access the clipboard; try again."));
-        // A code says how long it still works.
         return new { secret, seconds = field == "totp" ? Totp.SecondsLeft(account.Authenticator!, now) : (int?)null };
     }
 
@@ -861,10 +834,7 @@ public sealed partial class AppController
     /// <summary>A step of the loading screen and how far along it is (0–1); the page shows it until it is null.</summary>
     sealed record BootProgress(string Stage, double Percent);
 
-    /// <summary>
-    /// Moves the loading screen to the first step still running: Roblox status (30 % → 80 %), then avatars
-    /// (80 % → 100 %), then done.
-    /// </summary>
+    /// <summary>Moves the loading screen to the first step still running: status (30 → 80 %), avatars (80 → 100 %), done.</summary>
     void AdvanceBoot(bool push = true)
     {
         if (_boot is null)
@@ -880,12 +850,9 @@ public sealed partial class AppController
 
     const int SettledDelayMs = 1500;
 
-    /// <summary>
-    /// A moment after the loading screen is done (or a new page came to an open vault), once the accounts and avatars
-    /// are drawn: the page hears "settled" and gets ready what its tabs not opened yet show (Statistics' figures, the
-    /// presets' icons, and those games' pictures, which may have to be asked of Roblox), instead of when they are first
-    /// opened (0.3-1.4 s from here). A sleeping page hears it on waking.
-    /// </summary>
+    /// <summary>A moment after loading is done (or a new page came to an open vault): the page hears "settled" and prepares
+    /// what its unopened tabs show (Statistics, preset icons, their game pictures) instead of on first open (0.3-1.4 s from
+    /// here). A sleeping page hears it on waking.</summary>
     async Task SettledAsync()
     {
         var vault = _vault;

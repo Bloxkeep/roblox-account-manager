@@ -37,23 +37,17 @@ public sealed partial class AppController
     /// <summary>"Restart to update" was clicked and the app is on its way out (see ApplyUpdateAsync).</summary>
     bool _applyingUpdate;
 
-    /// <summary>
-    /// Launches whose client quit early and are waiting for the client it may have handed over to, with the pid
-    /// that quit (its children are the first choice) and what its log said last.
-    /// </summary>
+    /// <summary>Launches whose client quit early, waiting for the client it may have handed over to: the pid that quit
+    /// (its children are the first choice) and what its log said last.</summary>
     readonly Dictionary<PendingLaunch, (int Pid, RobloxLogWatcher.ClientState? Log)> _handedOver = new(ReferenceEqualityComparer.Instance);
 
-    /// <summary>
-    /// Launches whose window didn't come within <see cref="PendingTimeout"/>: a window that appears for one within
-    /// <see cref="LateTimeout"/> more is still claimed for it (see TrackProcesses), so its client isn't left untracked.
-    /// </summary>
+    /// <summary>Launches whose window didn't come within <see cref="PendingTimeout"/>: one appearing within <see cref="LateTimeout"/>
+    /// more is still claimed for it (see TrackProcesses).</summary>
     readonly HashSet<PendingLaunch> _late = new(ReferenceEqualityComparer.Instance);
     static readonly TimeSpan LateTimeout = TimeSpan.FromMinutes(5);
 
-    /// <summary>
-    /// Stops waiting for a launch; one that was already running ends its session (auto-rejoin, toast). A rejoin whose
-    /// client never got a window is said so, since its account is otherwise left with no word and no client.
-    /// </summary>
+    /// <summary>Stops waiting for a launch; one already running ends its session (auto-rejoin, toast). A rejoin that never got a
+    /// window is said, since its account would otherwise be left with no word and no client.</summary>
     /// <param name="late">Its window may still come (see <see cref="_late"/>): a scheduled stop keeps the account until then.</param>
     void DropPending(PendingLaunch launch, bool late = false)
     {
@@ -70,10 +64,8 @@ public sealed partial class AppController
             ForgetScheduledOpen(launch.AccountId); // no client came of it: a scheduled stop has nothing of this account's to close
     }
 
-    /// <summary>
-    /// Remembers which version last ran. When that is older than this one, the app was updated and the page shows
-    /// the release notes in between, once; a fresh install has nothing remembered and shows nothing.
-    /// </summary>
+    /// <summary>Remembers which version last ran. Older than this one: the page shows the release notes in between, once.
+    /// A fresh install has nothing remembered and shows nothing.</summary>
     void NoteVersion()
     {
         string current = _updater.CurrentVersion;
@@ -125,10 +117,7 @@ public sealed partial class AppController
     /// <summary>The PC woke up less than a minute ago, or has no network: auto-rejoin holds off.</summary>
     bool Settling => DateTime.UtcNow - _resumedAt < ResumeGrace || !NetworkUp;
 
-    /// <summary>
-    /// Kept up to date by Windows' notification: asking directly lists every network adapter, too slow for a check
-    /// that runs on each process tick.
-    /// </summary>
+    /// <summary>Kept by Windows' notification: asking lists every adapter, too slow for each process tick.</summary>
     volatile bool _networkUp = NetworkInterface.GetIsNetworkAvailable();
 
     void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e) => _networkUp = e.IsAvailable;
@@ -136,11 +125,8 @@ public sealed partial class AppController
     DateTime _networkAskedAt;
     static readonly TimeSpan NetworkAskInterval = TimeSpan.FromSeconds(30);
 
-    /// <summary>
-    /// Windows' word on the network, asked again every 30 s while it says "down": an "available" notification that
-    /// never came (a wake, a Wi-Fi flap, two notifications in the wrong order) would otherwise hold auto-rejoin and
-    /// the sign-in check back until the next change.
-    /// </summary>
+    /// <summary>Asked again every 30 s while "down": an "available" notification that never came (a wake, a Wi-Fi flap, two in
+    /// the wrong order) would otherwise hold auto-rejoin and the sign-in check back until the next change.</summary>
     bool NetworkUp
     {
         get
@@ -158,10 +144,8 @@ public sealed partial class AppController
     /// <summary>The time zone was changed: local times (the schedules' minutes) must come from the new one, not a cached one.</summary>
     static void OnTimeChanged(object? sender, EventArgs e) => TimeZoneInfo.ClearCachedData();
 
-    /// <summary>
-    /// After sleep every client has lost its connection and the network takes a moment to come back. Disconnect
-    /// detection and auto-rejoin wait for it, so the clients aren't all restarted into a dead network at once.
-    /// </summary>
+    /// <summary>After sleep every client has lost its connection and the network takes a moment: disconnect detection and
+    /// auto-rejoin wait, so the clients aren't all restarted into a dead network at once.</summary>
     void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)
     {
         if (_disposed)
@@ -217,10 +201,7 @@ public sealed partial class AppController
             _nextPresence = at;
     }
 
-    /// <summary>
-    /// Asks Roblox which accounts are online and what they are playing. One request covers everyone;
-    /// accounts whose game is hidden by privacy settings are asked again with their own cookie.
-    /// </summary>
+    /// <summary>Who is online and playing what: one request for everyone; accounts hidden by privacy are asked with their own cookie.</summary>
     async Task<object?> RefreshPresenceAsync()
     {
         var vault = _vault;
@@ -242,12 +223,10 @@ public sealed partial class AppController
         var viewer = accounts.FirstOrDefault(a => a.CookieValid != false && a.Cookie.Length > 0 && a.Realm == Realm.Global);
         try
         {
-            // Roblox's accounts only: Roblox and Roblox VNG count user ids apart, so a Roblox VNG account's number is
-            // someone else on Roblox (whose game its card showed, and whose server "join" went to, when its own question
-            // below wasn't asked or failed). Its status comes from Roblox VNG, with its own sign-in, below.
+            // Roblox's accounts only: Roblox VNG counts user ids apart, so a VNG account's number is someone else on Roblox (whose
+            // game and server its card once showed). A VNG account's status comes with its own sign-in below.
             var result = await RobloxApi.GetPresenceAsync(viewer?.Cookie, accounts.Where(a => a.Realm == Realm.Global).Select(a => a.UserId).ToList());
-            // First answer since unlocking: show it now instead of "status unknown" until every follow-up request
-            // (accounts hidden by privacy, game names) is back; those fill in below.
+            // First answer since unlocking: shown now rather than "status unknown" until the follow-ups below are back.
             if (!_presenceLoaded && _vault == vault)
             {
                 foreach (var (userId, presence) in result)
@@ -258,9 +237,8 @@ public sealed partial class AppController
                 PushStateIfChanged();
             }
 
-            // Privacy settings can hide an account from the others. Accounts with a client open here are asked with
-            // their own cookie (auto-rejoin relies on it) unless that client's log is followed, which already says
-            // what it is doing; others only when their game is hidden.
+            // Privacy can hide an account from the others. Accounts with a client here are asked with their own cookie (auto-rejoin
+            // relies on it) unless its log is followed; others only when their game is hidden.
             var askOwn = accounts.Where(a => a != viewer && a.CookieValid != false && a.Cookie.Length > 0
                                              && !(_running.TryGetValue(a.Id, out var run) && LogFollowed(run.Pid))
                                              && (a.Realm == Realm.Vng || result.TryGetValue(a.UserId, out var p)
@@ -351,12 +329,9 @@ public sealed partial class AppController
         return null;
     }
 
-    /// <summary>
-    /// One rejected request isn't proof that an account was signed out (an outage of Roblox's sign-in service answers
-    /// 401 for everyone): it is marked so only when the cheap "who am I" call, the one the sign-in check uses, rejects
-    /// the cookie too, and Roblox accepts another account's sign-in at the same time. Without a clear answer it is left
-    /// as it was; one accepted after all is signed in (again).
-    /// </summary>
+    /// <summary>One rejected request isn't proof of a sign-out (an outage of Roblox's sign-in service answers 401 for everyone):
+    /// marked only when the "who am I" call rejects the cookie too and Roblox accepts another account's sign-in meanwhile.
+    /// No clear answer leaves it as it was; one accepted after all is signed in again.</summary>
     /// <param name="trusted">The daily check already ruled out an outage (or trusts its second run): no other account is asked.</param>
     async Task<bool> ConfirmSignedOutAsync(Account account, CancellationToken ct = default, bool trusted = false)
     {
@@ -380,8 +355,7 @@ public sealed partial class AppController
         // Signed in again meanwhile: the old cookie's answer says nothing about the new one.
         if (account.Cookie != cookie)
             return false;
-        // Before, this call alone decided: in an outage each request that met it marked one more account (one a status
-        // round, every account a preset tried), and a rejoin turned auto-rejoin off.
+        // Without this, an outage marked one more account per request that met it, and a rejoin turned auto-rejoin off.
         if (!trusted && await SignInServiceDownAsync(account, ct))
             return false;
         if (account.Cookie != cookie)
@@ -391,12 +365,9 @@ public sealed partial class AppController
         return true;
     }
 
-    /// <summary>
-    /// Whether Roblox's sign-in service rejects everyone just now (an outage), by asking up to two other accounts held
-    /// signed in, of the same Roblox (Roblox VNG's is another service), the last checked first. False when one is
-    /// accepted, or when there is none to ask (one account, the rest signed out: no telling, so a rejection counts as
-    /// before); true when those asked were all rejected or gave no answer.
-    /// </summary>
+    /// <summary>Whether Roblox's sign-in service rejects everyone now, by asking up to two other signed-in accounts of the same
+    /// Roblox (VNG's is another service), last checked first. False when one is accepted or there is none to ask (no telling,
+    /// so a rejection counts); true when all asked were rejected or didn't answer.</summary>
     async Task<bool> SignInServiceDownAsync(Account rejected, CancellationToken ct)
     {
         var others = (_vault?.Data.Accounts ?? [])

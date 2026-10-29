@@ -6,16 +6,13 @@ using Microsoft.Win32;
 namespace RobloxManager;
 
 /// <summary>
-/// Settings › Bloxkeep › Privacy › Add me to the online count (on until turned off): while Bloxkeep is open,
-/// locked or not, it tells Bloxkeep's Discord bot so every minute (further apart when the bot says so, once many
-/// people have it open) and says goodbye as it closes, so its developers can see how many people have it open right
-/// now (services/DiscordBot/worker/online.js; the bot's status shows the number too). What goes: an id made from this
-/// PC (<see cref="OnlineIdForThisPc"/>: one way, linked to no account, vault, Roblox or Discord, and the same after
-/// Bloxkeep is reinstalled, so a reinstall isn't counted as one more), Bloxkeep's version, the app's language, how long
-/// this PC has had Bloxkeep in three rough groups (<see cref="InstallAge"/>) and, once, that this is a new install's first
-/// open; nothing else. The bot keeps only numbers per day of those (how many new installs, how many by group). Turned off: a goodbye, the id forgotten, nothing more.
-/// Only an installed Bloxkeep counts: a development copy or the checks never do, unless BLOXKEEP_ONLINE_URL points them
-/// at a server of their own.
+/// Settings › Bloxkeep › Privacy › Add me to the online count (on until turned off): while Bloxkeep is open, locked or
+/// not, it tells Bloxkeep's Discord bot so every minute (further apart when the bot says so) and says goodbye as it
+/// closes (services/DiscordBot/worker/online.js). What goes: an id made from this PC (<see cref="OnlineIdForThisPc"/>),
+/// Bloxkeep's version, the app's language, how long this PC has had Bloxkeep in three rough groups
+/// (<see cref="InstallAge"/>) and, once, that this is a new install's first open; nothing else. The bot keeps only
+/// numbers per day of those. Turned off: a goodbye, the id forgotten, nothing more. Only an installed Bloxkeep counts:
+/// a development copy or the checks never do, unless BLOXKEEP_ONLINE_URL points them at a server of their own.
 /// </summary>
 public sealed partial class AppController
 {
@@ -41,7 +38,6 @@ public sealed partial class AppController
 
     static string? OnlineTestUrl => Environment.GetEnvironmentVariable("BLOXKEEP_ONLINE_URL") is { Length: > 0 } url ? url : null;
 
-    /// <summary>An installed Bloxkeep, or the checks with a server of their own.</summary>
     bool OnlineAllowed => _updater.Supported || OnlineTestUrl is not null;
 
     void TickOnline(DateTime now)
@@ -52,7 +48,6 @@ public sealed partial class AppController
         _ = BeatAsync();
     }
 
-    /// <summary>"Open now": the bot's answer says when to say it again.</summary>
     async Task BeatAsync()
     {
         // This PC's id, also in place of one an earlier Bloxkeep made at random.
@@ -63,8 +58,7 @@ public sealed partial class AppController
             Prefs.Save();
         }
         string id = Prefs.OnlineId;
-        // How long this PC has had Bloxkeep, roughly, and whether this is a new install's first "open" (not a copy that
-        // has been around and only now updated to a version that says so).
+        // Roughly how long this PC has had Bloxkeep, and whether this is a new install's first open (not an old copy just updated).
         string age = InstallAge();
         bool first = !Prefs.FirstOpenTold && age == "new";
         _onlineSending = true;
@@ -107,10 +101,8 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// Sooner than the next beat would be: two minutes, then four, eight… up to the usual gap, so a bot that can't answer
-    /// (no internet, or it is over its day's budget) isn't asked more often than usual.
-    /// </summary>
+    /// <summary>Sooner than the next beat: two minutes, then four, eight… up to the usual gap, so a bot that can't answer
+    /// (no internet, or over its day's budget) isn't asked more often than usual.</summary>
     void RetryOnline()
     {
         var wait = _onlineRetry < _onlineEvery ? _onlineRetry : _onlineEvery;
@@ -131,10 +123,8 @@ public sealed partial class AppController
         }
     });
 
-    /// <summary>
-    /// How long this PC has had Bloxkeep, in three groups only ("new": under a day, "week": under a week, "old"): from
-    /// when its data folder was made, which stays through updates and reinstalls that keep the accounts.
-    /// </summary>
+    /// <summary>How long this PC has had Bloxkeep: "new" (under a day), "week" (under a week) or "old", from when its data
+    /// folder was made, which stays through updates and reinstalls that keep the accounts.</summary>
     static string InstallAge()
     {
         try
@@ -148,12 +138,9 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>
-    /// The id this PC is counted under: Windows' own id for the PC (MachineGuid, made when Windows was installed) hashed
-    /// with Bloxkeep's own label, so it leads back to nothing, yet stays the same when Bloxkeep is reinstalled or its data
-    /// deleted, and for a second copy on the same PC: one PC, one in the count. Null where Windows' id can't be read
-    /// (a random one is used then).
-    /// </summary>
+    /// <summary>The id this PC is counted under: Windows' MachineGuid hashed with Bloxkeep's own label, so it leads back to
+    /// nothing (no account, vault, Roblox or Discord) yet stays the same after a reinstall, a data wipe or for a second copy:
+    /// one PC, one in the count. Null where Windows' id can't be read (a random one is used then).</summary>
     static string? OnlineIdForThisPc()
     {
         try

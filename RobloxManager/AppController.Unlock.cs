@@ -17,8 +17,7 @@ public sealed partial class AppController
         if (Vault.Exists)
             throw new UserError(L.T("Bloxkeep is already set up."));
         var created = await Task.Run(() => Vault.Create(password));
-        // Another create or an unlock finished first (two commands at once): that vault stays the open one, and the
-        // file on disk is made its own again (this one may have been written over it).
+        // Another create or unlock finished first: that vault stays open, and the file is made its own again (this may have overwritten it).
         if (_vault is not null)
         {
             created.Dispose();
@@ -61,7 +60,6 @@ public sealed partial class AppController
             return BuildState();
         }
         _weakPassword = Backup.WeakPassword(password);
-        // The one the lock screen offers at the next start.
         if (Vaults.Current is { } opened && Prefs.LastVault != opened.Id)
         {
             Prefs.LastVault = opened.Id;
@@ -101,14 +99,12 @@ public sealed partial class AppController
 
         ResumePlaySessions(vault);
         ResumeSchedules(vault);
-        // The loading screen's steps: accounts and open clients are ready now; Roblox status and avatars follow.
         bool any = vault.Data.Accounts.Any(a => a.UserId > 0);
         _bootStatusDone = !any;
         _bootAvatarsDone = !any;
         _boot = new BootProgress("status", 0.3);
         AdvanceBoot(push: false);
-        // Right away rather than on the next process check (up to 4 s later while idle). A refresh from before the
-        // lock may still be running (it drops its answer): the next check then runs one for this vault.
+        // Now rather than at the next check. A refresh still running from before the lock drops its answer; the next check redoes it.
         if (_presenceBusy)
             _nextPresence = DateTime.UtcNow;
         else
@@ -120,11 +116,8 @@ public sealed partial class AppController
         AddLockedActivity(vault); // what happened while locked (a window closed) is in the log at once, also if Bloxkeep quits next
     }
 
-    /// <summary>
-    /// Remembers the clients that are open, so closing or restarting Bloxkeep (for example to update) doesn't lose
-    /// track of them: they keep running, and the next unlock picks them up again, auto-rejoin included. And the ones
-    /// that ended here lately (<see cref="_endedHere"/>), for the next unlock too.
-    /// </summary>
+    /// <summary>Remembers the open clients, waiting rejoins and those that ended lately (<see cref="_endedHere"/>), so after
+    /// closing or restarting Bloxkeep (an update) or a lock, the next unlock picks them up again, auto-rejoin included.</summary>
     /// <returns>true when the lists changed, i.e. the vault needs saving.</returns>
     bool NoteOpenSessions()
     {
@@ -135,7 +128,6 @@ public sealed partial class AppController
         bool endedChanged = !vault.Data.EndedSessions.Select(e => (e.AccountId, e.At)).SequenceEqual(ended.Select(e => (e.AccountId, e.At)));
         if (endedChanged)
             vault.Data.EndedSessions = ended;
-        // The rejoins waiting their turn, for after a restart (an update's) or a lock.
         var waiting = _rejoinQueue.Select(r => new WaitingRejoin { AccountId = r.AccountId, Target = r.Target, Due = r.Due, PresetId = r.PresetId, Restart = r.Restart }).ToList();
         if (!vault.Data.WaitingRejoins.Select(w => (w.AccountId, w.Due)).SequenceEqual(waiting.Select(w => (w.AccountId, w.Due))))
         {
@@ -152,11 +144,8 @@ public sealed partial class AppController
         return true;
     }
 
-    /// <summary>
-    /// Rejoins that were waiting their turn when Bloxkeep restarted (an update) or locked: on, at their time (one due
-    /// meanwhile shortly), unless the account is gone or open again. Not one from long ago: Bloxkeep opened the next
-    /// day must not start opening Roblox by itself.
-    /// </summary>
+    /// <summary>Rejoins waiting when Bloxkeep restarted or locked: back on at their time (overdue ones shortly), unless the account
+    /// is gone or open again. Not ones from long ago: Bloxkeep opened the next day must not start Roblox by itself.</summary>
     void RestoreWaitingRejoins(Vault vault, List<WaitingRejoin> waiting)
     {
         foreach (var w in waiting)
@@ -213,8 +202,7 @@ public sealed partial class AppController
         _ = FinalDiscordBoard(closing: false);
         _vault?.Dispose();
         _vault = null;
-        // From the lock screen after a while without use too: closed for real now (not before: a lock refused above
-        // leaves that screen up).
+        // The idle lock screen closes for real only now: a lock refused above leaves it up.
         _screenLocked = false;
         // Nothing of the vault stays reachable while locked: Dispose only wipes the key, so the decrypted accounts,
         // cookies and passwords go only once no field holds the vault (or what was made from it) any more.
@@ -234,8 +222,7 @@ public sealed partial class AppController
         _offlineStrikes.Clear();
         ResetDiscordQueue(); // nothing waits to go to Discord while locked
         _lastMetrics = _lastState = _pageView = null;
-        // The monitor tab's pictures would show every client as a nameless "Roblox" over the lock screen; the mini
-        // window's "Close all" counts clients from a check that no longer runs.
+        // The monitor tab would show every client as a nameless "Roblox" over the lock screen, and the mini window's counts go stale.
         SetMonitorArea?.Invoke(null);
         _clientRam.Clear();
         PushState();
@@ -256,8 +243,7 @@ public sealed partial class AppController
         var prepared = await Task.Run(() => Vault.PrepareKey(next));
         if (_vault != vault)
             throw new UserError(L.T("Bloxkeep was locked."));
-        // Backups made so far carry the old id (it comes from the salt, which changes with the password): remembered
-        // in the vault, so they stay this vault's to prune.
+        // Old backups carry the old id (from the salt, which changes with the password): remembered so they stay this vault's to prune.
         var previous = vault.Data.Settings.PreviousVaultIds;
         if (!previous.Contains(vault.Id))
             previous.Add(vault.Id);

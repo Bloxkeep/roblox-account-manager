@@ -1,6 +1,5 @@
-// Settings › Staying in game: auto-rejoin for every account at once, Anti-AFK, the daily sign-in check (with when it
-// last ran); then RAM and CPU (the low-RAM warning, saving RAM on background windows, the fast cores for the window
-// played). Keep running in the tray and hardware acceleration are under Settings › Bloxkeep.
+// Settings › Staying in game: auto-rejoin for every account, Anti-AFK, the daily sign-in check; then RAM and CPU (the low-RAM
+// warning, saving RAM on background windows, fast cores for the played window). Tray and GPU drawing: Settings › Bloxkeep.
 import { useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 

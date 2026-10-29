@@ -3,42 +3,32 @@ using System.Runtime.InteropServices;
 namespace RobloxManager;
 
 /// <summary>
-/// Keeps Roblox from kicking idle accounts (it does after 20 minutes without input). While nobody is using the PC,
-/// each window gets the keyboard for a moment without being seen: it is first made all but invisible and click-through
-/// (a click meant for the window you're in still lands there), it is given one press of F15 (a key no keyboard has
-/// and no game or common app uses), then your window is put back in front — made topmost for an instant, so it comes
-/// back even when Windows won't hand back the keyboard — the Roblox window goes back to its place among the windows,
-/// and only then is it made visible again. A minimized window is minimized again; the cursor doesn't move. It stops as
-/// soon as real input arrives. Windows doesn't allow it while the PC is locked. A window about to be kicked gets it
-/// even while the PC is in use, in a pause of a couple of seconds (see <see cref="LastChance"/>).
+/// Keeps Roblox from kicking idle accounts (after 20 minutes without input). While the PC is idle, each window is made
+/// all but invisible and click-through, given the keyboard and one F15 press, then your window is put back in front
+/// (topmost for an instant, in case Windows won't hand back the keyboard), the Roblox window goes back to its place,
+/// and only then is it visible again. The cursor doesn't move; real input stops it; impossible while locked.
 /// </summary>
 static class AntiAfk
 {
     /// <summary>
-    /// From here a window is nudged at the first minute nobody uses the PC: well inside Roblox's 20 minutes (counted
-    /// from joining a server or the last input), so a person at the PC most of the time still leaves one.
+    /// Well inside Roblox's 20 minutes, so a person at the PC most of the time still leaves an idle minute for it.
     /// </summary>
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(12);
 
     /// <summary>
-    /// From here, two minutes before Roblox's kick, a window doesn't wait for the PC to be free: it is nudged in the
-    /// first pause of <see cref="PauseNeeded"/> (unless a full-screen app is in front).
+    /// Two minutes before the kick a window doesn't wait for the PC to be free: it is nudged in the first pause of
+    /// <see cref="PauseNeeded"/> (unless a full-screen app is in front).
     /// </summary>
     public static readonly TimeSpan LastChance = TimeSpan.FromMinutes(18);
 
-    /// <summary>How long the PC must have been untouched before a window may be brought to the front.</summary>
     public static readonly TimeSpan UserIdleNeeded = TimeSpan.FromSeconds(60);
 
-    /// <summary>A pause in typing or moving the mouse long enough for a last-chance nudge (about a quarter of a second).</summary>
     public static readonly TimeSpan PauseNeeded = TimeSpan.FromSeconds(2);
 
-    /// <summary>The key pressed: F15, on no keyboard and used by no game or common app, but input all the same.</summary>
+    /// <summary>F15: on no keyboard and used by no game or common app, but input all the same.</summary>
     const ushort NudgeKey = 0x7E; // VK_F15
 
-    /// <summary>
-    /// How opaque a Roblox window is while it has the keyboard: 1 of 255, as good as invisible (0 could make Windows treat
-    /// it as not shown at all).
-    /// </summary>
+    /// <summary>1 of 255: 0 could make Windows treat the window as not shown at all.</summary>
     internal const byte HiddenAlpha = 1;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -64,7 +54,7 @@ static class AntiAfk
         public IntPtr dwExtraInfo;
     }
 
-    /// <summary>Windows' INPUT: its union holds a mouse input too, so that its size is the one SendInput expects.</summary>
+    /// <summary>Holds a mouse input too, so its size is the one SendInput expects.</summary>
     [StructLayout(LayoutKind.Explicit)]
     struct INPUTUNION
     {
@@ -87,9 +77,8 @@ static class AntiAfk
     const int GWL_EXSTYLE = -20, WS_EX_TOPMOST = 0x8, WS_EX_TRANSPARENT = 0x20, WS_EX_LAYERED = 0x80000;
     const uint LWA_ALPHA = 0x2, GW_HWNDPREV = 3;
     const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
-    // Not async (SWP_ASYNCWINDOWPOS): each move must be done before the next, or a window put back under yours while
-    // yours is still always-on-top would become always-on-top itself. A window that has stopped answering isn't moved
-    // (the move waits for its answer).
+    // Not async: a window put back under yours while yours is still always-on-top would become always-on-top itself.
+    // So a window that has stopped answering isn't moved (the move waits for its answer).
     const uint Restack = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
     static readonly IntPtr HWND_TOPMOST = -1, HWND_NOTOPMOST = -2;
     const uint RDW_INVALIDATE = 0x1, RDW_ERASE = 0x4, RDW_ALLCHILDREN = 0x80, RDW_FRAME = 0x400;
@@ -100,8 +89,7 @@ static class AntiAfk
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
-    // Async: ShowWindow on another program's window waits for it to answer, and a Roblox that hangs (loading, paging)
-    // would hold Bloxkeep's window and its timer (rejoin, saves) for as long.
+    // Async: ShowWindow waits for the window to answer, and a hung Roblox would hold Bloxkeep's timer (rejoin, saves).
     [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr hWnd, int command);
     /// <summary>Windows' own "not responding" (no answer for 5 seconds).</summary>
     [DllImport("user32.dll")] static extern bool IsHungAppWindow(IntPtr hWnd);
@@ -132,16 +120,13 @@ static class AntiAfk
 
     const int QUNS_BUSY = 2, QUNS_RUNNING_D3D_FULL_SCREEN = 3, QUNS_PRESENTATION_MODE = 4;
 
-    /// <summary>
-    /// A full-screen app (a game, a video, a presentation) is in front, as Windows judges it for its notifications:
-    /// a last-chance nudge would interrupt it.
-    /// </summary>
+    /// <summary>As Windows judges it for its notifications (a game, a video, a presentation).</summary>
     public static bool FullScreenInFront() =>
         SHQueryUserNotificationState(out int state) == 0 && state is QUNS_BUSY or QUNS_RUNNING_D3D_FULL_SCREEN or QUNS_PRESENTATION_MODE;
 
     /// <summary>
-    /// The PC is locked (the sign-in screen is up): no window can come to the front then. Read from WTSINFOEX level 1,
-    /// whose session flags follow the level (padded to 8 bytes), the session id and its state.
+    /// No window can come to the front then. Read from WTSINFOEX level 1: the level (padded to 8 bytes), the session
+    /// id, then its state.
     /// </summary>
     public static bool Locked()
     {
@@ -168,9 +153,7 @@ static class AntiAfk
     /// <summary>The person's last input before those nudges.</summary>
     static uint _personInput;
 
-    /// <summary>
-    /// How long since someone last used the mouse or keyboard; our own nudges don't count.
-    /// </summary>
+    /// <summary>Our own nudges don't count.</summary>
     public static TimeSpan IdleTime()
     {
         uint last = LastInputTick();
@@ -179,22 +162,19 @@ static class AntiAfk
         return TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - last));
     }
 
-    /// <summary>Someone used the mouse or keyboard within <see cref="UserIdleNeeded"/> (our own nudges don't count).</summary>
+    /// <summary>Input within <see cref="UserIdleNeeded"/>; our own nudges don't count.</summary>
     public static bool PersonActive()
     {
         uint last = LastInputTick();
         return last != _ownInput && TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - last)) < UserIdleNeeded;
     }
 
-    /// <summary>
-    /// A Roblox window as it was before a nudge: its extended style, its own opacity if it had one, the window it goes
-    /// back under (the nearest above it that isn't always on top), how deep in the stack it was, and whether minimized.
-    /// </summary>
+    /// <summary>A Roblox window as it was before a nudge; Above is the window it goes back under.</summary>
     internal sealed record Before(IntPtr Window, int ExStyle, bool HadAttributes, uint Key, byte Alpha, uint Flags, IntPtr Above, int Depth, bool Minimized);
 
     /// <summary>
-    /// Nudges each window in turn and returns the ones reached. Gives up on the rest as soon as someone touches the PC.
-    /// <paramref name="press"/> (tests only) stands in for the key press, so that a test never types on the desktop.
+    /// Returns the windows reached; gives up on the rest as soon as someone touches the PC. <paramref name="press"/>
+    /// (tests only) stands in for the key press, so a test never types on the desktop.
     /// </summary>
     public static async Task<List<IntPtr>> NudgeAsync(IReadOnlyList<IntPtr> windows, Func<bool> keepGoing, Func<IntPtr, Task>? press = null)
     {
@@ -205,10 +185,10 @@ static class AntiAfk
         // Still our last round's input: the person's own is older.
         uint person = baseline == _ownInput ? _personInput : baseline;
         bool sent = false;
-        // Where each window sits among the others, read before any of them moves.
+        // Read before any of them moves.
         var places = windows.Distinct().Where(IsWindow).ToDictionary(w => w, Place);
         var hidden = new List<Before>();
-        // Windows Bloxkeep hid, shown for the nudge: they stay unseen until hidden again.
+        // Windows Bloxkeep hid, shown for the nudge.
         var unseen = new List<IntPtr>();
         try
         {
@@ -216,14 +196,13 @@ static class AntiAfk
             {
                 if (!keepGoing() || LastInputTick() != baseline)
                     break; // turned off, or a person is back: hand the PC over right away
-                // A window that isn't answering can't be nudged anyway; touching it could only make Bloxkeep wait.
+                // Touching a hung window could only make Bloxkeep wait.
                 if (!IsWindow(hWnd) || IsHungAppWindow(hWnd))
                     continue;
-                // Unseen and click-through first, so that neither its coming to the front nor a click at that moment shows.
-                // A minimized window still gets kicked: it is restored for the moment of the nudge, then minimized again.
+                // Unseen and click-through first, so neither its coming to the front nor a click at that moment shows.
+                // A minimized window still gets kicked: restored for the nudge, then minimized again.
                 bool minimized = IsIconic(hWnd);
-                // A window Bloxkeep hid (RobloxProcesses.HideWindows) is shown for the moment of the nudge, still unseen
-                // and click-through, then hidden again.
+                // A window Bloxkeep hid (RobloxProcesses.HideWindows) is shown for the nudge, still unseen, then hidden.
                 bool unshown = !IsWindowVisible(hWnd);
                 hidden.Add(Hide(hWnd, places.GetValueOrDefault(hWnd), minimized));
                 if (minimized)
@@ -235,8 +214,7 @@ static class AntiAfk
                     if (!Focus(hWnd))
                         continue;
                     await Task.Delay(minimized ? 400 : 150); // a restored Roblox window needs a moment to draw again
-                    // The key goes to whichever window has the keyboard: only to this one, and only if nobody has touched
-                    // the PC meanwhile (a person's own keys would be mixed with it).
+                    // The key goes to whichever window has the keyboard, and a person's keys would mix with it.
                     if (GetForegroundWindow() != hWnd || LastInputTick() != baseline || !keepGoing())
                         continue;
                     await press(hWnd);
@@ -248,7 +226,6 @@ static class AntiAfk
                 }
                 finally
                 {
-                    // A hidden window that is also minimized: minimized again, then hidden (it was shown by its restore).
                     if (minimized)
                         ShowWindowAsync(hWnd, SW_SHOWMINNOACTIVE);
                     if (unshown)
@@ -261,7 +238,7 @@ static class AntiAfk
         }
         finally
         {
-            // Only when something was sent: else the last input is the person's, and must stay theirs.
+            // Else the last input is the person's, and must stay theirs.
             if (sent)
             {
                 _ownInput = baseline;
@@ -270,8 +247,8 @@ static class AntiAfk
             // Nothing touched (turned off, a person back, no window answering): the window you're in is left alone.
             if (hidden.Count > 0)
                 GiveBack(previous);
-            // Each window back to its place, the one highest in the stack first (one that goes under another finds it
-            // there); a minimized one once it is minimized again; only then is it seen again.
+            // Highest in the stack first, so one that goes under another finds it there; seen again only once in place
+            // (a minimized one once minimized again).
             foreach (var before in hidden.OrderBy(b => b.Depth))
                 PutBack(before);
             for (int i = 0; i < 10 && (hidden.Any(b => b.Minimized && IsWindow(b.Window) && !IsIconic(b.Window))
@@ -284,9 +261,8 @@ static class AntiAfk
     }
 
     /// <summary>
-    /// The nearest shown window above <paramref name="hWnd"/> that isn't always on top (the one it goes back under), and
-    /// how many windows are above it. Hidden ones don't count: each program's hidden input-method window rides along
-    /// with that program's window in front, so going back under one would leave the window where it was put.
+    /// The nearest shown, not-topmost window above, and the depth. Hidden ones don't count: a program's hidden
+    /// input-method window rides along with its front window, so going back under one would leave the window in front.
     /// </summary>
     static (IntPtr Above, int Depth) Place(IntPtr hWnd)
     {
@@ -298,10 +274,7 @@ static class AntiAfk
         return (above, depth);
     }
 
-    /// <summary>
-    /// Made all but invisible (<see cref="HiddenAlpha"/>) and click-through; a minimized one also without Windows'
-    /// restore and minimize animation, which the taskbar would show.
-    /// </summary>
+    /// <summary>A minimized one also loses Windows' restore animation, which the taskbar would show.</summary>
     internal static Before Hide(IntPtr hWnd, (IntPtr Above, int Depth) place, bool minimized)
     {
         int ex = GetWindowLong(hWnd, GWL_EXSTYLE);
@@ -317,8 +290,8 @@ static class AntiAfk
     }
 
     /// <summary>
-    /// Seen and clickable again: its own style and opacity back (only the bits <see cref="Hide"/> set are touched). One
-    /// that has stopped answering is left to <see cref="Recover"/>: a change of style waits for the window's answer.
+    /// Only the bits <see cref="Hide"/> set are touched. A hung window is left to <see cref="Recover"/>: a change of
+    /// style waits for the window's answer.
     /// </summary>
     internal static void Show(Before b)
     {
@@ -339,7 +312,6 @@ static class AntiAfk
         DwmSetWindowAttribute(hWnd, DWMWA_TRANSITIONS_FORCEDISABLED, ref disabled, sizeof(int));
     }
 
-    /// <summary>Back under the window it was under, without taking the keyboard (a minimized one stays minimized).</summary>
     internal static void PutBack(Before b)
     {
         if (b.Minimized || b.Above == IntPtr.Zero || !IsWindow(b.Window) || !IsWindow(b.Above) || IsHungAppWindow(b.Window))
@@ -348,15 +320,13 @@ static class AntiAfk
     }
 
     /// <summary>
-    /// The window you were in, back in front with the keyboard. Windows may refuse to hand the keyboard back (a click
-    /// landed meanwhile, say): made always-on-top for an instant, the window comes back on top all the same.
+    /// Windows may refuse to hand the keyboard back (a click landed meanwhile): made topmost for an instant, your
+    /// window comes back on top all the same.
     /// </summary>
     static void GiveBack(IntPtr previous)
     {
         if (previous == IntPtr.Zero || !IsWindow(previous))
             return;
-        // Not the desktop, a hidden or minimized window, one always on top anyway, or one not answering: those only get
-        // the keyboard back.
         bool lift = !IsDesktop(previous) && IsWindowVisible(previous) && !IsIconic(previous) && (GetWindowLong(previous, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0
             && !IsHungAppWindow(previous);
         if (lift)
@@ -366,7 +336,7 @@ static class AntiAfk
             SetWindowPos(previous, HWND_NOTOPMOST, 0, 0, 0, 0, Restack); // first of the usual windows
     }
 
-    /// <summary>The desktop (its icons, or the wallpaper behind them): never lifted over the windows.</summary>
+    /// <summary>Its icons or the wallpaper behind them: never lifted over the windows.</summary>
     static bool IsDesktop(IntPtr hWnd)
     {
         if (hWnd == GetShellWindow())
@@ -375,7 +345,6 @@ static class AntiAfk
         return GetClassName(hWnd, name, name.Capacity) > 0 && name.ToString() is "Progman" or "WorkerW";
     }
 
-    /// <summary>One press of <see cref="NudgeKey"/>, for the window that has the keyboard.</summary>
     static async Task PressKeyAsync(IntPtr _)
     {
         ushort scan = (ushort)MapVirtualKey(NudgeKey, MAPVK_VK_TO_VSC);
@@ -386,8 +355,7 @@ static class AntiAfk
     }
 
     /// <summary>
-    /// A Roblox window left unseen and click-through (Bloxkeep closed in the middle of a nudge) is made the usual again:
-    /// told apart by <see cref="HiddenAlpha"/>, an opacity nothing else gives a window.
+    /// Undoes a nudge cut short by Bloxkeep closing; told apart by <see cref="HiddenAlpha"/>, which nothing else uses.
     /// </summary>
     public static void Recover(IEnumerable<IntPtr> windows)
     {
@@ -405,8 +373,7 @@ static class AntiAfk
     }
 
     /// <summary>
-    /// Brings a window to the front. Windows only lets the app that last received input do that, so the input of the
-    /// current foreground window's thread is shared for the moment of the switch.
+    /// Windows only lets the app that last received input do it, so the foreground thread's input is shared meanwhile.
     /// </summary>
     static bool Focus(IntPtr hWnd)
     {

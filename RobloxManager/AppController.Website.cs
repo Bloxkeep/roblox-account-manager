@@ -1,14 +1,10 @@
 namespace RobloxManager;
 
-/// <summary>
-/// www.roblox.com in a browser window of Bloxkeep's own (see <see cref="WebsiteForm"/>), one tab per account, each its
-/// own private sign-in: Account menu › Open website opens one signed in as a saved account (one tab per account), and
-/// Add account › Open roblox.com (or the window's +) a blank one to sign in on the site, which Save to Bloxkeep then adds
-/// to the list. A session cookie goes only into that tab's in-memory profile, never into the person's own browser.
-/// </summary>
+/// <summary>www.roblox.com in Bloxkeep's own browser window (<see cref="WebsiteForm"/>), one tab per account, each its own private
+/// sign-in: Open website signs a tab in as a saved account; Open roblox.com (or the +) opens a blank one whose sign-in Save to
+/// Bloxkeep adds. A session cookie goes only into that tab's in-memory profile, never the person's own browser.</summary>
 public sealed partial class AppController
 {
-    /// <summary>The browser window, while open.</summary>
     WebsiteForm? _webWindow;
 
     /// <summary>Every website tab open, saved accounts' and blank ones.</summary>
@@ -107,10 +103,8 @@ public sealed partial class AppController
         return (result.Id, result.Label, L.F(result.Merged ? "{0} was already here — its sign-in was updated." : "{0} saved.", result.Label));
     }
 
-    /// <summary>
-    /// The site holds another session cookie than the tab was given: Roblox renewed it (after "Log out of all other
-    /// sessions", for one), or the person signed in again there. Saved only when Roblox says it is this same account.
-    /// </summary>
+    /// <summary>The site holds another session cookie than the tab was given (Roblox renewed it, or the person signed in again there).
+    /// Saved only when Roblox says it's the same account.</summary>
     /// <returns>False when Roblox couldn't be asked (no internet): the tab asks again later.</returns>
     async Task<bool> WebsiteSessionChangedAsync(Guid id, string cookie)
     {
@@ -143,10 +137,7 @@ public sealed partial class AppController
         return true;
     }
 
-    /// <summary>
-    /// Closes website tabs: all of them with their window (the vault is locking, or the app quits; a blank tab's sign-in
-    /// goes with it), or the tabs of these accounts (deleted).
-    /// </summary>
+    /// <summary>Closes all website tabs with their window (lock, quit; a blank tab's sign-in goes too), or these accounts' tabs.</summary>
     void CloseWebsites(IEnumerable<Guid>? ids = null)
     {
         if (ids is null)

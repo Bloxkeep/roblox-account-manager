@@ -1,6 +1,5 @@
-// Settings › Discord: sending on or off and the webhook link (shown only when asked, masked otherwise); the play-time
-// summary (when, what, whose, who it pings); alerts (which kinds, who they ping); the status message and quiet hours;
-// how the messages look. The link itself never comes to the page unless the person asks to see it (Show).
+// Settings › Discord: sending and the webhook link, the play-time summary, alerts, the status message, quiet hours, how
+// messages look. The link itself never comes to the page unless the person asks to see it (Show); masked otherwise.
 import { useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { Ago, Icon, useAppState, useHost } from '../host';
 import { NOTIFY_KINDS } from './NotifyPage';
@@ -44,8 +43,7 @@ export function DiscordPage({ title }: { title: string }) {
   // Alerts on or off as a whole: every kind follows, one at a time; the switch waits (and shows the choice) meanwhile.
   const [alertsWant, setAlertsWant] = useState<boolean | null>(null);
 
-  // The whole link, shown in place of the masked one until hidden again: after half a minute, when Settings is left or
-  // the window loses focus, or when another link replaced it.
+  // The whole link, shown until hidden again: after half a minute, when Settings or the window is left, or another link replaced it.
   const [shown, setShown] = useState<{ url: string; hint: string } | null>(null);
   const hideTimer = useRef(0);
   const hide = () => { clearTimeout(hideTimer.current); setShown(null); };
@@ -78,8 +76,7 @@ export function DiscordPage({ title }: { title: string }) {
   const picked = (s.accounts || []).length;
 
   return <Page id="discord" title={title}>
-    {/* "Playing Bloxkeep" on the person's own profile, through the Discord app on this PC: offered once Bloxkeep's
-        Discord application exists. */}
+    {/* "Playing Bloxkeep" on the person's profile (the Discord app on this PC), once Bloxkeep's Discord application exists. */}
     {d.presenceReady ? <Group id="dc-profile">
       <Row title={t('dc.presence')} desc={t('dc.presenceDesc')}>
         <Switch id="s-dc-presence" label={t('dc.presence')} checked={presence} onChange={async v => {
@@ -121,7 +118,6 @@ export function DiscordPage({ title }: { title: string }) {
       </div> : null}</div>
     </Group>
     <Group id="dc-summary" title={t('dc.summary')}>
-      {/* One list for the automatic summaries (never, daily, weekly, both); the times show for the ones picked. */}
       <Row title={t('dc.sendAuto')}>
         <select className="select sm" id="s-dc-when" aria-label={t('dc.sendAuto')} value={when} onChange={e => {
           const v = e.target.value;
@@ -238,10 +234,8 @@ export function DiscordPage({ title }: { title: string }) {
   </Page>;
 }
 
-/**
- * Who a message pings: nobody, @here and @everyone are saved at once; a user or a role waits for its ID, typed in the
- * box that shows next to the list ("alerts" can also read "Varies by alert", not to be picked).
- */
+// Who a message pings: nobody, @here and @everyone save at once; a user or a role waits for its ID in the box beside the
+// list ("alerts" can also read "Varies by alert", not to be picked).
 function Ping({ kind, saved, again, setPing, putBack }: {
   kind: string; saved: string; again: number; setPing: (kind: string, value: string) => void; putBack: () => void;
 }) {
@@ -283,8 +277,7 @@ function Ping({ kind, saved, again, setPing, putBack }: {
       pending.current = false;
       latest.current.setPing(kind, `${latest.current.mode}:${value}`);
     };
-    // Left without an ID: the choice isn't waiting any more, and the saved one comes back (unless the person went back
-    // to the list itself).
+    // Left without an ID: the saved choice comes back (unless the person went back to the list itself).
     const left = () => setTimeout(() => {
       if (!pending.current || el.value.trim() || document.activeElement === list.current || document.activeElement === el) return;
       pending.current = false;
@@ -318,15 +311,12 @@ function Ping({ kind, saved, again, setPing, putBack }: {
   </div>;
 }
 
-/**
- * Control from Discord (AppController.Remote.cs): on, this PC waits for /pc commands from the Discord account that typed
- * its code into /pc link. The code shows until it's linked; then who it's linked to. Off unlinks it.
- */
+// Control from Discord (AppController.Remote.cs): on, this PC takes /pc commands from the Discord account that typed its
+// code into /pc link. The code shows until linked, then who it's linked to. Off unlinks it.
 function RemoteGroup() {
   const { t, call, busy } = useHost();
   const r = useAppState().remote || {};
   const [now, setNow] = useState(Date.now());
-  // The code's minutes left, counted down while it shows.
   useEffect(() => {
     if (!r.code) return;
     const timer = window.setInterval(() => setNow(Date.now()), 15_000);

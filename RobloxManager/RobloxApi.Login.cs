@@ -8,55 +8,40 @@ namespace RobloxManager;
 /// <summary>Signing in with a username and password: Roblox's checks on the way (captcha, proof of work, two-step).</summary>
 public static partial class RobloxApi
 {
-    /// <summary>
-    /// The outcome of a username+password sign-in. Either a session cookie (done), a two-step prompt or a captcha the
-    /// user must answer, or a check this app can't show (<see cref="Blocked"/>: what to tell the person, which ends the attempt).
-    /// </summary>
+    /// <summary>A password sign-in's outcome: a cookie (done), a two-step prompt or captcha to answer, or a check this app
+    /// can't show (<see cref="Blocked"/>: what to tell the person; the attempt ends).</summary>
     public sealed record LoginResult(string? Cookie, TwoStepPrompt? TwoStep, CaptchaPrompt? Captcha = null, string? Blocked = null,
         ProofOfWorkPrompt? ProofOfWork = null, HumanCaptchaPrompt? HumanCaptcha = null);
 
-    /// <summary>
-    /// Roblox's "captchav2": HUMAN Security's press-and-hold check. The puzzle is fetched from apis.roblox.com/v2/captcha
-    /// with <see cref="CaptchaChallengeId"/> and solved in <see cref="CaptchaForm"/>, which hands back a redemption token.
-    /// </summary>
+    /// <summary>Roblox's "captchav2", HUMAN Security's press-and-hold check: fetched from apis.roblox.com/v2/captcha with
+    /// <see cref="CaptchaChallengeId"/> and solved in <see cref="CaptchaForm"/>, which hands back a redemption token.</summary>
     /// <param name="Metadata">The challenge's own metadata, sent back with the token filled in.</param>
     public sealed record HumanCaptchaPrompt(string Realm, string LoginChallengeId, string CaptchaChallengeId, string Metadata,
         string Username, string Password);
 
-    /// <summary>
-    /// A proof-of-work check: Roblox hands out a puzzle that takes the computer a few seconds to solve, which roblox.com
-    /// solves in the background. No input from the user is needed.
-    /// </summary>
+    /// <summary>A proof-of-work check: a puzzle of a few CPU seconds, solved in the background as roblox.com does.</summary>
     /// <param name="Metadata">The challenge's own metadata (session, request path…); it goes back to Roblox as-is, with the token filled in.</param>
     public sealed record ProofOfWorkPrompt(string Realm, string LoginChallengeId, string SessionId, string Metadata, string Username, string Password);
 
     /// <summary>What's needed to finish a two-step sign-in: the user picks where the code comes from and types it.</summary>
-    /// <param name="MediaType">
-    /// Set when Roblox answered the sign-in itself with "twoStepVerificationData" (a 200 with no cookie) instead of a
-    /// challenge header: the code was already sent that way (e.g. "Email"), and the sign-in is finished through
-    /// /v3/users/{id}/two-step-verification/login with the ticket rather than by repeating the login.
-    /// </param>
+    /// <param name="MediaType">Set when the login answer carried "twoStepVerificationData" (a 200, no cookie) instead of a
+    /// challenge header: the code went that way already (e.g. "Email"), and the sign-in finishes through
+    /// /v3/users/{id}/two-step-verification/login with the ticket rather than by repeating the login.</param>
     public sealed record TwoStepPrompt(string Realm, long UserId, string ChallengeId, string LoginChallengeId, string Username, string Password,
         string? MediaType = null, string ActionType = "Login")
     {
         /// <summary>Where this account can get a code (authenticator, email, sms), the one Roblox prefers first.</summary>
         public string[] Methods { get; init; } = ["authenticator", "email"];
 
-        /// <summary>
-        /// Set once Roblox accepted the code: a retry after finishing failed on the way (offline) reuses it instead of
-        /// sending the spent code again.
-        /// </summary>
+        /// <summary>Set once Roblox accepted the code, so a retry after a failed finish doesn't send the spent code again.</summary>
         public string? VerificationToken { get; set; }
     }
 
     /// <summary>The 2-step methods Bloxkeep can answer: a code typed by the user, checked at challenges/{method}/verify.</summary>
     static readonly string[] CodeMethods = ["authenticator", "email", "sms"];
 
-    /// <summary>
-    /// Roblox's name for a 2-step method, from either spelling it uses: the name ("Email") or its number in
-    /// TwoStepVerificationMediaType (Email 0, SMS 1, Authenticator 2, RecoveryCode 3, SecurityKey 4, CrossDevice 5,
-    /// Password 6, Passkey 7).
-    /// </summary>
+    /// <summary>A 2-step method's name from either spelling Roblox uses: "Email", or its TwoStepVerificationMediaType number
+    /// (Email 0, SMS 1, Authenticator 2, RecoveryCode 3, SecurityKey 4, CrossDevice 5, Password 6, Passkey 7).</summary>
     static string MediaName(JsonElement e) => e.ValueKind switch
     {
         JsonValueKind.String => e.GetString() ?? "",
@@ -69,10 +54,8 @@ public static partial class RobloxApi
     /// <returns>The path name of a method answered with a typed code, or null for one Bloxkeep can't do (security key…).</returns>
     static string? CodeMethod(string mediaType) => CodeMethods.FirstOrDefault(m => m.Equals(mediaType, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>
-    /// A captcha Roblox put in front of a sign-in. The puzzle itself is Arkose Labs' FunCaptcha (Roblox's captcha
-    /// provider, see apis.roblox.com/captcha/v1/metadata); <see cref="Blob"/> ties it to this sign-in attempt.
-    /// </summary>
+    /// <summary>A captcha on a sign-in: Arkose Labs' FunCaptcha (see apis.roblox.com/captcha/v1/metadata);
+    /// <see cref="Blob"/> ties it to this attempt.</summary>
     /// <param name="ChallengeType">"captcha", or "captchav2" when Roblox asks for one after another check.</param>
     /// <param name="Metadata">The challenge's own metadata, sent back with the token filled in.</param>
     public sealed record CaptchaPrompt(string Realm, string LoginChallengeId, string UnifiedCaptchaId, string Blob, string ActionType,
@@ -83,10 +66,8 @@ public static partial class RobloxApi
             ? values.Where(v => v.StartsWith(CookieName + "=", StringComparison.Ordinal)).Select(NormalizeCookie).FirstOrDefault(v => v.Length > 0)
             : null;
 
-    /// <summary>
-    /// Signs in with the account's own username and password, exactly as the Roblox client does: the values go only to
-    /// Roblox's (or VNG's) official auth host over HTTPS and are never stored or logged by the app.
-    /// </summary>
+    /// <summary>Signs in as the Roblox client does: username and password go only to Roblox's (or VNG's) official auth
+    /// host over HTTPS and are never stored or logged by the app.</summary>
     public static Task<LoginResult> LoginWithPasswordAsync(string username, string password, string realm, CancellationToken ct = default) =>
         SendLoginAsync(username, password, realm, null, ct);
 
@@ -120,7 +101,6 @@ public static partial class RobloxApi
         throw LoginRefused(step, res.StatusCode, body);
     }
 
-    /// <summary>A string field of a JSON object, or null.</summary>
     static string? Field(JsonElement? obj, string name) =>
         obj is { ValueKind: JsonValueKind.Object } o && o.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
@@ -131,11 +111,9 @@ public static partial class RobloxApi
         return L.F("Roblox asked for a check Bloxkeep can't show yet ({0}). Try again later, or sign in with your phone.", kind);
     }
 
-    /// <summary>
-    /// A sign-in answer that matches no shape Bloxkeep knows. Writes one line to error.log with only its layout (the
-    /// step, the HTTP status, the names of Roblox's challenge headers, field names and value kinds, error codes),
-    /// never a value: no password, cookie, ticket, token, name or id. Returns what to tell the person.
-    /// </summary>
+    /// <summary>A sign-in answer of unknown shape: logs only its layout (step, HTTP status, challenge header names, field
+    /// names and value kinds, error codes), never a value (password, cookie, ticket, token, name, id). Returns what to
+    /// tell the person.</summary>
     static string Unsupported(string step, string realm, HttpResponseMessage? res, JsonElement? json, string? type = null)
     {
         var headers = res is null ? [] : res.Headers.Select(h => h.Key).Where(k => k.StartsWith("rblx-", StringComparison.OrdinalIgnoreCase)).ToList();
@@ -213,10 +191,8 @@ public static partial class RobloxApi
         }
     }
 
-    /// <summary>
-    /// The other way Roblox asks for 2-step: a 200 answer whose body carries the user and "twoStepVerificationData"
-    /// ({ mediaType, ticket }) — seen after a solved captcha. Null when the body isn't that.
-    /// </summary>
+    /// <summary>2-step asked in a 200 answer's body ("twoStepVerificationData": { mediaType, ticket }), seen after a solved
+    /// captcha. Null when the body isn't that.</summary>
     static TwoStepPrompt? TwoStepFromBody(string realm, string body, string username, string password)
     {
         try
@@ -269,10 +245,8 @@ public static partial class RobloxApi
         throw new RobloxApiException(L.T("Roblox didn't say which captcha to show."));
     }
 
-    /// <summary>
-    /// Hands Roblox the token from a solved captcha, then retries the sign-in carrying it, as roblox.com does. The
-    /// answer can still be a two-step prompt (or, rarely, another captcha).
-    /// </summary>
+    /// <summary>Hands Roblox a solved captcha's token and retries the sign-in with it, as roblox.com does; the answer can
+    /// still be a two-step prompt (or, rarely, another captcha).</summary>
     public static Task<LoginResult> FinishCaptchaLoginAsync(CaptchaPrompt prompt, string captchaToken, CancellationToken ct = default) =>
         ContinueLoginAsync(prompt.Realm, prompt.LoginChallengeId, prompt.ChallengeType,
             prompt.ChallengeType == "captcha"
@@ -285,10 +259,7 @@ public static partial class RobloxApi
         ContinueLoginAsync(prompt.Realm, prompt.LoginChallengeId, "captchav2", WithField(prompt.Metadata, "redemptionToken", redemptionToken),
             prompt.Username, prompt.Password, ct);
 
-    /// <summary>
-    /// Solves a proof-of-work check the way roblox.com does in the background: fetch the puzzle, compute the answer,
-    /// trade it for a redemption token, then carry on with the sign-in.
-    /// </summary>
+    /// <summary>Solves a proof-of-work check as roblox.com does, then carries on with the sign-in.</summary>
     public static async Task<LoginResult> FinishProofOfWorkLoginAsync(ProofOfWorkPrompt prompt, CancellationToken ct = default)
     {
         string redemptionToken = await ProofOfWorkTokenAsync(prompt.Realm, prompt.SessionId, ct);
@@ -338,10 +309,8 @@ public static partial class RobloxApi
         return redemptionToken;
     }
 
-    /// <summary>
-    /// Roblox's time-lock puzzle: square A modulo N, T times in a row. It can't be sped up by running in parallel, which
-    /// is the point: it costs every sign-in a few seconds of one CPU core.
-    /// </summary>
+    /// <summary>Roblox's time-lock puzzle: square A modulo N, T times. Inherently serial: a few seconds of one CPU core per
+    /// sign-in.</summary>
     static string SolvePuzzle(string puzzleType, string artifacts, CancellationToken ct)
     {
         // Roblox names the type as a number: 1 is the time-lock puzzle (seen Oct 2026, with artifacts N, A, T).
@@ -371,11 +340,8 @@ public static partial class RobloxApi
         }
     }
 
-    /// <summary>
-    /// The layout of a JSON value for the log: field names and value kinds (text by its length), never the values.
-    /// A string holding JSON (or base64 JSON) is opened up too. Three levels at most; a field name that looks like data
-    /// (a number such as a user id, or free text) is written as "#".
-    /// </summary>
+    /// <summary>A JSON value's layout for the log: field names and value kinds (text by length), never values. Strings
+    /// holding (base64) JSON are opened too; three levels at most; a field name that looks like data is written "#".</summary>
     static string Shape(JsonElement e, int depth = 0)
     {
         if (depth >= 3 && e.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
@@ -476,12 +442,9 @@ public static partial class RobloxApi
     static string TwoStepUrl(TwoStepPrompt prompt, string path) =>
         $"{Realm.Api(prompt.Realm, "twostepverification")}/v1/users/{prompt.UserId}/{path}";
 
-    /// <summary>
-    /// Learns which 2-step methods the account has, as roblox.com does before it shows the code screen (no cookie is
-    /// needed: the challenge id proves the sign-in). Only methods answered with a typed code are kept, Roblox's
-    /// preferred one first. When none of them is left (a security key, a passkey or approval on another device),
-    /// the sign-in can't go on here.
-    /// </summary>
+    /// <summary>Learns the account's 2-step methods as roblox.com does (no cookie: the challenge id proves the sign-in).
+    /// Only typed-code methods are kept, Roblox's preferred first; with none left (security key, passkey, another
+    /// device's approval) the sign-in can't go on here.</summary>
     public static async Task<LoginResult> WithTwoStepMethodsAsync(TwoStepPrompt prompt, CancellationToken ct = default)
     {
         List<string> enabled = [];
@@ -551,10 +514,8 @@ public static partial class RobloxApi
         throw TwoStepRefused("Two-step code", res.StatusCode, await res.Content.ReadAsStringAsync(ct));
     }
 
-    /// <summary>
-    /// A refusal from twostepverification.roblox.com, by its documented codes: 10 a wrong code (typed again), 18 an
-    /// authenticator code used already, 1 a challenge that expired (the attempt is over), 5 or 429 too many tries.
-    /// </summary>
+    /// <summary>A twostepverification.roblox.com refusal by its documented codes: 10 wrong code (typed again), 18
+    /// authenticator code used already, 1 challenge expired (the attempt is over), 5 or 429 too many tries.</summary>
     static Exception TwoStepRefused(string what, HttpStatusCode status, string body)
     {
         var (codes, _) = Errors(body);
@@ -572,12 +533,9 @@ public static partial class RobloxApi
         return Refused(what, status, body);
     }
 
-    /// <summary>
-    /// Answers a two-step prompt: verifies the code with the chosen method, then finishes the sign-in the way it was
-    /// asked for. Asked in the login's answer ("twoStepVerificationData"): through /v3/users/{id}/two-step-verification/login
-    /// with the ticket. Asked in a challenge header: the answer goes to /challenge/v1/continue and the login is
-    /// repeated carrying it, as roblox.com does; that may still end in another check.
-    /// </summary>
+    /// <summary>Verifies the code, then finishes the way 2-step was asked: from the login's answer, through
+    /// /v3/users/{id}/two-step-verification/login with the ticket; from a challenge header, via /challenge/v1/continue
+    /// and a repeated login (as roblox.com does), which may end in another check.</summary>
     public static async Task<LoginResult> VerifyTwoStepAsync(TwoStepPrompt prompt, string method, string code, CancellationToken ct = default)
     {
         string token;

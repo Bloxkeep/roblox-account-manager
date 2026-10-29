@@ -3,12 +3,10 @@ using System.Text.Json;
 namespace RobloxManager;
 
 /// <summary>
-/// A new Bloxkeep found within minutes: GitHub's API takes an hour's worth of update checks from one address at most
-/// (an internet café's PCs share one), so the update check itself stays hourly; but every few minutes Bloxkeep's bot is
-/// asked which version is out (services/DiscordBot/worker /latest, read from GitHub every two minutes and kept a minute
-/// per Cloudflare location; nothing is sent with the question). One newer than this copy brings the update check
-/// forward to now, once per version, so a copy left on the lock screen installs it there before anyone unlocks.
-/// Only an installed Bloxkeep with automatic updates on asks; the checks point it at a server of their own.
+/// A new Bloxkeep found within minutes: GitHub's API allows an hour's update checks per address (an internet café shares
+/// one), so every few minutes the bot is asked instead (services/DiscordBot/worker /latest, read from GitHub every 2 min,
+/// cached 1 min per Cloudflare location; nothing is sent). A newer version brings the hourly check forward once, so a
+/// copy on the lock screen installs it before anyone unlocks. Only installed copies with automatic updates on ask.
 /// </summary>
 public sealed partial class AppController
 {
@@ -17,7 +15,6 @@ public sealed partial class AppController
 
     DateTime _nextLatestLook;
     bool _latestLooking;
-    /// <summary>The newer version the bot last told of: the update check is brought forward once for it.</summary>
     string? _latestSeen;
 
     static string? LatestTestUrl => Environment.GetEnvironmentVariable("BLOXKEEP_LATEST_URL") is { Length: > 0 } url ? url : null;

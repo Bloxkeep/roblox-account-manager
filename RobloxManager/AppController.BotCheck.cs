@@ -1,12 +1,10 @@
 namespace RobloxManager;
 
 /// <summary>
-/// Roblox's bot check on a join (the card's "Roblox wants a bot check", the window held on Roblox's Security page, blank
-/// in Vietnam): the account menu's "Solve the bot check" asks Roblox's join for the account itself, shows the check it
-/// gets in Bloxkeep's own window (the puzzle and press-and-hold kinds; a proof of work is computed, as roblox.com does),
-/// hands the answer to Roblox with the account's sign-in, and asks the join again carrying it. Let in: the held window
-/// is closed and opened again into its game. Each step is noted in error.log by kind and field names only, so a check
-/// of a kind not handled yet shows what it was.
+/// Roblox's bot check on a join (the window held on Roblox's Security page, blank in Vietnam): "Solve the bot check"
+/// asks the join itself, shows the check in Bloxkeep's own window (puzzle, press-and-hold; proof of work is computed, as
+/// roblox.com does), hands the answer to Roblox and asks the join again carrying it; if let in, the held window reopens.
+/// error.log notes each step by kind and field names only, so an unhandled kind shows what it was.
 /// </summary>
 public sealed partial class AppController
 {
@@ -38,13 +36,11 @@ public sealed partial class AppController
             _ => throw new UserError(L.F("Roblox asked {0} for a kind of check Bloxkeep can't show yet ({1}). It was noted, to be added.",
                 Name(account), challenge.Type.Length > 0 ? challenge.Type : "?")),
         };
-        // The check's window closed before it was solved: nothing goes to Roblox.
         if (answer is null || _vault != vault)
             return null;
 
-        // Roblox's challenge/continue, as a sign-in's check is answered. A join's check (2026-10-27) names the request it
-        // holds (requestPath, requestMethod) and continue refused it with 403 "an internal error occurred", with the
-        // answer in either shape: then the join itself is asked again carrying the answer, as that request's retry.
+        // challenge/continue refused a join's check (2026-10-27) with 403 "an internal error occurred", whatever the
+        // answer's shape: then the join is asked again carrying the answer, as that request's retry.
         var solved = challenge with { MetadataJson = answer };
         RobloxApi.JoinChallenge passed;
         try
@@ -64,7 +60,7 @@ public sealed partial class AppController
         Toast(L.F("Check passed. Opening {0}'s window again…", Name(account)), "ok");
         return null;
 
-        // The held window is closed and opened again into its game (as a preset's restart does: whatever auto-rejoin says).
+        // As a preset's restart does: whatever auto-rejoin says.
         void Reopen()
         {
             if (!_running.TryGetValue(id, out var now) || now.Pid != run.Pid)
@@ -88,10 +84,7 @@ public sealed partial class AppController
         return ShowCaptcha(CaptchaForm.Arkose(account.Realm, key, blob)) is { } token ? CaptchaAnswer(challenge, token) : null;
     }
 
-    /// <summary>
-    /// The check's own metadata with the solved puzzle's token in captchaToken. A join's check carries more than a
-    /// sign-in's (requestPath, requestMethod, sharedParameters, dataExchangeBlob); sent back with only unifiedCaptchaId,
-    /// captchaToken and actionType, Roblox answered 403 "an internal error occurred" (2026-10-27).
-    /// </summary>
+    /// <summary>The check's whole metadata plus captchaToken: sent back with only unifiedCaptchaId, captchaToken and
+    /// actionType, Roblox answered 403 "an internal error occurred" (2026-10-27).</summary>
     static string CaptchaAnswer(RobloxApi.JoinChallenge challenge, string token) => challenge.MetaWith("captchaToken", token);
 }
