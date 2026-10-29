@@ -125,6 +125,17 @@ export default [
   S('settings-custom-picture', 'settings=appearance&theme=custom&ctpicture=1'),
   S('settings-custom-light', 'settings=appearance&theme=custom&ctbg=f1e9da'),
   S('accounts-custom-theme', 'theme=custom&ctpicture=1'),
+  // The colour boxes open Bloxkeep's own picker: a ready colour picked, a code typed, its button closing it again.
+  S('settings-color-pick', 'settings=appearance&theme=custom', async s => {
+    await s.click({ css: '#s-ct-accent' });
+    await s.snap('open');
+    await s.click({ css: '.cf-ready [aria-label="#3b82f6"]' });
+    await s.fill({ css: '.cf-hex' }, '#ec4899');
+    await s.wait(400);
+    await s.snap('typed');
+    await s.click({ css: '#s-ct-accent' });
+    await s.wait(400);
+  }),
   // Blurred behind the page; your themes (the one in use marked), one saved by name, one put in use, one deleted.
   S('accounts-custom-blur', 'theme=custom&ctpicture=1&ctblur=12'),
   S('settings-custom-saved', 'settings=appearance&theme=custom&ctpicture=1&ctblur=8&saved=1', async s => {
@@ -922,6 +933,13 @@ export default [
     await s.snap('job box');
     await s.click({ css: '.overlay .modal-foot .btn.primary' });
     await s.wait(400);
+  }),
+  // A drop-down's list in the page's colours, under its box; clicked again, it closes.
+  S('select-open', 'preset=1', async s => {
+    await s.wait(300);
+    await s.click({ css: '#ps-sch-stop' });
+    await s.snap('open');
+    await s.click({ css: '#ps-sch-stop' });
   }),
   // The date box's own calendar: a day picked goes into the box; the time box's list closes on Escape, the form stays.
   S('preset-date-pick', 'preset=1', async s => {

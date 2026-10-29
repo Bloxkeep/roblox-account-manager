@@ -61,7 +61,7 @@ function Field({ kind, className, ref, ...attrs }: BoxProps & { kind: 'time' | '
  * still hold. Closes on the button again, a click outside, Escape (before the dialog hears it), Enter, or the window
  * changing size.
  */
-function Popup({ anchor, close, label, children }: { anchor: HTMLElement; close: (refocus: boolean) => void; label: string; children: ReactNode }) {
+export function Popup({ anchor, close, label, children }: { anchor: HTMLElement; close: (refocus: boolean) => void; label: string; children: ReactNode }) {
   const panel = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
   useLayoutEffect(() => {

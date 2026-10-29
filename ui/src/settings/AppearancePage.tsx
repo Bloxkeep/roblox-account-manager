@@ -4,6 +4,7 @@
 import { useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent } from 'react';
 import { Icon, useAppState, useHost, type CustomTheme, type SavedTheme } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
+import { ColorInput } from '../ColorField';
 
 export function AppearancePage({ title }: { title: string }) {
   const { t, tIn, lang, call, toast, busy, themes, themePending, previewTheme, subscribe, customTheme, customVars, previewCustom } = useHost();
@@ -61,12 +62,10 @@ export function AppearancePage({ title }: { title: string }) {
       {/* Custom chosen: its two colours (shown as they are dragged, saved once they rest) and a picture behind the page. */}
       {current === 'custom' && custom ? <div className="ct" id="s-custom">
         <Row title={t('ct.background')} desc={t('ct.backgroundDesc')}>
-          <input type="color" className="ct-color" id="s-ct-bg" value={custom.background} aria-label={t('ct.background')}
-            onChange={e => previewCustom({ background: e.target.value })} />
+          <ColorInput id="s-ct-bg" value={custom.background} label={t('ct.background')} onChange={v => previewCustom({ background: v })} />
         </Row>
         <Row title={t('ct.accent')} desc={t('ct.accentDesc')}>
-          <input type="color" className="ct-color" id="s-ct-accent" value={custom.accent} aria-label={t('ct.accent')}
-            onChange={e => previewCustom({ accent: e.target.value })} />
+          <ColorInput id="s-ct-accent" value={custom.accent} label={t('ct.accent')} onChange={v => previewCustom({ accent: v })} />
         </Row>
         <Row title={t('ct.picture')} desc={t('ct.pictureDesc')}>
           {custom.picture ? <button className="btn sm ghost" data-act="ct-clear">{t('ct.remove')}</button> : null}
