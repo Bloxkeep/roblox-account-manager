@@ -18,6 +18,30 @@ Turning on **Send to Discord** without a link asks for it.
 
 **Show on my Discord profile** (at the top of Settings › Discord) puts "Playing Bloxkeep" on your own Discord profile: how many Roblox windows are open, the game (or how many games), since when, and a **Get Bloxkeep** button to the website. It never shows an account's name. It works through the Discord app running on this PC, needs no webhook, and is off until you turn it on. Quitting Bloxkeep takes it away.
 
+## Control from Discord
+
+Type `/pc` in Discord to see how your accounts are doing, run a preset, close windows or switch server on your PC, from anywhere. It is off until you turn it on.
+
+<img src="../screenshots/discord-control.png" width="760" alt="Settings › Discord › Control from Discord turned on, with the code to type (K7MX4P), New code and Add Bloxkeep to Discord">
+
+1. In Bloxkeep: **Settings › Discord › Control from Discord**, turn it on. A six-letter code shows; it works for 10 minutes (**New code** for another).
+2. Press **Add Bloxkeep to Discord** and accept, so `/pc` works in any chat.
+3. In Discord, type `/pc link` and the code. Bloxkeep then shows who it is linked to.
+
+| Command | What it does |
+|---|---|
+| `/pc status` | The status card: each account with a Roblox window, its game and how it's doing. |
+| `/pc preset` | Runs a preset (Discord suggests your presets as you type). Once its windows are open, how it went follows. |
+| `/pc close` | Closes one account's Roblox window, or **All accounts**. |
+| `/pc switch` | Moves an account to another server of its game. |
+| `/pc unlink` | Stops controlling that PC from Discord. |
+
+- The answers are seen only by you.
+- With more than one PC linked, pick it in the `pc` box.
+- While Bloxkeep is locked, it only answers that it is locked.
+- A preset that would ask something first (Multi-Roblox off, say) isn't run from Discord: Bloxkeep says why.
+- Turning **Control from Discord** off unlinks the PC.
+
 ## What it does
 
 Bloxkeep posts through a webhook: a link that lets a program post to one channel. Nothing is sent while Bloxkeep is locked.

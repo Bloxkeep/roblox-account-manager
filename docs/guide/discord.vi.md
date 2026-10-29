@@ -18,6 +18,30 @@ Bật **Gửi lên Discord** khi chưa có link thì app cũng hỏi link.
 
 **Hiện trên hồ sơ Discord** (trên cùng của Cài đặt › Discord) cho hồ sơ Discord của bạn hiện "Đang chơi Bloxkeep": số cửa sổ Roblox đang mở, tên game (hoặc số game), chơi từ lúc nào, kèm nút **Tải Bloxkeep** dẫn tới website. Không bao giờ hiện tên tài khoản. Tính năng này chạy qua app Discord đang mở trên máy, không cần webhook, và tắt cho tới khi bạn bật. Thoát Bloxkeep thì dòng này cũng mất.
 
+## Điều khiển từ Discord
+
+Gõ `/pc` trong Discord để xem tài khoản đang thế nào, chạy preset, đóng cửa sổ hay đổi server trên máy, ở đâu cũng được. Mặc định tắt.
+
+<img src="../screenshots/vi/discord-control.png" width="760" alt="Cài đặt › Discord › Điều khiển từ Discord đang bật, với mã để gõ (K7MX4P), nút Mã mới và Thêm Bloxkeep vào Discord">
+
+1. Trong Bloxkeep: **Cài đặt › Discord › Điều khiển từ Discord**, bật lên. Bloxkeep hiện mã 6 ký tự, dùng được 10 phút (**Mã mới** để lấy mã khác).
+2. Bấm **Thêm Bloxkeep vào Discord** rồi đồng ý, để gõ được `/pc` ở mọi nơi.
+3. Trong Discord, gõ `/pc link` và nhập mã. Bloxkeep sẽ hiện đã liên kết với ai.
+
+| Lệnh | Làm gì |
+|---|---|
+| `/pc status` | Thẻ trạng thái: từng tài khoản đang mở Roblox, game và tình trạng. |
+| `/pc preset` | Chạy preset (Discord gợi ý preset khi bạn gõ). Mở xong thì báo kết quả. |
+| `/pc close` | Đóng cửa sổ Roblox của một tài khoản, hoặc **Tất cả tài khoản**. |
+| `/pc switch` | Cho một tài khoản sang server khác cùng game. |
+| `/pc unlink` | Thôi điều khiển máy đó từ Discord. |
+
+- Chỉ bạn thấy câu trả lời.
+- Liên kết nhiều máy thì chọn máy ở ô `pc`.
+- Khi Bloxkeep đang khóa, nó chỉ báo là đang khóa.
+- Preset cần hỏi trước (ví dụ Multi-Roblox đang tắt) không chạy từ Discord, Bloxkeep sẽ nói lý do.
+- Tắt **Điều khiển từ Discord** là hủy liên kết máy.
+
 ## Cách hoạt động
 
 Bloxkeep gửi qua webhook: một đường link cho phép chương trình gửi tin vào đúng một kênh. Khi Bloxkeep đang khóa thì không gửi gì.
