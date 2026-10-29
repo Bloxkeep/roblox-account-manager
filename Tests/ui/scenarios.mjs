@@ -113,6 +113,26 @@ export default [
   S('settings-custom-picture', 'settings=appearance&theme=custom&ctpicture=1'),
   S('settings-custom-light', 'settings=appearance&theme=custom&ctbg=f1e9da'),
   S('accounts-custom-theme', 'theme=custom&ctpicture=1'),
+  // Blurred behind the page; your themes (the one in use marked), one saved by name, one put in use, one deleted.
+  S('accounts-custom-blur', 'theme=custom&ctpicture=1&ctblur=12'),
+  S('settings-custom-saved', 'settings=appearance&theme=custom&ctpicture=1&ctblur=8&saved=1', async s => {
+    await s.hover({ css: '#s-saved-themes' });
+  }),
+  S('settings-custom-save', 'settings=appearance&theme=custom&saved=1', async s => {
+    await s.type('Ocean', { css: '#s-ct-name' });
+    await s.click({ css: '#s-ct-save' });
+    await s.wait(400);
+  }),
+  S('settings-saved-use', 'settings=appearance&saved=1', async s => {
+    await s.click({ css: '.ct-theme[data-id="t2"] .ct-use' });
+    await s.wait(500);
+    await s.snap('used');
+    await s.click({ css: '.ct-theme[data-id="t1"] .ct-del' });
+    await s.snap('asked');
+    await s.click({ css: '.ct-theme[data-id="t1"] .btn.danger' });
+    await s.wait(300);
+  }),
+  S('settings-saved-none', 'settings=appearance'),
   S('settings-backup-on', 'settings=backup&backup=1'),
   S('settings-update-ready', 'settings=updates&update=1'),
   S('settings-update-quiet', 'settings=updates&update=quiet'),

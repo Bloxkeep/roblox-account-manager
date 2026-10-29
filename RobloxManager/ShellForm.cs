@@ -1136,6 +1136,8 @@ public sealed class ShellForm : Form
             ".webp" => "image/webp",
             ".gif" => "image/gif",
             ".bmp" => "image/bmp",
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
             _ => "application/octet-stream",
         };
         e.Response = env.CreateWebResourceResponse(stream, 200, "OK", $"Content-Type: {type}\r\nCache-Control: no-store");

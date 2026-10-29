@@ -146,7 +146,24 @@ public static class Themes
     /// theme's (theme-background-&lt;time&gt;.png…) and each vault's (vault-picture-&lt;id&gt;-&lt;time&gt;.png…).
     /// </summary>
     public static bool IsPictureName(string name) =>
-        System.Text.RegularExpressions.Regex.IsMatch(name, @"^(theme-background|vault-picture-[0-9a-f]{8})-\d{1,20}\.(png|jpe?g|webp|gif|bmp)$");
+        IsThemeMediaName(name) || System.Text.RegularExpressions.Regex.IsMatch(name, @"^vault-picture-[0-9a-f]{8}-\d{1,20}\.(png|jpe?g|webp|gif|bmp)$");
+
+    /// <summary>The custom theme's picture or video in the data folder, by its own kind of name.</summary>
+    public static bool IsThemeMediaName(string name) =>
+        System.Text.RegularExpressions.Regex.IsMatch(name, @"^theme-background-\d{1,20}\.(png|jpe?g|webp|gif|bmp|mp4|webm)$");
+
+    /// <summary>A video, not a picture, behind the page.</summary>
+    public static bool IsVideo(string? name) => name is not null && (name.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".webm", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>How many custom themes are kept by name, and the most the picture is blurred (px).</summary>
+    public const int MaxSaved = 30, MaxBlur = 30;
+
+    /// <summary>A saved theme's name: trimmed, without control characters, 1 to 40 characters; null when there is none.</summary>
+    public static string? ThemeName(string? text)
+    {
+        string name = new string((text ?? "").Where(ch => !char.IsControl(ch)).ToArray()).Trim();
+        return name.Length == 0 ? null : name.Length > 40 ? name[..40].TrimEnd() : name;
+    }
 
     static bool WindowsUsesLight()
     {

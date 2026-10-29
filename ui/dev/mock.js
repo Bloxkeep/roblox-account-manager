@@ -128,7 +128,14 @@
       open: locked ? null : vaultCurrent, pick: vaultPick, adding: !!vaultAdding, ask: askVault };
   };
   // Settings › Appearance › Custom (?theme=custom; ?ctpicture=1 with a picture, a scenery theme's standing in).
-  let customTheme = { background: params.has('ctbg') ? '#' + params.get('ctbg') : '#1b2a3a', accent: '#f59e0b', fade: 45, picture: params.has('ctpicture') ? 'scene-halong.svg' : null };
+  let customTheme = { background: params.has('ctbg') ? '#' + params.get('ctbg') : '#1b2a3a', accent: '#f59e0b', fade: 45, blur: +(params.get('ctblur') || 0),
+    picture: params.has('ctpicture') ? 'scene-halong.svg' : null, video: false };
+  // Your themes (?saved=1): a few kept by name, one of them the theme in use.
+  let savedThemes = params.has('saved') ? [
+    { id: 't1', name: 'Night drive', look: { background: '#141a26', accent: '#22c55e', fade: 45, blur: 0, picture: null, video: false } },
+    { id: 't2', name: 'Ha Long', look: { background: '#1b2a3a', accent: '#f59e0b', fade: 45, blur: 8, picture: 'scene-halong.svg', video: false } },
+    { id: 't3', name: 'Rain loop', look: { background: '#1a2b3a', accent: '#60a5fa', fade: 55, blur: 4, picture: 'scene-rainy.svg', video: true } },
+  ] : [];
   let closeToTray = true;
   let hideNames = params.has('hide'); // ?hide=1: Settings › Appearance › Hide account names is on
   // A made-up authenticator code (not a real TOTP): six digits that change every 30 s, as the app's do.
@@ -278,7 +285,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
+    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, savedThemes, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
       updater: settings.launchVia === 'store' ? null : 'Bloxstrap', updating: robloxUpdating },
@@ -348,6 +355,8 @@
       switch (cmd) {
         case 'getState': return { resume: false, view: null, state: state() };
         case 'debugToast': emit('toast', a); return null; // for the dev tests: __mockBridge.call('debugToast', { text, kind })
+        // A custom theme as given (a video's address, say): __mockBridge.call('debugCustomTheme', { picture, video: true })
+        case 'debugCustomTheme': customTheme = { ...customTheme, ...a }; theme = 'custom'; push(); return null;
         case 'keepView': case 'pageBusy': return null;
         // Like Roblox: three lists a minute, then "wait" with the seconds left (?srvbusy=1: waiting from the start).
         case 'servers': {
@@ -383,10 +392,20 @@
         case 'setLanguage': language = a.language; push(); return null;
         case 'setTheme': theme = a.theme; push(); return null;
         case 'setCustomTheme':
-          customTheme = { ...customTheme, background: a.background || customTheme.background, accent: a.accent || customTheme.accent, fade: a.fade ?? customTheme.fade };
+          customTheme = { ...customTheme, background: a.background || customTheme.background, accent: a.accent || customTheme.accent, fade: a.fade ?? customTheme.fade, blur: a.blur ?? customTheme.blur };
           theme = 'custom'; push(); return null;
         case 'pickThemePicture': customTheme = { ...customTheme, picture: 'scene-halong.svg' }; theme = 'custom'; push(); return null;
-        case 'clearThemePicture': customTheme = { ...customTheme, picture: null }; theme = 'custom'; push(); return null;
+        case 'clearThemePicture': customTheme = { ...customTheme, picture: null, video: false }; theme = 'custom'; push(); return null;
+        case 'saveTheme': {
+          const same = savedThemes.find(s => s.name.toLowerCase() === a.name.toLowerCase());
+          savedThemes = same ? savedThemes.map(s => s === same ? { ...s, look: { ...customTheme } } : s)
+            : [{ id: 't' + Date.now(), name: a.name, look: { ...customTheme } }, ...savedThemes];
+          push(); return null;
+        }
+        case 'useSavedTheme': customTheme = { ...savedThemes.find(s => s.id === a.id).look }; theme = 'custom'; push(); return null;
+        case 'deleteSavedTheme': savedThemes = savedThemes.filter(s => s.id !== a.id); push(); return null;
+        case 'exportTheme': return { saved: savedThemes.find(s => s.id === a.id).name + '.bloxkeeptheme' };
+        case 'importTheme': return null;
         case 'setCloseToTray': closeToTray = a.enabled; push(); return null;
         case 'setHideNames': hideNames = a.enabled; push(); return null;
         // Authenticator codes: account 1 has a key; a typed key is checked like the app does (base32, long enough).

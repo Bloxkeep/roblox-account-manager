@@ -81,7 +81,9 @@
    * Settings › Appearance › Custom: app.css's colour tokens worked out from the person's two colours. Dark or light by
    * the background, as Themes.cs decides it (relative luminance under 0.179: white words read better); surfaces a step
    * from it the way Dark and Light have theirs; words in its own hue; buttons and switches in the accent. With a
-   * picture the page goes behind glass like the scenery themes, the background colour lying over it as much as asked.
+   * picture (or video) the page goes behind glass like the scenery themes, the background colour lying over it as much
+   * as asked. The picture itself shows in a layer of its own under the page (app.js showCustomMedia), so it can be
+   * blurred or be a video: the page's own backdrop is then clear, and swatch is what its swatch shows instead.
    */
   function customVars(ct) {
     const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
@@ -108,16 +110,18 @@
       '--accent': hex(ac), '--accent-hover': hex(accentHover), '--accent-ink': accentInk,
       '--inv': hex(ac), '--inv-hover': hex(accentHover), '--inv-ink': accentInk,
     };
+    let swatch = hex(bg);
     if (ct.picture) {
       const fade = Math.max(0, Math.min(90, ct.fade ?? 45)) / 100;
+      if (!ct.video) swatch = `url("${ct.picture}") center / cover no-repeat, ${hex(bg)}`;
       Object.assign(vars, {
-        '--backdrop': `url("${ct.picture}") center / cover no-repeat, ${hex(bg)}`, '--blur': 'blur(18px) saturate(140%)',
+        '--backdrop': 'transparent', '--blur': 'blur(18px) saturate(140%)',
         '--bg': rgba(bg, fade), '--bg-2': rgba(bg, Math.min(.95, fade + .25)),
         '--surface': rgba(surface, .72), '--surface-2': rgba(words, .08), '--surface-3': rgba(words, .15), '--raised': rgba(raised, .94),
         '--field': dark ? 'rgba(0, 0, 0, .3)' : 'rgba(255, 255, 255, .6)', '--card': rgba(card, .62), '--card-hover': rgba(cardHover, .72),
       });
     }
-    return { tone: dark ? 'dark' : 'light', vars };
+    return { tone: dark ? 'dark' : 'light', vars, swatch };
   }
   window.BloxkeepShared = { ICONS, LOGO, customVars };
 })();

@@ -616,6 +616,7 @@
   /** The custom theme on the page while it is the one shown (by data-theme, whoever set it); gone again when it isn't. */
   function applyCustomTheme() {
     const root = document.documentElement, ct = root.dataset.theme === 'custom' ? customNow() : null;
+    showCustomMedia(ct);
     if (!ct) {
       delete root.dataset.tone;
       CUSTOM_VARS.forEach(k => root.style.removeProperty(k));
@@ -627,6 +628,53 @@
     // So the next start shows it from the first frame, before the app's state comes.
     try { localStorage.setItem('customTheme', JSON.stringify(ct)); } catch { /* the page still shows it now */ }
   }
+  /**
+   * The custom theme's picture or video, in a layer under the page (#ct-media), blurred as asked; gone with no picture
+   * or another theme. A video plays muted and on a loop, only while the window shows (paused in the tray, so it costs
+   * nothing while Roblox runs), and stays on its first frame when Windows' animation effects are off.
+   */
+  const stillMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  function showCustomMedia(ct) {
+    let layer = document.getElementById('ct-media');
+    if (!ct?.picture) {
+      layer?.remove();
+      return;
+    }
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.id = 'ct-media';
+      layer.setAttribute('aria-hidden', 'true');
+      document.body.prepend(layer);
+    }
+    const blur = Math.max(0, Math.min(30, ct.blur || 0));
+    layer.style.backgroundColor = ct.background;
+    layer.style.setProperty('--ct-blur', blur + 'px');
+    // Blurred, the picture's edges fade into nothing: a little larger, they stay out of sight.
+    layer.style.setProperty('--ct-scale', blur ? String(1 + blur / 200 + .02) : '1');
+    let video = layer.querySelector('video');
+    if (ct.video) {
+      layer.style.backgroundImage = '';
+      if (video?.getAttribute('src') !== ct.picture) {
+        video?.remove();
+        video = document.createElement('video');
+        Object.assign(video, { muted: true, loop: true, playsInline: true, preload: 'auto' });
+        video.setAttribute('src', ct.picture);
+        layer.append(video);
+      }
+      playCustomVideo();
+    } else {
+      video?.remove();
+      layer.style.backgroundImage = `url("${ct.picture}")`;
+    }
+  }
+  function playCustomVideo() {
+    const video = document.querySelector('#ct-media video');
+    if (!video) return;
+    if (document.hidden || stillMotion.matches) video.pause();
+    else video.play().catch(() => { /* not loaded yet, or gone: its first frame (or the colour) shows */ });
+  }
+  document.addEventListener('visibilitychange', playCustomVideo);
+  stillMotion.addEventListener?.('change', playCustomVideo);
   new MutationObserver(applyCustomTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   applyCustomTheme();
 
@@ -642,7 +690,7 @@
     clearTimeout(customTimer);
     customTimer = setTimeout(async () => {
       const c = S.customPreview;
-      await call('setCustomTheme', { background: c.background, accent: c.accent, fade: c.fade });
+      await call('setCustomTheme', { background: c.background, accent: c.accent, fade: c.fade, blur: c.blur });
       if (S.customPreview !== c) return;
       S.customPreview = null;
       applyCustomTheme();
