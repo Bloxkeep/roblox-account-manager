@@ -84,9 +84,11 @@ If an account is kicked anyway, Bloxkeep says why: the PC was in use, it was loc
 
 ## Save RAM for background windows
 
-**Settings › Staying in game › Save RAM on background windows** (off by default). Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first. When the PC is really short of RAM, they are asked to give some back.
+**Settings › Staying in game › Save RAM on background windows** (off by default). Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first, only when it runs short. Their RAM is never emptied outright: that made the games stutter when they needed it back.
 
-The window in front gets its normal priority back. Roblox may refuse; Bloxkeep then skips that step.
+The window in front gets its normal priority back. If Windows refuses for a window, that window runs as usual.
+
+A game whose RAM keeps growing over hours only gets it back when Roblox restarts: use a preset's **Restart Roblox** (see [Presets](presets.md)).
 
 ## Fast cores for the window you play
 

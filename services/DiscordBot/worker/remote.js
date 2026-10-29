@@ -1,11 +1,14 @@
-// Bloxkeep from Discord (/pc): a person links the Bloxkeep on their PC to their Discord account, then checks its accounts,
-// runs a preset, closes windows or switches server from anywhere. The app keeps a WebSocket to the bot's object while
-// Settings › Discord › Control from Discord is on (Gateway.fetch, hibernation API: a quiet socket costs nothing).
+// Bloxkeep from Discord (/pc): a person links the Bloxkeep on their PC to their Discord account, then asks it how their
+// accounts are doing, runs a preset, closes windows, switches server or sees the windows, from anywhere. The app keeps a WebSocket to the
+// bot's object while Settings › Discord › Control from Discord is on (worker.js Gateway.fetch, accepted with Cloudflare's
+// hibernation API, so a quiet socket costs nothing); the bot hands each command to that PC and shows its answer.
 //
 // What the bot keeps: which Discord account each PC is linked to (the PC by a hash of a secret only that app has),
 // on disk; a six-letter code while a link is being made, in memory for ten minutes; the names of the PC, its accounts
 // and presets that its app sent, for autocomplete, with the socket only (gone when it closes). Commands and answers
-// pass through without being kept.
+// pass through without being kept. The pictures of /pc screenshot don't pass here at all: the PC is handed that one
+// command's reply link (Discord's, good for 15 minutes and for that answer only) and sends them to Discord itself, so
+// the object that keeps the bot online never holds them.
 
 // A code to link a PC: six letters and digits, no look-alikes (0/O, 1/I/L), good for ten minutes and once.
 export const CODE_FOR = 10 * 60_000;
@@ -17,8 +20,10 @@ export const ANSWER_WAIT = 2500;
 export const TOKEN_FOR = 15 * 60_000;
 // Commands one person may send in a minute (all their PCs together).
 export const COMMANDS_PER_MINUTE = 20;
+// PCs one Discord account may link.
 export const MAX_PCS = 10;
-// A link waits this long for the person at the PC to allow it in Bloxkeep (a code seen on a stream links nothing by itself).
+// A link waits this long for the person at the PC to allow it in Bloxkeep (a code seen on a stream, or given to
+// someone who asked for it, links nothing by itself).
 export const ALLOW_FOR = 5 * 60_000;
 // Wrong codes one Discord account may type in ten minutes.
 export const WRONG_CODES = 5, WRONG_WINDOW = 10 * 60_000;
@@ -27,6 +32,9 @@ export const MAX_CODES = 5000, MAX_UNLINKED = 3000, MESSAGES_PER_MINUTE = 60;
 // What one message from an app may be at most (a status card with 25 accounts is about 5 KB).
 export const MAX_MESSAGE = 16_000;
 const MAX_NAME = 60, MAX_LIST = 200;
+// Screenshots one person may ask for in a minute (all their PCs together): each shows minimized windows for a moment
+// and sends pictures from their PC, so fewer than other commands.
+export const SHOTS_PER_MINUTE = 4;
 
 const option = (name, description, extra = {}) => ({ type: 3, name, description, ...extra });
 const pcOption = option('pc', 'Which PC (only needed when you linked more than one)', { autocomplete: true });
@@ -40,14 +48,19 @@ export const PC_COMMAND = {
     { type: 1, name: 'status', description: 'Which accounts are in a game right now', options: [pcOption] },
     { type: 1, name: 'preset', description: 'Run a preset', options: [option('name', 'The preset', { required: true, autocomplete: true }), pcOption] },
     { type: 1, name: 'close', description: "Close an account's Roblox window, or all of them", options: [option('account', 'The account, or "All accounts"', { required: true, autocomplete: true }), pcOption] },
-    { type: 1, name: 'switch', description: 'Move an account to another server of its game', options: [option('account', 'The account', { required: true, autocomplete: true }), pcOption] },
+    { type: 1, name: 'switch', description: 'Move an account to another server of its game, or all of them', options: [option('account', 'The account, or "All accounts"', { required: true, autocomplete: true }), pcOption] },
+    { type: 1, name: 'screenshot', description: "See an account's Roblox window, or all of them", options: [option('account', 'The account, or "All accounts"', { required: true, autocomplete: true }), pcOption] },
     { type: 1, name: 'unlink', description: 'Stop controlling a PC from Discord', options: [pcOption] },
   ],
 };
 
 /** The commands the app is sent (the subcommand's name), and the option each needs. */
-export const APP_COMMANDS = { status: null, preset: 'name', close: 'account', switch: 'account' };
+export const APP_COMMANDS = { status: null, preset: 'name', close: 'account', switch: 'account', screenshot: 'account' };
 
+/** The commands whose account may be "All accounts". */
+export const ALL_ACCOUNTS_COMMANDS = ['close', 'switch', 'screenshot'];
+
+/** A new code; `taken` says whether one is in use already. */
 export function makeCode(taken) {
   for (;;) {
     const bytes = crypto.getRandomValues(new Uint8Array(LINK_CODE_LENGTH));
@@ -72,9 +85,12 @@ const text = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
 const list = v => Array.isArray(v) ? v.slice(0, MAX_LIST).map(x => text(x, MAX_NAME)).filter(Boolean) : [];
 
 /** What the app says about itself when it connects (and when its names change): only names, cut short. */
-export const readHello = m => ({ name: text(m.name, MAX_NAME) || 'PC', accounts: list(m.accounts), presets: list(m.presets), lang: m.lang === 'vi' ? 'vi' : 'en', ask: m.ask === true });
+export const readHello = m => ({ name: text(m.name, MAX_NAME) || 'PC', accounts: list(m.accounts), presets: list(m.presets), lang: m.lang === 'vi' ? 'vi' : 'en', ask: m.ask === true, shots: m.shots === true });
 
-/** The app's answer as Discord takes it: text and embeds only (no mentions, files or components), seen by the asker only. */
+/**
+ * The app's answer to a command, as Discord takes it: text and embeds only (no mentions, no files, no components), seen
+ * by the person who asked only.
+ */
 export function readAnswer(m) {
   const data = { content: text(m.content, 2000), allowed_mentions: { parse: [] }, flags: 64 };
   if (Array.isArray(m.embeds))
@@ -110,5 +126,7 @@ export const PC_TEXT = {
   slow: 'Asked Bloxkeep. Its answer will show here.',
   noAnswer: pc => `**${pc}** didn't answer in time. It may still have done it: check with \`/pc status\`.`,
   tooFast: 'Too many commands in a minute. Wait a moment, then try again.',
+  updateFirst: pc => `Bloxkeep on **${pc}** can't take screenshots yet: update it there first.`,
+  shotsTooFast: `${SHOTS_PER_MINUTE} screenshots a minute at most. Wait a moment, then try again.`,
   allAccounts: 'All accounts',
 };

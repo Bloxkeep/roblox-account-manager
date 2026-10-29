@@ -39,10 +39,15 @@ gw.on('connection', ws => {
 const calls = [];
 let userInstall = false;
 const rest = http.createServer((req, res) => {
-  let body = '';
-  req.on('data', c => { body += c; });
-  req.on('end', () => {
-    const call = { method: req.method, url: req.url, body: body ? JSON.parse(body) : null };
+  const chunks = [];
+  req.on('data', c => { chunks.push(c); });
+  req.on('end', async () => {
+    const raw = Buffer.concat(chunks), multipart = /^multipart\/form-data/.test(req.headers['content-type'] ?? '');
+    // With files (a screenshot): its payload_json as the body, and the files' names, types and sizes.
+    const form = multipart ? await new Response(raw, { headers: { 'Content-Type': req.headers['content-type'] } }).formData() : null;
+    const call = form ? { method: req.method, url: req.url, body: JSON.parse(form.get('payload_json')),
+      files: [...form.entries()].filter(([k]) => k.startsWith('files[')).map(([, f]) => ({ name: f.name, type: f.type, size: f.size })) }
+      : { method: req.method, url: req.url, body: raw.length ? JSON.parse(raw.toString()) : null };
     calls.push(call);
     // An application not set up for installs on people's own accounts: commands that ask for it are refused.
     if (req.method === 'PUT' && !userInstall && call.body?.some(c => c.integration_types?.includes(1))) {
@@ -140,7 +145,16 @@ try {
     if (m.command === 'preset') return { content: `Opening ${m.value}…` };
     if (m.command === 'switch') return slow ? sleep(1500).then(() => ({ content: `Switched ${m.value}` })) : { content: `Switched ${m.value}` };
     if (m.command === 'close') return { content: `Closed ${m.value}` };
+    if (m.command === 'screenshot') return m.value === 'Beta' ? { content: 'Beta has no Roblox window open.' } : null; // pictures go up on their own
     return null;
+  };
+  /** The app's pictures for a screenshot, as Bloxkeep sends them: straight to the answer link it was handed (Discord's). */
+  const sendShot = (reply, n = 2) => {
+    const f = new FormData();
+    f.append('payload_json', JSON.stringify({ content: 'Alpha · Beta', allowed_mentions: { parse: [] }, attachments: [...Array(n).keys()].map(i => ({ id: i, filename: `screenshot-${i + 1}.jpg` })) }));
+    for (let i = 0; i < n; i++)
+      f.append(`files[${i}]`, new Blob([new Uint8Array(2048)], { type: 'image/jpeg' }), `screenshot-${i + 1}.jpg`);
+    return fetch(reply, { method: 'PATCH', body: f }).then(res => res.status);
   };
   let a = app(SECRET_A, answers);
   check('an app connects with its secret', await a.open());
@@ -208,6 +222,35 @@ try {
     && calls.find(c => c.url === `/webhooks/app1/${switchToken}/messages/@original`).body.content === 'Switched Beta', JSON.stringify(calls.slice(-2)));
   slow = false;
 
+  // ── screenshot ──
+  r = await interact(pc('screenshot', { account: 'All accounts' }));
+  check('/pc screenshot to an app that never said it can: told to update it, nothing sent', /update it there first/.test(contentOf(r)) && r.data.flags === 64
+    && commands.at(-1)?.command !== 'screenshot', contentOf(r));
+  a.send({ t: 'hello', name: 'GAMING-PC', accounts: ['Alpha', 'Beta'], presets: ['Farm', 'Daily'], lang: 'en', ask: true, shots: true });
+  await sleep(300);
+  r = await interact(pc('screenshot', { account: 'All accounts' }));
+  const shotToken = `tok${tokenNo}`;
+  check('/pc screenshot: "thinking…" at once (seen only by them), the command reaches the PC', r.type === 5 && r.data?.flags === 64
+    && await waitFor(() => commands.at(-1)?.command === 'screenshot', 3000) && commands.at(-1).value === 'All accounts', JSON.stringify(r));
+  const shotCommand = commands.at(-1);
+  check("…with this answer's own link to send the pictures to (Discord's, no bot token), which other commands never get",
+    shotCommand.reply === `http://127.0.0.1:${REST}/webhooks/app1/${shotToken}/messages/@original` && commands.filter(m => m.command !== 'screenshot').every(m => m.reply === undefined), JSON.stringify(shotCommand));
+  check('…the PC sends its pictures there itself (none pass through the bot)', await sendShot(shotCommand.reply) === 200);
+  a.send({ t: 'shown', id: shotCommand.id });
+  const shotCall = calls.find(c => c.method === 'PATCH' && c.url === `/webhooks/app1/${shotToken}/messages/@original` && c.files);
+  check('…in place of "thinking…": both pictures, the line about them', shotCall?.files.length === 2 && shotCall.body.content === 'Alpha · Beta', JSON.stringify(shotCall));
+  await sleep(3500);
+  check("…said done: no 'didn't answer in time' put over them later", !calls.some(c => c.url === `/webhooks/app1/${shotToken}/messages/@original` && /didn't answer/.test(c.body?.content ?? '')),
+    JSON.stringify(calls.filter(c => c.url === `/webhooks/app1/${shotToken}/messages/@original`)));
+  r = await interact(pc('screenshot', { account: 'Beta' }));
+  const noShotToken = `tok${tokenNo}`;
+  check('/pc screenshot of an account with no window: what the PC says is edited in', r.type === 5 && await waitFor(() => calls.some(c => c.method === 'PATCH'
+    && c.url === `/webhooks/app1/${noShotToken}/messages/@original` && c.body.content === 'Beta has no Roblox window open.'), 3000), JSON.stringify(calls.slice(-1)));
+  let shotsRefused = 0;
+  for (let n = 0; n < 3; n++)
+    if (/screenshots a minute at most/.test(contentOf(await interact(pc('screenshot', { account: 'Beta' }))))) shotsRefused++;
+  check('more than 4 screenshots in a minute: the rest are refused', shotsRefused === 1, shotsRefused);
+
   // ── autocomplete ──
   r = await interact(pc('preset', { name: 'fa' }, { type: 4, focused: 'name' }));
   check('autocomplete: the PC\'s presets that match', r.type === 8 && JSON.stringify(r.data.choices) === JSON.stringify([{ name: 'Farm', value: 'Farm' }]), JSON.stringify(r));
@@ -215,6 +258,10 @@ try {
   check('…and for /pc close, "All accounts" then its accounts', JSON.stringify(r.data.choices.map(c => c.name)) === JSON.stringify(['All accounts', 'Alpha', 'Beta']), JSON.stringify(r));
   r = await interact(pc('close', { account: '' }, { type: 4, focused: 'account', user: 'u6' }));
   check('…someone else sees none of them', r.data.choices.length === 1 && r.data.choices[0].name === 'All accounts', JSON.stringify(r));
+  r = await interact(pc('switch', { account: '' }, { type: 4, focused: 'account' }));
+  const r2 = await interact(pc('screenshot', { account: '' }, { type: 4, focused: 'account' }));
+  check('…"All accounts" for /pc switch and /pc screenshot too', [r, r2].every(x => JSON.stringify(x.data.choices.map(c => c.name)) === JSON.stringify(['All accounts', 'Alpha', 'Beta'])),
+    JSON.stringify([r, r2]));
 
   // ── one socket per PC, a second PC ──
   const a2 = app(SECRET_A, answers);

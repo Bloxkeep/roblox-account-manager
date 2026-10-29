@@ -1,5 +1,6 @@
-// Talking to Discord over HTTP: checking an interaction's Ed25519 signature (the application's public key), the bot's
-// REST calls with its token, and the commands themselves.
+// Talking to Discord over HTTP: checking that an interaction really comes from Discord (its Ed25519 signature, with the
+// application's public key), the REST calls the bot makes with its token (posting news, editing the board, putting its
+// commands in place), and the commands themselves.
 const API = 'https://discord.com/api/v10';
 const UA = 'DiscordBot (https://github.com/Bloxkeep/roblox-account-manager, 1.0)';
 const MANAGE_GUILD = String(1 << 5);
@@ -39,7 +40,14 @@ export async function api(env, method, path, body, headers = {}) {
   return res;
 }
 
-// Descriptions are English only for now (texts.js lang()); the Vietnamese kept here comes back with that option.
+/**
+ * Where an interaction's own answer is edited: the link Discord gives each command (no bot token needed, good for 15
+ * minutes, for that answer only). /pc screenshot hands it to the PC, which sends its pictures there itself.
+ */
+export const replyUrl = (env, token) => `${env.DISCORD_API || API}/webhooks/${env.DISCORD_APP_ID}/${token}/messages/@original`;
+
+// Command descriptions are English only for now (see texts.js lang()); the Vietnamese kept here restores the
+// per-locale descriptions when that option returns.
 const vi = () => undefined;
 const channelOption = { type: 7, name: 'channel', description: 'Where to post', description_localizations: vi('Kênh để đăng'), required: true, channel_types: [0, 5] };
 
@@ -104,5 +112,6 @@ export const COMMANDS = [
       { type: 1, name: 'off', description: 'Stop verifying in this server', description_localizations: vi('Ngừng xác minh trong server này') },
     ],
   },
+  // Bloxkeep on the person's own PC (remote.js).
   PC_COMMAND,
 ];

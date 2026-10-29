@@ -99,6 +99,30 @@ static class RemoteSuite
         c.Check("/pc close an account with no window: said so", Text(await Ask("close", "beta")) == "Beta has no Roblox window open.");
         c.Check("/pc switch an account that doesn't exist: said so", Text(await Ask("switch", "Ghost")) == "No account is called Ghost.");
         c.Check("…and one that isn't playing: said why it can't", Text(await Ask("switch", "Alpha")) == "Only accounts playing in a public server can switch to another one.");
+        c.Check("/pc switch All accounts with nothing open: said so", Text(await Ask("switch", "All accounts")) == "No Roblox window is open on this PC.");
+        c.Check("the bot is told this app answers /pc screenshot", bot.Last("hello")?["shots"]?.GetValue<bool>() == true);
+        c.Check("/pc screenshot All accounts with nothing open: said so", Text(await Ask("screenshot", "All accounts")) == "No Roblox window is open on this PC.");
+        c.Check("/pc screenshot an account with no window: said so", Text(await Ask("screenshot", "alpha")) == "Alpha has no Roblox window open.");
+        c.Check("…one that doesn't exist: said so", Text(await Ask("screenshot", "Ghost")) == "No account is called Ghost.");
+        // Asked again and again: one at a time, 15 s apart (anti-AFK keeps its turns).
+        Harness.Set(app, "_picturing", true);
+        c.Check("/pc screenshot while one is being taken: said so", Text(await Ask("screenshot", "All accounts")) == "Already taking a screenshot. Try again in a moment.");
+        Harness.Set(app, "_picturing", false);
+        Harness.Set(app, "_lastShot", DateTime.UtcNow.AddSeconds(-5));
+        c.Check("…within 15 s of the last one: told how long to wait", Text(await Ask("screenshot", "All accounts")) == "Wait 10 s, then try again.");
+        Harness.Set(app, "_lastShot", DateTime.MinValue);
+        // The pictures go to the answer link the bot handed (Discord's), not to the bot; then the bot is told it's done.
+        var link = Harness.Get<object>(app, "_remote");
+        string shotId = Guid.NewGuid().ToString("N");
+        var sent = await (Task<bool>)link.GetType().GetMethod("ShotAsync")!.Invoke(link,
+            [new RemoteCommand(shotId, "screenshot", "Alpha", bot.ReplyUrl), "Alpha", (IReadOnlyList<byte[]>)[[0xFF, 0xD8, 0xFF, 0xD9]]])!;
+        var patch = bot.Replies.LastOrDefault();
+        c.Check("the pictures are sent to the answer link handed with the command: a PATCH with the line and a JPEG, no mentions",
+            sent && patch is { Method: "PATCH" } && patch.Body.Contains("name=payload_json") && patch.Body.Contains("\"content\":\"Alpha\"") && patch.Body.Contains("\"parse\":[]")
+            && patch.Body.Contains("filename=screenshot-1.jpg") && patch.Body.Contains("image/jpeg") && patch.Authorization is null, patch?.Body.Length);
+        c.Check("…and the bot is told it's done (so it doesn't say \"no answer\" over them)", await Until(() => bot.Heard.Any(m => m["t"]?.GetValue<string>() == "shown" && m["id"]?.GetValue<string>() == shotId)));
+        var none = await (Task<bool>)link.GetType().GetMethod("ShotAsync")!.Invoke(link, [new RemoteCommand("x", "screenshot", "Alpha"), "Alpha", (IReadOnlyList<byte[]>)[[0xFF]]])!;
+        c.Check("…a command handed no link: nothing sent", !none);
 
         // Locked: nothing but that, and no names to suggest.
         await Harness.Call(app, "lock", new { });
@@ -130,6 +154,11 @@ static class RemoteSuite
         WebSocket? _socket;
         int _connections, _open;
         public string Url { get; }
+        /// <summary>Where a screenshot's pictures go here, standing in for Discord's answer link.</summary>
+        public string ReplyUrl { get; }
+        public sealed record Reply(string Method, string Body, string? Authorization);
+        readonly List<Reply> _replies = new();
+        public List<Reply> Replies { get { lock (_replies) return _replies.ToList(); } }
         public string? LastSecret { get; private set; }
         public int Connections => Volatile.Read(ref _connections);
         public int Open => Volatile.Read(ref _open);
@@ -143,10 +172,12 @@ static class RemoteSuite
             {
                 _listener.Prefixes.Clear();
                 _listener.Prefixes.Add($"http://127.0.0.1:{port}/remote/connect/");
+                _listener.Prefixes.Add($"http://127.0.0.1:{port}/webhooks/");
                 try
                 {
                     _listener.Start();
                     Url = $"ws://127.0.0.1:{port}/remote/connect/";
+                    ReplyUrl = $"http://127.0.0.1:{port}/webhooks/app1/tok1/messages/@original";
                     break;
                 }
                 catch (HttpListenerException) when (port < 48900)
@@ -168,6 +199,18 @@ static class RemoteSuite
                 catch (Exception)
                 {
                     break;
+                }
+                if (ctx.Request.Url!.AbsolutePath.StartsWith("/webhooks/"))
+                {
+                    using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.Latin1))
+                    {
+                        var reply = new Reply(ctx.Request.HttpMethod, reader.ReadToEnd(), ctx.Request.Headers["Authorization"]);
+                        lock (_replies)
+                            _replies.Add(reply);
+                    }
+                    ctx.Response.StatusCode = 200;
+                    ctx.Response.Close();
+                    continue;
                 }
                 if (!ctx.Request.IsWebSocketRequest)
                 {

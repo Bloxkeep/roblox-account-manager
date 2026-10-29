@@ -84,9 +84,11 @@ Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do: bạn dùng máy l
 
 ## Tiết kiệm RAM cho cửa sổ chạy nền
 
-**Cài đặt › Treo game › Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn). Các cửa sổ Roblox bạn không chơi được đặt mức ưu tiên bộ nhớ thấp, nên Windows lấy RAM của chúng trước. Khi máy thật sự thiếu RAM, chúng được yêu cầu nhả bớt.
+**Cài đặt › Treo game › Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn). Các cửa sổ Roblox bạn không chơi được đặt mức ưu tiên bộ nhớ thấp, nên Windows lấy RAM của chúng trước, chỉ khi máy thiếu RAM. Bloxkeep không ép xả hết RAM của chúng: làm vậy game bị giật khi cần RAM lại.
 
-Cửa sổ ở phía trước được trả lại mức ưu tiên bình thường. Roblox có thể không chịu nhả; khi đó Bloxkeep bỏ qua bước này.
+Cửa sổ ở phía trước được trả lại mức ưu tiên bình thường. Nếu Windows không cho, cửa sổ đó chạy như thường.
+
+Game mà RAM cứ tăng dần sau nhiều giờ chỉ trả lại RAM khi Roblox mở lại: dùng **Mở lại Roblox** của Preset (xem [Preset](presets.vi.md)).
 
 ## Nhường nhân mạnh cho cửa sổ đang chơi
 

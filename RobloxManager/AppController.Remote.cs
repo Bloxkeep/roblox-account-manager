@@ -5,11 +5,12 @@ using System.Text.Json.Nodes;
 namespace RobloxManager;
 
 /// <summary>
-/// Settings › Discord › Control from Discord (off by default): once the person typed the code shown here into /pc link,
-/// Bloxkeep's bot hands this PC their /pc commands (RemoteLink, services/DiscordBot/worker/remote.js). A command can only
-/// report the accounts (the status board's card), run a preset, close windows or move an account to another server.
-/// Nothing is asked on the PC: a preset that would ask first (Multi-Roblox off…) isn't run. Locked, Bloxkeep answers
-/// only that it is locked and names nothing. Turned off: the bot forgets the link and the connection closes.
+/// Settings › Discord › Control from Discord (off until turned on): Bloxkeep's Discord bot hands this PC the person's /pc
+/// commands (RemoteLink, services/DiscordBot/worker/remote.js), once they typed the code shown here into /pc link. What a
+/// command can do is only this: say how the accounts are doing (the status board's card), run a preset, close windows,
+/// switch accounts to another server, picture their windows. Nothing is asked of the person on the PC: a preset that would ask first
+/// (Multi-Roblox off…) isn't run. Locked, Bloxkeep answers only that it is locked, and names nothing.
+/// Turned off: the bot is told to forget the link, and the connection closes.
 /// </summary>
 public sealed partial class AppController
 {
@@ -20,6 +21,7 @@ public sealed partial class AppController
 
     static readonly byte[] RemoteEntropy = Encoding.UTF8.GetBytes("bloxkeep-remote-key");
 
+    /// <summary>"All accounts", as Discord's suggestion for /pc close says it.</summary>
     const string AllAccounts = "All accounts";
 
     /// <summary>A preset that's still opening after this long is answered "opening…", and its outcome follows up later.</summary>
@@ -101,6 +103,7 @@ public sealed partial class AppController
         PushState();
     }
 
+    /// <summary>The answer to someone linking this PC (the page's Allow / Don't allow).</summary>
     object? RemoteAllow(bool allow)
     {
         _remote?.Answer(allow);
@@ -132,8 +135,11 @@ public sealed partial class AppController
 
     static JsonObject RemoteSay(string text) => new() { ["content"] = text };
 
-    /// <summary>A command from Discord, on the window's thread: its answer (an error is said, never thrown).</summary>
-    async Task<JsonObject> RemoteCommandAsync(RemoteCommand c)
+    /// <summary>
+    /// A command from Discord, on the window's thread: its answer (an error is said, never thrown); null when it was
+    /// answered already (the pictures of /pc screenshot go up on their own).
+    /// </summary>
+    async Task<JsonObject?> RemoteCommandAsync(RemoteCommand c)
     {
         try
         {
@@ -145,6 +151,7 @@ public sealed partial class AppController
                 "preset" => await RemotePresetAsync(c),
                 "close" => RemoteClose(c.Value ?? ""),
                 "switch" => await RemoteSwitchAsync(c.Value ?? ""),
+                "screenshot" => await RemoteScreenshotAsync(c),
                 _ => RemoteSay("?"),
             };
         }
@@ -154,6 +161,7 @@ public sealed partial class AppController
         }
     }
 
+    /// <summary>The status board's card, as it is now, named after this PC.</summary>
     JsonObject RemoteStatus()
     {
         var card = BoardMessage(_vault!.Data.Discord, RobloxProcesses.GetPlayers()) with { Footer = "Bloxkeep · " + Environment.MachineName };
@@ -186,6 +194,7 @@ public sealed partial class AppController
         _remote?.Later(id, outcome);
     }
 
+    /// <summary>How a preset's run went: opened how many, what went wrong, or the question it would have asked.</summary>
     JsonObject PresetOutcome(LaunchPreset preset, LaunchResult r)
     {
         if (r.NeedsConfirm)
@@ -208,9 +217,15 @@ public sealed partial class AppController
             ?? throw new UserError(L.F("No account is called {0}.", name));
     }
 
+    static bool IsAllAccounts(string name) =>
+        name.Trim().Equals(AllAccounts, StringComparison.OrdinalIgnoreCase) || name.Trim().Equals(L.T(AllAccounts), StringComparison.CurrentCultureIgnoreCase);
+
+    /// <summary>The accounts with a Roblox window on this PC, in the list's order.</summary>
+    List<Account> PlayingAccounts() => _vault!.Data.Accounts.Where(a => _running.ContainsKey(a.Id)).ToList();
+
     JsonObject RemoteClose(string name)
     {
-        if (name.Trim().Equals(AllAccounts, StringComparison.OrdinalIgnoreCase) || name.Trim().Equals(L.T(AllAccounts), StringComparison.CurrentCultureIgnoreCase))
+        if (IsAllAccounts(name))
         {
             int open = _running.Count + _pending.Count;
             if (open == 0)
@@ -227,9 +242,105 @@ public sealed partial class AppController
 
     async Task<JsonObject> RemoteSwitchAsync(string name)
     {
+        // Asked again before the last switch landed (Discord's /pc sent over and over): not moved again meanwhile.
+        if (_hopping.Count > 0)
+            return RemoteSay(L.T("Accounts are still moving to another server. Try again once they're in."));
+        if (IsAllAccounts(name))
+        {
+            var playing = PlayingAccounts();
+            if (playing.Count == 0)
+                return RemoteSay(L.T("No Roblox window is open on this PC."));
+            // Those in one game go to one server together, as Switch server does for several selected.
+            int all = await SwitchServerAsync(playing.Select(a => a.Id).ToArray()) is int m ? m : 0;
+            return RemoteSay(all > 0 ? L.F("Moving {0} account(s) to another server…", all)
+                : L.T("Didn't switch: no other server of that game has room right now."));
+        }
         var account = FindRemoteAccount(name);
         int moved = await SwitchServerAsync([account.Id]) is int n ? n : 0;
         return RemoteSay(moved > 0 ? L.F("{0} is moving to another server…", DiscordName(account))
             : L.T("Didn't switch: no other server of that game has room right now."));
+    }
+
+    /// <summary>Discord shows 10 pictures in a message at most.</summary>
+    const int MaxShots = 10;
+
+    /// <summary>
+    /// Between two screenshots of this PC: picturing shows minimized windows for a moment and holds anti-AFK back, so
+    /// asked again and again (by the person, or by whoever got into their Discord) the windows still get their nudges.
+    /// </summary>
+    static readonly TimeSpan ShotGap = TimeSpan.FromSeconds(15);
+
+    /// <summary>A window being pictured: anti-AFK waits (both make a window unseen for a moment, and would undo each other).</summary>
+    bool _picturing;
+    /// <summary>When the last screenshot was done.</summary>
+    DateTime _lastShot = DateTime.MinValue;
+
+    /// <summary>
+    /// /pc screenshot: a picture of one account's Roblox window, or of each (10 at most), sent to Discord by this PC
+    /// (RemoteLink.ShotAsync), seen there only by who asked. What can't be pictured is said under them. One at a time,
+    /// <see cref="ShotGap"/> apart; the person at the PC is told each time.
+    /// </summary>
+    async Task<JsonObject?> RemoteScreenshotAsync(RemoteCommand c)
+    {
+        var now = DateTime.UtcNow;
+        if (_picturing)
+            return RemoteSay(L.T("Already taking a screenshot. Try again in a moment."));
+        if (now - _lastShot < ShotGap)
+            return RemoteSay(L.F("Wait {0} s, then try again.", (int)Math.Ceiling((ShotGap - (now - _lastShot)).TotalSeconds)));
+        string name = c.Value ?? "";
+        List<Account> accounts;
+        if (IsAllAccounts(name))
+        {
+            accounts = PlayingAccounts();
+            if (accounts.Count == 0)
+                return RemoteSay(L.T("No Roblox window is open on this PC."));
+        }
+        else
+        {
+            var account = FindRemoteAccount(name);
+            if (!_running.ContainsKey(account.Id))
+                return RemoteSay(L.F("{0} has no Roblox window open.", DiscordName(account)));
+            accounts = [account];
+        }
+        if (_remote is not { } link)
+            return null;
+        var pictures = new List<byte[]>();
+        var named = new List<string>();
+        var notes = new List<string>();
+        _picturing = true;
+        try
+        {
+            // A nudge under way finishes first (a few seconds at most).
+            for (int i = 0; _nudging && i < 50; i++)
+                await Task.Delay(100);
+            Notify(L.F("{0} took a screenshot of this PC's Roblox windows from Discord.", link.User ?? "Discord"), "info", "remote");
+            foreach (var account in accounts.Take(MaxShots))
+            {
+                if (!_running.TryGetValue(account.Id, out var run))
+                    continue;
+                var window = RobloxProcesses.MainWindowOf(RobloxProcesses.VisibleWindows([run.Pid])[run.Pid]);
+                var shot = await WindowShot.CaptureAsync(window, accounts.Count == 1 ? 1920 : 1280);
+                if (shot is not { } s)
+                {
+                    notes.Add(L.F("{0}: no picture (its window isn't answering, or Roblox is still opening).", DiscordName(account)));
+                    continue;
+                }
+                pictures.Add(s.Jpeg);
+                named.Add(DiscordName(account));
+                if (s.Black)
+                    notes.Add(L.F("{0}: the picture came out black (Windows may be locked, or the game isn't drawing).", DiscordName(account)));
+            }
+        }
+        finally
+        {
+            _picturing = false;
+            _lastShot = DateTime.UtcNow;
+        }
+        if (accounts.Count > MaxShots)
+            notes.Add(L.F("{0} more not pictured: Discord shows 10 at most.", accounts.Count - MaxShots));
+        if (pictures.Count == 0)
+            return RemoteSay(string.Join("\n", notes));
+        string content = string.Join("\n", new[] { string.Join(" · ", named) }.Concat(notes));
+        return await link.ShotAsync(c, content, pictures) ? null : RemoteSay(L.T("Couldn't send the picture to Discord. Try again in a moment."));
     }
 }

@@ -5,14 +5,20 @@ using System.Text.Json.Nodes;
 
 namespace RobloxManager;
 
-/// <summary>A command from Discord (/pc): its id (to answer it), its name ("status", "preset", "close", "switch") and value.</summary>
-public sealed record RemoteCommand(string Id, string Name, string? Value);
+/// <summary>
+/// A command from Discord (/pc): its id (to answer it), its name ("status", "preset", "close", "switch", "screenshot")
+/// and value; for a screenshot, the link its pictures are sent to (Discord's own, for that one answer).
+/// </summary>
+public sealed record RemoteCommand(string Id, string Name, string? Value, string? Reply = null);
 
 /// <summary>
-/// The WebSocket to Bloxkeep's Discord bot for Control from Discord (services/DiscordBot/worker/remote.js), reconnected
-/// after a drop (2 s, backing off to a minute). The PC proves itself with its secret; the bot keeps only its hash. What
-/// goes up: the PC's, accounts' and presets' names (for Discord's suggestions), command answers, a link code. Nothing
-/// else. Callbacks run on the thread that made it (the window's).
+/// The connection to Bloxkeep's Discord bot that Settings › Discord › Control from Discord keeps open
+/// (services/DiscordBot/worker/remote.js): a WebSocket the bot hands this PC's commands down, kept open while it's on,
+/// connected again after a drop (2 s, then longer, up to a minute). The PC proves itself with its secret, which only the
+/// bot's hash of it is kept against. What goes up: the PC's name and its accounts' and presets' names (for Discord's
+/// suggestions while typing), answers to commands, a code when asked for one. Everything else stays here. The pictures
+/// of /pc screenshot don't go to the bot: they are sent to Discord itself, to the link the bot handed with the command.
+/// Its callbacks run on the thread that made it (the window's).
 /// </summary>
 sealed class RemoteLink : IDisposable
 {
@@ -23,7 +29,7 @@ sealed class RemoteLink : IDisposable
 
     readonly string _url, _secret;
     readonly SynchronizationContext _ui;
-    readonly Func<RemoteCommand, Task<JsonObject>> _command;
+    readonly Func<RemoteCommand, Task<JsonObject?>> _command;
     readonly Action _changed;
     readonly CancellationTokenSource _stop = new();
     readonly SemaphoreSlim _sending = new(1, 1);
@@ -31,6 +37,7 @@ sealed class RemoteLink : IDisposable
     string? _hello;
     bool _wantCode;
 
+    /// <summary>Connected to the bot now.</summary>
     public bool Connected { get; private set; }
     /// <summary>Linked to a Discord account (null until the bot said).</summary>
     public bool? Linked { get; private set; }
@@ -39,15 +46,17 @@ sealed class RemoteLink : IDisposable
     /// <summary>The code to type in Discord (/pc link), and until when it works.</summary>
     public string? Code { get; private set; }
     public DateTime? CodeUntil { get; private set; }
-    /// <summary>Someone typed this PC's code into /pc link: that Discord account and the one it would replace. Nothing is
-    /// linked until <see cref="Answer"/>.</summary>
+    /// <summary>
+    /// Someone typed this PC's code into /pc link: the Discord account (the name Discord shows), and the one it would
+    /// replace. Nothing is linked until it is answered (<see cref="Answer"/>).
+    /// </summary>
     public (string User, string? Replacing)? Asking { get; private set; }
     /// <summary>The bot had no room for a new code just now.</summary>
     public bool Busy { get; private set; }
 
-    /// <param name="command">Runs a command (on the window's thread) and gives the answer: content and/or embeds.</param>
+    /// <param name="command">Runs a command (on the window's thread) and gives the answer: content and/or embeds; null when answered already (<see cref="ShotAsync"/>).</param>
     /// <param name="changed">Connected, linked or a code came: the page shows it.</param>
-    public RemoteLink(string secret, Func<RemoteCommand, Task<JsonObject>> command, Action changed, string? url = null)
+    public RemoteLink(string secret, Func<RemoteCommand, Task<JsonObject?>> command, Action changed, string? url = null)
     {
         _secret = secret;
         _command = command;
@@ -65,6 +74,8 @@ sealed class RemoteLink : IDisposable
             ["t"] = "hello", ["name"] = name, ["lang"] = language,
             // It asks before a link is made (the bot links an app that doesn't say so at once, as 1.0.12 did).
             ["ask"] = true,
+            // It answers /pc screenshot (the bot tells whoever asks an older one to update it).
+            ["shots"] = true,
             ["accounts"] = new JsonArray(accounts.Select(a => (JsonNode)a).ToArray()),
             ["presets"] = new JsonArray(presets.Select(p => (JsonNode)p).ToArray()),
         }.ToJsonString();
@@ -104,6 +115,68 @@ sealed class RemoteLink : IDisposable
         answer["id"] = id;
         if (Connected)
             _ = SendAsync(answer.ToJsonString());
+    }
+
+    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
+
+    /// <summary>
+    /// A link pictures may be sent to: Discord's own answer link (discord.com/api/…/webhooks/…), never anywhere else the
+    /// bot (or someone posing as it) might name. The checks' stand-in bot names its own.
+    /// </summary>
+    bool MaySendTo(string reply) =>
+        Uri.TryCreate(reply, UriKind.Absolute, out var uri)
+        && (_url != Url ? uri.Scheme is "http" or "https"
+            : uri.Scheme == "https" && uri.Host == "discord.com" && uri.AbsolutePath.StartsWith("/api/", StringComparison.Ordinal) && uri.AbsolutePath.Contains("/webhooks/"));
+
+    /// <summary>
+    /// The answer to /pc screenshot (<paramref name="command"/>): its pictures (JPEG) and a line about them, put in place
+    /// of Discord's "thinking…" through the link the bot handed with it (no bot token: that link is good for that answer
+    /// only), then the bot is told it's done. They never pass through the bot. False when they didn't get there.
+    /// </summary>
+    public async Task<bool> ShotAsync(RemoteCommand command, string content, IReadOnlyList<byte[]> pictures)
+    {
+        if (command.Reply is not { } reply || !MaySendTo(reply))
+            return false;
+        MultipartFormDataContent Form()
+        {
+            var payload = new JsonObject
+            {
+                ["content"] = content,
+                ["allowed_mentions"] = new JsonObject { ["parse"] = new JsonArray() },
+                ["attachments"] = new JsonArray(pictures.Select((_, i) => (JsonNode)new JsonObject { ["id"] = i, ["filename"] = $"screenshot-{i + 1}.jpg" }).ToArray()),
+            };
+            var form = new MultipartFormDataContent { { new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json"), "payload_json" } };
+            for (int i = 0; i < pictures.Count; i++)
+            {
+                var part = new ByteArrayContent(pictures[i]);
+                part.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+                form.Add(part, $"files[{i}]", $"screenshot-{i + 1}.jpg");
+            }
+            return form;
+        }
+        try
+        {
+            for (int attempt = 0; ; attempt++)
+            {
+                using var form = Form();
+                using var response = await Http.PatchAsync(reply, form, _stop.Token);
+                // Quicker than Discord: its "thinking…" isn't there to edit yet (once); asked too often: waited out (once).
+                if (attempt == 0 && response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), _stop.Token);
+                    continue;
+                }
+                if (!response.IsSuccessStatusCode)
+                    return false;
+                break;
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            return false;
+        }
+        await SendAsync(new JsonObject { ["t"] = "shown", ["id"] = command.Id }.ToJsonString());
+        return true;
     }
 
     async Task RunAsync(CancellationToken stop)
@@ -251,8 +324,10 @@ sealed class RemoteLink : IDisposable
                 });
                 break;
             case "command" when Str(m, "id") is { Length: > 0 } id && Str(m, "command") is { Length: > 0 } name:
-                var command = new RemoteCommand(id, name, Str(m, "value"));
+                var command = new RemoteCommand(id, name, Str(m, "value"), Str(m, "reply"));
                 var answer = await OnUi(() => _command(command));
+                if (answer is null)
+                    break;
                 answer["t"] = "answer";
                 answer["id"] = id;
                 await SendAsync(answer.ToJsonString());

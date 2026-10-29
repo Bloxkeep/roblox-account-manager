@@ -19,8 +19,9 @@ public sealed partial class AppController
         foreach (int gone in _afkHeld.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
             _afkHeld.Remove(gone);
         _idleKickReported.RemoveWhere(pid => !windows.ContainsKey(pid));
-        // A nudge cut short (Bloxkeep closed in the middle of one) left its window unseen and click-through.
-        if (!_nudging)
+        // A nudge cut short (Bloxkeep closed in the middle of one) left its window unseen and click-through. Not while a
+        // window is being nudged or pictured (/pc screenshot): it is unseen on purpose then.
+        if (!_nudging && !_picturing)
             AntiAfk.Recover(windows.Values.SelectMany(w => w));
         if (_vault is null || windows.Count == 0)
             return;
@@ -33,7 +34,7 @@ public sealed partial class AppController
         foreach (int pid in on)
             _lastInput.TryAdd(pid, _logs.StateOf(pid) is { Status: "ingame" } joined ? joined.At : _afkAdopted ? now : now - AntiAfk.LastChance);
         _afkAdopted = true;
-        if (_nudging)
+        if (_nudging || _picturing)
             return;
         // A nudge cancelled a bot check being solved twice (2026-10-27): none goes while one is in front or for
         // BotCheckHold after it came. Not for good: an unsolved check left every other window kicked after 20 minutes.
