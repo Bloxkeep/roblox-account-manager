@@ -1062,7 +1062,7 @@ html [data-theme="dark" lang="vi"]
                       div
                         div.t "Gửi tự động"
                       div.ctl
-                        select.select.sm [id="s-dc-when" aria-label="Gửi tự động" value="daily" FOCUSED]
+                        select.select.sm [id="s-dc-when" aria-label="Gửi tự động" value="daily"]
                           option [value="none"] "Không"
                           option [value="daily"] "Hằng ngày"
                           option [value="weekly"] "Hằng tuần"

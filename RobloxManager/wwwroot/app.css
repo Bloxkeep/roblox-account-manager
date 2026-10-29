@@ -2058,6 +2058,20 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .select option { background: var(--raised); color: var(--text); }
 .select option:disabled { color: var(--dim); }
+/* The list a drop-down opens, in the page's colours like Bloxkeep's menus, not the browser's own (WebView2 135 and
+   later: a customisable select; an older one keeps the browser's list). */
+@supports (appearance: base-select) {
+  .select, .select::picker(select) { appearance: base-select; }
+  .select { display: inline-flex; align-items: center; line-height: normal; }
+  .select::picker-icon { display: none; }
+  .select::picker(select) { min-width: anchor-size(width); max-height: min(360px, 60vh); margin: 6px 0; padding: 6px; border-radius: 14px;
+    border: 1px solid var(--line-2); background: var(--raised); color: var(--text-2); box-shadow: 0 18px 50px var(--shadow); scrollbar-width: thin; }
+  .select option { min-height: 34px; padding: 7px 10px; border-radius: 9px; background: transparent; color: var(--text-2); font-size: 13px; }
+  .select option::checkmark { display: none; }
+  .select option:hover:not(:disabled), .select option:focus-visible { background: var(--hover); color: var(--text); outline: none; }
+  .select option:checked { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); font-weight: 600; }
+  .select option:disabled { background: transparent; color: var(--dim); }
+}
 .set-note { display: flex; gap: 10px; margin: 0 0 14px; padding: 10px 12px; border-radius: 11px; background: color-mix(in srgb, var(--warn) 8%, transparent); border: 1px solid var(--warn-line); color: var(--warn-ink); font-size: 12.5px; }
 .set-note .i { width: 16px; height: 16px; flex: none; margin-top: 1px; }
 /* Two boxes a row at every width: four in a row cut "New password (6+ characters)", the only label its box has. */
@@ -2344,9 +2358,19 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .ct-kind { flex: none; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11.5px; }
 .ct-theme .icon-btn { width: 30px; height: 30px; }
 .ct-theme .btn.sm { flex: none; }
-.ct-color { width: 44px; height: 30px; padding: 2px; border: 1px solid var(--line-3); border-radius: 8px; background: var(--field); cursor: pointer; }
-.ct-color::-webkit-color-swatch-wrapper { padding: 0; }
-.ct-color::-webkit-color-swatch { border: none; border-radius: 5px; }
+.ct-color { width: 44px; height: 30px; padding: 3px; border: 1px solid var(--line-3); border-radius: 8px; background: var(--field); cursor: pointer; }
+.ct-color > span { display: block; width: 100%; height: 100%; border-radius: 5px; }
+.ct-color[aria-expanded="true"] { border-color: var(--focus-line); }
+/* Bloxkeep's colour picker (ui/src/ColorField.tsx). */
+.cf { display: grid; gap: 10px; width: 232px; padding: 4px; }
+.cf-ready { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.cf-ready button { aspect-ratio: 1; border: 1px solid var(--line-3); border-radius: 7px; padding: 0; }
+.cf-ready button.on { box-shadow: 0 0 0 2px var(--raised), 0 0 0 4px var(--accent); }
+.cf-area { position: relative; height: 140px; border-radius: 10px; cursor: crosshair; touch-action: none;
+  background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); }
+.cf-dot { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, .4); pointer-events: none; }
+input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+.cf-hex.field.sm { width: 100%; font-variant-numeric: tabular-nums; }
 .swatch:focus-visible { outline-color: var(--focus); outline-offset: 3px; }
 /* Background on the left, the theme's highlight colour on the right, its Play colour in the middle. */
 .swatch > span { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: linear-gradient(90deg, transparent 50%, var(--inv) 50%), var(--backdrop); }

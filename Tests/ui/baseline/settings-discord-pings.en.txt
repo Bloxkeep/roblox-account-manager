@@ -1062,7 +1062,7 @@ html [data-theme="dark" lang="en"]
                       div
                         div.t "Send automatically"
                       div.ctl
-                        select.select.sm [id="s-dc-when" aria-label="Send automatically" value="daily" FOCUSED]
+                        select.select.sm [id="s-dc-when" aria-label="Send automatically" value="daily"]
                           option [value="none"] "Never"
                           option [value="daily"] "Every day"
                           option [value="weekly"] "Every week"
