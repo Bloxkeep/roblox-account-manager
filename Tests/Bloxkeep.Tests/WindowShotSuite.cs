@@ -14,6 +14,7 @@ static class WindowShotSuite
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] static extern int GetWindowLong(IntPtr hWnd, int index);
+    [DllImport("dwmapi.dll")] static extern int DwmFlush();
 
     public static Task Run(Checks c, string dir)
     {
@@ -75,6 +76,14 @@ static class WindowShotSuite
                 && picture.Width == client.Width && picture.Height == client.Height;
         }
 
+        // Its first frame drawn and composed before the picture: with the full run keeping the PC busy, 150 ms wasn't
+        // always enough and the picture came out white (a Roblox window has long been drawing by then).
+        bool painted = false;
+        form.Paint += (_, _) => painted = true;
+        form.Invalidate();
+        for (var until = DateTime.UtcNow.AddSeconds(5); !painted && DateTime.UtcNow < until;)
+            Pump(20);
+        DwmFlush();
         Pump();
         var inView = Shot();
         c.Check("a window in view: pictured whole, its game only (no title bar)", AllRed(inView) && IsWindowVisible(hWnd) && !IsIconic(hWnd), Look(inView));
