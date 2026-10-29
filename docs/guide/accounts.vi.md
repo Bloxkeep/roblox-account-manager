@@ -86,6 +86,9 @@ Mở bằng **⋯ Tùy chọn khác** trên thẻ, hoặc bấm chuột phải v
 | **Sửa…** (F2) | Tên gợi nhớ, nhóm, mật khẩu, khóa app xác thực, ghi chú. | Đang chọn nhiều tài khoản. |
 | **Kiểm tra đăng nhập** | Kiểm tra phiên đăng nhập đã lưu và xem Roblox có báo bị ban không. | — |
 | **Vào cùng server** | Đưa game và server (Job ID) của tài khoản này vào thanh chọn game; chọn các tài khoản khác rồi bấm **Vào game** để vào chung. | Đang chọn nhiều tài khoản, hoặc không biết server. |
+| **Ẩn cửa sổ Roblox** / **Hiện cửa sổ Roblox** | Ẩn cửa sổ và nút của nó trên thanh tác vụ, game vẫn chạy (tự vào lại và chống AFK cũng vậy). Thẻ của cửa sổ đang ẩn có hình con mắt trước PID: bấm vào để hiện lại. Nút **Cửa sổ** ở thanh dưới ẩn hoặc hiện tất cả; Ctrl+Alt+H cũng vậy. Bloxkeep tự hiện lại hết khi tắt. | Không tài khoản nào đang chơi trên máy này. |
+| **Sang server khác** | Đóng cửa sổ rồi mở lại vào một server khác còn chỗ của cùng game. Các tài khoản cùng game đổi một lượt sẽ vào chung một server. | Không tài khoản nào đang chọn đang chơi ở server công khai trên máy này. |
+| **Xác minh không phải bot** | Chỉ hiện khi thẻ ghi **Roblox đòi xác minh không phải bot**: hiện bước xác minh của Roblox trong cửa sổ của Bloxkeep, rồi mở lại cửa sổ vào game khi Roblox cho vào. | — |
 | **Tự vào lại game** | Bật hoặc tắt tự vào lại game cho các tài khoản này. | — |
 | **Dùng cấu hình Roblox** | Cho các tài khoản này dùng **Cấu hình Roblox** (đồ họa, FPS, âm lượng). | Chỉ hiện khi **Cài đặt › Phiên bản & đồ họa Roblox › Áp dụng cho** là **Tài khoản đã chọn**. |
 | **Trang cá nhân Roblox** | Mở trang cá nhân trên roblox.com bằng trình duyệt của bạn. | Đang chọn nhiều tài khoản, hoặc không có ID người dùng. |

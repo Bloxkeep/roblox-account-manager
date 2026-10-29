@@ -396,9 +396,6 @@ html [data-theme="dark" lang="en"]
                 span "Windows"
 #layer
 #toasts
-  div.ok.toast [role="status"]
-    svg.i #14iobj
-    span "Saved."
 -- commands
   getState {}
   monitorArea {"hidden":true}

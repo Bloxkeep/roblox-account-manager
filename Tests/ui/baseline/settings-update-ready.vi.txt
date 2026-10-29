@@ -152,6 +152,14 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
+                        div.t "Phím tắt"
+                        div.d "Ctrl+Alt+H ẩn hoặc hiện mọi cửa sổ Roblox, Ctrl+Alt+A xếp cửa sổ, dùng được trong mọi app."
+                      div.ctl
+                        label.switch
+                          input [id="s-hotkeys" type="checkbox" aria-label="Phím tắt" checked=true]
+                          span
+                    div.set-row
+                      div
                         div.t "Tăng tốc phần cứng"
                         div.d "Tắt để đỡ tốn RAM. Tự tắt nếu driver card đồ họa bị lỗi."
                       div.ctl

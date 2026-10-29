@@ -80,7 +80,7 @@ html [data-theme="dark" lang="vi"]
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Đã bật Multi-Roblox. Đăng nhập roblox.com trên trình duyệt rồi bấm Play, các cửa sổ sẽ chạy song song. Bấm biểu tượng ở khay hệ thống để tắt hoặc mở Roblox."
+    span "Đã bật Multi-Roblox: mở Roblox như bình thường, các cửa sổ chạy song song. Tắt ở biểu tượng dưới khay."
 -- commands
   multiOnly {"on":true}
 == end
@@ -117,6 +117,6 @@ html [data-theme="dark" lang="vi"]
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Đã bật Multi-Roblox. Đăng nhập roblox.com trên trình duyệt rồi bấm Play, các cửa sổ sẽ chạy song song. Bấm biểu tượng ở khay hệ thống để tắt hoặc mở Roblox."
+    span "Đã bật Multi-Roblox: mở Roblox như bình thường, các cửa sổ chạy song song. Tắt ở biểu tượng dưới khay."
 -- commands
   multiOnly {"on":false}

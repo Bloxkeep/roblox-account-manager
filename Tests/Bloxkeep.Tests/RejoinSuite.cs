@@ -840,6 +840,39 @@ static class RejoinSuite
                 c.Check("a private server's window isn't held by its public game's refusal: tried again as before",
                     closing.Contains(me) && privateSaid?.Contains("trying again", StringComparison.Ordinal) == true, privateSaid);
                 closing.Clear();
+                // Roblox holds the join for its check that the account isn't a bot: the window's own log says so (its line of
+                // 2026-10-23), and shows Roblox's Security page, blank in Vietnam, then Join Error 529. The window stays, why is
+                // said once, and it isn't rejoined once closed. Before, it was closed a minute on and opened again, for good.
+                NewWindow();
+                var checkedGame = Run(new GameTarget(920587237));
+                questions = 0;
+                Write(Line(DateTime.UtcNow.AddSeconds(-70), Launch));
+                Write(Line(DateTime.UtcNow.AddSeconds(-69), """Error [DFLog::HttpTraceError] HttpResponse(#21 0x1dbb2c53ff8) time:320.8ms (net:320.8ms timeInRetryQueue:0.0ms)status:403  bodySize:82 url:{ "https://gamejoin.roblox.com/v1/join-game" } ip:128.116.97.3 external:0 numberOfTimesRetried:0 challengedByGcs"""));
+                Poll(_ => watcher.JoinChallengedAt(me) is not null);
+                c.Check("Roblox's bot check on the join read from the window's log", watcher.JoinChallengedAt(me) is not null);
+                closing.Clear();
+                Told();
+                Tick();
+                string? checkSaid = Told();
+                c.Check("…a minute without a server: not closed to try again, and why is said",
+                    !closing.Contains(me) && checkSaid?.Contains("Roblox wants a check that it isn't a bot first", StringComparison.Ordinal) == true, checkSaid);
+                var checkAlert = Harness.Invoke(app, "AlertFor", "drop", account.Id,
+                    ("{0} can't get into the game: Roblox wants a check that it isn't a bot first, so Bloxkeep leaves the window open and doesn't try again.",
+                        new object?[] { account.Label }), checkSaid ?? "", DateTime.UtcNow)!;
+                string? checkTitle = checkAlert.GetType().GetProperty("Title")!.GetValue(checkAlert) as string;
+                string? checkWhy = checkAlert.GetType().GetProperty("Text")!.GetValue(checkAlert) as string;
+                c.Check("…Discord's alert says it: \"Roblox wants a bot check, not trying again\", with why",
+                    checkTitle == "Roblox wants a bot check, not trying again" && checkWhy?.Contains("isn't a bot", StringComparison.Ordinal) == true, $"{checkTitle} / {checkWhy}");
+                Tick();
+                c.Check("…said once, and Roblox's join API not asked", Told() is null && !closing.Contains(me) && questions == 0, questions);
+                c.Check("…its card says so (Roblox wants a bot check), not joining", Harness.Invoke(app, "Phase", me) as string == "challenged", Harness.Invoke(app, "Phase", me));
+                var checkedEnd = Harness.Invoke(app, "EndedState", me) as RobloxLogWatcher.ClientState;
+                c.Check("…closed by the person, not rejoined", Harness.Invoke(app, "QueueRejoin", account.Id, checkedGame, checkedEnd) is false && queue.Count == 0, queue.Count);
+                queue.Clear();
+                // A game started again in that window (Retry) is a new join: the check isn't held over.
+                Write(Line(DateTime.UtcNow, Launch));
+                Poll(_ => watcher.JoinChallengedAt(me) is null);
+                c.Check("…a game started again in the window: the bot check isn't held over", watcher.JoinChallengedAt(me) is null);
                 // The person starts a game in a window held as banned (another, or the same again): the card no longer
                 // says the ban, and the window isn't held as banned.
                 NewWindow();

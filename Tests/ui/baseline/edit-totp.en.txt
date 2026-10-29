@@ -2171,9 +2171,6 @@ html [data-theme="dark" lang="en"]
                 span "Windows"
 #layer
 #toasts
-  div.ok.toast [role="status"]
-    svg.i #14iobj
-    span "Saved."
 -- commands
   pageBusy {"busy":false}
   totpCheck {"key":"JBSWY3DPEHPK3PXP"}

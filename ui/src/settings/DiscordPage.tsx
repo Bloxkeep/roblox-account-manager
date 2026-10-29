@@ -88,6 +88,7 @@ export function DiscordPage({ title }: { title: string }) {
         }} />
       </Row>
     </Group> : null}
+    <RemoteGroup />
     <Group id="discord">
       <Row title={t('dc.on')} desc={t('dc.onDesc')}>
         {/* No link yet: the switch asks for one, and turns on once it is saved. */}
@@ -315,4 +316,44 @@ function Ping({ kind, saved, again, setPing, putBack }: {
     <input className={`field sm dc-id${bad ? ' bad' : ''}`} data-ping-id={kind} ref={box} inputMode="numeric" maxLength={20} spellCheck={false} autoComplete="off"
       placeholder={t('dc.idPh')} aria-label="ID" hidden={!idShown} value={id} onChange={e => setId(e.target.value)} />
   </div>;
+}
+
+/**
+ * Control from Discord (AppController.Remote.cs): on, this PC waits for /pc commands from the Discord account that typed
+ * its code into /pc link. The code shows until it's linked; then who it's linked to. Off unlinks it.
+ */
+function RemoteGroup() {
+  const { t, call, busy } = useHost();
+  const r = useAppState().remote || {};
+  const [now, setNow] = useState(Date.now());
+  // The code's minutes left, counted down while it shows.
+  useEffect(() => {
+    if (!r.code) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(timer);
+  }, [r.code]);
+  const left = r.codeUntil ? Math.max(0, Math.ceil((r.codeUntil - now) / 60_000)) : 0;
+  return <Group id="dc-remote">
+    <Row title={t('dc.remote')} desc={t('dc.remoteDesc')}>
+      <Switch id="s-dc-remote" label={t('dc.remote')} checked={!!r.on} onChange={v => call('setRemote', { enabled: v })} />
+    </Row>
+    {r.on ? <div className="set-row" id="s-dc-remote-state">
+      <div>
+        {!r.connected ? <div className="t">{t('dc.remoteConnecting')}</div>
+          : r.linked ? <>
+            <div className="t">{r.user ? t('dc.remoteLinkedTo', { user: r.user }) : t('dc.remoteLinked')}</div>
+            <div className="d">{t('dc.remoteUse', { pc: r.pc })}</div>
+          </>
+          : r.code && left > 0 ? <>
+            <div className="t">{t('dc.remoteCode')} <code className="dc-code" id="s-dc-code">{r.code}</code></div>
+            <div className="d">{t('dc.remoteCodeHelp', { n: left })}</div>
+          </>
+          : <div className="t">{t('dc.remoteNoCode')}</div>}
+      </div>
+      <div className="ctl">
+        {r.connected && !r.linked ? <button className="btn sm" id="s-dc-remote-code" onClick={e => busy(e.currentTarget, () => call('remoteCode'))}>{t('dc.remoteNewCode')}</button> : null}
+        {!r.linked ? <button className="btn sm ghost" id="s-dc-remote-add" onClick={() => call('openDiscordApp')}>{t('dc.remoteAdd')}</button> : null}
+      </div>
+    </div> : null}
+  </Group>;
 }

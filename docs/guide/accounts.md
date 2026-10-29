@@ -86,6 +86,9 @@ Open it with **⋯ More** on a card, or right-click the account. If the account 
 | **Edit…** (F2) | Nickname, group, password, authenticator key, note. | Several selected. |
 | **Check sign-in** | Checks the saved sign-in and whether Roblox reports a ban. | — |
 | **Join this server** | Puts this account's game and server (Job ID) in the game bar; select others and press **Play** to land together. | Several selected, or the server isn't known. |
+| **Hide Roblox window** / **Show Roblox window** | Hides the window and its taskbar button while the game keeps running (auto-rejoin and anti-AFK too). A hidden window's card shows an eye before its PID: click it to show the window again. **Windows** in the bottom bar hides or shows them all; so does Ctrl+Alt+H. Bloxkeep shows them again when it closes. | No account playing on this PC. |
+| **Switch to another server** | Closes the window and opens it again in another server of the same game with room. Accounts of the same game switched together land in the same server. | None of the selected accounts is playing in a public server on this PC. |
+| **Solve the bot check** | Only on a card that says **Roblox wants a bot check**: shows Roblox's check in Bloxkeep's own window, then opens the window again into its game once Roblox lets it in. | — |
 | **Auto-rejoin** | Turns auto-rejoin on or off for these accounts. | — |
 | **Use Roblox settings** | Includes these accounts in **Roblox settings** (graphics, FPS, volume). | Shown only when **Settings › Roblox version & graphics › Apply to** is **Chosen accounts**. |
 | **Roblox profile** | Opens the profile on roblox.com in your browser. | Several selected, or no user ID. |

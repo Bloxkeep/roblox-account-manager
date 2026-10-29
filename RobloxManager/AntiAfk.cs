@@ -83,7 +83,7 @@ static class AntiAfk
     internal static int InputSize => Marshal.SizeOf<INPUT>();
 
     const uint INPUT_KEYBOARD = 1, KEYEVENTF_KEYUP = 0x0002, MAPVK_VK_TO_VSC = 0;
-    const int SW_RESTORE = 9, SW_SHOWMINNOACTIVE = 7;
+    const int SW_RESTORE = 9, SW_SHOWMINNOACTIVE = 7, SW_SHOWNOACTIVATE = 4, SW_HIDE = 0;
     const int GWL_EXSTYLE = -20, WS_EX_TOPMOST = 0x8, WS_EX_TRANSPARENT = 0x20, WS_EX_LAYERED = 0x80000;
     const uint LWA_ALPHA = 0x2, GW_HWNDPREV = 3;
     const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
@@ -208,6 +208,8 @@ static class AntiAfk
         // Where each window sits among the others, read before any of them moves.
         var places = windows.Distinct().Where(IsWindow).ToDictionary(w => w, Place);
         var hidden = new List<Before>();
+        // Windows Bloxkeep hid, shown for the nudge: they stay unseen until hidden again.
+        var unseen = new List<IntPtr>();
         try
         {
             foreach (var hWnd in windows)
@@ -220,9 +222,14 @@ static class AntiAfk
                 // Unseen and click-through first, so that neither its coming to the front nor a click at that moment shows.
                 // A minimized window still gets kicked: it is restored for the moment of the nudge, then minimized again.
                 bool minimized = IsIconic(hWnd);
+                // A window Bloxkeep hid (RobloxProcesses.HideWindows) is shown for the moment of the nudge, still unseen
+                // and click-through, then hidden again.
+                bool unshown = !IsWindowVisible(hWnd);
                 hidden.Add(Hide(hWnd, places.GetValueOrDefault(hWnd), minimized));
                 if (minimized)
                     ShowWindowAsync(hWnd, SW_RESTORE);
+                else if (unshown)
+                    ShowWindowAsync(hWnd, SW_SHOWNOACTIVATE);
                 try
                 {
                     if (!Focus(hWnd))
@@ -241,8 +248,14 @@ static class AntiAfk
                 }
                 finally
                 {
+                    // A hidden window that is also minimized: minimized again, then hidden (it was shown by its restore).
                     if (minimized)
                         ShowWindowAsync(hWnd, SW_SHOWMINNOACTIVE);
+                    if (unshown)
+                    {
+                        ShowWindowAsync(hWnd, SW_HIDE);
+                        unseen.Add(hWnd);
+                    }
                 }
             }
         }
@@ -261,7 +274,8 @@ static class AntiAfk
             // there); a minimized one once it is minimized again; only then is it seen again.
             foreach (var before in hidden.OrderBy(b => b.Depth))
                 PutBack(before);
-            for (int i = 0; i < 10 && hidden.Any(b => b.Minimized && IsWindow(b.Window) && !IsIconic(b.Window)); i++)
+            for (int i = 0; i < 10 && (hidden.Any(b => b.Minimized && IsWindow(b.Window) && !IsIconic(b.Window))
+                                       || unseen.Any(w => IsWindow(w) && IsWindowVisible(w))); i++)
                 await Task.Delay(50);
             foreach (var before in hidden)
                 Show(before);

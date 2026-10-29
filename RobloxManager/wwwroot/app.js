@@ -311,10 +311,11 @@
     };
     $('#layer').append(el);
     onMount?.(api);
-    // Most modals focus one of their fields themselves; the rest start at their first control.
+    // Most modals focus one of their fields themselves; the rest start at their first control, without scrolling to it:
+    // a dialog opens at its top (What's new's first button can be its last line).
     setTimeout(() => {
       if (closed || el.contains(document.activeElement)) return;
-      (el.querySelector('.modal-body').querySelector('button:not(:disabled), input, select, textarea, a[href]') || el.querySelector('.modal-foot .btn.primary') || el.querySelector('[data-x]')).focus();
+      (el.querySelector('.modal-body').querySelector('button:not(:disabled), input, select, textarea, a[href]') || el.querySelector('.modal-foot .btn.primary') || el.querySelector('[data-x]')).focus({ preventScroll: true });
     }, 60);
     return api;
   }
@@ -1574,11 +1575,17 @@
       modal({
         title: t(r.launched ? 't.errsSome' : 't.errsAll'),
         body: window.BloxkeepUI.errors(r.errors),
-        actions: [{ text: t('common.close'), kind: 'primary', onClick: ({ close }) => close() }],
+        // Roblox wouldn't sign them in (a warning waiting to be accepted…): their roblox.com, signed in, shows why.
+        actions: [
+          ...(r.refused?.length ? [{ text: tn('t.openRefused', r.refused.length), onClick: ({ close }) => {
+            r.refused.forEach(id => byId(id) && call('openWebsite', { id }));
+            close();
+          } }] : []),
+          { text: t('common.close'), kind: 'primary', onClick: ({ close }) => close() },
+        ],
       });
     }
     if (r.launched) toast(tn(r.cancelled ? 't.launchedStopped' : 't.launched', r.launched), 'ok');
-    else if (r.cancelled) toast(t('t.stopped'), 'info');
     // Accounts already open where asked were left alone: worth a note, not an error.
     if (r.skipped?.length && !r.cancelled) toast(tn('t.skipped', r.skipped.length), 'info');
   }
@@ -1716,8 +1723,7 @@
             let refused = null;
             await busy(btn, () => hold(() => bridge.call('savePreset', r.args)).catch(e => { refused = e; }));
             if (refused) return fail(refused.message || t('common.unknownError'), ui.form.refusedBox());
-            close();
-            toast(t('ps.saved'), 'ok');
+            close(); // the list shows it saved
           },
         },
       ],
@@ -1753,7 +1759,6 @@
             const ids = ui.list.ids();
             if (await busy(btn, () => call('setLaunchOrder', { ids })) === undefined) return;
             close();
-            toast(t('lo.saved'), 'ok');
           },
         },
       ],
@@ -1879,9 +1884,13 @@
     if (!r) return;
     // Signed-out accounts are gathered under the "Needs sign-in" filter; offer to jump there.
     const show = r.bad && accounts().some(a => a.cookieValid === false)
-      ? { label: t('t.showSignedOut'), run: () => { setView('accounts'); S.filter = 'invalid'; S.group = ''; update(); $('#scroll').scrollTop = 0; } } : null;
+      ? { label: t('t.showSignedOut'), run: () => { setView('accounts'); S.filter = 'invalid'; S.group = ''; update(); $('#scroll').scrollTop = 0; } }
+      : r.refusedIds?.length ? { label: tn('t.openRefused', r.refusedIds.length), run: () => r.refusedIds.forEach(id => byId(id) && call('openWebsite', { id })) }
+      : null;
     // "1 needs", not "1 need": the singular goes by the signed-out count (tn picks it by n).
-    toast(tn(r.failed ? 't.checkedFail' : 't.checked', r.bad, { ok: r.ok, bad: r.bad, f: r.failed }), r.bad ? 'warn' : 'ok', show);
+    // Refused by Roblox (a warning to read, a lock) is said apart from the network: roblox.com shows that account why.
+    const refused = r.refused ? ' ' + tn('t.checkedRefused', r.refused) : '';
+    toast(tn(r.failed ? 't.checkedFail' : 't.checked', r.bad, { ok: r.ok, bad: r.bad, f: r.failed }) + refused, r.bad || r.refused ? 'warn' : 'ok', show);
   }
 
   /** force: end the clients at once (frozen ones) instead of closing their windows first. */
@@ -2058,7 +2067,16 @@
       '-',
       { icon: 'edit', text: t('m.edit'), hint: 'F2', disabled: many, run: () => editAccount(id) },
       { icon: 'refresh', text: t('m.check'), run: () => checkAccounts(ids) },
+      // Roblox holds its join for a bot check: solved in Bloxkeep's own window, then the window opens again.
+      ...(!many && a.session?.phase === 'challenged' ? [{ icon: 'shield', text: t('m.botCheck'), run: () => call('solveBotCheck', { id }) }] : []),
       { icon: 'server', text: t('m.follow'), disabled: many || !serverOf(a), run: () => { const s = serverOf(a); useServer(s.placeId, s.jobId); toast(t('srv.followed', { name: a.label }), 'ok'); } },
+      // The window goes (and its taskbar button), the game runs on; shown again from here, the Windows button or a hotkey.
+      ...(ids.some(i => isLocal(byId(i) || {}) && !byId(i).session?.hidden)
+        ? [{ icon: 'eyeOff', text: t('m.hideWindow'), run: () => call('hideWindows', { ids }) }] : []),
+      ...(ids.some(i => byId(i)?.session?.hidden)
+        ? [{ icon: 'eye', text: t('m.showWindow'), run: () => call('showWindows', { ids }) }] : []),
+      // The window closes and opens again into another server of its game (those of the same game together).
+      { icon: 'shuffle', text: t('m.switchServer'), disabled: !ids.some(i => isLocal(byId(i) || {}) && serverOf(byId(i))), run: () => call('switchServer', { ids }) },
       // Ticked as the card shows it (a running window's preset may decide), and says so when it does.
       { icon: 'repeat', text: t('m.autoRejoin'), checked: ids.every(i => byId(i) && rejoinOn(byId(i))), run: () => toggleRejoin(ids),
         title: ids.some(i => { const x = byId(i); return x?.session && x.session.autoRejoin !== undefined && x.session.autoRejoin !== x.autoRejoin; }) ? t('m.rejoinPreset') : '' },
@@ -2175,8 +2193,6 @@
               if (isNew && r) {
                 toast(t(r.merged ? 't.merged' : 't.added', { name: r.label }), 'ok');
                 selectOnly(r.id);
-              } else {
-                toast(t('t.saved'), 'ok');
               }
             } catch (ex) {
               ui.form.fail(ex.message);
@@ -2453,8 +2469,10 @@
       case 'card': return onCardClick(id, e);
       case 'play-one': return launch([id], false);
       case 'close-one': return closeIds([id]);
-      case 'cancel-rejoin': return call('cancelRejoin', { id }).then(r => r !== undefined && toast(t('rj.cancelled'), 'ok'));
+      case 'bot-check': return busy(el, () => call('solveBotCheck', { id }));
+      case 'cancel-rejoin': return call('cancelRejoin', { id }); // the card shows it at once
       case 'copy-pid': return copy(id, 'pid');
+      case 'show-window': return call('showWindows', { ids: [id] });
       case 'edit': return editAccount(id);
       case 'card-menu': {
         const r = el.getBoundingClientRect();
@@ -2535,8 +2553,8 @@
       case 'refresh-presence':
         // refreshPresence replies null on success, { skipped } when one was already running; call() yields undefined after showing an error.
         return busy(el, () => call('refreshPresence')).then(r => {
+          // Done shows on the cards themselves; only a click that did nothing is said.
           if (r?.skipped) toast(t('t.refreshBusy'), 'info');
-          else if (r !== undefined) toast(t('t.refreshed'), 'ok');
         });
       case 'filter':
         S.filter = el.dataset.f;
@@ -2552,6 +2570,9 @@
         const st = S.app.settings || {};
         return menuAt(el, [
           { icon: 'monitor', text: t('dock.openAppTip'), disabled: !S.selected.size, run: () => launch([...S.selected], true) },
+          // Every Roblox window of this PC hidden (their games run on), or shown again.
+          { icon: 'eyeOff', text: t('m.hideAll'), disabled: !accounts().some(a => isLocal(a) && !a.session?.hidden), run: () => call('hideWindows', {}) },
+          { icon: 'eye', text: t('m.showAll'), disabled: !accounts().some(a => a.session?.hidden), run: () => call('showWindows', {}) },
           '-',
           {
             text: t('m.arrange'), snap: { value: st.windowLayout || 'fill', width: st.windowWidth || 640, height: st.windowHeight || 480 },

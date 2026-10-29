@@ -451,6 +451,7 @@ public sealed partial class AppController : IDisposable
         "pickThemePicture" => Done(PickThemePicture()),
         "clearThemePicture" => Done(ClearThemePicture()),
         "setCloseToTray" => Done(SetCloseToTray(Bool(a, "enabled"))),
+        "setHotkeys" => Done(SetHotkeys(Bool(a, "enabled"))),
         "setHideNames" => Done(SetHideNames(Bool(a, "enabled"))),
         "createVault" => CreateVaultAsync(Str(a, "password"), Str(a, "name")),
         "unlock" => UnlockAsync(Str(a, "password")),
@@ -481,6 +482,10 @@ public sealed partial class AppController : IDisposable
         "totpCheck" => Done(CheckAuthenticator(Str(a, "key"))),
         "deleteAccounts" => Done(DeleteAccounts(Ids(a))),
         "checkAccounts" => CheckAccountsAsync(Ids(a)),
+        "solveBotCheck" => SolveBotCheckAsync(Id(a)),
+        "switchServer" => SwitchServerAsync(Ids(a)),
+        "hideWindows" => Done(HideWindows(Ids(a))),
+        "showWindows" => Done(ShowWindows(Ids(a))),
         "refreshPresence" => RefreshPresenceAsync(),
         "copy" => Done(Copy(Id(a), Str(a, "field"))),
         "resolveGame" => ResolveGameAsync(Str(a, "input")),
@@ -551,6 +556,8 @@ public sealed partial class AppController : IDisposable
         "setDiscord" => Done(SetDiscord(a)),
         "setDiscordPresence" => Done(SetDiscordPresence(Bool(a, "enabled"))),
         "setDiscordWebhook" => Done(SetDiscordWebhook(Str(a, "url"))),
+        "setRemote" => Done(SetRemote(Bool(a, "enabled"))),
+        "remoteCode" => Done(RemoteNewCode()),
         "revealDiscordWebhook" => Done(RevealDiscordWebhook()),
         "discordTest" => SendDiscordNowAsync(summary: false),
         "discordSummaryNow" => SendDiscordNowAsync(summary: true),
@@ -565,6 +572,8 @@ public sealed partial class AppController : IDisposable
         // Bloxkeep's Discord bot sends this on to an invite into the community server that works (services/DiscordBot/worker
         // invite()): a new one is made whenever the last stops working, so this address never changes.
         "openDiscord" => Done(OpenUrl("https://bloxkeep-bot.bloxkeep-app.workers.dev/discord")),
+        // Bloxkeep's app added to the person's own Discord account, so /pc works in any DM (Control from Discord).
+        "openDiscordApp" => Done(OpenUrl("https://discord.com/oauth2/authorize?client_id=1561788269933498408&integration_type=1&scope=applications.commands")),
         "feedbackPreview" => Done(FeedbackPreview(a)),
         "sendFeedback" => SendFeedbackAsync(a),
         _ => throw new UserError(L.F("Unknown command: {0}", cmd)),
@@ -670,6 +679,7 @@ public sealed partial class AppController : IDisposable
         themeApplied = Themes.Current.Id,
         customTheme = CustomThemeDto(),
         closeToTray = Prefs.CloseToTray,
+        hotkeys = new { on = Prefs.GlobalHotkeys, taken = HotkeysTaken },
         hideNames = Prefs.HideNames,
         notifications = Prefs.Notifications,
         notifyOff = Prefs.NotifyOff.Where(NotifyKinds.Contains).Order().ToArray(),
@@ -684,6 +694,7 @@ public sealed partial class AppController : IDisposable
         // An update found before the unlock, which the lock screen gives its place to; go: its answer (null: not yet).
         lockUpdate = UpdateOffersAtLock ? new { go = _updateAtLock } : null,
         countOnline = Prefs.CountOnline,
+        remote = RemoteDto(),
         robloxVersion = RobloxVersionDto(),
         robloxUpdates = RobloxUpdatesDto(),
         whatsNew = _updatedFrom is not null && Open is not null
@@ -698,7 +709,10 @@ public sealed partial class AppController : IDisposable
         dataPath = Vault.DataDir,
         // Settings › Backup & data › Data: the open vault's file, the error log, the program's folder.
         paths = new { vault = _vault?.FilePath, log = LogPath, app = AppFolder },
-        robloxInstalled = RegistryInfo().Protocol,
+        // Not only the roblox-player: links: another Roblox's uninstaller takes them with it (Roblox VNG's, 2026-10-28)
+        // while a client, a launcher or the Store edition is still here, and Default opens that one (FallbackLauncher).
+        robloxInstalled = RegistryInfo().Protocol || Installs() is { Direct: true } or { Store: true } or { Bloxstrap: true } or { Fishstrap: true }
+            || Installs().Others.Count > 0,
         launching = _launchCts is not null,
         checking = _checking,
         boot = Open is null ? null : _boot,
@@ -718,7 +732,8 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>Which Roblox clients and launchers exist, and the version of the client the chosen option starts.</summary>
     /// <param name="Others">Other Bloxstrap-style launchers found here (their option is "other:&lt;name&gt;").</param>
-    sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, List<string> Others, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client);
+    sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, List<string> Others, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client,
+        bool Vng = false);
 
     /// <param name="UpToDate">null until both versions are known.</param>
     /// <param name="Store">Roblox from the Microsoft Store is chosen: the Store installs its updates, not Roblox itself.</param>
@@ -753,16 +768,20 @@ public sealed partial class AppController : IDisposable
             Fishstrap: RobloxInstalls.FindBootstrapper("Fishstrap") is not null,
             Others: RobloxInstalls.FindOtherBootstrappers(),
             Roblox: RobloxInstalls.FindOfficialClient() is not null,
-            Direct: RobloxInstalls.FindAnyClient() is not null,
+            Direct: (RobloxInstalls.FindAnyClient() ?? RobloxInstalls.FindVngClient()) is not null,
             Store: RobloxInstalls.StoreEditionInstalled(),
-            Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")));
+            Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "")),
+            Vng: RobloxInstalls.FindVngClient() is not null);
         _updaterExe = RobloxInstalls.UpdaterFor(_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "");
         // Roblox (or its launcher) put a new build in place since the last look — or an older one (a launcher set to a
         // version, an older copy chosen), which isn't an update.
         // (The Store edition has no build folder: switching to or from it says nothing.)
-        if (before is { Length: > 0 } && _installs.Client is { Folder.Length: > 0 } now && now.Folder != before)
+        // Going to an older build while the newer one stays installed is Roblox switching channel (RobloxInstalls.HasBuild):
+        // nothing to say.
+        if (before is { Length: > 0 } && _installs.Client is { Folder.Length: > 0 } now && now.Folder != before
+            && (Version.TryParse(now.Version, out var have) && Version.TryParse(beforeVersion, out var had) && have < had) is var older
+            && !(older && RobloxInstalls.HasBuild(now.Exe, before)))
         {
-            bool older = Version.TryParse(now.Version, out var have) && Version.TryParse(beforeVersion, out var had) && have < had;
             string updated = older ? L.F("Roblox went back to version {0}.", now.Version) : L.F("Roblox updated to {0}.", now.Version);
             Toast(updated, "ok");
             NoteActivity("robloxUpdated", text: updated, tone: "info");
@@ -787,7 +806,12 @@ public sealed partial class AppController : IDisposable
             && _latestRoblox?.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase) == true;
         bool? upToDate = installed is null || _latestRoblox is null ? null
             : sameBuild || newer || (!foldersKnown && installed.Version == _latestRoblox.Version);
-        return new RobloxVersionInfo(installed?.Version, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct",
+        // The links on another channel's build (Roblox puts some accounts on test builds), with the newest build
+        // installed beside it: that one is what an account on the main channel starts.
+        string? shown = installed?.Version;
+        if (upToDate == false && RobloxInstalls.HasBuild(installed!.Exe, _latestRoblox!.Folder))
+            (shown, upToDate) = (_latestRoblox.Version, true);
+        return new RobloxVersionInfo(shown, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct",
             _vault?.Data.Settings.LaunchVia == "store", _updaterExe is { } updater ? Path.GetFileNameWithoutExtension(updater) : null, _robloxUpdating);
     }
 
@@ -849,6 +873,8 @@ public sealed partial class AppController : IDisposable
                 bannedByGame = _logs.StateOf(run.Pid) is { Status: "disconnected", BannedByGame: true } || BannedWindow(a, run) is not null,
                 jobId = _logs.StateOf(run.Pid)?.JobId,
                 jobPlaceId = _logs.StateOf(run.Pid)?.PlaceId,
+                // Its window hidden by Bloxkeep while its game runs (RobloxProcesses.HideWindows).
+                hidden = RobloxProcesses.HasHidden(run.Pid),
                 // The preset that opened it may turn auto-rejoin on or off for this client.
                 autoRejoin = RejoinOn(a, run.Launch.PresetId),
             }
@@ -898,6 +924,7 @@ public sealed partial class AppController : IDisposable
     string? Phase(int pid) => _logs.StateOf(pid) switch
     {
         { Status: "ingame" or "joining", TeleportStarted: { } t } when DateTime.UtcNow - t < TeleportShown => "teleporting",
+        { Status: "joining", JobId: null } when _logs.JoinChallengedAt(pid) is not null => "challenged",
         { Status: "joining", JobId: null } when JoinAnswerOf(pid) is { Full: true } => "full",
         { Status: "joining", JobId: null } => "waiting",
         { Status: "left", NeverJoined: true } => "joinFailed",
@@ -1140,6 +1167,15 @@ public sealed partial class AppController : IDisposable
         if (action is not ("close" or "minimize" or "zoom"))
             throw new UserError(L.T("Unknown window action."));
         WindowControl?.Invoke(action);
+        return null;
+    }
+
+    object? SetHotkeys(bool enabled)
+    {
+        Prefs.GlobalHotkeys = enabled;
+        Prefs.Save();
+        HotkeysChanged?.Invoke();
+        PushState();
         return null;
     }
 
@@ -2118,6 +2154,7 @@ public sealed partial class AppController : IDisposable
         _checking = true;
         PushState();
         int ok = 0, bad = 0, failed = 0, done = 0;
+        var refused = new List<Guid>();
         var queue = new Queue<Account>(accounts);
         var rejected = new List<Account>();
         var resumeAt = DateTime.UtcNow;
@@ -2157,6 +2194,11 @@ public sealed partial class AppController : IDisposable
                         if (wait > resumeAt)
                             resumeAt = wait;
                         continue;
+                    }
+                    catch (RobloxApiException ex) when (!ex.ServerError && !ex.RateLimited)
+                    {
+                        // Roblox answered and said no (403: a warning waiting to be read, a lock…): not the network.
+                        refused.Add(account.Id);
                     }
                     catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                     {
@@ -2221,7 +2263,7 @@ public sealed partial class AppController : IDisposable
         _ = LoadAvatarsAsync(accounts.Select(a => a.UserId));
         if (newlyBanned.Count > 0 && _vault == vault)
             NotifyBanned(newlyBanned);
-        return new { ok, bad, failed, banned = accounts.Count(a => a.Banned == true) };
+        return new { ok, bad, failed, refused = refused.Count, refusedIds = refused, banned = accounts.Count(a => a.Banned == true) };
     }
 
     object Copy(Guid id, string field)
@@ -2908,6 +2950,8 @@ public sealed partial class AppController : IDisposable
         var skipped = new List<string>();
         // Clients open here that a new client closes when Multi-Roblox isn't ready: not drops to rejoin from.
         var replaced = new List<Guid>();
+        // Accounts Roblox wouldn't sign in (a warning to accept, a lock): the page offers their roblox.com, which says why.
+        var refusedSignIn = new List<Guid>();
         int launched = 0;
         // Past the checks and warnings: from then on an error is reported with the result rather than thrown.
         bool started = false;
@@ -3072,6 +3116,8 @@ public sealed partial class AppController : IDisposable
                     // Marked (and said) signed out only when the sign-in check agrees: an outage answers 401 for everyone.
                     bool refused = ex is RobloxApiException { CookieInvalid: true } && !await ConfirmSignedOutAsync(account, ct);
                     errors.Add($"{NameText(account)}: {(refused ? RefusedText : ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))}");
+                    if (ex is RobloxApiException { SignInRefused: true } && Realm.Normalize(account.Realm) != Realm.Vng)
+                        refusedSignIn.Add(account.Id);
                 }
                 PushState();
 
@@ -3148,7 +3194,8 @@ public sealed partial class AppController : IDisposable
         // The page shows the details; while the window is in the background a short notification says so.
         if (errors.Count > 0 && !ct.IsCancellationRequested)
             Notify(L.P(errors.Count, "{0} account didn't open.", "{0} accounts didn't open.", errors.Count), "warn", "launch", toast: false);
-        return new LaunchResult(Launched: launched, Errors: errors, Cancelled: ct.IsCancellationRequested, Skipped: skipped);
+        return new LaunchResult(Launched: launched, Errors: errors, Cancelled: ct.IsCancellationRequested, Skipped: skipped,
+            Refused: refusedSignIn.Count > 0 ? refusedSignIn : null);
     }
 
     /// <summary>Servers found closed in one launch before Roblox is left to pick one for each account.</summary>
@@ -3822,6 +3869,9 @@ public sealed partial class AppController : IDisposable
             if (log is null && !closedByRoblox && !_closingForRejoin.Contains(info.Pid) && ChildrenOf(info.Pid).Any(trays.Contains))
                 log = new RobloxLogWatcher.ClientState("left", info.Launch.Target?.PlaceId, info.Launch.Target?.JobId, null, now);
             _endedHere[id] = (log?.JobId ?? info.Launch.Target?.JobId, log?.PlaceId ?? info.Launch.Target?.PlaceId, now);
+            // Its window was hidden: the one auto-rejoin opens for it is hidden too, once in its game (RejoinFromLogs).
+            if (RobloxProcesses.ForgetHidden(info.Pid))
+                _hideWhenIn.Add(id);
             EndPlay(id, log, now);
             RefreshPresenceSoon(TimeSpan.FromSeconds(8));
             // The first process may only bootstrap and hand over to a child: wait for that only when a new,
@@ -3981,6 +4031,7 @@ public sealed partial class AppController : IDisposable
         Step(CheckSchedules); // also while locked: a run due then is reported as missed
         Step(() => TickDiscordPresence(now)); // Settings › Discord › Show on my Discord profile, locked or not
         Step(() => TickOnline(now)); // Settings › Bloxkeep › Add me to the online count, locked or not
+        Step(TickRemote); // Settings › Discord › Control from Discord, locked or not (locked, it says only that)
         // Also while locked: windows go on running, and one that ends soon after the commit limit ran out ran out of memory.
         MemoryStatus memory = default;
         Step(() =>
@@ -4205,7 +4256,8 @@ public sealed partial class AppController : IDisposable
         if (refused && !_trimRefusedShown)
         {
             _trimRefusedShown = true;
-            Toast(L.T("Roblox refused memory trimming, so it was skipped."), "info");
+            // Nothing the person can do about it: noted, not shown.
+            Log.Note("Save RAM: Windows refused to lower a Roblox window's memory priority; it runs as usual.");
         }
     }
 
@@ -4356,6 +4408,12 @@ public sealed partial class AppController : IDisposable
         {
             if (_logs.StateOf(info.Pid) is not { } state || _closingForRejoin.Contains(info.Pid))
                 continue;
+            // A rejoin of a window that was hidden: hidden again once in its game (a window opened by hand stays shown).
+            if (state.Status == "ingame" && _hideWhenIn.Remove(id) && info.Launch.Rejoin)
+            {
+                RobloxProcesses.HideWindows([info.Pid]);
+                PushState();
+            }
             // A window held as banned that got a server since, or where the person started a game (another, or the same
             // again): not held any more.
             if (state is { Status: "ingame" } or { Status: "joining", JobId: not null } or { Status: "joining", PersonStarted: true })
@@ -4370,6 +4428,17 @@ public sealed partial class AppController : IDisposable
             {
                 if (_gameBanNoted.Add(info.Pid) && FindAccount(id) is { } banned)
                     NoteGameBan(banned, state.ChosenPlace ?? info.Launch.Target?.PlaceId ?? state.PlaceId, state.KickMessage, info.Launch.StartedAt);
+                continue;
+            }
+            // Roblox holds the join for its check that the account isn't a bot (the window's log says so): the window shows
+            // Roblox's Security page, blank where Roblox's check can't load (Vietnam, 2026-10-23), then Join Error 529.
+            // Before, it was closed after a minute and opened again, into the same check, for good, with nothing said. A
+            // new window would meet it again: the window stays, why is said once, and it isn't rejoined once closed.
+            if (state is { Status: "joining", JobId: null, PersonStarted: false } && _logs.JoinChallengedAt(info.Pid) is not null)
+            {
+                if (_joinRefused.Add(info.Launch) && FindAccount(id) is { } challenged && RejoinOn(challenged, info.Launch.PresetId))
+                    Notify(L.F("{0} can't get into the game: Roblox wants a check that it isn't a bot first, so Bloxkeep leaves the window open and doesn't try again.",
+                        Name(challenged)), "warn", "drop", challenged.Id);
                 continue;
             }
             // Not in after JoinCheckAfter (5 s for a game known to have banned the account, else 40 s): Roblox says why only in the
@@ -4549,8 +4618,8 @@ public sealed partial class AppController : IDisposable
     /// <summary>Clients in a full game's line being asked about again: the answer that gave their place, shown until the new one.</summary>
     readonly Dictionary<int, RobloxApi.JoinAnswer> _inLine = new();
     /// <summary>
-    /// Launches Roblox refused the game (<see cref="RobloxApi.JoinAnswer.Refused"/>): not rejoined once they end. Held as
-    /// they are, not by value: a launch's start time moves with a set-back clock.
+    /// Launches Roblox refused the game (<see cref="RobloxApi.JoinAnswer.Refused"/>) or held for its bot check: not rejoined
+    /// once they end. Held as they are, not by value: a launch's start time moves with a set-back clock.
     /// </summary>
     readonly HashSet<PendingLaunch> _joinRefused = new(ReferenceEqualityComparer.Instance);
     /// <summary>The longest a launch waits for Roblox's word on bans noted before (<see cref="RecheckGameBansAsync"/>).</summary>
@@ -4717,6 +4786,14 @@ public sealed partial class AppController : IDisposable
             _lastInput.TryAdd(pid, _logs.StateOf(pid) is { Status: "ingame" } joined ? joined.At : _afkAdopted ? now : now - AntiAfk.LastChance);
         _afkAdopted = true;
         if (_nudging)
+            return;
+        // A window held on Roblox's bot check: the person may be solving it, and a nudge brings another window to the
+        // front for a moment. The check was cancelled twice while another window was due a nudge (2026-10-27), so
+        // none goes while it is in front or for BotCheckHold after it came. Not for good: a check nobody solves left
+        // every other window without anti-AFK, kicked after 20 minutes.
+        int front = RobloxProcesses.ForegroundPid();
+        if (windows.Keys.Any(pid => _logs.JoinChallengedAt(pid) is { } at && _logs.StateOf(pid) is { Status: "joining" }
+                                    && (pid == front || now - at < BotCheckHold)))
             return;
         var due = AntiAfkDue(now, on, windows, AntiAfk.Locked(), AntiAfk.IdleTime(), RobloxProcesses.ForegroundPid(), AntiAfk.FullScreenInFront);
         if (due.Count > 0)
@@ -4911,6 +4988,10 @@ public sealed partial class AppController : IDisposable
     static readonly TimeSpan MemoryHoldRecheck = TimeSpan.FromSeconds(30);
     /// <summary>Accounts told their rejoin waits for virtual memory (once, until it goes ahead).</summary>
     readonly HashSet<Guid> _memoryHeldTold = new();
+    /// <summary>How long anti-AFK waits after a window was held on Roblox's bot check (its nudges would take the front).</summary>
+    static readonly TimeSpan BotCheckHold = TimeSpan.FromMinutes(5);
+    /// <summary>Accounts whose window was hidden when their client ended: the window their rejoin opens is hidden too.</summary>
+    readonly HashSet<Guid> _hideWhenIn = new();
     /// <summary>Accounts whose client just ended out of memory (its log said so): its drop is said so.</summary>
     readonly HashSet<Guid> _ranOutOfMemory = new();
 
@@ -4918,6 +4999,8 @@ public sealed partial class AppController : IDisposable
     {
         var vault = _vault;
         var account = FindAccount(request.AccountId);
+        // Sent to another server by the person (AppController.ServerHop.cs): taken here, even by a rejoin that stops below.
+        bool hopping = _hopping.Remove(request.AccountId);
         if (vault is null || account is null || !request.Restart && !RejoinOn(account, request.PresetId) || account.Banned == true
             // Banned by that game since it was queued (or before Bloxkeep restarted): only Join Error 600 again. A
             // followed player's game is the one that counts, looked at once they are found (FollowTargetAsync).
@@ -4938,8 +5021,8 @@ public sealed partial class AppController : IDisposable
                 target = found;
             }
             // Its preset's "Rejoin server" (a drop or its timed restart): the server another of its accounts plays in, when
-            // one will take it.
-            else if (await TeammateTargetAsync(account, request, cts.Token) is { } teammate)
+            // one will take it. Not when the person sent it to another server.
+            else if (!hopping && await TeammateTargetAsync(account, request, cts.Token) is { } teammate)
             {
                 target = teammate;
             }
@@ -5300,8 +5383,6 @@ public sealed partial class AppController : IDisposable
         if (_nextUpdateCheck > _resumedAt + TimeSpan.FromMinutes(2))
             _nextUpdateCheck = _resumedAt + TimeSpan.FromMinutes(2);
         Resumed?.Invoke();
-        if (_vault is not null && (_rejoinQueue.Count > 0 || _running.Any(r => FindAccount(r.Key) is { } account && RejoinOn(account, r.Value.Launch.PresetId))))
-            Toast(L.T("The PC woke up — auto-rejoin waits until the connection is back."));
     }
 
     /// <summary>Raised on the UI thread when the PC wakes from sleep.</summary>
@@ -5719,6 +5800,7 @@ public sealed partial class AppController : IDisposable
         _discordPresence.Dispose(); // the profile stops showing Bloxkeep
         _robloxInput?.Dispose();
         SayOfflineOnExit(); // no longer counted as open (not for an update in the background, back within seconds)
+        StopRemote(); // Discord says the PC isn't connected
         _procTimer.Dispose();
         _homeSession?.Dispose();
         _homeSession = null;

@@ -314,6 +314,9 @@ function Activity({ a }: { a: Account }) {
       return box('online', iconBox('monitor'), t('act.joinFailed'), [a.session.game?.name, t('act.stillOpen')].filter(Boolean).join(' · '));
     if (c === 'menu') return box('online', iconBox('monitor'), t('act.menuHere'), t('act.menuWhere'));
     if (c === 'signedout') return box('signedout', iconBox('logIn'), t('act.signedOutHere'), t('act.signedOutWhere'));
+    // Roblox holds the join for its bot check (the window's Security page): the window stays open on it.
+    if (c === 'joining' && a.session.phase === 'challenged')
+      return box('kicked', iconBox('alert'), t('act.botCheck'), [game?.name, t('act.stillOpen')].filter(Boolean).join(' · '));
     // Roblox's join answer says the server is full: its place in line when Roblox gave one.
     if (c === 'joining' && a.session.phase === 'full')
       return box('launching', gIcon(game?.iconUrl), t('act.serverFull'),
@@ -351,7 +354,12 @@ function Live({ a, row }: { a: Account; row?: boolean }) {
 /** The client's process id, for tools that pick a Roblox window by it; a click copies it. Nothing until the window is there. */
 function Pid({ a }: { a: Account }) {
   const { t } = useHost();
-  return a.session?.pid > 0 ? <button className="pid" data-act="copy-pid" title={t('card.pidTip')}>{`PID ${a.session.pid}`}</button> : null;
+  if (!(a.session?.pid > 0)) return null;
+  const pid = <button className="pid" data-act="copy-pid" title={t('card.pidTip')}>{`PID ${a.session.pid}`}</button>;
+  // Its window hidden by Bloxkeep while the game runs: said, and a click shows it again.
+  return a.session.hidden
+    ? <><button className="pid hidden-win" data-act="show-window" title={`${t('card.hidden')} · ${t('m.showWindow')}`} aria-label={t('m.showWindow')}><Icon name="eyeOff" /></button>{pid}</>
+    : pid;
 }
 /** A list row's columns after the status: each column the list has, in every row, as wide as its longest (Sizer). */
 function RowColumns({ a, c, local }: { a: Account; c: Cols; local: boolean }) {
@@ -395,7 +403,10 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
     : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null;
   const sub = [a.username ? `@${a.username}` : '', a.displayName && a.displayName !== a.username && a.displayName !== a.label ? a.displayName : ''].filter(Boolean).join(' · ');
   // The main button, by what it does (a new one, not the old one changed: the focus then goes as it did, to the card).
-  const action = local || a.state === 'launching'
+  // A window held on Roblox's bot check: Verify, in Bloxkeep's own window (Close stays in the menu).
+  const action = held(a)
+    ? <button key="bot-check" className="pill-btn relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" />{t('card.botCheck')}</button>
+    : local || a.state === 'launching'
     ? <button key="close-one" className="pill-btn stop" data-act="close-one"><Icon name="power" />{t('card.close')}</button>
     : a.rejoin
       ? <button key="cancel-rejoin" className="pill-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" />{t('rj.cancel')}</button>
@@ -443,6 +454,7 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
       return { cls: 'kicked', text: withGame(a.session.kickMessage ? `${why}: ${a.session.kickMessage}` : why) };
     }
     if (c === 'menu' && a.session.phase === 'joinFailed') return { cls: 'online', text: withGame(t('act.joinFailed')) };
+    if (c === 'joining' && a.session.phase === 'challenged') return { cls: 'kicked', text: withGame(t('act.botCheck')) };
     if (c === 'joining' && a.session.phase === 'full')
       return { cls: 'launching', text: withGame(a.session.queuePosition ? `${t('row.full')} · ${t('act.inLine', { n: a.session.queuePosition })}` : t('act.serverFull')) };
     if (c === 'menu') return { cls: 'online', text: t('act.menuHere') };
@@ -452,7 +464,8 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
   // A ban or a lost sign-in is the red pill in front; a lost sign-in needs no words after it.
   switch (p?.type) {
     case 'ingame': return { cls: 'ingame', text: `${t('row.elsewhere')} · ${p.game || t('act.hidden')}` };
-    case 'online': return { cls: 'online', text: t('act.online') };
+    // Roblox's status, not a window here: said where, as the card does (a bare "Online" read as running).
+    case 'online': return { cls: 'online', text: t('row.onlineWeb') };
     case 'studio': return { cls: 'studio', text: t('act.studio') };
     case 'offline':
     case 'invisible': return a.cookieValid === false && !a.banned ? { cls: 'signedout', text: '' } : { cls: 'offline', text: t('act.offline') };
@@ -464,9 +477,12 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
 function RowAction({ children }: { children: ReactNode }) {
   const { t } = useHost();
   return <span className="cell row-act-cell">{children}
-    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play']] as const).map(([icon, k]) =>
+    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play'], ['shield', 'card.botCheck']] as const).map(([icon, k]) =>
       <Sizer key={k}><span className="row-act"><Icon name={icon} /><span>{t(k)}</span></span></Sizer>)}</span>;
 }
+
+/** A window of this PC held on Roblox's bot check (the window's log said so). */
+const held = (a: Account) => isLocal(a) && a.session?.phase === 'challenged';
 
 /** One line per account for the compact list; the same actions as a card (select, right-click menu, play). */
 function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }) {
@@ -477,7 +493,8 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
   const up = local && st.cls === 'ingame' && a.session ? duration(a.session.since) : '';
   // The card's main button with its words too (a bare icon read as a mystery), each as wide as the longest of the four
   // (RowAction's Sizers): the buttons stand in a straight column.
-  const action = local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one"><Icon name="power" /><span>{t('card.close')}</span></button>
+  const action = held(a) ? <button key="bot-check" className="row-act relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" /><span>{t('card.botCheck')}</span></button>
+    : local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one"><Icon name="power" /><span>{t('card.close')}</span></button>
     : a.rejoin ? <button key="cancel-rejoin" className="row-act stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" /><span>{t('rj.cancel')}</span></button>
     : a.cookieValid === false ? <button key="relogin" className="row-act relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" /><span>{t('card.relogin')}</span></button>
     : <button key="play-one" className="row-act play" data-act="play-one" disabled={a.state === 'launching'}><Icon name="play" /><span>{t('card.play')}</span></button>;
@@ -517,7 +534,27 @@ export function Dock() {
   const g = page.game;
   // A public game found in the box: its servers can be listed (a private server's link goes straight to its server).
   const canList = !page.progress && !!g && !g.loading && g.ok && !!g.placeId && g.kind !== 'private' && g.kind !== 'share';
-  return <div className="dock">
+  // Toasts sit just above the dock, however tall it is now (its game line, a narrow window, a long translation): a fixed
+  // gap left the dock's top edge under them.
+  const dock = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = dock.current;
+    if (!el) return;
+    // In a style sheet of its own rather than on <html>: nothing in the page's markup changes with it.
+    const sheet = new CSSStyleSheet();
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    const place = () => sheet.replaceSync(`:root { --dock-clear: ${Math.round(window.innerHeight - el.getBoundingClientRect().top + 12)}px; }`);
+    const watch = new ResizeObserver(place);
+    watch.observe(el);
+    window.addEventListener('resize', place);
+    place();
+    return () => {
+      watch.disconnect();
+      window.removeEventListener('resize', place);
+      document.adoptedStyleSheets = document.adoptedStyleSheets.filter(s => s !== sheet);
+    };
+  }, []);
+  return <div className="dock" ref={dock}>
     <button className="game-thumb" id="game-thumb" data-act="browse-games" title={t('dock.browseTip')}>
       <GameIcon key={page.game?.iconUrl || ''} url={page.game?.iconUrl} holder={() => page.game?.iconUrl ? <span className="gph"><Icon name="gamepad" /></span> : <Icon name="gamepad" />} /></button>
     <div className="picker" id="picker" hidden={!P.open}>{P.open ? <Picker P={P} /> : null}</div>

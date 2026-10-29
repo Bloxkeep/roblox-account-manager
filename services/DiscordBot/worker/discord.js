@@ -45,6 +45,8 @@ export async function api(env, method, path, body, headers = {}) {
 const vi = () => undefined;
 const channelOption = { type: 7, name: 'channel', description: 'Where to post', description_localizations: vi('Kênh để đăng'), required: true, channel_types: [0, 5] };
 
+import { PC_COMMAND } from './remote.js';
+
 /** The bot's slash commands, put in place by the bot itself whenever this list changes (worker.js). */
 export const COMMANDS = [
   { name: 'help', description: "What Bloxkeep's bot can do", description_localizations: vi('Bot Bloxkeep làm được gì') },
@@ -104,4 +106,6 @@ export const COMMANDS = [
       { type: 1, name: 'off', description: 'Stop verifying in this server', description_localizations: vi('Ngừng xác minh trong server này') },
     ],
   },
+  // Bloxkeep on the person's own PC (remote.js).
+  PC_COMMAND,
 ];

@@ -1001,9 +1001,6 @@ html [data-theme="dark" lang="vi"]
                 span "Cửa sổ"
 #layer
 #toasts
-  div.ok.toast [role="status"]
-    svg.i #14iobj
-    span "Đã lưu preset."
 -- commands
   pageBusy {"busy":false}
   savePreset {"antiAfk":null,"arrange":null,"autoRejoin":null,"delaySeconds":null,"followPlayer":"","id":"","ids":["00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000004"],"jobId":"","name":"Blox FruitsEvening farm","placeInput":"https://www.roblox.com/games/2753915549/Blox-Fruits","profile":"","rejoinWith":"","restartHours":0,"schedule":null,"server":"any"}

@@ -92,6 +92,7 @@ public sealed class ShellForm : Form
         {
             SetSafeRendering = safe => RestartWebViewAsync(safe, automatic: false),
             AppearanceChanged = ApplyAppearance,
+            HotkeysChanged = RegisterHotkeys,
             ShowNotification = ShowNotification,
             PageShown = RemoveCover,
             SetMiniOpen = open => SetMiniOpen(open),
@@ -434,6 +435,32 @@ public sealed class ShellForm : Form
     {
         base.OnHandleCreated(e);
         Ui.UseThemedTitleBar(this, Themes.Current);
+        RegisterHotkeys();
+    }
+
+    const int WM_HOTKEY = 0x0312, MOD_ALT = 0x1, MOD_CONTROL = 0x2, MOD_NOREPEAT = 0x4000;
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, int modifiers, int key);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    /// <summary>
+    /// Ctrl+Alt+H and Ctrl+Alt+A from any app (AppController.Hotkeys.cs), while the switch is on; one another app
+    /// already holds is said in Settings rather than taken from it.
+    /// </summary>
+    void RegisterHotkeys()
+    {
+        if (!IsHandleCreated)
+            return;
+        UnregisterHotKey(Handle, AppController.HotkeyHide);
+        UnregisterHotKey(Handle, AppController.HotkeyArrange);
+        var taken = new List<string>();
+        if (Prefs.GlobalHotkeys)
+        {
+            if (!RegisterHotKey(Handle, AppController.HotkeyHide, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.H))
+                taken.Add("Ctrl+Alt+H");
+            if (!RegisterHotKey(Handle, AppController.HotkeyArrange, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.A))
+                taken.Add("Ctrl+Alt+A");
+        }
+        _app.HotkeysTaken = taken;
     }
 
     /// <summary>
@@ -442,6 +469,11 @@ public sealed class ShellForm : Form
     /// </summary>
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == WM_HOTKEY)
+        {
+            _app.OnHotkey((int)m.WParam);
+            return;
+        }
         if (m.Msg == WM_SYSCOMMAND && ((int)m.WParam & 0xFFF0) == SC_MINIMIZE)
         {
             // Consumed whichever way the minimise goes through, so a leftover never skips the next picture.

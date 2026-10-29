@@ -39,6 +39,9 @@ export function LaunchPage({ title }: { title: string }) {
     ['direct', t('launch.direct'), !!ins.direct],
     ...(ins.store || st.launchVia === 'store' ? [['store', t('launch.storeName'), !!ins.store] as [string, string, boolean]] : []),
     ...(st.customLauncher ? [['custom', t('launch.custom', { name: st.customLauncher }), true] as [string, string, boolean]] : []),
+    // Roblox VNG's client, always last (the owner's rule, 2026-10-28: never put first, only used when picked); only when
+    // it is on this PC, or still chosen after being removed.
+    ...(ins.vng || st.launchVia === 'vng' ? [['vng', 'Roblox VNG', !!ins.vng] as [string, string, boolean]] : []),
   ];
   const saved = st.launchVia || 'auto';
   const [via, setVia] = useLocal(options.some(o => o[0] === saved) ? saved : options[0][0]);

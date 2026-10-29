@@ -396,9 +396,6 @@ html [data-theme="dark" lang="vi"]
                 span "Cửa sổ"
 #layer
 #toasts
-  div.ok.toast [role="status"]
-    svg.i #14iobj
-    span "Đã lưu."
 -- commands
   getState {}
   monitorArea {"hidden":true}

@@ -97,7 +97,8 @@ public sealed partial class AppController
         if (refused && _splitCoresOn && !_coresRefusedShown)
         {
             _coresRefusedShown = true;
-            Toast(L.T("Windows refused to move a Roblox window to other cores, so it was left as it was."), "info");
+            // Nothing the person can do about it: noted, not shown.
+            Log.Note("Fast cores: Windows refused to change a Roblox window's priority; it was left as it was.");
         }
     }
 

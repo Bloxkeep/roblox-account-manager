@@ -187,6 +187,27 @@ static class SignInsSuite
             healed && w.CookieValid == true && w.AutoRejoin, $"{healed} {w.CookieValid} {w.AutoRejoin}");
         c.Check("…ones Roblox still rejects stay signed out", d.CookieValid == false && s.CookieValid == false);
 
+        // An account Roblox holds (a warning waiting to be accepted, 2026-10-29): 403 on everything, cookie still good.
+        // Not "network", not signed out: said apart, with its roblox.com to open.
+        roblox.Held.Add(a.Cookie);
+        var heldCheck = await Harness.Call(app, "checkAccounts", new { ids = new[] { a.Id } });
+        object? CheckField(string name) => heldCheck?.GetType().GetProperty(name)?.GetValue(heldCheck);
+        c.Check("an account Roblox holds (403): counted as refused, not as a network failure, not signed out",
+            CheckField("refused") is 1 && CheckField("failed") is 0 && CheckField("bad") is 0 && a.CookieValid == true
+            && CheckField("refusedIds") is List<Guid> ids && ids.SequenceEqual([a.Id]), heldCheck);
+        Exception? refusal = null;
+        try
+        {
+            await RobloxApi.GetAuthTicketAsync(a.Cookie);
+        }
+        catch (Exception ex)
+        {
+            refusal = ex;
+        }
+        c.Check("…its sign-in ticket refused: marked so the launch offers its roblox.com",
+            refusal is RobloxApiException { SignInRefused: true, ServerError: false }, refusal?.Message);
+        roblox.Held.Clear();
+
         // ── Roblox VNG's accounts in the status round ──
         // Roblox and Roblox VNG count user ids apart: the same number is another person on the other. A Roblox VNG
         // account's status comes from Roblox VNG only; asked of Roblox, its number is a stranger's.
@@ -253,6 +274,8 @@ static class SignInsSuite
         public string? Extra;
         /// <summary>Roblox's sign-in service down: "who am I" rejects every cookie.</summary>
         public bool Down;
+        /// <summary>Cookies of accounts Roblox holds: 403 to every question, as for a warning not yet accepted.</summary>
+        public readonly HashSet<string> Held = new();
         /// <summary>Who is in a game (the place), as Roblox's presence service and Roblox VNG's each say.</summary>
         public readonly Dictionary<(bool Vng, long Id), long> InGame = new();
         readonly List<Request> _asked = new();
@@ -286,7 +309,9 @@ static class SignInsSuite
             lock (Users)
             {
                 long? user = cookie is not null && Users.TryGetValue(cookie, out long id) ? id : null;
-                res = uri.AbsolutePath switch
+                res = cookie is not null && Held.Contains(cookie) && (csrf || !uri.AbsolutePath.StartsWith("/v1/authentication-ticket", StringComparison.Ordinal))
+                    ? Refusal(HttpStatusCode.Forbidden, "Forbidden")
+                    : uri.AbsolutePath switch
                 {
                     "/v1/users/authenticated" => user is { } u && !Down
                         ? Json(HttpStatusCode.OK, new { id = u, name = $"user{u}", displayName = $"User {u}" })

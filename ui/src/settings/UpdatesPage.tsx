@@ -17,6 +17,8 @@ export function UpdatesPage({ title }: { title: string }) {
   useEffect(() => setBeta(!!u.beta), [u.beta]);
   const [tray, setTray] = useLocal(app.closeToTray !== false);
   const [gpu, setGpu] = useLocal(!app.safeRendering);
+  const keys: { on?: boolean; taken?: string[] } = app.hotkeys || {};
+  const [hotkeys, setHotkeys] = useLocal(keys.on !== false);
   const counted = app.countOnline !== false;
   const [online, setOnline] = useState(counted);
   useEffect(() => setOnline(counted), [counted]);
@@ -56,6 +58,10 @@ export function UpdatesPage({ title }: { title: string }) {
     <Group id="app" title={t('set.g.app')}>
       <Row title={t('set.tray')} desc={t('set.trayDesc')}>
         <Switch id="s-tray" label={t('set.tray')} checked={tray} onChange={v => { setTray(v); call('setCloseToTray', { enabled: v }); }} />
+      </Row>
+      {/* Hotkeys from any app; one another app already holds is said, not taken from it. */}
+      <Row title={t('set.hotkeys')} desc={<>{t('set.hotkeysDesc')}{hotkeys && keys.taken?.length ? <><br /><span className="warn-text">{t('set.hotkeysTaken', { keys: keys.taken.join(', ') })}</span></> : null}</>}>
+        <Switch id="s-hotkeys" label={t('set.hotkeys')} checked={hotkeys} onChange={v => { setHotkeys(v); call('setHotkeys', { enabled: v }); }} />
       </Row>
       <Row title={t('set.gpu')} desc={t('set.gpuDesc')}>
         {/* Switching reloads the interface, so the reply may never come back; the reloaded page shows the new state. */}

@@ -36,6 +36,12 @@ export default [
   S('accounts-full', 'phase=full&queue=3'),
   S('accounts-teleporting', 'phase=teleporting'),
   S('accounts-join-failed', 'phase=joinFailed'),
+  // A window hidden while its game runs: the eye before its PID shows it again; the account menu hides or shows.
+  S('accounts-window-hidden', 'winhidden=1', async s => { await s.click({ css: '[data-act="show-window"]' }); }),
+  S('accounts-window-hide-menu', '', async s => { await s.click({ css: '.card[data-id="00000000-0000-4000-8000-000000000001"] [data-act="card-menu"]' }); await s.snap('menu'); await s.click(key('m.hideWindow')); }),
+  // Roblox holds the join for its bot check: Verify is the card's and the row's main button.
+  S('accounts-challenged', 'phase=challenged', async s => { await s.click({ css: '[data-act="bot-check"]' }); }),
+  S('accounts-challenged-list', 'phase=challenged', async s => { await s.click(key('layout.list')); }),
   S('accounts-full-list', 'phase=full&queue=3', async s => { await s.click(key('layout.list')); }),
   S('accounts-rejoin-wait', 'rejoin=1'),
   S('accounts-long-names', 'long=1'),
@@ -1021,7 +1027,11 @@ export default [
     await s.snap('store');
     await s.choose({ css: '#s-launch' }, 'other:Voidstrap');
   }),
+  // Roblox VNG on this PC: its own option, chosen and saved.
+  S('settings-launch-vng', 'settings=launch&vng=1', async s => { await s.choose({ css: '#s-launch' }, 'vng'); }),
   S('settings-launch-long', 'settings=launch&long=1&notready=1'),
+  // Hotkeys: on, one taken by another app said under it; turned off.
+  S('settings-hotkeys', 'settings=updates&keystaken=1', async s => { await s.snap('one taken'); await s.click({ css: '#s-hotkeys + span, label:has(#s-hotkeys)' }); }),
   S('settings-backup-problems', 'settings=backup&backup=1&bkerr=1&weak=1', async s => { await s.click(key('bk.now')); await s.wait(500); }),
   S('settings-backup-use', 'settings=backup', async s => {
     await s.click({ css: '#s-bk-suggest button' });
@@ -1089,6 +1099,16 @@ export default [
   }),
   S('settings-discord-nolink', 'settings=discord', async s => { await s.click({ css: 'label:has(#s-dc-on)' }); }),
   S('settings-discord-gone', 'settings=discord&dcgone=1'),
+  // Control from Discord: turned on, its code to type into /pc link (and a new one); linked; not connected yet.
+  S('settings-discord-remote', 'settings=discord', async s => {
+    await s.click({ css: 'label:has(#s-dc-remote)' });
+    await s.wait(300);
+    await s.snap('code');
+    await s.click(key('dc.remoteNewCode'));
+    await s.wait(300);
+  }),
+  S('settings-discord-remote-linked', 'settings=discord&remote=linked'),
+  S('settings-discord-remote-connecting', 'settings=discord&remote=connecting'),
   S('settings-discord-fail', 'settings=discord&discord=1&dcfail=1', async s => { await s.click(key('dc.test')); await s.wait(500); }),
   S('settings-discord-reveal', 'settings=discord&discord=1', async s => {
     await s.click({ css: '#s-dc-reveal' });

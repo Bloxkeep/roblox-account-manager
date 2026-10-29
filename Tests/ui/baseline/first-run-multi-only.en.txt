@@ -80,7 +80,7 @@ html [data-theme="dark" lang="en"]
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Multi-Roblox is on. Sign in on roblox.com in your own browsers and press Play: each window runs side by side. The tray icon’s menu turns it off or opens Roblox."
+    span "Multi-Roblox is on: open Roblox as usual, each window runs side by side. Turn it off from the tray icon."
 -- commands
   multiOnly {"on":true}
 == end
@@ -117,6 +117,6 @@ html [data-theme="dark" lang="en"]
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Multi-Roblox is on. Sign in on roblox.com in your own browsers and press Play: each window runs side by side. The tray icon’s menu turns it off or opens Roblox."
+    span "Multi-Roblox is on: open Roblox as usual, each window runs side by side. Turn it off from the tray icon."
 -- commands
   multiOnly {"on":false}

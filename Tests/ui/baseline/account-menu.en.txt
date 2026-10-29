@@ -397,7 +397,7 @@ html [data-theme="dark" lang="en"]
                 svg.i #1e3syqr
                 span "Windows"
 #layer
-  div.menu [role="menu" style="left:867.656px;top:241px"]
+  div.menu [role="menu" style="left:867.656px;top:169px"]
     button [role="menuitem"]
       svg.i #1ewcuky
       span "Play (2 accounts)"
@@ -422,6 +422,12 @@ html [data-theme="dark" lang="en"]
     button [role="menuitem" disabled]
       svg.i #ej9lod
       span "Join this server"
+    button [role="menuitem"]
+      svg.i #1xzadie
+      span "Hide Roblox window"
+    button [role="menuitem" disabled]
+      svg.i #g81ucr
+      span "Switch to another server"
     button [role="menuitem"]
       svg.i #1ap9cll
       span "Auto-rejoin"

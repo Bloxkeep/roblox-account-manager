@@ -194,9 +194,6 @@ html [data-theme="dark" lang="vi"]
                   svg.i #u1ag9u
 #layer
 #toasts
-  div.ok.toast [role="status"]
-    svg.i #14iobj
-    span "Đã lưu preset."
 -- commands
   getState {}
   monitorArea {"hidden":true}

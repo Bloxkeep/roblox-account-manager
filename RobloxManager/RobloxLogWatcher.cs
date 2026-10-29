@@ -57,6 +57,8 @@ public sealed class RobloxLogWatcher
         public DateTime? OutOfMemory;
         /// <summary>When the client logged closing its window in order (see <see cref="ClosedInOrderAt"/>).</summary>
         public DateTime? ClosedInOrder;
+        /// <summary>When the join under way was held for Roblox's bot check (see <see cref="JoinChallengedAt"/>).</summary>
+        public DateTime? JoinChallenged;
     }
 
     /// <summary>
@@ -167,6 +169,11 @@ public sealed class RobloxLogWatcher
     // "[FLog::SingleSurfaceApp] shutDown: (stage:UGCGame)." A crash or a killed process writes neither (2026-10-22: 7 of
     // 40 logs on the owner's PC had both, the 2 crashes neither, each with Roblox's crash report instead).
     const string ShutDownMark = "[FLog::SingleSurfaceApp] shutDown:", TrayRelaunchMark = "Successfully launched new process in systray mode";
+    // The client's join request held for Roblox's check that the account isn't a bot: "[DFLog::HttpTraceError]
+    // HttpResponse(…)status:403 bodySize:82 url:{ "https://gamejoin.roblox.com/v1/join-game" } … challengedByGcs" (Roblox's
+    // generic challenge service). The window then shows Roblox's "Security" page, blank where its check can't load
+    // (Vietnam, 2026-10-23), and Join Error 529 once closed. Three windows logged it that day, no other log of 80.
+    const string ChallengedMark = "challengedByGcs", GameJoinMark = "gamejoin.", JoinRequestMark = "/v1/join-";
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
@@ -201,6 +208,12 @@ public sealed class RobloxLogWatcher
     /// when it didn't: a crash, a killed process, or a log not followed. Read after <see cref="LastStateOf"/>.
     /// </summary>
     public DateTime? ClosedInOrderAt(int pid) => _tails.GetValueOrDefault(pid)?.ClosedInOrder;
+
+    /// <summary>
+    /// When this client's log said Roblox held its join for a bot check (see <see cref="ChallengedMark"/>); null when it
+    /// didn't, or a game started or a server was reached since.
+    /// </summary>
+    public DateTime? JoinChallengedAt(int pid) => _tails.GetValueOrDefault(pid)?.JoinChallenged;
 
     /// <summary>
     /// What a client that has just quit logged last, including the lines written in its final moments (a leave by
@@ -380,6 +393,7 @@ public sealed class RobloxLogWatcher
             tail.State = new ClientState("joining", place, join.Groups[1].Value, null, TimeOf(line), tail.OwnStart ? place : tail.State?.ChosenPlace,
                 tail.State?.PersonStarted == true, TeleportStarted: tail.State?.TeleportStarted);
             tail.OwnStart = false;
+            tail.JoinChallenged = null;
         }
         // The line itself: Roblox's client also has "launchUGCGameInternal: deferred download complete" and the like, no game start.
         else if (line.Contains(LaunchMark, StringComparison.Ordinal) && line.AsSpan().TrimEnd().EndsWith(LaunchMark, StringComparison.Ordinal))
@@ -393,6 +407,7 @@ public sealed class RobloxLogWatcher
             // then a game start in the same window).
             tail.OwnStart = tail.State is not null;
             tail.State = new ClientState("joining", null, null, null, TimeOf(line), tail.State?.ChosenPlace, tail.OwnStart);
+            tail.JoinChallenged = null;
         }
         else if (line.Contains(ConnectedMark, StringComparison.Ordinal))
         {
@@ -487,6 +502,9 @@ public sealed class RobloxLogWatcher
             tail.OutOfMemory ??= TimeOf(line);
         else if (line.Contains(ShutDownMark, StringComparison.Ordinal) || line.Contains(TrayRelaunchMark, StringComparison.Ordinal))
             tail.ClosedInOrder ??= TimeOf(line);
+        else if (line.Contains(ChallengedMark, StringComparison.Ordinal) && line.Contains(GameJoinMark, StringComparison.Ordinal)
+                 && line.Contains(JoinRequestMark, StringComparison.Ordinal) && tail.State is { Status: "joining", JobId: null })
+            tail.JoinChallenged ??= TimeOf(line);
     }
 
     // Preserve the source's strength after showing the disconnect too: a numeric code can arrive later than words.

@@ -13,7 +13,7 @@ public static class WhatsNew
     /// <param name="New">What is new, <paramref name="Improved"/> what works better, <paramref name="Fixed"/> what was
     /// wrong and is fixed: each shown under its own heading.</param>
     public sealed record Release(string Version, string Date, string[]? En = null, string[]? Vi = null, Highlight[]? Highlights = null,
-        Notes? New = null, Notes? Improved = null, Notes? Fixed = null);
+        Notes? New = null, Notes? Improved = null, Notes? Fixed = null, Notes? Removed = null);
 
     /// <summary>A group of notes, in each language.</summary>
     public sealed record Notes(string[] En, string[] Vi);

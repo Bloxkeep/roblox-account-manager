@@ -131,6 +131,7 @@ Details are in [Backup and security](backup-and-security.md).
 | **Update automatically** | Downloads new versions and installs them by itself the next time you're not using it. One found before you unlock installs at once, on the lock screen (Roblox windows stay open). Off: nothing is downloaded by itself, but **Check now** still works. Greyed out on a copy that can't update itself. | On |
 | **Get beta versions** | Updates also bring beta versions: new features before everyone else, which may still have bugs. Turned off on a beta, you keep it until the next regular version. Greyed out on a copy that can't update itself. | Off |
 | **Keep running in the tray when closed** | The ✕ button hides Bloxkeep to the tray instead of quitting. | On |
+| **Hotkeys** | From any app: **Ctrl+Alt+H** hides every Roblox window (their games keep running) or shows them again, **Ctrl+Alt+A** arranges them. If another app already uses one, it says so under the switch. | On |
 | **Hardware acceleration** | Draws Bloxkeep's window with the graphics card. Off, the window uses less RAM (about 90 MB less on a PC with an NVIDIA card). Turns itself off if the driver acts up. Switching reloads the window. | On |
 | **User guide › Open** | Opens this guide. | — |
 | **Send feedback › Write** | An idea, or something that doesn't work. It goes to Bloxkeep's developer. See [Troubleshooting](troubleshooting.md). | — |
