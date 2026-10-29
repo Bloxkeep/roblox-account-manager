@@ -1,5 +1,5 @@
 == end
-html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--backdrop:url(\"scene-halong.svg\") center / cover no-repeat, #1b2a3a;--bg:rgba(27, 42, 58, 0.45);--bg-2:rgba(27, 42, 58, 0.7);--blur:blur(18px) saturate(140%);--card:rgba(35, 49, 65, 0.62);--card-hover:rgba(41, 55, 70, 0.72);--dim:#828a93;--field:rgba(0, 0, 0, .3);--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:rgba(43, 57, 72, 0.94);--surface:rgba(38, 53, 68, 0.72);--surface-2:rgba(255, 255, 255, 0.08);--surface-3:rgba(255, 255, 255, 0.15);--text:#edeeef;--text-2:#bfc3c8"
+html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--backdrop:transparent;--bg:rgba(27, 42, 58, 0.45);--bg-2:rgba(27, 42, 58, 0.7);--blur:blur(18px) saturate(140%);--card:rgba(35, 49, 65, 0.62);--card-hover:rgba(41, 55, 70, 0.72);--dim:#828a93;--field:rgba(0, 0, 0, .3);--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:rgba(43, 57, 72, 0.94);--surface:rgba(38, 53, 68, 0.72);--surface-2:rgba(255, 255, 255, 0.08);--surface-3:rgba(255, 255, 255, 0.15);--text:#edeeef;--text-2:#bfc3c8"
 #app
   div.shell
     aside.side
@@ -368,17 +368,19 @@ html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--
                           div.t "Background color"
                           div.d "Light or dark words follow from it, so they stay easy to read."
                         div.ctl
-                          input.ct-color [id="s-ct-bg" type="color" aria-label="Background color" value="#1b2a3a"]
+                          button.ct-color [id="s-ct-bg" type="button" title="#1b2a3a" aria-expanded="false" aria-haspopup="dialog" aria-label="Background color"]
+                            span [style="background-attachment:initial;background-clip:initial;background-color:rgb(27, 42, 58);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                       div.set-row
                         div
                           div.t "Accent color"
                           div.d "Buttons, switches and what is selected."
                         div.ctl
-                          input.ct-color [id="s-ct-accent" type="color" aria-label="Accent color" value="#f59e0b"]
+                          button.ct-color [id="s-ct-accent" type="button" title="#f59e0b" aria-expanded="false" aria-haspopup="dialog" aria-label="Accent color"]
+                            span [style="background-attachment:initial;background-clip:initial;background-color:rgb(245, 158, 11);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                       div.set-row
                         div
-                          div.t "Background picture"
-                          div.d "A picture from this PC behind the page, which then shows through the panels. Bloxkeep keeps a copy in its data folder."
+                          div.t "Background picture or video"
+                          div.d "A picture or video (MP4, WebM) from this PC behind the page, which then shows through the panels. Bloxkeep keeps a copy in its data folder. A video plays muted, only while the window is open."
                         div.ctl
                           button.btn.ghost.sm "Remove"
                           button.btn.sm "Change…"
@@ -390,6 +392,27 @@ html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--
                         div.ctl
                           input [id="s-ct-fade" type="range" min="0" max="90" step="5" aria-label="Background color over the picture" value="45"]
                           span.range-v "45%"
+                      div.set-row
+                        div
+                          div.t "Blur the background"
+                          div.d "A blurred picture lets the words stand out."
+                        div.ctl
+                          input [id="s-ct-blur" type="range" min="0" max="30" step="1" aria-label="Blur the background" value="0"]
+                          span.range-v "0"
+                      div.set-row
+                        div
+                          div.t "Save this theme"
+                          div.d "Keep it under a name to pick it again later or share it. The same name saves over it."
+                        div.ctl
+                          input.ct-name.field.sm [id="s-ct-name" placeholder="Theme name" maxlength="40" aria-label="Theme name" value=""]
+                          button.btn.sm [id="s-ct-save" disabled] "Save"
+                    div.set-row
+                      div
+                        div.t "Your themes"
+                        div.d "Themes you save, or add from a file someone shared, show here."
+                      div.ctl
+                        button.btn.sm [id="s-ct-import"] "Add from file…"
+                          svg.i #3wh3ok
                     div.set-row
                       div
                         div.t "Language"

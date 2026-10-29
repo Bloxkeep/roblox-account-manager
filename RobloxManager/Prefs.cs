@@ -17,10 +17,15 @@ public static class Prefs
 
     /// <summary>
     /// Settings › Appearance › Custom: the page's colour and its accent (#rrggbb), how much of that colour lies over the
-    /// picture (0 to 90 %), and the picture's file in the data folder (theme-background-*.png…) when there is one.
+    /// picture (0 to 90 %), the picture's (or video's) file in the data folder (theme-background-*.png…) when there is
+    /// one, and how much it is blurred (0 to 30 px).
     /// </summary>
-    public sealed record CustomTheme(string Background, string Accent, int Fade, string? Picture);
+    public sealed record CustomTheme(string Background, string Accent, int Fade, string? Picture, int Blur = 0);
     public static CustomTheme Custom { get; set; } = new("#141a26", "#22c55e", 45, null);
+
+    /// <summary>A custom theme saved under a name (Settings › Appearance › Your themes): picked again, shared as a file.</summary>
+    public sealed record SavedTheme(string Id, string Name, CustomTheme Look);
+    public static List<SavedTheme> SavedThemes { get; set; } = [];
 
     /// <summary>The close button hides the window to the notification area; the app quits from the tray icon.</summary>
     public static bool CloseToTray { get; set; } = true;
@@ -207,10 +212,20 @@ public static class Prefs
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
         "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
-        "knownVaultIds", "foreignRestore",
+        "knownVaultIds", "foreignRestore", "savedThemes",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
+
+    /// <summary>A custom theme as saved (its colours checked, the numbers kept in range); what is missing or wrong from <paramref name="fallback"/>.</summary>
+    static CustomTheme ReadCustom(JsonElement e, CustomTheme fallback)
+    {
+        static int? Number(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int n) ? n : null;
+        return new(Themes.Hex(Text(e, "background")) ?? fallback.Background, Themes.Hex(Text(e, "accent")) ?? fallback.Accent,
+            Number(e, "fade") is { } fade ? Math.Clamp(fade, 0, 90) : fallback.Fade,
+            Text(e, "picture") is { } picture && Themes.IsThemeMediaName(picture) ? picture : null,
+            Number(e, "blur") is { } blur ? Math.Clamp(blur, 0, Themes.MaxBlur) : 0);
+    }
 
     static string? Text(JsonElement e, string name) =>
         e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
@@ -252,9 +267,12 @@ public static class Prefs
             LastVault = Text(root, "lastVault");
             AskVault = root.TryGetProperty("askVault", out var ask) && ask.ValueKind == JsonValueKind.True;
             if (root.TryGetProperty("customTheme", out var custom) && custom.ValueKind == JsonValueKind.Object)
-                Custom = new(Themes.Hex(Text(custom, "background")) ?? Custom.Background, Themes.Hex(Text(custom, "accent")) ?? Custom.Accent,
-                    custom.TryGetProperty("fade", out var fade) && fade.ValueKind == JsonValueKind.Number && fade.TryGetInt32(out int f) ? Math.Clamp(f, 0, 90) : Custom.Fade,
-                    Text(custom, "picture") is { } picture && Themes.IsPictureName(picture) ? picture : null);
+                Custom = ReadCustom(custom, Custom);
+            if (root.TryGetProperty("savedThemes", out var saved) && saved.ValueKind == JsonValueKind.Array)
+                SavedThemes = saved.EnumerateArray()
+                    .Where(t => t.ValueKind == JsonValueKind.Object && Text(t, "id") is { Length: > 0 and <= 40 } && Themes.ThemeName(Text(t, "name")) is not null)
+                    .Select(t => new SavedTheme(Text(t, "id")!, Themes.ThemeName(Text(t, "name"))!, ReadCustom(t, Custom)))
+                    .DistinctBy(t => t.Id).Take(Themes.MaxSaved).ToList();
             if (root.TryGetProperty("closeToTray", out var tray) && tray.ValueKind == JsonValueKind.False)
                 CloseToTray = false;
             if (root.TryGetProperty("globalHotkeys", out var keys) && keys.ValueKind == JsonValueKind.False)
@@ -375,7 +393,11 @@ public static class Prefs
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
                 ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId,
                 ["remoteControl"] = RemoteControl, ["remoteKey"] = RemoteKey, ["firstOpenTold"] = FirstOpenTold,
-                ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture },
+                ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture, blur = Custom.Blur },
+                ["savedThemes"] = SavedThemes.Select(t => new
+                {
+                    id = t.Id, name = t.Name, background = t.Look.Background, accent = t.Look.Accent, fade = t.Look.Fade, picture = t.Look.Picture, blur = t.Look.Blur,
+                }).ToArray(),
                 ["notifications"] = Notifications, ["notifyOff"] = NotifyOff.Order(StringComparer.Ordinal).ToArray(),
                 // The first vault's backup state also where builds before several vaults read it.
                 ["backupFolder"] = BackupFolder, ["backupEnabled"] = BackupEnabled,

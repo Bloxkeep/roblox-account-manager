@@ -208,6 +208,19 @@ static class SignInsSuite
             refusal is RobloxApiException { SignInRefused: true, ServerError: false }, refusal?.Message);
         c.Check("…Roblox's reason (\"User is moderated\") named: a notice on the account to accept",
             refusal is RobloxApiException { Moderated: true } && refusal.Message.Contains("notice on this account"), refusal?.Message);
+        // A renewed cookie of such an account: whose it is asked once, not again 10, 40 and 90 s later (the notice stays
+        // until the person accepts it). The renewal is let go, the saved one kept.
+        string heldBefore = a.Cookie, heldNext = Cookie("A-held");
+        roblox.Held.Remove(heldBefore);
+        roblox.Held.Add(heldNext);
+        roblox.Rotate[heldBefore] = heldNext;
+        await Quietly(RobloxApi.GetPresenceAsync(heldBefore, [2001]));
+        var renewing = Renewals(app);
+        bool quick = await Task.WhenAny(renewing, Task.Delay(TimeSpan.FromSeconds(5))) == renewing;
+        int asked = roblox.AskedWith(heldNext).Count(r => r.Path == "/v1/users/authenticated");
+        c.Check("a renewed cookie of an account with a notice to accept: whose it is asked once, not again later",
+            quick && asked == 1 && a.Cookie == heldBefore, $"done in 5 s: {quick}, asked {asked}, kept: {a.Cookie == heldBefore}");
+        await renewing;
         roblox.Held.Clear();
 
         // ── Roblox VNG's accounts in the status round ──

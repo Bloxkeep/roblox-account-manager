@@ -360,7 +360,7 @@ html [data-theme="custom" data-tone="light" lang="vi"] style="--accent:#f59e0b;-
                         span.tg-label "Của bạn"
                         div.tg-list
                           button.on.swatch [role="radio" tabindex="0" aria-checked="true" aria-label="Tùy chỉnh"]
-                            span [data-theme="custom" data-tone="light" style="--accent:#f59e0b;--accent-hover:#d38809;--accent-ink:#0b0d12;--bg:#f1e9da;--bg-2:#eae2d3;--card:#fcfbf8;--card-hover:#fefdfc;--dim:#858078;--field:#fefdfb;--inv:#f59e0b;--inv-hover:#d38809;--inv-ink:#0b0d12;--muted:#605d57;--raised:#fefdfb;--surface:#fcfaf6;--surface-2:#f8f4ed;--surface-3:#e0d9cb;--text:#131311;--text-2:#43413d"]
+                            span [data-theme="custom" data-tone="light" style="--accent:#f59e0b;--accent-hover:#d38809;--accent-ink:#0b0d12;--backdrop:#f1e9da;--bg:#f1e9da;--bg-2:#eae2d3;--card:#fcfbf8;--card-hover:#fefdfc;--dim:#858078;--field:#fefdfb;--inv:#f59e0b;--inv-hover:#d38809;--inv-ink:#0b0d12;--muted:#605d57;--raised:#fefdfb;--surface:#fcfaf6;--surface-2:#f8f4ed;--surface-3:#e0d9cb;--text:#131311;--text-2:#43413d"]
                               em
                     div.ct [id="s-custom"]
                       div.set-row
@@ -368,20 +368,36 @@ html [data-theme="custom" data-tone="light" lang="vi"] style="--accent:#f59e0b;-
                           div.t "Màu nền"
                           div.d "Chữ sáng hay tối tự đổi theo màu này để luôn dễ đọc."
                         div.ctl
-                          input.ct-color [id="s-ct-bg" type="color" aria-label="Màu nền" value="#f1e9da"]
+                          button.ct-color [id="s-ct-bg" type="button" title="#f1e9da" aria-expanded="false" aria-haspopup="dialog" aria-label="Màu nền"]
+                            span [style="background-attachment:initial;background-clip:initial;background-color:rgb(241, 233, 218);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                       div.set-row
                         div
                           div.t "Màu nhấn"
                           div.d "Nút, công tắc và mục đang chọn."
                         div.ctl
-                          input.ct-color [id="s-ct-accent" type="color" aria-label="Màu nhấn" value="#f59e0b"]
+                          button.ct-color [id="s-ct-accent" type="button" title="#f59e0b" aria-expanded="false" aria-haspopup="dialog" aria-label="Màu nhấn"]
+                            span [style="background-attachment:initial;background-clip:initial;background-color:rgb(245, 158, 11);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                       div.set-row
                         div
-                          div.t "Ảnh nền"
-                          div.d "Ảnh trên máy đặt phía sau, các bảng trong mờ để ảnh hiện qua. Bloxkeep lưu một bản sao trong thư mục dữ liệu."
+                          div.t "Ảnh hoặc video nền"
+                          div.d "Ảnh hoặc video (MP4, WebM) trên máy đặt phía sau, các bảng trong mờ để nền hiện qua. Bloxkeep lưu một bản sao trong thư mục dữ liệu. Video không có tiếng, chỉ chạy khi cửa sổ đang mở."
                         div.ctl
-                          button.btn.sm "Chọn ảnh…"
+                          button.btn.sm "Chọn…"
                             svg.i #16jqtkh
+                      div.set-row
+                        div
+                          div.t "Lưu theme này"
+                          div.d "Đặt tên để lần sau chọn lại hoặc chia sẻ. Trùng tên thì lưu đè."
+                        div.ctl
+                          input.ct-name.field.sm [id="s-ct-name" placeholder="Tên theme" maxlength="40" aria-label="Tên theme" value=""]
+                          button.btn.sm [id="s-ct-save" disabled] "Lưu"
+                    div.set-row
+                      div
+                        div.t "Theme của bạn"
+                        div.d "Theme bạn lưu, hoặc thêm từ file người khác gửi, sẽ hiện ở đây."
+                      div.ctl
+                        button.btn.sm [id="s-ct-import"] "Thêm từ file…"
+                          svg.i #3wh3ok
                     div.set-row
                       div
                         div.t "Ngôn ngữ"

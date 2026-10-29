@@ -89,7 +89,8 @@ Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **H
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
 | **Chủ đề** | **Theo Windows** (sáng hay tối theo Windows), hoặc một trong 74 chủ đề thuộc các nhóm **Cơ bản**, **Phong cảnh**, **Màu sắc**, **Phong cách** và **Theo mùa**. Dùng phím mũi tên để xem thử; chủ đề được lưu khi bạn dừng tay. | Tối |
-| **Của bạn › Tùy chỉnh** | Chọn **Màu nền** và **Màu nhấn** (nút, công tắc, mục đang chọn); chữ tự sáng hay tối để luôn dễ đọc. **Chọn ảnh…** đặt một ảnh trên máy làm nền phía sau, còn **Phủ màu nền lên ảnh** chỉnh mức ảnh hiện qua. Bloxkeep giữ một bản sao của ảnh trong thư mục dữ liệu. | — |
+| **Của bạn › Tùy chỉnh** | Chọn **Màu nền** và **Màu nhấn** (nút, công tắc, mục đang chọn); chữ tự sáng hay tối để luôn dễ đọc. **Chọn…** đặt một ảnh hoặc video (MP4, WebM) trên máy làm nền phía sau. **Phủ màu nền lên ảnh** chỉnh mức nền hiện qua, **Làm mờ nền** làm nền mờ đi. Video không có tiếng, chỉ chạy khi cửa sổ đang mở. Bloxkeep giữ một bản sao trong thư mục dữ liệu. **Lưu theme này** lưu theme lại kèm tên. | — |
+| **Theme của bạn** | Các theme bạn đã lưu, bấm vào để dùng. **Lưu thành file** để gửi một theme dưới dạng file `.bloxkeeptheme`, **Thêm từ file…** để thêm theme người khác gửi. | — |
 | **Ngôn ngữ** | EN / VI. | EN |
 | **Ẩn tên tài khoản** | Thay tên thật bằng "Tài khoản 1", "Tài khoản 2"… ở mọi chỗ. Xem [Sao lưu và bảo mật](backup-and-security.vi.md). | Tắt |
 

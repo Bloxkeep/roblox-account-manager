@@ -101,6 +101,18 @@ export default [
   // ── Settings: every page ──
   ...['launch', 'roblox', 'perf', 'notify', 'discord', 'appearance', 'security', 'backup', 'updates'].map(p => S(`settings-${p}`, `settings=${p}`)),
   S('settings-discord-on', 'settings=discord&discord=1'),
+  // Time boxes have Bloxkeep's own list: its button opens it and closes it again, a pick goes into the box (and is
+  // saved), Escape closes it.
+  S('settings-time-pick', 'settings=discord&discord=1', async s => {
+    await s.click({ css: '#s-dc-daily-time + .tf-btn' });
+    await s.snap('open');
+    await s.click({ css: '#s-dc-daily-time + .tf-btn' });
+    await s.snap('closed');
+    await s.click({ css: '#s-dc-daily-time + .tf-btn' });
+    await s.click({ css: '.tf-pop [data-col="m"] button:nth-child(31)' });
+    await s.snap('picked');
+    await s.key('Escape');
+  }),
   // The custom theme: picked from its swatch (its colours and picture rows show), a picture chosen (the page behind
   // glass), and one with a picture already, on a light background too.
   S('settings-custom-theme', 'settings=appearance', async s => {
@@ -113,6 +125,37 @@ export default [
   S('settings-custom-picture', 'settings=appearance&theme=custom&ctpicture=1'),
   S('settings-custom-light', 'settings=appearance&theme=custom&ctbg=f1e9da'),
   S('accounts-custom-theme', 'theme=custom&ctpicture=1'),
+  // The colour boxes open Bloxkeep's own picker: a ready colour picked, a code typed, its button closing it again.
+  S('settings-color-pick', 'settings=appearance&theme=custom', async s => {
+    await s.click({ css: '#s-ct-accent' });
+    await s.snap('open');
+    await s.click({ css: '.cf-ready [aria-label="#3b82f6"]' });
+    await s.fill({ css: '.cf-hex' }, '#ec4899');
+    await s.wait(400);
+    await s.snap('typed');
+    await s.click({ css: '#s-ct-accent' });
+    await s.wait(400);
+  }),
+  // Blurred behind the page; your themes (the one in use marked), one saved by name, one put in use, one deleted.
+  S('accounts-custom-blur', 'theme=custom&ctpicture=1&ctblur=12'),
+  S('settings-custom-saved', 'settings=appearance&theme=custom&ctpicture=1&ctblur=8&saved=1', async s => {
+    await s.hover({ css: '#s-saved-themes' });
+  }),
+  S('settings-custom-save', 'settings=appearance&theme=custom&saved=1', async s => {
+    await s.type('Ocean', { css: '#s-ct-name' });
+    await s.click({ css: '#s-ct-save' });
+    await s.wait(400);
+  }),
+  S('settings-saved-use', 'settings=appearance&saved=1', async s => {
+    await s.click({ css: '.ct-theme[data-id="t2"] .ct-use' });
+    await s.wait(500);
+    await s.snap('used');
+    await s.click({ css: '.ct-theme[data-id="t1"] .ct-del' });
+    await s.snap('asked');
+    await s.click({ css: '.ct-theme[data-id="t1"] .btn.danger' });
+    await s.wait(300);
+  }),
+  S('settings-saved-none', 'settings=appearance'),
   S('settings-backup-on', 'settings=backup&backup=1'),
   S('settings-update-ready', 'settings=updates&update=1'),
   S('settings-update-quiet', 'settings=updates&update=quiet'),
@@ -890,6 +933,26 @@ export default [
     await s.snap('job box');
     await s.click({ css: '.overlay .modal-foot .btn.primary' });
     await s.wait(400);
+  }),
+  // A drop-down's list in the page's colours, under its box; clicked again, it closes.
+  S('select-open', 'preset=1', async s => {
+    await s.wait(300);
+    await s.click({ css: '#ps-sch-stop' });
+    await s.snap('open');
+    await s.click({ css: '#ps-sch-stop' });
+  }),
+  // The date box's own calendar: a day picked goes into the box; the time box's list closes on Escape, the form stays.
+  S('preset-date-pick', 'preset=1', async s => {
+    await s.wait(300);
+    await s.choose({ css: '#ps-sch-mode' }, 'once');
+    await s.click({ css: '#ps-sch-date + .tf-btn' });
+    await s.snap('calendar');
+    await s.click({ css: '.tf-pop .tf-cal-head [aria-label]:last-child' });
+    await s.click({ css: '.tf-pop .tf-cal-grid button:nth-of-type(15)' });
+    await s.snap('picked');
+    await s.click({ css: '#ps-sch-time + .tf-btn' });
+    await s.snap('time');
+    await s.key('Escape');
   }),
   S('preset-editor-once', 'preset=1', async s => {
     await s.wait(300);

@@ -2058,6 +2058,20 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .select option { background: var(--raised); color: var(--text); }
 .select option:disabled { color: var(--dim); }
+/* The list a drop-down opens, in the page's colours like Bloxkeep's menus, not the browser's own (WebView2 135 and
+   later: a customisable select; an older one keeps the browser's list). */
+@supports (appearance: base-select) {
+  .select, .select::picker(select) { appearance: base-select; }
+  .select { display: inline-flex; align-items: center; line-height: normal; }
+  .select::picker-icon { display: none; }
+  .select::picker(select) { min-width: anchor-size(width); max-height: min(360px, 60vh); margin: 6px 0; padding: 6px; border-radius: 14px;
+    border: 1px solid var(--line-2); background: var(--raised); color: var(--text-2); box-shadow: 0 18px 50px var(--shadow); scrollbar-width: thin; }
+  .select option { min-height: 34px; padding: 7px 10px; border-radius: 9px; background: transparent; color: var(--text-2); font-size: 13px; }
+  .select option::checkmark { display: none; }
+  .select option:hover:not(:disabled), .select option:focus-visible { background: var(--hover); color: var(--text); outline: none; }
+  .select option:checked { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); font-weight: 600; }
+  .select option:disabled { background: transparent; color: var(--dim); }
+}
 .set-note { display: flex; gap: 10px; margin: 0 0 14px; padding: 10px 12px; border-radius: 11px; background: color-mix(in srgb, var(--warn) 8%, transparent); border: 1px solid var(--warn-line); color: var(--warn-ink); font-size: 12.5px; }
 .set-note .i { width: 16px; height: 16px; flex: none; margin-top: 1px; }
 /* Two boxes a row at every width: four in a row cut "New password (6+ characters)", the only label its box has. */
@@ -2110,6 +2124,30 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .field.sm { width: 230px; height: 34px; }
 .field.sm.time { width: 132px; } /* room for "10:00 PM" where Windows shows a 12-hour clock */
 .field.bad { border-color: var(--bad-line); }
+/* Time and date boxes (ui/src/TimeField.tsx): the box's frame around the browser's box and Bloxkeep's own button. */
+.tf { display: inline-flex; align-items: center; gap: 2px; padding-right: 4px; }
+.tf:focus-within { border-color: var(--focus-line); box-shadow: 0 0 0 3px var(--focus-ring); }
+.tf-box { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; outline: none; }
+.tf-box::-webkit-calendar-picker-indicator { display: none; }
+.tf-box::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+.tf-btn { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: none; color: var(--muted); }
+.tf-btn:hover:not(:disabled), .tf-btn[aria-expanded="true"] { background: var(--hover); color: var(--text); }
+.tf-btn .i { width: 16px; height: 16px; }
+.tf-pop { position: fixed; z-index: 65; padding: 6px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--raised);
+  box-shadow: 0 18px 50px var(--shadow); animation: fade .1s ease; }
+.tf-time { display: flex; gap: 4px; height: 236px; }
+.tf-col { display: flex; flex-direction: column; gap: 2px; width: 52px; overflow-y: auto; scrollbar-width: none; }
+.tf-col button, .tf-cal-grid button { flex: none; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tf-col button:hover, .tf-cal-grid button:hover { background: var(--hover); color: var(--text); }
+.tf-col button.on, .tf-cal-grid button.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.tf-cal { width: 260px; }
+.tf-cal-head { display: flex; align-items: center; justify-content: space-between; padding: 0 0 6px; }
+.tf-cal-head b { font-size: 13.5px; text-transform: capitalize; }
+.tf-cal-head .icon-btn { width: 30px; height: 30px; }
+.tf-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.tf-wd { display: grid; place-items: center; height: 26px; color: var(--muted); font-size: 11.5px; }
+.tf-cal-grid button { height: 32px; }
+.tf-cal-grid button.today:not(.on) { box-shadow: inset 0 0 0 1px var(--accent); }
 #set-page-discord .set-row > div:first-child { flex: 1 1 240px; min-width: 0; }
 #set-page-discord .set-row .ctl { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px 10px; }
 #s-dc-hook { display: block; }
@@ -2118,9 +2156,6 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .dc-ping { display: flex; align-items: center; gap: 8px; }
 .dc-ping .dc-id { width: calc(21ch + 28px); } /* a whole 20-digit ID in any theme's font ("0" sets ch; a spare one for wider digits) */
 .dc-ping .select { min-width: 132px; }
-.dc-parts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 14px; max-width: 440px; }
-.dc-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
-.dc-chk input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
 .dc-dash { color: var(--muted); }
 .dc-code { margin-left: 6px; font: 700 17px/1 "Cascadia Mono", Consolas, ui-monospace, monospace; letter-spacing: .12em; color: var(--text); user-select: text; }
 .dc-err { min-height: 18px; margin: 8px 0 0; font-size: 12.5px; color: var(--bad-ink); }
@@ -2303,9 +2338,36 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .swatch:hover::after, .swatch:focus-visible::after { opacity: 1; }
 .swatch.on { outline-color: var(--text); }
 /* Settings › Appearance › Custom: the colour wells, the size of a button. */
-.ct-color { width: 44px; height: 30px; padding: 2px; border: 1px solid var(--line-3); border-radius: 8px; background: var(--field); cursor: pointer; }
-.ct-color::-webkit-color-swatch-wrapper { padding: 0; }
-.ct-color::-webkit-color-swatch { border: none; border-radius: 5px; }
+/* The custom theme's picture or video (app.js showCustomMedia): under the page, blurred as asked. */
+#ct-media { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: center / cover no-repeat;
+  filter: blur(var(--ct-blur, 0px)); transform: scale(var(--ct-scale, 1)); }
+#ct-media video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ct-name { width: 180px; }
+/* Your themes: one line each, its swatch and name to put it in use, then share and delete. */
+.ct-saved { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; padding: 0 0 14px; }
+.ct-theme { display: flex; align-items: center; gap: 2px; padding: 4px 4px 4px 6px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--card); }
+.ct-theme.on { border-color: var(--accent); }
+.ct-use { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 4px; border: 0; border-radius: 8px; background: none; color: var(--text); text-align: left; }
+.ct-use:hover { background: var(--hover); }
+.ct-dot { position: relative; flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-3); overflow: hidden; }
+.ct-dot::after { content: ""; position: absolute; right: 0; bottom: 0; width: 50%; height: 50%; background: var(--inv); }
+.ct-tname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ct-kind { flex: none; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11.5px; }
+.ct-theme .icon-btn { width: 30px; height: 30px; }
+.ct-theme .btn.sm { flex: none; }
+.ct-color { width: 44px; height: 30px; padding: 3px; border: 1px solid var(--line-3); border-radius: 8px; background: var(--field); cursor: pointer; }
+.ct-color > span { display: block; width: 100%; height: 100%; border-radius: 5px; }
+.ct-color[aria-expanded="true"] { border-color: var(--focus-line); }
+/* Bloxkeep's colour picker (ui/src/ColorField.tsx). */
+.cf { display: grid; gap: 10px; width: 232px; padding: 4px; }
+.cf-ready { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.cf-ready button { aspect-ratio: 1; border: 1px solid var(--line-3); border-radius: 7px; padding: 0; }
+.cf-ready button.on { box-shadow: 0 0 0 2px var(--raised), 0 0 0 4px var(--accent); }
+.cf-area { position: relative; height: 140px; border-radius: 10px; cursor: crosshair; touch-action: none;
+  background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); }
+.cf-dot { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, .4); pointer-events: none; }
+input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+.cf-hex.field.sm { width: 100%; font-variant-numeric: tabular-nums; }
 .swatch:focus-visible { outline-color: var(--focus); outline-offset: 3px; }
 /* Background on the left, the theme's highlight colour on the right, its Play colour in the middle. */
 .swatch > span { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: linear-gradient(90deg, transparent 50%, var(--inv) 50%), var(--backdrop); }
@@ -2394,7 +2456,6 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .alog-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .alog-tools .select.sm { max-width: 200px; }
 .alog-tools .btn.sm .i { width: 15px; height: 15px; }
-.alog-note { margin: 4px 0 6px; font-size: 12.5px; color: var(--muted); }
 .alog-day { margin: 14px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .alog-list { margin: 0; padding: 0; list-style: none; }
 .alog-row { display: grid; grid-template-columns: 8px 88px minmax(0, 180px) minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }

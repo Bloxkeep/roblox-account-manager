@@ -399,7 +399,10 @@ html [data-theme="dark" lang="en"]
             div.ps-sched-body [id="ps-sch-body"]
               div.preset-row
                 label "Start time"
-                  input.field [id="ps-sch-time" type="time" value="20:00"]
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                      svg.i #ktpp14
                 label "Repeat"
                   select.select [id="ps-sch-mode" value="days"]
                     option [value="days"] "On these weekdays"
@@ -850,7 +853,10 @@ html [data-theme="dark" lang="en"]
             div.ps-sched-body [id="ps-sch-body"]
               div.preset-row
                 label "Start time"
-                  input.field [id="ps-sch-time" type="time" value="20:00"]
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                      svg.i #ktpp14
                 label "Repeat"
                   select.select [id="ps-sch-mode" value="days"]
                     option [value="days"] "On these weekdays"

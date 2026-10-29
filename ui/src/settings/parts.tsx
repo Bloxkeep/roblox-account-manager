@@ -3,6 +3,7 @@
 // a switch. Buttons keep their data-act: app.js's one click handler for the whole page still does what they do.
 import { useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { Icon, useHost } from '../host';
+import { TimeInput } from '../TimeField';
 
 /**
  * A control's value that answers a click at once, and follows the app's state when that comes (confirming it or not).
@@ -61,10 +62,19 @@ export function TextBox({ saved, again = 0, commit, className, ref, ...attrs }: 
     el.addEventListener('change', changed);
     return () => el.removeEventListener('change', changed);
   }, []);
-  return <input {...attrs} ref={el => {
-    box.current = el;
-    if (typeof ref === 'function') ref(el); else if (ref) ref.current = el;
-  }} className={`${className}${bad ? ' bad' : ''}`} value={value} onChange={e => setValue(e.target.value)} />;
+  const own = {
+    ref: (el: HTMLInputElement | null) => {
+      box.current = el;
+      if (typeof ref === 'function') ref(el); else if (ref) ref.current = el;
+    },
+    className: `${className}${bad ? ' bad' : ''}`, value, onChange: (e: { target: HTMLInputElement }) => setValue(e.target.value),
+  };
+  // A time box gets Bloxkeep's own picker (TimeField.tsx) rather than the browser's.
+  if (attrs.type === 'time') {
+    const { type: _, ...rest } = attrs;
+    return <TimeInput {...rest} {...own} />;
+  }
+  return <input {...attrs} {...own} />;
 }
 
 /** A part of a settings card that stays closed until wanted: its line reads like a row title, with a chevron. */

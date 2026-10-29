@@ -173,7 +173,10 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "Every day at"
                         div.ctl
-                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:00"]
+                          span.field.sm.tf.time
+                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:00"]
+                            button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                              svg.i #ktpp14
                     div.set-row
                       div
                         div.t "When a scheduled preset finishes"
@@ -269,9 +272,15 @@ html [data-theme="dark" lang="en"]
                         div.t "Quiet hours"
                         div.d "Messages still arrive, without pings."
                       div.ctl
-                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="From" value="23:00"]
+                        span.field.sm.tf.time
+                          input.tf-box [id="s-dc-quiet-from" type="time" aria-label="From" value="23:00"]
+                          button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                            svg.i #ktpp14
                         span.dc-dash "–"
-                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="To" value="07:00"]
+                        span.field.sm.tf.time
+                          input.tf-box [id="s-dc-quiet-to" type="time" aria-label="To" value="07:00"]
+                          button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                            svg.i #ktpp14
                         label.switch
                           input [id="s-dc-quiet" type="checkbox" aria-label="Quiet hours" checked=true]
                           span
@@ -525,7 +534,10 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "Every day at"
                         div.ctl
-                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:00"]
+                          span.field.sm.tf.time
+                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:00"]
+                            button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                              svg.i #ktpp14
                     div.set-row
                       div
                         div.t "When a scheduled preset finishes"
@@ -621,9 +633,15 @@ html [data-theme="dark" lang="en"]
                         div.t "Quiet hours"
                         div.d "Messages still arrive, without pings."
                       div.ctl
-                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="From" value="23:00"]
+                        span.field.sm.tf.time
+                          input.tf-box [id="s-dc-quiet-from" type="time" aria-label="From" value="23:00"]
+                          button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                            svg.i #ktpp14
                         span.dc-dash "–"
-                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="To" value="07:00"]
+                        span.field.sm.tf.time
+                          input.tf-box [id="s-dc-quiet-to" type="time" aria-label="To" value="07:00"]
+                          button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                            svg.i #ktpp14
                         label.switch
                           input [id="s-dc-quiet" type="checkbox" aria-label="Quiet hours" checked=true]
                           span

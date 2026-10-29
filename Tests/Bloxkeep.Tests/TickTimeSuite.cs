@@ -36,6 +36,30 @@ static class TickTimeSuite
         string second = LogText(dir)[first.Length..];
         c.Check("one twice as long is written too, with how many came unwritten",
             second.Contains("Slow process check: 500 ms") && second.Contains("PersistIfDue(now) 480 ms") && second.Contains("1 slow check(s) came"), second);
+
+        // What is installed (Roblox, its launchers): read again on a worker a little before the cached read runs out,
+        // taken in at a later tick, never read on the window's thread by the tick while a read is cached (2026-10-29:
+        // 0.9 s of one check on the owner's PC).
+        Harness.Invoke(app, "Installs");
+        var readAt = DateTime.UtcNow.AddMinutes(-3).AddSeconds(5); // 5 s before the cached read runs out
+        Harness.Set(app, "_installsReadAt", readAt);
+        Harness.Invoke(app, "TickRobloxUpdates", DateTime.UtcNow, 0);
+        c.Check("the tick starts reading what is installed on a worker, the cached read still in use",
+            Harness.Get<object>(app, "_installsReading") is Task && Harness.Get<DateTime>(app, "_installsReadAt") == readAt);
+        var reading = (Task)Harness.Get<object>(app, "_installsReading");
+        reading.Wait(TimeSpan.FromSeconds(30));
+        Harness.Invoke(app, "TickRobloxUpdates", DateTime.UtcNow, 0);
+        c.Check("…its read taken in at a later tick", Harness.Get<object?>(app, "_installsReading") is null
+            && Harness.Get<DateTime>(app, "_installsReadAt") > readAt);
+        // A read started before the cache was dropped (another vault, another launch option) is left unused.
+        Harness.Set(app, "_installsReadAt", readAt);
+        Harness.Invoke(app, "TickRobloxUpdates", DateTime.UtcNow, 0);
+        var stale = (Task)Harness.Get<object>(app, "_installsReading");
+        stale.Wait(TimeSpan.FromSeconds(30));
+        var fresh = DateTime.UtcNow;
+        Harness.Set(app, "_installsReadAt", fresh); // read again meanwhile
+        Harness.Invoke(app, "TickRobloxUpdates", DateTime.UtcNow, 0);
+        c.Check("…one started before another read is left unused", Harness.Get<DateTime>(app, "_installsReadAt") == fresh);
         return Task.CompletedTask;
     }
 }

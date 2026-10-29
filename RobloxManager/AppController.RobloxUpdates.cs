@@ -199,6 +199,11 @@ public sealed partial class AppController
         }
     }
 
+    /// <summary>A read of what is installed under way on a worker: the read, and when the cached read it replaces was made.</summary>
+    Task<(InstallsInfo Installs, string? Updater, DateTime Since, DateTime At)>? _installsReading;
+    /// <summary>How long before the cached read runs out the next one starts, on a worker.</summary>
+    static readonly TimeSpan InstallReadAhead = TimeSpan.FromSeconds(20);
+
     /// <summary>A process of this launcher started at or after this time (not its watchers of windows already open).</summary>
     static bool LauncherRunningSince(string launcher, DateTime since)
     {
@@ -229,11 +234,36 @@ public sealed partial class AppController
     /// <param name="inGame">Roblox clients in a game now, by their logs.</param>
     void TickRobloxUpdates(DateTime now, int inGame)
     {
-        if (_installs is null || now - _installsReadAt >= InstallCacheLifetime || now < _installsReadAt)
+        // What is installed, read again on a worker a little before the cached read runs out (so nothing else has to
+        // read it on the window's thread), and taken in at the next tick. A read started before a vault or launch
+        // option change (which drops the cache) is left unused.
+        if (_installsReading is { IsCompleted: true } reading)
+        {
+            _installsReading = null;
+            if (reading.IsCompletedSuccessfully && reading.Result.Since == _installsReadAt && _installs is not null)
+            {
+                string? before = _installs.Client?.Folder;
+                var (installs, updater, _, at) = reading.Result;
+                if (TakeInstalls(installs, updater, at).Client?.Folder != before)
+                    PushStateIfChanged();
+            }
+            else if (reading.Exception?.InnerException is { } ex)
+                Log.Write(ex);
+        }
+        if (_installs is null || now < _installsReadAt)
         {
             string? before = _installs?.Client?.Folder;
             if (Installs().Client?.Folder != before)
                 PushStateIfChanged();
+        }
+        else if (_installsReading is null && now - _installsReadAt >= InstallCacheLifetime - InstallReadAhead)
+        {
+            var (via, custom, readBefore) = (_vault?.Data.Settings.LaunchVia ?? "auto", _vault?.Data.Settings.CustomLauncher ?? "", _installsReadAt);
+            _installsReading = Task.Run(() =>
+            {
+                var (installs, updater) = ReadInstalls(via, custom);
+                return (installs, updater, readBefore, DateTime.UtcNow);
+            });
         }
         if (inGame < 2 || !MultiInstance.Armed || now < _togetherSince)
             _togetherSince = null;

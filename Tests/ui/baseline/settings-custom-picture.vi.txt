@@ -1,5 +1,5 @@
 == end
-html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--backdrop:url(\"scene-halong.svg\") center / cover no-repeat, #1b2a3a;--bg:rgba(27, 42, 58, 0.45);--bg-2:rgba(27, 42, 58, 0.7);--blur:blur(18px) saturate(140%);--card:rgba(35, 49, 65, 0.62);--card-hover:rgba(41, 55, 70, 0.72);--dim:#828a93;--field:rgba(0, 0, 0, .3);--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:rgba(43, 57, 72, 0.94);--surface:rgba(38, 53, 68, 0.72);--surface-2:rgba(255, 255, 255, 0.08);--surface-3:rgba(255, 255, 255, 0.15);--text:#edeeef;--text-2:#bfc3c8"
+html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--backdrop:transparent;--bg:rgba(27, 42, 58, 0.45);--bg-2:rgba(27, 42, 58, 0.7);--blur:blur(18px) saturate(140%);--card:rgba(35, 49, 65, 0.62);--card-hover:rgba(41, 55, 70, 0.72);--dim:#828a93;--field:rgba(0, 0, 0, .3);--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:rgba(43, 57, 72, 0.94);--surface:rgba(38, 53, 68, 0.72);--surface-2:rgba(255, 255, 255, 0.08);--surface-3:rgba(255, 255, 255, 0.15);--text:#edeeef;--text-2:#bfc3c8"
 #app
   div.shell
     aside.side
@@ -368,20 +368,22 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
                           div.t "Màu nền"
                           div.d "Chữ sáng hay tối tự đổi theo màu này để luôn dễ đọc."
                         div.ctl
-                          input.ct-color [id="s-ct-bg" type="color" aria-label="Màu nền" value="#1b2a3a"]
+                          button.ct-color [id="s-ct-bg" type="button" title="#1b2a3a" aria-expanded="false" aria-haspopup="dialog" aria-label="Màu nền"]
+                            span [style="background-attachment:initial;background-clip:initial;background-color:rgb(27, 42, 58);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                       div.set-row
                         div
                           div.t "Màu nhấn"
                           div.d "Nút, công tắc và mục đang chọn."
                         div.ctl
-                          input.ct-color [id="s-ct-accent" type="color" aria-label="Màu nhấn" value="#f59e0b"]
+                          button.ct-color [id="s-ct-accent" type="button" title="#f59e0b" aria-expanded="false" aria-haspopup="dialog" aria-label="Màu nhấn"]
+                            span [style="background-attachment:initial;background-clip:initial;background-color:rgb(245, 158, 11);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                       div.set-row
                         div
-                          div.t "Ảnh nền"
-                          div.d "Ảnh trên máy đặt phía sau, các bảng trong mờ để ảnh hiện qua. Bloxkeep lưu một bản sao trong thư mục dữ liệu."
+                          div.t "Ảnh hoặc video nền"
+                          div.d "Ảnh hoặc video (MP4, WebM) trên máy đặt phía sau, các bảng trong mờ để nền hiện qua. Bloxkeep lưu một bản sao trong thư mục dữ liệu. Video không có tiếng, chỉ chạy khi cửa sổ đang mở."
                         div.ctl
-                          button.btn.ghost.sm "Bỏ ảnh"
-                          button.btn.sm "Đổi ảnh…"
+                          button.btn.ghost.sm "Bỏ nền"
+                          button.btn.sm "Đổi…"
                             svg.i #16jqtkh
                       div.set-row
                         div
@@ -390,6 +392,27 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
                         div.ctl
                           input [id="s-ct-fade" type="range" min="0" max="90" step="5" aria-label="Phủ màu nền lên ảnh" value="45"]
                           span.range-v "45%"
+                      div.set-row
+                        div
+                          div.t "Làm mờ nền"
+                          div.d "Nền mờ thì chữ nổi rõ hơn."
+                        div.ctl
+                          input [id="s-ct-blur" type="range" min="0" max="30" step="1" aria-label="Làm mờ nền" value="0"]
+                          span.range-v "0"
+                      div.set-row
+                        div
+                          div.t "Lưu theme này"
+                          div.d "Đặt tên để lần sau chọn lại hoặc chia sẻ. Trùng tên thì lưu đè."
+                        div.ctl
+                          input.ct-name.field.sm [id="s-ct-name" placeholder="Tên theme" maxlength="40" aria-label="Tên theme" value=""]
+                          button.btn.sm [id="s-ct-save" disabled] "Lưu"
+                    div.set-row
+                      div
+                        div.t "Theme của bạn"
+                        div.d "Theme bạn lưu, hoặc thêm từ file người khác gửi, sẽ hiện ở đây."
+                      div.ctl
+                        button.btn.sm [id="s-ct-import"] "Thêm từ file…"
+                          svg.i #3wh3ok
                     div.set-row
                       div
                         div.t "Ngôn ngữ"

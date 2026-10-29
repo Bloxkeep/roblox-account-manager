@@ -1,5 +1,5 @@
 == end
-html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--backdrop:url(\"scene-halong.svg\") center / cover no-repeat, #1b2a3a;--bg:rgba(27, 42, 58, 0.45);--bg-2:rgba(27, 42, 58, 0.7);--blur:blur(18px) saturate(140%);--card:rgba(35, 49, 65, 0.62);--card-hover:rgba(41, 55, 70, 0.72);--dim:#828a93;--field:rgba(0, 0, 0, .3);--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:rgba(43, 57, 72, 0.94);--surface:rgba(38, 53, 68, 0.72);--surface-2:rgba(255, 255, 255, 0.08);--surface-3:rgba(255, 255, 255, 0.15);--text:#edeeef;--text-2:#bfc3c8"
+html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--accent-hover:#f6ac2d;--accent-ink:#0b0d12;--backdrop:transparent;--bg:rgba(27, 42, 58, 0.45);--bg-2:rgba(27, 42, 58, 0.7);--blur:blur(18px) saturate(140%);--card:rgba(35, 49, 65, 0.62);--card-hover:rgba(41, 55, 70, 0.72);--dim:#828a93;--field:rgba(0, 0, 0, .3);--inv:#f59e0b;--inv-hover:#f6ac2d;--inv-ink:#0b0d12;--muted:#a4aab0;--raised:rgba(43, 57, 72, 0.94);--surface:rgba(38, 53, 68, 0.72);--surface-2:rgba(255, 255, 255, 0.08);--surface-3:rgba(255, 255, 255, 0.15);--text:#edeeef;--text-2:#bfc3c8"
 #app
   div.shell
     aside.side
