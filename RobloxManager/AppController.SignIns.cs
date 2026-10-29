@@ -56,7 +56,9 @@ public sealed partial class AppController
             }
             // Offline for a moment, or Roblox asked to slow down: asked again a little later, the new one not let go at
             // the first failure.
-            catch (Exception ex) when (RobloxApi.IsExpectedError(ex) && attempt < RenewedCheckTries)
+            // A notice on the account to accept (403 "User is moderated") stays until the person accepts it, so asking
+            // again only adds requests (2026-10-29, the owner's PC: 46 in five minutes, every renewal asked up to 4 times).
+            catch (Exception ex) when (RobloxApi.IsExpectedError(ex) && attempt < RenewedCheckTries && ex is not RobloxApiException { Moderated: true })
             {
                 await Task.Delay(TimeSpan.FromSeconds(10 * attempt * attempt));
                 if (_vault != vault)
