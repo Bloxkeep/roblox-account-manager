@@ -37,6 +37,7 @@ gw.on('connection', ws => {
 });
 // The fake REST API: every call kept.
 const calls = [];
+let userInstall = false;
 const rest = http.createServer((req, res) => {
   let body = '';
   req.on('data', c => { body += c; });
@@ -44,7 +45,7 @@ const rest = http.createServer((req, res) => {
     const call = { method: req.method, url: req.url, body: body ? JSON.parse(body) : null };
     calls.push(call);
     // An application not set up for installs on people's own accounts: commands that ask for it are refused.
-    if (req.method === 'PUT' && call.body?.some(c => c.integration_types?.includes(1))) {
+    if (req.method === 'PUT' && !userInstall && call.body?.some(c => c.integration_types?.includes(1))) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ message: 'Invalid Form Body', code: 50035 }));
     }
@@ -96,7 +97,7 @@ function startDev() {
   const out = fs.openSync(path.join(PERSIST, 'wrangler-dev.log'), 'a');
   const vars = {
     OBJECT_NAME: 'bot-remote', OLD_OBJECT_NAME: '', GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`,
-    DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX, TRACE_URL: 'http://127.0.0.1:9/', ANSWER_WAIT_MS: '800', ANSWER_LATE_MS: '3000',
+    DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX, TRACE_URL: 'http://127.0.0.1:9/', ANSWER_WAIT_MS: '800', ANSWER_LATE_MS: '3000', COMMANDS_RETRY_MS: '1000',
     WATCH_URL: 'http://127.0.0.1:9/', STATUS_URL: 'http://127.0.0.1:9/', LATEST_URL: 'http://127.0.0.1:9/', RELEASE_API_URL: 'http://127.0.0.1:9/',
     DOWNLOADS_URL: 'http://127.0.0.1:9/', RELEASE_FILE_URL: 'http://127.0.0.1:9/', NOTES_URL: 'http://127.0.0.1:9/', COMMUNITY_GUILD: 'g1',
   };
@@ -119,6 +120,12 @@ try {
   check("Discord refusing /pc on people's own accounts: the commands go in all the same, /pc for servers and DMs only",
     await waitFor(() => puts().length >= 2, 8000) && puts()[1].body.find(c => c.name === 'pc')?.integration_types.join() === '0'
     && !puts()[1].body.find(c => c.name === 'pc').contexts.includes(2), JSON.stringify(puts().map(p => p.body.find(c => c.name === 'pc'))));
+  // Installs on people’s own accounts turned on in the Developer Portal later: taken up at the next try, no deploy.
+  userInstall = true;
+  await sleep(1200);
+  await fetch(`http://127.0.0.1:${DEV}/__scheduled?cron=*+*+*+*+*`).catch(() => {});
+  check('…turned on later in the Developer Portal: /pc goes in for people’s own accounts at the next try',
+    await waitFor(() => puts().length >= 3, 8000) && puts()[2].body.find(c => c.name === 'pc')?.integration_types.join() === '0,1', puts().length);
 
   // ── connecting ──
   const short = app('too-short');

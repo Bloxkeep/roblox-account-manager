@@ -63,6 +63,8 @@ const INVITE_RECHECK = 60_000;
 const DOWNLOADS_EVERY = 10 * 60_000, DOWNLOADS_RETRY = 5 * 60_000;
 // Who Bloxkeep's developers are (the application's owner, or its team's owner and admins) is asked Discord this often.
 const DEVELOPERS_RECHECK = 10 * 60_000;
+// Commands put in place without installs on people's own accounts are tried again with them this often.
+const COMMANDS_RETRY = 60 * 60_000;
 
 export class Gateway extends DurableObject {
   constructor(ctx, env) {
@@ -294,8 +296,10 @@ export class Gateway extends DurableObject {
   async registerCommands() {
     if (!this.env.DISCORD_APP_ID)
       return;
-    const want = await tokenHash(JSON.stringify(COMMANDS));
-    if ((await this.ctx.storage.get('commands')) === want)
+    const want = await tokenHash(JSON.stringify(COMMANDS)), had = await this.ctx.storage.get('commands');
+    // Put in place without installs on people's own accounts (below): asked again every hour, so turning that on in
+    // the Developer Portal is taken up without a deploy.
+    if (had === want || (had === `${want}:servers` && Date.now() - ((await this.ctx.storage.get('commandsAt')) ?? 0) < Number(this.env.COMMANDS_RETRY_MS ?? COMMANDS_RETRY)))
       return;
     let res = await api(this.env, 'PUT', `/applications/${this.env.DISCORD_APP_ID}/commands`, COMMANDS);
     // Refused (the application not set up for installs on people's own accounts yet, Developer Portal › Installation):
@@ -307,7 +311,7 @@ export class Gateway extends DurableObject {
       note = 'registered without user installs';
     }
     if (res.ok)
-      await this.ctx.storage.put('commands', want);
+      await this.ctx.storage.put({ commands: note === 'registered' ? want : `${want}:servers`, commandsAt: Date.now() });
     this.log('commands', res.ok ? note : `HTTP ${res.status}`);
   }
 
