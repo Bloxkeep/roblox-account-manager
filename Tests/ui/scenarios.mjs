@@ -1108,6 +1108,9 @@ export default [
     await s.wait(300);
   }),
   S('settings-discord-remote-linked', 'settings=discord&remote=linked'),
+  // Someone typed the code into /pc link: asked wherever the person is, Don't allow first; answered, the box goes.
+  S('remote-ask', 'remote=ask', async s => { await s.snap('asked'); await s.click(key('dc.remoteDeny')); }),
+  S('remote-ask-closed', 'remote=ask', async s => { await s.key('Escape'); }),
   S('settings-discord-remote-connecting', 'settings=discord&remote=connecting'),
   S('settings-discord-fail', 'settings=discord&discord=1&dcfail=1', async s => { await s.click(key('dc.test')); await s.wait(500); }),
   S('settings-discord-reveal', 'settings=discord&discord=1', async s => {

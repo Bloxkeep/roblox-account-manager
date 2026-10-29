@@ -26,7 +26,8 @@ Type `/pc` in Discord to see how your accounts are doing, run a preset, close wi
 
 1. In Bloxkeep: **Settings › Discord › Control from Discord**, turn it on. A six-letter code shows; it works for 10 minutes (**New code** for another).
 2. Press **Add Bloxkeep to Discord** and accept, so `/pc` works in any chat.
-3. In Discord, type `/pc link` and the code. Bloxkeep then shows who it is linked to.
+3. In Discord, type `/pc link` and the code.
+4. Bloxkeep asks whether to allow that Discord account: press **Allow**. Nothing is linked until you do, so a code someone else saw (on a stream, say) is no use to them.
 
 | Command | What it does |
 |---|---|

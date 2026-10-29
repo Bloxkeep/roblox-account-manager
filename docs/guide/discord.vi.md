@@ -26,7 +26,8 @@ Gõ `/pc` trong Discord để xem tài khoản đang thế nào, chạy preset, 
 
 1. Trong Bloxkeep: **Cài đặt › Discord › Điều khiển từ Discord**, bật lên. Bloxkeep hiện mã 6 ký tự, dùng được 10 phút (**Mã mới** để lấy mã khác).
 2. Bấm **Thêm Bloxkeep vào Discord** rồi đồng ý, để gõ được `/pc` ở mọi nơi.
-3. Trong Discord, gõ `/pc link` và nhập mã. Bloxkeep sẽ hiện đã liên kết với ai.
+3. Trong Discord, gõ `/pc link` và nhập mã.
+4. Bloxkeep hỏi có cho tài khoản Discord đó điều khiển không: bấm **Cho phép**. Chưa bấm thì chưa liên kết, nên người khác lỡ thấy mã (khi bạn stream chẳng hạn) cũng không dùng được.
 
 | Lệnh | Làm gì |
 |---|---|

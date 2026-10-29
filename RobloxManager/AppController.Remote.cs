@@ -31,7 +31,7 @@ public sealed partial class AppController
     void TickRemote()
     {
         if (Prefs.RemoteControl && _remote is null && RemoteSecret() is { } secret)
-            _remote = new RemoteLink(secret, RemoteCommandAsync, PushState, RemoteTestUrl);
+            _remote = new RemoteLink(secret, RemoteCommandAsync, OnRemoteChanged, RemoteTestUrl);
         else if (!Prefs.RemoteControl && _remote is not null)
             StopRemote();
         if (_remote is null)
@@ -88,6 +88,29 @@ public sealed partial class AppController
         return null;
     }
 
+    /// <summary>The Discord account last said to be asking: a new one is told with a Windows notification too.</summary>
+    string? _remoteAskTold;
+
+    void OnRemoteChanged()
+    {
+        if (_remote?.Asking is { } ask && _remoteAskTold != ask.User)
+        {
+            _remoteAskTold = ask.User;
+            Notify(L.F("{0} wants to control this PC from Discord. Allow it in Bloxkeep only if that's you.", ask.User), "warn", "remote", toast: false);
+        }
+        else if (_remote?.Asking is null)
+            _remoteAskTold = null;
+        PushState();
+    }
+
+    /// <summary>The answer to someone linking this PC (the page's Allow / Don't allow).</summary>
+    object? RemoteAllow(bool allow)
+    {
+        _remote?.Answer(allow);
+        PushState();
+        return null;
+    }
+
     /// <summary>A new code for /pc link (the old one stops working).</summary>
     object? RemoteNewCode()
     {
@@ -104,6 +127,9 @@ public sealed partial class AppController
         user = _remote?.User,
         code = _remote?.Code,
         codeUntil = _remote?.CodeUntil is { } until ? new DateTimeOffset(until).ToUnixTimeMilliseconds() : (long?)null,
+        // Asked only while unlocked: the lock screen says nothing of it, and an answer waits for the unlock.
+        ask = _remote?.Asking is { } asking && _vault is not null && !_screenLocked ? new { user = asking.User, replacing = asking.Replacing } : null,
+        busy = _remote?.Busy == true,
         pc = Environment.MachineName,
     };
 

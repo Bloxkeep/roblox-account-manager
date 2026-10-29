@@ -16,7 +16,7 @@ import { onceMore } from './calls.js';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
-import { APP_COMMANDS, ANSWER_WAIT, CODE_FOR, COMMANDS_PER_MINUTE, MAX_MESSAGE, MAX_PCS, PC_TEXT, TOKEN_FOR, choices, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
+import { ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
 import { setupServer } from './setup.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -118,6 +118,11 @@ export class Gateway extends DurableObject {
       this.tokens = new Map();
       this.sent = new Map();
       this.names = new Map();
+      // Links waiting for the PC to allow them (pc → { user, label, token, until }), each person's wrong codes, each
+      // socket's last messages.
+      this.asking = new Map();
+      this.wrong = new Map();
+      this.heard = new WeakMap();
       // An app's "ping" keeping its socket open is answered without waking anything.
       ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
       this.dayKey = (await ctx.storage.get('dayKey')) ?? null; // { day, key }
@@ -326,12 +331,20 @@ export class Gateway extends DurableObject {
     const pc = await pcId((request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, ''));
     if (!pc)
       return new Response('no key', { status: 401 });
+    // Apps that aren't linked yet are let in up to a limit, so made-up keys can't fill the object; linked ones always.
+    const linked = [...this.ctx.storage.sql.exec('SELECT 1 FROM links WHERE pc = ?', pc)].length > 0;
+    if (!linked && this.ctx.getWebSockets().length - this.ctx.storage.sql.exec('SELECT COUNT(*) AS n FROM links').one().n >= Number(this.env.MAX_UNLINKED ?? MAX_UNLINKED))
+      return new Response('busy', { status: 503 });
     for (const old of this.ctx.getWebSockets(pc))
       old.close(4000, 'connected again');
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server, [pc]);
     server.serializeAttachment({ pc, hello: null });
     server.send(JSON.stringify(this.linkState(pc)));
+    // A link it was asked to allow before it connected again: asked again.
+    const ask = this.asking.get(pc);
+    if (ask && ask.until > Date.now())
+      server.send(JSON.stringify({ t: 'ask', user: this.names.get(ask.user) ?? ask.user, replacing: ask.replacing ?? null }));
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -359,6 +372,27 @@ export class Gateway extends DurableObject {
     const me = ws.deserializeAttachment() ?? {}, pc = me.pc, sql = this.ctx.storage.sql;
     if (!pc || !m || typeof m !== 'object')
       return;
+    // More than an app ever sends (its names, a code now and then, answers): the socket is closed.
+    const now = Date.now(), times = (this.heard.get(ws) ?? []).filter(t => t > now - 60_000);
+    times.push(now);
+    this.heard.set(ws, times);
+    if (times.length > Number(this.env.MESSAGES_PER_MINUTE ?? MESSAGES_PER_MINUTE))
+      return ws.close(1008, 'too many messages');
+    if ((m.t === 'allow' || m.t === 'deny') && this.asking.has(pc)) { // the person at the PC answered a link
+      const ask = this.asking.get(pc);
+      this.asking.delete(pc);
+      clearTimeout(ask.timer);
+      const edit = data => api(this.env, 'PATCH', `/webhooks/${this.env.DISCORD_APP_ID}/${ask.token}/messages/@original`, { ...data, allowed_mentions: { parse: [] } }).catch(() => {});
+      if (m.t === 'deny' || ask.until < now) {
+        ws.send(JSON.stringify(this.linkState(pc)));
+        await edit({ content: m.t === 'deny' ? PC_TEXT.refusedLink(ask.label) : PC_TEXT.allowLate(ask.label) });
+        return;
+      }
+      sql.exec('INSERT OR REPLACE INTO links (pc, user, label, at) VALUES (?, ?, ?, ?)', pc, ask.user, ask.label, now);
+      ws.send(JSON.stringify(this.linkState(pc)));
+      await edit({ content: PC_TEXT.linked(ask.label) });
+      return;
+    }
     if (m.t === 'hello') { // its PC's, accounts' and presets' names (autocomplete), sent again when they change
       me.hello = readHello(m);
       ws.serializeAttachment(me);
@@ -366,10 +400,11 @@ export class Gateway extends DurableObject {
       return;
     }
     if (m.t === 'code') { // a code to link it, replacing any earlier one
-      const now = Date.now();
       for (const [code, c] of this.codes)
         if (c.pc === pc || c.until < now)
           this.codes.delete(code);
+      if (this.codes.size >= Number(this.env.MAX_CODES ?? MAX_CODES))
+        return ws.send(JSON.stringify({ t: 'busy' }));
       const code = makeCode(c => this.codes.has(c)), until = now + CODE_FOR;
       this.codes.set(code, { pc, until });
       ws.send(JSON.stringify({ t: 'code', code, until }));
@@ -380,6 +415,8 @@ export class Gateway extends DurableObject {
       for (const [code, c] of this.codes)
         if (c.pc === pc)
           this.codes.delete(code);
+      clearTimeout(this.asking.get(pc)?.timer);
+      this.asking.delete(pc);
       ws.send(JSON.stringify(this.linkState(pc)));
       return;
     }
@@ -434,17 +471,38 @@ export class Gateway extends DurableObject {
       return mine({ content: PC_TEXT.tooFast });
     this.sent.set(user.id, [...times, now]);
     if (sub?.name === 'link') {
+      // A few wrong codes per person in ten minutes, so codes can't be guessed.
+      const wrong = (this.wrong.get(user.id) ?? []).filter(t => t > now - WRONG_WINDOW);
+      if (wrong.length >= WRONG_CODES)
+        return mine({ content: PC_TEXT.tooManyWrong });
       const typed = readCode(opt('code')), code = this.codes.get(typed);
-      if (!code || code.until < now)
+      if (!code || code.until < now) {
+        this.wrong.set(user.id, [...wrong, now]);
         return mine({ content: PC_TEXT.badCode });
+      }
       const pcs = this.pcsOf(user.id);
       if (!pcs.some(p => p.pc === code.pc) && pcs.length >= MAX_PCS)
         return mine({ content: PC_TEXT.tooManyPcs });
-      this.codes.delete(typed);
       const app = this.appOf(code.pc), label = app?.hello?.name ?? 'PC';
-      sql.exec('INSERT OR REPLACE INTO links (pc, user, label, at) VALUES (?, ?, ?, ?)', code.pc, user.id, label, now);
-      app?.ws.send(JSON.stringify(this.linkState(code.pc)));
-      return mine({ content: PC_TEXT.linked(label) });
+      if (!app)
+        return mine({ content: PC_TEXT.offline(label) });
+      this.codes.delete(typed);
+      // Not linked yet: the person at the PC allows it in Bloxkeep first, which says who asks (and whom it replaces).
+      const before = this.asking.get(code.pc);
+      if (before)
+        clearTimeout(before.timer);
+      const was = [...sql.exec('SELECT user FROM links WHERE pc = ?', code.pc)][0]?.user;
+      const timer = setTimeout(() => {
+        if (this.asking.get(code.pc)?.token !== i.token)
+          return;
+        this.asking.delete(code.pc);
+        this.appOf(code.pc)?.ws.send(JSON.stringify(this.linkState(code.pc)));
+        api(this.env, 'PATCH', `/webhooks/${this.env.DISCORD_APP_ID}/${i.token}/messages/@original`, { content: PC_TEXT.allowLate(label), allowed_mentions: { parse: [] } }).catch(() => {});
+      }, Number(this.env.ALLOW_FOR_MS ?? ALLOW_FOR));
+      const replacing = was && was !== user.id ? this.names.get(was) ?? 'another Discord account' : null;
+      this.asking.set(code.pc, { user: user.id, label, token: i.token, until: now + Number(this.env.ALLOW_FOR_MS ?? ALLOW_FOR), timer, replacing });
+      app.ws.send(JSON.stringify({ t: 'ask', user: this.names.get(user.id) ?? user.id, replacing }));
+      return mine({ content: PC_TEXT.allowFirst(label) });
     }
     const pc = this.pickPc(this.pcsOf(user.id), opt('pc'));
     if (typeof pc === 'string')

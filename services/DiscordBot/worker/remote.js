@@ -20,6 +20,13 @@ export const TOKEN_FOR = 15 * 60_000;
 export const COMMANDS_PER_MINUTE = 20;
 // PCs one Discord account may link.
 export const MAX_PCS = 10;
+// A link waits this long for the person at the PC to allow it in Bloxkeep (a code seen on a stream, or given to
+// someone who asked for it, links nothing by itself).
+export const ALLOW_FOR = 5 * 60_000;
+// Wrong codes one Discord account may type in ten minutes.
+export const WRONG_CODES = 5, WRONG_WINDOW = 10 * 60_000;
+// What the object holds for apps at most: codes waiting, apps connected that aren't linked, messages a minute from one.
+export const MAX_CODES = 5000, MAX_UNLINKED = 3000, MESSAGES_PER_MINUTE = 60;
 // What one message from an app may be at most (a status card with 25 accounts is about 5 KB).
 export const MAX_MESSAGE = 16_000;
 const MAX_NAME = 60, MAX_LIST = 200;
@@ -95,6 +102,11 @@ export function choices(names, typed) {
 /** The bot's own words for /pc (the app answers the rest in its own language). */
 export const PC_TEXT = {
   linked: pc => `Linked: **${pc}** can now be controlled from here. Try \`/pc status\`.`,
+  allowFirst: pc => `Bloxkeep on **${pc}** is asking whether to allow this. Press **Allow** there to finish linking (within 5 minutes).`,
+  refusedLink: pc => `Bloxkeep on **${pc}** didn't allow it. Nothing was linked.`,
+  allowLate: pc => `Nobody allowed it on **${pc}** within 5 minutes. Nothing was linked: get a new code in Bloxkeep.`,
+  tooManyWrong: 'Too many wrong codes. Wait 10 minutes, then try again with the code Bloxkeep shows.',
+  busy: 'Bloxkeep\'s bot is too busy for a new code right now. Try again in a minute.',
   badCode: "That code doesn't work: it may be mistyped or more than 10 minutes old. Bloxkeep shows a new one in Settings › Discord.",
   tooManyPcs: `You have ${MAX_PCS} PCs linked already. Unlink one first with \`/pc unlink\`.`,
   noPc: 'No PC is linked to your Discord yet. In Bloxkeep, open Settings › Discord › Control from Discord, then type `/pc link` with the code it shows.',

@@ -64,6 +64,24 @@ static class RemoteSuite
         await bot.SendAsync(new JsonObject { ["t"] = "link", ["linked"] = true, ["user"] = "Five" });
         c.Check("linked: who to is shown, the code gone", await Until(() => Field("linked") is true) && Field("user") as string == "Five" && Field("code") is null);
 
+        // Someone typed the code into /pc link: nothing is linked until it's answered here.
+        object? Asking() { var r = Harness.Invoke(app, "RemoteDto")!; return r.GetType().GetProperty("ask")!.GetValue(r); }
+        string? AskField(string name) => Asking()?.GetType().GetProperty(name)?.GetValue(Asking()) as string;
+        await bot.SendAsync(new JsonObject { ["t"] = "ask", ["user"] = "Stranger", ["replacing"] = "Five" });
+        c.Check("asked to allow a link: who asks and whom it replaces are shown", await Until(() => Asking() is not null) && AskField("user") == "Stranger" && AskField("replacing") == "Five");
+        await Harness.Call(app, "remoteAllow", new { allow = false });
+        c.Check("…Don't allow: the bot is told no, the question gone", await Until(() => bot.Last("deny") is not null) && Asking() is null && bot.Last("allow") is null);
+        await bot.SendAsync(new JsonObject { ["t"] = "ask", ["user"] = "Five" });
+        await Until(() => Asking() is not null);
+        await Harness.Call(app, "lock", new { });
+        c.Check("…while locked, nothing is asked (no name on the lock screen)", Asking() is null);
+        await Harness.Unlock(app);
+        c.Check("…unlocked, the question is back", await Until(() => Asking() is not null) && AskField("user") == "Five");
+        await Harness.Call(app, "remoteAllow", new { allow = true });
+        c.Check("…Allow: the bot is told yes", await Until(() => bot.Last("allow") is not null) && Asking() is null);
+        await bot.SendAsync(new JsonObject { ["t"] = "link", ["linked"] = true, ["user"] = "Five" });
+        await Until(() => Field("linked") is true);
+
         // ── commands ──
         async Task<JsonObject?> Ask(string command, string? value = null)
         {

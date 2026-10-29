@@ -156,10 +156,37 @@ try {
   r = await interact(pc('link', { code: 'ZZZZZZ' }));
   check('/pc link with a wrong code: refused', /doesn't work/.test(contentOf(r)), contentOf(r));
   r = await interact(pc('link', { code: `${code.slice(0, 3)}-${code.slice(3).toLowerCase()}` }));
-  check('/pc link with its code (typed with a dash, in lower case): linked, the PC named', /Linked: \*\*GAMING-PC\*\*/.test(contentOf(r)), contentOf(r));
-  check('…the app hears it, with the name Discord shows them by', await waitFor(() => a.last('link')?.linked, 3000) && a.last('link').user === 'Five', JSON.stringify(a.last('link')));
+  const linkToken = `tok${tokenNo}`;
+  check('/pc link with its code (typed with a dash, in lower case): not linked yet, the PC asked to allow it', /asking whether to allow/.test(contentOf(r))
+    && /GAMING-PC/.test(contentOf(r)), contentOf(r));
+  check('…the app is asked, with the name Discord shows them by', await waitFor(() => a.last('ask'), 3000) && a.last('ask').user === 'Five' && a.last('ask').replacing === null,
+    JSON.stringify(a.last('ask')));
+  r = await interact(pc('status'));
+  check('…until it is allowed, commands reach nothing', /No PC is linked/.test(contentOf(r)), contentOf(r));
+  a.send({ t: 'allow' });
+  check('allowed in the app: linked, the app told', await waitFor(() => a.last('link')?.linked, 3000) && a.last('link').user === 'Five', JSON.stringify(a.last('link')));
+  check('…and the Discord answer edited to say so', await waitFor(() => calls.some(c => c.method === 'PATCH' && c.url === `/webhooks/app1/${linkToken}/messages/@original`
+    && /Linked: \*\*GAMING-PC\*\*/.test(c.body.content)), 3000), JSON.stringify(calls.slice(-2)));
   r = await interact(pc('link', { code }, { user: 'u6', name: 'Six' }));
   check('…the same code again (someone else): refused, it was used', /doesn't work/.test(contentOf(r)), contentOf(r));
+  // Someone who got a new code (asked the person for it, saw it on a stream): the PC says who, and whom it replaces;
+  // refused there, nothing changes.
+  a.send({ t: 'code' });
+  await waitFor(() => a.last('code')?.code !== code, 3000);
+  r = await interact(pc('link', { code: a.last('code').code }, { user: 'u8', name: 'Stranger' }));
+  const strangerToken = `tok${tokenNo}`;
+  check('a stranger with a new code: the PC is asked, told it would replace the link', await waitFor(() => a.last('ask')?.user === 'Stranger', 3000)
+    && a.last('ask').replacing === 'Five', JSON.stringify(a.last('ask')));
+  a.send({ t: 'deny' });
+  check('…refused in the app: the stranger is told, nothing linked', await waitFor(() => calls.some(c => c.method === 'PATCH' && c.url === `/webhooks/app1/${strangerToken}/messages/@original`
+    && /didn't allow/.test(c.body.content)), 3000), JSON.stringify(calls.slice(-1)));
+  r = await interact(pc('status', {}, { user: 'u8', name: 'Stranger' }));
+  check("…and the stranger can't reach the PC", /No PC is linked/.test(contentOf(r)), contentOf(r));
+  // Wrong codes: a few, then a wait.
+  let wrongs = '';
+  for (let n = 0; n < 6; n++)
+    wrongs += /Too many wrong codes/.test(contentOf(await interact(pc('link', { code: 'QQQQQ2' }, { user: 'u9', name: 'Guesser' })))) ? 'W' : '.';
+  check('guessing codes: refused after 5 wrong ones', wrongs === '.....W', wrongs);
 
   // ── commands ──
   r = await interact(pc('status'));
@@ -201,7 +228,9 @@ try {
   b.send({ t: 'code' });
   await waitFor(() => b.last('code'), 3000);
   r = await interact(pc('link', { code: b.last('code').code }));
-  check('a second PC linked to the same person', /LAPTOP/.test(contentOf(r)), contentOf(r));
+  await waitFor(() => b.last('ask'), 3000);
+  b.send({ t: 'allow' });
+  check('a second PC linked to the same person', /LAPTOP/.test(contentOf(r)) && await waitFor(() => b.last('link')?.linked, 3000), contentOf(r));
   r = await interact(pc('status'));
   check('…a command without saying which PC: asked to pick one', /more than one PC/.test(contentOf(r)) && /GAMING-PC/.test(contentOf(r)) && /LAPTOP/.test(contentOf(r)), contentOf(r));
   r = await interact(pc('status', { pc: 'laptop' }));
@@ -227,6 +256,12 @@ try {
   r = await interact(pc('status'));
   check('…and Discord can\'t reach it any more', /No PC is linked/.test(contentOf(r)), contentOf(r));
   a.ws.close();
+
+  // ── an app sending far more than an app does: its socket is closed ──
+  const flood = app(crypto.randomBytes(32).toString('base64url'));
+  await flood.open();
+  for (let n = 0; n < 70; n++) flood.send({ t: 'hello', name: `x${n}`, accounts: [], presets: [] });
+  check('a socket sending more than 60 messages a minute is closed', await waitFor(() => flood.closed === 1008, 3000), flood.closed);
 
   // ── too many at once ──
   let refused = 0;

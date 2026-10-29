@@ -2819,6 +2819,39 @@
   });
 
   /* ───────────────────────── wiring ───────────────────────── */
+  /**
+   * Control from Discord: someone typed this PC's code into /pc link. Nothing is linked until the person here allows
+   * it (a code seen on a stream, or given to someone who asked for it, links nothing by itself); the question comes up
+   * wherever they are in the app, Don't allow first. Answered elsewhere or given up on by the bot: the box goes.
+   */
+  let remoteBox = null, remoteAsked = '';
+  function askRemote(r) {
+    const ask = r?.ask, key = ask ? `${ask.user}|${ask.replacing ?? ''}` : '';
+    if (!ask) {
+      const box = remoteBox;
+      remoteBox = null;
+      box?.close();
+      remoteAsked = '';
+      return;
+    }
+    if (key === remoteAsked) return;
+    remoteAsked = key;
+    const before = remoteBox;
+    remoteBox = null;
+    before?.close();
+    const text = t('dc.remoteAsk', { user: ask.user, pc: r.pc }) + (ask.replacing ? '\n\n' + t('dc.remoteAskReplaces', { user: ask.replacing }) : '');
+    const answer = allow => ({ close }) => { remoteBox = null; call('remoteAllow', { allow }); close(); };
+    remoteBox = modal({
+      title: t('dc.remoteAskTitle'),
+      body: window.BloxkeepUI.ask(text, false),
+      dismissable: false,
+      actions: [{ text: t('dc.remoteDeny'), onClick: answer(false) }, { text: t('dc.remoteAllow'), kind: 'primary', onClick: answer(true) }],
+      // Closed without an answer (the X, Esc): not allowed.
+      onClose: () => { if (remoteBox) { remoteBox = null; call('remoteAllow', { allow: false }); } },
+    });
+    setTimeout(() => remoteBox?.el.querySelector('.modal-foot .btn')?.focus(), 30);
+  }
+
   function applyState(st) {
     if (!st) return;
     if (st.language && st.language !== lang && DICT[st.language]) {
@@ -2865,6 +2898,7 @@
       return;
     }
     syncVaultOverlay();
+    askRemote(st.remote);
     // The list's look is kept with the other settings (the browser's own storage is lost when GPU drawing is switched
     // or the app is reinstalled). Older versions kept it in the browser: carry that over once.
     if (st.settings && !S.viewPrefsLoaded) {

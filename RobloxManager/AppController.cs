@@ -565,6 +565,7 @@ public sealed partial class AppController : IDisposable
         "setDiscordWebhook" => Done(SetDiscordWebhook(Str(a, "url"))),
         "setRemote" => Done(SetRemote(Bool(a, "enabled"))),
         "remoteCode" => Done(RemoteNewCode()),
+        "remoteAllow" => Done(RemoteAllow(Bool(a, "allow"))),
         "revealDiscordWebhook" => Done(RevealDiscordWebhook()),
         "discordTest" => SendDiscordNowAsync(summary: false),
         "discordSummaryNow" => SendDiscordNowAsync(summary: true),

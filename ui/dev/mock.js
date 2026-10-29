@@ -146,7 +146,10 @@
   const remoteCode = () => ({ on: true, connected: true, linked: false, user: null, code: 'K7MX4P', codeUntil: Date.now() + 9.5 * 60_000, pc: 'GAMING-PC' });
   let remote = params.get('remote') === 'linked' ? { on: true, connected: true, linked: true, user: 'Minh', code: null, codeUntil: null, pc: 'GAMING-PC' }
     : params.get('remote') === 'connecting' ? { on: true, connected: false, linked: null, user: null, code: null, codeUntil: null, pc: 'GAMING-PC' }
-    : params.get('remote') === 'code' ? remoteCode() : { on: false, connected: false, linked: null, pc: 'GAMING-PC' };
+    : params.get('remote') === 'code' ? remoteCode()
+    // ?remote=ask: someone typed this PC's code into /pc link, replacing the link to Minh.
+    : params.get('remote') === 'ask' ? { on: true, connected: true, linked: true, user: 'Minh', code: null, codeUntil: null, pc: 'GAMING-PC', ask: { user: 'Stranger', replacing: 'Minh' } }
+    : { on: false, connected: false, linked: null, pc: 'GAMING-PC' };
   const skipConfirm = [];
   const lastSignInCheck = minsAgo(60 * 5);
   let miniOpen = params.has('mini'); // ?mini=1: the mini window counts as open
@@ -407,6 +410,7 @@
         case 'setRemote': remote = a.enabled ? remoteCode() : { on: false, connected: false, linked: null, pc: 'GAMING-PC' }; push(); return null;
         case 'remoteCode': remote = { ...remoteCode(), code: 'Q2W8RN' }; push(); return null;
         case 'openDiscordApp': return null;
+        case 'remoteAllow': remote = { ...remote, ask: null, user: a.allow ? remote.ask?.user : remote.user }; push(); return null;
         case 'skipConfirm': if (!skipConfirm.includes(a.key)) skipConfirm.push(a.key); push(); return null;
         case 'resetSkipConfirm': { const n = skipConfirm.length; skipConfirm.length = 0; push(); return n; }
         case 'toggleMini': miniOpen = !miniOpen; push(); return null;

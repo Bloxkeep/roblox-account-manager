@@ -348,7 +348,7 @@ function RemoteGroup() {
             <div className="t">{t('dc.remoteCode')} <code className="dc-code" id="s-dc-code">{r.code}</code></div>
             <div className="d">{t('dc.remoteCodeHelp', { n: left })}</div>
           </>
-          : <div className="t">{t('dc.remoteNoCode')}</div>}
+          : <><div className="t">{t('dc.remoteNoCode')}</div>{r.busy ? <div className="d warn-text">{t('dc.remoteBusy')}</div> : null}</>}
       </div>
       <div className="ctl">
         {r.connected && !r.linked ? <button className="btn sm" id="s-dc-remote-code" onClick={e => busy(e.currentTarget, () => call('remoteCode'))}>{t('dc.remoteNewCode')}</button> : null}

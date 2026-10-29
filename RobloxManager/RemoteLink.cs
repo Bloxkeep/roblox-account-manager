@@ -42,6 +42,13 @@ sealed class RemoteLink : IDisposable
     /// <summary>The code to type in Discord (/pc link), and until when it works.</summary>
     public string? Code { get; private set; }
     public DateTime? CodeUntil { get; private set; }
+    /// <summary>
+    /// Someone typed this PC's code into /pc link: the Discord account (the name Discord shows), and the one it would
+    /// replace. Nothing is linked until it is answered (<see cref="Answer"/>).
+    /// </summary>
+    public (string User, string? Replacing)? Asking { get; private set; }
+    /// <summary>The bot had no room for a new code just now.</summary>
+    public bool Busy { get; private set; }
 
     /// <param name="command">Runs a command (on the window's thread) and gives the answer: content and/or embeds.</param>
     /// <param name="changed">Connected, linked or a code came: the page shows it.</param>
@@ -79,6 +86,15 @@ sealed class RemoteLink : IDisposable
         _wantCode = true;
         if (Connected)
             _ = SendAsync("""{"t":"code"}""");
+    }
+
+    /// <summary>The answer to <see cref="Asking"/>: linked, or nothing changes.</summary>
+    public void Answer(bool allow)
+    {
+        if (Asking is null)
+            return;
+        Asking = null;
+        _ = SendAsync(allow ? """{"t":"allow"}""" : """{"t":"deny"}""");
     }
 
     /// <summary>Not linked any more (the bot forgets which Discord account it was).</summary>
@@ -201,6 +217,7 @@ sealed class RemoteLink : IDisposable
                 {
                     Linked = m!["linked"]?.GetValueKind() == JsonValueKind.True;
                     User = Linked == true ? Str(m, "user") : null;
+                    Asking = null; // allowed, refused or given up on: either way not asked any more
                     if (Linked == true)
                     {
                         Code = null;
@@ -210,11 +227,27 @@ sealed class RemoteLink : IDisposable
                     _changed();
                 });
                 break;
+            case "ask" when Str(m, "user") is { Length: > 0 } asker:
+                await OnUi(() =>
+                {
+                    Asking = (asker, Str(m, "replacing"));
+                    _changed();
+                });
+                break;
+            case "busy":
+                await OnUi(() =>
+                {
+                    Busy = true;
+                    _wantCode = false;
+                    _changed();
+                });
+                break;
             case "code" when Str(m, "code") is { Length: > 0 } code:
                 long until = m!["until"]?.GetValueKind() == JsonValueKind.Number ? m["until"]!.GetValue<long>() : 0;
                 await OnUi(() =>
                 {
                     Code = code;
+                    Busy = false;
                     CodeUntil = until > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(until).UtcDateTime : DateTime.UtcNow.AddMinutes(10);
                     _wantCode = false;
                     _changed();

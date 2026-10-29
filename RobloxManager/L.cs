@@ -99,6 +99,7 @@ public static class L
         ["Roblox isn't working properly right now (HTTP {0}). Try again in a moment."] = "Roblox đang trục trặc (HTTP {0}). Thử lại sau giây lát.",
         ["This account was signed out — sign in to it again."] = "Tài khoản này đã bị đăng xuất. Hãy đăng nhập lại.",
         ["Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment."] = "Không lấy được vé đăng nhập từ Roblox (HTTP {0}). Thử lại sau giây lát.",
+        ["{0} wants to control this PC from Discord. Allow it in Bloxkeep only if that's you."] = "{0} muốn điều khiển máy này từ Discord. Chỉ cho phép trong Bloxkeep nếu đó là bạn.",
         ["Bloxkeep is locked on this PC. Unlock it there first."] = "Bloxkeep đang khóa trên máy này. Mở khóa trên máy trước đã.",
         ["No preset is called {0}."] = "Không có preset nào tên {0}.",
         ["Opening {0}…"] = "Đang mở {0}…",
