@@ -355,6 +355,23 @@
       switch (cmd) {
         case 'getState': return { resume: false, view: null, state: state() };
         case 'debugToast': emit('toast', a); return null; // for the dev tests: __mockBridge.call('debugToast', { text, kind })
+        // A game's page: made-up figures, the accounts that "played" it, the hours (?gpnew=1: updated an hour ago).
+        case 'gameDetails': {
+          const now = Date.now(), h = n => new Date(now - n * 3600e3).toISOString();
+          return {
+            placeId: a.placeId, name: 'Blox Fruits', creator: 'Gamer Robot Inc', genre: params.get('lang') === 'vi' ? 'Phiêu lưu' : 'Adventure',
+            iconUrl: null, playing: 412873, visits: 48216000000, favorites: 8700000, likes: 92,
+            created: '2019-01-16T03:29:19Z', updated: params.has('gpnew') ? h(1) : h(30),
+            description: 'Become a master swordsman or a powerful blox fruit user as you train to become the strongest player to ever live.',
+            accounts: [
+              { id: 'a1', name: 'Farm 1', minutes: 1860, kicks: 2, kickWhy: 'AFK', drops: 1, now: 'ingame' },
+              { id: 'a2', name: 'Farm 2', minutes: 1740, kicks: 0, drops: 3, now: 'ingame' },
+              { id: 'a3', name: 'Night Owl', minutes: 720, kicks: 1, drops: 0, now: 'banned' },
+              { id: 'a4', name: 'Main', minutes: 240, kicks: 0, drops: 0, now: '', lastPlayed: h(2) },
+            ],
+            hours: params.has('gpempty') ? null : [30, 22, 15, 10, 8, 9, 12, 20, 32, 40, 48, 52, 58, 60, 62, 66, 72, 85, 92, 100, 98, 90, 70, 45].map(v => v * 4200),
+          };
+        }
         // A custom theme as given (a video's address, say): __mockBridge.call('debugCustomTheme', { picture, video: true })
         case 'debugCustomTheme': customTheme = { ...customTheme, ...a }; theme = 'custom'; push(); return null;
         case 'keepView': case 'pageBusy': return null;

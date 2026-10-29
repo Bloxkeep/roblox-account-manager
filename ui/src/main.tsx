@@ -22,6 +22,7 @@ import { Shell, type SettingsPageInfo } from './Shell';
 import { type StatsApi } from './StatsView';
 import { TrayView, type TrayApi, type TrayViewApi } from './Tray';
 import { WhatsNew, type Release } from './WhatsNew';
+import { GamePage, type GameDetails } from './GamePage';
 
 /** Draws into el now (app.js focuses the first control right after, so it must be there). keep: keepFocus on redraws;
  * a frame drawn once (a dialog's, a menu) needs none. */
@@ -87,6 +88,9 @@ const BloxkeepUI = {
   /** Runs fn (app.js telling the parts its state changed) and draws what that changes at once, before returning. */
   flush(fn: () => void) {
     flushSync(fn);
+  },
+  gamePage(el: HTMLElement, host: Host, game: GameDetails) {
+    return mount(el, host, <GamePage game={game} />);
   },
   whatsNew(el: HTMLElement, host: Host, releases: Release[], close: () => void) {
     return mount(el, host, <WhatsNew releases={releases} close={close} />);

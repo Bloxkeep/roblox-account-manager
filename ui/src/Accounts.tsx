@@ -589,7 +589,9 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
   else if (g.kind === 'share') info = <><span className="kind">{t('dock.share')}</span><span>{t('dock.shareNote')}</span>
     <button className="srv-open srv-save" data-act="save-server" title={t('sv.saveTip')} aria-label={t('sv.save')}><Icon name="bookmark" /></button></>;
   else info = <>
-    <span className="gname" title={g.name}>{g.name || `Place ${g.placeId}`}</span>
+    {g.placeId && g.kind !== 'private' && g.kind !== 'server'
+      ? <button className="gname" data-act="game-page" title={t('gp.open')}>{g.name || `Place ${g.placeId}`}</button>
+      : <span className="gname" title={g.name}>{g.name || `Place ${g.placeId}`}</span>}
     {g.kind === 'private' ? <span className="kind">{t('dock.private')}</span> : g.kind === 'server' ? <span className="kind">{t('dock.server')}</span> : null}
     {g.creator ? <span className="creator">{t('dock.by', { c: g.creator })}</span> : null}
     {g.playing ? <span className="players">{t('dock.playing', { n: fmtNum(g.playing) })}</span> : null}

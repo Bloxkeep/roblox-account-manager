@@ -1020,6 +1020,20 @@
     },
   });
 
+  /** A game's page (ui/src/GamePage.tsx): Roblox's figures for it and your accounts in it, from the app (gameDetails). */
+  async function openGamePage(placeId) {
+    if (!placeId) return;
+    const game = await call('gameDetails', { placeId });
+    if (!game) return;
+    let unmount = null;
+    modal({
+      title: t('gp.title'), body: '', boxClass: 'gp-modal',
+      actions: [{ text: t('gp.close'), onClick: ({ close }) => close() }],
+      onMount: ({ el }) => { unmount = window.BloxkeepUI.gamePage(el.querySelector('.modal-body'), uiHost(), game); },
+      onRemoved: () => unmount?.(),
+    });
+  }
+
   // Release notes: once after an update, and from Settings › Updates. The dialog is here; its content is ui/src/WhatsNew.tsx.
   function showWhatsNew(releases, onClose) {
     if (!releases?.length) return;
@@ -2617,6 +2631,7 @@
         e.stopPropagation();
         return pinGame(pickerRows()[+el.dataset.i]);
       case 'save-server': return saveServerModal();
+      case 'game-page': return busy(el, () => openGamePage(S.game?.placeId));
       case 'copy-server-code': {
         e.stopPropagation();
         const s = pickerRows()[+el.dataset.i];
