@@ -1,0 +1,1863 @@
+== calendar
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Presets"
+            p [id="pv-sub"] "presets scheduled"
+              b "3"
+              span.sep "·"
+              b "1"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Search presets or games" maxlength="100" aria-label="Search presets or games" value=""]
+            button.btn.primary
+              svg.i #u7ty99
+              span "New preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· Next: Today 8:00 PM"
+                  span.pv-live "3 windows open"
+              div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule off"]
+                  input [type="checkbox" aria-label="Schedule: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-close.pv-run.sm [title="Closes the 3 windows this preset opened." aria-label="Close: Farm Blox Fruits"]
+                svg.i #16z0s1r
+                span "Close"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Farm Blox Fruits"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Adopt Me trade"] "Adopt Me trade"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-next
+                  span "Last run 1 h ago"
+              div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Run: Adopt Me trade"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Adopt Me trade"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Adopt Me trade"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Adopt Me trade"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Adopt Me trade"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Adopt Me trade"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Roblox home"] "Roblox home"
+                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
+                span.pv-next
+                  span "Last run 1 day ago"
+              div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule on"]
+                  input [type="checkbox" aria-label="Schedule: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Run: Morning check-in"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Morning check-in" disabled]
+                  svg.i #u1ag9u
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Edit preset"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.form.preset-form
+          label "Name"
+            input.field [id="ps-name" placeholder="e.g. Blox Fruits farm" maxlength="60" value="Farm Blox Fruits"]
+          label "Game"
+            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+          div.ps-game [id="ps-game"]
+            span.gph
+              svg.i #sy1lqp
+            b "Blox Fruits"
+          div.preset-row
+            label "Server"
+              select.select [id="ps-server" value="ping"]
+                option [value="any"] "Any (Roblox picks)"
+                option [value="most"] "Most players"
+                option [value="fewest"] "Fewest players"
+                option [value="ping"] "Lowest ping"
+                option [value="random"] "Random"
+                option [value="job"] "Fixed server (Job ID)"
+                option [value="follow"] "A player’s server"
+            label "Wait between accounts"
+              select.select [id="ps-delay" value="12"]
+                option [value=""] "Follow Settings (8 s)"
+                option [value="0"] "0 s"
+                option [value="5"] "5 s"
+                option [value="10"] "10 s"
+                option [value="12"] "12 s"
+                option [value="15"] "15 s"
+                option [value="30"] "30 s"
+                option [value="45"] "45 s"
+                option [value="60"] "60 s"
+                option [value="90"] "90 s"
+                option [value="120"] "120 s"
+          div.preset-accs "Accounts"
+            span.muted [id="ps-count"] "(3)"
+            small "Ticked accounts open in this order — drag the handle or use the arrows."
+          p.ps-gone
+            svg.i #v9c4u6
+            span "1 account in this preset was deleted; it’s left out when you save."
+        div.ord-list [role="list"]
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 1" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:243" src=#uinvo6]
+            span.ord-txt
+              b [title="Farm 1"] "Farm 1"
+              small "@pixelfarmer01"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 2" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:244" src=#n0d7cr]
+            span.ord-txt
+              b [title="Farm 2"] "Farm 2"
+              small "@pixelfarmer02"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Night Owl" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:297" src=#1u67et1]
+            span.ord-txt
+              b [title="Night Owl"] "Night Owl"
+              small "@night_owl_rb"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Main" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:204" src=#1qk25wb]
+            span.ord-txt
+              b [title="Main"] "Main"
+              small "@sunny_builds"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Alt" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:83" src=#c108i9]
+            span.ord-txt
+              b [title="Alt"] "Alt"
+              small "@lananh_2010"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Trade" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:218" src=#kgijcs]
+            span.ord-txt
+              b [title="Trade"] "Trade"
+              small "@tradepost_vn"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Testing" checked=false]
+            div.avatar.sm
+              span.initials [style="--h:217"] "TE"
+            span.ord-txt
+              b [title="Testing"] "Testing"
+              small "@noavatar_user"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+        div.form.preset-form
+          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
+            div.ps-opts-head
+              b [id="ps-opts-title"] "For the Roblox windows"
+            div.ps-opts-grid
+              label "Anti-AFK"
+                select.select [id="ps-afk" value="on"]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+              label "Auto-rejoin"
+                select.select [id="ps-rejoin" value=""]
+                  option [value=""] "Follow each account"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+              label "Rejoin server"
+                select.select [id="ps-rejoin-with" value=""]
+                  option [value=""] "Any"
+                  option [value="any"] "With another account"
+                  option [value="00000000-0000-4000-8000-000000000002"] "With Farm 1"
+                  option [value="00000000-0000-4000-8000-000000000003"] "With Farm 2"
+                  option [value="00000000-0000-4000-8000-000000000004"] "With Night Owl"
+              label "Performance"
+                select.select [id="ps-profile" value="afk"]
+                  option [value=""] "Normal"
+                  option [value="afk"] "Light AFK"
+              label "Restart Roblox"
+                select.select [id="ps-restart" value="4"]
+                  option [value="0"] "Never"
+                  option [value="2"] "Every 2 hours"
+                  option [value="4"] "Every 4 hours"
+                  option [value="6"] "Every 6 hours"
+                  option [value="12"] "Every 12 hours"
+              label "Arrange windows"
+                select.select [id="ps-arrange" value="on"]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+            p.ps-opts-note [id="ps-opts-note"] "Light AFK: lowest graphics, 30 FPS, no sound, and the window is minimised once it’s in the game. Restart: after that many hours each window is closed and opened again into the same game, one at a time."
+          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
+            div.ps-opts-head
+              b [id="ps-dc-title"] "Discord"
+            label.ps-dc-mode "Send this preset’s messages to"
+              select.select [id="ps-dc-mode" value="own"]
+                option [value=""] "The channel in Settings"
+                option [value="own"] "A webhook of its own"
+            div.ps-dc-own [id="ps-dc-own"]
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Webhook link for this preset" value=""]
+              button.btn [id="ps-dc-test" type="button"] "Send test"
+            p.ps-opts-note "A link is saved (hidden here). Paste another one to replace it. That is its schedule messages, its summary after a scheduled stop, and the alerts about the windows it opened. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
+          div.ps-sched
+            div.ps-sched-head
+              label.switch
+                input [id="ps-sch-on" type="checkbox" aria-label="Schedule" checked=true]
+                span
+              div
+                b "Schedule"
+                small "Runs this preset by itself at a set time"
+            div.ps-sched-body [id="ps-sch-body"]
+              div.preset-row
+                label "Start time"
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                      svg.i #ktpp14
+                label "Repeat"
+                  select.select [id="ps-sch-mode" value="once"]
+                    option [value="days"] "On these weekdays"
+                    option [value="once"] "Once, on a date"
+              label [id="ps-sch-date-row"] "Date"
+                span.field.tf
+                  input.tf-box [id="ps-sch-date" type="date" value="2026-10-16"]
+                  button.tf-btn [type="button" title="Choose a date" aria-expanded="true" aria-haspopup="dialog" aria-label="Choose a date" FOCUSED]
+                    svg.i #11ja4j6
+              div.preset-row
+                label "Stop"
+                  select.select [id="ps-sch-stop" value="after"]
+                    option [value="never"] "Never (keep playing)"
+                    option [value="after"] "After some hours"
+                    option [value="at"] "At a time"
+                label [id="ps-sch-hours-row"] "Hours"
+                  input.field [id="ps-sch-hours" type="number" min="0.5" max="168" step="0.5" value="3"]
+              details.ps-note
+                summary "Good to know"
+                  svg.i #v9c4u6
+      div.modal-foot
+        button.btn.danger.push "Delete"
+        button.btn "Cancel"
+        button.btn.primary "Save"
+    div.tf-pop [role="dialog" aria-label="Choose a date" style="left:583px;top:323.875px"]
+      div.tf-cal
+        div.tf-cal-head
+          button.icon-btn [type="button" title="Previous month" aria-label="Previous month"]
+            svg.i #10tf97k
+          b "October 2026"
+          button.icon-btn [type="button" title="Next month" aria-label="Next month"]
+            svg.i #1g7f83q
+        div.tf-cal-grid
+          span.tf-wd "Sun"
+          span.tf-wd "Mon"
+          span.tf-wd "Tue"
+          span.tf-wd "Wed"
+          span.tf-wd "Thu"
+          span.tf-wd "Fri"
+          span.tf-wd "Sat"
+          span
+          span
+          span
+          span
+          button [type="button" aria-pressed="false"] "1"
+          button [type="button" aria-pressed="false"] "2"
+          button [type="button" aria-pressed="false"] "3"
+          button [type="button" aria-pressed="false"] "4"
+          button [type="button" aria-pressed="false"] "5"
+          button [type="button" aria-pressed="false"] "6"
+          button [type="button" aria-pressed="false"] "7"
+          button [type="button" aria-pressed="false"] "8"
+          button [type="button" aria-pressed="false"] "9"
+          button [type="button" aria-pressed="false"] "10"
+          button [type="button" aria-pressed="false"] "11"
+          button [type="button" aria-pressed="false"] "12"
+          button [type="button" aria-pressed="false"] "13"
+          button [type="button" aria-pressed="false"] "14"
+          button [type="button" aria-pressed="false"] "15"
+          button.on.today [type="button" aria-pressed="true"] "16"
+          button [type="button" aria-pressed="false"] "17"
+          button [type="button" aria-pressed="false"] "18"
+          button [type="button" aria-pressed="false"] "19"
+          button [type="button" aria-pressed="false"] "20"
+          button [type="button" aria-pressed="false"] "21"
+          button [type="button" aria-pressed="false"] "22"
+          button [type="button" aria-pressed="false"] "23"
+          button [type="button" aria-pressed="false"] "24"
+          button [type="button" aria-pressed="false"] "25"
+          button [type="button" aria-pressed="false"] "26"
+          button [type="button" aria-pressed="false"] "27"
+          button [type="button" aria-pressed="false"] "28"
+          button [type="button" aria-pressed="false"] "29"
+          button [type="button" aria-pressed="false"] "30"
+          button [type="button" aria-pressed="false"] "31"
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+== picked
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Presets"
+            p [id="pv-sub"] "presets scheduled"
+              b "3"
+              span.sep "·"
+              b "1"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Search presets or games" maxlength="100" aria-label="Search presets or games" value=""]
+            button.btn.primary
+              svg.i #u7ty99
+              span "New preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· Next: Today 8:00 PM"
+                  span.pv-live "3 windows open"
+              div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule off"]
+                  input [type="checkbox" aria-label="Schedule: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-close.pv-run.sm [title="Closes the 3 windows this preset opened." aria-label="Close: Farm Blox Fruits"]
+                svg.i #16z0s1r
+                span "Close"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Farm Blox Fruits"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Adopt Me trade"] "Adopt Me trade"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-next
+                  span "Last run 1 h ago"
+              div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Run: Adopt Me trade"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Adopt Me trade"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Adopt Me trade"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Adopt Me trade"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Adopt Me trade"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Adopt Me trade"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Roblox home"] "Roblox home"
+                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
+                span.pv-next
+                  span "Last run 1 day ago"
+              div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule on"]
+                  input [type="checkbox" aria-label="Schedule: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Run: Morning check-in"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Morning check-in" disabled]
+                  svg.i #u1ag9u
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Edit preset"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.form.preset-form
+          label "Name"
+            input.field [id="ps-name" placeholder="e.g. Blox Fruits farm" maxlength="60" value="Farm Blox Fruits"]
+          label "Game"
+            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+          div.ps-game [id="ps-game"]
+            span.gph
+              svg.i #sy1lqp
+            b "Blox Fruits"
+          div.preset-row
+            label "Server"
+              select.select [id="ps-server" value="ping"]
+                option [value="any"] "Any (Roblox picks)"
+                option [value="most"] "Most players"
+                option [value="fewest"] "Fewest players"
+                option [value="ping"] "Lowest ping"
+                option [value="random"] "Random"
+                option [value="job"] "Fixed server (Job ID)"
+                option [value="follow"] "A player’s server"
+            label "Wait between accounts"
+              select.select [id="ps-delay" value="12"]
+                option [value=""] "Follow Settings (8 s)"
+                option [value="0"] "0 s"
+                option [value="5"] "5 s"
+                option [value="10"] "10 s"
+                option [value="12"] "12 s"
+                option [value="15"] "15 s"
+                option [value="30"] "30 s"
+                option [value="45"] "45 s"
+                option [value="60"] "60 s"
+                option [value="90"] "90 s"
+                option [value="120"] "120 s"
+          div.preset-accs "Accounts"
+            span.muted [id="ps-count"] "(3)"
+            small "Ticked accounts open in this order — drag the handle or use the arrows."
+          p.ps-gone
+            svg.i #v9c4u6
+            span "1 account in this preset was deleted; it’s left out when you save."
+        div.ord-list [role="list"]
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 1" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:243" src=#uinvo6]
+            span.ord-txt
+              b [title="Farm 1"] "Farm 1"
+              small "@pixelfarmer01"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 2" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:244" src=#n0d7cr]
+            span.ord-txt
+              b [title="Farm 2"] "Farm 2"
+              small "@pixelfarmer02"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Night Owl" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:297" src=#1u67et1]
+            span.ord-txt
+              b [title="Night Owl"] "Night Owl"
+              small "@night_owl_rb"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Main" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:204" src=#1qk25wb]
+            span.ord-txt
+              b [title="Main"] "Main"
+              small "@sunny_builds"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Alt" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:83" src=#c108i9]
+            span.ord-txt
+              b [title="Alt"] "Alt"
+              small "@lananh_2010"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Trade" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:218" src=#kgijcs]
+            span.ord-txt
+              b [title="Trade"] "Trade"
+              small "@tradepost_vn"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Testing" checked=false]
+            div.avatar.sm
+              span.initials [style="--h:217"] "TE"
+            span.ord-txt
+              b [title="Testing"] "Testing"
+              small "@noavatar_user"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+        div.form.preset-form
+          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
+            div.ps-opts-head
+              b [id="ps-opts-title"] "For the Roblox windows"
+            div.ps-opts-grid
+              label "Anti-AFK"
+                select.select [id="ps-afk" value="on"]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+              label "Auto-rejoin"
+                select.select [id="ps-rejoin" value=""]
+                  option [value=""] "Follow each account"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+              label "Rejoin server"
+                select.select [id="ps-rejoin-with" value=""]
+                  option [value=""] "Any"
+                  option [value="any"] "With another account"
+                  option [value="00000000-0000-4000-8000-000000000002"] "With Farm 1"
+                  option [value="00000000-0000-4000-8000-000000000003"] "With Farm 2"
+                  option [value="00000000-0000-4000-8000-000000000004"] "With Night Owl"
+              label "Performance"
+                select.select [id="ps-profile" value="afk"]
+                  option [value=""] "Normal"
+                  option [value="afk"] "Light AFK"
+              label "Restart Roblox"
+                select.select [id="ps-restart" value="4"]
+                  option [value="0"] "Never"
+                  option [value="2"] "Every 2 hours"
+                  option [value="4"] "Every 4 hours"
+                  option [value="6"] "Every 6 hours"
+                  option [value="12"] "Every 12 hours"
+              label "Arrange windows"
+                select.select [id="ps-arrange" value="on"]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+            p.ps-opts-note [id="ps-opts-note"] "Light AFK: lowest graphics, 30 FPS, no sound, and the window is minimised once it’s in the game. Restart: after that many hours each window is closed and opened again into the same game, one at a time."
+          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
+            div.ps-opts-head
+              b [id="ps-dc-title"] "Discord"
+            label.ps-dc-mode "Send this preset’s messages to"
+              select.select [id="ps-dc-mode" value="own"]
+                option [value=""] "The channel in Settings"
+                option [value="own"] "A webhook of its own"
+            div.ps-dc-own [id="ps-dc-own"]
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Webhook link for this preset" value=""]
+              button.btn [id="ps-dc-test" type="button"] "Send test"
+            p.ps-opts-note "A link is saved (hidden here). Paste another one to replace it. That is its schedule messages, its summary after a scheduled stop, and the alerts about the windows it opened. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
+          div.ps-sched
+            div.ps-sched-head
+              label.switch
+                input [id="ps-sch-on" type="checkbox" aria-label="Schedule" checked=true]
+                span
+              div
+                b "Schedule"
+                small "Runs this preset by itself at a set time"
+            div.ps-sched-body [id="ps-sch-body"]
+              div.preset-row
+                label "Start time"
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                      svg.i #ktpp14
+                label "Repeat"
+                  select.select [id="ps-sch-mode" value="once"]
+                    option [value="days"] "On these weekdays"
+                    option [value="once"] "Once, on a date"
+              label [id="ps-sch-date-row"] "Date"
+                span.field.tf
+                  input.tf-box [id="ps-sch-date" type="date" value="2026-11-15"]
+                  button.tf-btn [type="button" title="Choose a date" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a date" FOCUSED]
+                    svg.i #11ja4j6
+              div.preset-row
+                label "Stop"
+                  select.select [id="ps-sch-stop" value="after"]
+                    option [value="never"] "Never (keep playing)"
+                    option [value="after"] "After some hours"
+                    option [value="at"] "At a time"
+                label [id="ps-sch-hours-row"] "Hours"
+                  input.field [id="ps-sch-hours" type="number" min="0.5" max="168" step="0.5" value="3"]
+              details.ps-note
+                summary "Good to know"
+                  svg.i #v9c4u6
+      div.modal-foot
+        button.btn.danger.push "Delete"
+        button.btn "Cancel"
+        button.btn.primary "Save"
+#toasts
+-- commands
+  (none)
+== time
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Presets"
+            p [id="pv-sub"] "presets scheduled"
+              b "3"
+              span.sep "·"
+              b "1"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Search presets or games" maxlength="100" aria-label="Search presets or games" value=""]
+            button.btn.primary
+              svg.i #u7ty99
+              span "New preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· Next: Today 8:00 PM"
+                  span.pv-live "3 windows open"
+              div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule off"]
+                  input [type="checkbox" aria-label="Schedule: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-close.pv-run.sm [title="Closes the 3 windows this preset opened." aria-label="Close: Farm Blox Fruits"]
+                svg.i #16z0s1r
+                span "Close"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Farm Blox Fruits"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Adopt Me trade"] "Adopt Me trade"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-next
+                  span "Last run 1 h ago"
+              div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Run: Adopt Me trade"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Adopt Me trade"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Adopt Me trade"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Adopt Me trade"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Adopt Me trade"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Adopt Me trade"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Roblox home"] "Roblox home"
+                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
+                span.pv-next
+                  span "Last run 1 day ago"
+              div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule on"]
+                  input [type="checkbox" aria-label="Schedule: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Run: Morning check-in"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Morning check-in" disabled]
+                  svg.i #u1ag9u
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Edit preset"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.form.preset-form
+          label "Name"
+            input.field [id="ps-name" placeholder="e.g. Blox Fruits farm" maxlength="60" value="Farm Blox Fruits"]
+          label "Game"
+            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+          div.ps-game [id="ps-game"]
+            span.gph
+              svg.i #sy1lqp
+            b "Blox Fruits"
+          div.preset-row
+            label "Server"
+              select.select [id="ps-server" value="ping"]
+                option [value="any"] "Any (Roblox picks)"
+                option [value="most"] "Most players"
+                option [value="fewest"] "Fewest players"
+                option [value="ping"] "Lowest ping"
+                option [value="random"] "Random"
+                option [value="job"] "Fixed server (Job ID)"
+                option [value="follow"] "A player’s server"
+            label "Wait between accounts"
+              select.select [id="ps-delay" value="12"]
+                option [value=""] "Follow Settings (8 s)"
+                option [value="0"] "0 s"
+                option [value="5"] "5 s"
+                option [value="10"] "10 s"
+                option [value="12"] "12 s"
+                option [value="15"] "15 s"
+                option [value="30"] "30 s"
+                option [value="45"] "45 s"
+                option [value="60"] "60 s"
+                option [value="90"] "90 s"
+                option [value="120"] "120 s"
+          div.preset-accs "Accounts"
+            span.muted [id="ps-count"] "(3)"
+            small "Ticked accounts open in this order — drag the handle or use the arrows."
+          p.ps-gone
+            svg.i #v9c4u6
+            span "1 account in this preset was deleted; it’s left out when you save."
+        div.ord-list [role="list"]
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 1" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:243" src=#uinvo6]
+            span.ord-txt
+              b [title="Farm 1"] "Farm 1"
+              small "@pixelfarmer01"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 2" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:244" src=#n0d7cr]
+            span.ord-txt
+              b [title="Farm 2"] "Farm 2"
+              small "@pixelfarmer02"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Night Owl" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:297" src=#1u67et1]
+            span.ord-txt
+              b [title="Night Owl"] "Night Owl"
+              small "@night_owl_rb"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Main" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:204" src=#1qk25wb]
+            span.ord-txt
+              b [title="Main"] "Main"
+              small "@sunny_builds"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Alt" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:83" src=#c108i9]
+            span.ord-txt
+              b [title="Alt"] "Alt"
+              small "@lananh_2010"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Trade" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:218" src=#kgijcs]
+            span.ord-txt
+              b [title="Trade"] "Trade"
+              small "@tradepost_vn"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Testing" checked=false]
+            div.avatar.sm
+              span.initials [style="--h:217"] "TE"
+            span.ord-txt
+              b [title="Testing"] "Testing"
+              small "@noavatar_user"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+        div.form.preset-form
+          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
+            div.ps-opts-head
+              b [id="ps-opts-title"] "For the Roblox windows"
+            div.ps-opts-grid
+              label "Anti-AFK"
+                select.select [id="ps-afk" value="on"]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+              label "Auto-rejoin"
+                select.select [id="ps-rejoin" value=""]
+                  option [value=""] "Follow each account"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+              label "Rejoin server"
+                select.select [id="ps-rejoin-with" value=""]
+                  option [value=""] "Any"
+                  option [value="any"] "With another account"
+                  option [value="00000000-0000-4000-8000-000000000002"] "With Farm 1"
+                  option [value="00000000-0000-4000-8000-000000000003"] "With Farm 2"
+                  option [value="00000000-0000-4000-8000-000000000004"] "With Night Owl"
+              label "Performance"
+                select.select [id="ps-profile" value="afk"]
+                  option [value=""] "Normal"
+                  option [value="afk"] "Light AFK"
+              label "Restart Roblox"
+                select.select [id="ps-restart" value="4"]
+                  option [value="0"] "Never"
+                  option [value="2"] "Every 2 hours"
+                  option [value="4"] "Every 4 hours"
+                  option [value="6"] "Every 6 hours"
+                  option [value="12"] "Every 12 hours"
+              label "Arrange windows"
+                select.select [id="ps-arrange" value="on"]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+            p.ps-opts-note [id="ps-opts-note"] "Light AFK: lowest graphics, 30 FPS, no sound, and the window is minimised once it’s in the game. Restart: after that many hours each window is closed and opened again into the same game, one at a time."
+          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
+            div.ps-opts-head
+              b [id="ps-dc-title"] "Discord"
+            label.ps-dc-mode "Send this preset’s messages to"
+              select.select [id="ps-dc-mode" value="own"]
+                option [value=""] "The channel in Settings"
+                option [value="own"] "A webhook of its own"
+            div.ps-dc-own [id="ps-dc-own"]
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Webhook link for this preset" value=""]
+              button.btn [id="ps-dc-test" type="button"] "Send test"
+            p.ps-opts-note "A link is saved (hidden here). Paste another one to replace it. That is its schedule messages, its summary after a scheduled stop, and the alerts about the windows it opened. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
+          div.ps-sched
+            div.ps-sched-head
+              label.switch
+                input [id="ps-sch-on" type="checkbox" aria-label="Schedule" checked=true]
+                span
+              div
+                b "Schedule"
+                small "Runs this preset by itself at a set time"
+            div.ps-sched-body [id="ps-sch-body"]
+              div.preset-row
+                label "Start time"
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="true" aria-haspopup="dialog" aria-label="Choose a time" FOCUSED]
+                      svg.i #ktpp14
+                label "Repeat"
+                  select.select [id="ps-sch-mode" value="once"]
+                    option [value="days"] "On these weekdays"
+                    option [value="once"] "Once, on a date"
+              label [id="ps-sch-date-row"] "Date"
+                span.field.tf
+                  input.tf-box [id="ps-sch-date" type="date" value="2026-11-15"]
+                  button.tf-btn [type="button" title="Choose a date" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a date"]
+                    svg.i #11ja4j6
+              div.preset-row
+                label "Stop"
+                  select.select [id="ps-sch-stop" value="after"]
+                    option [value="never"] "Never (keep playing)"
+                    option [value="after"] "After some hours"
+                    option [value="at"] "At a time"
+                label [id="ps-sch-hours-row"] "Hours"
+                  input.field [id="ps-sch-hours" type="number" min="0.5" max="168" step="0.5" value="3"]
+              details.ps-note
+                summary "Good to know"
+                  svg.i #v9c4u6
+      div.modal-foot
+        button.btn.danger.push "Delete"
+        button.btn "Cancel"
+        button.btn.primary "Save"
+    div.tf-pop [role="dialog" aria-label="Choose a time" style="left:452px;top:533.75px"]
+      div.tf-time
+        div.tf-col
+          button [type="button" aria-pressed="false"] "12"
+          button [type="button" aria-pressed="false"] "1"
+          button [type="button" aria-pressed="false"] "2"
+          button [type="button" aria-pressed="false"] "3"
+          button [type="button" aria-pressed="false"] "4"
+          button [type="button" aria-pressed="false"] "5"
+          button [type="button" aria-pressed="false"] "6"
+          button [type="button" aria-pressed="false"] "7"
+          button.on [type="button" aria-pressed="true"] "8"
+          button [type="button" aria-pressed="false"] "9"
+          button [type="button" aria-pressed="false"] "10"
+          button [type="button" aria-pressed="false"] "11"
+        div.tf-col
+          button.on [type="button" aria-pressed="true"] "00"
+          button [type="button" aria-pressed="false"] "01"
+          button [type="button" aria-pressed="false"] "02"
+          button [type="button" aria-pressed="false"] "03"
+          button [type="button" aria-pressed="false"] "04"
+          button [type="button" aria-pressed="false"] "05"
+          button [type="button" aria-pressed="false"] "06"
+          button [type="button" aria-pressed="false"] "07"
+          button [type="button" aria-pressed="false"] "08"
+          button [type="button" aria-pressed="false"] "09"
+          button [type="button" aria-pressed="false"] "10"
+          button [type="button" aria-pressed="false"] "11"
+          button [type="button" aria-pressed="false"] "12"
+          button [type="button" aria-pressed="false"] "13"
+          button [type="button" aria-pressed="false"] "14"
+          button [type="button" aria-pressed="false"] "15"
+          button [type="button" aria-pressed="false"] "16"
+          button [type="button" aria-pressed="false"] "17"
+          button [type="button" aria-pressed="false"] "18"
+          button [type="button" aria-pressed="false"] "19"
+          button [type="button" aria-pressed="false"] "20"
+          button [type="button" aria-pressed="false"] "21"
+          button [type="button" aria-pressed="false"] "22"
+          button [type="button" aria-pressed="false"] "23"
+          button [type="button" aria-pressed="false"] "24"
+          button [type="button" aria-pressed="false"] "25"
+          button [type="button" aria-pressed="false"] "26"
+          button [type="button" aria-pressed="false"] "27"
+          button [type="button" aria-pressed="false"] "28"
+          button [type="button" aria-pressed="false"] "29"
+          button [type="button" aria-pressed="false"] "30"
+          button [type="button" aria-pressed="false"] "31"
+          button [type="button" aria-pressed="false"] "32"
+          button [type="button" aria-pressed="false"] "33"
+          button [type="button" aria-pressed="false"] "34"
+          button [type="button" aria-pressed="false"] "35"
+          button [type="button" aria-pressed="false"] "36"
+          button [type="button" aria-pressed="false"] "37"
+          button [type="button" aria-pressed="false"] "38"
+          button [type="button" aria-pressed="false"] "39"
+          button [type="button" aria-pressed="false"] "40"
+          button [type="button" aria-pressed="false"] "41"
+          button [type="button" aria-pressed="false"] "42"
+          button [type="button" aria-pressed="false"] "43"
+          button [type="button" aria-pressed="false"] "44"
+          button [type="button" aria-pressed="false"] "45"
+          button [type="button" aria-pressed="false"] "46"
+          button [type="button" aria-pressed="false"] "47"
+          button [type="button" aria-pressed="false"] "48"
+          button [type="button" aria-pressed="false"] "49"
+          button [type="button" aria-pressed="false"] "50"
+          button [type="button" aria-pressed="false"] "51"
+          button [type="button" aria-pressed="false"] "52"
+          button [type="button" aria-pressed="false"] "53"
+          button [type="button" aria-pressed="false"] "54"
+          button [type="button" aria-pressed="false"] "55"
+          button [type="button" aria-pressed="false"] "56"
+          button [type="button" aria-pressed="false"] "57"
+          button [type="button" aria-pressed="false"] "58"
+          button [type="button" aria-pressed="false"] "59"
+        div.tf-col
+          button [type="button" aria-pressed="false"] "AM"
+          button.on [type="button" aria-pressed="true"] "PM"
+#toasts
+-- commands
+  (none)
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav.on [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-presets"]
+        header.top
+          div.top-title
+            h1 "Presets"
+            p [id="pv-sub"] "presets scheduled"
+              b "3"
+              span.sep "·"
+              b "1"
+          div.top-tools [id="pv-tools"]
+            label.search
+              svg.i #1u22jvi
+              input [id="pv-q" placeholder="Search presets or games" maxlength="100" aria-label="Search presets or games" value=""]
+            button.btn.primary
+              svg.i #u7ty99
+              span "New preset"
+        div.scroll
+          div.pv-list [id="pv-list" role="list"]
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                small [title="Blox Fruits"] "Blox Fruits"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· Next: Today 8:00 PM"
+                  span.pv-live "3 windows open"
+              div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:244" src=#n0d7cr]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule off"]
+                  input [type="checkbox" aria-label="Schedule: Farm Blox Fruits" checked=true]
+                  span
+              button.btn.pv-close.pv-run.sm [title="Closes the 3 windows this preset opened." aria-label="Close: Farm Blox Fruits"]
+                svg.i #16z0s1r
+                span "Close"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Farm Blox Fruits"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Farm Blox Fruits"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Farm Blox Fruits"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Farm Blox Fruits" disabled]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Farm Blox Fruits"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #sy1lqp
+              div.pv-main
+                b [title="Adopt Me trade"] "Adopt Me trade"
+                small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-next
+                  span "Last run 1 h ago"
+              div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
+                span.avatar.sm
+                  img [alt="" style="--h:218" src=#kgijcs]
+              div.pv-sw
+              button.btn.pv-run.sm [aria-label="Run: Adopt Me trade"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Adopt Me trade"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Adopt Me trade"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Adopt Me trade"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Adopt Me trade"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Adopt Me trade"]
+                  svg.i #u1ag9u
+            div.pv-item [role="listitem"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.pv-icon
+                svg.i #1y8kmj1
+              div.pv-main
+                b [title="Morning check-in"] "Morning check-in"
+                small [title="Roblox home"] "Roblox home"
+                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
+                span.pv-next
+                  span "Last run 1 day ago"
+              div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
+                span.avatar.sm
+                  img [alt="" style="--h:204" src=#1qk25wb]
+                span.avatar.sm
+                  img [alt="" style="--h:243" src=#uinvo6]
+                span.avatar.sm
+                  img [alt="" style="--h:297" src=#1u67et1]
+                span.avatar.sm
+                  img [alt="" style="--h:83" src=#c108i9]
+                em "+2"
+              div.pv-sw
+                small [aria-hidden="true"] "Schedule"
+                label.switch [title="Turn the schedule on"]
+                  input [type="checkbox" aria-label="Schedule: Morning check-in" checked=false]
+                  span
+              button.btn.pv-run.sm [aria-label="Run: Morning check-in"]
+                svg.i #1ewcuky
+                span "Run"
+              span.pv-acts
+                button.icon-btn [title="Edit" aria-label="Edit: Morning check-in"]
+                  svg.i #1hrhc9o
+                button.icon-btn [title="Duplicate" aria-label="Duplicate: Morning check-in"]
+                  svg.i #2s24cy
+                button.icon-btn [title="Delete" aria-label="Delete: Morning check-in"]
+                  svg.i #1w1g8zc
+              span.ord-btns
+                button.icon-btn [title="Move up" aria-label="Move up: Morning check-in"]
+                  svg.i #ilfy0l
+                button.icon-btn [title="Move down" aria-label="Move down: Morning check-in" disabled]
+                  svg.i #u1ag9u
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Edit preset"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.form.preset-form
+          label "Name"
+            input.field [id="ps-name" placeholder="e.g. Blox Fruits farm" maxlength="60" value="Farm Blox Fruits"]
+          label "Game"
+            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+          div.ps-game [id="ps-game"]
+            span.gph
+              svg.i #sy1lqp
+            b "Blox Fruits"
+          div.preset-row
+            label "Server"
+              select.select [id="ps-server" value="ping"]
+                option [value="any"] "Any (Roblox picks)"
+                option [value="most"] "Most players"
+                option [value="fewest"] "Fewest players"
+                option [value="ping"] "Lowest ping"
+                option [value="random"] "Random"
+                option [value="job"] "Fixed server (Job ID)"
+                option [value="follow"] "A player’s server"
+            label "Wait between accounts"
+              select.select [id="ps-delay" value="12"]
+                option [value=""] "Follow Settings (8 s)"
+                option [value="0"] "0 s"
+                option [value="5"] "5 s"
+                option [value="10"] "10 s"
+                option [value="12"] "12 s"
+                option [value="15"] "15 s"
+                option [value="30"] "30 s"
+                option [value="45"] "45 s"
+                option [value="60"] "60 s"
+                option [value="90"] "90 s"
+                option [value="120"] "120 s"
+          div.preset-accs "Accounts"
+            span.muted [id="ps-count"] "(3)"
+            small "Ticked accounts open in this order — drag the handle or use the arrows."
+          p.ps-gone
+            svg.i #v9c4u6
+            span "1 account in this preset was deleted; it’s left out when you save."
+        div.ord-list [role="list"]
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 1" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:243" src=#uinvo6]
+            span.ord-txt
+              b [title="Farm 1"] "Farm 1"
+              small "@pixelfarmer01"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Farm 2" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:244" src=#n0d7cr]
+            span.ord-txt
+              b [title="Farm 2"] "Farm 2"
+              small "@pixelfarmer02"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Night Owl" checked=true]
+            div.avatar.sm
+              img [alt="" style="--h:297" src=#1u67et1]
+            span.ord-txt
+              b [title="Night Owl"] "Night Owl"
+              small "@night_owl_rb"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Main" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:204" src=#1qk25wb]
+            span.ord-txt
+              b [title="Main"] "Main"
+              small "@sunny_builds"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Alt" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:83" src=#c108i9]
+            span.ord-txt
+              b [title="Alt"] "Alt"
+              small "@lananh_2010"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Trade" checked=false]
+            div.avatar.sm
+              img [alt="" style="--h:218" src=#kgijcs]
+            span.ord-txt
+              b [title="Trade"] "Trade"
+              small "@tradepost_vn"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+          div.ord-item [role="listitem"]
+            span.ord-grip [title="Drag to reorder"]
+              svg.i #top79o
+            input [type="checkbox" aria-label="Testing" checked=false]
+            div.avatar.sm
+              span.initials [style="--h:217"] "TE"
+            span.ord-txt
+              b [title="Testing"] "Testing"
+              small "@noavatar_user"
+            span.ord-btns
+              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+                svg.i #ilfy0l
+              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+                svg.i #u1ag9u
+        div.form.preset-form
+          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
+            div.ps-opts-head
+              b [id="ps-opts-title"] "For the Roblox windows"
+            div.ps-opts-grid
+              label "Anti-AFK"
+                select.select [id="ps-afk" value="on"]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+              label "Auto-rejoin"
+                select.select [id="ps-rejoin" value=""]
+                  option [value=""] "Follow each account"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+              label "Rejoin server"
+                select.select [id="ps-rejoin-with" value=""]
+                  option [value=""] "Any"
+                  option [value="any"] "With another account"
+                  option [value="00000000-0000-4000-8000-000000000002"] "With Farm 1"
+                  option [value="00000000-0000-4000-8000-000000000003"] "With Farm 2"
+                  option [value="00000000-0000-4000-8000-000000000004"] "With Night Owl"
+              label "Performance"
+                select.select [id="ps-profile" value="afk"]
+                  option [value=""] "Normal"
+                  option [value="afk"] "Light AFK"
+              label "Restart Roblox"
+                select.select [id="ps-restart" value="4"]
+                  option [value="0"] "Never"
+                  option [value="2"] "Every 2 hours"
+                  option [value="4"] "Every 4 hours"
+                  option [value="6"] "Every 6 hours"
+                  option [value="12"] "Every 12 hours"
+              label "Arrange windows"
+                select.select [id="ps-arrange" value="on"]
+                  option [value=""] "Follow Settings (off)"
+                  option [value="on"] "On"
+                  option [value="off"] "Off"
+            p.ps-opts-note [id="ps-opts-note"] "Light AFK: lowest graphics, 30 FPS, no sound, and the window is minimised once it’s in the game. Restart: after that many hours each window is closed and opened again into the same game, one at a time."
+          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
+            div.ps-opts-head
+              b [id="ps-dc-title"] "Discord"
+            label.ps-dc-mode "Send this preset’s messages to"
+              select.select [id="ps-dc-mode" value="own"]
+                option [value=""] "The channel in Settings"
+                option [value="own"] "A webhook of its own"
+            div.ps-dc-own [id="ps-dc-own"]
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Webhook link for this preset" value=""]
+              button.btn [id="ps-dc-test" type="button"] "Send test"
+            p.ps-opts-note "A link is saved (hidden here). Paste another one to replace it. That is its schedule messages, its summary after a scheduled stop, and the alerts about the windows it opened. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
+          div.ps-sched
+            div.ps-sched-head
+              label.switch
+                input [id="ps-sch-on" type="checkbox" aria-label="Schedule" checked=true]
+                span
+              div
+                b "Schedule"
+                small "Runs this preset by itself at a set time"
+            div.ps-sched-body [id="ps-sch-body"]
+              div.preset-row
+                label "Start time"
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time" FOCUSED]
+                      svg.i #ktpp14
+                label "Repeat"
+                  select.select [id="ps-sch-mode" value="once"]
+                    option [value="days"] "On these weekdays"
+                    option [value="once"] "Once, on a date"
+              label [id="ps-sch-date-row"] "Date"
+                span.field.tf
+                  input.tf-box [id="ps-sch-date" type="date" value="2026-11-15"]
+                  button.tf-btn [type="button" title="Choose a date" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a date"]
+                    svg.i #11ja4j6
+              div.preset-row
+                label "Stop"
+                  select.select [id="ps-sch-stop" value="after"]
+                    option [value="never"] "Never (keep playing)"
+                    option [value="after"] "After some hours"
+                    option [value="at"] "At a time"
+                label [id="ps-sch-hours-row"] "Hours"
+                  input.field [id="ps-sch-hours" type="number" min="0.5" max="168" step="0.5" value="3"]
+              details.ps-note
+                summary "Good to know"
+                  svg.i #v9c4u6
+      div.modal-foot
+        button.btn.danger.push "Delete"
+        button.btn "Cancel"
+        button.btn.primary "Save"
+#toasts
+-- commands
+  (none)

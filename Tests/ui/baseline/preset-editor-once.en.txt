@@ -399,13 +399,19 @@ html [data-theme="dark" lang="en"]
             div.ps-sched-body [id="ps-sch-body"]
               div.preset-row
                 label "Start time"
-                  input.field [id="ps-sch-time" type="time" value="20:00"]
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                      svg.i #ktpp14
                 label "Repeat"
                   select.select [id="ps-sch-mode" value="once"]
                     option [value="days"] "On these weekdays"
                     option [value="once"] "Once, on a date"
               label [id="ps-sch-date-row"] "Date"
-                input.field [id="ps-sch-date" type="date" value="2026-10-16"]
+                span.field.tf
+                  input.tf-box [id="ps-sch-date" type="date" value="2026-10-16"]
+                  button.tf-btn [type="button" title="Choose a date" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a date"]
+                    svg.i #11ja4j6
               div.preset-row
                 label "Stop"
                   select.select [id="ps-sch-stop" value="at" FOCUSED]
@@ -413,7 +419,10 @@ html [data-theme="dark" lang="en"]
                     option [value="after"] "After some hours"
                     option [value="at"] "At a time"
                 label [id="ps-sch-stoptime-row"] "Stop time"
-                  input.field [id="ps-sch-stoptime" type="time" value=""]
+                  span.field.tf
+                    input.tf-box [id="ps-sch-stoptime" type="time" value=""]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                      svg.i #ktpp14
               details.ps-note
                 summary "Good to know"
                   svg.i #v9c4u6
@@ -830,7 +839,10 @@ html [data-theme="dark" lang="en"]
             div.ps-sched-body [id="ps-sch-body"]
               div.preset-row
                 label "Start time"
-                  input.field [id="ps-sch-time" type="time" value="20:00"]
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
+                      svg.i #ktpp14
                 label "Repeat"
                   select.select [id="ps-sch-mode" value="days"]
                     option [value="days"] "On these weekdays"

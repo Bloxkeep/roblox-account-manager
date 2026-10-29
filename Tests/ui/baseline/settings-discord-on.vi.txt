@@ -173,7 +173,10 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Hằng ngày lúc"
                         div.ctl
-                          input.field.sm.time [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
+                          span.field.sm.tf.time
+                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
+                            button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
+                              svg.i #ktpp14
                     div.set-row
                       div
                         div.t "Khi Preset hẹn giờ chạy xong"
@@ -269,9 +272,15 @@ html [data-theme="dark" lang="vi"]
                         div.t "Giờ yên tĩnh"
                         div.d "Vẫn gửi tin nhưng không tag ai."
                       div.ctl
-                        input.field.sm.time [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
+                        span.field.sm.tf.time
+                          input.tf-box [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
+                          button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
+                            svg.i #ktpp14
                         span.dc-dash "–"
-                        input.field.sm.time [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
+                        span.field.sm.tf.time
+                          input.tf-box [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
+                          button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
+                            svg.i #ktpp14
                         label.switch
                           input [id="s-dc-quiet" type="checkbox" aria-label="Giờ yên tĩnh" checked=true]
                           span

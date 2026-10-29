@@ -6,6 +6,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { OrderList, type OrderAccount, type OrderListApi } from './OrderList';
+import { DateInput, TimeInput } from './TimeField';
 
 const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'job', 'follow'];
 const RESTART_HOURS = [0, 2, 4, 6, 12]; // the app's own choices (RestartChoices)
@@ -212,7 +213,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
         </div>
         <div className="ps-sched-body" id="ps-sch-body" hidden={!schOn}>
           <div className="preset-row">
-            <label>{t('ps.schTime')}<input className="field" id="ps-sch-time" ref={box('time')} type="time" value={time} onChange={e => setTime(e.target.value)} /></label>
+            <label>{t('ps.schTime')}<TimeInput className="field" id="ps-sch-time" ref={box('time')} value={time} onChange={e => setTime(e.target.value)} /></label>
             <label>{t('ps.schRepeat')}<select className="select" id="ps-sch-mode" value={mode} onChange={e => setMode(e.target.value)}>
               <option value="days">{t('ps.schDays')}</option><option value="once">{t('ps.schOnce')}</option></select></label>
           </div>
@@ -220,13 +221,13 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
             {WEEK.map(d => <button key={d} type="button" className={`chip ${days.includes(d) ? 'on' : ''}`} data-day={d} aria-pressed={days.includes(d)}
               onClick={() => setDays(days.includes(d) ? days.filter(x => x !== d) : [...days, d])}>{host.weekdayName(d)}</button>)}
           </div>
-          <label id="ps-sch-date-row" hidden={mode !== 'once'}>{t('ps.schDate')}<input className="field" id="ps-sch-date" ref={box('date')} type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
+          <label id="ps-sch-date-row" hidden={mode !== 'once'}>{t('ps.schDate')}<DateInput className="field" id="ps-sch-date" ref={box('date')} value={date} onChange={e => setDate(e.target.value)} /></label>
           <div className="preset-row">
             <label>{t('ps.schStop')}<select className="select" id="ps-sch-stop" value={stop} onChange={e => setStop(e.target.value)}>
               {['never', 'after', 'at'].map(k => <option key={k} value={k}>{t(`ps.schStop.${k}`)}</option>)}</select></label>
             <label id="ps-sch-hours-row" hidden={stop !== 'after'}>{t('ps.schHours')}<input className="field" id="ps-sch-hours" ref={box('hours')} type="number" min="0.5" max="168" step="0.5"
               value={hours} onChange={e => setHours(e.target.value)} /></label>
-            <label id="ps-sch-stoptime-row" hidden={stop !== 'at'}>{t('ps.schStopTime')}<input className="field" id="ps-sch-stoptime" type="time" value={stopTime} onChange={e => setStopTime(e.target.value)} /></label>
+            <label id="ps-sch-stoptime-row" hidden={stop !== 'at'}>{t('ps.schStopTime')}<TimeInput className="field" id="ps-sch-stoptime" value={stopTime} onChange={e => setStopTime(e.target.value)} /></label>
           </div>
           <details className="ps-note"><summary><Icon name="info" />{t('ps.schNoteTitle')}</summary><p className="ps-sched-note">{t('ps.schNote')}</p></details>
         </div>

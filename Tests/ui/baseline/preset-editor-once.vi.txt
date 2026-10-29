@@ -399,13 +399,19 @@ html [data-theme="dark" lang="vi"]
             div.ps-sched-body [id="ps-sch-body"]
               div.preset-row
                 label "Giờ bắt đầu"
-                  input.field [id="ps-sch-time" type="time" value="20:00"]
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
+                      svg.i #ktpp14
                 label "Lặp lại"
                   select.select [id="ps-sch-mode" value="once"]
                     option [value="days"] "Các ngày trong tuần"
                     option [value="once"] "Một lần, vào ngày"
               label [id="ps-sch-date-row"] "Ngày"
-                input.field [id="ps-sch-date" type="date" value="2026-10-16"]
+                span.field.tf
+                  input.tf-box [id="ps-sch-date" type="date" value="2026-10-16"]
+                  button.tf-btn [type="button" title="Chọn ngày" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn ngày"]
+                    svg.i #11ja4j6
               div.preset-row
                 label "Dừng"
                   select.select [id="ps-sch-stop" value="at" FOCUSED]
@@ -413,7 +419,10 @@ html [data-theme="dark" lang="vi"]
                     option [value="after"] "Sau vài giờ"
                     option [value="at"] "Vào giờ"
                 label [id="ps-sch-stoptime-row"] "Giờ dừng"
-                  input.field [id="ps-sch-stoptime" type="time" value=""]
+                  span.field.tf
+                    input.tf-box [id="ps-sch-stoptime" type="time" value=""]
+                    button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
+                      svg.i #ktpp14
               details.ps-note
                 summary "Lưu ý"
                   svg.i #v9c4u6
@@ -830,7 +839,10 @@ html [data-theme="dark" lang="vi"]
             div.ps-sched-body [id="ps-sch-body"]
               div.preset-row
                 label "Giờ bắt đầu"
-                  input.field [id="ps-sch-time" type="time" value="20:00"]
+                  span.field.tf
+                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
+                      svg.i #ktpp14
                 label "Lặp lại"
                   select.select [id="ps-sch-mode" value="days"]
                     option [value="days"] "Các ngày trong tuần"
