@@ -2156,9 +2156,6 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .dc-ping { display: flex; align-items: center; gap: 8px; }
 .dc-ping .dc-id { width: calc(21ch + 28px); } /* a whole 20-digit ID in any theme's font ("0" sets ch; a spare one for wider digits) */
 .dc-ping .select { min-width: 132px; }
-.dc-parts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 14px; max-width: 440px; }
-.dc-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
-.dc-chk input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
 .dc-dash { color: var(--muted); }
 .dc-code { margin-left: 6px; font: 700 17px/1 "Cascadia Mono", Consolas, ui-monospace, monospace; letter-spacing: .12em; color: var(--text); user-select: text; }
 .dc-err { min-height: 18px; margin: 8px 0 0; font-size: 12.5px; color: var(--bad-ink); }
@@ -2459,7 +2456,6 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .alog-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .alog-tools .select.sm { max-width: 200px; }
 .alog-tools .btn.sm .i { width: 15px; height: 15px; }
-.alog-note { margin: 4px 0 6px; font-size: 12.5px; color: var(--muted); }
 .alog-day { margin: 14px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .alog-list { margin: 0; padding: 0; list-style: none; }
 .alog-row { display: grid; grid-template-columns: 8px 88px minmax(0, 180px) minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
