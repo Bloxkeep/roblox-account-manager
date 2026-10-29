@@ -12,8 +12,10 @@ Bloxkeep's Discord bot comes with it. Using either means you agree to these term
   says. Its developer isn't liable for lost accounts, items, bans, data or anything else that comes from using them.
 - **The Discord bot.** A server's admins can remove the bot at any time. The bot may change, go offline or stop without
   notice. Don't use it to break Discord's rules.
+- **Name and logo.** You're welcome to copy and change the code. A version with other features should have its own
+  name and logo, so people can tell it from Bloxkeep: see [TRADEMARKS.md](TRADEMARKS.md).
 - **Privacy.** What Bloxkeep and the bot handle, and where it goes, is in the [privacy policy](PRIVACY.md).
 - **Changes.** These terms may change. The current ones are always at this address, with their date below.
 - **Questions.** Open an issue at https://github.com/Bloxkeep/roblox-account-manager/issues.
 
-Last updated: 21 October 2026.
+Last updated: 29 October 2026.
