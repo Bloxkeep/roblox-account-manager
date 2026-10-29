@@ -376,7 +376,7 @@ html [data-theme="dark" lang="en"]
                   option [value=""] "Follow Settings (off)"
                   option [value="on"] "On"
                   option [value="off"] "Off"
-            p.ps-opts-note [id="ps-opts-note"] "A dropped account rejoins the server that account plays in. Full, or nobody left there: any server. Light AFK: lowest graphics, 30 FPS, no sound, and the window is minimised once it’s in the game. Restart: after that many hours each window is closed and opened again into the same game, one at a time."
+            p.ps-opts-note [id="ps-opts-note"] "A dropped account rejoins the server that account plays in. Full, or nobody left there: any server. Light AFK: lowest graphics, grey sky, no grass or lighting effects, 30 FPS, no sound, and the window is minimised once it’s in the game. Restart: after that many hours each window is closed and opened again into the same game, one at a time."
           div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
             div.ps-opts-head
               b [id="ps-dc-title"] "Discord"

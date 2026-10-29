@@ -13,7 +13,7 @@ public sealed partial class AppController
     public Func<bool?, bool>? SetMiniOpen { get; init; }
 
     void NoteClientMemory(List<RobloxProcesses.PlayerProcess> players) =>
-        _clientRam = players.ToDictionary(p => p.Pid, p => p.WorkingSet);
+        _clientRam = players.ToDictionary(p => p.Pid, p => p.Ram);
 
     /// <summary>Every Roblox client on this PC as of the last process check, Bloxkeep's or not.</summary>
     public int RobloxCount => _clientRam.Count;

@@ -385,7 +385,7 @@ public sealed partial class AppController
 
     DiscordMessage BoardMessage(DiscordSettings d, List<RobloxProcesses.PlayerProcess> players)
     {
-        var ram = players.ToDictionary(p => p.Pid, p => p.WorkingSet);
+        var ram = players.ToDictionary(p => p.Pid, p => p.Ram);
         var now = DateTime.UtcNow;
         var rows = _running.Select(r => (Account: FindAccount(r.Key), r.Key, r.Value.Pid, r.Value.Launch))
             .Where(r => r.Account is not null).OrderBy(r => r.Account!.Label, StringComparer.CurrentCultureIgnoreCase)

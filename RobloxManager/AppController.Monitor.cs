@@ -18,7 +18,7 @@ public sealed partial class AppController
         var now = DateTime.UtcNow;
         var players = _lastPlayers is { } last && now >= last.At && now - last.At < MonitorSnapshotAge ? last.Players : RobloxProcesses.GetPlayers();
         var windows = RobloxProcesses.VisibleWindows(players.Select(p => p.Pid));
-        var ram = players.ToDictionary(p => p.Pid, p => p.WorkingSet / MB);
+        var ram = players.ToDictionary(p => p.Pid, p => p.Ram / MB);
         var list = new List<MonitorClient>();
         var taken = new HashSet<int>();
         if (_vault is { } vault)

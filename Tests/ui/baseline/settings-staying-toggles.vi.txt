@@ -156,6 +156,16 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
+                        div.t "Giới hạn RAM cửa sổ treo"
+                        div.d "Cửa sổ Roblox thu nhỏ hoặc đang ẩn chỉ giữ tối đa chừng này RAM, phần còn lại để ở bộ nhớ ảo, nên chạy được nhiều tài khoản hơn. Mở cửa sổ ra là về bình thường."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="Giới hạn RAM cửa sổ treo" value="1024"]
+                          option [value="0"] "Không giới hạn"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
                         div.t "Nhường nhân mạnh cho cửa sổ đang chơi"
                         div.d "Cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows (như trong Task Manager): nhường cửa sổ bạn đang chơi và chạy chủ yếu trên 16 nhân tiết kiệm của CPU, chỉ dùng nhân mạnh khi nhân đó đang rảnh. Bấm vào cửa sổ nào là cửa sổ đó chạy hết tốc lực ngay. Treo nhiều tài khoản vẫn mượt, laptop mát hơn."
                       div.ctl
@@ -176,4 +186,5 @@ html [data-theme="dark" lang="vi"]
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setAutoRejoin {"enabled":true,"ids":["00000000-0000-4000-8000-000000000001","00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000003","00000000-0000-4000-8000-000000000004","00000000-0000-4000-8000-000000000005","00000000-0000-4000-8000-000000000006","00000000-0000-4000-8000-000000000007"]}
   setSettings {"antiAfk":true}
+  setSettings {"ramLimitMb":1024}
   setSettings {"trimBackground":true}

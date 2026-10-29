@@ -148,7 +148,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Hotkeys"
-                        div.d "Ctrl+Alt+H hides or shows every Roblox window, Ctrl+Alt+A arranges them, from any app."
+                        div.d "Ctrl+Alt+H hides or shows every Roblox window, Ctrl+Alt+M minimizes or opens them all, Ctrl+Alt+N goes to the next one, Ctrl+Alt+A arranges them, Ctrl+Alt+B opens Bloxkeep, from any app."
                       div.ctl
                         label.switch
                           input [id="s-hotkeys" type="checkbox" aria-label="Hotkeys" checked=true]

@@ -54,6 +54,8 @@ public sealed partial class AppController
             s.TrimBackground = trim;
             _trimRefusedShown = false;
         }
+        if (Has(a, "ramLimitMb", JsonValueKind.Number) && RamLimitChoices.Contains((int)Long(a, "ramLimitMb")))
+            s.RamLimitMb = (int)Long(a, "ramLimitMb");
         if (OptBool(a, "splitCores") is { } split)
         {
             s.SplitCores = split;
@@ -191,6 +193,9 @@ public sealed partial class AppController
             return;
         _disposed = true;
         GiveCoresBack();
+        LiftRamLimits();
+        if (_robloxFlagsPending)
+            RobloxFlags.Restore(); // a launch cut short: the next Roblox opened by hand gets the person's own file
         StopWatchingDrags();
         GiveIconsBack();
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;

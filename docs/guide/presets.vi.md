@@ -52,7 +52,7 @@ Các tùy chọn này áp dụng cho các cửa sổ mà preset mở, cho tới 
 | **Chống AFK** | **Theo Cài đặt (đang bật/đang tắt)**, **Bật**, **Tắt** |
 | **Tự vào lại game** | **Theo từng tài khoản**, **Bật**, **Tắt** |
 | **Server khi vào lại** | **Bất kỳ**, **Cùng tài khoản khác**, hoặc **Cùng** một tài khoản trong preset: tài khoản bị văng (hoặc được mở lại theo **Mở lại Roblox**) sẽ vào lại server mà tài khoản kia đang chơi, để cả nhóm ở chung một server. Server đó đầy, hoặc không còn ai trong game, thì vào server bất kỳ. Cần chọn game; không hiện khi preset đang theo một người chơi hoặc đã tắt tự vào lại. |
-| **Hiệu năng** | **Bình thường**, hoặc **Treo máy nhẹ**: đồ họa thấp nhất, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. |
+| **Hiệu năng** | **Bình thường**, hoặc **Treo máy nhẹ**: đồ họa thấp nhất, trời xám, tắt cỏ và hiệu ứng ánh sáng, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. Phần đồ họa nhẹ này chỉ áp dụng cho các cửa sổ đó (bằng các Fast Flag Roblox cho phép), mở xong thì cài đặt Roblox của bạn trở lại như cũ. Nếu mở bằng Bloxstrap hay Fishstrap thì cờ của launcher đó được ưu tiên. |
 | **Mở lại Roblox** | **Không**, hoặc **Mỗi 2 / 4 / 6 / 12 giờ**: lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ (hoặc game bạn đã tự chuyển sang trong cửa sổ đó). Cần có game. |
 | **Xếp cửa sổ** | **Theo Cài đặt (đang bật/đang tắt)**, **Bật**, **Tắt**: xếp các cửa sổ sau khi preset mở xong. |
 

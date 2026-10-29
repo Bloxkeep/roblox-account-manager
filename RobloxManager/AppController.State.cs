@@ -410,6 +410,7 @@ public sealed partial class AppController
         s.LaunchDelaySeconds,
         s.MemoryWarnings,
         s.TrimBackground,
+        s.RamLimitMb,
         s.SplitCores,
         cores = CoresDto(),
         s.AntiAfk,

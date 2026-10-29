@@ -67,6 +67,7 @@ Chi tiết từng dòng nằm ở [Giữ tài khoản trong game](staying-in-gam
 | **Kiểm tra đăng nhập mỗi ngày** | Tìm các tài khoản Roblox đã đăng xuất, để bạn biết trước khi bấm Vào game. Ghi "Lần kiểm tra gần nhất: …". | Bật |
 | **Báo khi sắp hết RAM** | Hỏi trước khi mở nếu thiếu RAM hoặc bộ nhớ ảo của Windows, và cảnh báo khi đang chơi. | Bật |
 | **Tiết kiệm RAM cho cửa sổ chạy nền** | Cửa sổ Roblox bạn không chơi bị hạ mức ưu tiên bộ nhớ, nên Windows lấy RAM của chúng trước. | Tắt |
+| **Giới hạn RAM cửa sổ treo** | **Không giới hạn**, **1 GB**, **1.5 GB**, **2 GB**: mức RAM tối đa cửa sổ Roblox thu nhỏ hoặc đang ẩn được giữ, phần còn lại ở bộ nhớ ảo. Xem [Treo game](staying-in-game.vi.md). | Không giới hạn |
 | **Nhường nhân mạnh cho cửa sổ đang chơi** | Cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm của CPU. | Tắt |
 
 ## Thông báo
@@ -132,7 +133,7 @@ Chi tiết nằm ở [Sao lưu và bảo mật](backup-and-security.vi.md).
 | **Tự động cập nhật** | Tự tải bản mới và tự cài vào lúc bạn không dùng. Bản mới tìm thấy trước khi bạn mở khóa thì được cài luôn, ngay ở màn hình mở khóa (các cửa sổ Roblox vẫn mở). Tắt đi thì không có gì tự tải về, nhưng **Kiểm tra ngay** vẫn dùng được. Bị mờ với bản không tự cập nhật được. | Bật |
 | **Nhận bản beta** | Cập nhật cả lên bản beta: có tính năng mới sớm hơn mọi người, nhưng có thể còn lỗi. Đang dùng bản beta mà tắt đi thì bạn vẫn giữ bản đó tới khi có bản chính thức tiếp theo. Bị mờ với bản không tự cập nhật được. | Tắt |
 | **Chạy ẩn dưới khay hệ thống khi đóng** | Nút ✕ thu Bloxkeep xuống khay hệ thống thay vì thoát. | Bật |
-| **Phím tắt** | Dùng được trong mọi app: **Ctrl+Alt+H** ẩn mọi cửa sổ Roblox (game vẫn chạy) hoặc hiện lại, **Ctrl+Alt+A** xếp cửa sổ. Nếu app khác đang dùng một tổ hợp, dòng dưới công tắc sẽ báo. | Bật |
+| **Phím tắt** | Dùng được trong mọi app: **Ctrl+Alt+H** ẩn mọi cửa sổ Roblox (game vẫn chạy) hoặc hiện lại, **Ctrl+Alt+M** thu nhỏ tất cả hoặc mở lại, **Ctrl+Alt+N** đưa cửa sổ của tài khoản kế tiếp lên trước, **Ctrl+Alt+A** xếp cửa sổ, **Ctrl+Alt+B** mở Bloxkeep. Nếu app khác đang dùng một tổ hợp, dòng dưới công tắc sẽ báo. | Bật |
 | **Tăng tốc phần cứng** | Vẽ cửa sổ Bloxkeep bằng card đồ họa. Tắt đi thì cửa sổ đỡ tốn RAM (khoảng 90 MB trên máy dùng card NVIDIA). Tự tắt nếu driver card đồ họa bị lỗi. Bật hay tắt thì cửa sổ được tải lại. | Bật |
 | **Hướng dẫn sử dụng › Mở** | Mở chính hướng dẫn này. | — |
 | **Gửi góp ý › Viết góp ý** | Một ý tưởng, hoặc lỗi gặp phải. Lời nhắn đi thẳng tới người làm Bloxkeep. Xem [Gỡ rối](troubleshooting.vi.md). | — |

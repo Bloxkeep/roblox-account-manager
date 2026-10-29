@@ -67,6 +67,7 @@ Details for each row are in [Staying in game](staying-in-game.md).
 | **Check sign-ins every day** | Finds accounts Roblox signed out, before you press Play. Shows "Last check: …". | On |
 | **Low RAM warning** | Asks before opening when RAM or Windows' virtual memory is short, and warns while playing. | On |
 | **Save RAM on background windows** | Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first. | Off |
+| **RAM limit for resting windows** | **No limit**, **1 GB**, **1.5 GB**, **2 GB**: the most a minimized or hidden Roblox window keeps in RAM, the rest in virtual memory. See [Staying in game](staying-in-game.md). | No limit |
 | **Fast cores for the window you play** | Roblox windows in the background run in Windows' efficiency mode: they give way to the one you play and lean on the CPU's efficiency cores. | Off |
 
 ## Notifications
@@ -132,7 +133,7 @@ Details are in [Backup and security](backup-and-security.md).
 | **Update automatically** | Downloads new versions and installs them by itself the next time you're not using it. One found before you unlock installs at once, on the lock screen (Roblox windows stay open). Off: nothing is downloaded by itself, but **Check now** still works. Greyed out on a copy that can't update itself. | On |
 | **Get beta versions** | Updates also bring beta versions: new features before everyone else, which may still have bugs. Turned off on a beta, you keep it until the next regular version. Greyed out on a copy that can't update itself. | Off |
 | **Keep running in the tray when closed** | The ✕ button hides Bloxkeep to the tray instead of quitting. | On |
-| **Hotkeys** | From any app: **Ctrl+Alt+H** hides every Roblox window (their games keep running) or shows them again, **Ctrl+Alt+A** arranges them. If another app already uses one, it says so under the switch. | On |
+| **Hotkeys** | From any app: **Ctrl+Alt+H** hides every Roblox window (their games keep running) or shows them again, **Ctrl+Alt+M** minimizes them all or opens them again, **Ctrl+Alt+N** brings the next account's window to the front, **Ctrl+Alt+A** arranges them, **Ctrl+Alt+B** opens Bloxkeep. If another app already uses one, it says so under the switch. | On |
 | **Hardware acceleration** | Draws Bloxkeep's window with the graphics card. Off, the window uses less RAM (about 90 MB less on a PC with an NVIDIA card). Turns itself off if the driver acts up. Switching reloads the window. | On |
 | **User guide › Open** | Opens this guide. | — |
 | **Send feedback › Write** | An idea, or something that doesn't work. It goes to Bloxkeep's developer. See [Troubleshooting](troubleshooting.md). | — |

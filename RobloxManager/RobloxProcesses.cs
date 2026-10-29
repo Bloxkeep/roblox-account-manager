@@ -71,7 +71,17 @@ public static class RobloxProcesses
     /// <param name="Parent">May have exited since; 0 when not known.</param>
     /// <param name="Created">A FILETIME, UTC: a pid Windows gave to a newer process has another one. 0 when not known.</param>
     /// <param name="Private">Private bytes, its share of the commit limit; 0 when not known.</param>
-    public readonly record struct PlayerProcess(int Pid, long WorkingSet, int Parent = 0, long Created = 0, long Private = 0);
+    /// <param name="WorkingSet">Its RAM in use, with what it shares with every other program (Roblox's own code, Windows'
+    /// libraries, the graphics driver): Windows holds that once for all of them.</param>
+    /// <param name="PrivateWorkingSet">Its RAM in use that is its own (Task Manager's "Memory"); 0 when not read.</param>
+    public readonly record struct PlayerProcess(int Pid, long WorkingSet, int Parent = 0, long Created = 0, long Private = 0, long PrivateWorkingSet = 0)
+    {
+        /// <summary>
+        /// The RAM it takes, as shown (cards, sidebar total, Mini, Game monitor, Discord): its own, so windows added up
+        /// count what they share once, not once each (5 windows were shown about 1 GB more than they took, 2026-10-29).
+        /// </summary>
+        public long Ram => PrivateWorkingSet > 0 ? PrivateWorkingSet : WorkingSet;
+    }
 
     /// <summary>
     /// From one system-wide snapshot: no handle to Roblox is opened, and one snapshot answers a whole process check.
@@ -133,7 +143,7 @@ public static class RobloxProcesses
     {
         if (IntPtr.Size != 8)
             return null;
-        const int CreateTime = 32, NameLength = 56, NameBuffer = 64, ProcessId = 80, ParentId = 88, WorkingSetSize = 144,
+        const int WorkingSetPrivate = 8, CreateTime = 32, NameLength = 56, NameBuffer = 64, ProcessId = 80, ParentId = 88, WorkingSetSize = 144,
             PrivatePageCount = 200, EntryEnd = 208;
         const string Image = PlayerProcessName + ".exe";
         for (int attempt = 0; attempt < 4; attempt++)
@@ -159,7 +169,8 @@ public static class RobloxProcesses
                     IntPtr name = Marshal.ReadIntPtr(entry, NameBuffer);
                     if (length == Image.Length * 2 && (long)name >= (long)buffer && (long)name + length <= end && IsImage(name, Image))
                         players.Add(new PlayerProcess((int)Marshal.ReadInt64(entry, ProcessId), Marshal.ReadInt64(entry, WorkingSetSize),
-                            (int)Marshal.ReadInt64(entry, ParentId), Marshal.ReadInt64(entry, CreateTime), Marshal.ReadInt64(entry, PrivatePageCount)));
+                            (int)Marshal.ReadInt64(entry, ParentId), Marshal.ReadInt64(entry, CreateTime), Marshal.ReadInt64(entry, PrivatePageCount),
+                            Marshal.ReadInt64(entry, WorkingSetPrivate)));
                     int next = Marshal.ReadInt32(entry, 0);
                     if (next <= 0)
                         break;
@@ -679,6 +690,14 @@ public static class RobloxProcesses
             ShowWindowAsync(hWnd, SW_SHOWMINNOACTIVE);
     }
 
+    /// <summary>A minimized window opened again where it was, without taking the keyboard from the app in front.</summary>
+    public static void RestoreQuietly(IntPtr hWnd)
+    {
+        const int SW_SHOWNOACTIVATE = 4;
+        if (hWnd != IntPtr.Zero && IsIconic(hWnd))
+            ShowWindowAsync(hWnd, SW_SHOWNOACTIVATE);
+    }
+
     public static int ForegroundPid()
     {
         IntPtr hWnd = GetForegroundWindow();
@@ -947,6 +966,58 @@ public static class RobloxProcesses
         {
             var info = new MEMORY_PRIORITY_INFORMATION { MemoryPriority = background ? (uint)MEMORY_PRIORITY_LOW : MEMORY_PRIORITY_NORMAL };
             return SetProcessInformation(handle, ProcessMemoryPriority, ref info, Marshal.SizeOf<MEMORY_PRIORITY_INFORMATION>());
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool SetProcessWorkingSetSizeEx(IntPtr process, IntPtr minimum, IntPtr maximum, uint flags);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool GetProcessWorkingSetSizeEx(IntPtr process, out IntPtr minimum, out IntPtr maximum, out uint flags);
+
+    const uint PROCESS_SET_QUOTA = 0x0100, PROCESS_QUERY_INFORMATION = 0x0400;
+    const uint QUOTA_LIMITS_HARDWS_MIN_DISABLE = 0x2, QUOTA_LIMITS_HARDWS_MAX_ENABLE = 0x4, QUOTA_LIMITS_HARDWS_MAX_DISABLE = 0x8;
+
+    /// <summary>
+    /// At most <paramref name="mb"/> of the client in RAM, or no such limit when null: Windows keeps the rest in virtual
+    /// memory (in RAM still while it has room to spare), and the game keeps all of its memory, so nothing it holds is
+    /// lost. Lifted, the client takes back what it uses again, a little at a time. Tried on the owner's PC (2026-10-29,
+    /// Steal An Egg, 1 GB): the game ran on (events, money) and, minimized, used no more CPU; one drawing in view used
+    /// about twice the CPU, so only windows that aren't drawing are limited (see AppController.Processes.cs).
+    /// </summary>
+    public static bool LimitRam(int pid, long? mb)
+    {
+        IntPtr handle = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, false, pid);
+        if (handle == IntPtr.Zero)
+            return false;
+        try
+        {
+            if (mb is { } limit)
+                return SetProcessWorkingSetSizeEx(handle, (IntPtr)(50L * 1024 * 1024), (IntPtr)(limit * 1024 * 1024),
+                    QUOTA_LIMITS_HARDWS_MAX_ENABLE | QUOTA_LIMITS_HARDWS_MIN_DISABLE);
+            // A high soft maximum with the limit off: nothing is taken from it now (-1 would empty its RAM at once).
+            long all = Math.Max(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, 4L * 1024 * 1024 * 1024);
+            return SetProcessWorkingSetSizeEx(handle, (IntPtr)(50L * 1024 * 1024), (IntPtr)all, QUOTA_LIMITS_HARDWS_MAX_DISABLE | QUOTA_LIMITS_HARDWS_MIN_DISABLE);
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
+    /// <summary>Whether the client has a hard RAM limit (one a Bloxkeep that closed before lifting it may have left).</summary>
+    public static bool HasRamLimit(int pid)
+    {
+        IntPtr handle = OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
+        if (handle == IntPtr.Zero)
+            return false;
+        try
+        {
+            return GetProcessWorkingSetSizeEx(handle, out _, out _, out uint flags) && (flags & QUOTA_LIMITS_HARDWS_MAX_ENABLE) != 0;
         }
         finally
         {

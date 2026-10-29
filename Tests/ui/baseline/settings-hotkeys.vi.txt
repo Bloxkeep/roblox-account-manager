@@ -148,7 +148,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Phím tắt"
-                        div.d "Ctrl+Alt+H ẩn hoặc hiện mọi cửa sổ Roblox, Ctrl+Alt+A xếp cửa sổ, dùng được trong mọi app."
+                        div.d "Ctrl+Alt+H ẩn hoặc hiện mọi cửa sổ Roblox, Ctrl+Alt+M thu nhỏ hoặc mở lại tất cả, Ctrl+Alt+N sang cửa sổ kế tiếp, Ctrl+Alt+A xếp cửa sổ, Ctrl+Alt+B mở Bloxkeep, dùng được trong mọi app."
                           br
                           span.warn-text "App khác đang dùng Ctrl+Alt+H nên phím này không có tác dụng."
                       div.ctl
@@ -364,7 +364,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Phím tắt"
-                        div.d "Ctrl+Alt+H ẩn hoặc hiện mọi cửa sổ Roblox, Ctrl+Alt+A xếp cửa sổ, dùng được trong mọi app."
+                        div.d "Ctrl+Alt+H ẩn hoặc hiện mọi cửa sổ Roblox, Ctrl+Alt+M thu nhỏ hoặc mở lại tất cả, Ctrl+Alt+N sang cửa sổ kế tiếp, Ctrl+Alt+A xếp cửa sổ, Ctrl+Alt+B mở Bloxkeep, dùng được trong mọi app."
                       div.ctl
                         label.switch
                           input [id="s-hotkeys" type="checkbox" aria-label="Phím tắt" checked=false FOCUSED]

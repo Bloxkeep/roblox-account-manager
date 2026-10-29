@@ -1059,6 +1059,7 @@ export default [
   S('settings-staying-toggles', 'settings=perf', async s => {
     await s.click({ css: 'label:has(#s-antiafk)' });
     await s.click({ css: 'label:has(#s-trim)' });
+    await s.choose({ css: '#s-ramlimit' }, '1024');
     await s.choose({ css: '#s-rejoin' }, 'on');
   }),
   S('settings-launch-controls', 'settings=launch', async s => {

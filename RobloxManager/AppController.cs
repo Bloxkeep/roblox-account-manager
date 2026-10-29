@@ -137,6 +137,8 @@ public sealed partial class AppController : IDisposable
     readonly HashSet<int> _lowMemoryPriority = new();
     /// <summary>The Roblox settings file holds values Bloxkeep wrote; the person's own come back when Roblox is closed.</summary>
     bool _robloxSettingsPending = RobloxGameSettings.HasBaseline;
+    /// <summary>Light AFK's Fast Flags are in a client's file (or were, when Bloxkeep closed before putting it back).</summary>
+    bool _robloxFlagsPending = RobloxFlags.Pending;
     DateTime _robloxSettingsWrittenAt;
     bool _nudging;
     readonly HashSet<Guid> _userClosed = new();

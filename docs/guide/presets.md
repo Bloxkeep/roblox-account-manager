@@ -52,7 +52,7 @@ These apply to the windows this preset opens, until they close (also when they r
 | **Anti-AFK** | **Follow Settings (on/off)**, **On**, **Off** |
 | **Auto-rejoin** | **Follow each account**, **On**, **Off** |
 | **Rejoin server** | **Any**, **With another account**, or **With** one of the preset's accounts: a dropped account (or one reopened by **Restart Roblox**) rejoins the server that account plays in, so the group stays together. If that server is full, or nobody is left in a game, it rejoins any server. Needs a game; not shown when the preset follows a player or auto-rejoin is off. |
-| **Performance** | **Normal**, or **Light AFK**: lowest graphics, 30 FPS, no sound, and the window is minimised once it's in the game. |
+| **Performance** | **Normal**, or **Light AFK**: lowest graphics, grey sky, no grass or lighting effects, 30 FPS, no sound, and the window is minimised once it's in the game. The lighter look is set for these windows only (Roblox's allowed Fast Flags), and your own Roblox settings come back once they've opened. With Bloxstrap or Fishstrap, the launcher's own flags win. |
 | **Restart Roblox** | **Never**, or **Every 2 / 4 / 6 / 12 hours**: each window is closed and opened again into the same game (or the game you switched to in that window), one at a time. Needs a game. |
 | **Arrange windows** | **Follow Settings (on/off)**, **On**, **Off**: tiles the windows once the preset has opened them. |
 

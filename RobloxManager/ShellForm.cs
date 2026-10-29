@@ -426,20 +426,28 @@ public sealed class ShellForm : Form
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, int modifiers, int key);
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-    /// <summary>Ctrl+Alt+H and Ctrl+Alt+A from any app while the switch is on; one another app holds is reported in Settings.</summary>
+    /// <summary>The hotkeys (see AppController.Hotkeys.cs), each with its key after Ctrl+Alt.</summary>
+    static readonly (int Id, Keys Key)[] Hotkeys =
+    [
+        (AppController.HotkeyHide, Keys.H), (AppController.HotkeyArrange, Keys.A), (AppController.HotkeyMinimize, Keys.M),
+        (AppController.HotkeyNext, Keys.N), (AppController.HotkeyBloxkeep, Keys.B),
+    ];
+
+    /// <summary>The hotkeys from any app while the switch is on; one another app holds is reported in Settings.</summary>
     void RegisterHotkeys()
     {
         if (!IsHandleCreated)
             return;
-        UnregisterHotKey(Handle, AppController.HotkeyHide);
-        UnregisterHotKey(Handle, AppController.HotkeyArrange);
+        foreach (var (id, _) in Hotkeys)
+            UnregisterHotKey(Handle, id);
         var taken = new List<string>();
         if (Prefs.GlobalHotkeys)
         {
-            if (!RegisterHotKey(Handle, AppController.HotkeyHide, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.H))
-                taken.Add("Ctrl+Alt+H");
-            if (!RegisterHotKey(Handle, AppController.HotkeyArrange, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.A))
-                taken.Add("Ctrl+Alt+A");
+            foreach (var (id, key) in Hotkeys)
+            {
+                if (!RegisterHotKey(Handle, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)key))
+                    taken.Add("Ctrl+Alt+" + key);
+            }
         }
         _app.HotkeysTaken = taken;
     }
@@ -450,7 +458,11 @@ public sealed class ShellForm : Form
     {
         if (m.Msg == WM_HOTKEY)
         {
-            _app.OnHotkey((int)m.WParam);
+            // Ctrl+Alt+B: Bloxkeep itself, from the tray too (as its icon's Open does).
+            if ((int)m.WParam == AppController.HotkeyBloxkeep)
+                BringToFront();
+            else
+                _app.OnHotkey((int)m.WParam);
             return;
         }
         if (m.Msg == WM_SYSCOMMAND && ((int)m.WParam & 0xFFF0) == SC_MINIMIZE)
