@@ -247,9 +247,46 @@ public sealed class RobloxLogWatcher
             foreach (var (pid, u) in _unmatched.ToList())
                 _unmatched[pid] = (u.FirstSeen, now + u.Wait, TimeSpan.FromTicks(Math.Min(u.Wait.Ticks * 2, MaxWait.Ticks)));
         }
+        // What the last read found is taken in, and the next read starts: the files are read on a worker, as reading a
+        // log Roblox is writing can take a second or more (2026-10-29, the owner's PC: the logs' part of the process
+        // check, on the window's thread, at 0.2-1.8 s, 1,315 checks over 100 ms in an hour). Its lines are applied
+        // here, so the states are only ever changed on the window's thread; they come a poll (a second) later.
+        bool changed = TakeReads();
+        if (_reading is null && _tails.Count > 0)
+        {
+            var wanted = _tails.Values.Select(t => (t, t.Path, t.Offset)).ToList();
+            _reading = Task.Run(() => wanted.Select(w => (w.t, w.Offset, ReadChunk(w.Path, w.Offset))).ToList());
+        }
+        return changed;
+    }
+
+    /// <summary>The logs being read on a worker, each with the offset read from, the new one and the text (null: nothing new).</summary>
+    Task<List<(Tail Tail, long From, (long Offset, string? Text) Chunk)>>? _reading;
+
+    /// <summary>
+    /// The finished read's text applied to the logs still followed. A log dropped or followed anew meanwhile is skipped,
+    /// and so is one read since on the window's thread (<see cref="LastStateOf"/>): the next read goes on from there.
+    /// </summary>
+    bool TakeReads()
+    {
+        if (_reading is not { IsCompleted: true } reading)
+            return false;
+        _reading = null;
+        if (!reading.IsCompletedSuccessfully)
+        {
+            if (reading.Exception?.InnerException is { } ex)
+                Log.Write(ex);
+            return false;
+        }
         bool changed = false;
-        foreach (var tail in _tails.Values)
-            changed |= Read(tail);
+        foreach (var (tail, from, (offset, text)) in reading.Result)
+        {
+            if (!ReferenceEquals(_tails.GetValueOrDefault(tail.Pid), tail) || tail.Offset != from)
+                continue;
+            tail.Offset = offset;
+            if (text is not null)
+                changed |= ApplyText(tail, text);
+        }
         return changed;
     }
 
@@ -350,24 +387,35 @@ public sealed class RobloxLogWatcher
 
     static bool Read(Tail tail)
     {
-        string text;
+        (tail.Offset, string? text) = ReadChunk(tail.Path, tail.Offset);
+        return text is not null && ApplyText(tail, text);
+    }
+
+    /// <summary>A log's text from an offset (up to <see cref="MaxRead"/>) and the offset after it; no text when nothing new.</summary>
+    static (long Offset, string? Text) ReadChunk(string path, long offset)
+    {
         try
         {
-            using var stream = new FileStream(tail.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            if (stream.Length < tail.Offset)
-                tail.Offset = 0;
-            if (stream.Length == tail.Offset)
-                return false;
-            stream.Seek(tail.Offset, SeekOrigin.Begin);
-            var buffer = new byte[Math.Min(MaxRead, stream.Length - tail.Offset)];
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (stream.Length < offset)
+                offset = 0;
+            if (stream.Length == offset)
+                return (offset, null);
+            stream.Seek(offset, SeekOrigin.Begin);
+            var buffer = new byte[Math.Min(MaxRead, stream.Length - offset)];
             int read = stream.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false);
-            tail.Offset += read;
-            text = tail.Partial + Encoding.UTF8.GetString(buffer, 0, read);
+            return (offset + read, Encoding.UTF8.GetString(buffer, 0, read));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return false;
+            return (offset, null);
         }
+    }
+
+    /// <summary>A log's new text (after what was left of its last line), line by line: whether its state changed.</summary>
+    static bool ApplyText(Tail tail, string read)
+    {
+        string text = tail.Partial + read;
         int end = text.LastIndexOf('\n');
         tail.Partial = end < 0 ? text : text[(end + 1)..];
         if (end < 0)
