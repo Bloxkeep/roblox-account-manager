@@ -14,9 +14,9 @@
 import { DurableObject } from 'cloudflare:workers';
 import { onceMore } from './calls.js';
 import { CODE_LENGTH, captcha } from './captcha.js';
-import { COMMANDS, api, inviteUrl, verify } from './discord.js';
+import { COMMANDS, api, inviteUrl, replyUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
-import { ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
+import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
 import { setupServer } from './setup.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -116,12 +116,13 @@ export class Gateway extends DurableObject {
       // PC's name as its app last said it (to name it while it's offline).
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS links (pc TEXT PRIMARY KEY, user TEXT NOT NULL, label TEXT NOT NULL, at INTEGER NOT NULL)');
       // Codes waiting to be typed (code → { pc, until }), commands waiting for their PC's answer (id → { pc, done }),
-      // commands whose outcome may still be followed up (id → { pc, token, until }), each person's last commands, and
-      // the names Discord shows linked people by (for their app's Settings).
+      // commands whose outcome may still be followed up (id → { pc, token, until }), each person's last commands and
+      // screenshots, and the names Discord shows linked people by (for their app's Settings).
       this.codes = new Map();
       this.answers = new Map();
       this.tokens = new Map();
       this.sent = new Map();
+      this.shots = new Map();
       this.names = new Map();
       // Links waiting for the PC to allow them (pc → { user, label, token, until }), each person's wrong codes, each
       // socket's last messages.
@@ -431,6 +432,14 @@ export class Gateway extends DurableObject {
         waiting.done(readAnswer(m));
       return;
     }
+    if (m.t === 'shown' && typeof m.id === 'string') { // a screenshot's pictures sent to Discord by the PC itself
+      const waiting = this.answers.get(m.id);
+      if (waiting?.pc === pc) {
+        clearTimeout(waiting.late);
+        this.answers.delete(m.id);
+      }
+      return;
+    }
     if (m.t === 'later' && typeof m.id === 'string') { // how it went, once done (a preset's windows all open)
       const t = this.tokens.get(m.id);
       if (t?.pc === pc && t.until > Date.now())
@@ -528,16 +537,27 @@ export class Gateway extends DurableObject {
       return mine({ content: '?' });
     if (!app)
       return mine({ content: PC_TEXT.offline(pc.label) });
+    // A screenshot is always "thinking…" first: the PC is handed this answer's own link (replyUrl) and edits its
+    // pictures in itself, so they never pass through here. Fewer of them a minute than other commands.
+    const shot = sub.name === 'screenshot';
+    if (shot && !app.hello?.shots)
+      return mine({ content: PC_TEXT.updateFirst(pc.label) });
+    if (shot) {
+      const shots = (this.shots.get(user.id) ?? []).filter(t => t > now - 60_000);
+      if (shots.length >= SHOTS_PER_MINUTE)
+        return mine({ content: PC_TEXT.shotsTooFast });
+      this.shots.set(user.id, [...shots, now]);
+    }
     const id = crypto.randomUUID(), field = APP_COMMANDS[sub.name];
     for (const [k, t] of this.tokens)
       if (t.until < now)
         this.tokens.delete(k);
     this.tokens.set(id, { pc: pc.pc, token: i.token, until: now + TOKEN_FOR });
-    const answer = new Promise(resolve => {
+    const answer = shot ? null : new Promise(resolve => {
       const timer = setTimeout(() => resolve(null), Number(this.env.ANSWER_WAIT_MS ?? ANSWER_WAIT));
       this.answers.set(id, { pc: pc.pc, done: a => { clearTimeout(timer); resolve(a); } });
     });
-    app.ws.send(JSON.stringify({ t: 'command', id, command: sub.name, value: field ? String(opt(field) ?? '') : null }));
+    app.ws.send(JSON.stringify({ t: 'command', id, command: sub.name, value: field ? String(opt(field) ?? '') : null, ...(shot ? { reply: replyUrl(this.env, i.token) } : {}) }));
     const quick = await answer;
     if (quick) {
       this.answers.delete(id);
@@ -549,7 +569,7 @@ export class Gateway extends DurableObject {
       if (this.answers.delete(id))
         edit({ content: PC_TEXT.noAnswer(pc.label), allowed_mentions: { parse: [] } });
     }, Number(this.env.ANSWER_LATE_MS ?? 60_000));
-    this.answers.set(id, { pc: pc.pc, done: a => { clearTimeout(late); this.answers.delete(id); edit(a); } });
+    this.answers.set(id, { pc: pc.pc, late, done: a => { clearTimeout(late); this.answers.delete(id); edit(a); } });
     return { type: 5, data: { flags: 64 } };
   }
 
@@ -567,7 +587,7 @@ export class Gateway extends DurableObject {
     if (focused.name === 'name')
       return answer(hello?.presets ?? []);
     if (focused.name === 'account')
-      return answer([...(sub.name === 'close' ? [PC_TEXT.allAccounts] : []), ...(hello?.accounts ?? [])]);
+      return answer([...(ALL_ACCOUNTS_COMMANDS.includes(sub.name) ? [PC_TEXT.allAccounts] : []), ...(hello?.accounts ?? [])]);
     return answer([]);
   }
 

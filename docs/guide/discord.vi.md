@@ -20,7 +20,7 @@ Bật **Gửi lên Discord** khi chưa có link thì app cũng hỏi link.
 
 ## Điều khiển từ Discord
 
-Gõ `/pc` trong Discord để xem tài khoản đang thế nào, chạy preset, đóng cửa sổ hay đổi server trên máy, ở đâu cũng được. Mặc định tắt.
+Gõ `/pc` trong Discord để xem tài khoản đang thế nào, chạy preset, đóng cửa sổ, đổi server hay chụp màn hình trên máy, ở đâu cũng được. Mặc định tắt.
 
 <img src="../screenshots/vi/discord-control.png" width="760" alt="Cài đặt › Discord › Điều khiển từ Discord đang bật, với mã để gõ (K7MX4P), nút Mã mới và Thêm Bloxkeep vào Discord">
 
@@ -34,10 +34,13 @@ Gõ `/pc` trong Discord để xem tài khoản đang thế nào, chạy preset, 
 | `/pc status` | Thẻ trạng thái: từng tài khoản đang mở Roblox, game và tình trạng. |
 | `/pc preset` | Chạy preset (Discord gợi ý preset khi bạn gõ). Mở xong thì báo kết quả. |
 | `/pc close` | Đóng cửa sổ Roblox của một tài khoản, hoặc **Tất cả tài khoản**. |
-| `/pc switch` | Cho một tài khoản sang server khác cùng game. |
+| `/pc switch` | Cho một tài khoản sang server khác cùng game, hoặc **Tất cả tài khoản** (cùng game thì sang chung một server). |
+| `/pc screenshot` | Chụp cửa sổ Roblox của một tài khoản, hoặc **Tất cả tài khoản** (tối đa 10 ảnh). Cửa sổ thu nhỏ hay đang ẩn cũng chụp được: hiện lên trong suốt nửa giây, chụp xong trả về như cũ. |
 | `/pc unlink` | Thôi điều khiển máy đó từ Discord. |
 
 - Chỉ bạn thấy câu trả lời.
+- Chụp màn hình: mỗi lần một lệnh, cách nhau 15 giây, tối đa 4 lần mỗi phút. Mỗi lần chụp, Bloxkeep hiện thông báo trên máy. Ảnh đi thẳng từ máy bạn lên Discord, không qua bot của Bloxkeep.
+- Khi tài khoản đang chuyển server, `/pc switch` chờ vào xong mới chuyển tiếp.
 - Liên kết nhiều máy thì chọn máy ở ô `pc`.
 - Khi Bloxkeep đang khóa, nó chỉ báo là đang khóa.
 - Preset cần hỏi trước (ví dụ Multi-Roblox đang tắt) không chạy từ Discord, Bloxkeep sẽ nói lý do.

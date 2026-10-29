@@ -40,6 +40,12 @@ export async function api(env, method, path, body, headers = {}) {
   return res;
 }
 
+/**
+ * Where an interaction's own answer is edited: the link Discord gives each command (no bot token needed, good for 15
+ * minutes, for that answer only). /pc screenshot hands it to the PC, which sends its pictures there itself.
+ */
+export const replyUrl = (env, token) => `${env.DISCORD_API || API}/webhooks/${env.DISCORD_APP_ID}/${token}/messages/@original`;
+
 // Command descriptions are English only for now (see texts.js lang()); the Vietnamese kept here restores the
 // per-locale descriptions when that option returns.
 const vi = () => undefined;

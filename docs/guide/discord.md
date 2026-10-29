@@ -20,7 +20,7 @@ Turning on **Send to Discord** without a link asks for it.
 
 ## Control from Discord
 
-Type `/pc` in Discord to see how your accounts are doing, run a preset, close windows or switch server on your PC, from anywhere. It is off until you turn it on.
+Type `/pc` in Discord to see how your accounts are doing, run a preset, close windows, switch server or see the windows on your PC, from anywhere. It is off until you turn it on.
 
 <img src="../screenshots/discord-control.png" width="760" alt="Settings › Discord › Control from Discord turned on, with the code to type (K7MX4P), New code and Add Bloxkeep to Discord">
 
@@ -34,10 +34,13 @@ Type `/pc` in Discord to see how your accounts are doing, run a preset, close wi
 | `/pc status` | The status card: each account with a Roblox window, its game and how it's doing. |
 | `/pc preset` | Runs a preset (Discord suggests your presets as you type). Once its windows are open, how it went follows. |
 | `/pc close` | Closes one account's Roblox window, or **All accounts**. |
-| `/pc switch` | Moves an account to another server of its game. |
+| `/pc switch` | Moves an account to another server of its game, or **All accounts** (those in one game go together). |
+| `/pc screenshot` | A picture of one account's Roblox window, or of **All accounts** (10 at most). Minimized and hidden windows too: each is shown unseen for half a second, pictured, then put back. |
 | `/pc unlink` | Stops controlling that PC from Discord. |
 
 - The answers are seen only by you.
+- Screenshots: one at a time, 15 seconds apart, 4 a minute at most. Each time, Bloxkeep shows a notice on the PC. The pictures go from your PC straight to Discord, not through Bloxkeep's bot.
+- While accounts are moving to another server, `/pc switch` waits until they are in.
 - With more than one PC linked, pick it in the `pc` box.
 - While Bloxkeep is locked, it only answers that it is locked.
 - A preset that would ask something first (Multi-Roblox off, say) isn't run from Discord: Bloxkeep says why.

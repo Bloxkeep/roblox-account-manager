@@ -4785,8 +4785,9 @@ public sealed partial class AppController : IDisposable
         foreach (int gone in _afkHeld.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
             _afkHeld.Remove(gone);
         _idleKickReported.RemoveWhere(pid => !windows.ContainsKey(pid));
-        // A nudge cut short (Bloxkeep closed in the middle of one) left its window unseen and click-through.
-        if (!_nudging)
+        // A nudge cut short (Bloxkeep closed in the middle of one) left its window unseen and click-through. Not while a
+        // window is being nudged or pictured (/pc screenshot): it is unseen on purpose then.
+        if (!_nudging && !_picturing)
             AntiAfk.Recover(windows.Values.SelectMany(w => w));
         if (_vault is null || windows.Count == 0)
             return;
@@ -4801,7 +4802,7 @@ public sealed partial class AppController : IDisposable
         foreach (int pid in on)
             _lastInput.TryAdd(pid, _logs.StateOf(pid) is { Status: "ingame" } joined ? joined.At : _afkAdopted ? now : now - AntiAfk.LastChance);
         _afkAdopted = true;
-        if (_nudging)
+        if (_nudging || _picturing)
             return;
         // A window held on Roblox's bot check: the person may be solving it, and a nudge brings another window to the
         // front for a moment. The check was cancelled twice while another window was due a nudge (2026-10-27), so
