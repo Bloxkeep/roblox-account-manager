@@ -46,6 +46,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("hide-windows", false, HideWindowsSuite.Run),
     ("ram-limit", false, RamLimitSuite.Run),
     ("flags", false, FlagsSuite.Run),
+    ("game-page", false, GamePageSuite.Run),
     ("window-shot", false, WindowShotSuite.Run),
     ("foreign-vault", false, ForeignVaultSuite.Run),
     ("window-icons", false, WindowIconsSuite.Run),

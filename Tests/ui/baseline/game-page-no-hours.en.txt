@@ -460,8 +460,8 @@ html [data-theme="dark" lang="en"]
               span [role="cell"] "0"
               span.gp-now [role="cell"] "2 h ago"
           h4.gp-h "When it is quiet"
-            small "from the server lists Bloxkeep has seen"
-          p.gp-empty "Not enough seen yet. It fills in as you open its server list over a few days."
+            small "players at each hour, as Bloxkeep has seen them"
+          p.gp-empty "Not enough seen yet. While Bloxkeep is open it notes how many play this game every half hour, so this fills in within a day or two."
           div.gp-desc
             button.link [aria-expanded="false"] "About this game"
       div.modal-foot

@@ -47,6 +47,19 @@ Under the box you see the game's name, its creator and how many are playing. A p
 > [!TIP]
 > To put several accounts in one server, pick it under **Browse servers** (**Use**), or use **Join this server** on an account already there. Then select the others and press **Play**.
 
+## A game's page
+
+Click the game's name under the box to open its page:
+
+| Part | What it shows |
+|---|---|
+| Top | Its picture, maker and genre. **Wiki** searches the web for its wiki; the arrow opens it on roblox.com. |
+| Updated news | When the game was updated in the last 24 hours: Roblox may be shutting old servers down, so a window that drops now rejoins a new one. |
+| Figures | Playing now, visits, likes and when it was last updated. Roblox shows players and visits only to a signed-in account, so they need one in Bloxkeep. |
+| Your accounts here | Each account that played it in the last 7 days: for how long, kicks (by the game, or AFK for idling), other drops, and whether it's in it now or banned from it. |
+| When it is quiet | Players at each hour of the day. While Bloxkeep is open it notes how many play the games you use every half hour, so this fills in within a day or two; the quietest three hours are named, a good time for a scheduled preset. |
+| About this game | Its description, shown on a click. |
+
 ## Servers
 
 **Browse servers** opens the game's server list. It is greyed out until a game is in the box, and for a private server.

@@ -114,6 +114,7 @@ public static class L
         ["{0} has no Roblox window open."] = "{0} không có cửa sổ Roblox nào đang mở.",
         ["Closing {0}…"] = "Đang đóng {0}…",
         ["Didn't switch: no other server of that game has room right now."] = "Chưa chuyển: game đó không còn server nào khác có chỗ.",
+        ["Roblox has no game with this Place ID."] = "Roblox không có game nào với Place ID này.",
         ["Moving {0} account(s) to another server…"] = "Đang chuyển {0} tài khoản sang server khác…",
         ["{0}: no picture (its window isn't answering, or Roblox is still opening)."] = "{0}: không chụp được (cửa sổ không phản hồi, hoặc Roblox còn đang mở).",
         ["{0}: the picture came out black (Windows may be locked, or the game isn't drawing)."] = "{0}: ảnh bị đen (có thể Windows đang khóa, hoặc game không vẽ hình).",

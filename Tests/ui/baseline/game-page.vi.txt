@@ -460,7 +460,7 @@ html [data-theme="dark" lang="vi"]
               span [role="cell"] "0"
               span.gp-now [role="cell"] "2 giờ trước"
           h4.gp-h "Giờ nào vắng"
-            small "theo danh sách server Bloxkeep đã xem"
+            small "số người chơi theo giờ Bloxkeep đã ghi"
           div.gp-hours [role="img" aria-label="Vắng nhất từ 3:00 đến 6:00, hợp để hẹn giờ preset."]
             span [title="0h: 126.000" style="opacity:0.426"]
             span [title="1h: 92.400" style="opacity:0.3604"]

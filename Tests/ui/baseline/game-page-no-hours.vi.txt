@@ -460,8 +460,8 @@ html [data-theme="dark" lang="vi"]
               span [role="cell"] "0"
               span.gp-now [role="cell"] "2 giờ trước"
           h4.gp-h "Giờ nào vắng"
-            small "theo danh sách server Bloxkeep đã xem"
-          p.gp-empty "Chưa đủ số liệu. Mở danh sách server của game vài ngày là có."
+            small "số người chơi theo giờ Bloxkeep đã ghi"
+          p.gp-empty "Chưa đủ số liệu. Khi Bloxkeep đang mở, cứ nửa tiếng nó ghi số người chơi game này, một hai ngày là đủ."
           div.gp-desc
             button.link [aria-expanded="false"] "Giới thiệu game"
       div.modal-foot

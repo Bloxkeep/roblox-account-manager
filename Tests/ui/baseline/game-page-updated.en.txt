@@ -463,7 +463,7 @@ html [data-theme="dark" lang="en"]
               span [role="cell"] "0"
               span.gp-now [role="cell"] "2 h ago"
           h4.gp-h "When it is quiet"
-            small "from the server lists Bloxkeep has seen"
+            small "players at each hour, as Bloxkeep has seen them"
           div.gp-hours [role="img" aria-label="Quietest from 3:00 to 6:00: a good time for a scheduled preset."]
             span [title="0h: 126,000" style="opacity:0.426"]
             span [title="1h: 92,400" style="opacity:0.3604"]
