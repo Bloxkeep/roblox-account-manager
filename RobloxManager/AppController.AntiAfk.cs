@@ -120,9 +120,12 @@ public sealed partial class AppController
 
     DateTime LastInput(int pid)
     {
-        var last = _lastInput.GetValueOrDefault(pid, DateTime.UtcNow);
-        // Roblox counts idle time from joining a server (a server change starts it over).
-        return _logs.StateOf(pid) is { Status: "ingame" } log && log.At > last ? log.At : last;
+        var now = DateTime.UtcNow;
+        var last = _lastInput.GetValueOrDefault(pid, now);
+        // Roblox counts idle time from joining a server (a server change starts it over). A time ahead of now was
+        // logged before the clock was set back (see MoveClockBack): it would hold the nudge back by as much.
+        var since = _logs.StateOf(pid) is { Status: "ingame" } log && log.At > last && log.At <= now ? log.At : last;
+        return since > now ? now : since;
     }
 
     async Task NudgeAsync(List<(int Pid, IntPtr Window)> clients)

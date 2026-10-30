@@ -116,6 +116,35 @@ static class AfkSuite
         {
             Harness.Set(app, "_robloxInputAt", null);
         }
+        // The clock set back half an hour (Windows' time synced, a wrong time zone fixed): times taken before it are half an
+        // hour ahead, and a window idle 13 minutes then read as not idle at all until the clock caught up, so Roblox kicked it
+        // first. Its input time and its wait before the next try move back with the clock; a log time ahead of now is passed
+        // over (it can't be moved).
+        {
+            lastInput.Clear(); retry.Clear(); held.Clear();
+            var back = TimeSpan.FromMinutes(30);
+            var t3 = DateTime.UtcNow;
+            lastInput[B] = t3 + back - TimeSpan.FromMinutes(13);
+            retry[C] = t3 + back + TimeSpan.FromMinutes(1);
+            var watcher = Harness.Get<RobloxLogWatcher>(app, "_logs");
+            var tails = Harness.Get<System.Collections.IDictionary>(watcher, "_tails");
+            var tail = Activator.CreateInstance(typeof(RobloxLogWatcher).GetNestedType("Tail", Harness.F)!, "stand-in.log", B)!;
+            tail.GetType().GetField("State")!.SetValue(tail, new RobloxLogWatcher.ClientState("ingame", 1818, "job", null, t3 + back - TimeSpan.FromMinutes(13)));
+            tails[B] = tail;
+            try
+            {
+                Harness.Invoke(app, "MoveClockBack", t3, back);
+                c.Check("clock set back: the input time moves back with it", lastInput[B] == t3 - TimeSpan.FromMinutes(13), lastInput[B]);
+                c.Check("…and the wait before the next try", retry[C] == t3 + TimeSpan.FromMinutes(1), retry[C]);
+                var rc = (List<int>)plan.Invoke(app, [t3, new HashSet<int> { B }, wins, false, TimeSpan.FromSeconds(90), Other, (Func<bool>)(() => false)])!;
+                c.Check("…so the window idle 13 minutes is nudged, its join logged before the change notwithstanding", rc.SequenceEqual([B]), string.Join(",", rc));
+            }
+            finally
+            {
+                tails.Remove(B);
+                lastInput.Clear(); retry.Clear(); held.Clear();
+            }
+        }
         var inputType = typeof(Vault).Assembly.GetType("RobloxManager.RobloxInput")!;
         int Reached(bool keyboard, int front, int under) => (int)inputType.GetMethod("Reached", Harness.F)!.Invoke(null, [keyboard, front, under])!;
         c.Check("a key reaches the window in front, wherever the pointer is", Reached(true, D, Other) == D);

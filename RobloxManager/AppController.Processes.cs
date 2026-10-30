@@ -63,34 +63,43 @@ public sealed partial class AppController
         }
     }
 
+    /// <summary>The clock was set back: periodic work is due now, and deadlines and start times move back by as much.</summary>
+    void MoveClockBack(DateTime now, TimeSpan back)
+    {
+        if (_saveDue is not null)
+            _saveDue = now;
+        _nextPresence = _nextRobloxVersionCheck = _nextUpdateCheck = now;
+        _sweepBackgroundUntil = MovedBack(_sweepBackgroundUntil, back);
+        _resumedAt = MovedBack(_resumedAt, back);
+        _started = MovedBack(_started, back);
+        _lastSessionStart = MovedBack(_lastSessionStart, back);
+        _robloxSettingsWrittenAt = MovedBack(_robloxSettingsWrittenAt, back);
+        foreach (var launch in _pending.Concat(_late).Concat(_running.Values.Select(r => r.Launch)))
+            launch.StartedAt = MovedBack(launch.StartedAt, back);
+        foreach (var parent in _traySweep.Keys.ToList())
+            _traySweep[parent] = MovedBack(_traySweep[parent], back);
+        foreach (var launch in _pendingSeenAlive.Keys.ToList())
+            _pendingSeenAlive[launch] = MovedBack(_pendingSeenAlive[launch], back);
+        for (int i = 0; i < _rejoinQueue.Count; i++)
+            _rejoinQueue[i] = _rejoinQueue[i] with { Due = MovedBack(_rejoinQueue[i].Due, back) };
+        // Anti-AFK's: left ahead, a window's idle time read as none until the clock caught up again, and one set back
+        // more than about 8 minutes got no nudge before Roblox's 20-minute kick (review, 2026-10-30). Roblox's log times
+        // can't move: LastInput passes over one ahead of now.
+        foreach (int pid in _lastInput.Keys.ToList())
+            _lastInput[pid] = MovedBack(_lastInput[pid], back);
+        foreach (int pid in _nudgeRetryAt.Keys.ToList())
+            _nudgeRetryAt[pid] = MovedBack(_nudgeRetryAt[pid], back);
+        _signInCheckRetryAt = MovedBack(_signInCheckRetryAt, back);
+        MoveDiscordBack(back);
+        if (Prefs.LastSignInCheck is { } checkedAt)
+            Prefs.LastSignInCheck = MovedBack(checkedAt, back); // written with the next prefs change; a restart clamps it anyway
+    }
+
     void TrackProcesses()
     {
         var now = DateTime.UtcNow;
-        // The clock was set back: periodic work is due now, and deadlines and start times move back by as much.
         if (now < _lastTick)
-        {
-            var back = _lastTick - now;
-            if (_saveDue is not null)
-                _saveDue = now;
-            _nextPresence = _nextRobloxVersionCheck = _nextUpdateCheck = now;
-            _sweepBackgroundUntil = MovedBack(_sweepBackgroundUntil, back);
-            _resumedAt = MovedBack(_resumedAt, back);
-            _started = MovedBack(_started, back);
-            _lastSessionStart = MovedBack(_lastSessionStart, back);
-            _robloxSettingsWrittenAt = MovedBack(_robloxSettingsWrittenAt, back);
-            foreach (var launch in _pending.Concat(_late).Concat(_running.Values.Select(r => r.Launch)))
-                launch.StartedAt = MovedBack(launch.StartedAt, back);
-            foreach (var parent in _traySweep.Keys.ToList())
-                _traySweep[parent] = MovedBack(_traySweep[parent], back);
-            foreach (var launch in _pendingSeenAlive.Keys.ToList())
-                _pendingSeenAlive[launch] = MovedBack(_pendingSeenAlive[launch], back);
-            for (int i = 0; i < _rejoinQueue.Count; i++)
-                _rejoinQueue[i] = _rejoinQueue[i] with { Due = MovedBack(_rejoinQueue[i].Due, back) };
-            _signInCheckRetryAt = MovedBack(_signInCheckRetryAt, back);
-            MoveDiscordBack(back);
-            if (Prefs.LastSignInCheck is { } checkedAt)
-                Prefs.LastSignInCheck = MovedBack(checkedAt, back); // written with the next prefs change; a restart clamps it anyway
-        }
+            MoveClockBack(now, _lastTick - now);
         NoteCheckGap(now, _lastTick);
         _lastTick = now;
         // The process list is the costly part of a tick (a few ms, whatever runs).
