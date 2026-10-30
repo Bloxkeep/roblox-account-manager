@@ -157,10 +157,11 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Giới hạn RAM cửa sổ treo"
-                        div.d "Cửa sổ Roblox thu nhỏ hoặc đang ẩn chỉ giữ tối đa chừng này RAM, phần còn lại để ở bộ nhớ ảo, nên chạy được nhiều tài khoản hơn. Mở cửa sổ ra là về bình thường."
+                        div.d "Cửa sổ Roblox thu nhỏ hoặc đang ẩn chỉ giữ tối đa chừng này RAM, phần còn lại để ở bộ nhớ ảo, nên chạy được nhiều tài khoản hơn. Mở cửa sổ ra là về bình thường. Tự động thì đặt mức riêng cho từng game, game nào cần thêm sẽ được nới."
                       div.ctl
                         select.select [id="s-ramlimit" aria-label="Giới hạn RAM cửa sổ treo" value="1024"]
                           option [value="0"] "Không giới hạn"
+                          option [value="-1"] "Tự động (theo game)"
                           option [value="1024"] "1 GB"
                           option [value="1536"] "1.5 GB"
                           option [value="2048"] "2 GB"
