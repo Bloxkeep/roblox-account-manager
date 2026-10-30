@@ -5,6 +5,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, t
 import { Icon, useAppState, useHost } from './host';
 import { OrderList, type OrderAccount, type OrderListApi } from './OrderList';
 import { DateInput, TimeInput } from './TimeField';
+import { SuggestInput } from './Suggest';
 
 const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'job', 'follow'];
 const RESTART_HOURS = [0, 2, 4, 6, 12]; // the app's own choices (RestartChoices)
@@ -156,9 +157,8 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
       </div>
       <label id="ps-job-row" hidden={server !== 'job'}>{t('ps.job')}<input className="field" id="ps-job" ref={box('job')} maxLength={60} spellCheck={false}
         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value={job} onChange={e => setJob(e.target.value)} /></label>
-      <label id="ps-follow-row" hidden={server !== 'follow'}>{t('ps.follow')}<input className="field" id="ps-follow" ref={box('follow')} maxLength={100}
-        spellCheck={false} autoComplete="off" list="ps-follow-recent" placeholder={t('jp.placeholder')} value={follow} onChange={e => setFollow(e.target.value)} />
-        <datalist id="ps-follow-recent">{(app.settings?.recentPlayers || []).map((n: string) => <option key={n} value={n} />)}</datalist>
+      <label id="ps-follow-row" hidden={server !== 'follow'}>{t('ps.follow')}<SuggestInput className="field" id="ps-follow" ref={box('follow')} maxLength={100}
+        spellCheck={false} placeholder={t('jp.placeholder')} value={follow} setValue={setFollow} options={app.settings?.recentPlayers || []} label={t('ps.follow')} />
         <small className="muted">{t('ps.followNote')}</small></label>
       <div className="preset-accs">{t('ps.accounts')} <span className="muted" id="ps-count">({count})</span><small>{t('ps.order')}</small></div>
       {/* Accounts deleted since the preset was saved aren't in the list: said so, rather than dropped without a word. */}

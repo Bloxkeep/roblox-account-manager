@@ -1129,7 +1129,7 @@ html [data-theme="dark" lang="en"]
           label "Nickname"
             input.field [name="alias" placeholder="e.g. Farm account 1" maxlength="60" value="Farm 1" FOCUSED]
           label "Group"
-            input.field [name="group" placeholder="e.g. Farm" maxlength="40" value="Farm"]
+            input.field [role="combobox" name="group" placeholder="e.g. Farm" autocomplete="off" maxlength="40" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="Farm"]
           label
             span "Roblox password"
               span.muted "(optional, for your reference)"

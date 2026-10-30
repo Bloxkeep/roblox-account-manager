@@ -416,7 +416,7 @@ html [data-theme="dark" lang="vi"]
           label "Tên gợi nhớ"
             input.field [name="alias" placeholder="VD: Tài khoản farm 1" maxlength="60" value=""]
           label "Nhóm"
-            input.field [name="group" placeholder="VD: Farm" maxlength="40" value=""]
+            input.field [role="combobox" name="group" placeholder="VD: Farm" autocomplete="off" maxlength="40" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value=""]
           label
             span "Mật khẩu Roblox"
               span.muted "(không bắt buộc, chỉ để bạn xem lại)"

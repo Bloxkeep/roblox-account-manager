@@ -570,6 +570,19 @@ export default [
     await s.fill({ css: '.overlay [name=group]' }, 'Farmers');
     await s.key('Escape');
   }),
+  // The group box offers the other groups in Bloxkeep's own list (it was the browser's): typed letters narrow it, the
+  // arrows and Enter take one (not Save), Escape closes the list and leaves the form open.
+  S('edit-group-suggest', 'edit=1', async s => {
+    await s.wait(300);
+    await s.fill({ css: '.overlay [name=group]' }, '');
+    await s.snap('all groups');
+    await s.type('ar');
+    await s.key('ArrowDown');
+    await s.key('Enter');
+    await s.snap('picked');
+    await s.fill({ css: '.overlay [name=group]' }, 'a');
+    await s.key('Escape');
+  }),
   S('edit-hidden-names', 'edit=1&hide=1', async s => { await s.wait(300); }, { langs: ['en'] }),
   S('add-cookie-empty', '', async s => {
     await s.click(key('acc.add'));
@@ -978,6 +991,47 @@ export default [
     await s.snap('picked');
     await s.click({ css: '#ps-sch-time + .tf-btn' });
     await s.snap('time');
+    await s.key('Escape');
+  }),
+  // The calendar stays by its button: the form scrolled under it, and a month of six weeks (taller than the one it
+  // opened on) still inside the window. It used to stay where it was first put (review, 2026-10-30).
+  S('preset-date-follows', 'preset=1', async s => {
+    const by = () => s.eval(`(() => {
+      const b = document.querySelector('#ps-sch-date + .tf-btn').getBoundingClientRect(), p = document.querySelector('.tf-pop').getBoundingClientRect();
+      const gap = Math.min(Math.abs(p.top - b.bottom - 6), Math.abs(b.top - 6 - p.bottom));
+      return gap <= 1 && p.top >= 8 && p.bottom <= innerHeight - 8 ? 'by its button' : 'off: gap ' + gap + ', ' + Math.round(p.top) + '–' + Math.round(p.bottom) + ' of ' + innerHeight;
+    })()`);
+    await s.wait(300);
+    await s.choose({ css: '#ps-sch-mode' }, 'once');
+    await s.click({ css: '#ps-sch-date + .tf-btn' });
+    await s.eval(`document.querySelector('.overlay .modal-body').scrollTop -= 40`);
+    await s.wait(200);
+    const scrolled = await by();
+    // August 2026 has six weeks however the week starts; the fixed date is in October.
+    await s.click({ css: '.tf-pop .tf-cal-head [aria-label]:first-child' });
+    await s.click({ css: '.tf-pop .tf-cal-head [aria-label]:first-child' });
+    await s.wait(200);
+    const taller = await by();
+    if (scrolled !== 'by its button' || taller !== 'by its button') throw new Error(`calendar after scrolling: ${scrolled}; six weeks: ${taller}`);
+    await s.snap('six weeks');
+    await s.key('Escape');
+  }),
+  // The player to follow: the names looked up before, in Bloxkeep's own list (it was the browser's): a click opens it and
+  // a second one closes it, arrows and Enter take one, Escape closes the list and not the form.
+  S('preset-follow-suggest', 'preset=1', async s => {
+    await s.wait(300);
+    await s.choose({ css: '#ps-server' }, 'follow');
+    await s.click({ css: '#ps-follow' });
+    await s.snap('open');
+    await s.click({ css: '#ps-follow' });
+    await s.snap('closed');
+    await s.type('friend', { css: '#ps-follow' });
+    await s.key('ArrowDown');
+    await s.key('ArrowDown');
+    await s.snap('second');
+    await s.key('Enter');
+    await s.snap('picked');
+    await s.fill({ css: '#ps-follow' }, 'b');
     await s.key('Escape');
   }),
   S('preset-editor-once', 'preset=1', async s => {
