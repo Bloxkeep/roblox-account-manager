@@ -121,6 +121,7 @@ public sealed partial class AppController
 
         var presets = vault.Data.Settings.Presets;
         var preset = presets.FirstOrDefault(p => p.Id == Id(a));
+        CatchUpSchedule(schedule, preset?.Schedule);
         if (preset is null)
         {
             if (presets.Count >= MaxPresets)
@@ -158,6 +159,19 @@ public sealed partial class AppController
         Persist();
         PushState();
         return preset.Id;
+    }
+
+    /// <summary>The form's schedule, read before the player and game lookups (seconds), brought up to date with a run that
+    /// happened meanwhile: saved as read, a one-off due that minute was on again with no last run and ran twice (2026-10-30
+    /// review); a weekly one ran again after the save.</summary>
+    static void CatchUpSchedule(PresetSchedule? parsed, PresetSchedule? live)
+    {
+        if (parsed is null || live is null || live.LastRun == parsed.LastRun)
+            return;
+        parsed.LastRun = live.LastRun;
+        // A one-off that just had its turn is over, as the run left it.
+        if (parsed.Enabled && parsed.Date.Length > 0 && !live.Enabled && live.Date == parsed.Date && live.Time == parsed.Time)
+            parsed.Enabled = false;
     }
 
     /// <summary>At most <paramref name="max"/> UTF-16 units, cut between whole text elements (never inside an emoji or accent).</summary>

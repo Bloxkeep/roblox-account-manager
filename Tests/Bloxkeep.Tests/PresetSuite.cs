@@ -24,6 +24,22 @@ static class PresetSuite
         await Harness.Unlock(app);
         c.Check("unlocked", V() is not null);
 
+        // A preset saved seconds before its schedule's minute: the form's schedule is read before the lookups, the preset
+        // written after them, and a run in between must stand (2026-10-30 review: a one-off ran twice in its minute).
+        var catchUp = typeof(AppController).GetMethod("CatchUpSchedule", Harness.F)!;
+        PresetSchedule OneOff(bool enabled, string lastRun) =>
+            new() { Enabled = enabled, Time = "08:00", Date = "2026-11-02", LastRun = lastRun };
+        var read = OneOff(true, "");
+        catchUp.Invoke(null, [read, OneOff(false, "2026-11-02 08:00")]);
+        c.Check("a one-off that ran during the save stays over, with its run noted", !read.Enabled && read.LastRun == "2026-11-02 08:00", read.LastRun);
+        var moved = OneOff(true, "");
+        moved.Time = "09:00";
+        catchUp.Invoke(null, [moved, OneOff(false, "2026-11-02 08:00")]);
+        c.Check("…one given another time in the same save is on for that time", moved.Enabled && moved.LastRun == "2026-11-02 08:00");
+        var weekly = new PresetSchedule { Enabled = true, Time = "08:00", Days = [1], LastRun = "2026-10-26 08:00" };
+        catchUp.Invoke(null, [weekly, new PresetSchedule { Enabled = true, Time = "08:00", Days = [1], LastRun = "2026-11-02 08:00" }]);
+        c.Check("a weekly one that ran during the save keeps that run (not again this minute)", weekly.Enabled && weekly.LastRun == "2026-11-02 08:00", weekly.LastRun);
+
         string hook = "https://discordapp.com/api/v10/webhooks/123456789012345678/" + new string('A', 68);
         var idObj = await Call("savePreset", new { name = "Farm", ids = new[] { a1.Id, a2.Id }, placeInput = "", arrange = true, discordWebhook = hook,
             schedule = new { enabled = true, time = "20:00", days = new[] { 1, 2, 3 }, date = "", stop = "never", stopHours = 0, stopTime = "" } });
