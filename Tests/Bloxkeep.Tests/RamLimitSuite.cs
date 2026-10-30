@@ -49,7 +49,7 @@ static class RamLimitSuite
         void State(int cmd) { form.Invoke(() => ShowWindow(hWnd, cmd)); Thread.Sleep(200); }
 
         var players = new List<RobloxProcesses.PlayerProcess> { new(me, 0) };
-        void Tick() => Harness.Invoke(app, "LimitRestingRam", players, RobloxProcesses.VisibleWindows([me]));
+        void Tick() => Harness.Invoke(app, "LimitRestingRam", players, RobloxProcesses.VisibleWindows([me]), DateTime.UtcNow, new MemoryStatus(16000, 4000, 75));
         bool Limited() => RobloxProcesses.HasRamLimit(me);
 
         State(6); // minimized
@@ -102,6 +102,44 @@ static class RamLimitSuite
         c.Check("…a window hidden with Ctrl+Alt+H is left hidden by Ctrl+Alt+M", !IsIconic(hWnd) && RobloxProcesses.HasHidden(me));
         RobloxProcesses.ShowWindows([me]);
         Thread.Sleep(200);
+
+        // ── Auto: a limit found for each game from its own page faults (2026-10-30) ──
+        const long MB = 1024 * 1024;
+        await Harness.Call(app, "setSettings", new { ramLimitMb = -1 });
+        State(6);
+        var t = DateTime.UtcNow;
+        long faults = 1000;
+        long? Cap() => Harness.Get<Dictionary<int, long>>(app, "_ramLimited").TryGetValue(me, out long mb) ? mb : null;
+        void Look(int seconds, long faultsMore, int load = 80)
+        {
+            t = t.AddSeconds(seconds);
+            faults += faultsMore;
+            Harness.Invoke(app, "LimitRestingRam", new List<RobloxProcesses.PlayerProcess> { new(me, 2200 * MB, PrivateWorkingSet: 2048 * MB, PageFaults: faults) },
+                RobloxProcesses.VisibleWindows([me]), t, new MemoryStatus(32000, 6000, load));
+        }
+        Look(0, 0);
+        c.Check("Auto: a window minimized a moment ago isn't limited yet", Cap() is null && !Limited(), Cap());
+        Look(61, 100, load: 40);
+        c.Check("…nor with the PC's RAM mostly free (40 % used)", Cap() is null, Cap());
+        Look(2, 100);
+        c.Check("…rested a minute with RAM 80 % used: limited to 3/4 of what it holds (2048 -> 1536 MB)", Cap() == 1536 && Limited(), Cap());
+        for (int i = 0; i < 32; i++)
+            Look(2, 100); // 50 faults/s: calm
+        c.Check("…calm a minute: a quarter lower (1152 MB)", Cap() == 1152, Cap());
+        for (int i = 0; i < 4; i++)
+            Look(2, 100_000); // 50,000 faults/s: short of what it touches
+        c.Check("…faulting a lot: half again (1728 MB)", Cap() == 1728, Cap());
+        for (int i = 0; i < 20; i++)
+            Look(2, 100_000);
+        c.Check("…still faulting after two raises: left alone, the limit lifted", Cap() is null && !Limited(), Cap());
+        Look(2, 100);
+        c.Check("…and not limited again for a while", Cap() is null, Cap());
+        State(1);
+        Look(2, 100);
+        State(6);
+        Look(2, 100);
+        c.Check("shown and minimized again: Auto starts over, waiting its minute", Cap() is null, Cap());
+        c.Check("Auto is one of the choices Settings offers", Harness.Get<Vault>(app, "_vault").Data.Settings.RamLimitMb == -1);
 
         State(6);
         Tick();
