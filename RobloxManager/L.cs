@@ -145,6 +145,7 @@ public static class L
         ["Roblox from the Microsoft Store isn't installed. Pick another option under Settings › Launching › Open Roblox with."] =
             "Máy chưa cài Roblox bản Microsoft Store. Chọn cách mở khác ở Cài đặt › Khởi chạy › Mở Roblox bằng.",
         ["Couldn't start Roblox from the Microsoft Store."] = "Không mở được Roblox bản Microsoft Store.",
+        ["Windows couldn't start Roblox (error {0})."] = "Windows không mở được Roblox (lỗi {0}).",
         ["Enter a Place ID or paste a Roblox game link."] = "Nhập Place ID hoặc dán link game Roblox.",
         ["Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link."] =
             "Chỉ hỗ trợ link chia sẻ server riêng (type=Server). Game thường thì dán link roblox.com/games/…",

@@ -68,6 +68,32 @@ static class LaunchChoiceSuite
         File.Delete(channel);
         File.Delete(main);
 
+        // Between installs ("directly" looks at Roblox's own and every launcher's): Roblox's registered build counts only
+        // among Roblox's own builds, so a stale one never wins over Bloxstrap's newer copy, and a launcher's build named
+        // like it gets nothing from the name.
+        var newest = typeof(RobloxInstalls).GetMethod("Newest", Harness.F)!;
+        string? Pick(params string[] clients) => (string?)newest.Invoke(null, [clients]);
+        string stale = Client("Roblox", "version-registered"), strap = Client("Bloxstrap", "version-newer");
+        File.Copy(Path.Combine(Environment.SystemDirectory, "notepad.exe"), strap, overwrite: true);
+        File.SetLastWriteTimeUtc(strap, DateTime.UtcNow.AddDays(-1));
+        Registered(() => "version-registered");
+        try
+        {
+            c.Check("Roblox's stale registered build against Bloxstrap's newer one: Bloxstrap's", Pick(stale, strap) == strap, Pick(stale, strap));
+            string named = Client("Bloxstrap", "version-registered");
+            c.Check("…a launcher's build named like the registered one: by its version, as the others", Pick(strap, named) == strap, Pick(strap, named));
+            string own = Client("Roblox", "version-other");
+            File.SetLastWriteTimeUtc(stale, DateTime.UtcNow.AddDays(-2));
+            c.Check("…among Roblox's own builds the registered one still comes first", Pick(stale, own) == stale, Pick(stale, own));
+        }
+        finally
+        {
+            Registered(null);
+            Directory.Delete(Path.Combine(local, "Bloxstrap"), recursive: true);
+            File.Delete(stale);
+            File.Delete(Path.Combine(local, "Roblox", "Versions", "version-other", "RobloxPlayerBeta.exe"));
+        }
+
         // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
         Directory.Delete(Path.Combine(local, "Roblox"), recursive: true);
         if (RobloxInstalls.FindAnyClient() is null)

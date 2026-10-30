@@ -107,6 +107,12 @@ public sealed partial class AppController
             }
             var players = RobloxProcesses.GetPlayers();
             ApplyWatchNames();
+            // Only Roblox's notification-area copy runs: the launch ends it anyway (StartSessionAsync), so it goes first and
+            // Multi-Roblox is ready, rather than said not to be.
+            if (s.MultiInstance && (!MultiInstance.Armed || MultiInstance.Stale) && players.Count > 0
+                && RobloxProcesses.VisibleWindows(players.Select(p => p.Pid)).Values.All(w => w.Count == 0)
+                && players.All(p => RobloxProcesses.IsTrayCopy(p.Pid, p.Created)) && await CloseTrayCopiesAsync(ct))
+                players = RobloxProcesses.GetPlayers();
             if (s.MultiInstance && (!MultiInstance.Armed || MultiInstance.Stale) && players.Count == 0)
                 MultiInstance.Enable();
             // Accounts already playing: left alone in the same game, else switched. Roblox kicks a second client of the
@@ -234,7 +240,7 @@ public sealed partial class AppController
                 {
                     // Signed out only when the sign-in check agrees: an outage answers 401 for everyone.
                     bool refused = ex is RobloxApiException { CookieInvalid: true } && !await ConfirmSignedOutAsync(account, ct);
-                    errors.Add($"{NameText(account)}: {(refused ? RefusedText : ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))}");
+                    errors.Add($"{NameText(account)}: {(refused ? RefusedText : ex is Win32Exception or FileNotFoundException ? StartErrorText(ex) : ErrorText(ex))}");
                     if (ex is RobloxApiException { SignInRefused: true } && Realm.Normalize(account.Realm) != Realm.Vng)
                         refusedSignIn.Add(account.Id);
                 }
@@ -629,23 +635,23 @@ public sealed partial class AppController
         if (!Opening())
             return;
         Progress(L.T("Waiting for the previous Roblox window to open…"));
-        // Bounded: a launch stops pending after PendingTimeout at the latest.
+        // Bounded: a launch stops pending after PendingTimeout, LateTimeout more while Roblox's updater has it (ExpirePending).
         while (Opening())
             await Task.Delay(500, ct);
     }
 
     /// <param name="presetId">Also on its rejoins and restarts: its options apply.</param>
     /// <param name="restart">Opened again by its preset's planned restart (a rejoin too).</param>
+    /// <param name="openRetries">See <see cref="RejoinRequest.OpenRetries"/>.</param>
     async Task StartSessionAsync(Account account, GameTarget? target, string launchVia, CancellationToken ct = default, bool rejoin = false,
-        Guid? presetId = null, bool restart = false)
+        Guid? presetId = null, bool restart = false, int openRetries = 0)
     {
         string ticket = await RobloxApi.GetAuthTicketAsync(account.Cookie, ct, account.Realm);
         ct.ThrowIfCancellationRequested();
         if (FindAccount(account.Id) is null)
             throw new UserError(L.T("Account not found."));
         // Roblox's tray copy would take this launch over and open no window (Bloxstrap: "Roblox failed to launch").
-        if (RobloxProcesses.CloseTrayCopies() > 0)
-            await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+        await CloseTrayCopiesAsync(ct);
         var before = RobloxProcesses.GetPlayerPids().ToHashSet();
         var settings = RequireVault().Data.Settings;
         var config = settings.RobloxConfig;
@@ -678,11 +684,48 @@ public sealed partial class AppController
         string tracker = RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
-        _late.RemoveWhere(l => l.AccountId == account.Id); // opened again: a window of the earlier try is not this one's
-        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker });
+        ForgetLate(account.Id); // opened again: a window of the earlier try is not this one's
+        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker, OpenRetries = openRetries });
         NoteActivity(restart ? "reopened" : rejoin ? "rejoined" : "opened", account.Id, target?.PlaceId); // Statistics › Activity
         account.LastUsed = DateTime.Now;
         SignInAccepted(account);
+    }
+
+    /// <summary>
+    /// Ends Roblox's notification-area copies (<see cref="RobloxProcesses.IsTrayCopy"/>); true when there were any. One holds
+    /// the name Multi-Roblox takes (ROBLOX_singletonEvent), so Multi-Roblox couldn't be ready while it ran and nothing
+    /// took the name once it was ended: the launch opened its window unarmed and the next account's closed it (review,
+    /// 2026-10-30). With no Roblox left, the name is taken now, before the new client can.
+    /// </summary>
+    async Task<bool> CloseTrayCopiesAsync(CancellationToken ct)
+    {
+        if (RobloxProcesses.CloseTrayCopies() == 0)
+            return false;
+        await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+        ArmMultiIfFree(RobloxProcesses.GetPlayerPids());
+        return true;
+    }
+
+    /// <summary>Multi-Roblox takes Roblox's name when it is on and not holding it yet, and no Roblox runs to hold it instead.</summary>
+    void ArmMultiIfFree(int[] players)
+    {
+        if (_vault?.Data.Settings.MultiInstance != true || MultiInstance.Armed && !MultiInstance.Stale || players.Length > 0)
+            return;
+        ApplyWatchNames();
+        MultiInstance.Enable();
+    }
+
+    /// <summary>
+    /// Also from the launches to close once claimed: Close all put the late ones there, and one left behind stayed for the
+    /// rest of the run (review, 2026-10-30).
+    /// </summary>
+    void ForgetLate(Guid accountId)
+    {
+        foreach (var earlier in _late.Where(l => l.AccountId == accountId).ToList())
+        {
+            _late.Remove(earlier);
+            _closeWhenClaimed.Remove(earlier);
+        }
     }
 
     object? CancelLaunch()

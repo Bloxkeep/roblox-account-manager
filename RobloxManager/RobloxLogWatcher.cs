@@ -51,6 +51,9 @@ public sealed class RobloxLogWatcher
         public DateTime? OutOfMemory;
         public DateTime? ClosedInOrder;
         public DateTime? JoinChallenged;
+        /// <summary>Roblox's updater was told to install in the background: this client goes on (see <see cref="UpdateThreadMark"/>).</summary>
+        public bool BackgroundUpdate;
+        public DateTime? UpdateHandOff;
     }
 
     /// <summary>
@@ -153,6 +156,11 @@ public sealed class RobloxLogWatcher
     // "https://gamejoin.roblox.com/v1/join-game" } … challengedByGcs". The window shows Roblox's "Security" page, blank
     // where the check can't load (Vietnam, 2026-10-23), and Join Error 529 once closed.
     const string ChallengedMark = "challengedByGcs", GameJoinMark = "gamejoin.", JoinRequestMark = "/v1/join-";
+    // An outdated client starts Roblox's updater with its own launch link: "[FLog::UpdateController] Update thread: start
+    // ""…\RobloxPlayerInstaller.exe" roblox-player:…". After "Update mode is chosen as BACKGROUND" it goes on into its game
+    // and the updater opens nothing; without that line it quits a second or two later and the updater opens the updated
+    // client with the same link about 8-10 s on (the owner's logs of 2026-10-30, 0.744 -> 0.745: four of each).
+    const string UpdateThreadMark = "[FLog::UpdateController] Update thread: start", BackgroundUpdateMark = "[FLog::UpdateController] Update mode is chosen as BACKGROUND";
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
@@ -184,6 +192,15 @@ public sealed class RobloxLogWatcher
     /// Roblox held its join for a bot check (<see cref="ChallengedMark"/>); cleared once a game starts or a server is reached.
     /// </summary>
     public DateTime? JoinChallengedAt(int pid) => _tails.GetValueOrDefault(pid)?.JoinChallenged;
+
+    /// <summary>
+    /// The client handed its launch to Roblox's updater and quits: the updated client comes from the updater
+    /// (<see cref="UpdateThreadMark"/>). Null too for one updating in the background, which goes on itself.
+    /// </summary>
+    public DateTime? UpdateHandOffAt(int pid) => _tails.GetValueOrDefault(pid)?.UpdateHandOff;
+
+    /// <summary>Its log is found and followed, so what it said (or didn't) can be read.</summary>
+    public bool Follows(int pid) => _tails.ContainsKey(pid);
 
     /// <summary>
     /// For a client that has just quit, with its final lines (a leave, a disconnect): the next <see cref="Poll"/> drops
@@ -521,6 +538,10 @@ public sealed class RobloxLogWatcher
         else if (line.Contains(ChallengedMark, StringComparison.Ordinal) && line.Contains(GameJoinMark, StringComparison.Ordinal)
                  && line.Contains(JoinRequestMark, StringComparison.Ordinal) && tail.State is { Status: "joining", JobId: null })
             tail.JoinChallenged ??= TimeOf(line);
+        else if (line.Contains(BackgroundUpdateMark, StringComparison.Ordinal))
+            tail.BackgroundUpdate = true;
+        else if (line.Contains(UpdateThreadMark, StringComparison.Ordinal) && !tail.BackgroundUpdate)
+            tail.UpdateHandOff ??= TimeOf(line);
     }
 
     // A numeric code can arrive after the words. Replicator (3) > numeric notification (2) > mapped words (1); equal

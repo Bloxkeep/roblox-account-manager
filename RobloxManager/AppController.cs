@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Net.NetworkInformation;
 using System.Text.Json;
 using Microsoft.Win32;
@@ -21,11 +22,18 @@ public sealed partial class AppController : IDisposable
         public DateTime StartedAt { get; set; } = StartedAt;
         /// <summary>The tracker id in its launch link, also on its client's command line (see <see cref="ClaimWindows"/>).</summary>
         public string? Tracker { get; init; }
+        /// <summary>The rejoin's earlier tries that opened no window (see <see cref="RejoinRequest.OpenRetries"/>).</summary>
+        public int OpenRetries { get; init; }
     }
 
     /// <param name="NetworkRetries">Attempts that failed only because there was no connection.</param>
     /// <param name="Restart">Its preset's planned restart, not a drop: it goes ahead whatever auto-rejoin says.</param>
-    sealed record RejoinRequest(Guid AccountId, GameTarget Target, DateTime Due, int NetworkRetries = 0, Guid? PresetId = null, bool Restart = false);
+    sealed record RejoinRequest(Guid AccountId, GameTarget Target, DateTime Due, int NetworkRetries = 0, Guid? PresetId = null, bool Restart = false)
+    {
+        /// <summary>Tries that opened no window: Roblox wouldn't start (its updater swapping the build folder) or quit before
+        /// its window came. Tried again up to <see cref="MaxOpenRetries"/> times, like a drop in game.</summary>
+        public int OpenRetries { get; init; }
+    }
 
     static readonly TimeSpan HandOverWindow = TimeSpan.FromSeconds(60);
     static readonly TimeSpan PendingTimeout = TimeSpan.FromSeconds(120);
@@ -39,6 +47,8 @@ public sealed partial class AppController : IDisposable
     const int MaxNetworkRetries = 20;
     /// <summary>A refused launch ticket the sign-in check didn't confirm as a sign-out: tried again this many times, then said.</summary>
     const int MaxTicketRetries = 3;
+    /// <summary>A rejoin that opened no window: tried again this many times (30 s, 1 min, 1.5 min on), then said.</summary>
+    const int MaxOpenRetries = 3;
     /// <summary>Said for a refused launch ticket when the account is still signed in.</summary>
     static string RefusedText => L.T("Roblox refused to open the game for this account. Try again in a moment.");
     /// <summary>One small GitHub API request an hour, well within its 60 an hour for anonymous callers (several PCs per IP too).</summary>
@@ -351,6 +361,20 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>What the person is told: Bloxkeep's and Roblox's own sentences as they are, else a short fixed sentence.
     /// .NET's texts are in Windows' language and name internals, so they go to the log.</summary>
+    /// <summary>
+    /// Why Roblox wouldn't start, for the person (a notification, Discord, /pc, the activity log). Windows' own message
+    /// names the program it was asked to start, and with the roblox-player: link handed to Windows that is the link, sign-in
+    /// ticket and all (.NET's "An error occurred trying to start process '…'", checked 2026-10-30): never shown. Bloxkeep's
+    /// own sentences (a launcher not installed) are, the ticket-like parts hidden all the same.
+    /// </summary>
+    static string StartErrorText(Exception ex)
+    {
+        Log.Note($"Roblox didn't start: {StartErrorLog(ex)}");
+        return ex is Win32Exception win32 ? L.F("Windows couldn't start Roblox (error {0}).", win32.NativeErrorCode) : RobloxLauncher.HideTicket(ex.Message);
+    }
+
+    static string StartErrorLog(Exception ex) => $"{ex.GetType().Name} {(ex is Win32Exception w ? w.NativeErrorCode : ex.HResult)}: {RobloxLauncher.HideTicket(ex.Message)}";
+
     static string ErrorText(Exception ex)
     {
         if (ex is UserError or RobloxApiException or InvalidPasswordException)

@@ -63,34 +63,43 @@ public sealed partial class AppController
         }
     }
 
+    /// <summary>The clock was set back: periodic work is due now, and deadlines and start times move back by as much.</summary>
+    void MoveClockBack(DateTime now, TimeSpan back)
+    {
+        if (_saveDue is not null)
+            _saveDue = now;
+        _nextPresence = _nextRobloxVersionCheck = _nextUpdateCheck = now;
+        _sweepBackgroundUntil = MovedBack(_sweepBackgroundUntil, back);
+        _resumedAt = MovedBack(_resumedAt, back);
+        _started = MovedBack(_started, back);
+        _lastSessionStart = MovedBack(_lastSessionStart, back);
+        _robloxSettingsWrittenAt = MovedBack(_robloxSettingsWrittenAt, back);
+        foreach (var launch in _pending.Concat(_late).Concat(_running.Values.Select(r => r.Launch)))
+            launch.StartedAt = MovedBack(launch.StartedAt, back);
+        foreach (var parent in _traySweep.Keys.ToList())
+            _traySweep[parent] = MovedBack(_traySweep[parent], back);
+        foreach (var launch in _pendingSeenAlive.Keys.ToList())
+            _pendingSeenAlive[launch] = MovedBack(_pendingSeenAlive[launch], back);
+        for (int i = 0; i < _rejoinQueue.Count; i++)
+            _rejoinQueue[i] = _rejoinQueue[i] with { Due = MovedBack(_rejoinQueue[i].Due, back) };
+        // Anti-AFK's: left ahead, a window's idle time read as none until the clock caught up again, and one set back
+        // more than about 8 minutes got no nudge before Roblox's 20-minute kick (review, 2026-10-30). Roblox's log times
+        // can't move: LastInput passes over one ahead of now.
+        foreach (int pid in _lastInput.Keys.ToList())
+            _lastInput[pid] = MovedBack(_lastInput[pid], back);
+        foreach (int pid in _nudgeRetryAt.Keys.ToList())
+            _nudgeRetryAt[pid] = MovedBack(_nudgeRetryAt[pid], back);
+        _signInCheckRetryAt = MovedBack(_signInCheckRetryAt, back);
+        MoveDiscordBack(back);
+        if (Prefs.LastSignInCheck is { } checkedAt)
+            Prefs.LastSignInCheck = MovedBack(checkedAt, back); // written with the next prefs change; a restart clamps it anyway
+    }
+
     void TrackProcesses()
     {
         var now = DateTime.UtcNow;
-        // The clock was set back: periodic work is due now, and deadlines and start times move back by as much.
         if (now < _lastTick)
-        {
-            var back = _lastTick - now;
-            if (_saveDue is not null)
-                _saveDue = now;
-            _nextPresence = _nextRobloxVersionCheck = _nextUpdateCheck = now;
-            _sweepBackgroundUntil = MovedBack(_sweepBackgroundUntil, back);
-            _resumedAt = MovedBack(_resumedAt, back);
-            _started = MovedBack(_started, back);
-            _lastSessionStart = MovedBack(_lastSessionStart, back);
-            _robloxSettingsWrittenAt = MovedBack(_robloxSettingsWrittenAt, back);
-            foreach (var launch in _pending.Concat(_late).Concat(_running.Values.Select(r => r.Launch)))
-                launch.StartedAt = MovedBack(launch.StartedAt, back);
-            foreach (var parent in _traySweep.Keys.ToList())
-                _traySweep[parent] = MovedBack(_traySweep[parent], back);
-            foreach (var launch in _pendingSeenAlive.Keys.ToList())
-                _pendingSeenAlive[launch] = MovedBack(_pendingSeenAlive[launch], back);
-            for (int i = 0; i < _rejoinQueue.Count; i++)
-                _rejoinQueue[i] = _rejoinQueue[i] with { Due = MovedBack(_rejoinQueue[i].Due, back) };
-            _signInCheckRetryAt = MovedBack(_signInCheckRetryAt, back);
-            MoveDiscordBack(back);
-            if (Prefs.LastSignInCheck is { } checkedAt)
-                Prefs.LastSignInCheck = MovedBack(checkedAt, back); // written with the next prefs change; a restart clamps it anyway
-        }
+            MoveClockBack(now, _lastTick - now);
         NoteCheckGap(now, _lastTick);
         _lastTick = now;
         // The process list is the costly part of a tick (a few ms, whatever runs).
@@ -168,7 +177,7 @@ public sealed partial class AppController
             // Roblox's updater started since the launch is one too: an outdated client hands the launch to it.
             bool handOver = now - info.Launch.StartedAt < HandOverWindow && !_userClosed.Contains(id) && !closedByRoblox
                 && (pids.Any(p => !info.Launch.Before.Contains(p) && !claimedNow.Contains(p) && !trayCopies.Contains(p) && MayBeLaunchOf(TrackerOf(p), info.Launch))
-                    || RobloxProcesses.UpdaterRunningSince(info.Launch.StartedAt));
+                    || MayHaveHandedToUpdater(info.Pid) && RobloxProcesses.UpdaterRunningSince(info.Launch.StartedAt));
             if (handOver)
             {
                 _pending.Add(info.Launch);
@@ -180,19 +189,7 @@ public sealed partial class AppController
             changed = true;
         }
 
-        foreach (var expired in _pending.Where(p => now - p.StartedAt > PendingTimeout).ToList())
-        {
-            // No window yet (Roblox updating on a slow link, its launcher stuck): one that comes later is still this
-            // launch's, not the next account's (see _late).
-            bool waitLonger = !_closeWhenClaimed.Contains(expired) && !_handedOver.ContainsKey(expired);
-            DropPending(expired, late: waitLonger);
-            if (waitLonger)
-            {
-                _late.RemoveWhere(l => l.AccountId == expired.AccountId);
-                _late.Add(expired);
-            }
-            changed = true;
-        }
+        changed |= ExpirePending(now, launch => RobloxProcesses.UpdaterRunningSince(launch.StartedAt));
         changed |= ClaimWindows(pids, HasWindow, ChildrenOf, TrackerOf, launch => RobloxProcesses.UpdaterRunningSince(launch.StartedAt), now);
         foreach (var gone in _pendingSeenAlive.Keys.Where(l => !_pending.Contains(l)).ToList())
             _pendingSeenAlive.Remove(gone);
@@ -347,6 +344,40 @@ public sealed partial class AppController
         Step(() => TickDiscord(now, players));
         if (!_presenceBusy && now >= _nextPresence)
             _ = RefreshPresenceAsync();
+    }
+
+    /// <summary>
+    /// Its log says it handed its launch to Roblox's updater, or isn't followed (a client that quits within two seconds
+    /// may go before its log is found). One updating in the background went on into its game: the updater opens nothing
+    /// for it, so its end is its own, whatever else is updating (the owner's logs, 2026-10-30).
+    /// </summary>
+    bool MayHaveHandedToUpdater(int pid) => !_logs.Follows(pid) || _logs.UpdateHandOffAt(pid) is not null;
+
+    /// <summary>Launches whose window didn't come within <see cref="PendingTimeout"/> stop waiting.</summary>
+    /// <param name="updating">See <see cref="RobloxProcesses.UpdaterRunningSince"/>.</param>
+    bool ExpirePending(DateTime now, Func<PendingLaunch, bool> updating)
+    {
+        bool changed = false;
+        foreach (var expired in _pending.Where(p => now - p.StartedAt > PendingTimeout).ToList())
+        {
+            // Handed to Roblox's updater, still at it (a slow link): the updated client is yet to come. Dropped at 2 min, the
+            // launch was rejoined at once and a second outdated client opened for the account while the first update ran,
+            // and the updated window was then nobody's (review, 2026-10-30). LateTimeout more at most.
+            if (_handedOver.ContainsKey(expired) && !_closeWhenClaimed.Contains(expired) && now - expired.StartedAt <= PendingTimeout + LateTimeout
+                && updating(expired))
+                continue;
+            // No window yet (Roblox updating on a slow link, its launcher stuck): one that comes later is still this
+            // launch's, not the next account's (see _late).
+            bool waitLonger = !_closeWhenClaimed.Contains(expired) && !_handedOver.ContainsKey(expired);
+            DropPending(expired, late: waitLonger);
+            if (waitLonger)
+            {
+                _late.RemoveWhere(l => l.AccountId == expired.AccountId);
+                _late.Add(expired);
+            }
+            changed = true;
+        }
+        return changed;
     }
 
     /// <summary>A failure is logged (<see cref="LogTickError"/>) and the next job runs; timed and named by its code.</summary>

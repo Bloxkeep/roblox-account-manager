@@ -178,6 +178,9 @@ public static class RobloxLauncher
     /// <summary>The ticket in a launch link, and any long token-like run (a wrapped line may cut "gameinfo:" off).</summary>
     static readonly System.Text.RegularExpressions.Regex TicketText = new(@"gameinfo:[^+\s'""]*|[A-Za-z0-9_\-]{40,}", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
+    /// <summary>The text with the sign-in ticket of any launch link in it hidden (see <see cref="TicketText"/>).</summary>
+    public static string HideTicket(string text) => TicketText.Replace(text, "<hidden>");
+
     /// <summary>Store Roblox: its Start entry's GameLaunchHelper only brings an open Roblox forward; started inside its
     /// package (Invoke-CommandInDesktopPackage) the client keeps the package's sign-in and opens its own window (seen
     /// 2026-10-16, Store Roblox 2.743).</summary>
@@ -203,7 +206,7 @@ public static class RobloxLauncher
         {
             // PowerShell's error repeats the command, sign-in ticket included: that part never reaches the log.
             if (shell.ExitCode != 0 || error.Length > 0)
-                Log.Note($"Store Roblox start: exit {shell.ExitCode} {TicketText.Replace(error.ToString().Trim(), "<hidden>")}");
+                Log.Note($"Store Roblox start: exit {shell.ExitCode} {HideTicket(error.ToString().Trim())}");
             shell.Dispose();
         };
         shell.BeginErrorReadLine();
