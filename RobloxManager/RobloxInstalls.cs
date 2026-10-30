@@ -104,7 +104,40 @@ public static class RobloxInstalls
         }
     }
 
-    static string? Newest(IEnumerable<string> paths) => paths.OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
+    /// <summary>
+    /// The client to use of several: the build Roblox's installer registered last (<see cref="RegisteredBuild"/>), then the
+    /// highest version, then the newest file. By file time alone, 2026-10-30 picked a test channel's 0.744.478 (its file
+    /// from 10-29) over 0.745 (10-28), the build Roblox wanted: each window it opened started Roblox's updater, which
+    /// closed it and opened another.
+    /// </summary>
+    static string? Newest(IEnumerable<string> paths)
+    {
+        string? registered = RegisteredBuild();
+        return paths.OrderByDescending(p => registered is not null && string.Equals(Path.GetFileName(Path.GetDirectoryName(p)), registered, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(p => Version.TryParse(System.Text.RegularExpressions.Regex.Match(VersionOf(p)?.Version ?? "", @"^\d+(\.\d+){1,3}").Value, out var v)
+                ? v : new Version(0, 0))
+            .ThenByDescending(File.GetLastWriteTimeUtc)
+            .FirstOrDefault();
+    }
+
+    /// <summary>The build folder ("version-…") Roblox's installer set the roblox-player link up for, written beside its command.</summary>
+    static string? RegisteredBuild()
+    {
+        if (RegisteredBuildOverride is { } stand)
+            return stand();
+        try
+        {
+            using var key = Registry.ClassesRoot.OpenSubKey(ProtocolCommandKey);
+            return key?.GetValue("version") as string is { Length: > 0 } build ? build : null;
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Tests: the registered build in place of the registry's.</summary>
+    internal static Func<string?>? RegisteredBuildOverride { get; set; }
 
     /// <summary>Whether the build folder ("version-…") is in this client's Versions folder. Roblox keeps a build per channel
     /// side by side and starts the account's channel's: on 2026-10-29 the links pointed at a test channel's 0.744.478

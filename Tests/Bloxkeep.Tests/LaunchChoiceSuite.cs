@@ -51,6 +51,23 @@ static class LaunchChoiceSuite
             && !RobloxInstalls.HasBuild(null, "version-live"));
         File.Delete(live);
 
+        // Of two Roblox builds side by side (a test channel's and the main one, 2026-10-30): the one Roblox's installer
+        // registered, then the higher version, wins over the newer file.
+        string channel = Client("Roblox", "version-channel"), main = Client("Roblox", "version-main");
+        File.SetLastWriteTimeUtc(main, DateTime.UtcNow.AddDays(-1));
+        var registered = typeof(RobloxInstalls).GetProperty("RegisteredBuildOverride", Harness.F)!;
+        void Registered(Func<string?>? build) => registered.SetValue(null, build);
+        Registered(() => "version-main");
+        c.Check("the build Roblox registered is used, though another's file is newer", RobloxInstalls.FindOfficialClient() == main, RobloxInstalls.FindOfficialClient());
+        Registered(() => null);
+        // A real program's file version (Windows' Notepad, 10.x) against the empty files (0.0.0.0).
+        File.Copy(Path.Combine(Environment.SystemDirectory, "notepad.exe"), main, overwrite: true);
+        File.SetLastWriteTimeUtc(main, DateTime.UtcNow.AddDays(-1));
+        c.Check("…without one, the higher version, though another's file is newer", RobloxInstalls.FindOfficialClient() == main, RobloxInstalls.FindOfficialClient());
+        Registered(null);
+        File.Delete(channel);
+        File.Delete(main);
+
         // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
         Directory.Delete(Path.Combine(local, "Roblox"), recursive: true);
         if (RobloxInstalls.FindAnyClient() is null)
