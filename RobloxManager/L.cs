@@ -226,6 +226,7 @@ public static class L
         ["Paste the .ROBLOSECURITY cookie."] = "Bạn chưa dán cookie .ROBLOSECURITY.",
         ["The cookie is invalid or has expired."] = "Cookie không hợp lệ hoặc đã hết hạn.",
         ["The new cookie is invalid or has expired."] = "Cookie mới không hợp lệ hoặc đã hết hạn.",
+        ["This cookie signs in another account. Add it as a new account instead."] = "Cookie này là của tài khoản khác. Hãy thêm nó thành tài khoản mới.",
         ["Bloxkeep was locked."] = "Bloxkeep vừa bị khóa.",
         ["Invalid field."] = "Mục không hợp lệ.",
         ["Already checking — please wait."] = "Đang kiểm tra rồi, chờ một chút.",
@@ -428,6 +429,7 @@ public static class L
         ["No server has room for {0} accounts right now, so Roblox picks one."] =
             "Hiện không có server nào đủ chỗ cho {0} tài khoản, Roblox sẽ tự chọn server.",
         ["Couldn't load the server list, so Roblox picks a server."] = "Không tải được danh sách server, Roblox sẽ tự chọn server.",
+        ["Couldn't load the server list. Try again in a moment."] = "Không tải được danh sách server. Thử lại sau.",
         ["Roblox refused to open the game for this account. Try again in a moment."] =
             "Roblox không cho tài khoản này vào game. Thử lại sau giây lát.",
         ["Waiting {0}s before the next account…"] = "Chờ {0} giây rồi mở tài khoản tiếp theo…",
@@ -465,6 +467,8 @@ public static class L
         ["Close tab"] = "Đóng tab",
         ["Keep browsing"] = "Xem tiếp",
         ["The website can't be opened for Roblox VNG accounts yet."] = "Chưa mở được trang web cho tài khoản Roblox VNG.",
+        ["Private server links are read with a Roblox account. Select one that isn't Roblox VNG."] =
+            "Link server riêng cần một tài khoản Roblox để đọc. Hãy chọn một tài khoản không phải Roblox VNG.",
         ["Save to Bloxkeep"] = "Lưu vào Bloxkeep",
         ["Opens signed in next time. Without saving, closing this tab signs it out here."] =
             "Lần sau mở là đã đăng nhập sẵn. Không lưu thì đóng tab này sẽ mất đăng nhập ở đây.",
@@ -497,6 +501,8 @@ public static class L
         ["Roblox closed {0} window(s) when another one opened — Roblox may have blocked running several windows. Multi-Roblox may need an update."] =
             "Roblox tự đóng {0} cửa sổ khi có cửa sổ khác mở. Có thể Roblox đã chặn mở nhiều cửa sổ, cần cập nhật Multi-Roblox.",
         ["This file is not a Bloxkeep backup."] = "File này không phải bản sao lưu của Bloxkeep.",
+        ["If this backup won't open, the vault it replaced is kept as {0}: restore that file to get it back."] =
+            "Nếu bản sao lưu này không mở được, vault cũ vẫn được giữ ở {0}: khôi phục file đó để lấy lại.",
         ["Choose a backup folder first."] = "Chọn thư mục sao lưu trước.",
         ["Couldn't back up: {0}"] = "Không sao lưu được: {0}",
         ["Choose a folder on this PC or a synced drive."] = "Chọn thư mục trên máy này hoặc trên ổ đồng bộ.",

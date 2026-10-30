@@ -80,6 +80,10 @@ public sealed partial class AppController
 
     object? CancelAddVault()
     {
+        // Its set-up had started (and failed, or is still running): the lock screen offers the vault from before again, not a
+        // file that may never be written (review, 2026-10-30). A set-up that finishes after all opens its own vault.
+        if (_newVault is { } adding && Vault.ActiveFile.Equals(adding.File, StringComparison.OrdinalIgnoreCase))
+            Vaults.Use(_vaultBeforeAdd);
         _newVault = null;
         _vaultPick = _addFromPicker && Prefs.VaultList.Count > 0;
         PushState();
@@ -93,12 +97,17 @@ public sealed partial class AppController
             return;
         if (_vault is not null)
             Lock();
+        if (!Vault.ActiveFile.Equals(_newVault.File, StringComparison.OrdinalIgnoreCase))
+            _vaultBeforeAdd = Vaults.Current;
         Vaults.Use(_newVault);
     }
 
-    void JoinVaultList(string? name)
+    /// <summary>The vault offered (or open) before a vault being added took its place, for Cancel.</summary>
+    Prefs.VaultEntry? _vaultBeforeAdd;
+
+    /// <param name="entry">The vault just set up: the one being added, or the first one on this PC (vault.rmv, "Vault 1").</param>
+    void JoinVaultList(Prefs.VaultEntry entry, string? name)
     {
-        var entry = _newVault ?? Vaults.Current ?? Vaults.New(); // the first vault on this PC: vault.rmv, "Vault 1"
         if (Vaults.CleanName(name) is { } typed)
             entry.Name = typed;
         if (!Prefs.VaultList.Contains(entry))

@@ -550,6 +550,10 @@ public sealed partial class AppController
         {
             user = await RobloxApi.GetAuthenticatedUserAsync(cookie, account.Realm)
                 ?? throw new UserError(L.T("The new cookie is invalid or has expired."));
+            // Another user's cookie would turn this account into them, with its alias, password and authenticator (review,
+            // 2026-10-30): refused. One saved without a user yet takes whoever it is.
+            if (account.UserId > 0 && user.Id != account.UserId)
+                throw new UserError(L.T("This cookie signs in another account. Add it as a new account instead."));
             // Locked (and maybe reopened) meanwhile: this account object belongs to the old vault.
             if (_vault != vault)
                 throw new UserError(L.T("Bloxkeep was locked."));
@@ -677,7 +681,9 @@ public sealed partial class AppController
         var refused = new List<Guid>();
         int moderated = 0;
         var queue = new Queue<Account>(accounts);
-        var rejected = new List<Account>();
+        var rejected = new List<(Account Account, string Cookie)>();
+        // Roblox and Roblox VNG sign in apart: one accepted on Roblox says nothing of VNG's service (review, 2026-10-30).
+        var acceptedIn = new HashSet<string>();
         var resumeAt = DateTime.UtcNow;
         var newlyBanned = new List<Account>();
 
@@ -698,9 +704,10 @@ public sealed partial class AppController
                             break; // signed in again meanwhile: the old cookie's answer says nothing about the new one
                         // A rejection is marked below, once Roblox's sign-in service is known to be up.
                         if (user is null)
-                            rejected.Add(account);
+                            rejected.Add((account, cookie));
                         else
                         {
+                            acceptedIn.Add(account.Realm);
                             SignInAccepted(account);
                             account.UserId = user.Id;
                             account.Username = user.Name;
@@ -760,15 +767,19 @@ public sealed partial class AppController
         {
             Progress(L.F("Checking sign-ins… {0}/{1}", 0, accounts.Count));
             await Task.WhenAll(Enumerable.Range(0, Math.Min(CheckParallelism, accounts.Count)).Select(_ => WorkAsync()));
-            // One accepted means Roblox's sign-in service is up, so a rejection is a sign-out. With none, an outage answers 401 to
-            // everyone: each is marked only if Roblox accepts another account now (ConfirmSignedOutAsync), else not checked.
-            foreach (var account in rejected)
+            // One accepted of the same Roblox means its sign-in service is up, so a rejection is a sign-out. With none, an outage
+            // answers 401 to everyone: each is marked only if Roblox accepts another account now (ConfirmSignedOutAsync), else not
+            // checked. Signed in again meanwhile (another cookie now): the old one's rejection says nothing, so it's left alone.
+            foreach (var (account, cookie) in rejected)
             {
                 if (_vault != vault)
                     break;
-                if (ok > 0)
+                if (account.Cookie != cookie)
+                    continue;
+                bool upHere = acceptedIn.Contains(account.Realm);
+                if (upHere)
                     account.CookieValid = false;
-                if (ok > 0 || await ConfirmSignedOutAsync(account))
+                if (upHere || await ConfirmSignedOutAsync(account))
                     bad++;
                 else
                     failed++;

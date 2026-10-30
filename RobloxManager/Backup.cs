@@ -148,7 +148,8 @@ static class Backup
     /// Puts a backup in place as the vault. With a vault already there, the current one is first copied beside it as
     /// old-vaultsault-before-restore-….rmv, so a restore of the wrong file loses nothing.
     /// </summary>
-    public static void Restore(string file, bool replaceExisting)
+    /// <returns>The copy kept of the vault it replaced, or null when there was none.</returns>
+    public static string? Restore(string file, bool replaceExisting)
     {
         if (!Vault.LooksLikeVault(file))
             throw new UserError(L.T("This file is not a Bloxkeep backup."));
@@ -156,12 +157,15 @@ static class Backup
         if (exists && !replaceExisting)
             throw new UserError(L.T("Bloxkeep is already set up."));
         byte[] bytes = File.ReadAllBytes(file);
+        string? before = null;
         if (exists)
         {
             Directory.CreateDirectory(Vault.OldVaultsDir);
-            File.Copy(Vault.VaultPath, Path.Combine(Vault.OldVaultsDir, $"vault-before-restore-{DateTime.Now:yyyyMMdd-HHmmss}.rmv"), overwrite: false);
+            before = Path.Combine(Vault.OldVaultsDir, $"vault-before-restore-{DateTime.Now:yyyyMMdd-HHmmss}.rmv");
+            File.Copy(Vault.VaultPath, before, overwrite: false);
         }
         Vault.ReplaceFile(bytes);
+        return before;
     }
 
     /// <summary>The live vault must stay out of the backup folder, and the folder out of the live data.</summary>

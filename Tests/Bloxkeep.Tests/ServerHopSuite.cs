@@ -52,10 +52,23 @@ static class ServerHopSuite
 
         // Roblox's list: the one they're in, one full, one with room for one, one with room for both.
         string list = """{"data":[{"id":"old-server","playing":5,"maxPlayers":20},{"id":"full","playing":20,"maxPlayers":20},{"id":"one-left","playing":19,"maxPlayers":20},{"id":"roomy","playing":3,"maxPlayers":20}],"nextPageCursor":null}""";
-        Task<HttpResponseMessage> Roblox(HttpRequestMessage req) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        int serverErrors = 0; // the next server lists Roblox answers with a 500
+        Task<HttpResponseMessage> Roblox(HttpRequestMessage req)
         {
-            Content = new StringContent(req.RequestUri!.AbsolutePath.Contains("/servers/Public") ? list : "{}", Encoding.UTF8, "application/json"),
-        });
+            var uri = req.RequestUri!;
+            bool servers = uri.AbsolutePath.Contains("/servers/Public");
+            if (servers && serverErrors > 0)
+            {
+                serverErrors--;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError) { Content = new StringContent("{}") });
+            }
+            // A game's details: its name from develop.roblox.com, its player count garbled (a cut-off answer).
+            string body = servers ? list
+                : uri.AbsolutePath == "/v1/universes/multiget" ? $$"""{"data":[{"id":77,"name":"Hop Game","creatorName":"Maker","rootPlaceId":{{Place}}}]}"""
+                : uri.Host == "games.roblox.com" && uri.AbsolutePath == "/v1/games" ? """{"data":[{"id":77,"pla"""
+                : "{}";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+        }
         var standIn = typeof(RobloxApi).GetProperty("StandIn", Harness.F)!;
         standIn.SetValue(null, (Func<HttpRequestMessage, Task<HttpResponseMessage>>)Roblox);
         try
@@ -109,6 +122,29 @@ static class ServerHopSuite
             Window(a2, 812, new GameTarget(Place), "joining", null);
             var notIn = await Harness.Try(app, "switchServer", new { ids = new[] { a2.Id } });
             c.Check("a window still joining: said, nothing closed", notIn is UserError && closed.Count == 0, notIn);
+
+            // ── the server window (review, 2026-10-30) ──
+            // A one-off 500 is said, and not kept: before, the window showed "no servers" for the minute the list is kept.
+            serverErrors = 1;
+            object? failedList;
+            try
+            {
+                failedList = await Harness.Call(app, "servers", new { placeId = Place + 1, fewest = false });
+            }
+            catch (RobloxApiException ex)
+            {
+                failedList = ex;
+            }
+            var afterIt = await Harness.Try(app, "servers", new { placeId = Place + 1, fewest = false });
+            int? Count(object? reply) => (reply?.GetType().GetProperty("servers")?.GetValue(reply) as System.Collections.ICollection)?.Count;
+            c.Check("the server list answered with a 500: said, not shown as no servers", failedList is Exception, failedList);
+            c.Check("…asked again right after: Roblox's list, not an empty one kept from the failure", Count(afterIt) == 2, afterIt);
+
+            // A game's player count that came back garbled leaves the count blank, not the name (before: the name lost too,
+            // and remembered as unknown for 2 minutes).
+            var games = await RobloxApi.GetGamesAsync([77], "x1");
+            c.Check("a game's player count answer garbled: its name still comes back", games.GetValueOrDefault(77)?.Name == "Hop Game",
+                string.Join(",", games.Values.Select(g => g.Name)));
         }
         finally
         {

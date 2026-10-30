@@ -199,6 +199,12 @@ public sealed partial class AppController
     static readonly TimeSpan FollowRecheck = TimeSpan.FromSeconds(60);
     /// <summary>Why each account waits for its followed player, as last said: said again only when the reason changes.</summary>
     readonly Dictionary<Guid, string> _followWaitTold = new();
+    /// <summary>How many of your signed-in accounts a following rejoin asks where the player is (its own first).</summary>
+    const int FollowViewers = 3;
+    /// <summary>A followed player last seen outside a server you can join is taken as still there this long, for every account
+    /// following them.</summary>
+    static readonly TimeSpan FollowSeenFor = TimeSpan.FromSeconds(30);
+    readonly Dictionary<long, (Vault Vault, DateTime At, Presence? Seen)> _followSeen = new();
 
     /// <summary>Where a following rejoin goes: the player's server now, as Roblox shows it to this account (first) or another signed-in
     /// one, checked with Roblox's join answer. When they can't be followed yet (offline, website, Studio, hidden, full or ended server,
@@ -209,12 +215,26 @@ public sealed partial class AppController
         var vault = RequireVault();
         var follow = request.Target.Follow!;
         string player = follow.Name;
-        var viewers = new[] { account }.Concat(vault.Data.Accounts.Where(other => other.Id != account.Id)).Where(CanAskPresence).ToList();
+        // A few accounts at most, and a player not in a server they can see is remembered a little while: ten accounts following
+        // someone offline each asked with every account every minute, about 100 presence requests a minute (review, 2026-10-30).
+        var viewers = new[] { account }.Concat(vault.Data.Accounts.Where(other => other.Id != account.Id)).Where(CanAskPresence)
+            .Take(FollowViewers).ToList();
         if (viewers.Count == 0)
             return Wait("none", L.F("{0} waits to join {1}: none of your accounts is signed in, so Bloxkeep can't ask Roblox where {1} is. Bloxkeep looks again every minute.", Name(account), player));
-        var (seen, failed) = await WherePlayerIsAsync(follow.UserId, viewers, vault, ct);
-        if (seen is null && failed is not null)
-            throw failed;
+        Presence? seen;
+        if (_followSeen.TryGetValue(follow.UserId, out var known) && known.Vault == vault && DateTime.UtcNow - known.At < FollowSeenFor)
+            seen = known.Seen;
+        else
+        {
+            (seen, var failed) = await WherePlayerIsAsync(follow.UserId, viewers, vault, ct);
+            if (seen is null && failed is not null)
+                throw failed;
+            // Only "not in a server yet": a server found is asked afresh each time, since the player may have moved on.
+            if (seen is null || PresenceRank(seen) < 5)
+                _followSeen[follow.UserId] = (vault, DateTime.UtcNow, seen);
+            else
+                _followSeen.Remove(follow.UserId);
+        }
         string status = seen is null ? "offline" : PlayerStatus(seen);
         if (status != "found")
         {

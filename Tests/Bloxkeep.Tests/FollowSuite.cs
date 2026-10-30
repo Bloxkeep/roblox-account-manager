@@ -126,8 +126,12 @@ static class FollowSuite
             c.Check("a waiting rejoin saved with the vault and read back: still following the player", saved?.Target?.Follow == follow, saved?.Target);
 
             // ── where a rejoin goes ──
-            Task<GameTarget?> Follow(GameTarget target)
+            var followSeen = Harness.Get<System.Collections.IDictionary>(app, "_followSeen");
+            // Each check below is a minute after the one before, as a waiting rejoin's: nothing remembered from the last.
+            Task<GameTarget?> Follow(GameTarget target, bool fresh = true)
             {
+                if (fresh)
+                    followSeen.Clear();
                 var request = Activator.CreateInstance(requestType, account.Id, target, DateTime.UtcNow, 0, null, false)!;
                 return (Task<GameTarget?>)t.GetMethod("FollowTargetAsync", Harness.F)!.Invoke(app, [account, request, CancellationToken.None])!;
             }
@@ -164,6 +168,22 @@ static class FollowSuite
             c.Check("…still offline a minute later: waits again, not said again", went is null && queue.Count == 1 && Told() is null);
             queue.Clear();
 
+            // Many accounts following someone offline (review, 2026-10-30): a few accounts asked, not every one, and the answer
+            // shared for half a minute — before, ten accounts made ~100 presence requests a minute between them.
+            var extra = Enumerable.Range(0, 3).Select(i => new Account { Username = $"More{i}", UserId = 30 + i, Cookie = $"cookie-x{i}" }).ToList();
+            vault.Data.Accounts.AddRange(extra);
+            asked.Clear();
+            await Follow(new GameTarget(Place) { Follow = follow });
+            int firstAsked = asked.Count;
+            queue.Clear();
+            await Follow(new GameTarget(Place) { Follow = follow }, fresh: false);
+            c.Check("a player offline, five accounts signed in: three asked, not all five", firstAsked == 3, string.Join(",", asked));
+            c.Check("…another rejoin following them right after asks Roblox nothing", asked.Count == firstAsked && queue.Count == 1, string.Join(",", asked));
+            queue.Clear();
+            foreach (var more in extra)
+                vault.Data.Accounts.Remove(more);
+            Told();
+
             seen["cookie-a"] = Website();
             went = await Follow(new GameTarget(Place) { Follow = follow });
             said = Told();
@@ -197,7 +217,8 @@ static class FollowSuite
             seen["cookie-a"] = Offline();
             Told();
             running.Clear();
-            var request = Activator.CreateInstance(requestType, account.Id, new GameTarget(Place) { Follow = follow }, DateTime.UtcNow, 0, null, false)!;
+            followSeen.Clear();
+            var request =Activator.CreateInstance(requestType, account.Id, new GameTarget(Place) { Follow = follow }, DateTime.UtcNow, 0, null, false)!;
             await (Task)t.GetMethod("RejoinAsync", Harness.F)!.Invoke(app, [request])!;
             c.Check("a rejoin that follows a player, banned in the game it was opened into: still looks for the player (fails on the old code: dropped at once)",
                 queue.Count == 1 && Told()?.Contains("Friend is offline", StringComparison.Ordinal) == true);

@@ -63,6 +63,22 @@ static class DataFolderSuite
             && File.ReadAllText(Path.Combine(data, @"old-vaults\vault-before-restore-20261023-103313.rmv")) == "before");
         File.Delete(Path.Combine(data, "vault-before-restore-20261023-103313.rmv"));
 
+        // A prefs.json that isn't JSON any more (this one is "x"): kept aside before the next save writes the defaults over
+        // it, with the vault list in it (review, 2026-10-30).
+        Prefs.Load();
+        var damaged = Directory.GetFiles(data, "prefs.json.damaged-*");
+        c.Check("a prefs.json that can't be read is kept aside as it was before the defaults are saved",
+            damaged.Length == 1 && File.ReadAllText(damaged[0]) == "x", damaged.Length);
+
+        // Every uninstall drops the browser caches; in a folder BLOXKEEP_DATA points at (as here), a "webview" folder at the
+        // top may be the person's own and stays (review, 2026-10-30: it was deleted, even with "keep my data").
+        Put(@"webview\mine.txt", "mine");
+        Put(@"cache\captcha\Default\Cookies");
+        Vault.DeleteCaches();
+        c.Check("uninstall's cache clean-up in a folder BLOXKEEP_DATA points at: Bloxkeep's cache goes, a webview folder at the top stays",
+            At(@"webview\mine.txt") && !Directory.Exists(Path.Combine(data, @"cache\captcha")));
+        Directory.Delete(Path.Combine(data, "webview"), true);
+
         // Asked for at uninstall: Bloxkeep's files in the subfolders go too; others' files keep the folder.
         Vault.DeleteAllData();
         var left = Directory.EnumerateFileSystemEntries(data, "*", SearchOption.AllDirectories).Select(p => Path.GetRelativePath(data, p)).Order().ToList();

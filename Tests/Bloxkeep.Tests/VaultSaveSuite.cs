@@ -146,6 +146,16 @@ static class VaultSaveSuite
         c.Check("a file another program holds: the save fails with the reason", failure is IOException or UnauthorizedAccessException, failure?.GetType().Name);
         await again.SaveInBackground();
         c.Check("…and the next save writes it", Alias("harness-new-pass-3") == "while the file is held", Alias("harness-new-pass-3"));
+        again.Save(); // the save before is now the .bak, under the same password
         again.Dispose();
+
+        // The main file's salt damaged (it still looks like a vault): the previous save opens with the typed password
+        // (review, 2026-10-30: the .bak was tried only with the main file's salt, so every unlock failed).
+        byte[] main = File.ReadAllBytes(Vault.VaultPath);
+        main[8] ^= 0xFF;
+        File.WriteAllBytes(Vault.VaultPath, main);
+        c.Check("a main file with a damaged salt: opened from the previous save with the password", Alias("harness-new-pass-3") == "while the file is held",
+            Alias("harness-new-pass-3"));
+        c.Check("…a wrong password still doesn't open it", Alias("not the password").StartsWith("(the file", StringComparison.Ordinal));
     }
 }

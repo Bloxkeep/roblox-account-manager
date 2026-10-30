@@ -250,7 +250,10 @@ public static class Prefs
             using var doc = JsonDocument.Parse(File.ReadAllText(PrefsPath));
             var root = doc.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
+            {
+                KeepDamaged();
                 return;
+            }
             foreach (var p in root.EnumerateObject())
             {
                 if (!Known.Contains(p.Name))
@@ -393,7 +396,24 @@ public static class Prefs
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
-            // Missing or unreadable prefs: defaults.
+            // Missing or unreadable prefs: defaults. One that isn't JSON any more is kept aside first.
+            if (ex is JsonException or InvalidOperationException)
+                KeepDamaged();
+        }
+    }
+
+    /// <summary>A prefs.json that can't be read is copied to prefs.json.damaged-&lt;time&gt; before the next save writes the
+    /// defaults over it: the vault list, backup folder and the rest can be got back from it (review, 2026-10-30).</summary>
+    static void KeepDamaged()
+    {
+        try
+        {
+            File.Copy(PrefsPath, $"{PrefsPath}.damaged-{DateTime.Now:yyyyMMdd-HHmmss}", overwrite: false);
+            Log.Note("prefs.json couldn't be read; a copy was kept beside it and the settings start from their defaults.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Already kept this second, or the folder won't take it: the defaults apply all the same.
         }
     }
 

@@ -12,6 +12,10 @@ public sealed partial class AppController
         // Six spaces pass the length check but are no password at all.
         if (string.IsNullOrWhiteSpace(password))
             throw new UserError(L.T("The master password can't be only spaces."));
+        // Which vault this is, taken before anything waits and before its file exists (the first vault's is vault.rmv only while
+        // there is none): Back pressed during the create cleared the one being added, and the list then got another entry with
+        // another file than the one written, which was left an orphan (review, 2026-10-30).
+        var entry = _newVault ?? Vaults.Current ?? Vaults.New();
         // A vault being added: the one open locks only now, once the new one's password is fine.
         SwitchToNewVault();
         if (Vault.Exists)
@@ -26,7 +30,8 @@ public sealed partial class AppController
             return BuildState();
         }
         _weakPassword = Backup.WeakPassword(password);
-        JoinVaultList(name); // before it opens: its backup state is its own from the start
+        Vaults.Use(entry); // the one written, whatever Back did meanwhile
+        JoinVaultList(entry, name); // before it opens: its backup state is its own from the start
         OnUnlocked(created);
         return BuildState();
     }
@@ -49,13 +54,19 @@ public sealed partial class AppController
             // The vault's own refusals are sentences of the app; a file Windows wouldn't read, or broken JSON, aren't.
             if (ex is JsonException)
                 Log.Write(ex);
-            throw new UserError(ex switch
+            string text = ex switch
             {
                 InvalidPasswordException or InvalidDataException => ex.Message,
                 JsonException => L.T("The data file is not in the right format or is damaged."),
                 _ => L.F("Couldn't open the data file: {0}", ErrorText(ex)),
-            });
+            };
+            // Just restored over another vault: the backup may be what's broken, and the vault it replaced is still there.
+            if (_restoredOver is { } over && over.File.Equals(Path.GetFileName(path), StringComparison.OrdinalIgnoreCase) && File.Exists(over.Copy))
+                text += "\n" + L.F("If this backup won't open, the vault it replaced is kept as {0}: restore that file to get it back.", over.Copy);
+            throw new UserError(text);
         }
+        if (string.Equals(_restoredOver?.File, Path.GetFileName(path), StringComparison.OrdinalIgnoreCase))
+            _restoredOver = null; // it opened
         // Another unlock finished first (two commands at once), or another vault was picked while this one's key was being
         // worked out: this copy is let go (opened, it would be shown as the other vault's).
         if (_vault is not null || Vaults.Current != unlocking)
