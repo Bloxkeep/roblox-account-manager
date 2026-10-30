@@ -234,7 +234,7 @@ public sealed partial class AppController
                 {
                     // Signed out only when the sign-in check agrees: an outage answers 401 for everyone.
                     bool refused = ex is RobloxApiException { CookieInvalid: true } && !await ConfirmSignedOutAsync(account, ct);
-                    errors.Add($"{NameText(account)}: {(refused ? RefusedText : ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))}");
+                    errors.Add($"{NameText(account)}: {(refused ? RefusedText : ex is Win32Exception or FileNotFoundException ? StartErrorText(ex) : ErrorText(ex))}");
                     if (ex is RobloxApiException { SignInRefused: true } && Realm.Normalize(account.Realm) != Realm.Vng)
                         refusedSignIn.Add(account.Id);
                 }

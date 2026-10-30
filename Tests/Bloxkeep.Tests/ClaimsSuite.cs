@@ -123,6 +123,28 @@ static class ClaimsSuite
         Claim(new());
         c.Check("…without it: no longer waited for, as before", !pending.Contains(handed), pending.Count);
         Reset();
+
+        // Why Roblox wouldn't start, as the person reads it (a notification, Discord, /pc): .NET's own message names the
+        // program it was asked to start, and with Windows opening the link that is the link, sign-in ticket and all.
+        var startError = t.GetMethod("StartErrorText", Harness.F)!;
+        string Said(Exception ex) => (string)startError.Invoke(null, [ex])!;
+        string ticketed = Path.Combine(dir, "gameinfo:SECRET-TICKET.exe".Replace(':', '_'));
+        try
+        {
+            Process.Start(new ProcessStartInfo(ticketed) { UseShellExecute = false })?.Dispose();
+            c.Check("a program that isn't there doesn't start", false);
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            c.Check(".NET's message for a start that failed names the program (the link, when Windows opens one)", ex.Message.Contains("SECRET-TICKET"), ex.Message);
+            c.Check("…never shown: a sentence of Bloxkeep's with Windows' error number", !Said(ex).Contains("SECRET") && Said(ex).Contains("(error 2)"), Said(ex));
+        }
+        string linkNamed = RobloxLauncher.BuildLaunchUri("SECRET-TICKET", new GameTarget(1818));
+        var shellFailed = new System.ComponentModel.Win32Exception(1155, $"An error occurred trying to start process '{linkNamed}' with working directory 'C:\\'. No application is associated.");
+        c.Check("…nor the link Windows was asked to open", !Said(shellFailed).Contains("SECRET"), Said(shellFailed));
+        var notInstalled = new FileNotFoundException("Bloxstrap is not installed.");
+        c.Check("Bloxkeep's own sentence (a launcher not installed) is shown as it is", Said(notInstalled) == "Bloxstrap is not installed.", Said(notInstalled));
+        c.Check("…a ticket in one hidden all the same", !Said(new FileNotFoundException("gone: " + linkNamed)).Contains("SECRET"));
         // Roblox's updater read from Windows' process list (a stand-in under its name: ping, copied).
         string updaterDir = Path.Combine(dir, "updater");
         Directory.CreateDirectory(updaterDir);

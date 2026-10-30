@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Net.NetworkInformation;
 using System.Text.Json;
 using Microsoft.Win32;
@@ -347,6 +348,20 @@ public sealed partial class AppController : IDisposable
 
     /// <summary>What the person is told: Bloxkeep's and Roblox's own sentences as they are, else a short fixed sentence.
     /// .NET's texts are in Windows' language and name internals, so they go to the log.</summary>
+    /// <summary>
+    /// Why Roblox wouldn't start, for the person (a notification, Discord, /pc, the activity log). Windows' own message
+    /// names the program it was asked to start, and with the roblox-player: link handed to Windows that is the link, sign-in
+    /// ticket and all (.NET's "An error occurred trying to start process '…'", checked 2026-10-30): never shown. Bloxkeep's
+    /// own sentences (a launcher not installed) are, the ticket-like parts hidden all the same.
+    /// </summary>
+    static string StartErrorText(Exception ex)
+    {
+        Log.Note($"Roblox didn't start: {StartErrorLog(ex)}");
+        return ex is Win32Exception win32 ? L.F("Windows couldn't start Roblox (error {0}).", win32.NativeErrorCode) : RobloxLauncher.HideTicket(ex.Message);
+    }
+
+    static string StartErrorLog(Exception ex) => $"{ex.GetType().Name} {(ex is Win32Exception w ? w.NativeErrorCode : ex.HResult)}: {RobloxLauncher.HideTicket(ex.Message)}";
+
     static string ErrorText(Exception ex)
     {
         if (ex is UserError or RobloxApiException or InvalidPasswordException)

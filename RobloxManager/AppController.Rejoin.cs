@@ -606,7 +606,7 @@ public sealed partial class AppController
                     PushState();
                 }
             }
-            Notify(L.F("Couldn't rejoin {0}: {1}", Name(account), why ?? (ex is Win32Exception or FileNotFoundException ? ex.Message : ErrorText(ex))), "error", "rejoinFail", account.Id);
+            Notify(L.F("Couldn't rejoin {0}: {1}", Name(account), why ?? (ex is Win32Exception or FileNotFoundException ? StartErrorText(ex) : ErrorText(ex))), "error", "rejoinFail", account.Id);
         }
         catch (Exception ex)
         {
