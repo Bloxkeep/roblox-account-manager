@@ -94,5 +94,18 @@ static class LockUpdateSuite
         c.Check("…a downloaded quiet fix stays", readyField.GetValue(updater) is not null && updater.Status == "ready");
         readyField.SetValue(updater, null);
         Status("idle");
+
+        // 2026-10-30 review: Bloxkeep opened by hand a second after "Restart to update" stopped waiting as soon as some
+        // Bloxkeep held the single-instance mutex, the run on its way out; that one got the request and vanished, and the
+        // update's run came back in the tray. It waits until the update's run took the hand-over.
+        Relaunch.Write(new Relaunch.State { WrittenAt = DateTime.UtcNow });
+        var waitForUpdateRun = typeof(AppUpdater).Assembly.GetType("RobloxManager.Program")!.GetMethod("WaitForUpdateRun", Harness.F)!;
+        var waiting = Task.Run(() => waitForUpdateRun.Invoke(null, [TimeSpan.FromSeconds(10)]));
+        await Task.Delay(800);
+        bool stillWaiting = !waiting.IsCompleted;
+        Relaunch.Take([]); // the update's run takes it
+        bool over = await Task.WhenAny(waiting, Task.Delay(3000)) == waiting;
+        c.Check("a start by hand during an update waits until the update's run took the hand-over, then hands over to it",
+            stillWaiting && over && !Relaunch.HandOverWaiting());
     }
 }

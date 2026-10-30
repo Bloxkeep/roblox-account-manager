@@ -66,21 +66,8 @@ static class Program
             e.SetObserved();
         };
 
-        // Opened during a background update: wait for the run the update starts and bring it forward. Taking its place
-        // made that run (which carries the unlocked vault) give way, and Bloxkeep came back locked (seen 2026-10-20).
-        if (!Relaunch.IsUpdateRun(args) && Relaunch.HandOverWaiting())
-        {
-            var waiting = System.Diagnostics.Stopwatch.StartNew();
-            while (waiting.Elapsed < UpdateRunWait && Relaunch.HandOverWaiting())
-            {
-                if (Mutex.TryOpenExisting(SingleInstanceMutex, out var running))
-                {
-                    running.Dispose(); // that run is up: this one hands over below, like any second launch
-                    break;
-                }
-                Thread.Sleep(200);
-            }
-        }
+        if (!Relaunch.IsUpdateRun(args))
+            WaitForUpdateRun(UpdateRunWait);
 
         // A second launch just brings the running window to the front.
         using var activate = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEvent);
@@ -117,7 +104,11 @@ static class Program
             Ui.Error(null, L.F("Unexpected error: {0}", ex.Message));
             return;
         }
-        var wait = ThreadPool.RegisterWaitForSingleObject(activate, (_, _) => OnShell(shell, shell.BringToFront), null, Timeout.Infinite, executeOnlyOnce: false);
+        // Listened for once the window has a handle: a start by hand that waited for an update's run (WaitForUpdateRun)
+        // asks as soon as that run takes the hand-over, before its window exists, and OnShell would drop the request.
+        RegisteredWaitHandle? wait = null;
+        shell.HandleCreated += (_, _) => wait ??= ThreadPool.RegisterWaitForSingleObject(activate, (_, _) => OnShell(shell, shell.BringToFront), null,
+            Timeout.Infinite, executeOnlyOnce: false);
         // The uninstaller asks the app to quit (not hide to the tray), so nothing it uses stays locked.
         var quitWait = ThreadPool.RegisterWaitForSingleObject(quit, (_, _) => OnShell(shell, shell.Quit), null, Timeout.Infinite, executeOnlyOnce: true);
         try
@@ -128,7 +119,7 @@ static class Program
         {
             // Nobody could show them once Bloxkeep is gone.
             RobloxProcesses.ShowWindows();
-            wait.Unregister(null);
+            wait?.Unregister(null);
             quitWait.Unregister(null);
         }
     }
@@ -142,6 +133,19 @@ static class Program
 
     [DllImport("user32.dll")]
     static extern bool AllowSetForegroundWindow(uint processId);
+
+    /// <summary>Opened during a background update: waits for the run the update starts, to bring it forward (as any second
+    /// launch) rather than take its place, which made that run (carrying the unlocked vault) give way, and Bloxkeep came back
+    /// locked (seen 2026-10-20). Over once that run took the hand-over (or the watch removed it), or after
+    /// <paramref name="limit"/>. Not as soon as some Bloxkeep holds the single-instance mutex: right after "Restart to
+    /// update" that is the run on its way out, which got the request and vanished, and the update's run then came back in
+    /// the tray with nothing on screen (2026-10-30 review).</summary>
+    static void WaitForUpdateRun(TimeSpan limit)
+    {
+        var waiting = System.Diagnostics.Stopwatch.StartNew();
+        while (waiting.Elapsed < limit && Relaunch.HandOverWaiting())
+            Thread.Sleep(200);
+    }
 
     /// <summary>Runs a request from another process on the window's thread; the window may be going away meanwhile.</summary>
     static void OnShell(ShellForm shell, Action action)
