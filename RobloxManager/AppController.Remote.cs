@@ -159,6 +159,13 @@ public sealed partial class AppController
         {
             return RemoteSay(ErrorText(ex));
         }
+        // Anything else (a picture Windows wouldn't make, memory running out): answered and logged, never let out, where it
+        // would end the link to the bot until Bloxkeep restarts (2026-10-30 review).
+        catch (Exception ex)
+        {
+            Log.Write(ex);
+            return RemoteSay(L.T("Something went wrong on this PC. Try again."));
+        }
     }
 
     /// <summary>The status board's card, as it is now, named after this PC.</summary>

@@ -56,6 +56,7 @@ public static class L
         ["Programs"] = "Chương trình",
         ["Choose a background picture or video"] = "Chọn ảnh hoặc video nền",
         ["Pictures"] = "Ảnh",
+        ["Something went wrong on this PC. Try again."] = "Máy này gặp lỗi, hãy thử lại.",
         ["Pictures and videos"] = "Ảnh và video",
         ["Pick a picture (PNG, JPG, WebP, GIF, BMP) or a video (MP4, WebM)."] = "Hãy chọn ảnh (PNG, JPG, WebP, GIF, BMP) hoặc video (MP4, WebM).",
         ["That video is over 50 MB. Pick a smaller one."] = "Video này nặng hơn 50 MB, hãy chọn video nhỏ hơn.",

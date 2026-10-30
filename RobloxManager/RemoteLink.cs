@@ -209,6 +209,11 @@ sealed class RemoteLink : IDisposable
             catch (Exception ex) when (ex is WebSocketException or OperationCanceledException or IOException or HttpRequestException or JsonException)
             {
             }
+            // Anything else: logged, and connected again as after a drop, so /pc doesn't stay dead until a restart.
+            catch (Exception ex)
+            {
+                Log.Write(ex);
+            }
             finally
             {
                 _ws = null;
