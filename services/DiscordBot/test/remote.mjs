@@ -70,8 +70,8 @@ async function interact(payload) {
 }
 // /pc in a DM with the bot (no server), by `user`; type 4 = autocomplete, with the option being typed in.
 let tokenNo = 0;
-const pc = (sub, options = {}, { user = 'u5', name = 'Five', type = 2, focused } = {}) => ({
-  type, id: 'i', application_id: 'app1', token: `tok${++tokenNo}`, locale: 'en-US', user: { id: user, global_name: name },
+const pc = (sub, options = {}, { user = 'u5', name = 'Five', username = name.toLowerCase(), type = 2, focused } = {}) => ({
+  type, id: 'i', application_id: 'app1', token: `tok${++tokenNo}`, locale: 'en-US', user: { id: user, global_name: name, username, discriminator: '0' },
   data: { id: 'c', name: 'pc', type: 1, options: [{ type: 1, name: sub, options: Object.entries(options).map(([n, value]) => ({ type: 3, name: n, value, ...(n === focused ? { focused: true } : {}) })) }] },
 });
 const contentOf = r => r?.data?.content ?? '';
@@ -102,7 +102,7 @@ function startDev() {
   const out = fs.openSync(path.join(PERSIST, 'wrangler-dev.log'), 'a');
   const vars = {
     OBJECT_NAME: 'bot-remote', OLD_OBJECT_NAME: '', GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`,
-    DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX, TRACE_URL: 'http://127.0.0.1:9/', ANSWER_WAIT_MS: '800', ANSWER_LATE_MS: '3000', COMMANDS_RETRY_MS: '1000',
+    DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX, TRACE_URL: 'http://127.0.0.1:9/', ANSWER_WAIT_MS: '800', ANSWER_LATE_MS: '3000', COMMANDS_RETRY_MS: '1000', MAX_CODES: '4', MAX_UNLINKED: '6',
     WATCH_URL: 'http://127.0.0.1:9/', STATUS_URL: 'http://127.0.0.1:9/', LATEST_URL: 'http://127.0.0.1:9/', RELEASE_API_URL: 'http://127.0.0.1:9/',
     DOWNLOADS_URL: 'http://127.0.0.1:9/', RELEASE_FILE_URL: 'http://127.0.0.1:9/', NOTES_URL: 'http://127.0.0.1:9/', COMMUNITY_GUILD: 'g1',
   };
@@ -173,11 +173,11 @@ try {
   const linkToken = `tok${tokenNo}`;
   check('/pc link with its code (typed with a dash, in lower case): not linked yet, the PC asked to allow it', /asking whether to allow/.test(contentOf(r))
     && /GAMING-PC/.test(contentOf(r)), contentOf(r));
-  check('…the app is asked, with the name Discord shows them by', await waitFor(() => a.last('ask'), 3000) && a.last('ask').user === 'Five' && a.last('ask').replacing === null,
-    JSON.stringify(a.last('ask')));
+  check('…the app is asked, with their unique @username (not the name they show, which anyone can set) and id', await waitFor(() => a.last('ask'), 3000)
+    && a.last('ask').user === '@five' && a.last('ask').id === 'u5' && a.last('ask').replacing === null, JSON.stringify(a.last('ask')));
   r = await interact(pc('status'));
   check('…until it is allowed, commands reach nothing', /No PC is linked/.test(contentOf(r)), contentOf(r));
-  a.send({ t: 'allow' });
+  a.send({ t: 'allow', user: 'u5' });
   check('allowed in the app: linked, the app told', await waitFor(() => a.last('link')?.linked, 3000) && a.last('link').user === 'Five', JSON.stringify(a.last('link')));
   check('…and the Discord answer edited to say so', await waitFor(() => calls.some(c => c.method === 'PATCH' && c.url === `/webhooks/app1/${linkToken}/messages/@original`
     && /Linked: \*\*GAMING-PC\*\*/.test(c.body.content)), 3000), JSON.stringify(calls.slice(-2)));
@@ -187,15 +187,47 @@ try {
   // refused there, nothing changes.
   a.send({ t: 'code' });
   await waitFor(() => a.last('code')?.code !== code, 3000);
-  r = await interact(pc('link', { code: a.last('code').code }, { user: 'u8', name: 'Stranger' }));
+  // The stranger shows the owner's name ("Five"): the PC is told their own @username.
+  r = await interact(pc('link', { code: a.last('code').code }, { user: 'u8', name: 'Five', username: 'stranger' }));
   const strangerToken = `tok${tokenNo}`;
-  check('a stranger with a new code: the PC is asked, told it would replace the link', await waitFor(() => a.last('ask')?.user === 'Stranger', 3000)
-    && a.last('ask').replacing === 'Five', JSON.stringify(a.last('ask')));
+  check('a stranger with a new code, showing the owner\'s name: the PC is asked with their own @username, told it would replace the link',
+    await waitFor(() => a.last('ask')?.user === '@stranger', 3000) && a.last('ask').id === 'u8' && a.last('ask').replacing === '@five', JSON.stringify(a.last('ask')));
   a.send({ t: 'deny' });
   check('…refused in the app: the stranger is told, nothing linked', await waitFor(() => calls.some(c => c.method === 'PATCH' && c.url === `/webhooks/app1/${strangerToken}/messages/@original`
     && /didn't allow/.test(c.body.content)), 3000), JSON.stringify(calls.slice(-1)));
   r = await interact(pc('status', {}, { user: 'u8', name: 'Stranger' }));
   check("…and the stranger can't reach the PC", /No PC is linked/.test(contentOf(r)), contentOf(r));
+  // A second /pc link replacing the question while the box is up: an Allow pressed on the first never links the second.
+  const asks = () => a.heard.filter(m => m.t === 'ask').length;
+  let before = a.last('code').code;
+  a.send({ t: 'code' });
+  await waitFor(() => a.last('code')?.code !== before, 3000);
+  before = a.last('code').code;
+  await interact(pc('link', { code: before }, { user: 'u12', name: 'Twelve' }));
+  await waitFor(() => a.last('ask')?.id === 'u12', 3000);
+  a.send({ t: 'code' });
+  await waitFor(() => a.last('code')?.code !== before, 3000);
+  await interact(pc('link', { code: a.last('code').code }, { user: 'u13', name: 'Thirteen' }));
+  await waitFor(() => a.last('ask')?.id === 'u13', 3000);
+  let n = asks();
+  a.send({ t: 'allow', user: 'u12' });
+  check("an Allow that says it answers someone else's question (replaced since): nobody linked, the PC asked the question it has now",
+    await waitFor(() => asks() > n, 3000) && a.last('ask').id === 'u13' && /No PC is linked/.test(contentOf(await interact(pc('status', {}, { user: 'u12', name: 'Twelve' }))))
+    && a.last('link')?.user === 'Five', JSON.stringify(a.last('ask')));
+  // An app from before (1.0.12, 1.0.13) doesn't say whose: its Allow right after the question changed isn't taken.
+  before = a.last('code').code;
+  a.send({ t: 'code' });
+  await waitFor(() => a.last('code')?.code !== before, 3000);
+  await interact(pc('link', { code: a.last('code').code }, { user: 'u14', name: 'Fourteen' }));
+  await waitFor(() => a.last('ask')?.id === 'u14', 3000);
+  n = asks();
+  a.send({ t: 'allow' });
+  check('…from an app that doesn\'t say whose, right after the question changed: not linked, asked again', await waitFor(() => asks() > n, 3000)
+    && a.last('ask').id === 'u14' && a.last('link')?.user === 'Five', JSON.stringify(a.heard.slice(-3)));
+  n = a.heard.filter(m => m.t === 'link').length;
+  a.send({ t: 'deny' });
+  check('…its answer to the question put again is taken (refused here: the link stays as it was)',
+    await waitFor(() => a.heard.filter(m => m.t === 'link').length > n, 3000) && a.last('link').user === 'Five', JSON.stringify(a.heard.slice(-2)));
   // Wrong codes: a few, then a wait.
   let wrongs = '';
   for (let n = 0; n < 6; n++)
@@ -333,6 +365,66 @@ try {
   await flood.open();
   for (let n = 0; n < 70; n++) flood.send({ t: 'hello', name: `x${n}`, accounts: [], presets: [] });
   check('a socket sending more than 60 messages a minute is closed', await waitFor(() => flood.closed === 1008, 3000), flood.closed);
+
+  // ── an app from before (it never asks for its code again) back after a blip: the code it shows still works ──
+  const blipKey = crypto.randomBytes(32).toString('base64url');
+  let blip = app(blipKey);
+  await blip.open();
+  blip.send({ t: 'hello', name: 'BLIP-PC', accounts: [], presets: [], ask: true });
+  blip.send({ t: 'code' });
+  await waitFor(() => blip.last('code'), 3000);
+  const blipCode = blip.last('code').code;
+  blip.ws.close();
+  await sleep(500);
+  blip = app(blipKey);
+  await blip.open();
+  blip.send({ t: 'hello', name: 'BLIP-PC', accounts: [], presets: [], ask: true });
+  await sleep(300);
+  r = await interact(pc('link', { code: blipCode }, { user: 'u15', name: 'Fifteen' }));
+  check('an app from before back after a blip: the code it still shows works', /asking whether to allow/.test(contentOf(r)), contentOf(r));
+  blip.ws.close();
+  await sleep(500);
+
+  // ── room for codes and for apps not linked (4 and 6 here) ──
+  const codeApp = async () => {
+    const x = app(crypto.randomBytes(32).toString('base64url'));
+    await x.open();
+    x.send({ t: 'code' });
+    await waitFor(() => x.last('code') || x.last('busy'), 3000);
+    return x;
+  };
+  let gone = [];
+  for (let n = 0; n < 4; n++) gone.push(await codeApp());
+  gone.forEach(x => x.ws.close());
+  await sleep(800);
+  let next = await codeApp();
+  check("apps that asked for a code and left don't fill the room for codes", gone.every(x => x.last('code')) && next.last('code') && !next.last('busy'),
+    JSON.stringify(next.heard));
+  let here = [next];
+  for (let n = 0; n < 3; n++) here.push(await codeApp());
+  const extra = await codeApp();
+  check('…apps still connected do (the next one is told the bot is busy)', here.every(x => x.last('code')) && extra.last('busy') && !extra.last('code'), JSON.stringify(extra.heard));
+  [...here, extra].forEach(x => x.ws.close());
+  await sleep(800);
+  // A code shown when the app connects again: kept while the bot still knows it, a new one once it doesn't.
+  const keeper = await codeApp(), kept = keeper.last('code').code;
+  keeper.send({ t: 'code', keep: kept });
+  check('an app connecting again with its code still shown: the same code, still good', await waitFor(() => keeper.heard.filter(m => m.t === 'code').length === 2, 3000)
+    && keeper.last('code').code === kept, JSON.stringify(keeper.heard));
+  keeper.send({ t: 'code', keep: 'ZZZZZZ' });
+  check('…one the bot forgot (a restart): a new one', await waitFor(() => keeper.heard.filter(m => m.t === 'code').length === 3, 3000)
+    && keeper.last('code').code !== 'ZZZZZZ' && /^[A-Z2-9]{6}$/.test(keeper.last('code').code), JSON.stringify(keeper.heard));
+  keeper.ws.close();
+  await sleep(800);
+  // OLD-PC is linked but not connected: it makes no room for one more app not linked.
+  const unlinked = [];
+  for (let n = 0; n < 8; n++) {
+    const x = app(crypto.randomBytes(32).toString('base64url'));
+    if (!await x.open()) break;
+    unlinked.push(x);
+  }
+  check('apps not linked are let in up to the limit, links of PCs not connected making no room for more', unlinked.length === 6, unlinked.length);
+  unlinked.forEach(x => x.ws.close());
 
   // ── too many at once ──
   let refused = 0;

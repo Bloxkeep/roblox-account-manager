@@ -12,10 +12,17 @@
 
 // A code to link a PC: six letters and digits, no look-alikes (0/O, 1/I/L), good for ten minutes and once.
 export const CODE_FOR = 10 * 60_000;
+// Once its app's socket closes, a code works this much longer at most (the app back after a blip still shows it).
+export const CODE_GRACE = 2 * 60_000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const LINK_CODE_LENGTH = 6;
-// How long the bot waits for the PC's answer before it says "working on it" and edits that once the answer comes.
-export const ANSWER_WAIT = 2500;
+// How long the bot waits for the PC's answer before it says "working on it" and edits that once the answer comes. Discord
+// wants an answer within 3 s of the command, and reaching the bot's object takes part of that: 2.5 s left too little,
+// and a slow run said "The application did not respond" though the command ran (2026-10-30 review).
+export const ANSWER_WAIT = 1500;
+// An Allow from an app that doesn't say whose question it answers (1.0.12, 1.0.13) is refused this soon after someone
+// else's question replaced the one it may have been pressed on; the new question is put again instead.
+export const REASKED_GAP = 10_000;
 // Discord lets a command's answer be changed (and followed up) for 15 minutes.
 export const TOKEN_FOR = 15 * 60_000;
 // Commands one person may send in a minute (all their PCs together).
@@ -69,6 +76,12 @@ export function makeCode(taken) {
       return code;
   }
 }
+
+/**
+ * Who asks, as the PC is told: the account's unique username (@name), which nobody else can have, never the name it
+ * shows (global_name), which anyone can set to the PC owner's (2026-10-30 review).
+ */
+export const handleOf = user => user?.discriminator && user.discriminator !== '0' ? `${user.username}#${user.discriminator}` : `@${user?.username ?? '?'}`;
 
 /** A code as typed: upper case, spaces and dashes left out. */
 export const readCode = text => String(text ?? '').toUpperCase().replace(/[\s-]/g, '');
