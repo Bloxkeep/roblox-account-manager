@@ -128,8 +128,11 @@ public sealed class Vault : IDisposable
     /// <summary>Removes the interface's browser caches (rebuilt when needed). Accounts and settings stay.</summary>
     public static void DeleteCaches()
     {
-        // The top of the data folder too: where builds before 1.0.11 kept them.
-        foreach (string dir in new[] { "webview", "webview-safe", "captcha" }.SelectMany(n => new[] { Path.Combine(CacheDir, n), Path.Combine(DataDir, n) }))
+        // The top of the data folder too: where builds before 1.0.11 kept them. Not in a folder BLOXKEEP_DATA points at: it
+        // may be the person's own, with a "webview" or "captcha" folder that isn't ours (review, 2026-10-30).
+        bool ownFolder = DataDirVariable() is null;
+        foreach (string dir in new[] { "webview", "webview-safe", "captcha" }
+                     .SelectMany(n => ownFolder ? new[] { Path.Combine(CacheDir, n), Path.Combine(DataDir, n) } : [Path.Combine(CacheDir, n)]))
         {
             // The browser processes may need a moment to let go of their files.
             for (int attempt = 1; attempt <= 4 && Directory.Exists(dir); attempt++)
@@ -158,6 +161,7 @@ public sealed class Vault : IDisposable
         bool Own(string name) => own.Contains(name)
             // Every vault (vault.rmv, vault-<id>.rmv) with its spare, unfinished and damaged copies.
             || System.Text.RegularExpressions.Regex.IsMatch(name, @"^vault(-[0-9a-f]{8})?\.rmv(\.bak|\.tmp|\.damaged-.*|\.spare-.*)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            || name.StartsWith("prefs.json.damaged-", StringComparison.OrdinalIgnoreCase)
             || IsOldVault(name)
             || Themes.IsPictureName(name); // the custom theme's picture, the vaults' pictures
         var folders = new[] { DataDir, OldVaultsDir, PicturesDir }.Where(Directory.Exists);
@@ -231,9 +235,13 @@ public sealed class Vault : IDisposable
         Data = data;
     }
 
+    /// <summary>The data folder set with BLOXKEEP_DATA (or its old name), or null.</summary>
+    static string? DataDirVariable() =>
+        (Environment.GetEnvironmentVariable("BLOXKEEP_DATA") ?? Environment.GetEnvironmentVariable("ROBLOXMANAGER_DATA")) is { Length: > 0 } custom ? custom : null;
+
     static string ResolveDataDir()
     {
-        if ((Environment.GetEnvironmentVariable("BLOXKEEP_DATA") ?? Environment.GetEnvironmentVariable("ROBLOXMANAGER_DATA")) is { Length: > 0 } custom)
+        if (DataDirVariable() is { } custom)
             return custom;
         // The portable zip keeps the app in "<folder>\current", which every update replaces; data sits beside it.
         string appDir = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
