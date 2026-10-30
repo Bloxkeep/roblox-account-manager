@@ -61,6 +61,12 @@ static class RemoteSuite
         await bot.SendAsync(new JsonObject { ["t"] = "code", ["code"] = "ABC234", ["until"] = DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeMilliseconds() });
         c.Check("the code the bot gives is shown, with when it stops working", await Until(() => Field("code") as string == "ABC234")
             && Field("codeUntil") is long until && until > DateTimeOffset.UtcNow.AddMinutes(9).ToUnixTimeMilliseconds() && Field("linked") is false);
+        // The bot keeps codes in memory: connected again (after a drop, or the bot's restart) with a code shown, it's
+        // asked whether it still knows it (else a new one), never left showing a code that may be dead.
+        int connections = bot.Connections;
+        bot.Drop();
+        c.Check("connected again with a code shown: the bot is asked to keep it, or give a new one", await Until(() => bot.Connections > connections
+            && bot.Last("code")?["keep"]?.GetValue<string>() == "ABC234", 10_000), bot.Last("code")?.ToJsonString());
         await bot.SendAsync(new JsonObject { ["t"] = "link", ["linked"] = true, ["user"] = "Five" });
         c.Check("linked: who to is shown, the code gone", await Until(() => Field("linked") is true) && Field("user") as string == "Five" && Field("code") is null);
 
@@ -71,14 +77,27 @@ static class RemoteSuite
         c.Check("asked to allow a link: who asks and whom it replaces are shown", await Until(() => Asking() is not null) && AskField("user") == "Stranger" && AskField("replacing") == "Five");
         await Harness.Call(app, "remoteAllow", new { allow = false });
         c.Check("…Don't allow: the bot is told no, the question gone", await Until(() => bot.Last("deny") is not null) && Asking() is null && bot.Last("allow") is null);
-        await bot.SendAsync(new JsonObject { ["t"] = "ask", ["user"] = "Five" });
+        // Another /pc link while the box is up: a click on the box as it was answers nobody (2026-10-30 review: it
+        // allowed whoever asked last).
+        await bot.SendAsync(new JsonObject { ["t"] = "ask", ["user"] = "@stranger", ["id"] = "8" });
+        await Until(() => AskField("id") == "8");
+        await bot.SendAsync(new JsonObject { ["t"] = "ask", ["user"] = "@other", ["id"] = "9" });
+        await Until(() => AskField("id") == "9");
+        await Harness.Call(app, "remoteAllow", new { allow = true, id = "8" });
+        await Task.Delay(300);
+        c.Check("an Allow pressed on a question someone else's replaced: nothing sent, the new question stays", bot.Last("allow") is null && AskField("id") == "9"
+            && AskField("user") == "@other");
+        await Harness.Call(app, "remoteAllow", new { allow = false, id = "9" });
+        c.Check("…an answer says whose question it was", await Until(() => bot.Last("deny")?["user"]?.GetValue<string>() == "9") && Asking() is null);
+        await bot.SendAsync(new JsonObject { ["t"] = "ask", ["user"] = "Five", ["id"] = "5" });
         await Until(() => Asking() is not null);
         await Harness.Call(app, "lock", new { });
         c.Check("…while locked, nothing is asked (no name on the lock screen)", Asking() is null);
         await Harness.Unlock(app);
         c.Check("…unlocked, the question is back", await Until(() => Asking() is not null) && AskField("user") == "Five");
-        await Harness.Call(app, "remoteAllow", new { allow = true });
-        c.Check("…Allow: the bot is told yes", await Until(() => bot.Last("allow") is not null) && Asking() is null);
+        await Harness.Call(app, "remoteAllow", new { allow = true, id = "5" });
+        c.Check("…Allow: the bot is told yes, to that question", await Until(() => bot.Last("allow") is not null) && Asking() is null
+            && bot.Last("allow")!["user"]?.GetValue<string>() == "5");
         await bot.SendAsync(new JsonObject { ["t"] = "link", ["linked"] = true, ["user"] = "Five" });
         await Until(() => Field("linked") is true);
 
@@ -123,6 +142,43 @@ static class RemoteSuite
         c.Check("…and the bot is told it's done (so it doesn't say \"no answer\" over them)", await Until(() => bot.Heard.Any(m => m["t"]?.GetValue<string>() == "shown" && m["id"]?.GetValue<string>() == shotId)));
         var none = await (Task<bool>)link.GetType().GetMethod("ShotAsync")!.Invoke(link, [new RemoteCommand("x", "screenshot", "Alpha"), "Alpha", (IReadOnlyList<byte[]>)[[0xFF]]])!;
         c.Check("…a command handed no link: nothing sent", !none);
+        // The real bot's links: its own application's answer link only, not any webhook on Discord (2026-10-30 review).
+        bool BotReply(string url) => (bool)link.GetType().GetMethod("IsBotReply", Harness.F)!.Invoke(null, [url])!;
+        const string BotApp = "1561788269933498408"; // the bot's application (AppController.DiscordApplicationId)
+        string token = "aW50ZXJhY3Rpb246MTIzNDU2Nzg5MDEyMzQ1Njc4OnRva2Vu_-.x";
+        c.Check("pictures go only to Bloxkeep's bot's own answer link on Discord", BotReply($"https://discord.com/api/v10/webhooks/{BotApp}/{token}/messages/@original")
+            && !BotReply($"https://discord.com/api/webhooks/123456789012345678/{token}")
+            && !BotReply($"https://discord.com/api/v10/webhooks/123456789012345678/{token}/messages/@original")
+            && !BotReply($"https://discord.com/api/v10/webhooks/{BotApp}/{token}/messages/@original?wait=true")
+            && !BotReply($"https://discord.com.evil.example/api/v10/webhooks/{BotApp}/{token}/messages/@original")
+            && !BotReply($"http://discord.com/api/v10/webhooks/{BotApp}/{token}/messages/@original"));
+
+        // Very many names: what's sent stays under what the bot takes (it closed a bigger one at every connection).
+        var many = Enumerable.Range(0, 300).Select(n => $"Tài khoản số {n} của tôi, với một cái tên dài thật là dài").ToArray();
+        link.GetType().GetMethod("Hello")!.Invoke(link, [Environment.MachineName, many, many, "vi"]);
+        string big = Harness.Get<string>(link, "_hello");
+        c.Check("very many accounts and presets: what's said of them stays under the bot's 16,000 characters, some of each kept",
+            big.Length < 16_000 && JsonNode.Parse(big)!["presets"]!.AsArray().Count > 10 && JsonNode.Parse(big)!["accounts"]!.AsArray().Count > 10, big.Length);
+
+        // A command that takes long (ten windows pictured, about a minute): nothing else waits behind it.
+        var commandField = link.GetType().GetField("_command", Harness.F)!;
+        var realCommand = commandField.GetValue(link);
+        var hold = new TaskCompletionSource<JsonObject?>();
+        commandField.SetValue(link, (Func<RemoteCommand, Task<JsonObject?>>)(_ => hold.Task));
+        await bot.SendAsync(new JsonObject { ["t"] = "command", ["id"] = "slow", ["command"] = "status" });
+        await bot.SendAsync(new JsonObject { ["t"] = "ask", ["user"] = "@later", ["id"] = "10" });
+        c.Check("a command still running holds nothing back: a question to allow shows meanwhile", await Until(() => AskField("id") == "10", 3000));
+        hold.SetResult(new JsonObject { ["content"] = "done" });
+        c.Check("…and the command's answer goes once it's done", await Until(() => bot.Heard.Any(m => m["t"]?.GetValue<string>() == "answer" && m["id"]?.GetValue<string>() == "slow")));
+        commandField.SetValue(link, realCommand);
+        await Harness.Call(app, "remoteAllow", new { allow = false, id = "10" });
+
+        // Discord's own Hide account names: text the app wrote for itself (a launch error) says no name in Discord either.
+        var vaultData = Harness.Get<Vault>(app, "_vault").Data;
+        vaultData.Discord.HideNames = true;
+        var said = (JsonObject)Harness.Invoke(app, "RemoteSay", "Alpha: Roblox didn't open in time.")!;
+        c.Check("Discord's Hide account names on: an answer's text names no account", said["content"]?.GetValue<string>() == "Account 1: Roblox didn't open in time.", said.ToJsonString());
+        vaultData.Discord.HideNames = false;
 
         // Locked: nothing but that, and no names to suggest.
         await Harness.Call(app, "lock", new { });
@@ -141,6 +197,43 @@ static class RemoteSuite
         await Harness.Call(app, "setRemote", new { enabled = false });
         c.Check("turned off: the bot is told to unlink, and the connection closes", await Until(() => bot.Last("unlink") is not null && bot.Open == 0), bot.Open);
         c.Check("…and stays closed", !await Until(() => bot.Open > 0, 2500) && Field("on") is false);
+        // Its secret goes too: the unlink may not have reached the bot (offline), and with the same secret the PC came
+        // back still linked, without asking (2026-10-30 review).
+        c.Check("…and its secret is forgotten", Prefs.RemoteKey is null);
+        await Harness.Call(app, "setRemote", new { enabled = true });
+        c.Check("turned on again: a new secret (a new PC for the bot, linked to nobody)", await Until(() => bot.Open == 1 && Field("connected") is true)
+            && bot.LastSecret is { Length: >= 40 } again && again != secret);
+        string first = bot.LastSecret!;
+
+        // Each vault its own: vaults are for different people, and one person's /pc must not reach another's accounts.
+        // A switch from before (one for the whole PC) goes to the vault last used.
+        Prefs.Save();
+        Prefs.VaultList.Clear();
+        Prefs.Load();
+        Vaults.Load();
+        var mine = Vaults.Current;
+        c.Check("from before each vault had its own: Control from Discord and its secret go to the vault last used",
+            mine is { RemoteControl: true, RemoteKey.Length: > 0 } && Prefs.RemoteControl && await Until(() => Field("connected") is true) && bot.LastSecret == first,
+            $"{mine?.RemoteControl} {bot.LastSecret == first}");
+        await Harness.Call(app, "addVault", new { });
+        await Harness.Call(app, "createVault", new { password = "another vault's password", name = "Other" });
+        c.Check("another vault open: this one's link closes, and it's off there", await Until(() => bot.Open == 0) && Field("on") is false && Vaults.Current != mine);
+        await Harness.Call(app, "setRemote", new { enabled = true });
+        c.Check("…turned on there: a PC of its own for the bot, its own names only", await Until(() => bot.Open == 1 && bot.LastSecret != first
+            && bot.Last("hello") is { } h && Names(h, "accounts") == "" && Names(h, "presets") == ""), bot.LastSecret == first);
+        await Harness.Call(app, "selectVault", new { id = mine!.Id });
+        c.Check("the first vault offered again: its own link, answering only that it's locked", await Until(() => bot.Open == 1 && bot.LastSecret == first)
+            && Text(await Ask("status")) == "Bloxkeep is locked on this PC. Unlock it there first.");
+        await Harness.Unlock(app);
+        c.Check("…unlocked: its own accounts", await Until(() => bot.Last("hello") is { } h && Names(h, "accounts") == "Alpha,Beta"));
+
+        // A bot that closes the connection at once (another Bloxkeep with this secret, a hello it won't take): connected
+        // again later and later, not every 2-3 s forever (2026-10-30 review).
+        bot.CloseAtOnce = true;
+        int tries = bot.Connections;
+        bot.Drop();
+        await Until(() => false, 9500);
+        c.Check("closed at once by the bot each time: it waits longer each time", bot.Connections - tries <= 2, bot.Connections - tries);
         bot.Dispose();
     }
 
@@ -149,7 +242,7 @@ static class RemoteSuite
     /// <summary>The bot's /remote/connect, here: takes connections, keeps what they say, says what the test wants.</summary>
     sealed class StandInBot : IDisposable
     {
-        readonly HttpListener _listener = new();
+        HttpListener _listener = new();
         readonly List<JsonObject> _heard = new();
         WebSocket? _socket;
         int _connections, _open;
@@ -160,6 +253,8 @@ static class RemoteSuite
         readonly List<Reply> _replies = new();
         public List<Reply> Replies { get { lock (_replies) return _replies.ToList(); } }
         public string? LastSecret { get; private set; }
+        /// <summary>Each connection is closed as soon as it's made (as the bot does to a socket it won't keep).</summary>
+        public bool CloseAtOnce { get; set; }
         public int Connections => Volatile.Read(ref _connections);
         public int Open => Volatile.Read(ref _open);
         public List<JsonObject> Heard { get { lock (_heard) return _heard.ToList(); } }
@@ -170,7 +265,8 @@ static class RemoteSuite
         {
             for (int port = 48861; ; port++)
             {
-                _listener.Prefixes.Clear();
+                // A listener that failed to start is closed: a new one for the next port (one left by the last run).
+                _listener = new HttpListener();
                 _listener.Prefixes.Add($"http://127.0.0.1:{port}/remote/connect/");
                 _listener.Prefixes.Add($"http://127.0.0.1:{port}/webhooks/");
                 try
@@ -220,8 +316,19 @@ static class RemoteSuite
                 }
                 LastSecret = ctx.Request.Headers["Authorization"]?.Replace("Bearer ", "");
                 var ws = (await ctx.AcceptWebSocketAsync(null)).WebSocket;
-                _socket = ws;
                 Interlocked.Increment(ref _connections);
+                if (CloseAtOnce)
+                {
+                    try
+                    {
+                        await ws.CloseOutputAsync((WebSocketCloseStatus)4000, "connected again", CancellationToken.None);
+                    }
+                    catch (Exception ex) when (ex is WebSocketException or HttpListenerException or ObjectDisposedException)
+                    {
+                    }
+                    continue;
+                }
+                _socket = ws;
                 Interlocked.Increment(ref _open);
                 _ = ReadAsync(ws);
             }

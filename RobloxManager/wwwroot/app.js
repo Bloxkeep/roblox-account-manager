@@ -2759,7 +2759,7 @@
   // given up on by the bot: the box goes.
   let remoteBox = null, remoteAsked = '';
   function askRemote(r) {
-    const ask = r?.ask, key = ask ? `${ask.user}|${ask.replacing ?? ''}` : '';
+    const ask = r?.ask, key = ask ? `${ask.id ?? ''}|${ask.user}|${ask.replacing ?? ''}` : '';
     if (!ask) {
       const box = remoteBox;
       remoteBox = null;
@@ -2773,14 +2773,15 @@
     remoteBox = null;
     before?.close();
     const text = t('dc.remoteAsk', { user: ask.user, pc: r.pc }) + (ask.replacing ? '\n\n' + t('dc.remoteAskReplaces', { user: ask.replacing }) : '');
-    const answer = allow => ({ close }) => { remoteBox = null; call('remoteAllow', { allow }); close(); };
+    // Says whose question it answers: someone else asking meanwhile isn't allowed by this click (they get their own box).
+    const answer = allow => ({ close }) => { remoteBox = null; call('remoteAllow', { allow, id: ask.id ?? null }); close(); };
     remoteBox = modal({
       title: t('dc.remoteAskTitle'),
       body: window.BloxkeepUI.ask(text, false),
       dismissable: false,
       actions: [{ text: t('dc.remoteDeny'), onClick: answer(false) }, { text: t('dc.remoteAllow'), kind: 'primary', onClick: answer(true) }],
       // Closed without an answer (the X, Esc): not allowed.
-      onClose: () => { if (remoteBox) { remoteBox = null; call('remoteAllow', { allow: false }); } },
+      onClose: () => { if (remoteBox) { remoteBox = null; call('remoteAllow', { allow: false, id: ask.id ?? null }); } },
     });
     setTimeout(() => remoteBox?.el.querySelector('.modal-foot .btn')?.focus(), 30);
   }

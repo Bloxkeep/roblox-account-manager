@@ -155,7 +155,7 @@
     : params.get('remote') === 'connecting' ? { on: true, connected: false, linked: null, user: null, code: null, codeUntil: null, pc: 'GAMING-PC' }
     : params.get('remote') === 'code' ? remoteCode()
     // ?remote=ask: someone typed this PC's code into /pc link, replacing the link to Minh.
-    : params.get('remote') === 'ask' ? { on: true, connected: true, linked: true, user: 'Minh', code: null, codeUntil: null, pc: 'GAMING-PC', ask: { user: 'Stranger', replacing: 'Minh' } }
+    : params.get('remote') === 'ask' ? { on: true, connected: true, linked: true, user: 'Minh', code: null, codeUntil: null, pc: 'GAMING-PC', ask: { user: '@stranger', replacing: 'Minh', id: '900000000000000001' } }
     : { on: false, connected: false, linked: null, pc: 'GAMING-PC' };
   const skipConfirm = [];
   const lastSignInCheck = minsAgo(60 * 5);

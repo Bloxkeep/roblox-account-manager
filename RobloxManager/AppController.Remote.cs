@@ -10,11 +10,17 @@ namespace RobloxManager;
 /// command can do is only this: say how the accounts are doing (the status board's card), run a preset, close windows,
 /// switch accounts to another server, picture their windows. Nothing is asked of the person on the PC: a preset that would ask first
 /// (Multi-Roblox off…) isn't run. Locked, Bloxkeep answers only that it is locked, and names nothing.
-/// Turned off: the bot is told to forget the link, and the connection closes.
+/// Turned off: the bot is told to forget the link, the secret is dropped (a new PC for the bot next time), and the
+/// connection closes.
+/// Each vault has its own switch and secret (Prefs.RemoteControl): vaults are for different people, so the link is
+/// the vault's, a PC of its own for the bot, connected only while that vault is the one offered or open. Another vault
+/// unlocked, it is closed (Discord says that PC isn't connected), and nothing of the other vault reaches it.
 /// </summary>
 public sealed partial class AppController
 {
     RemoteLink? _remote;
+    /// <summary>The vault (<see cref="Prefs.VaultEntry.Id"/>) whose link <see cref="_remote"/> is.</summary>
+    string? _remoteVault;
 
     /// <summary>The bot's address; the checks point it at a stand-in.</summary>
     static string? RemoteTestUrl => Environment.GetEnvironmentVariable("BLOXKEEP_REMOTE_URL") is { Length: > 0 } url ? url : null;
@@ -24,32 +30,44 @@ public sealed partial class AppController
     /// <summary>"All accounts", as Discord's suggestion for /pc close says it.</summary>
     const string AllAccounts = "All accounts";
 
-    /// <summary>A preset that's still opening after this long is answered "opening…", and its outcome follows up later.</summary>
-    static readonly TimeSpan RemoteQuickAnswer = TimeSpan.FromSeconds(1.5);
+    /// <summary>A preset that's still opening after this long is answered "opening…", and its outcome follows up later. Within
+    /// the 1.5 s the bot waits before Discord's "thinking…" (remote.js ANSWER_WAIT).</summary>
+    static readonly TimeSpan RemoteQuickAnswer = TimeSpan.FromSeconds(1);
 
-    /// <summary>Connected while it's on, closed when it's off; the names Discord suggests kept up to date.</summary>
+    /// <summary>
+    /// Connected while the vault offered or open has it on, closed when it's off or another vault is offered; the names
+    /// Discord suggests kept up to date.
+    /// </summary>
     void TickRemote()
     {
-        if (Prefs.RemoteControl && _remote is null && RemoteSecret() is { } secret)
-            _remote = new RemoteLink(secret, RemoteCommandAsync, OnRemoteChanged, RemoteTestUrl);
-        else if (!Prefs.RemoteControl && _remote is not null)
+        string? vault = Vaults.Current?.Id;
+        if (_remote is not null && (!Prefs.RemoteControl || _remoteVault != vault))
             StopRemote();
+        if (Prefs.RemoteControl && _remote is null && RemoteSecret() is { } secret)
+        {
+            _remote = new RemoteLink(secret, RemoteCommandAsync, OnRemoteChanged, RemoteTestUrl);
+            _remoteVault = vault;
+        }
         if (_remote is null)
             return;
-        bool open = _vault is not null && !_screenLocked;
+        bool open = RemoteOpen;
         _remote.Hello(Environment.MachineName,
             open ? _vault!.Data.Accounts.Select(DiscordName).Distinct(StringComparer.CurrentCultureIgnoreCase) : [],
             open ? _vault!.Data.Settings.Presets.Select(p => p.Name).Where(n => n.Length > 0).Distinct(StringComparer.CurrentCultureIgnoreCase) : [],
             L.Language);
     }
 
+    /// <summary>The link's own vault is open and unlocked: only then does a command see anything.</summary>
+    bool RemoteOpen => _vault is not null && !_screenLocked && _remoteVault == Vaults.Current?.Id;
+
     void StopRemote()
     {
         _remote?.Dispose();
         _remote = null;
+        _remoteVault = null;
     }
 
-    /// <summary>This PC's secret for the bot, made the first time (random, kept encrypted for this Windows user).</summary>
+    /// <summary>This vault's secret for the bot, made when it's turned on (random, kept encrypted for this Windows user).</summary>
     static string? RemoteSecret()
     {
         try
@@ -72,6 +90,11 @@ public sealed partial class AppController
         if (on == Prefs.RemoteControl)
             return null;
         Prefs.RemoteControl = on;
+        // Off, the secret goes: turned on again, this is a new PC for the bot, linked to nobody until a new code is
+        // typed and allowed. The unlink below doesn't reach a bot that can't be reached right now, and with the same
+        // secret the PC came back still linked to that Discord account, without asking (2026-10-30 review).
+        if (!on)
+            Prefs.RemoteKey = null;
         Prefs.Save();
         if (on)
         {
@@ -80,9 +103,10 @@ public sealed partial class AppController
         }
         else if (_remote is { } link)
         {
-            // The bot forgets the link before the connection closes (offline now: the next time it's on, a new code).
+            // The bot forgets the link before the connection closes.
             _ = link.UnlinkAsync().ContinueWith(_ => link.Dispose(), TaskScheduler.Default);
             _remote = null;
+            _remoteVault = null;
         }
         PushState();
         return null;
@@ -93,9 +117,9 @@ public sealed partial class AppController
 
     void OnRemoteChanged()
     {
-        if (_remote?.Asking is { } ask && _remoteAskTold != ask.User)
+        if (_remote?.Asking is { } ask && _remoteAskTold != (ask.Id ?? ask.User))
         {
-            _remoteAskTold = ask.User;
+            _remoteAskTold = ask.Id ?? ask.User;
             Notify(L.F("{0} wants to control this PC from Discord. Allow it in Bloxkeep only if that's you.", ask.User), "warn", "remote", toast: false);
         }
         else if (_remote?.Asking is null)
@@ -104,9 +128,9 @@ public sealed partial class AppController
     }
 
     /// <summary>The answer to someone linking this PC (the page's Allow / Don't allow).</summary>
-    object? RemoteAllow(bool allow)
+    object? RemoteAllow(bool allow, string? id = null)
     {
-        _remote?.Answer(allow);
+        _remote?.Answer(allow, id);
         PushState();
         return null;
     }
@@ -128,12 +152,17 @@ public sealed partial class AppController
         code = _remote?.Code,
         codeUntil = _remote?.CodeUntil is { } until ? new DateTimeOffset(until).ToUnixTimeMilliseconds() : (long?)null,
         // Asked only while unlocked: the lock screen says nothing of it, and an answer waits for the unlock.
-        ask = _remote?.Asking is { } asking && _vault is not null && !_screenLocked ? new { user = asking.User, replacing = asking.Replacing } : null,
+        ask = _remote?.Asking is { } asking && RemoteOpen ? new { user = asking.User, replacing = asking.Replacing, id = asking.Id } : null,
         busy = _remote?.Busy == true,
         pc = Environment.MachineName,
     };
 
-    static JsonObject RemoteSay(string text) => new() { ["content"] = text };
+    /// <summary>
+    /// An answer's text, with names hidden as Discord's own switch says (Settings › Discord): what the app wrote for itself
+    /// (a launch error, a question a preset would ask) follows the app's switch, and showed real names in Discord while
+    /// Discord's was on (2026-10-30 review).
+    /// </summary>
+    JsonObject RemoteSay(string text) => new() { ["content"] = _vault?.Data.Discord.HideNames == true ? HideNamesIn(text) : text };
 
     /// <summary>
     /// A command from Discord, on the window's thread: its answer (an error is said, never thrown); null when it was
@@ -143,7 +172,8 @@ public sealed partial class AppController
     {
         try
         {
-            if (_vault is null || _screenLocked)
+            // Another vault open (the link's own is closed a moment later): as locked, nothing of it said.
+            if (!RemoteOpen)
                 return RemoteSay(L.T("Bloxkeep is locked on this PC. Unlock it there first."));
             return c.Name switch
             {

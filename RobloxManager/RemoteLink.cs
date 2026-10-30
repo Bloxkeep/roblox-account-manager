@@ -25,7 +25,19 @@ sealed class RemoteLink : IDisposable
     public const string Url = "wss://bloxkeep-bot.bloxkeep-app.workers.dev/remote/connect";
     static readonly TimeSpan KeepAlive = TimeSpan.FromSeconds(30);
     static readonly TimeSpan FirstRetry = TimeSpan.FromSeconds(2), LastRetry = TimeSpan.FromMinutes(1);
+    /// <summary>
+    /// A connection up this long starts the waits over. One the bot closes at once (a hello it won't take, another
+    /// Bloxkeep with the same secret pushing this one off) keeps them growing, rather than connecting every 2-3 s
+    /// forever (2026-10-30 review).
+    /// </summary>
+    static readonly TimeSpan StayedUp = TimeSpan.FromSeconds(60);
     const int MaxMessage = 64 * 1024;
+    /// <summary>
+    /// The bot closes a socket whose message is over 16,000 characters (remote.js MAX_MESSAGE), and keeps 200 names of 60
+    /// characters at most: the names sent fit well under that, the presets first (2026-10-30 review: a PC with many
+    /// accounts was refused at every connection).
+    /// </summary>
+    const int MaxNames = 200, MaxName = 60, NamesBudget = 13_000, PresetsBudget = 4_000;
 
     readonly string _url, _secret;
     readonly SynchronizationContext _ui;
@@ -47,10 +59,11 @@ sealed class RemoteLink : IDisposable
     public string? Code { get; private set; }
     public DateTime? CodeUntil { get; private set; }
     /// <summary>
-    /// Someone typed this PC's code into /pc link: the Discord account (the name Discord shows), and the one it would
-    /// replace. Nothing is linked until it is answered (<see cref="Answer"/>).
+    /// Someone typed this PC's code into /pc link: the Discord account (its unique @username, which nobody else can
+    /// take, unlike the name it shows), the one it would replace, and its id (the answer names it, so an Allow never
+    /// links someone who asked after the question was put). Nothing is linked until it is answered (<see cref="Answer"/>).
     /// </summary>
-    public (string User, string? Replacing)? Asking { get; private set; }
+    public (string User, string? Replacing, string? Id)? Asking { get; private set; }
     /// <summary>The bot had no room for a new code just now.</summary>
     public bool Busy { get; private set; }
 
@@ -69,21 +82,40 @@ sealed class RemoteLink : IDisposable
     /// <summary>What the bot shows while someone types (the PC's, accounts' and presets' names): sent when it changes.</summary>
     public void Hello(string name, IEnumerable<string> accounts, IEnumerable<string> presets, string language)
     {
+        var presetNames = Fit(presets, PresetsBudget, out int used);
         string hello = new JsonObject
         {
-            ["t"] = "hello", ["name"] = name, ["lang"] = language,
+            ["t"] = "hello", ["name"] = Cut(name), ["lang"] = language,
             // It asks before a link is made (the bot links an app that doesn't say so at once, as 1.0.12 did).
             ["ask"] = true,
             // It answers /pc screenshot (the bot tells whoever asks an older one to update it).
             ["shots"] = true,
-            ["accounts"] = new JsonArray(accounts.Select(a => (JsonNode)a).ToArray()),
-            ["presets"] = new JsonArray(presets.Select(p => (JsonNode)p).ToArray()),
+            ["accounts"] = new JsonArray(Fit(accounts, NamesBudget - used, out _).Select(a => (JsonNode)a).ToArray()),
+            ["presets"] = new JsonArray(presetNames.Select(p => (JsonNode)p).ToArray()),
         }.ToJsonString();
         if (hello == _hello)
             return;
         _hello = hello;
         if (Connected)
             _ = SendAsync(hello);
+    }
+
+    static string Cut(string name) => name.Length > MaxName ? name[..MaxName] : name;
+
+    /// <summary>The names, cut as the bot cuts them, as many as fit in <paramref name="budget"/> characters as sent.</summary>
+    static List<string> Fit(IEnumerable<string> names, int budget, out int used)
+    {
+        var fit = new List<string>();
+        used = 0;
+        foreach (string name in names.Take(MaxNames).Select(Cut))
+        {
+            int size = JsonSerializer.Serialize(name).Length + 1;
+            if (used + size > budget)
+                break;
+            fit.Add(name);
+            used += size;
+        }
+        return fit;
     }
 
     /// <summary>A new code to link this PC (shown once the bot sends it; asked again on the next connection if offline now).</summary>
@@ -96,16 +128,24 @@ sealed class RemoteLink : IDisposable
             _ = SendAsync("""{"t":"code"}""");
     }
 
-    /// <summary>The answer to <see cref="Asking"/>: linked, or nothing changes.</summary>
-    public void Answer(bool allow)
+    /// <summary>
+    /// The answer to <see cref="Asking"/>: linked, or nothing changes. <paramref name="id"/>: the asker the page showed;
+    /// someone else asking now (the question changed under the click) isn't answered by it: their own question shows.
+    /// The bot is told whose question it answers, and links nobody else.
+    /// </summary>
+    public void Answer(bool allow, string? id = null)
     {
-        if (Asking is null)
+        if (Asking is not { } asking || (id is not null && asking.Id is not null && id != asking.Id))
             return;
         Asking = null;
-        _ = SendAsync(allow ? """{"t":"allow"}""" : """{"t":"deny"}""");
+        var answer = new JsonObject { ["t"] = allow ? "allow" : "deny" };
+        if (asking.Id is { } user)
+            answer["user"] = user;
+        _ = SendAsync(answer.ToJsonString());
     }
 
-    /// <summary>Not linked any more (the bot forgets which Discord account it was).</summary>
+    /// <summary>Not linked any more (the bot forgets which Discord account it was). Offline, it never gets there: the caller
+    /// drops the secret too, so the bot's link is to a PC that never connects again.</summary>
     public Task UnlinkAsync() => Connected ? SendAsync("""{"t":"unlink"}""") : Task.CompletedTask;
 
     /// <summary>How a command went once done (a preset's windows open): a follow-up in Discord, within its 15 minutes.</summary>
@@ -120,13 +160,20 @@ sealed class RemoteLink : IDisposable
     static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
 
     /// <summary>
-    /// A link pictures may be sent to: Discord's own answer link (discord.com/api/…/webhooks/…), never anywhere else the
-    /// bot (or someone posing as it) might name. The checks' stand-in bot names its own.
+    /// A link pictures may be sent to: the answer link of a command to Bloxkeep's own bot (discord.com/api/…/webhooks/
+    /// &lt;its application&gt;/&lt;that command's token&gt;/messages/@original), never anywhere else the bot (or someone
+    /// posing as it) might name, not even another webhook on Discord (2026-10-30 review). The checks' stand-in bot names
+    /// its own.
     /// </summary>
     bool MaySendTo(string reply) =>
-        Uri.TryCreate(reply, UriKind.Absolute, out var uri)
-        && (_url != Url ? uri.Scheme is "http" or "https"
-            : uri.Scheme == "https" && uri.Host == "discord.com" && uri.AbsolutePath.StartsWith("/api/", StringComparison.Ordinal) && uri.AbsolutePath.Contains("/webhooks/"));
+        _url != Url ? Uri.TryCreate(reply, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" : IsBotReply(reply);
+
+    static readonly System.Text.RegularExpressions.Regex BotReply = new(
+        $@"^/api(/v\d{{1,2}})?/webhooks/{AppController.DiscordApplicationId}/[A-Za-z0-9._-]{{20,500}}/messages/@original$");
+
+    internal static bool IsBotReply(string reply) =>
+        Uri.TryCreate(reply, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "discord.com" && uri.IsDefaultPort
+        && uri.UserInfo.Length == 0 && uri.Query.Length == 0 && uri.Fragment.Length == 0 && BotReply.IsMatch(uri.AbsolutePath);
 
     /// <summary>
     /// The answer to /pc screenshot (<paramref name="command"/>): its pictures (JPEG) and a line about them, put in place
@@ -187,11 +234,12 @@ sealed class RemoteLink : IDisposable
             using var ws = new ClientWebSocket();
             ws.Options.SetRequestHeader("Authorization", "Bearer " + _secret);
             ws.Options.KeepAliveInterval = TimeSpan.Zero; // the bot answers our own "ping" without waking
+            DateTime? connectedAt = null;
             try
             {
                 await ws.ConnectAsync(new Uri(_url), stop);
                 _ws = ws;
-                wait = FirstRetry;
+                connectedAt = DateTime.UtcNow;
                 await OnUi(() =>
                 {
                     Connected = true;
@@ -201,6 +249,11 @@ sealed class RemoteLink : IDisposable
                     await SendAsync(hello);
                 if (_wantCode)
                     await SendAsync("""{"t":"code"}""");
+                // A code shown here may be gone at the bot (it keeps codes in memory: a deploy or a restart forgets them,
+                // and typing a forgotten one counts as a wrong guess): the bot keeps it if it still knows it, else gives
+                // a new one (2026-10-30 review).
+                else if (Code is { } shown && CodeUntil > DateTime.UtcNow && Linked != true)
+                    await SendAsync(new JsonObject { ["t"] = "code", ["keep"] = shown }.ToJsonString());
                 using var alive = new CancellationTokenSource();
                 _ = PingAsync(ws, CancellationTokenSource.CreateLinkedTokenSource(stop, alive.Token).Token);
                 await ReadAsync(ws, stop);
@@ -226,6 +279,8 @@ sealed class RemoteLink : IDisposable
             }
             if (stop.IsCancellationRequested)
                 break;
+            if (connectedAt is { } at && DateTime.UtcNow - at >= StayedUp)
+                wait = FirstRetry;
             try
             {
                 await Task.Delay(wait + TimeSpan.FromMilliseconds(Random.Shared.Next(1000)), stop);
@@ -305,7 +360,7 @@ sealed class RemoteLink : IDisposable
             case "ask" when Str(m, "user") is { Length: > 0 } asker:
                 await OnUi(() =>
                 {
-                    Asking = (asker, Str(m, "replacing"));
+                    Asking = (asker, Str(m, "replacing"), Str(m, "id"));
                     _changed();
                 });
                 break;
@@ -328,16 +383,31 @@ sealed class RemoteLink : IDisposable
                     _changed();
                 });
                 break;
+            // Not waited for here: a long one (ten windows pictured, about a minute) would hold back every message behind
+            // it, an Allow or a code among them (2026-10-30 review). It still runs on the window's thread.
             case "command" when Str(m, "id") is { Length: > 0 } id && Str(m, "command") is { Length: > 0 } name:
-                var command = new RemoteCommand(id, name, Str(m, "value"), Str(m, "reply"));
-                var answer = await OnUi(() => _command(command));
-                if (answer is null)
-                    break;
-                answer["t"] = "answer";
-                answer["id"] = id;
-                await SendAsync(answer.ToJsonString());
+                _ = RunCommandAsync(new RemoteCommand(id, name, Str(m, "value"), Str(m, "reply")));
                 break;
         }
+    }
+
+    async Task RunCommandAsync(RemoteCommand command)
+    {
+        JsonObject? answer;
+        try
+        {
+            answer = await OnUi(() => _command(command));
+        }
+        catch (Exception ex)
+        {
+            Log.Write(ex);
+            return;
+        }
+        if (answer is null)
+            return;
+        answer["t"] = "answer";
+        answer["id"] = command.Id;
+        await SendAsync(answer.ToJsonString());
     }
 
     static string? Str(JsonObject? m, string name) =>

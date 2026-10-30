@@ -34,6 +34,7 @@ public static class Vaults
         }
         Prefs.VaultList.RemoveAll(v => !ExistsOnDisk(v.File));
         Use(Prefs.VaultList.FirstOrDefault(v => v.Id == Prefs.LastVault) ?? Prefs.VaultList.FirstOrDefault());
+        Prefs.MoveRemoteTo(Current);
     }
 
     /// <summary>The lock screen offers <paramref name="entry"/> (the first vault's file when none is set up yet).</summary>

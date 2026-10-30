@@ -54,12 +54,48 @@ public static class Prefs
     /// <summary>The bot was told this copy's first "open" (a new install, AppController.Online.cs): told once.</summary>
     public static bool FirstOpenTold { get; set; }
 
-    /// <summary>Settings › Discord › Control from Discord: off until the person turns it on (AppController.Remote.cs).</summary>
-    public static bool RemoteControl { get; set; }
+    /// <summary>Settings › Discord › Control from Discord: off until the person turns it on (AppController.Remote.cs). Each
+    /// vault has its own (<see cref="VaultEntry.RemoteControl"/>): vaults are for different people, and one person's /pc
+    /// must never run another's presets or picture their accounts (2026-10-30 review).</summary>
+    public static bool RemoteControl
+    {
+        get => Vaults.Current is { } v ? v.RemoteControl : _remoteControl;
+        set
+        {
+            if (Vaults.Current is { } v)
+                v.RemoteControl = value;
+            else
+                _remoteControl = value;
+        }
+    }
+    static bool _remoteControl;
 
-    /// <summary>The secret this PC proves itself with to Bloxkeep's Discord bot, made when Control from Discord is first
-    /// turned on; encrypted for this Windows user (AppController.Remote.cs). A new one unlinks the PC.</summary>
-    public static string? RemoteKey { get; set; }
+    /// <summary>The secret the vault in use proves itself with to Bloxkeep's Discord bot (a PC of its own there), made when
+    /// Control from Discord is turned on and dropped when it's turned off; encrypted for this Windows user
+    /// (AppController.Remote.cs). A new one is a new PC for the bot, linked to nobody.</summary>
+    public static string? RemoteKey
+    {
+        get => Vaults.Current is { } v ? v.RemoteKey : _remoteKey;
+        set
+        {
+            if (Vaults.Current is { } v)
+                v.RemoteKey = value;
+            else
+                _remoteKey = value;
+        }
+    }
+    static string? _remoteKey;
+
+    /// <summary>Control from Discord as builds before 2026-10-30 kept it, one for the whole PC: it goes to the vault the lock
+    /// screen offers (the one last used), unless that vault has its own already.</summary>
+    internal static void MoveRemoteTo(VaultEntry? entry)
+    {
+        if (entry is null || (!_remoteControl && _remoteKey is null))
+            return;
+        if (!entry.RemoteControl && entry.RemoteKey is null)
+            (entry.RemoteControl, entry.RemoteKey) = (_remoteControl, _remoteKey);
+        (_remoteControl, _remoteKey) = (false, null);
+    }
 
     /// <summary>The version that last ran here; a newer one means the app was updated (see <see cref="WhatsNew"/>).</summary>
     public static string? LastVersion { get; set; }
@@ -120,6 +156,10 @@ public static class Prefs
         public string? Picture { get; set; }
         public DateTime? LastBackup { get; set; }
         public bool BackupPending { get; set; }
+        /// <summary>This vault's Control from Discord (<see cref="Prefs.RemoteControl"/>) and its secret for the bot
+        /// (<see cref="Prefs.RemoteKey"/>, encrypted for this Windows user, so not readable from the file).</summary>
+        public bool RemoteControl { get; set; }
+        public string? RemoteKey { get; set; }
     }
 
     public static List<VaultEntry> VaultList { get; } = new();
@@ -234,6 +274,8 @@ public static class Prefs
                         LastBackup = v.TryGetProperty("lastBackup", out var vb) && vb.ValueKind == JsonValueKind.String && vb.TryGetDateTime(out var vbAt)
                             ? vbAt.ToUniversalTime() is var vbUtc && vbUtc > DateTime.UtcNow ? DateTime.UtcNow : vbUtc : null,
                         BackupPending = v.TryGetProperty("backupPending", out var vp) && vp.ValueKind == JsonValueKind.True,
+                        RemoteControl = v.TryGetProperty("remoteControl", out var vr) && vr.ValueKind == JsonValueKind.True,
+                        RemoteKey = Text(v, "remoteKey"),
                     });
                 }
             }
@@ -267,9 +309,10 @@ public static class Prefs
                 CountOnline = false;
             if (Text(root, "onlineId") is { } onlineId && Guid.TryParseExact(onlineId, "N", out _))
                 OnlineId = onlineId;
-            RemoteControl = root.TryGetProperty("remoteControl", out var remote) && remote.ValueKind == JsonValueKind.True;
+            // From before each vault had its own: moved to a vault by Vaults.Load (MoveRemoteTo).
+            _remoteControl = root.TryGetProperty("remoteControl", out var remote) && remote.ValueKind == JsonValueKind.True;
             FirstOpenTold = root.TryGetProperty("firstOpenTold", out var told) && told.ValueKind == JsonValueKind.True;
-            RemoteKey = Text(root, "remoteKey");
+            _remoteKey = Text(root, "remoteKey");
             if (root.TryGetProperty("notifications", out var notify) && notify.ValueKind == JsonValueKind.False)
                 Notifications = false;
             if (root.TryGetProperty("notifyOff", out var off) && off.ValueKind == JsonValueKind.Array)
@@ -365,7 +408,8 @@ public static class Prefs
                 ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["globalHotkeys"] = GlobalHotkeys, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
                 ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId,
-                ["remoteControl"] = RemoteControl, ["remoteKey"] = RemoteKey, ["firstOpenTold"] = FirstOpenTold,
+                // Written (empty once moved to a vault) so the old keys never come back from what this build doesn't know.
+                ["remoteControl"] = _remoteControl, ["remoteKey"] = _remoteKey, ["firstOpenTold"] = FirstOpenTold,
                 ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture, blur = Custom.Blur },
                 ["savedThemes"] = SavedThemes.Select(t => new
                 {
@@ -376,7 +420,8 @@ public static class Prefs
                 ["backupFolder"] = BackupFolder, ["backupEnabled"] = BackupEnabled,
                 ["lastBackup"] = VaultList.FirstOrDefault(v => v.File == Vaults.FirstFile)?.LastBackup ?? _lastBackup,
                 ["backupPending"] = VaultList.FirstOrDefault(v => v.File == Vaults.FirstFile)?.BackupPending ?? _backupPending,
-                ["vaults"] = VaultList.Select(v => new { id = v.Id, file = v.File, name = v.Name, picture = v.Picture, lastBackup = v.LastBackup, backupPending = v.BackupPending }).ToArray(),
+                ["vaults"] = VaultList.Select(v => new { id = v.Id, file = v.File, name = v.Name, picture = v.Picture, lastBackup = v.LastBackup, backupPending = v.BackupPending,
+                    remoteControl = v.RemoteControl, remoteKey = v.RemoteKey }).ToArray(),
                 ["lastVault"] = LastVault, ["askVault"] = AskVault,
                 ["dailySignInCheck"] = DailySignInCheck, ["lastSignInCheck"] = LastSignInCheck, ["miniOpen"] = MiniOpen, ["miniWindow"] = MiniWindow,
                 ["mainWindow"] = MainWindow, ["mainMaximized"] = MainMaximized,
