@@ -352,19 +352,74 @@ public sealed class TrayWindow : Form
     void Place()
     {
         var screen = Screen.FromPoint(_anchor);
-        Rectangle work = screen.WorkingArea, all = screen.Bounds;
         float scale = DpiAt(_anchor) / 96f;
-        int gap = (int)(12 * scale), w = (int)Math.Ceiling(_content.Width * scale), h = Math.Min((int)Math.Ceiling(_content.Height * scale), work.Height - gap * 2);
-        int x = Math.Clamp(_anchor.X - w / 2, work.Left + gap, work.Right - w - gap);
-        int y = work.Bottom - h - gap;
-        if (work.Top > all.Top)
-            y = work.Top + gap;
-        else if (work.Left > all.Left || work.Right < all.Right)
+        var size = new Size((int)Math.Ceiling(_content.Width * scale), (int)Math.Ceiling(_content.Height * scale));
+        var r = PlaceBy(_anchor, size, screen.WorkingArea, screen.Bounds, Taskbar(), (int)(12 * scale));
+        // The place first, then the size: set together while the window is on a screen at another scale, Windows' scale
+        // change resized it again by the ratio (review 2026-10-30).
+        Location = r.Location;
+        Bounds = r;
+    }
+
+    const int ABE_LEFT = 0, ABE_TOP = 1, ABE_RIGHT = 2, ABE_BOTTOM = 3;
+
+    /// <summary>
+    /// Where the panel goes, in the screen's pixels: by the pointer, next to the taskbar. The taskbar's edge is the one
+    /// Windows says (<paramref name="taskbar"/>, when on this screen): guessed from the work area alone, an auto-hidden
+    /// taskbar (work area = whole screen) put the panel over it, and a bottom one with another app's bar at a side was
+    /// taken for a side one (review 2026-10-30). Guessed only when Windows doesn't say.
+    /// </summary>
+    internal static Rectangle PlaceBy(Point anchor, Size size, Rectangle work, Rectangle all, (Rectangle Rect, int Edge)? taskbar, int gap)
+    {
+        int edge;
+        Rectangle free = work;
+        if (taskbar is { } bar && all.IntersectsWith(bar.Rect) && bar.Edge is >= ABE_LEFT and <= ABE_BOTTOM)
         {
-            x = work.Left > all.Left ? work.Left + gap : work.Right - w - gap;
-            y = Math.Clamp(_anchor.Y - h + gap, work.Top + gap, work.Bottom - h - gap);
+            edge = bar.Edge;
+            free = edge switch
+            {
+                ABE_BOTTOM => Rectangle.FromLTRB(work.Left, work.Top, work.Right, Math.Min(work.Bottom, bar.Rect.Top)),
+                ABE_TOP => Rectangle.FromLTRB(work.Left, Math.Max(work.Top, bar.Rect.Bottom), work.Right, work.Bottom),
+                ABE_LEFT => Rectangle.FromLTRB(Math.Max(work.Left, bar.Rect.Right), work.Top, work.Right, work.Bottom),
+                _ => Rectangle.FromLTRB(work.Left, work.Top, Math.Min(work.Right, bar.Rect.Left), work.Bottom),
+            };
         }
-        Bounds = new Rectangle(x, y, w, h);
+        else
+            edge = work.Top > all.Top ? ABE_TOP : work.Left > all.Left ? ABE_LEFT : work.Right < all.Right ? ABE_RIGHT : ABE_BOTTOM;
+        static int Clamp(int v, int min, int max) => Math.Max(min, Math.Min(v, max));
+        int w = size.Width, h = Math.Min(size.Height, free.Height - gap * 2);
+        if (edge is ABE_LEFT or ABE_RIGHT)
+            return new Rectangle(edge == ABE_LEFT ? free.Left + gap : free.Right - w - gap,
+                Clamp(anchor.Y - h + gap, free.Top + gap, free.Bottom - h - gap), w, h);
+        return new Rectangle(Clamp(anchor.X - w / 2, free.Left + gap, free.Right - w - gap),
+            edge == ABE_TOP ? free.Top + gap : free.Bottom - h - gap, w, h);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct RECT { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct APPBARDATA
+    {
+        public int cbSize;
+        public IntPtr hWnd;
+        public uint uCallbackMessage, uEdge;
+        public RECT rc;
+        public IntPtr lParam;
+    }
+
+    [DllImport("shell32.dll")]
+    static extern UIntPtr SHAppBarMessage(uint message, ref APPBARDATA data);
+
+    /// <summary>The taskbar's place and edge (also while auto-hidden), null when Windows doesn't say.</summary>
+    static (Rectangle Rect, int Edge)? Taskbar()
+    {
+        const uint ABM_GETTASKBARPOS = 5;
+        var data = new APPBARDATA { cbSize = Marshal.SizeOf<APPBARDATA>() };
+        if (SHAppBarMessage(ABM_GETTASKBARPOS, ref data) == UIntPtr.Zero)
+            return null;
+        var r = Rectangle.FromLTRB(data.rc.Left, data.rc.Top, data.rc.Right, data.rc.Bottom);
+        return r.Width > 0 && r.Height > 0 ? (r, (int)data.uEdge) : null;
     }
 
     [DllImport("user32.dll")]

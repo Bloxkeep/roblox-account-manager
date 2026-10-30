@@ -64,10 +64,33 @@ public sealed class WebsiteForm : Form
         Ui.UseThemedTitleBar(this, _theme);
     }
 
+    Form? _placeNear;
+
     /// <summary>Opens beside the main window, centred on its screen.</summary>
     public void PlaceNear(Form owner)
     {
+        _placeNear = owner;
+        if (IsHandleCreated)
+            Place();
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        Place();
+    }
+
+    /// <summary>
+    /// Only with the window real, and its place before its size: set together, or before the handle, on a screen at
+    /// another scale than the main one, the window was sized at the wrong scale and Windows' scale change resized it by
+    /// the ratio again (review 2026-10-30; as ShellForm.RestorePlace).
+    /// </summary>
+    void Place()
+    {
+        if (_placeNear is not { IsDisposed: false } owner)
+            return;
         var area = Screen.FromControl(owner).WorkingArea;
+        Location = new Point(area.Left + Math.Max(0, (area.Width - Width) / 2), area.Top + Math.Max(0, (area.Height - Height) / 2));
         var size = new Size(Math.Min(LogicalToDeviceUnits(1280), area.Width), Math.Min(LogicalToDeviceUnits(860), area.Height));
         Bounds = new Rectangle(area.Left + (area.Width - size.Width) / 2, area.Top + (area.Height - size.Height) / 2, size.Width, size.Height);
     }

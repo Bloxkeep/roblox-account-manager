@@ -69,6 +69,19 @@ static class WindowIconsSuite
         Forget(new HashSet<int>());
         c.Check("a client that closed: its icons go", !((IEnumerable<int>)Icons.GetProperty("Pids", Harness.F)!.GetValue(null)!).Contains(4243));
 
+        // A run that ended suddenly (crash, End task) left its icons, gone with it, on its windows, and the next run took
+        // them for the windows' own (review 2026-10-30): the windows given icons are written down, cleared at the next start.
+        int me = Environment.ProcessId;
+        string file = Path.Combine(Vault.DataDir, "window-icons.txt");
+        Apply(me, hWnd, "initials:Account 4", () => Initials("Account 4"));
+        c.Check("the windows given icons are written down", File.Exists(file) && File.ReadAllText(file).Contains($"{me} {hWnd.ToInt64()}"));
+        ((System.Collections.IDictionary)Icons.GetField("ByPid", Harness.F)!.GetValue(null)!).Clear(); // the crash: the run's memory gone
+        int cleared = (int)Icons.GetMethod("ClearLeftovers", Harness.F)!.Invoke(null, [])!;
+        c.Check("the next start takes a crashed run's icons off its windows", cleared == 1 && Icon(hWnd) == IntPtr.Zero && !File.Exists(file), cleared);
+        Apply(me, hWnd, "initials:Account 4", () => Initials("Account 4"));
+        Remove(me, hWnd);
+        c.Check("…and none of them is put back later as a window's own", Icon(hWnd) == IntPtr.Zero && !File.Exists(file));
+
         using var some = Initials("");
         c.Check("a name without letters still gets a picture", some.Width == 96);
         return Task.CompletedTask;

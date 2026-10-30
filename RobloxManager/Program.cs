@@ -84,6 +84,7 @@ static class Program
 
         Vault.Tidy(); // before anything opens the files it moves
         RobloxProcesses.ShowLeftHidden(); // Roblox windows a run that ended suddenly had hidden
+        WindowIcons.ClearLeftovers(); // …and the icons it had put on them (its taskbar groups: at the first window check)
         Prefs.Load();
         Vaults.Load(); // the vault the lock screen offers (and an update's restart opens): the last one used
         BrowserLoginForm.CleanupLeftoverProfiles();

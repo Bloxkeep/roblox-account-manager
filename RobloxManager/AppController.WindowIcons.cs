@@ -84,9 +84,17 @@ public sealed partial class AppController
     /// Settings › Taskbar buttons (<see cref="TaskbarGroups"/>): a button per account, or a group per preset (windows
     /// without one stay in Roblox's); "roblox" puts every window's own id back.
     /// </summary>
+    bool _taskbarLeftoversCleared;
+
     void ApplyTaskbarGroups(IReadOnlySet<int> alive, Dictionary<int, List<IntPtr>> windows)
     {
         TaskbarGroups.Forget(alive);
+        // The first look at the windows: the groups a run that ended suddenly left on them go, whatever the setting.
+        if (!_taskbarLeftoversCleared && windows.Count > 0)
+        {
+            _taskbarLeftoversCleared = true;
+            TaskbarGroups.ClearLeftovers(windows.Values.SelectMany(w => w));
+        }
         string mode = _vault?.Data.Settings.TaskbarGroups ?? "roblox";
         var grouped = new HashSet<int>();
         foreach (var (id, info) in _running)

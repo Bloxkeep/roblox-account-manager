@@ -26,6 +26,26 @@ static class TaskbarGroupsSuite
         c.Check("…moved when the grouping changes", Read(hWnd) == "Bloxkeep.Preset.farm", Read(hWnd));
         Remove(4242, hWnd);
         c.Check("turned off: the window's own grouping back", Read(hWnd) is null, Read(hWnd));
+
+        // A run that ended suddenly (crash, End task) left its group on the window; this run knows nothing of it
+        // (review 2026-10-30).
+        var byPid = (System.Collections.IDictionary)Groups.GetField("ByPid", Harness.F)!.GetValue(null)!;
+        void Crash(string group)
+        {
+            Apply(4242, hWnd, group);
+            byPid.Clear();
+        }
+        Crash("Bloxkeep.Roblox.account1");
+        Apply(4242, hWnd, "Bloxkeep.Roblox.account1");
+        Remove(4242, hWnd);
+        c.Check("left by a crash, the same group found again: turned off, the window's own grouping back", Read(hWnd) is null, Read(hWnd));
+        Crash("Bloxkeep.Roblox.account1");
+        Apply(4242, hWnd, "Bloxkeep.Preset.farm");
+        Remove(4242, hWnd);
+        c.Check("…another group: the leftover isn't taken for the window's own", Read(hWnd) is null, Read(hWnd));
+        Crash("Bloxkeep.Roblox.account1");
+        int cleared = (int)Groups.GetMethod("ClearLeftovers", Harness.F)!.Invoke(null, [new List<IntPtr> { hWnd }])!;
+        c.Check("…the setting off: taken off at the first look at the windows", cleared == 1 && Read(hWnd) is null, $"{cleared} {Read(hWnd)}");
         return Task.CompletedTask;
     }
 }

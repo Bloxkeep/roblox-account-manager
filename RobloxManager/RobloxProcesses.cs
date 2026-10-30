@@ -251,7 +251,8 @@ public static class RobloxProcesses
     static readonly Dictionary<IntPtr, int> _hidden = new();
     static string HiddenFile => Path.Combine(Vault.DataDir, "hidden-windows.txt");
 
-    static bool StillOf(IntPtr hWnd, int pid) => IsWindow(hWnd) && GetWindowThreadProcessId(hWnd, out uint owner) != 0 && owner == pid;
+    /// <summary>The window is still there and still that process's (a handle can be taken by another window).</summary>
+    internal static bool StillOf(IntPtr hWnd, int pid) => IsWindow(hWnd) && GetWindowThreadProcessId(hWnd, out uint owner) != 0 && owner == pid;
 
     public static bool IsHidden(IntPtr hWnd)
     {
@@ -665,6 +666,10 @@ public static class RobloxProcesses
         var hWnd = MainWindow(pid);
         if (hWnd == IntPtr.Zero)
             return;
+        // Show (Mini window, tray, Monitor) on a window Bloxkeep hid: shown again first, as Ctrl+Alt+H shows it, so it
+        // is known as shown; brought to the front hidden, nothing came up (review 2026-10-30).
+        if (IsHidden(hWnd))
+            ShowWindows([pid]);
         if (IsIconic(hWnd))
             ShowWindowAsync(hWnd, SW_RESTORE);
         SetForegroundWindow(hWnd);
@@ -676,17 +681,19 @@ public static class RobloxProcesses
     /// Only a window with a title bar (Roblox's fullscreen has none). Windows brings the window to the front with it.
     /// </summary>
     /// <returns>false when it left the window as it was.</returns>
+    /// <remarks>Not a window Bloxkeep hid: maximising shows it (review 2026-10-30), and it stays known as hidden.</remarks>
     public static bool Maximise(IntPtr hWnd)
     {
-        if (hWnd == IntPtr.Zero || IsIconic(hWnd) || IsZoomed(hWnd) || (GetWindowLong(hWnd, GWL_STYLE) & WS_CAPTION) != WS_CAPTION)
+        if (hWnd == IntPtr.Zero || IsHidden(hWnd) || IsIconic(hWnd) || IsZoomed(hWnd) || (GetWindowLong(hWnd, GWL_STYLE) & WS_CAPTION) != WS_CAPTION)
             return false;
         return ShowWindowAsync(hWnd, SW_SHOWMAXIMIZED);
     }
 
-    /// <summary>Without bringing another one to the front.</summary>
+    /// <summary>Without bringing another one to the front. Not a window Bloxkeep hid: minimising shows it on the taskbar
+    /// (a hidden window rejoined into a light-AFK preset, review 2026-10-30).</summary>
     public static void Minimise(IntPtr hWnd)
     {
-        if (hWnd != IntPtr.Zero && !IsIconic(hWnd))
+        if (hWnd != IntPtr.Zero && !IsHidden(hWnd) && !IsIconic(hWnd))
             ShowWindowAsync(hWnd, SW_SHOWMINNOACTIVE);
     }
 
@@ -758,18 +765,23 @@ public static class RobloxProcesses
 
         var (cols, width, height) = GridCells(windows.Count, area.Size, layout, custom);
         var cell = new Size(width, height);
+        List<Rectangle> tiles;
         if ((windows.Count + cols - 1) / cols * height <= area.Height)
         {
+            tiles = windows.Select((_, i) => new Rectangle(area.X + i % cols * width, area.Y + i / cols * height, width, height)).ToList();
             for (int i = 0; i < windows.Count; i++)
-            {
-                SetWindowPos(windows[i], IntPtr.Zero, area.X + i % cols * width, area.Y + i / cols * height, width, height,
-                    SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
-            }
+                MoveThenSize(windows[i], IntPtr.Zero, tiles[i], SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
         }
         else
-            await StackAsync(windows, OverlapSpots(windows.Count, area, cell), cell, SWP_NOSENDCHANGING);
+        {
+            var spots = OverlapSpots(windows.Count, area, cell);
+            tiles = spots.Select(p => new Rectangle(p, cell)).ToList();
+            await StackAsync(windows, spots, cell, SWP_NOSENDCHANGING);
+        }
         if (await KeptSizeAsync(windows, cell) is { } size)
             await StackAsync(windows, OverlapSpots(windows.Count, area, size), size);
+        else
+            await GrowShrunkAsync(windows, tiles);
         if (app != IntPtr.Zero)
             await RaiseAsync(windows, app);
         return windows.Count;
@@ -784,9 +796,42 @@ public static class RobloxProcesses
         for (int i = windows.Count - 1; i >= 0; i--)
         {
             bool last = i == windows.Count - 1;
-            SetWindowPos(windows[i], last ? IntPtr.Zero : windows[i + 1], spots[i].X, spots[i].Y, size.Width, size.Height,
+            MoveThenSize(windows[i], last ? IntPtr.Zero : windows[i + 1], new Rectangle(spots[i], size),
                 flags | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | (last ? SWP_NOZORDER : 0));
             await Task.Delay(40);
+        }
+    }
+
+    /// <summary>
+    /// The place first, then the size. Moved onto a screen at another scale, Roblox (aware of each screen's scale) takes
+    /// the size Windows gives it for that scale as it gets there: given with the move, its tile's size was scaled again,
+    /// so windows from a 150 % screen tiled on a 100 % one came out a third smaller (review 2026-10-30).
+    /// </summary>
+    static void MoveThenSize(IntPtr hWnd, IntPtr after, Rectangle r, uint flags)
+    {
+        SetWindowPos(hWnd, IntPtr.Zero, r.X, r.Y, 0, 0, flags | SWP_NOSIZE | SWP_NOZORDER);
+        SetWindowPos(hWnd, after, r.X, r.Y, r.Width, r.Height, flags);
+    }
+
+    /// <summary>
+    /// Windows that ended smaller than their tile (their scale change answered after the size) are given it again, a few
+    /// times at most. <see cref="KeptSizeAsync"/> only sees windows that kept a bigger size.
+    /// </summary>
+    static async Task GrowShrunkAsync(List<IntPtr> windows, List<Rectangle> tiles)
+    {
+        const int Slack = 2;
+        for (int tries = 0; tries < 3; tries++)
+        {
+            var shrunk = Enumerable.Range(0, windows.Count)
+                .Where(i => WindowRect(windows[i]) is { } r && (r.Width < tiles[i].Width - Slack || r.Height < tiles[i].Height - Slack)).ToList();
+            if (shrunk.Count == 0)
+                return;
+            foreach (int i in shrunk)
+            {
+                var t = tiles[i];
+                SetWindowPos(windows[i], IntPtr.Zero, t.X, t.Y, t.Width, t.Height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
+            }
+            await Task.Delay(150);
         }
     }
 

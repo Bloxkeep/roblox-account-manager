@@ -56,8 +56,9 @@ static class TaskbarGroups
             string? now = Read(hWnd);
             if (now == group)
                 continue;
+            // An id of Bloxkeep's already there was left by a run that ended suddenly: not the window's own.
             if (!placed.Own.ContainsKey(hWnd))
-                placed.Own[hWnd] = now;
+                placed.Own[hWnd] = IsOurs(now) ? null : now;
             Write(hWnd, group);
         }
     }
@@ -71,8 +72,30 @@ static class TaskbarGroups
         {
             if (placed.Own.TryGetValue(hWnd, out var own))
                 Write(hWnd, own);
+            else if (IsOurs(Read(hWnd)))
+                Write(hWnd, null); // already in its group when this run found it (left by a run that ended suddenly)
         }
     }
+
+    /// <summary>
+    /// At start: the ids a run that ended suddenly (a crash, End task) left on Roblox windows. Kept, they held the windows
+    /// in a group of Bloxkeep's with the setting off, and were taken for the windows' own (review 2026-10-30).
+    /// </summary>
+    public static int ClearLeftovers(IEnumerable<IntPtr> windows)
+    {
+        int cleared = 0;
+        foreach (var hWnd in windows)
+        {
+            if (IsOurs(Read(hWnd)))
+            {
+                Write(hWnd, null);
+                cleared++;
+            }
+        }
+        return cleared;
+    }
+
+    static bool IsOurs(string? id) => id?.StartsWith("Bloxkeep.", StringComparison.Ordinal) == true;
 
     /// <summary>Clients that have closed: nothing of theirs to put back.</summary>
     public static void Forget(IReadOnlySet<int> alive)

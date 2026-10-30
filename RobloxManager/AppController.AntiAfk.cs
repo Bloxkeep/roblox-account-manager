@@ -133,8 +133,8 @@ public sealed partial class AppController
         _nudging = true;
         try
         {
-            // Turning anti-AFK off (or locking) stops it between two windows.
-            var reached = await AntiAfk.NudgeAsync(clients.Select(c => c.Window).ToList(), () => clients.Any(c => AntiAfkOn(c.Pid)));
+            // Turning anti-AFK off (or locking, or quitting) stops it between two windows.
+            var reached = await AntiAfk.NudgeAsync(clients.Select(c => c.Window).ToList(), () => !_disposed && clients.Any(c => AntiAfkOn(c.Pid)));
             foreach (var (pid, window) in clients)
             {
                 if (reached.Contains(window))
