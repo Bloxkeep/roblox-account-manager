@@ -223,6 +223,7 @@ public sealed partial class AppController
         _presenceLoaded = false;
         _boot = null;
         _rejoinQueue.Clear();
+        _hopping.Clear(); // their reopening was in that queue
         _offlineStrikes.Clear();
         ResetDiscordQueue(); // nothing waits to go to Discord while locked
         _lastMetrics = _lastState = _pageView = null;

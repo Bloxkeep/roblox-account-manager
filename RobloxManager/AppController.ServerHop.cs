@@ -6,12 +6,28 @@ namespace RobloxManager;
 /// </summary>
 public sealed partial class AppController
 {
-    /// <summary>Accounts on their way to another server: their reopening goes there, not to another account's server.</summary>
-    readonly HashSet<Guid> _hopping = new();
+    /// <summary>Accounts on their way to another server, and since when: their reopening goes there, not to another account's
+    /// server. Taken by that reopening (RejoinAsync); one that never comes (the window closed for good, everything closed)
+    /// counts no more after <see cref="HopTimeout"/>, so /pc switch isn't refused for ever (2026-10-30 review).</summary>
+    readonly Dictionary<Guid, DateTime> _hopping = new();
+
+    static readonly TimeSpan HopTimeout = TimeSpan.FromMinutes(3);
+
+    /// <summary>Some account is still on its way to another server.</summary>
+    bool Hopping()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var (id, since) in _hopping.ToList())
+        {
+            if (now - since > HopTimeout || now < since)
+                _hopping.Remove(id);
+        }
+        return _hopping.Count > 0;
+    }
 
     async Task<object?> SwitchServerAsync(Guid[] ids)
     {
-        RequireVault();
+        var vault = RequireVault();
         var playing = ids.Where(_running.ContainsKey)
             .Select(id => (Id: id, Run: _running[id], Log: _logs.StateOf(_running[id].Pid)))
             .Where(w => w.Run.Launch.Target is { IsPrivate: false, ShareCode: null, Follow: null }
@@ -32,6 +48,9 @@ public sealed partial class AppController
             {
                 throw new UserError(L.T("Roblox won't give the server list right now. Try again in a minute."));
             }
+            // Locked while Roblox answered: nothing of that vault's is touched any more.
+            if (_vault != vault)
+                break;
             var fits = servers.Where(s => !leaving.Contains(s.JobId) && s.MaxPlayers - s.Playing >= game.Count()).ToList();
             if (fits.Count == 0)
             {
@@ -41,7 +60,10 @@ public sealed partial class AppController
             var chosen = fits[Random.Shared.Next(fits.Count)];
             foreach (var (id, run, _) in game)
             {
-                _hopping.Add(id);
+                // Its window closed (or was replaced) while Roblox answered: nothing to move, and a mark that nothing takes.
+                if (!_running.TryGetValue(id, out var current) || current.Pid != run.Pid)
+                    continue;
+                _hopping[id] = DateTime.UtcNow;
                 _joinRefused.Remove(run.Launch);
                 _restarts[id] = (new GameTarget(game.Key, chosen.JobId), DateTime.UtcNow);
                 _closingForRejoin.Add(run.Pid);
