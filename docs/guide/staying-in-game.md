@@ -92,7 +92,9 @@ A game whose RAM keeps growing over hours only gets it back when Roblox restarts
 
 ## RAM limit for resting windows
 
-**Settings › Staying in game › RAM limit for resting windows**: **No limit** (the default), **1 GB**, **1.5 GB** or **2 GB**. A Roblox window that is minimized, or hidden by Bloxkeep, keeps at most that much in RAM; the rest of what the game holds waits in Windows' virtual memory. A game left to idle uses little of what it holds, so more accounts fit on one PC.
+**Settings › Staying in game › RAM limit for resting windows**: **No limit** (the default), **Auto (per game)**, **1 GB**, **1.5 GB** or **2 GB**. A Roblox window that is minimized, or hidden by Bloxkeep, keeps at most that much in RAM; the rest of what the game holds waits in Windows' virtual memory. A game left to idle uses little of what it holds, so more accounts fit on one PC.
+
+**Auto** finds the amount for each game: it starts once a window has rested a minute and the PC is using 60 % of its RAM, comes down while the game stays calm, and goes up when the game needs more.
 
 | | |
 |---|---|

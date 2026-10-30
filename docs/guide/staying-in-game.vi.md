@@ -92,7 +92,9 @@ Game mà RAM cứ tăng dần sau nhiều giờ chỉ trả lại RAM khi Roblox
 
 ## Giới hạn RAM cửa sổ treo
 
-**Cài đặt › Treo game › Giới hạn RAM cửa sổ treo**: **Không giới hạn** (mặc định), **1 GB**, **1.5 GB** hoặc **2 GB**. Cửa sổ Roblox thu nhỏ, hoặc bị Bloxkeep ẩn, chỉ giữ tối đa chừng đó trong RAM; phần còn lại của game nằm ở bộ nhớ ảo của Windows. Game để treo dùng rất ít trong số bộ nhớ nó giữ, nên một máy chạy được nhiều tài khoản hơn.
+**Cài đặt › Treo game › Giới hạn RAM cửa sổ treo**: **Không giới hạn** (mặc định), **Tự động (theo game)**, **1 GB**, **1.5 GB** hoặc **2 GB**. Cửa sổ Roblox thu nhỏ, hoặc bị Bloxkeep ẩn, chỉ giữ tối đa chừng đó trong RAM; phần còn lại của game nằm ở bộ nhớ ảo của Windows. Game để treo dùng rất ít trong số bộ nhớ nó giữ, nên một máy chạy được nhiều tài khoản hơn.
+
+**Tự động** đặt mức riêng cho từng game: bắt đầu khi cửa sổ đã nghỉ một phút và máy dùng tới 60 % RAM, giảm dần khi game ổn, nới thêm khi game cần.
 
 | | |
 |---|---|

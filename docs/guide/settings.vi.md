@@ -67,7 +67,7 @@ Chi tiết từng dòng nằm ở [Giữ tài khoản trong game](staying-in-gam
 | **Kiểm tra đăng nhập mỗi ngày** | Tìm các tài khoản Roblox đã đăng xuất, để bạn biết trước khi bấm Vào game. Ghi "Lần kiểm tra gần nhất: …". | Bật |
 | **Báo khi sắp hết RAM** | Hỏi trước khi mở nếu thiếu RAM hoặc bộ nhớ ảo của Windows, và cảnh báo khi đang chơi. | Bật |
 | **Tiết kiệm RAM cho cửa sổ chạy nền** | Cửa sổ Roblox bạn không chơi bị hạ mức ưu tiên bộ nhớ, nên Windows lấy RAM của chúng trước. | Tắt |
-| **Giới hạn RAM cửa sổ treo** | **Không giới hạn**, **1 GB**, **1.5 GB**, **2 GB**: mức RAM tối đa cửa sổ Roblox thu nhỏ hoặc đang ẩn được giữ, phần còn lại ở bộ nhớ ảo. Xem [Treo game](staying-in-game.vi.md). | Không giới hạn |
+| **Giới hạn RAM cửa sổ treo** | **Không giới hạn**, **Tự động (theo game)**, **1 GB**, **1.5 GB**, **2 GB**: mức RAM tối đa cửa sổ Roblox thu nhỏ hoặc đang ẩn được giữ, phần còn lại ở bộ nhớ ảo. Xem [Treo game](staying-in-game.vi.md). | Không giới hạn |
 | **Nhường nhân mạnh cho cửa sổ đang chơi** | Cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm của CPU. | Tắt |
 
 ## Thông báo

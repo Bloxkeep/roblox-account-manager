@@ -1,5 +1,80 @@
 [
   {
+    "version": "1.0.14",
+    "date": "2026-10-30",
+    "highlights": [
+      {
+        "icon": "cpu",
+        "go": "settings:perf",
+        "en": [
+          "RAM limit: Auto",
+          "Bloxkeep finds the amount for each game: less while the game stays calm, more when it needs it.",
+          "Set it"
+        ],
+        "vi": [
+          "Giới hạn RAM: Tự động",
+          "Bloxkeep tự đặt mức riêng cho từng game: giảm khi game ổn, nới thêm khi game cần.",
+          "Cài đặt"
+        ]
+      },
+      {
+        "icon": "discord",
+        "en": [
+          "Each vault has its own Discord link",
+          "Control from Discord is now turned on per vault, so one person's /pc never reaches another's accounts."
+        ],
+        "vi": [
+          "Mỗi vault có liên kết Discord riêng",
+          "Điều khiển qua Discord giờ bật theo từng vault, /pc của người này không đụng tới tài khoản của người khác."
+        ]
+      }
+    ],
+    "improved": {
+      "en": [
+        "Group and player boxes suggest names in Bloxkeep's own list.",
+        "The Allow box for /pc link shows the asker's @username.",
+        "The time, date and colour pickers work from the keyboard.",
+        "The main window fits the screen it opens on, and saved windows come back inside the screen.",
+        "The lock screen after the PC sat unused offers only the password."
+      ],
+      "vi": [
+        "Ô nhóm và ô người chơi gợi ý bằng danh sách của Bloxkeep.",
+        "Hộp Cho phép của /pc link hiện @username của người hỏi.",
+        "Ô giờ, ô ngày và ô màu dùng được bằng bàn phím.",
+        "Cửa sổ chính vừa với màn hình đang mở, cửa sổ đã lưu không còn nằm ngoài màn hình.",
+        "Màn hình tự khóa khi không dùng máy chỉ còn ô mật khẩu."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Fixed Bloxkeep opening a test build of Roblox left on the PC instead of the real one.",
+        "Fixed accounts opening a second window while Roblox was still updating.",
+        "Fixed a rejoin giving up when the launch opened no window.",
+        "Fixed a hidden Roblox window showing up again when minimized or maximized.",
+        "Fixed Quick Login on the Roblox VNG tab renewing with a Roblox code.",
+        "Fixed a preset saved just before its scheduled minute running twice, and a scheduled stop holding up another preset.",
+        "Fixed Arrange changing tile sizes when windows move to a screen at another scale.",
+        "Fixed switching server leaving accounts marked as moving.",
+        "Fixed an install cut off by an update refusing to install again.",
+        "Fixed a vault with a damaged file not opening from its previous save.",
+        "Fixed restoring from a backup that was cut short."
+      ],
+      "vi": [
+        "Sửa lỗi Bloxkeep mở bản thử nghiệm của Roblox còn sót trên máy thay vì bản thật.",
+        "Sửa lỗi tài khoản mở thêm cửa sổ khi Roblox đang cập nhật.",
+        "Sửa lỗi tự vào lại bỏ cuộc khi lần mở không hiện cửa sổ.",
+        "Sửa lỗi cửa sổ Roblox đang ẩn tự hiện lại khi thu nhỏ hoặc phóng to.",
+        "Sửa lỗi Đăng nhập nhanh ở tab Roblox VNG lấy lại mã của Roblox.",
+        "Sửa lỗi preset lưu sát giờ hẹn chạy hai lần, và lịch dừng làm preset khác phải chờ.",
+        "Sửa lỗi Xếp cửa sổ đổi cỡ ô khi cửa sổ sang màn hình có tỉ lệ khác.",
+        "Sửa lỗi sang server khác để tài khoản mãi ở trạng thái đang chuyển.",
+        "Sửa lỗi không cài lại được khi bản cập nhật bị ngắt giữa chừng.",
+        "Sửa lỗi vault có file hỏng không mở được từ bản lưu trước.",
+        "Sửa lỗi khôi phục từ bản sao lưu chưa tạo xong."
+      ]
+    }
+  },
+  {
     "version": "1.0.13",
     "date": "2026-10-30",
     "highlights": [

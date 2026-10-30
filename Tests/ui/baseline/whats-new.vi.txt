@@ -211,54 +211,43 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.13 · 30 tháng 10, 2026"
+              small "Bloxkeep 1.0.14 · 30 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:577px" src="whatsnew/1.0.13-themes.vi.webp"]
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "Giao diện của bạn"
-              p "Lưu giao diện tự làm theo tên, chia sẻ thành file, và đặt ảnh hoặc video làm nền cho Bloxkeep."
-              button.wn-go [type="button" FOCUSED] "Tạo ngay"
+              h3 "Giới hạn RAM: Tự động"
+              p "Bloxkeep tự đặt mức riêng cho từng game: giảm khi game ổn, nới thêm khi game cần."
+              button.wn-go [type="button" FOCUSED] "Cài đặt"
                 svg.i #1g7f83q
           article.plain.wn-feat
             div.wn-feat-text
-              h3 "Trang riêng cho từng game"
-              p "Bấm tên game dưới ô game: số người chơi, các tài khoản của bạn trong tuần, giờ nào vắng và wiki của game."
-          article.plain.wn-feat
-            div.wn-feat-text
-              h3 "Chạy được nhiều tài khoản hơn"
-              p "Cửa sổ Roblox thu nhỏ hoặc đang ẩn chỉ giữ 1 GB RAM mỗi cửa sổ, phần còn lại để ở bộ nhớ ảo."
-              button.wn-go [type="button"] "Cài đặt"
-                svg.i #1g7f83q
-          article.plain.wn-feat
-            div.wn-feat-text
-              h3 "Xem màn hình qua Discord"
-              p "/pc screenshot gửi ảnh cửa sổ Roblox của một tài khoản, hoặc tất cả, chỉ bạn thấy."
-        section.new.wn-group
-          h4.wn-kind "Mới"
-          ul.wn-notes
-            li "Ctrl+Alt+M thu nhỏ hoặc mở lại mọi cửa sổ Roblox, Ctrl+Alt+N sang cửa sổ kế tiếp, Ctrl+Alt+B mở Bloxkeep."
-            li "/pc switch chuyển được tất cả tài khoản sang server khác cùng lúc."
-            li "Preset Treo máy nhẹ tắt thêm cỏ và hiệu ứng ánh sáng, bầu trời để xám."
+              h3 "Mỗi vault có liên kết Discord riêng"
+              p "Điều khiển qua Discord giờ bật theo từng vault, /pc của người này không đụng tới tài khoản của người khác."
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "RAM của mỗi tài khoản chỉ tính phần riêng của nó, giống Task Manager."
-            li "Danh sách chọn, ô giờ, ô ngày và ô màu giờ mở theo màu của Bloxkeep."
-            li "Liên kết máy bằng /pc link sẽ chờ bạn bấm Cho phép trong Bloxkeep."
-            li "Có bản mới là Bloxkeep biết trong vài phút."
-            li "Bloxkeep không còn khựng khi mở nhiều cửa sổ Roblox."
-            li "Roblox VNG luôn có trong Mở Roblox bằng, ghi rõ khi chưa cài."
-            li "Tài khoản bị Roblox giữ lại vì thông báo chưa xác nhận giờ được báo rõ."
+            li "Ô nhóm và ô người chơi gợi ý bằng danh sách của Bloxkeep."
+            li "Hộp Cho phép của /pc link hiện @username của người hỏi."
+            li "Ô giờ, ô ngày và ô màu dùng được bằng bàn phím."
+            li "Cửa sổ chính vừa với màn hình đang mở, cửa sổ đã lưu không còn nằm ngoài màn hình."
+            li "Màn hình tự khóa khi không dùng máy chỉ còn ô mật khẩu."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "Sửa lỗi cả nhóm bị bỏ dở khi server đang vào đã đóng."
-            li "Sửa lỗi tài khoản tự vào lại khi bạn tắt cửa sổ ngay sau khi rời game."
+            li "Sửa lỗi Bloxkeep mở bản thử nghiệm của Roblox còn sót trên máy thay vì bản thật."
+            li "Sửa lỗi tài khoản mở thêm cửa sổ khi Roblox đang cập nhật."
+            li "Sửa lỗi tự vào lại bỏ cuộc khi lần mở không hiện cửa sổ."
+            li "Sửa lỗi cửa sổ Roblox đang ẩn tự hiện lại khi thu nhỏ hoặc phóng to."
+            li "Sửa lỗi Đăng nhập nhanh ở tab Roblox VNG lấy lại mã của Roblox."
+            li "Sửa lỗi preset lưu sát giờ hẹn chạy hai lần, và lịch dừng làm preset khác phải chờ."
+            li "Sửa lỗi Xếp cửa sổ đổi cỡ ô khi cửa sổ sang màn hình có tỉ lệ khác."
+            li "Sửa lỗi sang server khác để tài khoản mãi ở trạng thái đang chuyển."
+            li "Sửa lỗi không cài lại được khi bản cập nhật bị ngắt giữa chừng."
+            li "Sửa lỗi vault có file hỏng không mở được từ bản lưu trước."
+            li "Sửa lỗi khôi phục từ bản sao lưu chưa tạo xong."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q

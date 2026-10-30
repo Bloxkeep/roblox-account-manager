@@ -67,7 +67,7 @@ Details for each row are in [Staying in game](staying-in-game.md).
 | **Check sign-ins every day** | Finds accounts Roblox signed out, before you press Play. Shows "Last check: …". | On |
 | **Low RAM warning** | Asks before opening when RAM or Windows' virtual memory is short, and warns while playing. | On |
 | **Save RAM on background windows** | Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first. | Off |
-| **RAM limit for resting windows** | **No limit**, **1 GB**, **1.5 GB**, **2 GB**: the most a minimized or hidden Roblox window keeps in RAM, the rest in virtual memory. See [Staying in game](staying-in-game.md). | No limit |
+| **RAM limit for resting windows** | **No limit**, **Auto (per game)**, **1 GB**, **1.5 GB**, **2 GB**: the most a minimized or hidden Roblox window keeps in RAM, the rest in virtual memory. See [Staying in game](staying-in-game.md). | No limit |
 | **Fast cores for the window you play** | Roblox windows in the background run in Windows' efficiency mode: they give way to the one you play and lean on the CPU's efficiency cores. | Off |
 
 ## Notifications
