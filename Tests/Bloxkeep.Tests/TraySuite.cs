@@ -85,6 +85,27 @@ static class TraySuite
         Act(new { what = "nothing" });
         window.OnMessage("not json");
         c.Check("…anything else it sends does nothing", opened is null);
+
+        // Where the panel opens, next to the taskbar Windows says (review 2026-10-30): a 1920 × 1080 screen, a 48 px
+        // taskbar, a 300 × 400 panel, 12 px from the edges, the pointer at the clock.
+        Rectangle Place(Rectangle work, (Rectangle, int)? bar, Point? at = null) =>
+            (Rectangle)typeof(TrayWindow).GetMethod("PlaceBy", Harness.F)!.Invoke(null,
+                [at ?? new Point(1800, 1060), new Size(300, 400), work, new Rectangle(0, 0, 1920, 1080), bar, 12])!;
+        var screen = new Rectangle(0, 0, 1920, 1080);
+        var bottom = new Rectangle(0, 1032, 1920, 48);
+        c.Check("above a bottom taskbar", Place(new Rectangle(0, 0, 1920, 1032), (bottom, 3)) == new Rectangle(1608, 620, 300, 400),
+            Place(new Rectangle(0, 0, 1920, 1032), (bottom, 3)));
+        c.Check("…also auto-hidden (the work area is the whole screen): above it, not over it",
+            Place(screen, (bottom, 3)) == new Rectangle(1608, 620, 300, 400), Place(screen, (bottom, 3)));
+        c.Check("…with another app's bar on the left: still above it, not by the side",
+            Place(new Rectangle(200, 0, 1920, 1032), (bottom, 3), new Point(300, 1060)) == new Rectangle(212, 620, 300, 400),
+            Place(new Rectangle(200, 0, 1920, 1032), (bottom, 3), new Point(300, 1060)));
+        c.Check("a taskbar on the left: beside it, by the pointer",
+            Place(new Rectangle(48, 0, 1872, 1080), (new Rectangle(0, 0, 48, 1080), 0), new Point(20, 900)) == new Rectangle(60, 512, 300, 400),
+            Place(new Rectangle(48, 0, 1872, 1080), (new Rectangle(0, 0, 48, 1080), 0), new Point(20, 900)));
+        c.Check("Windows not saying (a taskbar on another screen): guessed from the work area as before",
+            Place(new Rectangle(0, 48, 1920, 1032), (new Rectangle(1920, 1032, 1920, 48), 3), new Point(1800, 20)) == new Rectangle(1608, 60, 300, 400)
+            && Place(new Rectangle(0, 0, 1920, 1032), null) == new Rectangle(1608, 620, 300, 400));
         return Task.CompletedTask;
     }
 }
