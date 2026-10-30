@@ -380,7 +380,7 @@ html [data-theme="dark" lang="vi"]
                   option [value=""] "Theo Cài đặt (đang tắt)"
                   option [value="on"] "Bật"
                   option [value="off"] "Tắt"
-            p.ps-opts-note [id="ps-opts-note"] "Treo máy nhẹ: đồ họa thấp nhất, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. Mở lại: sau số giờ đó, lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ."
+            p.ps-opts-note [id="ps-opts-note"] "Treo máy nhẹ: đồ họa thấp nhất, trời xám, tắt cỏ và hiệu ứng ánh sáng, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. Mở lại: sau số giờ đó, lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ."
           div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
             div.ps-opts-head
               b [id="ps-dc-title"] "Discord"
@@ -822,7 +822,7 @@ html [data-theme="dark" lang="vi"]
                   option [value=""] "Theo Cài đặt (đang tắt)"
                   option [value="on"] "Bật"
                   option [value="off"] "Tắt"
-            p.ps-opts-note [id="ps-opts-note"] "Treo máy nhẹ: đồ họa thấp nhất, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. Mở lại: sau số giờ đó, lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ."
+            p.ps-opts-note [id="ps-opts-note"] "Treo máy nhẹ: đồ họa thấp nhất, trời xám, tắt cỏ và hiệu ứng ánh sáng, 30 FPS, tắt tiếng, thu nhỏ cửa sổ khi đã vào game. Mở lại: sau số giờ đó, lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ."
           div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
             div.ps-opts-head
               b [id="ps-dc-title"] "Discord"

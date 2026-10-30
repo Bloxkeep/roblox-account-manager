@@ -135,3 +135,5 @@ Các bản phát hành được build từ repo này bằng [Release workflow](.
 ## Giấy phép
 
 [MIT](LICENSE) © 2026 minhhoang0122
+
+Bạn làm bản riêng với tính năng khác? Hãy đặt tên và logo riêng để mọi người phân biệt được với Bloxkeep. Xem [TRADEMARKS.md](TRADEMARKS.md).

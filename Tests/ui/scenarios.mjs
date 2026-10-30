@@ -167,9 +167,9 @@ export default [
   S('settings-search', 'settings=1', async s => { await s.type('rejoin', key('set.search')); }),
   S('whats-new', 'settings=updates', async s => { await s.click(key('wn.link')); }),
   // A game's page from its name under the game box; fresh from an update; before Bloxkeep has seen its quiet hours.
-  S('game-page', '', async s => { await s.click({ css: '.dock-game button.gname' }); await s.wait(400); }),
-  S('game-page-updated', 'gpnew=1', async s => { await s.click({ css: '.dock-game button.gname' }); await s.wait(400); }),
-  S('game-page-no-hours', 'gpempty=1', async s => { await s.click({ css: '.dock-game button.gname' }); await s.wait(400); }),
+  S('game-page', '', async s => { await s.click({ css: '.dock-info .gname-link' }); await s.wait(400); }),
+  S('game-page-updated', 'gpnew=1', async s => { await s.click({ css: '.dock-info .gname-link' }); await s.wait(400); }),
+  S('game-page-no-hours', 'gpempty=1', async s => { await s.click({ css: '.dock-info .gname-link' }); await s.wait(400); }),
   S('feedback', 'settings=updates', async s => { await s.click(key('fb.open')); }),
   S('import-vault', 'vimport=pick'),
   S('import-vault-preview', 'vimport=preview', async s => { await s.wait(1500); }),
@@ -1063,6 +1063,7 @@ export default [
   S('settings-staying-toggles', 'settings=perf', async s => {
     await s.click({ css: 'label:has(#s-antiafk)' });
     await s.click({ css: 'label:has(#s-trim)' });
+    await s.choose({ css: '#s-ramlimit' }, '1024');
     await s.choose({ css: '#s-rejoin' }, 'on');
   }),
   S('settings-launch-controls', 'settings=launch', async s => {

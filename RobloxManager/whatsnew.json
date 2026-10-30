@@ -1,5 +1,104 @@
 [
   {
+    "version": "1.0.13",
+    "date": "2026-10-30",
+    "highlights": [
+      {
+        "icon": "palette",
+        "go": "settings:appearance",
+        "image": "whatsnew/1.0.13-themes.{lang}.webp",
+        "en": [
+          "Your themes",
+          "Save your own themes by name, share them as a file, and put a picture or a video behind Bloxkeep.",
+          "Make one"
+        ],
+        "vi": [
+          "Giao diện của bạn",
+          "Lưu giao diện tự làm theo tên, chia sẻ thành file, và đặt ảnh hoặc video làm nền cho Bloxkeep.",
+          "Tạo ngay"
+        ]
+      },
+      {
+        "icon": "gamepad",
+        "en": [
+          "A page for each game",
+          "Click a game's name under the game box: its players, your accounts in it this week, the hours it's quiet and its wiki."
+        ],
+        "vi": [
+          "Trang riêng cho từng game",
+          "Bấm tên game dưới ô game: số người chơi, các tài khoản của bạn trong tuần, giờ nào vắng và wiki của game."
+        ]
+      },
+      {
+        "icon": "cpu",
+        "go": "settings:perf",
+        "en": [
+          "Fit more accounts",
+          "Minimized and hidden Roblox windows can keep just 1 GB of RAM each, the rest in virtual memory.",
+          "Set it"
+        ],
+        "vi": [
+          "Chạy được nhiều tài khoản hơn",
+          "Cửa sổ Roblox thu nhỏ hoặc đang ẩn chỉ giữ 1 GB RAM mỗi cửa sổ, phần còn lại để ở bộ nhớ ảo.",
+          "Cài đặt"
+        ]
+      },
+      {
+        "icon": "discord",
+        "en": [
+          "See your windows from Discord",
+          "/pc screenshot shows an account's Roblox window, or all of them, only to you."
+        ],
+        "vi": [
+          "Xem màn hình qua Discord",
+          "/pc screenshot gửi ảnh cửa sổ Roblox của một tài khoản, hoặc tất cả, chỉ bạn thấy."
+        ]
+      }
+    ],
+    "new": {
+      "en": [
+        "Ctrl+Alt+M minimizes or opens every Roblox window, Ctrl+Alt+N goes to the next one and Ctrl+Alt+B opens Bloxkeep.",
+        "/pc switch can move all accounts to another server at once.",
+        "Light AFK presets also turn off grass and lighting effects, with a plain grey sky."
+      ],
+      "vi": [
+        "Ctrl+Alt+M thu nhỏ hoặc mở lại mọi cửa sổ Roblox, Ctrl+Alt+N sang cửa sổ kế tiếp, Ctrl+Alt+B mở Bloxkeep.",
+        "/pc switch chuyển được tất cả tài khoản sang server khác cùng lúc.",
+        "Preset Treo máy nhẹ tắt thêm cỏ và hiệu ứng ánh sáng, bầu trời để xám."
+      ]
+    },
+    "improved": {
+      "en": [
+        "The RAM shown for each account counts only its own memory, like Task Manager.",
+        "Lists, time and date boxes and colour boxes now open in Bloxkeep's own colours.",
+        "Linking a PC with /pc link waits for you to press Allow in Bloxkeep.",
+        "New versions are found within minutes of their release.",
+        "Bloxkeep stays responsive with many Roblox windows open.",
+        "Roblox VNG always shows in Open Roblox with, marked when it isn't installed.",
+        "An account held by a Roblox notice now says it has a notice to accept."
+      ],
+      "vi": [
+        "RAM của mỗi tài khoản chỉ tính phần riêng của nó, giống Task Manager.",
+        "Danh sách chọn, ô giờ, ô ngày và ô màu giờ mở theo màu của Bloxkeep.",
+        "Liên kết máy bằng /pc link sẽ chờ bạn bấm Cho phép trong Bloxkeep.",
+        "Có bản mới là Bloxkeep biết trong vài phút.",
+        "Bloxkeep không còn khựng khi mở nhiều cửa sổ Roblox.",
+        "Roblox VNG luôn có trong Mở Roblox bằng, ghi rõ khi chưa cài.",
+        "Tài khoản bị Roblox giữ lại vì thông báo chưa xác nhận giờ được báo rõ."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Fixed a group being given up on when the server it was joining had closed.",
+        "Fixed an account rejoining after you closed its window right after leaving the game."
+      ],
+      "vi": [
+        "Sửa lỗi cả nhóm bị bỏ dở khi server đang vào đã đóng.",
+        "Sửa lỗi tài khoản tự vào lại khi bạn tắt cửa sổ ngay sau khi rời game."
+      ]
+    }
+  },
+  {
     "version": "1.0.12",
     "date": "2026-10-29",
     "highlights": [

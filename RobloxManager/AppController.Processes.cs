@@ -232,6 +232,13 @@ public sealed partial class AppController
             if (final)
                 _robloxSettingsPending = false;
         }
+        // Light AFK's flags: read by the windows they were for, so the file is the person's own again.
+        if (_robloxFlagsPending && _launchCts is null && _pending.Count == 0 && !_rejoining
+            && now - _robloxSettingsWrittenAt > TimeSpan.FromSeconds(10))
+        {
+            RobloxFlags.Restore();
+            _robloxFlagsPending = false;
+        }
         // Every client's log: the ones Bloxkeep opened for their status, all of them for anti-AFK.
         part = Stopwatch.GetTimestamp();
         changed |= _logs.Poll(pids.ToList()) && _running.Count > 0;
@@ -326,10 +333,12 @@ public sealed partial class AppController
             NoteClientMemory(players);
             EmitMetrics(players, windows, memory);
             GuardResources(players, memory, now);
+            LimitRestingRam(players, windows);
         }, "EmitMetrics, GuardResources");
         Step(() => RunDueRejoin(now));
         Step(() => RestartDueClients(now));
         Step(() => RunSignInCheckIfDue(now));
+        Step(() => NoteGameHoursIfDue(now));
         Step(SaveRenewedSignIns); // a cookie Roblox renewed in an answer goes to its account
         Step(() => RefreshRobuxIfDue(now));
         Step(() => TickDiscord(now, players));
@@ -423,14 +432,14 @@ public sealed partial class AppController
     {
         if (!PageAttached || _screenLocked)
             return;
-        var workingSets = players.ToDictionary(p => p.Pid, p => p.WorkingSet);
+        var workingSets = players.ToDictionary(p => p.Pid, p => p.Ram);
         string json = JsonSerializer.Serialize(new
         {
             accounts = _running.Select(r => new { id = r.Key, ramMb = workingSets.GetValueOrDefault(r.Value.Pid) / MB }),
             robloxCount = players.Count,
             // The monitor tab's tiles: clients with a visible window (see MonitorClients), from this tick's window pass.
             monitorCount = players.Count(p => windows.TryGetValue(p.Pid, out var list) && list.Count > 0),
-            totalMb = players.Sum(p => p.WorkingSet) / MB,
+            totalMb = players.Sum(p => p.Ram) / MB,
             systemMb = memory.TotalMb,
             availableMb = memory.AvailableMb / 128 * 128, // coarse, so idle jitter doesn't repaint the page
             usedPct = memory.LoadPercent,
@@ -522,5 +531,60 @@ public sealed partial class AppController
             // Nothing the person can do about it: noted, not shown.
             Log.Note("Save RAM: Windows refused to lower a Roblox window's memory priority; it runs as usual.");
         }
+    }
+
+    /// <summary>The choices of Settings › Staying in game › RAM limit for resting windows, in MB (0 = off).</summary>
+    internal static readonly int[] RamLimitChoices = [0, 1024, 1536, 2048];
+
+    /// <summary>Clients given a RAM limit, and the limit (-1: one found already limited, by a Bloxkeep that closed before lifting it).</summary>
+    readonly Dictionary<int, long> _ramLimited = new();
+    bool _ramLimitsAdopted;
+
+    /// <summary>
+    /// RAM limit for resting windows: a Roblox window that isn't drawing (minimized, or hidden by Bloxkeep) keeps at most
+    /// the chosen RAM, the rest waiting in virtual memory, so more accounts fit on one PC (a resting game uses little of
+    /// what it holds: about 1 of its 3 GB, measured 2026-10-29). Lifted once the window shows, comes to the front, or the
+    /// option is off. Not for one in view: it still draws, and limited it took twice the CPU.
+    /// </summary>
+    void LimitRestingRam(List<RobloxProcesses.PlayerProcess> players, Dictionary<int, List<IntPtr>> windows)
+    {
+        foreach (int gone in _ramLimited.Keys.Where(pid => players.All(p => p.Pid != pid)).ToList())
+            _ramLimited.Remove(gone);
+        if (!_ramLimitsAdopted)
+        {
+            _ramLimitsAdopted = true;
+            foreach (var p in players.Where(p => RobloxProcesses.HasRamLimit(p.Pid)))
+                _ramLimited[p.Pid] = -1;
+        }
+        // A window shown unseen for a moment (anti-AFK's nudge, /pc screenshot) is left as it is meanwhile.
+        if (_nudging || _picturing)
+            return;
+        long limit = _vault!.Data.Settings.RamLimitMb;
+        int front = RobloxProcesses.ForegroundPid();
+        foreach (var p in players)
+        {
+            var window = windows.TryGetValue(p.Pid, out var list) ? RobloxProcesses.MainWindowOf(list) : IntPtr.Zero;
+            bool resting = limit > 0 && p.Pid != front && window != IntPtr.Zero
+                           && (RobloxProcesses.IsMinimised(window) || RobloxProcesses.IsHidden(window));
+            bool limited = _ramLimited.TryGetValue(p.Pid, out long now);
+            if (resting && (!limited || now != limit))
+            {
+                if (RobloxProcesses.LimitRam(p.Pid, limit))
+                    _ramLimited[p.Pid] = limit;
+            }
+            else if (!resting && limited)
+            {
+                RobloxProcesses.LimitRam(p.Pid, null);
+                _ramLimited.Remove(p.Pid);
+            }
+        }
+    }
+
+    /// <summary>Every client's RAM limit lifted (Bloxkeep closing: none is left limited without it).</summary>
+    void LiftRamLimits()
+    {
+        foreach (int pid in _ramLimited.Keys)
+            RobloxProcesses.LimitRam(pid, null);
+        _ramLimited.Clear();
     }
 }

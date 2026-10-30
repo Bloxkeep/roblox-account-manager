@@ -1,5 +1,5 @@
 // Settings › Staying in game: auto-rejoin for every account, Anti-AFK, the daily sign-in check; then RAM and CPU (the low-RAM
-// warning, saving RAM on background windows, fast cores for the played window). Tray and GPU drawing: Settings › Bloxkeep.
+// warning, saving RAM on background windows, the RAM limit for resting ones, fast cores for the played window). Tray and GPU drawing: Settings › Bloxkeep.
 import { useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
@@ -17,6 +17,7 @@ export function PerfPage({ title }: { title: string }) {
   const [daily, setDaily] = useLocal(app.dailySignInCheck !== false);
   const [memWarn, setMemWarn] = useLocal(!!st.memoryWarnings);
   const [trim, setTrim] = useLocal(!!st.trimBackground);
+  const [ramLimit, setRamLimit] = useLocal(String(st.ramLimitMb || 0));
   const [cores, setCores] = useLocal(!!st.splitCores);
   // Two kinds of cores (Intel 12th gen and later…): background windows go to the efficiency ones; otherwise only the
   // power-saving mode is left to give.
@@ -54,6 +55,17 @@ export function PerfPage({ title }: { title: string }) {
     <Group id="memory" title={t('set.g.memory')}>
       <Row title={t('set.memWarn')}><Switch id="s-memwarn" label={t('set.memWarn')} checked={memWarn} onChange={setting('memoryWarnings', setMemWarn)} /></Row>
       <Row title={t('set.trim')} desc={t('set.trimDesc')}><Switch id="s-trim" label={t('set.trim')} checked={trim} onChange={setting('trimBackground', setTrim)} /></Row>
+      <Row title={t('set.ramLimit')} desc={t('set.ramLimitDesc')}>
+        <select className="select" id="s-ramlimit" aria-label={t('set.ramLimit')} value={ramLimit} onChange={e => {
+          setRamLimit(e.target.value);
+          call('setSettings', { ramLimitMb: Number(e.target.value) });
+        }}>
+          <option value="0">{t('set.ramLimitOff')}</option>
+          <option value="1024">1 GB</option>
+          <option value="1536">1.5 GB</option>
+          <option value="2048">2 GB</option>
+        </select>
+      </Row>
       <Row title={t('set.cores')} desc={cpu.hybrid ? t('set.coresDesc', { e: cpu.efficient || 0 }) : t('set.coresDescOne')}>
         <Switch id="s-cores" label={t('set.cores')} checked={cores} onChange={setting('splitCores', setCores)} /></Row>
     </Group>

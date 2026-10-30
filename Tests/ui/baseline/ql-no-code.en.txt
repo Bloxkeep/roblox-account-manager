@@ -351,7 +351,7 @@ html [data-theme="dark" lang="en"]
               svg.i #1u22jvi
               input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
             div.dock-info [id="dock-info" aria-live="polite"]
-              span.gname [title="Blox Fruits"] "Blox Fruits"
+              span.gname.gname-link [role="button" title="Open this game’s page" tabindex="0"] "Blox Fruits"
               span.players "412,873 playing"
               button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
                 svg.i #1c3gvph
@@ -783,7 +783,7 @@ html [data-theme="dark" lang="en"]
               svg.i #1u22jvi
               input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
             div.dock-info [id="dock-info" aria-live="polite"]
-              span.gname [title="Blox Fruits"] "Blox Fruits"
+              span.gname.gname-link [role="button" title="Open this game’s page" tabindex="0"] "Blox Fruits"
               span.players "412,873 playing"
               button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
                 svg.i #1c3gvph

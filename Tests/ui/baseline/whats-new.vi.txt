@@ -148,7 +148,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Phím tắt"
-                        div.d "Ctrl+Alt+H ẩn hoặc hiện mọi cửa sổ Roblox, Ctrl+Alt+A xếp cửa sổ, dùng được trong mọi app."
+                        div.d "Ctrl+Alt+H ẩn hoặc hiện mọi cửa sổ Roblox, Ctrl+Alt+M thu nhỏ hoặc mở lại tất cả, Ctrl+Alt+N sang cửa sổ kế tiếp, Ctrl+Alt+A xếp cửa sổ, Ctrl+Alt+B mở Bloxkeep, dùng được trong mọi app."
                       div.ctl
                         label.switch
                           input [id="s-hotkeys" type="checkbox" aria-label="Phím tắt" checked=true]
@@ -211,53 +211,54 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.12 · 29 tháng 10, 2026"
+              small "Bloxkeep 1.0.13 · 30 tháng 10, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
-          article.wide.wn-feat
+          article.wn-feat
             div.wn-shot
-              img [alt="" style="width:735px" src="whatsnew/1.0.12-discord.vi.webp"]
+              img [alt="" style="width:577px" src="whatsnew/1.0.13-themes.vi.webp"]
             div.wn-feat-text
-              h3 "Điều khiển từ Discord"
-              p "Gõ /pc trong Discord để xem tài khoản nào đang trong game, chạy preset, đóng cửa sổ hay đổi server trên máy, ở đâu cũng được."
-              button.wn-go [type="button" FOCUSED] "Bật ngay"
+              h3 "Giao diện của bạn"
+              p "Lưu giao diện tự làm theo tên, chia sẻ thành file, và đặt ảnh hoặc video làm nền cho Bloxkeep."
+              button.wn-go [type="button" FOCUSED] "Tạo ngay"
                 svg.i #1g7f83q
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:307px" src="whatsnew/1.0.12-hide.vi.webp"]
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "Ẩn cửa sổ Roblox"
-              p "Ẩn cửa sổ mà game vẫn chạy, từ menu tài khoản hoặc bằng Ctrl+Alt+H. Ctrl+Alt+A để xếp cửa sổ."
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:304px" src="whatsnew/1.0.12-botcheck.vi.webp"]
+              h3 "Trang riêng cho từng game"
+              p "Bấm tên game dưới ô game: số người chơi, các tài khoản của bạn trong tuần, giờ nào vắng và wiki của game."
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "Xác minh không phải bot"
-              p "Khi Roblox bắt tài khoản đang vào game xác minh không phải bot, thẻ tài khoản sẽ báo và nút Xác minh mở bước kiểm tra trong cửa sổ của Bloxkeep."
+              h3 "Chạy được nhiều tài khoản hơn"
+              p "Cửa sổ Roblox thu nhỏ hoặc đang ẩn chỉ giữ 1 GB RAM mỗi cửa sổ, phần còn lại để ở bộ nhớ ảo."
+              button.wn-go [type="button"] "Cài đặt"
+                svg.i #1g7f83q
+          article.plain.wn-feat
+            div.wn-feat-text
+              h3 "Xem màn hình qua Discord"
+              p "/pc screenshot gửi ảnh cửa sổ Roblox của một tài khoản, hoặc tất cả, chỉ bạn thấy."
         section.new.wn-group
           h4.wn-kind "Mới"
           ul.wn-notes
-            li "Sang server khác ngay từ menu tài khoản."
-            li "Có thể chọn Roblox VNG trong Cài đặt › Khởi chạy. VNG luôn là lựa chọn cuối, chỉ dùng trước khi bạn tự chọn."
-            li "Khi Roblox không cho một tài khoản đăng nhập, thông báo lỗi có nút mở roblox.com của tài khoản đó, đã đăng nhập sẵn, để xem lý do."
+            li "Ctrl+Alt+M thu nhỏ hoặc mở lại mọi cửa sổ Roblox, Ctrl+Alt+N sang cửa sổ kế tiếp, Ctrl+Alt+B mở Bloxkeep."
+            li "/pc switch chuyển được tất cả tài khoản sang server khác cùng lúc."
+            li "Preset Treo máy nhẹ tắt thêm cỏ và hiệu ứng ánh sáng, bầu trời để xám."
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "Danh sách ghi rõ Online trên web hoặc app Roblox, thay vì chỉ Online."
-            li "Không báo những việc bạn không làm gì được hoặc đã thấy rồi."
-              b "Bớt thông báo"
-            li "Hộp thoại mở ra từ đầu."
-            li "Thông báo ở góc nằm trên thanh Vào game, không đè lên mép của nó nữa."
-            li "Kiểm tra đăng nhập tách riêng tài khoản bị Roblox từ chối với lỗi mạng."
+            li "RAM của mỗi tài khoản chỉ tính phần riêng của nó, giống Task Manager."
+            li "Danh sách chọn, ô giờ, ô ngày và ô màu giờ mở theo màu của Bloxkeep."
+            li "Liên kết máy bằng /pc link sẽ chờ bạn bấm Cho phép trong Bloxkeep."
+            li "Có bản mới là Bloxkeep biết trong vài phút."
+            li "Bloxkeep không còn khựng khi mở nhiều cửa sổ Roblox."
+            li "Roblox VNG luôn có trong Mở Roblox bằng, ghi rõ khi chưa cài."
+            li "Tài khoản bị Roblox giữ lại vì thông báo chưa xác nhận giờ được báo rõ."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "Sửa lỗi báo chưa cài Roblox trong khi đang có cửa sổ Roblox mở."
-            li "Sửa lỗi báo Roblox cũ khi Roblox đưa máy vào bản thử nghiệm."
-            li "Sửa lỗi chống AFK dừng ở mọi cửa sổ khi một cửa sổ đang chờ xác minh bot."
-            li "Sửa lỗi cửa sổ đã ẩn và thu nhỏ hiện lại trên thanh tác vụ sau khi chống AFK."
+            li "Sửa lỗi cả nhóm bị bỏ dở khi server đang vào đã đóng."
+            li "Sửa lỗi tài khoản tự vào lại khi bạn tắt cửa sổ ngay sau khi rời game."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q

@@ -11,6 +11,10 @@ public sealed record RobloxUser(long Id, string Name, string DisplayName);
 
 public sealed record GameInfo(long PlaceId, long UniverseId, string Name, string Creator, long Playing, string? IconUrl);
 
+/// <summary>A game's page (RobloxApi.GetGameDetailsAsync): 0 / null for what Roblox didn't say.</summary>
+public sealed record GameDetailsInfo(string Name, string Creator, string? Description, string? Genre, long Playing, long Visits,
+    long Favorites, int? LikesPercent, DateTime? Created, DateTime? Updated, long RootPlaceId);
+
 public sealed record GameSummary(long PlaceId, long UniverseId, string Name, long Playing);
 
 /// <summary>Which Roblox an account signs in to. Roblox VNG (Vietnam) serves the same API under robloxapp.vnggames.com,

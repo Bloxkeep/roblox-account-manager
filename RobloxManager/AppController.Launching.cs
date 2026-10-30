@@ -661,6 +661,20 @@ public sealed partial class AppController
                 _robloxSettingsWrittenAt = DateTime.UtcNow;
             }
         }
+        // Light AFK's leanest drawing (Fast Flags) for this window only: any other gets the person's own file back first.
+        if (afk)
+        {
+            if (RobloxFlags.Apply(RobloxInstalls.ClientFor(launchVia, settings.CustomLauncher)))
+            {
+                _robloxFlagsPending = true;
+                _robloxSettingsWrittenAt = DateTime.UtcNow;
+            }
+        }
+        else if (_robloxFlagsPending)
+        {
+            RobloxFlags.Restore();
+            _robloxFlagsPending = false;
+        }
         string tracker = RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);

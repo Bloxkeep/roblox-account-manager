@@ -1,6 +1,7 @@
 // A game's page (opened from its name under the game box): Roblox's own figures for it, when it was last updated
 // (a fresh update says so: old servers may be shut down), your accounts in it over the last 7 days, the hours it is
-// quiet (from the server lists Bloxkeep has seen), and its description. Buttons: play it, its wiki, its roblox.com page.
+// quiet (the player counts Bloxkeep notes every half hour: GameHours.cs), and its description. Buttons: its wiki, its
+// roblox.com page. Its figures come from the app (AppController.GamePage.cs).
 import { useState } from 'react';
 import { Icon, useHost } from './host';
 
@@ -48,8 +49,9 @@ export function GamePage({ game }: { game: GameDetails }) {
       <span>{t('gp.fresh', { time: time(game.updated!), ago: ago(game.updated!) })}</span></div> : null}
 
     <div className="gp-stats">
-      <Stat label={t('gp.playing')} value={fmtNum(game.playing)} />
-      <Stat label={t('gp.visits')} value={big(game.visits)} />
+      {/* Roblox shows these only to a signed-in account: unknown (–) without one, not 0. */}
+      <Stat label={t('gp.playing')} value={game.playing ? fmtNum(game.playing) : '–'} />
+      <Stat label={t('gp.visits')} value={game.visits ? big(game.visits) : '–'} />
       <Stat label={t('gp.likes')} value={game.likes != null ? `${game.likes}%` : '–'} />
       <Stat label={t('gp.updated')} value={game.updated ? ago(game.updated) : '–'} />
     </div>

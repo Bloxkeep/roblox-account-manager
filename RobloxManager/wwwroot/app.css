@@ -2386,8 +2386,10 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .gp-axis { display: flex; justify-content: space-between; margin-top: -8px; color: var(--muted); font-size: 11.5px; }
 .gp-note, .gp-empty { margin: 0; color: var(--muted); font-size: 12.5px; }
 .gp-desc p { margin: 6px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.55; white-space: pre-line; }
-.dock-game button.gname { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-weight: 650; white-space: nowrap; text-decoration: underline dotted transparent; text-underline-offset: 3px; cursor: pointer; }
-.dock-game button.gname:hover { text-decoration-color: currentColor; }
+/* The game's name when it opens the game's page (Accounts.tsx): the plain name's look, underlined on hover. */
+.dock-info .gname-link { text-decoration: underline dotted transparent; text-underline-offset: 3px; cursor: pointer; border-radius: 4px; }
+.dock-info .gname-link:hover { text-decoration-color: currentColor; }
+.dock-info .gname-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* Bloxkeep's colour picker (ui/src/ColorField.tsx). */
 .cf { display: grid; gap: 10px; width: 232px; padding: 4px; }
 .cf-ready { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }

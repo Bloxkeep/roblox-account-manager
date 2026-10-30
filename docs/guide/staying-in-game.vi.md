@@ -90,6 +90,19 @@ Cửa sổ ở phía trước được trả lại mức ưu tiên bình thườ
 
 Game mà RAM cứ tăng dần sau nhiều giờ chỉ trả lại RAM khi Roblox mở lại: dùng **Mở lại Roblox** của Preset (xem [Preset](presets.vi.md)).
 
+## Giới hạn RAM cửa sổ treo
+
+**Cài đặt › Treo game › Giới hạn RAM cửa sổ treo**: **Không giới hạn** (mặc định), **1 GB**, **1.5 GB** hoặc **2 GB**. Cửa sổ Roblox thu nhỏ, hoặc bị Bloxkeep ẩn, chỉ giữ tối đa chừng đó trong RAM; phần còn lại của game nằm ở bộ nhớ ảo của Windows. Game để treo dùng rất ít trong số bộ nhớ nó giữ, nên một máy chạy được nhiều tài khoản hơn.
+
+| | |
+|---|---|
+| Tác dụng | Trong một lần thử, game giữ khoảng 3 GB vẫn chạy bình thường với 1 GB trong RAM. |
+| Khi nào gỡ | Ngay khi bạn mở cửa sổ, đưa nó lên trước, chọn **Không giới hạn**, hoặc tắt Bloxkeep. |
+| Cửa sổ đang hiện | Không bị giới hạn, kể cả khi bị cửa sổ khác che: nó vẫn vẽ hình, giới hạn thì tốn CPU hơn. |
+| Cần gì | Bộ nhớ ảo đủ lớn, tốt nhất trên SSD. Bloxkeep sẽ báo khi bộ nhớ ảo sắp đầy. |
+
+Preset Light AFK tự thu nhỏ cửa sổ, nên cũng được giới hạn.
+
 ## Nhường nhân mạnh cho cửa sổ đang chơi
 
 **Cài đặt › Treo game › Nhường nhân mạnh cho cửa sổ đang chơi** (tắt sẵn). Phần lớn CPU đời mới có hai loại nhân: nhân mạnh và nhân tiết kiệm (Intel đời 12 trở lên, nhiều laptop đời mới). Khi bật, mọi cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows, giống trong Task Manager: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, chỉ dùng nhân mạnh khi có nhân đang rảnh, nên không cửa sổ nào bị thiếu CPU. Bấm sang cửa sổ Roblox khác thì cửa sổ đó chạy hết tốc lực ngay.

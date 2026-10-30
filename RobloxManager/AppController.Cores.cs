@@ -59,6 +59,9 @@ public sealed partial class AppController
     {
         if (_lowMemoryPriority.Remove(front))
             RobloxProcesses.SetMemoryPriority(front, background: false);
+        // Its RAM limit too (not for anti-AFK's moment in front: limited again right after, for nothing).
+        if (!_nudging && !_picturing && _ramLimited.Remove(front))
+            RobloxProcesses.LimitRam(front, null);
     }
 
     void SplitCores(IReadOnlyCollection<int> pids)

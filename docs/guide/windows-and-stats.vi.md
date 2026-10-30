@@ -46,7 +46,15 @@ Một cửa sổ nhỏ luôn nằm trên cùng. Mở bằng nút **Cửa sổ nh
 
 ## Ẩn cửa sổ Roblox
 
-Ẩn cửa sổ Roblox mà game vẫn chạy: bấm chuột phải vào tài khoản (hoặc **⋮**) › **Ẩn cửa sổ Roblox**; **Hiện cửa sổ Roblox** để hiện lại. **Ctrl+Alt+H** ẩn hoặc hiện mọi cửa sổ Roblox, dùng được trong mọi app, còn **Ctrl+Alt+A** để xếp cửa sổ (tắt phím tắt ở **Cài đặt › Bloxkeep**).
+Ẩn cửa sổ Roblox mà game vẫn chạy: bấm chuột phải vào tài khoản (hoặc **⋮**) › **Ẩn cửa sổ Roblox**; **Hiện cửa sổ Roblox** để hiện lại. Dùng được trong mọi app (tắt ở **Cài đặt › Bloxkeep**):
+
+| Phím | Tác dụng |
+|---|---|
+| **Ctrl+Alt+H** | Ẩn mọi cửa sổ Roblox, hoặc hiện lại. |
+| **Ctrl+Alt+M** | Thu nhỏ mọi cửa sổ Roblox, hoặc mở lại tất cả. Cửa sổ đang ẩn vẫn ẩn. |
+| **Ctrl+Alt+N** | Đưa cửa sổ của tài khoản kế tiếp lên trước, theo thứ tự trong danh sách. |
+| **Ctrl+Alt+A** | Xếp cửa sổ. |
+| **Ctrl+Alt+B** | Mở Bloxkeep, kể cả khi đang ở khay. |
 
 <img src="../screenshots/vi/hide-window.png" width="420" alt="Menu tài khoản của một tài khoản đang chơi, có Ẩn cửa sổ Roblox cạnh Đóng Roblox, Kiểm tra đăng nhập và Tự vào lại">
 

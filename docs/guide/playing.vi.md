@@ -47,6 +47,19 @@ Dưới ô game là tên game, người làm game và số người đang chơi.
 > [!TIP]
 > Muốn đưa nhiều tài khoản vào chung một server, chọn server ở **Chọn server** (**Dùng**), hoặc dùng **Vào cùng server** trên một tài khoản đang ở đó. Sau đó chọn các tài khoản còn lại rồi bấm **Vào game**.
 
+## Trang của game
+
+Bấm vào tên game dưới ô game để mở trang của game đó:
+
+| Phần | Hiện gì |
+|---|---|
+| Đầu trang | Ảnh, người làm và thể loại game. **Wiki** tìm wiki của game trên mạng; nút mũi tên mở game trên roblox.com. |
+| Tin cập nhật | Khi game vừa cập nhật trong 24 giờ qua: Roblox có thể đang tắt dần server cũ, tài khoản nào rớt lúc này sẽ vào lại server mới. |
+| Số liệu | Đang chơi, lượt chơi, lượt thích và lần cập nhật gần nhất. Roblox chỉ cho xem số người chơi và lượt chơi khi đã đăng nhập, nên cần có tài khoản trong Bloxkeep. |
+| Tài khoản của bạn ở game này | Từng tài khoản đã chơi game trong 7 ngày qua: chơi bao lâu, bị kick (bởi game, hoặc AFK vì treo lâu), rớt mạng, và giờ có đang chơi hay bị cấm game không. |
+| Giờ nào vắng | Số người chơi theo từng giờ trong ngày. Khi Bloxkeep đang mở, cứ nửa tiếng nó ghi số người chơi các game bạn dùng, một hai ngày là đủ; ba giờ vắng nhất được ghi ra, hợp để hẹn giờ preset. |
+| Giới thiệu game | Mô tả của game, bấm để xem. |
+
 ## Server
 
 Nút **Chọn server** mở danh sách server của game. Nút bị mờ khi ô game chưa có game, và với server riêng.

@@ -141,3 +141,5 @@ Releases are built from this repository by the [Release workflow](.github/workfl
 ## License
 
 [MIT](LICENSE) © 2026 minhhoang0122
+
+Made your own version with other features? Please give it its own name and logo, so people can tell it from Bloxkeep. See [TRADEMARKS.md](TRADEMARKS.md).

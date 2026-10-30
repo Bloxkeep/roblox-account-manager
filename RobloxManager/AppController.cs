@@ -137,6 +137,8 @@ public sealed partial class AppController : IDisposable
     readonly HashSet<int> _lowMemoryPriority = new();
     /// <summary>The Roblox settings file holds values Bloxkeep wrote; the person's own come back when Roblox is closed.</summary>
     bool _robloxSettingsPending = RobloxGameSettings.HasBaseline;
+    /// <summary>Light AFK's Fast Flags are in a client's file (or were, when Bloxkeep closed before putting it back).</summary>
+    bool _robloxFlagsPending = RobloxFlags.Pending;
     DateTime _robloxSettingsWrittenAt;
     bool _nudging;
     readonly HashSet<Guid> _userClosed = new();
@@ -450,6 +452,9 @@ public sealed partial class AppController : IDisposable
         "gameIcons" => GameIconsAsync(a),
         "gameLists" => GameListsAsync(),
         "servers" => ServersAsync(Long(a, "placeId"), Bool(a, "fewest"), OptStr(a, "cursor")),
+        "gameDetails" => GameDetailsAsync(Long(a, "placeId")),
+        "openGameWiki" => Done(OpenGameWiki(Str(a, "name"))),
+        "openGamePage" => Done(OpenGamePage(Long(a, "placeId"))),
         "friendServers" => FriendServersAsync(Long(a, "placeId"), Ids(a)),
         "privateServers" => PrivateServersAsync(Long(a, "placeId"), Ids(a)),
         "pinGame" => Done(TogglePin(Long(a, "placeId"), Long(a, "universeId"), Str(a, "name"))),

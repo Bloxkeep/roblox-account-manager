@@ -82,6 +82,11 @@ public sealed class AppSettings
     public int AutoLockMinutes { get; set; }
     public bool MemoryWarnings { get; set; } = true;
     public bool TrimBackground { get; set; }
+    /// <summary>
+    /// The most RAM a minimized or hidden Roblox window keeps, in MB; the rest waits in virtual memory (0 = no limit,
+    /// the default). See AppController.LimitRestingRam.
+    /// </summary>
+    public int RamLimitMb { get; set; }
     /// <summary>Background Roblox windows run in Windows' efficiency mode (below-normal priority, efficiency cores); the one
     /// in front at full speed (AppController.Cores.cs). Off by default.</summary>
     public bool SplitCores { get; set; }

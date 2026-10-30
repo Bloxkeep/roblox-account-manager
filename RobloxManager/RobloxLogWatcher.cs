@@ -194,8 +194,19 @@ public sealed class RobloxLogWatcher
         if (_tails.GetValueOrDefault(pid) is not { } tail)
             return null;
         Read(tail);
-        return tail.State;
+        return Ended(tail);
     }
+
+    /// <summary>
+    /// A client's state once it has ended: a leave logged and no game joined since is a leave, even without the
+    /// disconnect line that normally completes it. The owner's PC, 2026-10-29: back to Roblox's home from a game
+    /// (leaveUGCGameInternal) and the window closed with X 3 s later, before Roblox logged that line; the state stayed
+    /// "ingame" and auto-rejoin opened the account again as if it had dropped.
+    /// </summary>
+    static ClientState? Ended(Tail tail) =>
+        tail.Leaving && tail.State is { Status: "ingame" or "joining" } state
+            ? state with { Status = "left", Reason = null, TeleportStarted = null }
+            : tail.State;
 
     /// <summary>True when a state changed.</summary>
     public bool Poll(IReadOnlyCollection<int> pids)

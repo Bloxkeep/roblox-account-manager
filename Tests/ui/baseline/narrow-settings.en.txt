@@ -122,6 +122,16 @@ html [data-theme="dark" lang="en"]
                           span
                     div.set-row
                       div
+                        div.t "RAM limit for resting windows"
+                        div.d "Minimized and hidden Roblox windows keep at most this much in RAM; the rest waits in virtual memory, so more accounts fit. Open a window and it’s back to normal."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="RAM limit for resting windows" value="0"]
+                          option [value="0"] "No limit"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
                         div.t "Fast cores for the window you play"
                         div.d "Roblox windows in the background run in Windows’ efficiency mode, as in Task Manager: they give way to the window you’re playing and lean on your CPU’s 16 efficiency cores, using a fast one only when it’s free. The window you click runs at full speed at once. Smoother with many accounts open, and a cooler laptop."
                       div.ctl

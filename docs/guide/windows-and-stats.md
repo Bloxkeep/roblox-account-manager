@@ -46,7 +46,15 @@ A small window that stays on top. Open it from **Mini window** in the sidebar, t
 
 ## Hide Roblox windows
 
-Hide a Roblox window while its game keeps running: right-click the account (or **⋮**) › **Hide Roblox window**; **Show Roblox window** brings it back. **Ctrl+Alt+H** hides or shows every Roblox window from any app, and **Ctrl+Alt+A** arranges them (turn the hotkeys off in **Settings › Bloxkeep**).
+Hide a Roblox window while its game keeps running: right-click the account (or **⋮**) › **Hide Roblox window**; **Show Roblox window** brings it back. From any app (turn them off in **Settings › Bloxkeep**):
+
+| Keys | What they do |
+|---|---|
+| **Ctrl+Alt+H** | Hides every Roblox window, or shows them again. |
+| **Ctrl+Alt+M** | Minimizes every Roblox window, or opens them all again. Hidden ones stay hidden. |
+| **Ctrl+Alt+N** | Brings the next account's window to the front, in the list's order. |
+| **Ctrl+Alt+A** | Arranges the windows. |
+| **Ctrl+Alt+B** | Opens Bloxkeep, from the tray too. |
 
 <img src="../screenshots/hide-window.png" width="420" alt="The account menu of a playing account with Hide Roblox window among Close Roblox, Check sign-in and Auto-rejoin">
 

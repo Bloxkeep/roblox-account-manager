@@ -149,6 +149,18 @@ static class RejoinSuite
             c.Check("a leave nobody else made is still the person's", own is { Status: "left" }, own);
             c.Check("…and isn't rejoined", Harness.Invoke(app, "QueueRejoin", account.Id, launch, own) is false && queue.Count == 0);
 
+            // In the game, back to Roblox's home and the window closed with X before Roblox logged the disconnect (the
+            // owner's PC, 2026-10-29): a leave all the same, not a drop.
+            NewWindow();
+            Write(Line(DateTime.UtcNow, Launch));
+            Write(Line(DateTime.UtcNow, Join));
+            Write(Line(DateTime.UtcNow, "[FLog::Network] serverId: 128.116.53.33|51451"));
+            Poll(s => s.Status == "ingame");
+            Write(Line(DateTime.UtcNow, Leave));
+            var closedWithX = Harness.Invoke(app, "EndedState", me) as RobloxLogWatcher.ClientState;
+            c.Check("in a game, a leave and the window closed before its disconnect line: left (fails on the old code)", closedWithX is { Status: "left" }, closedWithX);
+            c.Check("…and isn't rejoined", Harness.Invoke(app, "QueueRejoin", account.Id, launch, closedWithX) is false && queue.Count == 0);
+
             // Sent to the game (Roblox picks the server), and none came.
             Run(new GameTarget(107778070777162));
             NewWindow();

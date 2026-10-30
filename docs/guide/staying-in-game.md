@@ -90,6 +90,19 @@ The window in front gets its normal priority back. If Windows refuses for a wind
 
 A game whose RAM keeps growing over hours only gets it back when Roblox restarts: use a preset's **Restart Roblox** (see [Presets](presets.md)).
 
+## RAM limit for resting windows
+
+**Settings › Staying in game › RAM limit for resting windows**: **No limit** (the default), **1 GB**, **1.5 GB** or **2 GB**. A Roblox window that is minimized, or hidden by Bloxkeep, keeps at most that much in RAM; the rest of what the game holds waits in Windows' virtual memory. A game left to idle uses little of what it holds, so more accounts fit on one PC.
+
+| | |
+|---|---|
+| What it changes | In one test, a game holding about 3 GB ran on with 1 GB in RAM. |
+| When it's lifted | As soon as you open the window, bring it to the front, choose **No limit**, or close Bloxkeep. |
+| Windows in view | Not limited, even behind other windows: they still draw, and limited they use more CPU. |
+| What it needs | Enough virtual memory, best on an SSD. Bloxkeep warns when virtual memory is almost full. |
+
+Light AFK presets minimize their windows, so they get the limit too.
+
 ## Fast cores for the window you play
 
 **Settings › Staying in game › Fast cores for the window you play** (off by default). Most recent CPUs have two kinds of cores: fast ones and efficiency ones (Intel 12th gen and later, many recent laptops). With this on, every Roblox window in the background runs in Windows' efficiency mode, the same as Task Manager's: it gives way to the window you're playing and runs mostly on the efficiency cores, using a fast core only when one is free, so no window is left without CPU. Click another Roblox window and it runs at full speed at once.

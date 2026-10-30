@@ -189,6 +189,59 @@ public static partial class RobloxApi
         return result;
     }
 
+    /// <summary>
+    /// A game's page (AppController.GamePage.cs): its name, maker and description from develop.roblox.com (shown to
+    /// anyone), its players, visits, favourites, genre and last update from games.roblox.com (blank without a cookie
+    /// since 2026; the universe's own "updated" is used then), and its likes from the votes (shown to anyone). Checked
+    /// against Blox Fruits on 2026-10-29. Null when Roblox doesn't know the universe.
+    /// </summary>
+    public static async Task<GameDetailsInfo?> GetGameDetailsAsync(long universeId, string? cookie, CancellationToken ct = default)
+    {
+        var universe = GetJsonAsync($"https://develop.roblox.com/v1/universes/multiget?ids={universeId}", ct);
+        var game = GetJsonAsync($"https://games.roblox.com/v1/games?universeIds={universeId}", ct, cookie);
+        var votes = GetJsonAsync($"https://games.roblox.com/v1/games/votes?universeIds={universeId}", ct);
+        try
+        {
+            await Task.WhenAll(universe, game, votes);
+        }
+        catch (HttpRequestException) when (universe.IsCompletedSuccessfully)
+        {
+            // Only the universe is needed; the figures are shown as unknown.
+        }
+        static JsonElement? First(Task<JsonDocument?> doc) =>
+            doc.IsCompletedSuccessfully && doc.Result?.RootElement is { } root && root.TryGetProperty("data", out var data)
+            && data.ValueKind == JsonValueKind.Array && data.GetArrayLength() > 0 ? data[0] : null;
+        static string? Text(JsonElement? e, string name) =>
+            e is { } o && o.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String && v.GetString() is { Length: > 0 } s ? s : null;
+        static long Num(JsonElement? e, string name) =>
+            e is { } o && o.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
+        static DateTime? When(JsonElement? e, string name) =>
+            Text(e, name) is { } s && DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var d)
+            && d.Year > 2000 ? d : null;
+        try
+        {
+            var u = First(universe);
+            if (u is null || Text(u, "name") is not { } name)
+                return null;
+            // Without a cookie games.roblox.com answers with id 0 and blanks for everything.
+            var g = First(game) is { } gg && Num(gg, "id") == universeId ? gg : (JsonElement?)null;
+            var v = First(votes);
+            long up = Num(v, "upVotes"), down = Num(v, "downVotes");
+            return new GameDetailsInfo(name, Text(u, "creatorName") ?? "", Text(u, "description"), Text(g, "genre"),
+                Num(g, "playing"), Num(g, "visits"), Num(g, "favoritedCount"),
+                up + down > 0 ? (int)Math.Round(100.0 * up / (up + down)) : null,
+                When(u, "created"), When(g, "updated") ?? When(u, "updated"), Num(u, "rootPlaceId"));
+        }
+        finally
+        {
+            foreach (var doc in new[] { universe, game, votes })
+            {
+                if (doc.IsCompletedSuccessfully)
+                    doc.Result?.Dispose();
+            }
+        }
+    }
+
     /// <summary>Roblox's own game search, the same one the website's search box uses.</summary>
     public static async Task<List<GameSummary>> SearchGamesAsync(string query, CancellationToken ct = default)
     {

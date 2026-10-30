@@ -351,7 +351,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #1u22jvi
               input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
             div.dock-info [id="dock-info" aria-live="polite"]
-              button.gname [title="Mở trang của game này"] "Blox Fruits"
+              span.gname.gname-link [role="button" title="Mở trang của game này" tabindex="0"] "Blox Fruits"
               span.players "412.873 đang chơi"
               button.srv-open.srv-save [title="Lưu link server riêng hoặc code game yêu cầu để vào lại từ tab Đã lưu." aria-label="Lưu server"]
                 svg.i #1c3gvph
@@ -463,7 +463,7 @@ html [data-theme="dark" lang="vi"]
               span [role="cell"] "0"
               span.gp-now [role="cell"] "2 giờ trước"
           h4.gp-h "Giờ nào vắng"
-            small "theo danh sách server Bloxkeep đã xem"
+            small "số người chơi theo giờ Bloxkeep đã ghi"
           div.gp-hours [role="img" aria-label="Vắng nhất từ 3:00 đến 6:00, hợp để hẹn giờ preset."]
             span [title="0h: 126.000" style="opacity:0.426"]
             span [title="1h: 92.400" style="opacity:0.3604"]
