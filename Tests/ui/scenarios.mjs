@@ -507,6 +507,18 @@ export default [
     await s.click({ css: '.overlay [data-realm=vng]' });
     await s.wait(900);
   }),
+  // On the Roblox VNG tab, the code after an account came in is a VNG one too (the renewal asked for a Roblox code while
+  // the VNG tab stayed picked; review, 2026-10-30): both quickLoginStart commands say realm "vng".
+  // The tab is switched before the first poll (2.5 s): s.click would wait for the polls to settle first.
+  S('ql-vng-renew', 'ql=added,waiting', async s => {
+    await s.click(key('acc.add'));
+    await s.eval(`(async () => {
+      __ui.find({ key: 'start.phone', partial: true }).click();
+      await new Promise(r => setTimeout(r, 900));
+      document.querySelector('.overlay [data-realm=vng]').click();
+    })()`);
+    await s.wait(3800);
+  }, { langs: ['en'] }),
   S('ql-again', '', async s => {
     await s.click(key('chip.invalid'));
     await s.click({ css: '[data-act=relogin]' });
