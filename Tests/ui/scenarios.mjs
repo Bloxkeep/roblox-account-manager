@@ -1341,6 +1341,9 @@ export default [
     await s.choose({ css: '#s-autolock' }, '0');
   }),
   S('autolock-screen', 'autolock=15'),
+  // Locked by itself with several vaults: only the password; Restore a backup, New vault and Switch vault aren't offered
+  // (the app refuses them until the unlock, without a word on this screen; review, 2026-10-30).
+  S('autolock-vaults', 'autolock=15&vaults=1'),
   S('autolock-hour', 'autolock=60', null, { langs: ['en'] }),
   S('autolock-language', 'autolock=15', async s => { await s.click({ css: '[data-act=lang][data-lang=vi]' }); }, { langs: ['en'] }),
   S('autolock-wrong', 'autolock=15', async s => { await s.type('wrong-try', key('lock.pw')); await s.key('Enter'); await s.wait(800); }),
