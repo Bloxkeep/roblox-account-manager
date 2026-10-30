@@ -107,6 +107,12 @@ public sealed partial class AppController
             }
             var players = RobloxProcesses.GetPlayers();
             ApplyWatchNames();
+            // Only Roblox's notification-area copy runs: the launch ends it anyway (StartSessionAsync), so it goes first and
+            // Multi-Roblox is ready, rather than said not to be.
+            if (s.MultiInstance && (!MultiInstance.Armed || MultiInstance.Stale) && players.Count > 0
+                && RobloxProcesses.VisibleWindows(players.Select(p => p.Pid)).Values.All(w => w.Count == 0)
+                && players.All(p => RobloxProcesses.IsTrayCopy(p.Pid, p.Created)) && await CloseTrayCopiesAsync(ct))
+                players = RobloxProcesses.GetPlayers();
             if (s.MultiInstance && (!MultiInstance.Armed || MultiInstance.Stale) && players.Count == 0)
                 MultiInstance.Enable();
             // Accounts already playing: left alone in the same game, else switched. Roblox kicks a second client of the
@@ -644,8 +650,7 @@ public sealed partial class AppController
         if (FindAccount(account.Id) is null)
             throw new UserError(L.T("Account not found."));
         // Roblox's tray copy would take this launch over and open no window (Bloxstrap: "Roblox failed to launch").
-        if (RobloxProcesses.CloseTrayCopies() > 0)
-            await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+        await CloseTrayCopiesAsync(ct);
         var before = RobloxProcesses.GetPlayerPids().ToHashSet();
         var settings = RequireVault().Data.Settings;
         var config = settings.RobloxConfig;
@@ -683,6 +688,30 @@ public sealed partial class AppController
         NoteActivity(restart ? "reopened" : rejoin ? "rejoined" : "opened", account.Id, target?.PlaceId); // Statistics › Activity
         account.LastUsed = DateTime.Now;
         SignInAccepted(account);
+    }
+
+    /// <summary>
+    /// Ends Roblox's notification-area copies (<see cref="RobloxProcesses.IsTrayCopy"/>); true when there were any. One holds
+    /// the name Multi-Roblox takes (ROBLOX_singletonEvent), so Multi-Roblox couldn't be ready while it ran and nothing
+    /// took the name once it was ended: the launch opened its window unarmed and the next account's closed it (review,
+    /// 2026-10-30). With no Roblox left, the name is taken now, before the new client can.
+    /// </summary>
+    async Task<bool> CloseTrayCopiesAsync(CancellationToken ct)
+    {
+        if (RobloxProcesses.CloseTrayCopies() == 0)
+            return false;
+        await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+        ArmMultiIfFree(RobloxProcesses.GetPlayerPids());
+        return true;
+    }
+
+    /// <summary>Multi-Roblox takes Roblox's name when it is on and not holding it yet, and no Roblox runs to hold it instead.</summary>
+    void ArmMultiIfFree(int[] players)
+    {
+        if (_vault?.Data.Settings.MultiInstance != true || MultiInstance.Armed && !MultiInstance.Stale || players.Length > 0)
+            return;
+        ApplyWatchNames();
+        MultiInstance.Enable();
     }
 
     object? CancelLaunch()

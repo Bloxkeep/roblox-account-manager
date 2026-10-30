@@ -198,6 +198,29 @@ static class ClaimsSuite
         c.Check("…nor one that started no update", watcher.UpdateHandOffAt(5003) is null && !MayHaveHanded(5003));
         c.Check("…one whose log isn't found yet (it quit within a second or two) may have", MayHaveHanded(5004));
         tails.Clear();
+
+        // Roblox's notification-area copy held the name Multi-Roblox takes: once it is ended with no Roblox left, the name is
+        // taken before the launch's client can; with a Roblox still running it can't be.
+        var vault = Harness.Get<Vault>(app, "_vault");
+        vault.Data.Settings.MultiInstance = true;
+        bool wasArmed = MultiInstance.Armed;
+        MultiInstance.Disable();
+        try
+        {
+            Harness.Invoke(app, "ArmMultiIfFree", new[] { 4242 });
+            c.Check("a Roblox still running: Multi-Roblox not taken", !MultiInstance.Armed);
+            Harness.Invoke(app, "ArmMultiIfFree", Array.Empty<int>());
+            // A real Roblox on this PC holds the name: nothing to check then.
+            if (RobloxProcesses.GetPlayerPids().Length == 0)
+                c.Check("…none left: taken at once", MultiInstance.Armed);
+        }
+        finally
+        {
+            MultiInstance.Disable();
+            vault.Data.Settings.MultiInstance = false;
+            if (wasArmed)
+                MultiInstance.Enable();
+        }
         // Roblox's updater read from Windows' process list (a stand-in under its name: ping, copied).
         string updaterDir = Path.Combine(dir, "updater");
         Directory.CreateDirectory(updaterDir);
