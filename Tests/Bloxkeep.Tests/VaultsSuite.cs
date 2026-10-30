@@ -16,6 +16,23 @@ static class VaultsSuite
     {
         Harness.UseDataFolder(dir);
         string data = Vault.DataDir;
+        // The first vault set up on a PC: vault.rmv, and on the list as that file (review, 2026-10-30: the entry was made once
+        // the file existed, so it named another file). Cleared after, for the PC from before below.
+        using (var first = new AppController(new Form(), _ => { }))
+        {
+            await Harness.Call(first, "createVault", new { password = MainPassword, name = "" });
+            string? firstFile = Harness.Get<Vault?>(first, "_vault")?.FilePath is { } fp ? Path.GetFileName(fp) : null;
+            c.Check("the first vault on a PC: vault.rmv, on the list as that file and offered", firstFile == "vault.rmv"
+                && Prefs.VaultList.SingleOrDefault()?.File == "vault.rmv" && Vaults.Current?.File == "vault.rmv",
+                $"{firstFile} / {string.Join(", ", Prefs.VaultList.Select(v => v.File))}");
+            await Harness.Call(first, "lock", new { });
+        }
+        foreach (string file in Directory.GetFiles(data))
+            File.Delete(file);
+        Prefs.VaultList.Clear();
+        Prefs.LastVault = null;
+        Vaults.Use(null);
+        WindowsFormsSynchronizationContext.AutoInstall = false; // on this thread too (the awaits above moved to the pool)
         // A PC from before several vaults: vault.rmv, and its backup state in prefs.json's old keys.
         var old = Vault.Create(MainPassword);
         old.Data.Accounts.Add(new Account { Username = "MainOne", UserId = 51 });
@@ -113,5 +130,26 @@ static class VaultsSuite
         c.Check("a vault's picture is served by its own kind of name only",
             Themes.IsPictureName("vault-picture-a1b2c3d4-638700000000000000.png") && !Themes.IsPictureName("vault-picture-a1b2c3d4-1.png/../vault.rmv")
             && !Themes.IsPictureName("vault-picture-xyz-1.png"));
+
+        // Back pressed while a new vault is being set up (its key takes a moment): the vault written is the one that joins the
+        // list, not another entry pointing at a file never written (review, 2026-10-30: the new vault was left an orphan).
+        // The forms made above (on a pool thread, where WinForms installs its context) would have the set-up's last part wait
+        // for a message loop this test doesn't run.
+        SynchronizationContext.SetSynchronizationContext(null);
+        await Harness.Call(app, "addVault", new { });
+        var creating =Harness.Call(app, "createVault", new { password = FarmPassword, name = "Third" });
+        await Harness.Call(app, "cancelAddVault", new { });
+        await creating;
+        string? openFile = Harness.Get<Vault?>(app, "_vault")?.FilePath is { } p ? Path.GetFileName(p) : null;
+        var thirdVault = Prefs.VaultList.FirstOrDefault(v => v.Name == "Third");
+        c.Check("Back during a new vault's set-up: the vault written joins the list with its own file, and is the one offered",
+            thirdVault is not null && thirdVault.File == openFile && File.Exists(Path.Combine(data, thirdVault.File)) && Vaults.Current == thirdVault,
+            $"{openFile} / {string.Join(", ", Prefs.VaultList.Select(v => $"{v.Name} {v.File}"))}");
+        // A set-up that started and failed, then Cancel: the lock screen offers the vault from before, not the unwritten file.
+        await Harness.Call(app, "addVault", new { });
+        Harness.Invoke(app, "SwitchToNewVault");
+        await Harness.Call(app, "cancelAddVault", new { });
+        c.Check("…a set-up that failed, then Cancel: the vault from before is offered again", Vaults.Current == thirdVault && Vault.ActiveFile == thirdVault!.File,
+            Vault.ActiveFile);
     }
 }

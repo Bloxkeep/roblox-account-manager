@@ -12,6 +12,10 @@ public sealed partial class AppController
         // Six spaces pass the length check but are no password at all.
         if (string.IsNullOrWhiteSpace(password))
             throw new UserError(L.T("The master password can't be only spaces."));
+        // Which vault this is, taken before anything waits and before its file exists (the first vault's is vault.rmv only while
+        // there is none): Back pressed during the create cleared the one being added, and the list then got another entry with
+        // another file than the one written, which was left an orphan (review, 2026-10-30).
+        var entry = _newVault ?? Vaults.Current ?? Vaults.New();
         // A vault being added: the one open locks only now, once the new one's password is fine.
         SwitchToNewVault();
         if (Vault.Exists)
@@ -26,7 +30,8 @@ public sealed partial class AppController
             return BuildState();
         }
         _weakPassword = Backup.WeakPassword(password);
-        JoinVaultList(name); // before it opens: its backup state is its own from the start
+        Vaults.Use(entry); // the one written, whatever Back did meanwhile
+        JoinVaultList(entry, name); // before it opens: its backup state is its own from the start
         OnUnlocked(created);
         return BuildState();
     }
