@@ -402,7 +402,7 @@ html [data-theme="dark" lang="vi"]
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "Tài khoản Discord Stranger vừa nhập mã của máy này và muốn điều khiển Bloxkeep trên GAMING-PC: xem tài khoản, chạy preset, đóng cửa sổ. Chỉ cho phép nếu đó là bạn. Liên kết hiện tại với Minh sẽ bị thay."
+        p.modal-text.pre "Tài khoản Discord @stranger vừa nhập mã của máy này và muốn điều khiển Bloxkeep trên GAMING-PC: xem tài khoản, chạy preset, đóng cửa sổ. Chỉ cho phép nếu đó là bạn. Liên kết hiện tại với Minh sẽ bị thay."
       div.modal-foot
         button.btn [FOCUSED] "Không cho"
         button.btn.primary "Cho phép"
@@ -811,4 +811,4 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
-  remoteAllow {"allow":false}
+  remoteAllow {"allow":false,"id":"900000000000000001"}

@@ -402,7 +402,7 @@ html [data-theme="dark" lang="en"]
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "The Discord account Stranger typed this PC’s code and wants to control Bloxkeep on GAMING-PC: see your accounts, run presets, close windows. Allow it only if that is you. This replaces Minh, linked now."
+        p.modal-text.pre "The Discord account @stranger typed this PC’s code and wants to control Bloxkeep on GAMING-PC: see your accounts, run presets, close windows. Allow it only if that is you. This replaces Minh, linked now."
       div.modal-foot
         button.btn [FOCUSED] "Don’t allow"
         button.btn.primary "Allow"
@@ -811,4 +811,4 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
-  remoteAllow {"allow":false}
+  remoteAllow {"allow":false,"id":"900000000000000001"}

@@ -43,6 +43,16 @@ public sealed class WebsiteTab : UserControl
     /// <summary>Replaced by the checks.</summary>
     Func<string, Task<RobloxUser?>> _identify = cookie => RobloxApi.GetAuthenticatedUserAsync(cookie);
     bool _closing, _synced, _syncing, _askingLogout, _hasBrowser, _tornDown;
+    /// <summary>
+    /// A session Roblox couldn't be asked about (no answer, too many questions, a notice on the account): asked again
+    /// after a while, not at every read (2026-10-30 review: a blank tab asked every 2 s, ~30 times a minute, while
+    /// Roblox answered "User is moderated", and harder still while it said "too many"). A notice to accept waits for the
+    /// next page the tab shows (accepting it loads one).
+    /// </summary>
+    string? _failedSession;
+    DateTime _askAgainAt;
+    int _failures;
+    static readonly TimeSpan FirstWait = TimeSpan.FromSeconds(30), LongestWait = TimeSpan.FromSeconds(60);
     Func<WebsiteTab, bool> _askCloseOnLogout = AskCloseOnLogout;
 
     /// <summary>The saved account this tab is signed in as; null for a blank tab not saved (yet).</summary>
@@ -244,6 +254,17 @@ public sealed class WebsiteTab : UserControl
                 _back.Enabled = core.CanGoBack;
                 _forward.Enabled = core.CanGoForward;
             };
+            // Only Roblox's own pages here, as in the sign-in window (BrowserLoginForm): this window shows no address, so
+            // another site, signed-in looking, would pass for Roblox's (2026-10-30 review: a link or a redirect off the
+            // site loaded inside it). A link elsewhere opens in the person's own browser, and only when they clicked it.
+            core.NavigationStarting += (_, e) =>
+            {
+                if (MayOpenHere(e.Uri))
+                    return;
+                e.Cancel = true;
+                if (e.IsUserInitiated)
+                    OpenOutside(e.Uri);
+            };
             core.NavigationStarting += (_, e) =>
             {
                 _slow.Stop();
@@ -262,6 +283,9 @@ public sealed class WebsiteTab : UserControl
             core.NavigationCompleted += (_, e) =>
             {
                 _slow.Stop();
+                // A notice on the account may have been accepted on the way (Failed): asked again at the next read.
+                if (e.IsSuccess && _askAgainAt == DateTime.MaxValue)
+                    _askAgainAt = DateTime.UtcNow;
                 // Canceled = superseded by another navigation (redirects); a status code = Roblox answered (a 404 page).
                 if (e.IsSuccess || e.HttpStatusCode > 0 || e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled || _closing)
                     return;
@@ -288,6 +312,13 @@ public sealed class WebsiteTab : UserControl
     internal static bool IsRoblox(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https"
         && (uri.Host.Equals("roblox.com", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".roblox.com", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// What this tab may show: Roblox's pages; Play's roblox-player: link (Windows asks which app opens it, as in any
+    /// browser); a blank page, or one Bloxkeep writes in itself (the checks do; a page can't go to a data: address).
+    /// </summary>
+    internal static bool MayOpenHere(string url) =>
+        IsRoblox(url) || (url.IndexOf(':') is > 0 and var colon && url[..colon].ToLowerInvariant() is "roblox-player" or "roblox" or "about" or "data");
 
     /// <summary>A web link, in the person's own browser; anything else (a file, another scheme) isn't opened.</summary>
     internal static void OpenOutside(string url)
@@ -394,10 +425,12 @@ public sealed class WebsiteTab : UserControl
                 return;
             }
             // None: signed out some other way, or not yet; the saved session is left as it is.
-            if (now is null || now == _cookie)
+            if (now is null || now == _cookie || Waiting(now))
                 return;
             if (await _onSessionChanged(id, now))
                 _cookie = now;
+            else
+                Failed(now, moderated: false);
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
         {
@@ -413,7 +446,7 @@ public sealed class WebsiteTab : UserControl
     async Task TrackSignInAsync(string? now)
     {
         now ??= "";
-        if (now == _cookie)
+        if (now == _cookie || Waiting(now))
             return;
         RobloxUser? user = null;
         if (now.Length > 0)
@@ -424,7 +457,8 @@ public sealed class WebsiteTab : UserControl
             }
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
             {
-                return; // no answer from Roblox: asked again at the next read
+                Failed(now, moderated: ex is RobloxApiException { Moderated: true });
+                return; // no answer from Roblox: asked again later
             }
         }
         if (_closing || AccountId is not null)
@@ -435,6 +469,16 @@ public sealed class WebsiteTab : UserControl
         _saveButton.Visible = user is not null;
         if (user is not null)
             Say(Prefs.HideNames ? L.T("Signed in.") : L.F("Signed in as {0}.", user.Name), _theme.Text2);
+    }
+
+    bool Waiting(string session) => session == _failedSession && DateTime.UtcNow < _askAgainAt;
+
+    void Failed(string session, bool moderated)
+    {
+        _failures = session == _failedSession ? _failures + 1 : 1;
+        _failedSession = session;
+        var wait = _failures > 1 ? LongestWait : FirstWait;
+        _askAgainAt = moderated ? DateTime.MaxValue : DateTime.UtcNow + wait;
     }
 
     void SaveAccount()

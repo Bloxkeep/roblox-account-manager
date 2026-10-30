@@ -16,7 +16,7 @@ import { onceMore } from './calls.js';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, replyUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
-import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
+import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, CODE_GRACE, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, REASKED_GAP, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, handleOf, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
 import { setupServer } from './setup.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -124,8 +124,10 @@ export class Gateway extends DurableObject {
       this.sent = new Map();
       this.shots = new Map();
       this.names = new Map();
-      // Links waiting for the PC to allow them (pc → { user, label, token, until }), each person's wrong codes, each
-      // socket's last messages.
+      // Their unique usernames (@name), what a PC asked to allow a link is told (remote.js handleOf).
+      this.handles = new Map();
+      // Links waiting for the PC to allow them (pc → { user, label, token, until, replacedAt }), each person's wrong
+      // codes, each socket's last messages.
       this.asking = new Map();
       this.wrong = new Map();
       this.heard = new WeakMap();
@@ -338,8 +340,10 @@ export class Gateway extends DurableObject {
     if (!pc)
       return new Response('no key', { status: 401 });
     // Apps that aren't linked yet are let in up to a limit, so made-up keys can't fill the object; linked ones always.
+    // Counted socket by socket: links of PCs that aren't connected (most of them) once made room for that many more
+    // made-up keys (2026-10-30 review).
     const linked = [...this.ctx.storage.sql.exec('SELECT 1 FROM links WHERE pc = ?', pc)].length > 0;
-    if (!linked && this.ctx.getWebSockets().length - this.ctx.storage.sql.exec('SELECT COUNT(*) AS n FROM links').one().n >= Number(this.env.MAX_UNLINKED ?? MAX_UNLINKED))
+    if (!linked && this.unlinkedSockets() >= Number(this.env.MAX_UNLINKED ?? MAX_UNLINKED))
       return new Response('busy', { status: 503 });
     for (const old of this.ctx.getWebSockets(pc))
       old.close(4000, 'connected again');
@@ -347,11 +351,30 @@ export class Gateway extends DurableObject {
     this.ctx.acceptWebSocket(server, [pc]);
     server.serializeAttachment({ pc, hello: null });
     server.send(JSON.stringify(this.linkState(pc)));
+    // Back within the grace its code had once it left (webSocketClose): the code works its full ten minutes again.
+    for (const c of this.codes.values())
+      if (c.pc === pc && c.until > Date.now())
+        c.until = c.ends;
     // A link it was asked to allow before it connected again: asked again.
     const ask = this.asking.get(pc);
     if (ask && ask.until > Date.now())
-      server.send(JSON.stringify({ t: 'ask', user: this.names.get(ask.user) ?? ask.user, replacing: ask.replacing ?? null }));
+      server.send(JSON.stringify(this.askMessage(ask)));
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** The sockets of apps whose PC isn't linked. */
+  unlinkedSockets() {
+    const linked = new Set([...this.ctx.storage.sql.exec('SELECT pc FROM links')].map(r => r.pc));
+    let n = 0;
+    for (const ws of this.ctx.getWebSockets())
+      if (!linked.has(ws.deserializeAttachment()?.pc))
+        n++;
+    return n;
+  }
+
+  /** What a PC is told of a link waiting for its Allow: who asks (their @username and id), and whom it would replace. */
+  askMessage(ask) {
+    return { t: 'ask', user: this.handles.get(ask.user) ?? ask.user, id: ask.user, replacing: ask.replacing ?? null };
   }
 
   /** Whether this PC is linked, and to whom (the name Discord showed them by when they last used /pc). */
@@ -386,6 +409,16 @@ export class Gateway extends DurableObject {
       return ws.close(1008, 'too many messages');
     if ((m.t === 'allow' || m.t === 'deny') && this.asking.has(pc)) { // the person at the PC answered a link
       const ask = this.asking.get(pc);
+      // An answer to someone else's question (another /pc link replaced it while the box was up): nobody is linked by
+      // it, and the PC is asked the question it has now. An app that doesn't say whose (1.0.12, 1.0.13): its Allow
+      // right after the question changed is taken as one pressed on the old question (2026-10-30 review).
+      const stale = typeof m.user === 'string' ? m.user !== ask.user
+        : m.t === 'allow' && ask.replacedAt && now - ask.replacedAt < Number(this.env.REASKED_GAP_MS ?? REASKED_GAP);
+      if (stale) {
+        ask.replacedAt = 0; // asked again now: the next answer is to this question
+        ws.send(JSON.stringify(this.askMessage(ask)));
+        return;
+      }
       this.asking.delete(pc);
       clearTimeout(ask.timer);
       const edit = data => api(this.env, 'PATCH', `/webhooks/${this.env.DISCORD_APP_ID}/${ask.token}/messages/@original`, { ...data, allowed_mentions: { parse: [] } }).catch(() => {});
@@ -413,13 +446,26 @@ export class Gateway extends DurableObject {
       return;
     }
     if (m.t === 'code') { // a code to link it, replacing any earlier one
+      // Connected again with a code still shown (keep): the same one while it still works here, else a new one (a
+      // restart forgot it, and typing it would count as a wrong guess).
+      const kept = typeof m.keep === 'string' ? this.codes.get(m.keep) : null;
+      if (kept?.pc === pc && kept.until > now) {
+        kept.until = kept.ends;
+        return ws.send(JSON.stringify({ t: 'code', code: m.keep, until: kept.until }));
+      }
       for (const [code, c] of this.codes)
         if (c.pc === pc || c.until < now)
           this.codes.delete(code);
+      // Full: codes of apps not connected make room first (only connected ones, of which there are so many at most, can
+      // fill it).
+      if (this.codes.size >= Number(this.env.MAX_CODES ?? MAX_CODES))
+        for (const [code, c] of this.codes)
+          if (!this.ctx.getWebSockets(c.pc).length)
+            this.codes.delete(code);
       if (this.codes.size >= Number(this.env.MAX_CODES ?? MAX_CODES))
         return ws.send(JSON.stringify({ t: 'busy' }));
       const code = makeCode(c => this.codes.has(c)), until = now + CODE_FOR;
-      this.codes.set(code, { pc, until });
+      this.codes.set(code, { pc, until, ends: until }); // until: earlier while its app is gone (webSocketClose)
       ws.send(JSON.stringify({ t: 'code', code, until }));
       return;
     }
@@ -458,6 +504,14 @@ export class Gateway extends DurableObject {
     try {
       ws.close(code === 1005 || code === 1006 ? 1000 : code, 'bye');
     } catch {}
+    // Its code works only a little longer, unless the PC is connected again on another socket: apps gone don't keep
+    // codes for ten minutes (2026-10-30 review: made-up keys connecting, asking and leaving filled the room for codes).
+    // Not at once: an app from before (1.0.12, 1.0.13) back after a blip still shows that code, and never asks again.
+    const pc = ws.deserializeAttachment()?.pc, until = Date.now() + CODE_GRACE;
+    if (pc && !this.ctx.getWebSockets(pc).some(other => other !== ws && other.readyState === WebSocket.OPEN))
+      for (const waiting of this.codes.values())
+        if (waiting.pc === pc && waiting.until > until)
+          waiting.until = until;
   }
 
   /** The PCs a Discord account linked, oldest first. */
@@ -487,6 +541,7 @@ export class Gateway extends DurableObject {
     if (!user?.id)
       return mine({ content: '?' });
     this.names.set(user.id, user.global_name || user.username || null);
+    this.handles.set(user.id, handleOf(user));
     const times = (this.sent.get(user.id) ?? []).filter(t => t > now - 60_000);
     if (times.length >= COMMANDS_PER_MINUTE)
       return mine({ content: PC_TEXT.tooFast });
@@ -527,9 +582,13 @@ export class Gateway extends DurableObject {
         this.appOf(code.pc)?.ws.send(JSON.stringify(this.linkState(code.pc)));
         api(this.env, 'PATCH', `/webhooks/${this.env.DISCORD_APP_ID}/${i.token}/messages/@original`, { content: PC_TEXT.allowLate(label), allowed_mentions: { parse: [] } }).catch(() => {});
       }, Number(this.env.ALLOW_FOR_MS ?? ALLOW_FOR));
-      const replacing = was && was !== user.id ? this.names.get(was) ?? 'another Discord account' : null;
-      this.asking.set(code.pc, { user: user.id, label, token: i.token, until: now + Number(this.env.ALLOW_FOR_MS ?? ALLOW_FOR), timer, replacing });
-      app.ws.send(JSON.stringify({ t: 'ask', user: this.names.get(user.id) ?? user.id, replacing }));
+      const replacing = was && was !== user.id ? this.handles.get(was) ?? 'another Discord account' : null;
+      // Someone else's question still up on the PC: an answer that doesn't say whose comes too soon after this to be
+      // to this one (see webSocketMessage).
+      const replacedAt = before && before.until > now && before.user !== user.id ? now : 0;
+      const ask = { user: user.id, label, token: i.token, until: now + Number(this.env.ALLOW_FOR_MS ?? ALLOW_FOR), timer, replacing, replacedAt };
+      this.asking.set(code.pc, ask);
+      app.ws.send(JSON.stringify(this.askMessage(ask)));
       return mine({ content: PC_TEXT.allowFirst(label) });
     }
     const pc = this.pickPc(this.pcsOf(user.id), opt('pc'));

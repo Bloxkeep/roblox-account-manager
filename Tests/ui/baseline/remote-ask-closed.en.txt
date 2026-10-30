@@ -400,5 +400,5 @@ html [data-theme="dark" lang="en"]
   getState {}
   monitorArea {"hidden":true}
   pageShown {}
-  remoteAllow {"allow":false}
+  remoteAllow {"allow":false,"id":"900000000000000001"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
