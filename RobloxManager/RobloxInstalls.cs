@@ -108,17 +108,30 @@ public static class RobloxInstalls
     /// The client to use of several: the build Roblox's installer registered last (<see cref="RegisteredBuild"/>), then the
     /// highest version, then the newest file. By file time alone, 2026-10-30 picked a test channel's 0.744.478 (its file
     /// from 10-29) over 0.745 (10-28), the build Roblox wanted: each window it opened started Roblox's updater, which
-    /// closed it and opened another.
+    /// closed it and opened another. The registered build counts only among the builds of Roblox's own install, whose
+    /// installer wrote it: between installs (Roblox's and Bloxstrap's, say, for "directly"), each one's pick goes by version,
+    /// so Roblox's stale registered build never wins over a launcher's newer one (review, 2026-10-30).
     /// </summary>
     static string? Newest(IEnumerable<string> paths)
     {
         string? registered = RegisteredBuild();
-        return paths.OrderByDescending(p => registered is not null && string.Equals(Path.GetFileName(Path.GetDirectoryName(p)), registered, StringComparison.OrdinalIgnoreCase))
-            .ThenByDescending(p => Version.TryParse(System.Text.RegularExpressions.Regex.Match(VersionOf(p)?.Version ?? "", @"^\d+(\.\d+){1,3}").Value, out var v)
-                ? v : new Version(0, 0))
+        var version = new Dictionary<string, Version>(StringComparer.OrdinalIgnoreCase);
+        Version VersionNumber(string p) => version.TryGetValue(p, out var known) ? known
+            : version[p] = Version.TryParse(System.Text.RegularExpressions.Regex.Match(VersionOf(p)?.Version ?? "", @"^\d+(\.\d+){1,3}").Value, out var v)
+                ? v : new Version(0, 0);
+        bool Registered(string p) => registered is not null && IsRobloxOwn(p)
+            && string.Equals(Path.GetFileName(Path.GetDirectoryName(p)), registered, StringComparison.OrdinalIgnoreCase);
+        // …\<install>\Versions\version-…\RobloxPlayerBeta.exe: one pick per Versions folder.
+        return paths.GroupBy(p => Path.GetDirectoryName(Path.GetDirectoryName(p)) ?? "", StringComparer.OrdinalIgnoreCase)
+            .Select(install => install.OrderByDescending(Registered).ThenByDescending(VersionNumber).ThenByDescending(File.GetLastWriteTimeUtc).First())
+            .OrderByDescending(VersionNumber)
             .ThenByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
     }
+
+    /// <summary>In Roblox's own install (its installer's, per user or for all), not a launcher's copy.</summary>
+    static bool IsRobloxOwn(string exe) =>
+        Under(exe, Path.Combine(Local, "Roblox")) || Under(exe, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Roblox"));
 
     /// <summary>The build folder ("version-…") Roblox's installer set the roblox-player link up for, written beside its command.</summary>
     static string? RegisteredBuild()
