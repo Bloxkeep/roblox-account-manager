@@ -146,6 +146,40 @@ sealed class RemoteLink : IDisposable
 
     /// <summary>Not linked any more (the bot forgets which Discord account it was). Offline, it never gets there: the caller
     /// drops the secret too, so the bot's link is to a PC that never connects again.</summary>
+    /// <summary>
+    /// A connection of its own to tell the bot to forget a secret's link, for one no RemoteLink runs for any more.
+    /// True only once the bot has said that secret is linked to nobody.
+    /// </summary>
+    public static async Task<bool> ForgetAsync(string secret, string? url = null)
+    {
+        using var ws = new ClientWebSocket();
+        using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        ws.Options.SetRequestHeader("Authorization", "Bearer " + secret);
+        ws.Options.KeepAliveInterval = TimeSpan.Zero;
+        try
+        {
+            await ws.ConnectAsync(new Uri(url ?? Url), limit.Token);
+            await ws.SendAsync(Encoding.UTF8.GetBytes("""{"t":"unlink"}"""), WebSocketMessageType.Text, true, limit.Token);
+            var buffer = new byte[4096];
+            while (true)
+            {
+                var got = await ws.ReceiveAsync(buffer, limit.Token);
+                if (got.MessageType == WebSocketMessageType.Close)
+                    return false;
+                if (JsonNode.Parse(Encoding.UTF8.GetString(buffer, 0, got.Count)) is JsonObject { } m
+                    && m["t"]?.GetValue<string>() == "link" && m["linked"]?.GetValue<bool>() == false)
+                {
+                    await ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, limit.Token);
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is WebSocketException or OperationCanceledException or IOException or HttpRequestException or JsonException or InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
     public Task UnlinkAsync() => Connected ? SendAsync("""{"t":"unlink"}""") : Task.CompletedTask;
 
     /// <summary>How a command went once done (a preset's windows open): a follow-up in Discord, within its 15 minutes.</summary>

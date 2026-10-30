@@ -86,6 +86,19 @@ public static class Prefs
     }
     static string? _remoteKey;
 
+    /// <summary>Keys (encrypted) of links turned off or of vaults gone, until the bot has said it forgot them: told only
+    /// while connected, it kept a PC nobody could reach under the person's /pc (2026-10-30 review).</summary>
+    public static List<string> RemoteGone { get; } = new();
+
+    public static void ForgetRemoteKey(string? key)
+    {
+        if (key is not { Length: > 0 } || RemoteGone.Contains(key))
+            return;
+        RemoteGone.Add(key);
+        if (RemoteGone.Count > 20)
+            RemoteGone.RemoveAt(0);
+    }
+
     /// <summary>Control from Discord as builds before 2026-10-30 kept it, one for the whole PC: it goes to the vault the lock
     /// screen offers (the one last used), unless that vault has its own already.</summary>
     internal static void MoveRemoteTo(VaultEntry? entry)
@@ -221,6 +234,7 @@ public static class Prefs
 
     static readonly string[] Known =
     [
+        "remoteGone",
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
@@ -282,6 +296,10 @@ public static class Prefs
                     });
                 }
             }
+            if (root.TryGetProperty("remoteGone", out var gone) && gone.ValueKind == JsonValueKind.Array)
+                foreach (var key in gone.EnumerateArray())
+                    if (key.ValueKind == JsonValueKind.String)
+                        ForgetRemoteKey(key.GetString());
             LastVault = Text(root, "lastVault");
             AskVault = root.TryGetProperty("askVault", out var ask) && ask.ValueKind == JsonValueKind.True;
             if (root.TryGetProperty("customTheme", out var custom) && custom.ValueKind == JsonValueKind.Object)
@@ -455,7 +473,7 @@ public static class Prefs
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
                 ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId,
                 // Written (empty once moved to a vault) so the old keys never come back from what this build doesn't know.
-                ["remoteControl"] = _remoteControl, ["remoteKey"] = _remoteKey, ["firstOpenTold"] = FirstOpenTold,
+                ["remoteControl"] = _remoteControl, ["remoteKey"] = _remoteKey, ["remoteGone"] = RemoteGone.ToArray(), ["firstOpenTold"] = FirstOpenTold,
                 ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture, blur = Custom.Blur },
                 ["savedThemes"] = SavedThemes.Select(t => new
                 {

@@ -523,6 +523,14 @@ export class Gateway extends DurableObject {
     return [...this.ctx.storage.sql.exec('SELECT pc, label FROM links WHERE user = ? ORDER BY at', user)];
   }
 
+  /** The PC /pc unlink is for: never guessed among several, and of two with one name the one not connected (a PC left behind). */
+  pickToUnlink(pcs, wanted) {
+    if (pcs.length > 1 && !wanted)
+      return PC_TEXT.whichPc(pcs.map(p => `**${p.label}**`).join(', '));
+    const named = pcs.filter(p => p.label.toLowerCase() === String(wanted).toLowerCase());
+    return named.find(p => !this.appOf(p.pc)) ?? this.pickPc(pcs, wanted);
+  }
+
   /** The PC a command is for: the one named, else the only one, else the only one connected. A string says why none. */
   pickPc(pcs, wanted) {
     if (!pcs.length)
@@ -595,7 +603,7 @@ export class Gateway extends DurableObject {
       app.ws.send(JSON.stringify(this.askMessage(ask)));
       return mine({ content: PC_TEXT.allowFirst(label) });
     }
-    const pc = this.pickPc(this.pcsOf(user.id), opt('pc'));
+    const pc = sub?.name === 'unlink' ? this.pickToUnlink(this.pcsOf(user.id), opt('pc')) : this.pickPc(this.pcsOf(user.id), opt('pc'));
     if (typeof pc === 'string')
       return mine({ content: pc });
     const app = this.appOf(pc.pc);

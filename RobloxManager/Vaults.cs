@@ -32,6 +32,8 @@ public static class Vaults
             var (lastBackup, pending) = (Prefs.LastBackup, Prefs.BackupPending); // before it joins: what was kept for it
             Prefs.VaultList.Insert(0, new Prefs.VaultEntry { Id = NewId(), File = FirstFile, Name = NameFor(0), LastBackup = lastBackup, BackupPending = pending });
         }
+        foreach (var missing in Prefs.VaultList.Where(v => !ExistsOnDisk(v.File)))
+            Prefs.ForgetRemoteKey(missing.RemoteKey);
         Prefs.VaultList.RemoveAll(v => !ExistsOnDisk(v.File));
         Use(Prefs.VaultList.FirstOrDefault(v => v.Id == Prefs.LastVault) ?? Prefs.VaultList.FirstOrDefault());
         Prefs.MoveRemoteTo(Current);

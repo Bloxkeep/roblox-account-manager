@@ -40,6 +40,7 @@ public sealed partial class AppController
     /// </summary>
     void TickRemote()
     {
+        ForgetRemoteLinksIfDue();
         string? vault = Vaults.Current?.Id;
         if (_remote is not null && (!Prefs.RemoteControl || _remoteVault != vault))
             StopRemote();
@@ -55,6 +56,48 @@ public sealed partial class AppController
             open ? _vault!.Data.Accounts.Select(DiscordName).Distinct(StringComparer.CurrentCultureIgnoreCase) : [],
             open ? _vault!.Data.Settings.Presets.Select(p => p.Name).Where(n => n.Length > 0).Distinct(StringComparer.CurrentCultureIgnoreCase) : [],
             L.Language);
+    }
+
+    static readonly TimeSpan RemoteForgetEvery = TimeSpan.FromMinutes(10), RemoteForgetAfterOff = TimeSpan.FromSeconds(30);
+    DateTime _nextRemoteForget;
+    bool _remoteForgetting;
+
+    /// <summary>Links turned off or of vaults gone, told to the bot until it has said so (<see cref="Prefs.RemoteGone"/>).
+    /// A key this Windows user can't read any more can't be told: dropped.</summary>
+    void ForgetRemoteLinksIfDue()
+    {
+        if (_remoteForgetting || Prefs.RemoteGone.Count == 0 || DateTime.UtcNow < _nextRemoteForget)
+            return;
+        _nextRemoteForget = DateTime.UtcNow + RemoteForgetEvery;
+        _remoteForgetting = true;
+        _ = ForgetRemoteLinksAsync();
+    }
+
+    async Task ForgetRemoteLinksAsync()
+    {
+        try
+        {
+            foreach (string key in Prefs.RemoteGone.ToList())
+            {
+                string? secret = null;
+                try
+                {
+                    secret = Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(key), RemoteEntropy, DataProtectionScope.CurrentUser));
+                }
+                catch (Exception ex) when (ex is FormatException or CryptographicException)
+                {
+                }
+                if (secret is null || await RemoteLink.ForgetAsync(secret, RemoteTestUrl))
+                {
+                    Prefs.RemoteGone.Remove(key);
+                    Prefs.Save();
+                }
+            }
+        }
+        finally
+        {
+            _remoteForgetting = false;
+        }
     }
 
     /// <summary>The link's own vault is open and unlocked: only then does a command see anything.</summary>
@@ -94,7 +137,11 @@ public sealed partial class AppController
         // typed and allowed. The unlink below doesn't reach a bot that can't be reached right now, and with the same
         // secret the PC came back still linked to that Discord account, without asking (2026-10-30 review).
         if (!on)
+        {
+            Prefs.ForgetRemoteKey(Prefs.RemoteKey);
             Prefs.RemoteKey = null;
+            _nextRemoteForget = DateTime.UtcNow + RemoteForgetAfterOff; // after the unlink below, if that one got through
+        }
         Prefs.Save();
         if (on)
         {

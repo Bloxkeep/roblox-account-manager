@@ -363,6 +363,30 @@ try {
   check('…and its names are still offered: they don\'t depend on what a socket\'s attachment holds', r.type === 8 && r.data.choices.length > 0 && r.data.choices[0].name.startsWith('Preset'), JSON.stringify(r));
   big.ws.close();
 
+  // ── a PC left behind under the same name (an old key of the same PC): /pc unlink takes that one, never the one in use ──
+  const twin = async () => {
+    const t = app(crypto.randomBytes(32).toString('base64url'));
+    await t.open();
+    t.send({ t: 'hello', name: 'TWIN', accounts: [], presets: [], lang: 'en', ask: true });
+    t.send({ t: 'code' });
+    await waitFor(() => t.last('code'), 3000);
+    await interact(pc('link', { code: t.last('code').code }, { user: 'u13', name: 'Thirteen' }));
+    await waitFor(() => t.last('ask'), 3000);
+    t.send({ t: 'allow', user: 'u13' });
+    await waitFor(() => t.last('link')?.linked, 3000);
+    return t;
+  };
+  const leftBehind = await twin(), inUse = await twin();
+  leftBehind.ws.close();
+  await waitFor(() => false, 500);
+  r = await interact(pc('unlink', {}, { user: 'u13' }));
+  check('/pc unlink with two PCs and none named: asks which, unlinks nothing', /more than one PC/.test(contentOf(r)), contentOf(r));
+  r = await interact(pc('unlink', { pc: 'TWIN' }, { user: 'u13' }));
+  check('two of one name: the one not connected goes, the one in use stays linked', /Unlinked/.test(contentOf(r)) && inUse.last('link')?.linked === true, contentOf(r));
+  r = await interact(pc('unlink', { pc: 'TWIN' }, { user: 'u13' }));
+  check('…then the one in use, when asked again', /Unlinked/.test(contentOf(r)) && await waitFor(() => inUse.last('link')?.linked === false, 3000), contentOf(r));
+  inUse.ws.close();
+
   // ── an app sending far more than an app does: its socket is closed ──
   const flood = app(crypto.randomBytes(32).toString('base64url'));
   await flood.open();

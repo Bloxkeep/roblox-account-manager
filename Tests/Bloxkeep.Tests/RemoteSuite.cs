@@ -200,6 +200,23 @@ static class RemoteSuite
         // Its secret goes too: the unlink may not have reached the bot (offline), and with the same secret the PC came
         // back still linked, without asking (2026-10-30 review).
         c.Check("…and its secret is forgotten", Prefs.RemoteKey is null);
+        // The unlink may not have got through: told again on a connection of its own until the bot says it's done.
+        c.Check("…kept to tell the bot again", Prefs.RemoteGone.Count == 1 && !File.ReadAllText(Path.Combine(dir, "prefs.json")).Contains(secret), Prefs.RemoteGone.Count);
+        void ForgetNow()
+        {
+            Harness.Set(app, "_nextRemoteForget", DateTime.MinValue);
+            Harness.Invoke(app, "TickRemote");
+        }
+        ForgetNow();
+        c.Check("…told on its own connection, with the old secret", await Until(() => bot.Count("unlink") == 2 && bot.LastSecret == secret), bot.Count("unlink"));
+        bot.Drop();
+        c.Check("…the bot gone before it answers: still kept", await Until(() => !Harness.Get<bool>(app, "_remoteForgetting")) && Prefs.RemoteGone.Count == 1, Prefs.RemoteGone.Count);
+        ForgetNow();
+        await Until(() => bot.Count("unlink") == 3);
+        await bot.SendAsync(new JsonObject { ["t"] = "link", ["linked"] = false });
+        c.Check("…the bot says it's linked to nobody: done, and that's saved", await Until(() => Prefs.RemoteGone.Count == 0 && !Harness.Get<bool>(app, "_remoteForgetting"))
+            && !File.ReadAllText(Path.Combine(dir, "prefs.json")).Contains("\"remoteGone\":[\""));
+        await Until(() => bot.Open == 0);
         await Harness.Call(app, "setRemote", new { enabled = true });
         c.Check("turned on again: a new secret (a new PC for the bot, linked to nobody)", await Until(() => bot.Open == 1 && Field("connected") is true)
             && bot.LastSecret is { Length: >= 40 } again && again != secret);

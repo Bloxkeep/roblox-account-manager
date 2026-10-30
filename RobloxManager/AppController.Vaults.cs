@@ -201,6 +201,7 @@ public sealed partial class AppController
         }
         DeleteVaultPicture(entry);
         bool offered = entry == Vaults.Current;
+        Prefs.ForgetRemoteKey(entry.RemoteKey);
         Prefs.VaultList.Remove(entry);
         if (offered || Prefs.LastVault == entry.Id)
         {
