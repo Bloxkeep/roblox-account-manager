@@ -67,7 +67,37 @@ static class ServerHopSuite
             c.Check("two accounts of a game: both closed to reopen, the private one left alone", moved is 2 && closed.Order().SequenceEqual([801, 802])
                 && !restarts.Contains(a3.Id), string.Join(",", closed));
             c.Check("…into the same server with room for both, not the one they left", Going(a1) is { PlaceId: Place, JobId: "roomy" } && Going(a2) == Going(a1), Going(a1));
-            c.Check("…marked as moving, so a preset's Rejoin server doesn't send them back", Harness.Get<HashSet<Guid>>(app, "_hopping").SetEquals([a1.Id, a2.Id]));
+            var hopping = Harness.Get<Dictionary<Guid, DateTime>>(app, "_hopping");
+            bool Hopping() => (bool)Harness.Invoke(app, "Hopping")!;
+            c.Check("…marked as moving, so a preset's Rejoin server doesn't send them back", hopping.Keys.ToHashSet().SetEquals([a1.Id, a2.Id]) && Hopping());
+            // 2026-10-30 review: a reopening that never came (the window closed for good, everything closed) left the mark,
+            // and /pc switch answered "Accounts are still moving" for ever.
+            foreach (var id in hopping.Keys.ToList())
+                hopping[id] = DateTime.UtcNow - TimeSpan.FromMinutes(10);
+            c.Check("…a mark no reopening took counts no more after a few minutes (fails on the old code)", !Hopping() && hopping.Count == 0);
+
+            // The window closed while Roblox gave the list: nothing to move, and nothing marked.
+            closed.Clear();
+            restarts.Clear();
+            Window(a1, 821, new GameTarget(Place), "ingame", "old-server");
+            Func<HttpRequestMessage, Task<HttpResponseMessage>> closing = req =>
+            {
+                running.Remove(a1.Id);
+                return Roblox(req);
+            };
+            standIn.SetValue(null, closing);
+            var gone = await Harness.Try(app, "switchServer", new { ids = new[] { a1.Id } });
+            c.Check("a window that closed while Roblox answered: not closed again, not marked as moving (fails on the old code)",
+                gone is 0 && closed.Count == 0 && hopping.Count == 0 && !restarts.Contains(a1.Id), $"{gone} {string.Join(",", closed)} {hopping.Count}");
+            standIn.SetValue(null, (Func<HttpRequestMessage, Task<HttpResponseMessage>>)Roblox);
+
+            // Locked after the switch: the reopenings went with the vault, and so do the marks.
+            Window(a1, 822, new GameTarget(Place), "ingame", "old-server");
+            await Harness.Call(app, "switchServer", new { ids = new[] { a1.Id } });
+            bool marked = hopping.Count == 1;
+            await Harness.Call(app, "lock", new { });
+            c.Check("locked after a switch: no account is still marked as moving (fails on the old code)", marked && hopping.Count == 0);
+            await Harness.Unlock(app);
 
             closed.Clear();
             restarts.Clear();

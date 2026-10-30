@@ -492,13 +492,17 @@ namespace BloxkeepSetup
             }
         }
 
-        /// <summary>Where Bloxkeep is installed now, if it is.</summary>
+        /// <summary>
+        /// Where Bloxkeep is installed now, if it is. A folder Installed apps points at with Velopack's Update.exe counts
+        /// without current\Bloxkeep.exe too: an update cut off while it swapped the program leaves it so, and installing
+        /// again is how it is repaired (refused until 2026-10-30: "That folder already has other files in it").
+        /// </summary>
         public static string ExistingInstall()
         {
             using (var k = Registry.CurrentUser.OpenSubKey(UninstallKey))
             {
                 string at = k == null ? null : k.GetValue("InstallLocation") as string;
-                if (string.IsNullOrEmpty(at) || !IsBloxkeepFolder(at))
+                if (string.IsNullOrEmpty(at) || !(IsBloxkeepFolder(at) || (File.Exists(Path.Combine(at, "Update.exe")) && !IsPortable(at))))
                     return null;
                 return Full(at);
             }
@@ -586,7 +590,7 @@ namespace BloxkeepSetup
             catch (ArgumentException) { return anyDrive; }
             if (!drive.IsReady || (drive.DriveType != DriveType.Fixed && drive.DriveType != DriveType.Removable))
                 return anyDrive;
-            bool reinstall = Directory.Exists(full) && IsBloxkeepFolder(full);
+            bool reinstall = Directory.Exists(full) && (IsBloxkeepFolder(full) || (existing != null && Same(full, existing)));
             if (Directory.Exists(full) && IsPortable(full))
                 return T.S("That's the portable Bloxkeep's folder, with its accounts inside. Choose another one.",
                     "Đó là thư mục của Bloxkeep bản portable, có tài khoản bên trong. Hãy chọn thư mục khác.");

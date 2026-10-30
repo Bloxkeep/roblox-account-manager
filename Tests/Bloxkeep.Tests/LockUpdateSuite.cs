@@ -1,3 +1,4 @@
+using Velopack;
 using System.Text.Json;
 using RobloxManager;
 
@@ -55,6 +56,56 @@ static class LockUpdateSuite
             !Offered() && !Goes() && LockUpdate().ValueKind == JsonValueKind.Null);
         c.Check("…and the update waits for a quiet moment: not in the first minutes, nor with the window on screen and the PC in use",
             !Quiet(false));
+
+        // 2026-10-30 review: a quiet restart a few seconds before a scheduled preset's minute carried it past that minute,
+        // and missed minutes aren't caught up.
+        Harness.Set(app, "_started", DateTime.UtcNow - TimeSpan.FromMinutes(10));
+        window = "hidden";
+        c.Check("in the tray a while after the start: the update goes", Quiet(false));
+        var vault = Harness.Get<Vault>(app, "_vault");
+        var preset = new LaunchPreset { Name = "Night" };
+        vault.Data.Settings.Presets.Add(preset);
+        string At(TimeSpan from) => DateTime.Now.Add(from).ToString("HH:mm");
+        preset.Schedule = new PresetSchedule { Enabled = true, Time = At(TimeSpan.FromMinutes(2)), Days = [0, 1, 2, 3, 4, 5, 6] };
+        c.Check("…but not with a scheduled preset due in 2 minutes (fails on the old code)", !Quiet(false));
+        preset.Schedule.Time = At(TimeSpan.Zero);
+        c.Check("…nor in its minute before it ran", !Quiet(false));
+        preset.Schedule.LastRun = DateTime.Now.ToString("yyyy-MM-dd ") + preset.Schedule.Time;
+        c.Check("…once it ran, the update goes", Quiet(false));
+        preset.Schedule = new PresetSchedule { Enabled = true, Time = At(TimeSpan.FromMinutes(20)), Days = [0, 1, 2, 3, 4, 5, 6] };
+        c.Check("…and with the next one 20 minutes away", Quiet(false));
+        vault.Data.Settings.Presets.Remove(preset);
+
+        // 2026-10-30 review: Get beta versions turned off kept a downloaded beta, which the quiet restart or the quit installed.
+        var readyField = typeof(AppUpdater).GetField("_ready", Harness.F)!;
+        void Staged(string version)
+        {
+            readyField.SetValue(updater, new VelopackAsset { Version = SemanticVersion.Parse(version), FileName = $"BloxkeepApp-{version}-full.nupkg" });
+            Status("ready");
+        }
+        Prefs.BetaUpdates = true;
+        Staged("9.9.9-beta.1");
+        await Harness.Call(app, "setBetaUpdates", new { enabled = false });
+        c.Check("Get beta versions turned off: the downloaded beta isn't installed (fails on the old code)",
+            readyField.GetValue(updater) is null && updater.Status != "ready", updater.Status);
+        Prefs.BetaUpdates = true;
+        Staged("9.9.9-alpha.1");
+        await Harness.Call(app, "setBetaUpdates", new { enabled = false });
+        c.Check("…a downloaded quiet fix stays", readyField.GetValue(updater) is not null && updater.Status == "ready");
+        readyField.SetValue(updater, null);
         Status("idle");
+
+        // 2026-10-30 review: Bloxkeep opened by hand a second after "Restart to update" stopped waiting as soon as some
+        // Bloxkeep held the single-instance mutex, the run on its way out; that one got the request and vanished, and the
+        // update's run came back in the tray. It waits until the update's run took the hand-over.
+        Relaunch.Write(new Relaunch.State { WrittenAt = DateTime.UtcNow });
+        var waitForUpdateRun = typeof(AppUpdater).Assembly.GetType("RobloxManager.Program")!.GetMethod("WaitForUpdateRun", Harness.F)!;
+        var waiting = Task.Run(() => waitForUpdateRun.Invoke(null, [TimeSpan.FromSeconds(10)]));
+        await Task.Delay(800);
+        bool stillWaiting = !waiting.IsCompleted;
+        Relaunch.Take([]); // the update's run takes it
+        bool over = await Task.WhenAny(waiting, Task.Delay(3000)) == waiting;
+        c.Check("a start by hand during an update waits until the update's run took the hand-over, then hands over to it",
+            stillWaiting && over && !Relaunch.HandOverWaiting());
     }
 }

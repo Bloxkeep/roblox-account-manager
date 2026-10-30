@@ -250,7 +250,7 @@ public sealed partial class AppController
     async Task<JsonObject> RemoteSwitchAsync(string name)
     {
         // Asked again before the last switch landed (Discord's /pc sent over and over): not moved again meanwhile.
-        if (_hopping.Count > 0)
+        if (Hopping())
             return RemoteSay(L.T("Accounts are still moving to another server. Try again once they're in."));
         if (IsAllAccounts(name))
         {

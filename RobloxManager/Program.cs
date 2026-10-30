@@ -30,7 +30,9 @@ static class Program
             .SetAutoApplyOnStartup(!anotherRuns)
             .OnBeforeUninstallFastCallback(_ =>
             {
-                var deadline = DateTime.UtcNow.AddSeconds(50);
+                // Velopack ends this step after 30 s, counted from before this process started: the question below is
+                // answered by 22 s, which leaves time to delete the data (2026-10-30 review: 50 s were planned).
+                var deadline = DateTime.UtcNow.AddSeconds(22);
                 CloseRunningApp();
                 Vault.DeleteCaches();
                 // Sign-in and captcha browser profiles in %TEMP%, normally removed at the next start that never comes.
@@ -64,21 +66,8 @@ static class Program
             e.SetObserved();
         };
 
-        // Opened during a background update: wait for the run the update starts and bring it forward. Taking its place
-        // made that run (which carries the unlocked vault) give way, and Bloxkeep came back locked (seen 2026-10-20).
-        if (!Relaunch.IsUpdateRun(args) && Relaunch.HandOverWaiting())
-        {
-            var waiting = System.Diagnostics.Stopwatch.StartNew();
-            while (waiting.Elapsed < UpdateRunWait && Relaunch.HandOverWaiting())
-            {
-                if (Mutex.TryOpenExisting(SingleInstanceMutex, out var running))
-                {
-                    running.Dispose(); // that run is up: this one hands over below, like any second launch
-                    break;
-                }
-                Thread.Sleep(200);
-            }
-        }
+        if (!Relaunch.IsUpdateRun(args))
+            WaitForUpdateRun(UpdateRunWait);
 
         // A second launch just brings the running window to the front.
         using var activate = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEvent);
@@ -115,9 +104,19 @@ static class Program
             Ui.Error(null, L.F("Unexpected error: {0}", ex.Message));
             return;
         }
-        var wait = ThreadPool.RegisterWaitForSingleObject(activate, (_, _) => OnShell(shell, shell.BringToFront), null, Timeout.Infinite, executeOnlyOnce: false);
+        // Listened for once the window has a handle: a start by hand that waited for an update's run (WaitForUpdateRun)
+        // asks as soon as that run takes the hand-over, before its window exists, and OnShell would drop the request.
+        RegisteredWaitHandle? wait = null;
+        shell.HandleCreated += (_, _) => wait ??= ThreadPool.RegisterWaitForSingleObject(activate, (_, _) => OnShell(shell, shell.BringToFront), null,
+            Timeout.Infinite, executeOnlyOnce: false);
         // The uninstaller asks the app to quit (not hide to the tray), so nothing it uses stays locked.
-        var quitWait = ThreadPool.RegisterWaitForSingleObject(quit, (_, _) => OnShell(shell, shell.Quit), null, Timeout.Infinite, executeOnlyOnce: true);
+        // A downloaded update isn't applied on that quit: the installer or uninstaller runs Velopack's Update.exe next, and
+        // a second one applying the update would race it for the folder (2026-10-30 review).
+        var quitWait = ThreadPool.RegisterWaitForSingleObject(quit, (_, _) =>
+        {
+            AppUpdater.HeldForInstaller = true;
+            OnShell(shell, shell.Quit);
+        }, null, Timeout.Infinite, executeOnlyOnce: true);
         try
         {
             Application.Run(shell);
@@ -126,7 +125,7 @@ static class Program
         {
             // Nobody could show them once Bloxkeep is gone.
             RobloxProcesses.ShowWindows();
-            wait.Unregister(null);
+            wait?.Unregister(null);
             quitWait.Unregister(null);
         }
     }
@@ -140,6 +139,19 @@ static class Program
 
     [DllImport("user32.dll")]
     static extern bool AllowSetForegroundWindow(uint processId);
+
+    /// <summary>Opened during a background update: waits for the run the update starts, to bring it forward (as any second
+    /// launch) rather than take its place, which made that run (carrying the unlocked vault) give way, and Bloxkeep came back
+    /// locked (seen 2026-10-20). Over once that run took the hand-over (or the watch removed it), or after
+    /// <paramref name="limit"/>. Not as soon as some Bloxkeep holds the single-instance mutex: right after "Restart to
+    /// update" that is the run on its way out, which got the request and vanished, and the update's run then came back in
+    /// the tray with nothing on screen (2026-10-30 review).</summary>
+    static void WaitForUpdateRun(TimeSpan limit)
+    {
+        var waiting = System.Diagnostics.Stopwatch.StartNew();
+        while (waiting.Elapsed < limit && Relaunch.HandOverWaiting())
+            Thread.Sleep(200);
+    }
 
     /// <summary>Runs a request from another process on the window's thread; the window may be going away meanwhile.</summary>
     static void OnShell(ShellForm shell, Action action)
@@ -155,7 +167,7 @@ static class Program
         }
     }
 
-    /// <summary>Before uninstalling: asks a running Bloxkeep to close and waits up to 15 s (of the hook's 60). Velopack 1.2
+    /// <summary>Before uninstalling: asks a running Bloxkeep to close and waits up to 10 s (of the hook's 30). Velopack 1.2
     /// already ends processes in the program folder; this covers one it couldn't see (running elevated).</summary>
     static void CloseRunningApp()
     {
@@ -169,7 +181,7 @@ static class Program
         {
             try
             {
-                if (single.WaitOne(TimeSpan.FromSeconds(15)))
+                if (single.WaitOne(TimeSpan.FromSeconds(10)))
                     single.ReleaseMutex();
             }
             catch (AbandonedMutexException)
@@ -183,7 +195,7 @@ static class Program
     }
 
     /// <summary>Velopack's uninstall run without Bloxkeep's uninstaller window: asks whether the accounts go too; kept when
-    /// unanswered by <paramref name="deadline"/>, before Velopack's minute for this step runs out.</summary>
+    /// unanswered by <paramref name="deadline"/>, before Velopack's 30 s for this step run out.</summary>
     static bool AskToDeleteData(DateTime deadline)
     {
         Prefs.Load();
@@ -198,8 +210,8 @@ static class Program
                 new Dialog.Choice(L.T("Delete my accounts and settings"),
                     L.F("Deletes the vault with your saved accounts, your settings and logs in {0}. This can't be undone.", Vault.DataDir), Danger: true),
             ],
-            defaultIndex: 0, cancelIndex: 0, footnote: L.T("Kept if you don't choose within a minute."),
-            timeout: TimeSpan.FromMilliseconds(Math.Clamp((deadline - DateTime.UtcNow).TotalMilliseconds, 5000, 50000)));
+            defaultIndex: 0, cancelIndex: 0, footnote: L.T("Kept if you don't choose within 20 seconds."),
+            timeout: TimeSpan.FromMilliseconds(Math.Clamp((deadline - DateTime.UtcNow).TotalMilliseconds, 5000, 20000)));
         return picked == 1;
     }
 
