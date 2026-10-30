@@ -151,5 +151,20 @@ static class VaultsSuite
         await Harness.Call(app, "cancelAddVault", new { });
         c.Check("…a set-up that failed, then Cancel: the vault from before is offered again", Vaults.Current == thirdVault && Vault.ActiveFile == thirdVault!.File,
             Vault.ActiveFile);
+
+        // A backup cut short (review, 2026-10-30): one only the size of a header isn't taken as a vault to restore; one that
+        // got through and won't open says where the vault it replaced is kept.
+        string thirdPath = Path.Combine(data, thirdVault.File), cut = Path.Combine(dir, "cut-short.rmv");
+        File.WriteAllBytes(cut, File.ReadAllBytes(thirdPath)[..100]);
+        c.Check("a backup cut short to 100 bytes isn't taken as a vault; a whole one is", !Vault.LooksLikeVault(cut) && Vault.LooksLikeVault(thirdPath));
+        Directory.CreateDirectory(Vault.OldVaultsDir);
+        string replaced = Path.Combine(Vault.OldVaultsDir, "vault-before-restore-20261030-120000.rmv");
+        File.Copy(thirdPath, replaced, overwrite: true);
+        Harness.Set(app, "_restoredOver", (thirdVault.File, replaced));
+        var failedUnlock = await Harness.Try(app, "unlock", new { password = "not this vault's password" });
+        c.Check("…the first unlock after a restore fails: says where the vault it replaced is kept",
+            failedUnlock is UserError e && e.Message.Contains(replaced, StringComparison.Ordinal), (failedUnlock as Exception)?.Message);
+        await Harness.Call(app, "unlock", new { password = FarmPassword });
+        c.Check("…once it opens, not said again", Harness.Get<Vault?>(app, "_vault") is not null && Harness.Get<object?>(app, "_restoredOver") is null);
     }
 }

@@ -54,13 +54,19 @@ public sealed partial class AppController
             // The vault's own refusals are sentences of the app; a file Windows wouldn't read, or broken JSON, aren't.
             if (ex is JsonException)
                 Log.Write(ex);
-            throw new UserError(ex switch
+            string text = ex switch
             {
                 InvalidPasswordException or InvalidDataException => ex.Message,
                 JsonException => L.T("The data file is not in the right format or is damaged."),
                 _ => L.F("Couldn't open the data file: {0}", ErrorText(ex)),
-            });
+            };
+            // Just restored over another vault: the backup may be what's broken, and the vault it replaced is still there.
+            if (_restoredOver is { } over && over.File.Equals(Path.GetFileName(path), StringComparison.OrdinalIgnoreCase) && File.Exists(over.Copy))
+                text += "\n" + L.F("If this backup won't open, the vault it replaced is kept as {0}: restore that file to get it back.", over.Copy);
+            throw new UserError(text);
         }
+        if (string.Equals(_restoredOver?.File, Path.GetFileName(path), StringComparison.OrdinalIgnoreCase))
+            _restoredOver = null; // it opened
         // Another unlock finished first (two commands at once), or another vault was picked while this one's key was being
         // worked out: this copy is let go (opened, it would be shown as the other vault's).
         if (_vault is not null || Vaults.Current != unlocking)

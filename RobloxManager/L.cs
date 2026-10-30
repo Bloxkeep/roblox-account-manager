@@ -500,6 +500,8 @@ public static class L
         ["Roblox closed {0} window(s) when another one opened — Roblox may have blocked running several windows. Multi-Roblox may need an update."] =
             "Roblox tự đóng {0} cửa sổ khi có cửa sổ khác mở. Có thể Roblox đã chặn mở nhiều cửa sổ, cần cập nhật Multi-Roblox.",
         ["This file is not a Bloxkeep backup."] = "File này không phải bản sao lưu của Bloxkeep.",
+        ["If this backup won't open, the vault it replaced is kept as {0}: restore that file to get it back."] =
+            "Nếu bản sao lưu này không mở được, vault cũ vẫn được giữ ở {0}: khôi phục file đó để lấy lại.",
         ["Choose a backup folder first."] = "Chọn thư mục sao lưu trước.",
         ["Couldn't back up: {0}"] = "Không sao lưu được: {0}",
         ["Choose a folder on this PC or a synced drive."] = "Chọn thư mục trên máy này hoặc trên ổ đồng bộ.",

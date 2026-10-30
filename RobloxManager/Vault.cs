@@ -463,7 +463,12 @@ public sealed class Vault : IDisposable
     }
 
     /// <summary>Starts like a vault file; whether it opens is only known with its password (see <see cref="Backup"/>).</summary>
-    public static bool LooksLikeVault(string path) => File.Exists(path) && HeaderOk(File.ReadAllBytes(path), out _, out _);
+    public static bool LooksLikeVault(string path) =>
+        File.Exists(path) && File.ReadAllBytes(path) is var bytes && bytes.Length >= MinVaultSize && HeaderOk(bytes, out _, out _);
+
+    /// <summary>Below any vault ever written (an empty one is about 1.7 KB, its settings alone hundreds of bytes): a file this
+    /// small with the right first bytes was cut short, and restoring it made every unlock fail (review, 2026-10-30).</summary>
+    const int MinVaultSize = 256;
 
     /// <summary>What <see cref="ReadOther"/> found in a file.</summary>
     public enum OtherStatus { Opened, TooLarge, Unreadable, NotAVault, WrongPassword, Newer }

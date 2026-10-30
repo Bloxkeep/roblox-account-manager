@@ -463,7 +463,7 @@ public sealed partial class AppController
                 throw new UserError(L.T("This file is not a Bloxkeep backup."));
             if (_vault is not null)
                 Lock();
-            Backup.Restore(dialog.FileName, replace);
+            _restoredOver = Backup.Restore(dialog.FileName, replace) is { } before ? (Vault.ActiveFile, before) : null;
             NoteRestored(dialog.FileName);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -477,6 +477,10 @@ public sealed partial class AppController
         PushState();
         return null;
     }
+
+    /// <summary>The vault file a restore replaced and where its copy went, until that vault next opens: an unlock that fails
+    /// meanwhile says where the copy is, in case the backup itself was damaged (review, 2026-10-30).</summary>
+    (string File, string Copy)? _restoredOver;
 
     /// <summary>A restored backup with an id this PC never had (<see cref="Prefs.KnownVaultIds"/>) was made elsewhere: noted
     /// so its first unlock runs <see cref="DropForeignLinks"/>. A backup of this PC's own vault keeps everything. The caller
