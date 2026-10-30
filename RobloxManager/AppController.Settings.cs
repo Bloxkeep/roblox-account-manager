@@ -198,6 +198,10 @@ public sealed partial class AppController
             RobloxFlags.Restore(); // a launch cut short: the next Roblox opened by hand gets the person's own file
         StopWatchingDrags();
         GiveIconsBack();
+        // Quitting during a nudge or a /pc screenshot left that window see-through and click-through until Bloxkeep ran
+        // again (review 2026-10-30). Not waited for: both go on on this thread, which is closing; one still running
+        // stops at its next window (_disposed) and puts back only what it changed.
+        AntiAfk.Recover(RobloxProcesses.VisibleWindows(RobloxProcesses.GetPlayerPids()).Values.SelectMany(w => w));
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         SystemEvents.TimeChanged -= OnTimeChanged;
         NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
