@@ -238,6 +238,35 @@ static class ClaimsSuite
         c.Check("…one still opening, to be closed, isn't", In(closeWhen, closing));
         closeWhen.GetType().GetMethod("Clear")!.Invoke(closeWhen, null);
         Reset();
+
+        // A rejoin whose client quit before its window (it crashed as it started, or Roblox's updater swapped its build
+        // folder): tried again later, a few times, as a drop in game is. Before, the account was left out for good.
+        var mine = vault.Data.Accounts.Single(x => x.UserId == 31);
+        mine.AutoRejoin = true;
+        var queue = Harness.Get<System.Collections.IList>(app, "_rejoinQueue");
+        object Rejoin(int tries)
+        {
+            var launch = Activator.CreateInstance(launchType, mine.Id, new HashSet<int>(), DateTime.UtcNow.AddSeconds(-20), new GameTarget(1818), true, null)!;
+            launchType.GetProperty("OpenRetries")!.SetValue(launch, tries);
+            pending.Add(launch);
+            alive[launch] = DateTime.UtcNow.AddSeconds(-10);
+            return launch;
+        }
+        int Tries(object request) => (int)request.GetType().GetProperty("OpenRetries")!.GetValue(request)!;
+        DateTime Due(object request) => (DateTime)request.GetType().GetProperty("Due")!.GetValue(request)!;
+        Rejoin(0);
+        Claim(new());
+        c.Check("a rejoin whose client quit before its window: tried again 30 s on", queue.Count == 1 && Tries(queue[0]!) == 1
+            && Due(queue[0]!) > DateTime.UtcNow.AddSeconds(20), queue.Count);
+        queue.Clear();
+        Rejoin(3);
+        Claim(new());
+        c.Check("…its tries used up: not again (it is said instead)", queue.Count == 0 && pending.Count == 0, queue.Count);
+        mine.AutoRejoin = false;
+        Rejoin(0);
+        Claim(new());
+        c.Check("…nor with auto-rejoin off", queue.Count == 0, queue.Count);
+        Reset();
         // Roblox's updater read from Windows' process list (a stand-in under its name: ping, copied).
         string updaterDir = Path.Combine(dir, "updater");
         Directory.CreateDirectory(updaterDir);

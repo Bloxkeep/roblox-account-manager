@@ -642,8 +642,9 @@ public sealed partial class AppController
 
     /// <param name="presetId">Also on its rejoins and restarts: its options apply.</param>
     /// <param name="restart">Opened again by its preset's planned restart (a rejoin too).</param>
+    /// <param name="openRetries">See <see cref="RejoinRequest.OpenRetries"/>.</param>
     async Task StartSessionAsync(Account account, GameTarget? target, string launchVia, CancellationToken ct = default, bool rejoin = false,
-        Guid? presetId = null, bool restart = false)
+        Guid? presetId = null, bool restart = false, int openRetries = 0)
     {
         string ticket = await RobloxApi.GetAuthTicketAsync(account.Cookie, ct, account.Realm);
         ct.ThrowIfCancellationRequested();
@@ -684,7 +685,7 @@ public sealed partial class AppController
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
         ForgetLate(account.Id); // opened again: a window of the earlier try is not this one's
-        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker });
+        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker, OpenRetries = openRetries });
         NoteActivity(restart ? "reopened" : rejoin ? "rejoined" : "opened", account.Id, target?.PlaceId); // Statistics › Activity
         account.LastUsed = DateTime.Now;
         SignInAccepted(account);

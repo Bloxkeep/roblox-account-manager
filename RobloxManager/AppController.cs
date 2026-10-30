@@ -22,11 +22,18 @@ public sealed partial class AppController : IDisposable
         public DateTime StartedAt { get; set; } = StartedAt;
         /// <summary>The tracker id in its launch link, also on its client's command line (see <see cref="ClaimWindows"/>).</summary>
         public string? Tracker { get; init; }
+        /// <summary>The rejoin's earlier tries that opened no window (see <see cref="RejoinRequest.OpenRetries"/>).</summary>
+        public int OpenRetries { get; init; }
     }
 
     /// <param name="NetworkRetries">Attempts that failed only because there was no connection.</param>
     /// <param name="Restart">Its preset's planned restart, not a drop: it goes ahead whatever auto-rejoin says.</param>
-    sealed record RejoinRequest(Guid AccountId, GameTarget Target, DateTime Due, int NetworkRetries = 0, Guid? PresetId = null, bool Restart = false);
+    sealed record RejoinRequest(Guid AccountId, GameTarget Target, DateTime Due, int NetworkRetries = 0, Guid? PresetId = null, bool Restart = false)
+    {
+        /// <summary>Tries that opened no window: Roblox wouldn't start (its updater swapping the build folder) or quit before
+        /// its window came. Tried again up to <see cref="MaxOpenRetries"/> times, like a drop in game.</summary>
+        public int OpenRetries { get; init; }
+    }
 
     static readonly TimeSpan HandOverWindow = TimeSpan.FromSeconds(60);
     static readonly TimeSpan PendingTimeout = TimeSpan.FromSeconds(120);
@@ -40,6 +47,8 @@ public sealed partial class AppController : IDisposable
     const int MaxNetworkRetries = 20;
     /// <summary>A refused launch ticket the sign-in check didn't confirm as a sign-out: tried again this many times, then said.</summary>
     const int MaxTicketRetries = 3;
+    /// <summary>A rejoin that opened no window: tried again this many times (30 s, 1 min, 1.5 min on), then said.</summary>
+    const int MaxOpenRetries = 3;
     /// <summary>Said for a refused launch ticket when the account is still signed in.</summary>
     static string RefusedText => L.T("Roblox refused to open the game for this account. Try again in a moment.");
     /// <summary>One small GitHub API request an hour, well within its 60 an hour for anonymous callers (several PCs per IP too).</summary>

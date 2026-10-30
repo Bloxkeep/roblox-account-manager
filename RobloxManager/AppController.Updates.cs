@@ -59,9 +59,31 @@ public sealed partial class AppController
             return;
         }
         if (launch.Rejoin && !closed && FindAccount(launch.AccountId) is { } account)
+        {
+            // Its client quit before a window came (crashed as it started): tried again a few times, as a drop in game
+            // is. Before, the account was left out for good (review, 2026-10-30). Not a late one: its window may still come.
+            if (!late && RetryOpen(account, launch))
+                return;
             Notify(L.F("{0} didn't rejoin: no Roblox window appeared.", Name(account)), "warn", "rejoinFail", account.Id);
+        }
         if (!late && !_running.ContainsKey(launch.AccountId))
             ForgetScheduledOpen(launch.AccountId); // no client came of it: a scheduled stop has nothing of this account's to close
+    }
+
+    /// <summary>
+    /// A rejoin that opened no window goes again later (see <see cref="RejoinRequest.OpenRetries"/>) while auto-rejoin is on
+    /// and nothing else of the account's is open or waiting. False once its tries are used up: then it is said.
+    /// </summary>
+    bool RetryOpen(Account account, PendingLaunch launch)
+    {
+        if (launch.Target is not { } target || launch.OpenRetries >= MaxOpenRetries || !RejoinOn(account, launch.PresetId) || account.Banned == true
+            || target.Follow is null && GameBanOf(account, target.PlaceId) is not null
+            || _running.ContainsKey(account.Id) || _pending.Any(p => p.AccountId == account.Id) || _rejoinQueue.Any(r => r.AccountId == account.Id))
+            return false;
+        var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (launch.OpenRetries + 1), MaxRetryDelay.Ticks));
+        _rejoinQueue.Add(new RejoinRequest(account.Id, target with { JobId = null }, DateTime.UtcNow + delay, PresetId: launch.PresetId)
+            { OpenRetries = launch.OpenRetries + 1 });
+        return true;
     }
 
     /// <summary>Remembers which version last ran. Older than this one: the page shows the release notes in between, once.

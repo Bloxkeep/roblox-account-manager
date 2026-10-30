@@ -559,7 +559,7 @@ public sealed partial class AppController
                 return;
             }
             await StartSessionAsync(account, target, vault.Data.Settings.LaunchVia, cts.Token, rejoin: true, presetId: request.PresetId,
-                restart: request.Restart);
+                restart: request.Restart, openRetries: request.OpenRetries);
             Persist();
             PushState();
         }
@@ -578,6 +578,15 @@ public sealed partial class AppController
             // rejoin. A refusal is reported below instead: silent retries wouldn't change it.
             var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (request.NetworkRetries + 1), MaxRetryDelay.Ticks));
             _rejoinQueue.Add(request with { Due = DateTime.UtcNow + delay, NetworkRetries = request.NetworkRetries + 1 });
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException && request.OpenRetries < MaxOpenRetries)
+        {
+            // Roblox wouldn't start: most likely its updater swapping the build folder under the launch. Tried again later,
+            // as a client that quits before its window is (RetryOpen); before, the account was left out for good while a
+            // drop in game is rejoined (review, 2026-10-30).
+            Log.Note($"A rejoin's Roblox didn't start, tried again later: {StartErrorLog(ex)}");
+            var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (request.OpenRetries + 1), MaxRetryDelay.Ticks));
+            _rejoinQueue.Add(request with { Due = DateTime.UtcNow + delay, OpenRetries = request.OpenRetries + 1 });
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex) || ex is Win32Exception or FileNotFoundException)
         {
