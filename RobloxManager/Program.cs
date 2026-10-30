@@ -110,7 +110,13 @@ static class Program
         shell.HandleCreated += (_, _) => wait ??= ThreadPool.RegisterWaitForSingleObject(activate, (_, _) => OnShell(shell, shell.BringToFront), null,
             Timeout.Infinite, executeOnlyOnce: false);
         // The uninstaller asks the app to quit (not hide to the tray), so nothing it uses stays locked.
-        var quitWait = ThreadPool.RegisterWaitForSingleObject(quit, (_, _) => OnShell(shell, shell.Quit), null, Timeout.Infinite, executeOnlyOnce: true);
+        // A downloaded update isn't applied on that quit: the installer or uninstaller runs Velopack's Update.exe next, and
+        // a second one applying the update would race it for the folder (2026-10-30 review).
+        var quitWait = ThreadPool.RegisterWaitForSingleObject(quit, (_, _) =>
+        {
+            AppUpdater.HeldForInstaller = true;
+            OnShell(shell, shell.Quit);
+        }, null, Timeout.Infinite, executeOnlyOnce: true);
         try
         {
             Application.Run(shell);

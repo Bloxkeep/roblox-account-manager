@@ -160,11 +160,15 @@ public sealed class AppUpdater
     /// <summary>When the last check got its answer (or failed); null before the first.</summary>
     public DateTime? CheckedAt { get; private set; }
 
+    /// <summary>Bloxkeep's installer or uninstaller asked this run to quit (Program's quit event): it runs Velopack's
+    /// Update.exe itself next, so <see cref="ApplyOnExit"/> starts no other one to race it for the folder and its lock.</summary>
+    public static volatile bool HeldForInstaller;
+
     /// <summary>Installs the download once this process exits; restarts with <paramref name="restartArgs"/> when given
     /// (see <see cref="Relaunch"/>), else it waits for the next start.</summary>
     public void ApplyOnExit(string[]? restartArgs = null)
     {
-        if (_manager is null || _ready is null)
+        if (_manager is null || _ready is null || HeldForInstaller)
             return;
         try
         {

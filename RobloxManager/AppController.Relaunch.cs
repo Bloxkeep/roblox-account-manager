@@ -64,7 +64,7 @@ public sealed partial class AppController
     void RelaunchIfQuiet(DateTime now)
     {
         bool atLock = UpdateGoesAtLock();
-        if (_relaunching || _applyingUpdate || _disposed || !Prefs.CheckUpdates || _updater.Status != "ready"
+        if (_relaunching || _applyingUpdate || _disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || AppUpdater.HeldForInstaller
             || now < _autoRelaunchPausedUntil || !QuietForRelaunch(now, atLock))
             return;
         _ = RelaunchAsync(atLock);
