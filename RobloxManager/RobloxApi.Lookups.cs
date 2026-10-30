@@ -151,9 +151,21 @@ public static partial class RobloxApi
             var details = GetUniverseDetailsAsync(chunk, ct);
             var counts = GetPlayerCountsAsync(chunk, cookie, ct);
             var icons = GetGameIconsAsync(chunk, ct);
-            await Task.WhenAll(details, counts, icons);
+            try
+            {
+                await Task.WhenAll(details, counts, icons);
+            }
+            catch (Exception ex) when (details.IsCompletedSuccessfully && !ct.IsCancellationRequested && IsExpectedError(ex))
+            {
+                // The names are what counts: a player count or icon that timed out or came back garbled is left blank instead
+                // of losing the names too, which the game list then remembered as unknown for 2 minutes (review, 2026-10-30).
+            }
             foreach (var (id, (name, creator, rootPlaceId)) in details.Result)
-                result[id] = new GameInfo(rootPlaceId, id, name, creator, counts.Result.GetValueOrDefault(id), icons.Result.GetValueOrDefault(id));
+            {
+                result[id] = new GameInfo(rootPlaceId, id, name, creator,
+                    counts.IsCompletedSuccessfully ? counts.Result.GetValueOrDefault(id) : 0,
+                    icons.IsCompletedSuccessfully ? icons.Result.GetValueOrDefault(id) : null);
+            }
         }
         return result;
     }
@@ -364,8 +376,10 @@ public static partial class RobloxApi
                 _serverListReset = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Clamp(r, 0, 120));
             }
         }
+        // A failed answer is said, not read as "no servers": the server window kept that empty list a minute after a one-off
+        // 500, and a preset told "no server has room" (review, 2026-10-30).
         if (!res.IsSuccessStatusCode)
-            return ([], null);
+            throw new RobloxApiException(L.T("Couldn't load the server list. Try again in a moment."), serverError: (int)res.StatusCode >= 500);
         using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
         string? next = doc.RootElement.TryGetProperty("nextPageCursor", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null;
         return (ReadServers(doc.RootElement), next);

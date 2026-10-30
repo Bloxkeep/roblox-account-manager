@@ -427,6 +427,7 @@ public static class L
         ["No server has room for {0} accounts right now, so Roblox picks one."] =
             "Hiện không có server nào đủ chỗ cho {0} tài khoản, Roblox sẽ tự chọn server.",
         ["Couldn't load the server list, so Roblox picks a server."] = "Không tải được danh sách server, Roblox sẽ tự chọn server.",
+        ["Couldn't load the server list. Try again in a moment."] = "Không tải được danh sách server. Thử lại sau.",
         ["Roblox refused to open the game for this account. Try again in a moment."] =
             "Roblox không cho tài khoản này vào game. Thử lại sau giây lát.",
         ["Waiting {0}s before the next account…"] = "Chờ {0} giây rồi mở tài khoản tiếp theo…",
