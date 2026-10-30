@@ -494,11 +494,23 @@ public sealed partial class AppController
 
         foreach (int gone in _lowMemoryPriority.Where(pid => players.All(p => p.Pid != pid)).ToList())
             _lowMemoryPriority.Remove(gone);
+        // The first look at the windows: a Bloxkeep that crashed (or was ended) left its background windows at low priority
+        // with no list of them, so one in front, or every one with the option off, stayed low (2026-10-30 review). Each gets
+        // what it should have, once.
+        if (!_memoryPriorityAdopted && players.Count > 0)
+        {
+            _memoryPriorityAdopted = true;
+            int front = RobloxProcesses.ForegroundPid();
+            foreach (var p in players)
+            {
+                bool low = s.TrimBackground && p.Pid != front;
+                if (RobloxProcesses.SetMemoryPriority(p.Pid, low) && low)
+                    _lowMemoryPriority.Add(p.Pid);
+            }
+        }
         if (!s.TrimBackground)
         {
-            foreach (int pid in _lowMemoryPriority)
-                RobloxProcesses.SetMemoryPriority(pid, background: false);
-            _lowMemoryPriority.Clear();
+            GiveMemoryPriorityBack();
             return;
         }
         if (players.Count == 0)
@@ -581,6 +593,14 @@ public sealed partial class AppController
     }
 
     /// <summary>Every client's RAM limit lifted (Bloxkeep closing: none is left limited without it).</summary>
+    /// <summary>Every window Bloxkeep lowered gets its normal RAM priority back (the option turned off, Bloxkeep closing).</summary>
+    void GiveMemoryPriorityBack()
+    {
+        foreach (int pid in _lowMemoryPriority)
+            RobloxProcesses.SetMemoryPriority(pid, background: false);
+        _lowMemoryPriority.Clear();
+    }
+
     void LiftRamLimits()
     {
         foreach (int pid in _ramLimited.Keys)

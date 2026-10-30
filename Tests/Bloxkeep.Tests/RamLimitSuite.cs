@@ -13,6 +13,11 @@ namespace Bloxkeep.Tests;
 static class RamLimitSuite
 {
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
+    [DllImport("kernel32.dll")] static extern bool GetProcessInformation(IntPtr process, int infoClass, out uint info, int size);
+
+    /// <summary>The test process's memory priority (2 low, 5 normal; 0 when unreadable).</summary>
+    static uint MemoryPriority() =>
+        GetProcessInformation(System.Diagnostics.Process.GetCurrentProcess().Handle, 0, out uint p, sizeof(uint)) ? p : 0;
 
     public static async Task Run(Checks c, string dir)
     {
@@ -104,11 +109,21 @@ static class RamLimitSuite
         Tick();
         c.Check("turned off: lifted, though still minimized", !Limited());
 
+        // Save RAM's low memory priority (GuardResources), on the same process: a window left low by a Bloxkeep that
+        // crashed gets its priority set at the first look, and one lowered is raised again when Bloxkeep closes.
+        RobloxProcesses.SetMemoryPriority(me, background: true);
+        c.Check("(the test can read its own memory priority)", MemoryPriority() == 2, MemoryPriority());
+        Harness.Invoke(app, "GuardResources", new List<RobloxProcesses.PlayerProcess> { new(me, 0) }, new MemoryStatus(16000, 8000, 50), DateTime.UtcNow);
+        c.Check("a window left at low priority by an earlier Bloxkeep: normal again at the first look (Save RAM off)", MemoryPriority() == 5, MemoryPriority());
+        RobloxProcesses.SetMemoryPriority(me, background: true);
+        Harness.Get<HashSet<int>>(app, "_lowMemoryPriority").Add(me);
+
         await Harness.Call(app, "setSettings", new { ramLimitMb = 2048 });
         Tick();
         bool before = Limited();
         app.Dispose();
         c.Check("Bloxkeep closing lifts it (no window is left limited without it)", before && !Limited(), before);
+        c.Check("…and gives a window it lowered its normal memory priority back", MemoryPriority() == 5, MemoryPriority());
 
         form.Invoke(form.Close);
         ui.Join();

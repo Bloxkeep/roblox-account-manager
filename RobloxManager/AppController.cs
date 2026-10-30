@@ -135,6 +135,8 @@ public sealed partial class AppController : IDisposable
     /// <summary>Why anti-AFK last held back from a due window: said if Roblox kicks it for idling anyway.</summary>
     readonly Dictionary<int, AfkHeld> _afkHeld = new();
     readonly HashSet<int> _lowMemoryPriority = new();
+    /// <summary>Every Roblox window open at the first look has had its RAM priority set (see GuardResources).</summary>
+    bool _memoryPriorityAdopted;
     /// <summary>The Roblox settings file holds values Bloxkeep wrote; the person's own come back when Roblox is closed.</summary>
     bool _robloxSettingsPending = RobloxGameSettings.HasBaseline;
     /// <summary>Light AFK's Fast Flags are in a client's file (or were, when Bloxkeep closed before putting it back).</summary>

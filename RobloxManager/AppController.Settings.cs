@@ -194,8 +194,14 @@ public sealed partial class AppController
         _disposed = true;
         GiveCoresBack();
         LiftRamLimits();
+        GiveMemoryPriorityBack(); // no Roblox window stays at low RAM priority without Bloxkeep to raise it again
         if (_robloxFlagsPending)
             RobloxFlags.Restore(); // a launch cut short: the next Roblox opened by hand gets the person's own file
+        // Quit within seconds of a launch (or during one): the process check never put the person's own in-game settings
+        // back, so their next Roblox would start windowed, muted, at Light AFK's FPS (2026-10-30 review). With Roblox
+        // still open the copy is kept, for the next start to finish the job.
+        if (_robloxSettingsPending)
+            RobloxGameSettings.Restore(final: RobloxProcesses.GetPlayerPids().Length == 0);
         StopWatchingDrags();
         GiveIconsBack();
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
