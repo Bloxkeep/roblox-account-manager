@@ -150,8 +150,11 @@ sealed class MiniForm : Form
         if (SavedPlace(out var saved))
         {
             Location = saved.Location;
-            int tallest = Math.Min(MaximumSize.Height, Screen.FromPoint(saved.Location).WorkingArea.Height);
+            var area = Screen.FromPoint(saved.Location).WorkingArea;
+            int tallest = Math.Min(MaximumSize.Height, area.Height);
             Height = Math.Max(Math.Min(Px(saved.Height), tallest), MinimumSize.Height);
+            // Inside the screen, not only as tall as it (review 2026-10-30): saved low on a taller screen, it was cut off.
+            Location = Ui.Inside(new Rectangle(saved.Location, Size), area, RobloxProcesses.ResizeBorder(Handle));
         }
     }
 

@@ -30,6 +30,17 @@ static class Ui
             SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, null, IntPtr.Zero);
         });
     }
+    /// <summary>
+    /// A saved window's place moved just enough for the window to lie inside the screen's work area (give or take
+    /// <paramref name="slack"/>, Windows' invisible resize border, so a window snapped to an edge stays put). Only its
+    /// size was held to the screen: one saved 1980 wide at x = 1000, back on a 1920 screen, was cut off (review 2026-10-30).
+    /// </summary>
+    public static Point Inside(Rectangle r, Rectangle area, int slack)
+    {
+        area.Inflate(slack, slack);
+        return new Point(Math.Max(area.Left, Math.Min(r.X, area.Right - r.Width)), Math.Max(area.Top, Math.Min(r.Y, area.Bottom - r.Height)));
+    }
+
     static System.Windows.Forms.Timer? _clipboardTimer;
 
     public static Icon? AppIcon { get; } = LoadAppIcon();

@@ -115,21 +115,13 @@ public sealed class ShellForm : Form
         _themeId = Themes.Current.Id;
         Text = Ui.Title;
         BackColor = Themes.Current.Background;
-        StartPosition = FormStartPosition.CenterScreen;
-        // Fit the screen the window opens on (the one with the mouse, like CenterScreen): on a 1366×768 or 1080p
-        // laptop at 125–150 % the preferred size would put the launch dock under the taskbar.
-        var area = Screen.FromPoint(Cursor.Position).WorkingArea.Size;
-        var preferred = new Size(LogicalToDeviceUnits(1320), LogicalToDeviceUnits(840));
-        MinimumSize = Fit(new Size(LogicalToDeviceUnits(980), LogicalToDeviceUnits(620)), area);
-        Size = Fit(preferred, area);
-        if (preferred.Width > area.Width || preferred.Height > area.Height)
-            WindowState = FormWindowState.Maximized;
-        // The saved place, size and maximised state win (put in OnLoad); the fit above is for a first start or a lost screen.
-        if (SavedPlace(out _))
-        {
-            StartPosition = FormStartPosition.Manual;
-            WindowState = FormWindowState.Normal;
-        }
+        // Made on the main screen, at its scale; put on the screen with the mouse in OnLoad (FitFirstPlace), or where it
+        // was saved (RestorePlace), once the window is real.
+        StartPosition = FormStartPosition.Manual;
+        var main = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).WorkingArea;
+        MinimumSize = Fit(new Size(LogicalToDeviceUnits(980), LogicalToDeviceUnits(620)), main.Size);
+        Size = Fit(new Size(LogicalToDeviceUnits(1320), LogicalToDeviceUnits(840)), main.Size);
+        Location = new Point(main.Left + (main.Width - Width) / 2, main.Top + (main.Height - Height) / 2);
         Icon = Ui.AppIcon;
         Load += async (_, _) => await InitAsync();
         _releaseTimer.Tick += (_, _) => ReleaseWebView();
@@ -631,10 +623,32 @@ public sealed class ShellForm : Form
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
-        RestorePlace();
+        if (SavedPlace(out _))
+            RestorePlace();
+        else
+            FitFirstPlace();
         // An update in the background found the window minimised: it comes back that way.
         if (_resumeWindow == "minimized")
             WindowState = FormWindowState.Minimized;
+    }
+
+    /// <summary>
+    /// No saved place (a first start, or a lost screen): the screen with the mouse, fitted. On a 1366×768 or 1080p laptop
+    /// at 125–150 % the preferred size would put the launch dock under the taskbar. Only now, with the window real and
+    /// moved there first: sized in the constructor, at the main screen's scale, a window opening on a 150 % screen beside
+    /// a 100 % main one was fitted at 100 % and then scaled up past the taskbar (review 2026-10-30).
+    /// </summary>
+    void FitFirstPlace()
+    {
+        var area = Screen.FromPoint(Cursor.Position).WorkingArea;
+        // There first, so a screen with another scale gives a real dpi change; then sized at that scale.
+        Location = new Point(area.Left + Math.Max(0, (area.Width - Width) / 2), area.Top + Math.Max(0, (area.Height - Height) / 2));
+        var preferred = new Size(LogicalToDeviceUnits(1320), LogicalToDeviceUnits(840));
+        MinimumSize = Fit(new Size(LogicalToDeviceUnits(980), LogicalToDeviceUnits(620)), area.Size);
+        Size = Fit(preferred, area.Size);
+        Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
+        if (preferred.Width > area.Width || preferred.Height > area.Height)
+            WindowState = FormWindowState.Maximized;
     }
 
     void RestorePlace()
@@ -644,8 +658,11 @@ public sealed class ShellForm : Form
             return;
         var area = Screen.FromRectangle(saved).WorkingArea;
         Location = saved.Location;
+        MinimumSize = Fit(new Size(LogicalToDeviceUnits(980), LogicalToDeviceUnits(620)), area.Size); // at that screen's scale
         Size = new Size(Math.Clamp(saved.Width, MinimumSize.Width, Math.Max(MinimumSize.Width, area.Width)),
             Math.Clamp(saved.Height, MinimumSize.Height, Math.Max(MinimumSize.Height, area.Height)));
+        // Inside the screen, not only as big as it: the size alone left a window saved wider than the screen cut off.
+        Location = Ui.Inside(new Rectangle(saved.Location, Size), area, RobloxProcesses.ResizeBorder(Handle));
         if (Prefs.MainMaximized)
             WindowState = FormWindowState.Maximized;
         _lastState = WindowState;
