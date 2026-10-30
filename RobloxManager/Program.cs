@@ -21,7 +21,13 @@ static class Program
         }
         // Install/update/uninstall steps from Velopack are handled (and exit) before anything else. Uninstalling keeps
         // the accounts and settings in %LOCALAPPDATA%\Bloxkeep unless the person chooses otherwise.
+        // A downloaded update is applied at start (Velopack's default) only when no Bloxkeep runs: a second start (the
+        // shortcut clicked to bring the window forward) would otherwise apply it, and its Update.exe kills the running one
+        // mid-launch, unsaved (2026-10-30 review). That one applies it itself, at a quiet moment or on quitting.
+        bool anotherRuns = Mutex.TryOpenExisting(SingleInstanceMutex, out var already);
+        already?.Dispose();
         VelopackApp.Build()
+            .SetAutoApplyOnStartup(!anotherRuns)
             .OnBeforeUninstallFastCallback(_ =>
             {
                 var deadline = DateTime.UtcNow.AddSeconds(50);
