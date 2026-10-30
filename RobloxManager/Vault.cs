@@ -300,10 +300,25 @@ public sealed class Vault : IDisposable
                 return new Vault(path, key, salt, iterations, data);
             // Wrong password, or a damaged file? The previous save was made with the same key (the salt only changes
             // with the password), so if it opens with this key the main file is what's broken.
-            if (backup is not null && HeaderOk(backup, out int backupIterations, out byte[] backupSalt)
-                && backupIterations == iterations && backupSalt.AsSpan().SequenceEqual(salt)
-                && Decrypt(backup, key) is { } previous)
-                return Recovered(path, key, salt, iterations, previous);
+            if (backup is not null && HeaderOk(backup, out int backupIterations, out byte[] backupSalt))
+            {
+                bool sameKey = backupIterations == iterations && backupSalt.AsSpan().SequenceEqual(salt);
+                if (sameKey && Decrypt(backup, key) is { } previous)
+                    return Recovered(path, key, salt, iterations, previous);
+                // A main file whose salt or iteration count was damaged still looks like a vault, but no password opens
+                // it: the previous save is tried with its own (review, 2026-10-30). Rare, since a password change drops
+                // the .bak: a wrong password pays a second derivation only then.
+                if (!sameKey)
+                {
+                    byte[] backupKey = DeriveKey(password, backupSalt, backupIterations);
+                    if (Decrypt(backup, backupKey) is { } older)
+                    {
+                        CryptographicOperations.ZeroMemory(key);
+                        return Recovered(path, backupKey, backupSalt, backupIterations, older);
+                    }
+                    CryptographicOperations.ZeroMemory(backupKey);
+                }
+            }
             CryptographicOperations.ZeroMemory(key);
             throw new InvalidPasswordException();
         }
