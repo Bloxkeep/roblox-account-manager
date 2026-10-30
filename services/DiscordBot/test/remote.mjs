@@ -315,6 +315,19 @@ try {
     && await waitFor(() => old.last('link')?.linked, 3000) && !old.last('ask'), contentOf(r));
   old.ws.close();
 
+  // ── a PC with many accounts and presets (a hello far bigger than a socket's attachment holds): still asked ──
+  const big = app(crypto.randomBytes(32).toString('base64url'));
+  await big.open();
+  big.send({ t: 'hello', name: 'BIG-PC', accounts: [...Array(150).keys()].map(n => `Tài khoản số ${n} của tôi`),
+    presets: [...Array(60).keys()].map(n => `Preset ${n}`), lang: 'vi', ask: true });
+  big.send({ t: 'code' });
+  await waitFor(() => big.last('code'), 3000);
+  r = await interact(pc('link', { code: big.last('code').code }, { user: 'u11', name: 'Eleven' }));
+  check('a PC with 150 accounts and 60 presets: asked to allow, not linked at once', /asking whether to allow/.test(contentOf(r))
+    && await waitFor(() => big.last('ask'), 3000) && !big.last('link')?.linked, contentOf(r));
+  r = await interact(pc('preset', { name: 'Pre' }, { user: 'u11', type: 4, focused: 'name' }));
+  big.ws.close();
+
   // ── an app sending far more than an app does: its socket is closed ──
   const flood = app(crypto.randomBytes(32).toString('base64url'));
   await flood.open();

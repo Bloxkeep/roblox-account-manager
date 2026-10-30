@@ -401,7 +401,14 @@ export class Gateway extends DurableObject {
     }
     if (m.t === 'hello') { // its PC's, accounts' and presets' names (autocomplete), sent again when they change
       me.hello = readHello(m);
-      ws.serializeAttachment(me);
+      // A socket's attachment holds little: names that don't fit are dropped (autocomplete goes without), never the rest
+      // (ask: a link waits for Allow on the PC).
+      try {
+        ws.serializeAttachment(me);
+      } catch {
+        me.hello = { ...me.hello, accounts: [], presets: [] };
+        ws.serializeAttachment(me);
+      }
       sql.exec('UPDATE links SET label = ? WHERE pc = ?', me.hello.name, pc);
       return;
     }
@@ -501,8 +508,9 @@ export class Gateway extends DurableObject {
       if (!app)
         return mine({ content: PC_TEXT.offline(label) });
       this.codes.delete(typed);
-      // An app from before links could be allowed (1.0.12, which never says it can ask): linked at once, as it was.
-      if (!app.hello?.ask) {
+      // An app from before links could be allowed (1.0.12, whose hello never says it can ask): linked at once, as it was.
+      // One whose hello isn't known is asked, never linked unasked.
+      if (app.hello && !app.hello.ask) {
         sql.exec('INSERT OR REPLACE INTO links (pc, user, label, at) VALUES (?, ?, ?, ?)', code.pc, user.id, label, now);
         app.ws.send(JSON.stringify(this.linkState(code.pc)));
         return mine({ content: PC_TEXT.linked(label) });
