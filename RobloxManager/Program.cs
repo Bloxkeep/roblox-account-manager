@@ -107,8 +107,13 @@ static class Program
         // Listened for once the window has a handle: a start by hand that waited for an update's run (WaitForUpdateRun)
         // asks as soon as that run takes the hand-over, before its window exists, and OnShell would drop the request.
         RegisteredWaitHandle? wait = null;
-        shell.HandleCreated += (_, _) => wait ??= ThreadPool.RegisterWaitForSingleObject(activate, (_, _) => OnShell(shell, shell.BringToFront), null,
+        void Listen() => wait ??= ThreadPool.RegisterWaitForSingleObject(activate, (_, _) => OnShell(shell, shell.BringToFront), null,
             Timeout.Infinite, executeOnlyOnce: false);
+        // Its handle may be there already (made while building it): then at once, or HandleCreated would never come.
+        if (shell.IsHandleCreated)
+            Listen();
+        else
+            shell.HandleCreated += (_, _) => Listen();
         // The uninstaller asks the app to quit (not hide to the tray), so nothing it uses stays locked.
         // A downloaded update isn't applied on that quit: the installer or uninstaller runs Velopack's Update.exe next, and
         // a second one applying the update would race it for the folder (2026-10-30 review).
