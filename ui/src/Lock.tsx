@@ -10,8 +10,8 @@ export type LockMode = 'create' | 'unlock' | 'pick';
 
 /** The language buttons (app.js's click handler changes the language: data-act="lang"). */
 export function LangSwitch() {
-  const { lang, tIn } = useHost();
-  return <div className="lang" role="group" aria-label="Language">{(['en', 'vi'] as const).map(l =>
+  const { lang, t, tIn } = useHost();
+  return <div className="lang" role="group" aria-label={t('set.language')}>{(['en', 'vi'] as const).map(l =>
     <button key={l} data-act="lang" data-lang={l} className={l === lang ? 'on' : ''} aria-pressed={l === lang} title={tIn(l, 'lang.name')}>{l.toUpperCase()}</button>)}</div>;
 }
 
@@ -22,6 +22,10 @@ export function Lock({ mode, notice, kept, opened }: {
   const create = mode === 'create';
   const app = useAppState();
   const multiOnly = !!app.multiAtStart;
+  // Locked by itself after the PC sat unused (auto-lock): the app takes only the password until it is typed (backups and
+  // other vaults are refused as "locked", and that message can't show here), so those links aren't offered (review,
+  // 2026-10-30).
+  const screenLock = !!app.screenLock;
   // Which vault this is, once there are vaults (or one is being added); its name is typed while it is being added.
   const vaults = app.vaults || {};
   const adding = !!vaults.adding;
@@ -147,7 +151,7 @@ export function Lock({ mode, notice, kept, opened }: {
       <img className="logo-img" src={logo} alt="" />
       {vault ? <div className="lock-vault"><VaultFace vault={vault} className="sm" /><b title={vault.name}>{vault.name}</b>
         {adding ? <button type="button" className="link" data-act="vault-cancel-add">{t('common.cancel')}</button>
-          : <button type="button" className="link" data-act="vault-pick">{t('vault.switch')}</button>}</div> : null}
+          : screenLock ? null : <button type="button" className="link" data-act="vault-pick">{t('vault.switch')}</button>}</div> : null}
       <h2>{t(adding ? 'vault.newTitle' : create ? 'lock.createTitle' : 'lock.unlockTitle')}</h2>
       <p><Rich k={adding ? 'vault.newText' : create ? 'lock.createText' : 'lock.unlockText'} /></p>
       {notice ? <p className="lock-paused">{notice}</p> : null}
@@ -166,8 +170,8 @@ export function Lock({ mode, notice, kept, opened }: {
       <div className="lock-error" id="lock-error" role="alert">{error}</div>
       <button className="btn primary big w" type="submit" id="lock-btn" ref={btn}>{t(create ? 'lock.create' : 'lock.unlock')}</button>
       {/* Set up: a backup instead. Unlock: a backup (a forgotten master password can't be recovered) or another vault. */}
-      <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button>
-        {create ? null : <><span className="sep">·</span><button type="button" className="link" data-act="vault-add">{t('vault.new')}</button></>}</div>
+      {screenLock ? null : <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button>
+        {create ? null : <><span className="sep">·</span><button type="button" className="link" data-act="vault-add">{t('vault.new')}</button></>}</div>}
       {/* For someone who signs in to Roblox only in their own browser: Multi-Roblox without a vault or accounts. */}
       {create && !adding ? <div className="lock-alt lock-multi">{multiOnly
         ? <><span id="lock-multi-on">{t('lock.multiOnlyOn')}</span> <button type="button" className="link" data-act="multi-only-off">{t('lock.multiOnlyOff')}</button></>

@@ -5,6 +5,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type 
 import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
 import { Avatar } from './Avatar';
+import { SuggestInput } from './Suggest';
 
 type Account = { id: string; label: string; username?: string; userId?: number; alias?: string; group?: string; note?: string; hasPassword?: boolean; hasAuthenticator?: boolean };
 export interface AccountFormApi {
@@ -157,8 +158,8 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
       <label>{t('am.alias')}{aliasHidden
         ? <input className="field" name="alias" maxLength={60} disabled placeholder={t('am.aliasHidden')} />
         : <input className="field" name="alias" maxLength={60} placeholder={t('am.aliasPh')} value={alias} onChange={e => setAlias(e.target.value)} />}</label>
-      <label>{t('am.group')}<input className="field" name="group" maxLength={40} list="dl-groups" placeholder={t('am.groupPh')} value={group} onChange={e => setGroup(e.target.value)} /></label>
-      <datalist id="dl-groups">{groups.map(g => <option key={g} value={g} />)}</datalist>
+      <label>{t('am.group')}<SuggestInput className="field" name="group" maxLength={40} placeholder={t('am.groupPh')} value={group} setValue={setGroup}
+        options={groups} label={t('am.group')} /></label>
       <label><span>{t('am.pw')} <span className="muted">{t('am.pwHint')}</span></span>
         <div className="pw"><input className="field" type={shown.password ? 'text' : 'password'} name="password" maxLength={200}
           placeholder={!isNew && a.hasPassword ? t('am.pwSaved') : t('am.pwNone')} value={password} onChange={typedIn('password', setPassword)} />{eye('password', password, setPassword)}</div></label>

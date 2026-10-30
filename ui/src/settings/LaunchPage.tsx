@@ -120,7 +120,7 @@ export function LaunchPage({ title }: { title: string }) {
     </Group>
     <Group id="client" title={t('set.g.client')}>
       <Row title={t('set.client')} desc={t('set.clientDesc')}>
-        <select className="select" id="s-launch" aria-label="Roblox client" value={via}
+        <select className="select" id="s-launch" aria-label={t('set.client')} value={via}
           onChange={e => { setVia(e.target.value); call('setSettings', { launchVia: e.target.value }); }}>
           {options.map(([value, words, ok]) => <option key={value} value={value} disabled={!ok}>{ok ? words : t('launch.missing', { name: words })}</option>)}
         </select>

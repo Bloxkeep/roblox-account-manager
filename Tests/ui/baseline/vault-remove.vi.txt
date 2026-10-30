@@ -7,7 +7,7 @@ html [data-theme="dark" lang="vi"]
       svg.i #10tf97k
       span "Quay lại"
     div.lock-lang
-      div.lang [role="group" aria-label="Language"]
+      div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
     div.vp [id="vault-picker"]
@@ -68,7 +68,7 @@ html [data-theme="dark" lang="vi"]
       svg.i #10tf97k
       span "Quay lại"
     div.lock-lang
-      div.lang [role="group" aria-label="Language"]
+      div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
     div.vp [id="vault-picker"]

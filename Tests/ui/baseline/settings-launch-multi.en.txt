@@ -260,7 +260,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Open Roblox with"
                         div.d "Bloxstrap and Fishstrap keep your mods."
                       div.ctl
-                        select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                        select.select [id="s-launch" aria-label="Open Roblox with" value="auto"]
                           option [value="auto"] "Default (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap — not installed"
@@ -561,7 +561,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Open Roblox with"
                         div.d "Bloxstrap and Fishstrap keep your mods."
                       div.ctl
-                        select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                        select.select [id="s-launch" aria-label="Open Roblox with" value="auto"]
                           option [value="auto"] "Default (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap — not installed"
@@ -843,7 +843,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Open Roblox with"
                         div.d "Bloxstrap and Fishstrap keep your mods."
                       div.ctl
-                        select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                        select.select [id="s-launch" aria-label="Open Roblox with" value="auto"]
                           option [value="auto"] "Default (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap — not installed"

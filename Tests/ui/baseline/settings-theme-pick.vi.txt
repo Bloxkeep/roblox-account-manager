@@ -373,7 +373,7 @@ html [data-theme="paper" lang="vi"]
                       div
                         div.t "Ngôn ngữ"
                       div.ctl
-                        div.lang [role="group" aria-label="Language"]
+                        div.lang [role="group" aria-label="Ngôn ngữ"]
                           button [title="English" aria-pressed="false"] "EN"
                           button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
                     div.set-row
@@ -769,7 +769,7 @@ html [data-theme="gray" lang="vi"]
                       div
                         div.t "Ngôn ngữ"
                       div.ctl
-                        div.lang [role="group" aria-label="Language"]
+                        div.lang [role="group" aria-label="Ngôn ngữ"]
                           button [title="English" aria-pressed="false"] "EN"
                           button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
                     div.set-row

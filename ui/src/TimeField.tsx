@@ -1,7 +1,7 @@
 // Time and date boxes with Bloxkeep's own picker. The box is still the browser's (typing works, value "HH:mm" or
 // "yyyy-mm-dd"), but its own drop-down is hidden: drawn in the browser's colours, and a second click didn't close it. A
 // pick goes in as typing would (input and change events), so whatever listens to the box hears it the same way.
-import { useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes, type ReactNode, type Ref } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon, useHost } from './host';
 
@@ -56,15 +56,50 @@ function Field({ kind, className, ref, ...attrs }: BoxProps & { kind: 'time' | '
 
 // The list under (or over, near the bottom) its button, inside its dialog so the dialog's keys and focus still hold.
 // Closes on the button again, a click outside, Escape (before the dialog hears it), Enter, or the window resizing.
-export function Popup({ anchor, close, label, children }: { anchor: HTMLElement; close: (refocus: boolean) => void; label: string; children: ReactNode }) {
+// fit: as wide as its anchor and lined up with its left edge (a box's suggestions), not ending at its right edge.
+export function Popup({ anchor, close, label, role = 'dialog', fit = false, id, children }: {
+  anchor: HTMLElement; close: (refocus: boolean) => void; label: string; role?: string; fit?: boolean; id?: string; children: ReactNode;
+}) {
   const panel = useRef<HTMLDivElement>(null);
-  const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
+  const [place, setPlace] = useState<{ left: number; top: number; width?: number } | null>(null);
+  // Placed again whenever what is around it moves: it is fixed to the window, so scrolling the dialog or page it was
+  // opened from left it behind, and a calendar's six-week month (or a shorter list of suggestions) changed its height
+  // after it was placed, running it off the bottom (review, 2026-10-30).
+  const placeIt = useCallback(() => {
+    const p = panel.current;
+    if (!p) return;
+    const a = anchor.getBoundingClientRect();
+    const width = fit ? Math.min(a.width, innerWidth - 16) : undefined;
+    if (width !== undefined) p.style.width = `${width}px`;
+    const size = p.getBoundingClientRect();
+    const below = a.bottom + 6, above = a.top - 6 - size.height;
+    const top = below + size.height <= innerHeight - 8 || above < 8 ? Math.min(below, innerHeight - 8 - size.height) : above;
+    const left = fit ? a.left : a.right - size.width;
+    setPlace(old => {
+      const next = { left: Math.max(8, Math.min(left, innerWidth - 8 - size.width)), top: Math.max(8, top), width };
+      return old && old.left === next.left && old.top === next.top && old.width === next.width ? old : next;
+    });
+  }, [anchor, fit]);
   useLayoutEffect(() => {
-    const a = anchor.getBoundingClientRect(), p = panel.current!.getBoundingClientRect();
-    const below = a.bottom + 6, above = a.top - 6 - p.height;
-    const top = below + p.height <= innerHeight - 8 || above < 8 ? Math.min(below, innerHeight - 8 - p.height) : above;
-    setPlace({ left: Math.max(8, Math.min(a.right - p.width, innerWidth - 8 - p.width)), top: Math.max(8, top) });
-  }, [anchor]);
+    placeIt();
+    const watch = new ResizeObserver(() => placeIt());
+    watch.observe(panel.current!);
+    return () => watch.disconnect();
+  }, [placeIt]);
+  useEffect(() => {
+    // Any scroll but its own list's: its button moved with what scrolled. Scrolled out of sight there, it closes (it
+    // would otherwise hang beside a box that isn't there any more).
+    const scrolled = (e: Event) => {
+      const at = e.target;
+      if (at instanceof Node && panel.current?.contains(at)) return;
+      const a = anchor.getBoundingClientRect();
+      const view = at instanceof Element ? at.getBoundingClientRect() : { top: 0, bottom: innerHeight, left: 0, right: innerWidth };
+      if (a.bottom <= view.top || a.top >= view.bottom || a.right <= view.left || a.left >= view.right) return close(false);
+      placeIt();
+    };
+    addEventListener('scroll', scrolled, { capture: true, passive: true });
+    return () => removeEventListener('scroll', scrolled, { capture: true });
+  }, [anchor, close, placeIt]);
   useEffect(() => {
     // Window capture runs before the dialog's own key handler (document, capture): Escape closes this, not the dialog.
     const key = (e: KeyboardEvent) => {
@@ -90,8 +125,8 @@ export function Popup({ anchor, close, label, children }: { anchor: HTMLElement;
   }, [anchor, close]);
   // The open dialog it was opened from, else the page.
   const host = anchor.closest('.overlay') || document.body;
-  return createPortal(<div className="tf-pop" ref={panel} role="dialog" aria-label={label}
-    style={place ? { left: place.left, top: place.top } : { visibility: 'hidden', left: 0, top: 0 }}>{children}</div>, host);
+  return createPortal(<div className={`tf-pop${fit ? ' fit' : ''}`} ref={panel} role={role} aria-label={label} id={id}
+    style={place ? { left: place.left, top: place.top, width: place.width } : { visibility: 'hidden', left: 0, top: 0 }}>{children}</div>, host);
 }
 
 /** Whether times are shown with AM/PM here, as the box itself shows them (the browser's own setting). */

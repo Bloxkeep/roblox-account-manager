@@ -1,0 +1,30 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Ngôn ngữ"]
+        button [title="English" aria-pressed="false"] "EN"
+        button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+    form.lock-card [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      div.lock-vault
+        span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
+        b [title="Main"] "Main"
+      h2 "Chào mừng trở lại"
+      p "Nhập mật khẩu chủ để mở khóa."
+      p.lock-paused "Đã tự khóa sau 15 phút không dùng máy. Roblox, tự vào lại, preset hẹn giờ và Discord vẫn chạy."
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]
+          button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
+            svg.i #1pcfgz
+      div.lock-error [id="lock-error" role="alert"]
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Mở khóa"
+#layer
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}

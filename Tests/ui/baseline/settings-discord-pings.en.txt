@@ -217,7 +217,7 @@ html [data-theme="dark" lang="en"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "A person…"
                             option [value="role"] "A role…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="" FOCUSED]
+                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID (17–20 digits)" value="" FOCUSED]
                     div.set-row
                       div
                         div.t "Send one now"
@@ -518,7 +518,7 @@ html [data-theme="dark" lang="en"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "A person…"
                             option [value="role"] "A role…"
-                          input.bad.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123" FOCUSED]
+                          input.bad.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID (17–20 digits)" value="123" FOCUSED]
                     div.set-row
                       div
                         div.t "Send one now"
@@ -817,7 +817,7 @@ html [data-theme="dark" lang="en"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "A person…"
                             option [value="role"] "A role…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678" FOCUSED]
+                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID (17–20 digits)" value="123456789012345678" FOCUSED]
                     div.set-row
                       div
                         div.t "Send one now"
@@ -1116,7 +1116,7 @@ html [data-theme="dark" lang="en"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "A person…"
                             option [value="role"] "A role…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678"]
+                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID (17–20 digits)" value="123456789012345678"]
                     div.set-row
                       div
                         div.t "Send one now"
@@ -1415,7 +1415,7 @@ html [data-theme="dark" lang="en"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "A person…"
                             option [value="role"] "A role…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678"]
+                          input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID (17–20 digits)" value="123456789012345678"]
                     div.set-row
                       div
                         div.t "Send one now"

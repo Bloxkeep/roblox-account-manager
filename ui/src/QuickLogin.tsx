@@ -20,6 +20,10 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
   const { t, ask, toast, store } = host;
   const hide = !!useAppState().hideNames; // names hidden (Settings): the phone's account isn't named either
   const [realm, setRealm] = useState(forRealm ?? (store.get('rm.qlRealm', '') === 'vng' ? 'vng' : ''));
+  // The tab picked now: a renewal (code expired, account added) runs from the poll of an older render, whose own realm
+  // was the one at that code's start; reading it here keeps the VNG tab on VNG codes (review, 2026-10-30).
+  const realmNow = useRef(realm);
+  realmNow.current = realm;
   const [code, setCode] = useState('');
   const [qr, setQr] = useState('');
   const [phase, setPhase] = useState<Phase>('getting');
@@ -37,7 +41,7 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
   // A declined or expired code can't be used any more: it goes, so nobody types it in.
   const clearCode = () => { setCode(''); setQr(''); };
 
-  const start = async (forRealmNow = realm) => {
+  const start = async (forRealmNow = realmNow.current) => {
     const my = ++st.current.gen;
     stop();
     clearCode();
@@ -90,12 +94,15 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
         setPhase('adding');
         break;
       case 'cancelled':
+        // Nothing counts down any more: the ticker stops with the code.
+        clearInterval(st.current.ticker);
         clearCode();
         return setPhase('cancelled');
       case 'expired':
       case 'none':
         // Renew quietly a few times; after that stop asking Roblox until the person comes back.
         if (++st.current.expiredInRow <= 3) return start();
+        clearInterval(st.current.ticker);
         clearCode();
         return setPhase('expired');
       default:
@@ -126,6 +133,7 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
         <button key={r} role="tab" data-realm={r} className={realm === r ? 'on' : ''} aria-selected={realm === r} onClick={() => {
           if (r === realm) return;
           setRealm(r);
+          realmNow.current = r;
           store.set('rm.qlRealm', r);
           st.current.expiredInRow = 0;
           start(r);

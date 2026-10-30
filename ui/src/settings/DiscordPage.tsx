@@ -307,7 +307,7 @@ function Ping({ kind, saved, again, setPing, putBack }: {
       {kind === 'alerts' ? <option value="mixed" disabled hidden>{t('dc.pingMixed')}</option> : null}
     </select>
     <input className={`field sm dc-id${bad ? ' bad' : ''}`} data-ping-id={kind} ref={box} inputMode="numeric" maxLength={20} spellCheck={false} autoComplete="off"
-      placeholder={t('dc.idPh')} aria-label="ID" hidden={!idShown} value={id} onChange={e => setId(e.target.value)} />
+      placeholder={t('dc.idPh')} aria-label={t('dc.idPh')} hidden={!idShown} value={id} onChange={e => setId(e.target.value)} />
   </div>;
 }
 

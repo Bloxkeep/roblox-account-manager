@@ -217,7 +217,7 @@ html [data-theme="dark" lang="vi"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "Một người…"
                             option [value="role"] "Một vai trò…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID" value="" FOCUSED]
+                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID (17–20 chữ số)" value="" FOCUSED]
                     div.set-row
                       div
                         div.t "Gửi ngay"
@@ -518,7 +518,7 @@ html [data-theme="dark" lang="vi"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "Một người…"
                             option [value="role"] "Một vai trò…"
-                          input.bad.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID" value="123" FOCUSED]
+                          input.bad.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID (17–20 chữ số)" value="123" FOCUSED]
                     div.set-row
                       div
                         div.t "Gửi ngay"
@@ -817,7 +817,7 @@ html [data-theme="dark" lang="vi"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "Một người…"
                             option [value="role"] "Một vai trò…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678" FOCUSED]
+                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID (17–20 chữ số)" value="123456789012345678" FOCUSED]
                     div.set-row
                       div
                         div.t "Gửi ngay"
@@ -1116,7 +1116,7 @@ html [data-theme="dark" lang="vi"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "Một người…"
                             option [value="role"] "Một vai trò…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678"]
+                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID (17–20 chữ số)" value="123456789012345678"]
                     div.set-row
                       div
                         div.t "Gửi ngay"
@@ -1415,7 +1415,7 @@ html [data-theme="dark" lang="vi"]
                             option [value="everyone"] "@everyone"
                             option [value="user"] "Một người…"
                             option [value="role"] "Một vai trò…"
-                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678"]
+                          input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID (17–20 chữ số)" value="123456789012345678"]
                     div.set-row
                       div
                         div.t "Gửi ngay"
