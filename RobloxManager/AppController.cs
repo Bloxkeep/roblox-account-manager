@@ -210,7 +210,9 @@ public sealed partial class AppController : IDisposable
     /// <summary>The page drew its first screen after loading (the window drops the picture it showed meanwhile).</summary>
     public Action? PageShown { get; init; }
 
-    public bool Unlocked => _vault is not null;
+    /// <summary>The vault is open and no lock screen is up: what the mini window and the window's cover picture may show.
+    /// The idle lock screen counts as locked (2026-10-30 review: the mini window offered "Close all" behind it).</summary>
+    public bool Unlocked => Open is not null;
 
     /// <summary>Recreates the interface drawing on the CPU (true) or the graphics card (false).</summary>
     public Func<bool, Task>? SetSafeRendering { get; init; }

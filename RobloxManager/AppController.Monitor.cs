@@ -80,7 +80,7 @@ public sealed partial class AppController
     /// window hidden). Locked: no tiles, the page shows the lock screen.</summary>
     object? MonitorAreaCommand(JsonElement a)
     {
-        SetMonitorArea?.Invoke(_vault is null || Bool(a, "hidden") ? null : ParseMonitorArea(a));
+        SetMonitorArea?.Invoke(Open is null || Bool(a, "hidden") ? null : ParseMonitorArea(a));
         return null;
     }
 

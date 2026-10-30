@@ -99,6 +99,13 @@ static class AutoLockSuite
         Harness.Invoke(app, "Progress", "Opening SecretUser42");
         c.Check("no toast or progress reaches the page meanwhile (it could name an account)", Posts() == before);
         c.Check("the mini window lists no client meanwhile", app.RunningClients().Count == 0);
+        // 2026-10-30 review: the mini window went by the vault only, so behind the lock screen it said "No Roblox window
+        // is open." and its Close all worked with no password; a monitor-tab move in flight put the tiles back up.
+        c.Check("…and counts as locked (asks for the password, Close all off)", !app.Unlocked);
+        var areas = new List<AppController.MonitorArea?>();
+        Harness.Set(app, "<SetMonitorArea>k__BackingField", (Action<AppController.MonitorArea?>)(a => areas.Add(a)));
+        await Harness.Call(app, "monitorArea", new { x = 0, y = 0, w = 800, h = 600, scale = 1 });
+        c.Check("a monitor-tab move arriving behind the lock screen lays no live pictures over it", areas is [null], areas.Count);
 
         // A command the page sends anyway is answered with the refusal, through the real reply path.
         before = Posts();
@@ -117,6 +124,7 @@ static class AutoLockSuite
         c.Check("the right password takes it down", !ScreenLocked() && !right.GetProperty("locked").GetBoolean(), right.GetProperty("locked"));
         c.Check("…and the page gets the accounts again", right.GetProperty("accounts").GetArrayLength() == 1);
         c.Check("…the vault never closed", ReferenceEquals(VaultNow(), vault));
+        c.Check("…and the mini window counts as unlocked again", app.Unlocked);
         Check(TimeSpan.FromHours(3));
         c.Check("just unlocked: Windows' old idle reading doesn't put it straight back up", !ScreenLocked());
         var reveal = await Harness.Try(app, "reveal", new { id = secret.Id, field = "password" });

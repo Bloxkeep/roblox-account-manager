@@ -51,10 +51,15 @@ public sealed partial class AppController
         return _games.GetValueOrDefault(id)?.Name is { Length: > 0 } name ? name : L.F("Place {0}", id);
     }
 
-    public void CloseClient(Guid id) => CloseAccounts([id], force: false);
+    public void CloseClient(Guid id)
+    {
+        if (Unlocked)
+            CloseAccounts([id], force: false);
+    }
 
-    /// <summary>Closes every Roblox on this PC, like the page's "Close all"; the number of clients closed.</summary>
-    public int CloseAllClients() => (int)CloseAll(force: false);
+    /// <summary>Closes every Roblox on this PC, like the page's "Close all"; the number of clients closed. Not while locked,
+    /// the lock screen too (a click on the mini window's button just before it came up).</summary>
+    public int CloseAllClients() => Unlocked ? (int)CloseAll(force: false) : 0;
 
     /// <summary>The page's mini-window button; the window pushes the new state once it has shown or hidden it.</summary>
     object? ToggleMini()
