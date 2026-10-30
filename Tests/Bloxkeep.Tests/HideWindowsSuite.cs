@@ -108,5 +108,16 @@ static class HideWindowsSuite
         c.Check("…once", !RobloxProcesses.ForgetHidden(me));
         ShowWindowAsync(hWnd, 8);
         Visible();
+
+        // A light-AFK preset's minimise and Settings' Maximise leave a hidden window hidden (they showed it, still known
+        // as hidden); Show (Mini window, tray, Monitor) shows it again, known as shown (review 2026-10-30).
+        RobloxProcesses.HideWindows([me]);
+        RobloxProcesses.Minimise(hWnd);
+        RobloxProcesses.Maximise(hWnd);
+        c.Check("minimised or maximised by Bloxkeep, a hidden window stays hidden", !Visible() && RobloxProcesses.HasHidden(me),
+            $"visible {IsWindowVisible(hWnd)}, iconic {IsIconic(hWnd)}");
+        RobloxProcesses.Focus(me);
+        c.Check("Show on a hidden window shows it, no longer hidden", Visible() && !RobloxProcesses.HasHidden(me) && !File.Exists(file),
+            $"visible {IsWindowVisible(hWnd)}, hidden {RobloxProcesses.HasHidden(me)}");
     }
 }

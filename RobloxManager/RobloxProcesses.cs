@@ -665,6 +665,10 @@ public static class RobloxProcesses
         var hWnd = MainWindow(pid);
         if (hWnd == IntPtr.Zero)
             return;
+        // Show (Mini window, tray, Monitor) on a window Bloxkeep hid: shown again first, as Ctrl+Alt+H shows it, so it
+        // is known as shown; brought to the front hidden, nothing came up (review 2026-10-30).
+        if (IsHidden(hWnd))
+            ShowWindows([pid]);
         if (IsIconic(hWnd))
             ShowWindowAsync(hWnd, SW_RESTORE);
         SetForegroundWindow(hWnd);
@@ -676,17 +680,19 @@ public static class RobloxProcesses
     /// Only a window with a title bar (Roblox's fullscreen has none). Windows brings the window to the front with it.
     /// </summary>
     /// <returns>false when it left the window as it was.</returns>
+    /// <remarks>Not a window Bloxkeep hid: maximising shows it (review 2026-10-30), and it stays known as hidden.</remarks>
     public static bool Maximise(IntPtr hWnd)
     {
-        if (hWnd == IntPtr.Zero || IsIconic(hWnd) || IsZoomed(hWnd) || (GetWindowLong(hWnd, GWL_STYLE) & WS_CAPTION) != WS_CAPTION)
+        if (hWnd == IntPtr.Zero || IsHidden(hWnd) || IsIconic(hWnd) || IsZoomed(hWnd) || (GetWindowLong(hWnd, GWL_STYLE) & WS_CAPTION) != WS_CAPTION)
             return false;
         return ShowWindowAsync(hWnd, SW_SHOWMAXIMIZED);
     }
 
-    /// <summary>Without bringing another one to the front.</summary>
+    /// <summary>Without bringing another one to the front. Not a window Bloxkeep hid: minimising shows it on the taskbar
+    /// (a hidden window rejoined into a light-AFK preset, review 2026-10-30).</summary>
     public static void Minimise(IntPtr hWnd)
     {
-        if (hWnd != IntPtr.Zero && !IsIconic(hWnd))
+        if (hWnd != IntPtr.Zero && !IsHidden(hWnd) && !IsIconic(hWnd))
             ShowWindowAsync(hWnd, SW_SHOWMINNOACTIVE);
     }
 
