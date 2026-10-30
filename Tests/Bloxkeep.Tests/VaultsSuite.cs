@@ -88,6 +88,40 @@ static class VaultsSuite
         await Harness.Call(app, "unlock", new { password = MainPassword });
         mainOpen = Harness.Get<Vault>(app, "_vault");
 
+        // A Roblox window of one vault keeps running while another is open (2026-10-30 review): its play time and its
+        // scheduled stop stay its own vault's, never written into the other's.
+        var mainAccount = mainOpen.Data.Accounts.First(a => a.Username == "MainOne");
+        var running = Harness.Get<System.Collections.IDictionary>(app, "_running");
+        var launchType = typeof(AppController).GetNestedType("PendingLaunch", Harness.F)!;
+        var tupleType = running.GetType().GetGenericArguments()[1];
+        running[mainAccount.Id] = Activator.CreateInstance(tupleType, 999_981,
+            Activator.CreateInstance(launchType, mainAccount.Id, new HashSet<int>(), DateTime.UtcNow, new GameTarget(2753915549), false, null));
+        var farmPreset = new LaunchPreset { Name = "Main farm", AccountIds = [mainAccount.Id],
+            Schedule = new PresetSchedule { Enabled = true, Time = "08:00", Days = [1], Stop = "after", StopHours = 5 } };
+        mainOpen.Data.Settings.Presets.Add(farmPreset);
+        var runType = typeof(AppController).GetNestedType("ScheduledRun", Harness.F)!;
+        Harness.Invoke(app, "ArmScheduledStop", farmPreset, mainOpen, DateTime.Now, new HashSet<Guid>(),
+            Activator.CreateInstance(typeof(List<>).MakeGenericType(runType)), true);
+        c.Check("(a scheduled stop is armed for the main vault's window)", mainOpen.Data.ScheduledRuns.Count == 1, mainOpen.Data.ScheduledRuns.Count);
+        await Harness.Call(app, "selectVault", new { id = farm.Id });
+        await Harness.Call(app, "unlock", new { password = FarmPassword });
+        var farmOpen = Harness.Get<Vault>(app, "_vault");
+        Harness.Invoke(app, "TrackPlay", DateTime.UtcNow.AddHours(1));
+        c.Check("the other vault's window still open: no stay of it in this vault's statistics", farmOpen.Data.PlaySessions.Count == 0, farmOpen.Data.PlaySessions.Count);
+        Harness.Invoke(app, "NoteScheduledRuns");
+        c.Check("…nor its scheduled stop in this vault's file", farmOpen.Data.ScheduledRuns.Count == 0, farmOpen.Data.ScheduledRuns.Count);
+        await Harness.Call(app, "selectVault", new { id = main.Id });
+        await Harness.Call(app, "unlock", new { password = MainPassword });
+        mainOpen = Harness.Get<Vault>(app, "_vault");
+        var runs = Harness.Get<System.Collections.IList>(app, "_scheduledRuns");
+        c.Check("back in its own vault: the stop is armed once, and still in its file", runs.Count == 1 && mainOpen.Data.ScheduledRuns.Count == 1,
+            $"{runs.Count} {mainOpen.Data.ScheduledRuns.Count}");
+        running.Clear();
+        runs.Clear();
+        mainOpen.Data.Settings.Presets.Remove(farmPreset);
+        Harness.Invoke(app, "NoteScheduledRuns");
+        mainOpen.Save();
+
         // Back after a restart: the list, and the last vault used is the one offered.
         Prefs.Save();
         Prefs.VaultList.Clear();

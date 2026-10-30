@@ -59,6 +59,10 @@ public sealed partial class AppController
         bool changed = false;
         foreach (var (id, run) in _running)
         {
+            // Another vault's client, still open after a switch: its stays are that vault's, not this one's (2026-10-30
+            // review: they filled this vault's statistics and Discord summary with unknown accounts).
+            if (FindAccount(id) is null)
+                continue;
             var log = _logs.StateOf(run.Pid);
             _playing.TryGetValue(id, out var open);
             if (open is not null)

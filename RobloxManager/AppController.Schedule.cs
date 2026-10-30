@@ -19,6 +19,9 @@ public sealed partial class AppController
     sealed class ScheduledRun
     {
         public required Guid PresetId;
+        /// <summary>The file of the vault whose preset this is: runs of another vault, still armed after a switch, aren't
+        /// written into the vault open now (2026-10-30 review).</summary>
+        public required string Vault;
         public required string Name;
         public required List<Guid> Opened;
         /// <summary>Uptime (<see cref="Environment.TickCount64"/>, ms) to stop at, for "after N hours".</summary>
@@ -28,6 +31,8 @@ public sealed partial class AppController
     }
 
     readonly List<ScheduledRun> _scheduledRuns = new();
+
+    static bool OfVault(ScheduledRun run, Vault vault) => string.Equals(run.Vault, vault.FilePath, StringComparison.OrdinalIgnoreCase);
     /// <summary>Presets whose run stopped while the vault was locked, so the vault still lists it (see <see cref="ResumeSchedules"/>).</summary>
     readonly HashSet<Guid> _stoppedWhileLocked = new();
     readonly Dictionary<Guid, long> _scheduledStartTick = new();
@@ -294,9 +299,9 @@ public sealed partial class AppController
         }
         var opened = fresh.Concat(taken.SelectMany(r => r.Opened).Where(Open)).Distinct().ToList();
         // Locked meanwhile: kept in memory, written at the next unlock; another vault unlocked meanwhile has other accounts.
-        if (preset.Schedule is not { } s || s.Stop == "never" || opened.Count == 0 || _vault is not null && _vault != vault)
+        if (vault is null || preset.Schedule is not { } s || s.Stop == "never" || opened.Count == 0 || _vault is not null && _vault != vault)
             return;
-        var run = new ScheduledRun { PresetId = preset.Id, Name = preset.Name, Opened = opened };
+        var run = new ScheduledRun { PresetId = preset.Id, Vault = vault.FilePath, Name = preset.Name, Opened = opened };
         if (s.Stop == "after")
             run.StopAtTick = Environment.TickCount64 + (long)(s.StopHours * 3_600_000);
         else if (s.Stop == "at" && TryTime(s.StopTime, out var time))
@@ -316,8 +321,8 @@ public sealed partial class AppController
     void StopScheduledRun(ScheduledRun run)
     {
         _scheduledRuns.Remove(run);
-        // Locked, the vault can't be told; the next unlock mustn't arm this stop again from what it still holds.
-        if (_vault is null)
+        // Locked (or another vault open), its vault can't be told; the next unlock mustn't arm this stop again from what it still holds.
+        if (_vault is not { } open || !OfVault(run, open))
             _stoppedWhileLocked.Add(run.PresetId);
         if (NoteScheduledRuns())
             PersistSoon();
@@ -351,7 +356,7 @@ public sealed partial class AppController
             return false;
         long tick = Environment.TickCount64;
         var now = DateTime.UtcNow;
-        var runs = _scheduledRuns.Select(r => new ScheduledRunState
+        var runs = _scheduledRuns.Where(r => OfVault(r, vault)).Select(r => new ScheduledRunState
         {
             PresetId = r.PresetId,
             Name = r.Name,
@@ -378,7 +383,7 @@ public sealed partial class AppController
         var now = DateTime.UtcNow;
         foreach (var saved in vault.Data.ScheduledRuns)
         {
-            if (_scheduledRuns.Any(r => r.PresetId == saved.PresetId) || _stoppedWhileLocked.Contains(saved.PresetId))
+            if (_scheduledRuns.Any(r => r.PresetId == saved.PresetId && OfVault(r, vault)) || _stoppedWhileLocked.Contains(saved.PresetId))
                 continue;
             if (saved.StopAt is null && saved.StopAtMinute is null)
                 continue;
@@ -386,13 +391,15 @@ public sealed partial class AppController
             _scheduledRuns.Add(new ScheduledRun
             {
                 PresetId = saved.PresetId,
+                Vault = vault.FilePath,
                 Name = preset?.Name ?? (saved.Name.Length > 0 ? saved.Name : L.T("(deleted)")),
                 Opened = saved.Opened.Where(id => vault.Data.Accounts.Any(a => a.Id == id)).ToList(),
                 StopAtTick = saved.StopAt is { } at ? tick + (long)Math.Max(0, (at - now).TotalMilliseconds) : null,
                 StopAtMinute = saved.StopAtMinute,
             });
         }
-        _stoppedWhileLocked.Clear();
+        // Only this vault's: a stop of another vault's run that fired meanwhile is for that vault's next unlock.
+        _stoppedWhileLocked.ExceptWith(vault.Data.ScheduledRuns.Select(r => r.PresetId));
         if (NoteScheduledRuns())
             PersistSoon();
         // The minute spent on the lock screen counted as seen: without this the run due now is skipped (LastRun prevents twice).
