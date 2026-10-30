@@ -237,6 +237,46 @@ static class WebsiteSuite
         window2.SelectTab(other);
         c.Check("signing out on a blank tab: nobody again", other.Title == "Roblox" && !Harness.Get<Button>(other, "_saveButton").Visible, other.Title);
 
+        // Roblox not answering who it is (a notice on the account, too many questions): asked again later, not at every
+        // read (2026-10-30 review: every 2 s while Roblox said "User is moderated").
+        int asks = 0;
+        Harness.Set(other, "_identify", (Func<string, Task<RobloxUser?>>)(v =>
+        {
+            asks++;
+            throw v.Contains("_TEST_M_") ? new RobloxApiException("User is moderated") { Moderated = true } : new RobloxApiException("Too many requests", rateLimited: true);
+        }));
+        SignIn(coreO, "_TEST_M_" + mark);
+        for (int i = 0; i < 6; i++)
+        {
+            await (Task)Harness.Invoke(other, "SyncSessionAsync")!;
+            await Task.Delay(250);
+        }
+        c.Check("a sign-in Roblox answers \"User is moderated\" for: asked once, not at every read", asks == 1, asks);
+        asks = 0;
+        SignIn(coreO, "_TEST_R_" + mark);
+        for (int i = 0; i < 6; i++)
+        {
+            await (Task)Harness.Invoke(other, "SyncSessionAsync")!;
+            await Task.Delay(250);
+        }
+        c.Check("…Roblox saying \"too many\": asked once, then after a wait", asks == 1, asks);
+        foreach (var gone in (await coreO.CookieManager.GetCookiesAsync("https://www.roblox.com")).Where(x => x.Name == ".ROBLOSECURITY"))
+            coreO.CookieManager.DeleteCookie(gone);
+
+        // No address bar here: a page off Roblox's site never loads in it (2026-10-30 review).
+        coreO.NavigateToString("<html><body>test</body></html>");
+        await Task.Delay(500);
+        await coreO.ExecuteScriptAsync("location.href = 'https://example.com/'");
+        await Task.Delay(1500);
+        bool stayed = !coreO.Source.Contains("example.com");
+        coreO.Navigate("https://example.org/");
+        await Task.Delay(1500);
+        c.Check("a page off Roblox's site doesn't load in the tab (a link, a redirect, a script)", stayed && !coreO.Source.Contains("example.org"), coreO.Source);
+        bool May(string url) => (bool)typeof(WebsiteTab).GetMethod("MayOpenHere", Harness.F)!.Invoke(null, [url])!;
+        c.Check("…Roblox's own pages and Play's link may", May("https://www.roblox.com/games/1") && May("https://auth.roblox.com/v2/login")
+            && May("roblox-player:1+launchmode:play+gameinfo:x") && !May("https://roblox.com.evil.example/")
+            && !May("http://www.roblox.com/") && !May("https://example.com/?u=www.roblox.com"));
+
         string envDir2 = (string)Static("_envDir")!;
         await Task.Delay(2000);
         var found2 = Scan(envDir2, [cookieW, cookieO]);
