@@ -629,7 +629,7 @@ public sealed partial class AppController
         if (!Opening())
             return;
         Progress(L.T("Waiting for the previous Roblox window to open…"));
-        // Bounded: a launch stops pending after PendingTimeout at the latest.
+        // Bounded: a launch stops pending after PendingTimeout, LateTimeout more while Roblox's updater has it (ExpirePending).
         while (Opening())
             await Task.Delay(500, ct);
     }

@@ -145,6 +145,59 @@ static class ClaimsSuite
         var notInstalled = new FileNotFoundException("Bloxstrap is not installed.");
         c.Check("Bloxkeep's own sentence (a launcher not installed) is shown as it is", Said(notInstalled) == "Bloxstrap is not installed.", Said(notInstalled));
         c.Check("…a ticket in one hidden all the same", !Said(new FileNotFoundException("gone: " + linkNamed)).Contains("SECRET"));
+
+        // A launch handed to Roblox's updater (its client quit as it started the update) and past its 2 minutes, the updater
+        // still downloading on a slow link: still waited for, LateTimeout more at most. Before, it was dropped, a rejoin
+        // opened a second outdated client for the account, and the updated window was nobody's.
+        var handedOver = Harness.Get<System.Collections.IDictionary>(app, "_handedOver");
+        var handedValue = handedOver.GetType().GetGenericArguments()[1];
+        void Expire() => Harness.Invoke(app, "ExpirePending", DateTime.UtcNow, updatingNow);
+        var slow = Launch(b, 150, Second);
+        pending.Add(slow);
+        handedOver[slow] = Activator.CreateInstance(handedValue, 4242, null);
+        updating = true;
+        Expire();
+        c.Check("handed to Roblox's updater, past 2 minutes, the updater still at it: still waited for", pending.Contains(slow) && handedOver.Contains(slow));
+        updating = false;
+        Expire();
+        c.Check("…once the updater is done without a window: no longer waited for, as before", !pending.Contains(slow) && !handedOver.Contains(slow));
+        var stuck = Launch(b, 60 * 8, Second);
+        pending.Add(stuck);
+        handedOver[stuck] = Activator.CreateInstance(handedValue, 4242, null);
+        updating = true;
+        Expire();
+        c.Check("…nor for ever: past 7 minutes, given up whatever the updater does", !pending.Contains(stuck));
+        updating = false;
+        Reset();
+
+        // Which client handed its launch to the updater, by its log (the owner's logs of 2026-10-30, 0.744 -> 0.745): after
+        // "Update mode is chosen as BACKGROUND" the client goes on into its game; without it, it quits and the updater opens
+        // the updated one. Before, any updater running counted, so one updating in the background that ended was waited
+        // for instead of rejoined.
+        var watcher = Harness.Get<RobloxLogWatcher>(app, "_logs");
+        var tails = Harness.Get<System.Collections.IDictionary>(watcher, "_tails");
+        var tailType = typeof(RobloxLogWatcher).GetNestedType("Tail", Harness.F)!;
+        var applyText = typeof(RobloxLogWatcher).GetMethod("ApplyText", Harness.F)!;
+        const string UpdateStart = @"2026-10-30T04:53:44.774Z,0.774840,9b3c,6,Info [FLog::UpdateController] Update thread: start """"C:\Users\A\AppData\Local\Roblox\Versions\version-1\RobloxPlayerInstaller.exe"" roblox-player:1+launchmode:play+gameinfo:TICKET+launchtime:1+browsertrackerid:111111111111""";
+        const string Background = "2026-10-30T04:53:44.770Z,0.770000,9b3c,6,Info [FLog::UpdateController] Update mode is chosen as BACKGROUND. Telemetry sent";
+        const string Required = "2026-10-30T04:53:44.691Z,0.691337,54a0,6,Info [FLog::UpdateController] Update check thread: updateRequired TRUE";
+        const string GameStart = "2026-10-30T04:53:46.342Z,2.342439,956c,6 [FLog::SingleSurfaceApp] launchUGCGameInternal";
+        void Follow(int pid, params string[] lines)
+        {
+            var tail = Activator.CreateInstance(tailType, "stand-in.log", pid)!;
+            applyText.Invoke(null, [tail, string.Join("\n", lines) + "\n"]);
+            tails[pid] = tail;
+        }
+        bool MayHaveHanded(int pid) => (bool)Harness.Invoke(app, "MayHaveHandedToUpdater", pid)!;
+        Follow(5001, Required, UpdateStart);
+        Follow(5002, Required, Background, UpdateStart, GameStart);
+        Follow(5003, GameStart);
+        c.Check("a client that started Roblox's updater in the foreground handed its launch to it", watcher.UpdateHandOffAt(5001) is not null && MayHaveHanded(5001));
+        c.Check("…one updating in the background didn't: it went on into its game", watcher.UpdateHandOffAt(5002) is null && !MayHaveHanded(5002)
+            && watcher.StateOf(5002) is { Status: "joining" });
+        c.Check("…nor one that started no update", watcher.UpdateHandOffAt(5003) is null && !MayHaveHanded(5003));
+        c.Check("…one whose log isn't found yet (it quit within a second or two) may have", MayHaveHanded(5004));
+        tails.Clear();
         // Roblox's updater read from Windows' process list (a stand-in under its name: ping, copied).
         string updaterDir = Path.Combine(dir, "updater");
         Directory.CreateDirectory(updaterDir);
