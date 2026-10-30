@@ -493,9 +493,11 @@ public static partial class RobloxApi
     static async Task<HttpResponseMessage> PostWithCsrfAsync(string url, string cookie, string jsonBody,
         Action<HttpRequestMessage>? configure, CancellationToken ct, string realm = Realm.Global)
     {
-        // The token stays valid for a while, so it is reused for the same session instead of paying the 403 each time.
-        var session = (realm, cookie.GetHashCode());
-        string? token = cookie.Length > 0 ? CsrfTokens.GetValueOrDefault(session) : null;
+        // The token stays valid for a while, so it is reused for the same session instead of paying the 403 each time. Calls
+        // without a sign-in share one per Roblox: Quick Login's status, polled every 2.5 s, paid a 403 and a replay on each
+        // (review, 2026-10-30). A stale one is only that same 403 and replay.
+        var session = (realm, cookie.Length > 0 ? cookie.GetHashCode() : 0);
+        string? token = CsrfTokens.GetValueOrDefault(session);
         for (int attempt = 0; ; attempt++)
         {
             HttpResponseMessage res;
@@ -518,8 +520,7 @@ public static partial class RobloxApi
                     && IsCsrfRefusal(res.StatusCode, fresh, token, Header(res, "rblx-challenge-id"), await res.Content.ReadAsStringAsync(ct)))
                 {
                     token = fresh;
-                    if (cookie.Length > 0)
-                        CsrfTokens[session] = fresh;
+                    CsrfTokens[session] = fresh;
                     res.Dispose();
                     continue;
                 }

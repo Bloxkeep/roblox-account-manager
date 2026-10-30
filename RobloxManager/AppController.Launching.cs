@@ -410,7 +410,11 @@ public sealed partial class AppController
     /// </summary>
     async Task<(long PlaceId, string LinkCode)> ResolveShareAsync(List<Account> accounts, string shareCode, CancellationToken ct)
     {
-        var candidates = accounts.Where(acc => acc.CookieValid != false).Concat(accounts).Distinct().ToList();
+        // Roblox's share links are read on apis.roblox.com: a Roblox VNG sign-in has no business there (review, 2026-10-30).
+        var global = accounts.Where(acc => acc.Realm == Realm.Global).ToList();
+        if (global.Count == 0)
+            throw new UserError(L.T("Private server links are read with a Roblox account. Select one that isn't Roblox VNG."));
+        var candidates = global.Where(acc => acc.CookieValid != false).Concat(global).Distinct().ToList();
         for (int i = 0; ; i++)
         {
             try

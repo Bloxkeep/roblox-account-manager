@@ -83,7 +83,8 @@ public sealed partial class AppController
         var vault = RequireVault();
         async Task<List<GameSummary>> Favorites()
         {
-            var lists = await Task.WhenAll(vault.Data.Accounts.Where(a => a.UserId > 0).Take(5).Select(async account =>
+            // Roblox's own accounts only: a Roblox VNG user id is a stranger's on roblox.com (review, 2026-10-30).
+            var lists = await Task.WhenAll(vault.Data.Accounts.Where(a => a.UserId > 0 && a.Realm == Realm.Global).Take(5).Select(async account =>
             {
                 try
                 {
@@ -111,6 +112,10 @@ public sealed partial class AppController
         var favTask = _favoriteGames is { } fav && now - fav.At <= GameListLifetime ? Task.FromResult(fav.Games) : Favorites();
         var popTask = _popularGames is { } pop && now - pop.At <= GameListLifetime ? Task.FromResult(pop.Games) : Popular();
         await Task.WhenAll(favTask, popTask);
+        // Locked (and maybe another vault opened) meanwhile: these were this vault's accounts' favourites, so not kept for the
+        // next one (review, 2026-10-30).
+        if (_vault != vault)
+            throw new UserError(L.T("Bloxkeep was locked."));
         _favoriteGames = (favTask.Result, _favoriteGames is { } f && f.Games == favTask.Result ? f.At : now);
         _popularGames = (popTask.Result, _popularGames is { } p && p.Games == popTask.Result ? p.At : now);
 

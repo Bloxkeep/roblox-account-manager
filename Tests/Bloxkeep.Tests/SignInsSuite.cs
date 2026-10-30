@@ -173,6 +173,23 @@ static class SignInsSuite
         c.Check("the account menu's check while Roblox's sign-in service rejects everyone: nobody marked signed out",
             a.CookieValid == true && b.CookieValid == true && both?.GetType().GetProperty("bad")?.GetValue(both) is 0, both);
         roblox.Down = false;
+        // Roblox VNG's sign-in service down while Roblox's is up (review, 2026-10-30): a Roblox account accepted says nothing
+        // of VNG's, so its accounts aren't marked signed out (before, any one accepted marked every rejected one).
+        var v2 = new Account { Username = "V2", UserId = 2009, Cookie = Cookie("V2nd"), CookieValid = true, Realm = Realm.Vng };
+        roblox.Users[v2.Cookie] = 2009;
+        vault.Data.Accounts.Add(v2);
+        roblox.DownVng = true;
+        var vngDown = await Harness.Call(app, "checkAccounts", new { ids = new[] { a.Id, v.Id } });
+        roblox.DownVng = false;
+        vault.Data.Accounts.Remove(v2);
+        c.Check("the account menu's check with Roblox VNG's sign-in service down and Roblox's up: the VNG account isn't marked signed out",
+            v.CookieValid == true && a.CookieValid == true && vngDown?.GetType().GetProperty("bad")?.GetValue(vngDown) is 0, vngDown);
+        // Another user's cookie pasted into an account's edit form (review, 2026-10-30): refused, the account unchanged —
+        // before, B became A while keeping B's alias, password and authenticator.
+        string bBefore = b.Cookie;
+        var pasted = await Harness.Try(app, "updateAccount", new { id = b.Id, group = "", note = "", cookie = a.Cookie });
+        c.Check("another user's cookie in an account's edit form: refused, the account keeps its own user and cookie",
+            pasted is UserError && b.Cookie == bBefore && b.UserId == 2002, pasted);
         // Signed in again: an account marked signed out that Roblox accepts again is signed in, auto-rejoin back on.
         cc.AutoRejoin = false;
         cc.RejoinOffBySignOut = true;
@@ -239,6 +256,57 @@ static class SignInsSuite
         c.Check("…and Roblox isn't asked about its number", roblox.Asked.Count(r => r.Path == "/v1/presence/users" && r.Host == "presence.roblox.com" && r.Body.Contains(v.UserId.ToString())) == 0);
         v.CookieValid = true;
         roblox.InGame.Clear();
+
+        // ── Roblox's CSRF token for calls without a sign-in (review, 2026-10-30) ──
+        // Kept like a signed-in session's: before, each such call (Quick Login's status, every 2.5 s) paid a 403 and a replay.
+        ((System.Collections.IDictionary)typeof(RobloxApi).GetField("CsrfTokens", Harness.F)!.GetValue(null)!).Clear();
+        roblox.Clear();
+        await Quietly(RobloxApi.GetPresenceAsync(null, [2001]));
+        await Quietly(RobloxApi.GetPresenceAsync(null, [2001]));
+        var anonymous = roblox.Asked.Where(r => r.Path == "/v1/presence/users" && r.Cookie is null).ToList();
+        c.Check("two calls without a sign-in: Roblox's CSRF refusal paid once, not on each", anonymous.Count == 3 && anonymous.Count(r => !r.Csrf) == 1,
+            string.Join(", ", anonymous.Select(r => r.Csrf ? "with token" : "without")));
+
+        // ── A private server's share link (review, 2026-10-30) ──
+        // Read on apis.roblox.com with a Roblox account's sign-in, never a Roblox VNG one's, even first in launch order.
+        async Task<Exception?> Resolve(params Account[] who)
+        {
+            try
+            {
+                await (Task<(long, string)>)Harness.Invoke(app, "ResolveShareAsync", who.ToList(), "share-code", CancellationToken.None)!;
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+        }
+        roblox.Clear();
+        var vngOnly = await Resolve(v);
+        c.Check("a share link with only a Roblox VNG account selected: said, and its sign-in not sent to roblox.com",
+            vngOnly is UserError && roblox.AskedWith(v.Cookie).Count == 0, vngOnly?.Message);
+        await Resolve(v, a);
+        var sharers = roblox.Asked.Where(r => r.Path.Contains("resolve-link", StringComparison.Ordinal)).Select(r => r.Cookie).Distinct().ToList();
+        c.Check("…a Roblox VNG account first and a Roblox one after: read with the Roblox one only", sharers.SequenceEqual([a.Cookie]),
+            string.Join(", ", sharers.Select(k => k == v.Cookie ? "VNG" : k == a.Cookie ? "A" : "another")));
+
+        // ── The game picker's favourites (review, 2026-10-30) ──
+        // Roblox's own accounts only: a Roblox VNG account's number is a stranger's on roblox.com.
+        roblox.Clear();
+        await Harness.Call(app, "gameLists", new { });
+        var favoritesOf = roblox.Asked.Where(r => r.Path.EndsWith("/favorite/games", StringComparison.Ordinal)).Select(r => r.Path).ToList();
+        c.Check("the game picker's favourites: asked for Roblox accounts, never a Roblox VNG account's number",
+            favoritesOf.Count > 0 && !favoritesOf.Any(p => p.Contains($"/users/{v.UserId}/")), string.Join(", ", favoritesOf));
+        // Locked while they load: not kept, so the next vault opened doesn't show this one's accounts' favourites.
+        Harness.Set(app, "_favoriteGames", null);
+        roblox.Gate = new TaskCompletionSource();
+        var loading = Harness.Try(app, "gameLists", new { });
+        await Until(() => roblox.Asked.Count(r => r.Path.EndsWith("/favorite/games", StringComparison.Ordinal)) > favoritesOf.Count);
+        await Harness.Call(app, "lock", new { });
+        roblox.Gate.SetResult();
+        roblox.Gate = null;
+        var afterLock = await loading;
+        c.Check("…locked while they load: not kept for the next vault opened", Field(app, "_favoriteGames") is null, afterLock);
     }
 
     /// <summary>The renewals Roblox's answers brought, saved as the process timer saves them.</summary>
@@ -289,10 +357,14 @@ static class SignInsSuite
         public string? Extra;
         /// <summary>Roblox's sign-in service down: "who am I" rejects every cookie.</summary>
         public bool Down;
+        /// <summary>Roblox VNG's sign-in service down only: its "who am I" rejects every cookie, Roblox's still answers.</summary>
+        public bool DownVng;
         /// <summary>Cookies of accounts Roblox holds: 403 to every question, as for a warning not yet accepted.</summary>
         public readonly HashSet<string> Held = new();
         /// <summary>Who is in a game (the place), as Roblox's presence service and Roblox VNG's each say.</summary>
         public readonly Dictionary<(bool Vng, long Id), long> InGame = new();
+        /// <summary>While set, an account's favourite games are answered only once it is done.</summary>
+        public TaskCompletionSource? Gate;
         readonly List<Request> _asked = new();
 
         public List<Request> Asked
@@ -319,6 +391,8 @@ static class SignInsSuite
             string text = Encoding.UTF8.GetString(sentBody);
             lock (_asked)
                 _asked.Add(new Request(request.Method.Method, uri.Host, uri.AbsolutePath, cookie, csrf, body) { Body = text });
+            if (Gate is { } gate && uri.AbsolutePath.EndsWith("/favorite/games", StringComparison.Ordinal))
+                await gate.Task;
 
             HttpResponseMessage res;
             lock (Users)
@@ -328,7 +402,7 @@ static class SignInsSuite
                     ? Refusal(HttpStatusCode.Forbidden, "User is moderated")
                     : uri.AbsolutePath switch
                 {
-                    "/v1/users/authenticated" => user is { } u && !Down
+                    "/v1/users/authenticated" => user is { } u && !Down && !(DownVng && uri.Host.EndsWith(".vnggames.com", StringComparison.Ordinal))
                         ? Json(HttpStatusCode.OK, new { id = u, name = $"user{u}", displayName = $"User {u}" })
                         : Refusal(HttpStatusCode.Unauthorized, "Authorization has been denied for this request."),
                     "/v1/authentication-ticket/" when !csrf => Csrf(),

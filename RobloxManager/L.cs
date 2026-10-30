@@ -225,6 +225,7 @@ public static class L
         ["Paste the .ROBLOSECURITY cookie."] = "Bạn chưa dán cookie .ROBLOSECURITY.",
         ["The cookie is invalid or has expired."] = "Cookie không hợp lệ hoặc đã hết hạn.",
         ["The new cookie is invalid or has expired."] = "Cookie mới không hợp lệ hoặc đã hết hạn.",
+        ["This cookie signs in another account. Add it as a new account instead."] = "Cookie này là của tài khoản khác. Hãy thêm nó thành tài khoản mới.",
         ["Bloxkeep was locked."] = "Bloxkeep vừa bị khóa.",
         ["Invalid field."] = "Mục không hợp lệ.",
         ["Already checking — please wait."] = "Đang kiểm tra rồi, chờ một chút.",
@@ -465,6 +466,8 @@ public static class L
         ["Close tab"] = "Đóng tab",
         ["Keep browsing"] = "Xem tiếp",
         ["The website can't be opened for Roblox VNG accounts yet."] = "Chưa mở được trang web cho tài khoản Roblox VNG.",
+        ["Private server links are read with a Roblox account. Select one that isn't Roblox VNG."] =
+            "Link server riêng cần một tài khoản Roblox để đọc. Hãy chọn một tài khoản không phải Roblox VNG.",
         ["Save to Bloxkeep"] = "Lưu vào Bloxkeep",
         ["Opens signed in next time. Without saving, closing this tab signs it out here."] =
             "Lần sau mở là đã đăng nhập sẵn. Không lưu thì đóng tab này sẽ mất đăng nhập ở đây.",
