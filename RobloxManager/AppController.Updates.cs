@@ -107,8 +107,9 @@ public sealed partial class AppController
     {
         Prefs.BetaUpdates = enabled;
         Prefs.Save();
-        // Turned on: the beta out now comes with the next check, at once rather than within the hour.
-        if (enabled)
+        // Turned on: the beta out now comes with the next check, at once rather than within the hour. Turned off with a beta
+        // downloaded: that one goes, and the regular versions are looked at again.
+        if (enabled || _updater.BetaTurnedOff())
             _nextUpdateCheck = DateTime.UtcNow;
         PushState();
         return null;

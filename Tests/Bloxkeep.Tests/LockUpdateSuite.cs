@@ -1,3 +1,4 @@
+using Velopack;
 using System.Text.Json;
 using RobloxManager;
 
@@ -74,6 +75,24 @@ static class LockUpdateSuite
         preset.Schedule = new PresetSchedule { Enabled = true, Time = At(TimeSpan.FromMinutes(20)), Days = [0, 1, 2, 3, 4, 5, 6] };
         c.Check("…and with the next one 20 minutes away", Quiet(false));
         vault.Data.Settings.Presets.Remove(preset);
+
+        // 2026-10-30 review: Get beta versions turned off kept a downloaded beta, which the quiet restart or the quit installed.
+        var readyField = typeof(AppUpdater).GetField("_ready", Harness.F)!;
+        void Staged(string version)
+        {
+            readyField.SetValue(updater, new VelopackAsset { Version = SemanticVersion.Parse(version), FileName = $"BloxkeepApp-{version}-full.nupkg" });
+            Status("ready");
+        }
+        Prefs.BetaUpdates = true;
+        Staged("9.9.9-beta.1");
+        await Harness.Call(app, "setBetaUpdates", new { enabled = false });
+        c.Check("Get beta versions turned off: the downloaded beta isn't installed (fails on the old code)",
+            readyField.GetValue(updater) is null && updater.Status != "ready", updater.Status);
+        Prefs.BetaUpdates = true;
+        Staged("9.9.9-alpha.1");
+        await Harness.Call(app, "setBetaUpdates", new { enabled = false });
+        c.Check("…a downloaded quiet fix stays", readyField.GetValue(updater) is not null && updater.Status == "ready");
+        readyField.SetValue(updater, null);
         Status("idle");
     }
 }

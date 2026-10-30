@@ -55,7 +55,7 @@ public static class WhatsNew
     public static bool IsQuietFix(string? version) =>
         (version ?? "").Split('+')[0].Split('-', 2) is [_, var label] && label.StartsWith("alpha.", StringComparison.Ordinal);
 
-    static bool IsBeta(string? version) =>
+    public static bool IsBeta(string? version) =>
         (version ?? "").Split('+')[0].Split('-', 2) is [_, var label] && label.StartsWith("beta.", StringComparison.Ordinal);
 
     /// <summary>

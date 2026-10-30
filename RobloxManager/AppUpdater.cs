@@ -1,5 +1,6 @@
 using System.Reflection;
 using Velopack;
+using Velopack.Locators;
 using Velopack.Logging;
 using Velopack.Sources;
 
@@ -41,6 +42,8 @@ public sealed class AppUpdater
             _ready = pending;
             NewVersion = pending.Version.ToString();
             Status = "ready";
+            if (DropUnwantedBeta())
+                Status = "idle";
         }
     }
 
@@ -91,7 +94,8 @@ public sealed class AppUpdater
             Set("downloading");
             await manager.DownloadUpdatesAsync(update, OnProgress);
             _ready = update.TargetFullRelease;
-            Set("ready");
+            // Get beta versions turned off during the download: not this one.
+            Set(DropUnwantedBeta() ? "idle" : "ready");
         }
         // Offline, GitHub busy, or a download that failed its checksum: report it and try again later.
         catch (Exception ex)
@@ -121,6 +125,36 @@ public sealed class AppUpdater
         if (status is "upToDate" or "ready" or "error")
             CheckedAt = DateTime.UtcNow;
         Changed?.Invoke();
+    }
+
+    /// <summary>Get beta versions turned off: a beta downloaded but not installed yet is dropped, and true is returned so the
+    /// regular versions are checked again.</summary>
+    public bool BetaTurnedOff()
+    {
+        if (!DropUnwantedBeta())
+            return false;
+        Set("idle");
+        return true;
+    }
+
+    /// <summary>A beta downloaded while Get beta versions was on, now off: not installed after all. A quiet restart or the quit
+    /// still installed it (2026-10-30 review). Its package goes too, else Velopack would install it at the next start.</summary>
+    bool DropUnwantedBeta()
+    {
+        if (_ready is not { } ready || Prefs.BetaUpdates || !WhatsNew.IsBeta(ready.Version.ToString()))
+            return false;
+        _ready = null;
+        NewVersion = null;
+        try
+        {
+            if (_manager is not null && VelopackLocator.IsCurrentSet && VelopackLocator.Current.PackagesDir is { Length: > 0 } packages)
+                File.Delete(Path.Combine(packages, ready.FileName));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            Log.Write(ex);
+        }
+        return true;
     }
 
     /// <summary>When the last check got its answer (or failed); null before the first.</summary>
