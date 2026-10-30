@@ -29,6 +29,28 @@ static class ArrangeSuite
         }
     }
 
+    /// <summary>
+    /// A window that, once armed, takes two thirds of its size on its next move, at once or a moment after: as Roblox's
+    /// window answers a move from a 150 % screen onto a 100 % one (the size Windows gives it for the new scale).
+    /// </summary>
+    sealed class ShrinksOnMove(bool later) : Form
+    {
+        public bool Armed;
+
+        protected override void OnMove(EventArgs e)
+        {
+            base.OnMove(e);
+            if (!Armed || !IsHandleCreated)
+                return;
+            Armed = false;
+            void Shrink() => Size = new Size(Width * 2 / 3, Height * 2 / 3);
+            if (later)
+                BeginInvoke(Shrink);
+            else
+                Shrink();
+        }
+    }
+
     public static async Task Run(Checks c, string dir)
     {
         // Picked in the page: a layout the app knows is kept, anything else left as it was; the size held to what it takes.
@@ -146,6 +168,21 @@ static class ArrangeSuite
                     c.Check("…each over the one before it, so every title bar shows", rank.Zip(rank.Skip(1)).All(p => p.First > p.Second), string.Join(",", rank));
                     foreach (var w in stubborn)
                         w.Close();
+
+                    // Windows moved onto a screen at another scale take Windows' size for it (review 2026-10-30): placed
+                    // first, then sized, they keep their tiles; one whose answer comes after its size is given it again.
+                    foreach (bool later in new[] { false, true })
+                    {
+                        var scaled = Open(() => new ShrinksOnMove(later));
+                        foreach (var w in scaled.Cast<ShrinksOnMove>())
+                            w.Armed = true;
+                        got = await Arrange(scaled);
+                        var fill = new[] { (0, 0), (300, 0), (600, 0), (0, 350), (300, 350) }.Select(p => new Rectangle(area.X + p.Item1, area.Y + p.Item2, 300, 350)).ToList();
+                        c.Check(later ? "…its answer coming after the size: given its tile again" : "windows that take a new scale's size as they move: their tiles all the same",
+                            got.SequenceEqual(fill), string.Join(" ", got));
+                        foreach (var w in scaled)
+                            w.Close();
+                    }
 
                     // A 3 × 2 grid of 900 × 700: 2 windows in its first two cells, 300 × 350 each.
                     var grid = Open(() => new Form());
