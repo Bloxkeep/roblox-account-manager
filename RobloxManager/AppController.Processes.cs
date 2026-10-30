@@ -682,7 +682,12 @@ public sealed partial class AppController
         if (p.PageFaults > 0 && a.Faults >= 0 && now > a.LastLook)
         {
             double seconds = (now - a.LastLook).TotalSeconds;
-            a.Rates.Add((Math.Max(0, p.PageFaults - a.Faults) / seconds, Math.Max(0, p.HardFaults - a.HardFaults) / seconds));
+            (double soft, double hard) = (Math.Max(0, p.PageFaults - a.Faults) / seconds, Math.Max(0, p.HardFaults - a.HardFaults) / seconds);
+            // Faulting while it holds well under its limit: Windows took its RAM (another program needed more than the PC
+            // has), which says nothing of the limit, and a higher one gives nothing back. Not counted, so not raised for it.
+            bool starved = soft > AutoRamStarved || hard > AutoRamHardStarved;
+            if (!starved || a.CapMb == 0 || p.WorkingSet >= a.CapMb * MB * 9 / 10)
+                a.Rates.Add((soft, hard));
             if (a.Rates.Count > 5)
                 a.Rates.RemoveAt(0);
         }

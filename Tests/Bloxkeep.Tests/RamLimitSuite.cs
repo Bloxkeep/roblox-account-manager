@@ -110,11 +110,11 @@ static class RamLimitSuite
         var t = DateTime.UtcNow;
         long faults = 1000;
         long? Cap() => Harness.Get<Dictionary<int, long>>(app, "_ramLimited").TryGetValue(me, out long mb) ? mb : null;
-        void Look(int seconds, long faultsMore, int load = 80)
+        void Look(int seconds, long faultsMore, int load = 80, long holding = 2200)
         {
             t = t.AddSeconds(seconds);
             faults += faultsMore;
-            Harness.Invoke(app, "LimitRestingRam", new List<RobloxProcesses.PlayerProcess> { new(me, 2200 * MB, PrivateWorkingSet: 2048 * MB, PageFaults: faults) },
+            Harness.Invoke(app, "LimitRestingRam", new List<RobloxProcesses.PlayerProcess> { new(me, holding * MB, PrivateWorkingSet: Math.Min(2048, holding) * MB, PageFaults: faults) },
                 RobloxProcesses.VisibleWindows([me]), t, new MemoryStatus(32000, 6000, load));
         }
         Look(0, 0);
@@ -127,10 +127,13 @@ static class RamLimitSuite
             Look(2, 100); // 50 faults/s: calm
         c.Check("…calm a minute: a quarter lower (1152 MB)", Cap() == 1152, Cap());
         for (int i = 0; i < 4; i++)
+            Look(2, 100_000, load: 97, holding: 400); // another program took the PC's RAM: Windows left it 400 MB
+        c.Check("…faulting with Windows taking its RAM (400 of 1152 MB held): not raised, the limit isn't why", Cap() == 1152, Cap());
+        for (int i = 0; i < 4; i++)
             Look(2, 100_000); // 50,000 faults/s: short of what it touches
         c.Check("…faulting a lot: half again (1728 MB)", Cap() == 1728, Cap());
         for (int i = 0; i < 20; i++)
-            Look(2, 100_000);
+            Look(2, 100_000, holding: Cap() is > 0 and var held ? held : 2200); // short of its limit: holds all of it
         c.Check("…still faulting after two raises: left alone, the limit lifted", Cap() is null && !Limited(), Cap());
         Look(2, 100);
         c.Check("…and not limited again for a while", Cap() is null, Cap());
