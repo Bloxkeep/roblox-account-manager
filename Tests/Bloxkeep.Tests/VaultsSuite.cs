@@ -75,6 +75,19 @@ static class VaultsSuite
         mainOpen.Save();
         c.Check("an open vault writes only its own file", File.ReadAllBytes(Path.Combine(data, farm.File)).SequenceEqual(farmBytes));
 
+        // The other vault picked while this one's key is still being worked out (the unlock takes a moment): this unlock
+        // is let go, and nothing of this vault ever lands in the other's file (2026-10-30 review: it saved over it).
+        await Harness.Call(app, "lock", new { });
+        var unlocking = Harness.Call(app, "unlock", new { password = MainPassword });
+        await Harness.Call(app, "selectVault", new { id = farm.Id });
+        await unlocking;
+        c.Check("another vault picked during an unlock: that unlock is let go, the picked one waits for its own password",
+            Harness.Get<Vault?>(app, "_vault") is null && Vault.ActiveFile == farm.File, $"{Harness.Get<Vault?>(app, "_vault")?.FilePath} {Vault.ActiveFile}");
+        c.Check("…and the other vault's file is untouched", File.ReadAllBytes(Path.Combine(data, farm.File)).SequenceEqual(farmBytes));
+        await Harness.Call(app, "selectVault", new { id = main.Id });
+        await Harness.Call(app, "unlock", new { password = MainPassword });
+        mainOpen = Harness.Get<Vault>(app, "_vault");
+
         // Back after a restart: the list, and the last vault used is the one offered.
         Prefs.Save();
         Prefs.VaultList.Clear();

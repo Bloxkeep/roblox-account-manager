@@ -220,9 +220,11 @@ public sealed class Vault : IDisposable
 
     public VaultData Data { get; }
 
-    Vault(byte[] key, byte[] salt, int iterations, VaultData data)
+    /// <param name="path">The file it was read from (or made at), taken before the key's slow derivation: the vault chosen
+    /// may change meanwhile (the picker during an unlock), and this one must never save over another's file.</param>
+    Vault(string path, byte[] key, byte[] salt, int iterations, VaultData data)
     {
-        _path = VaultPath;
+        _path = path;
         _key = key;
         _salt = salt;
         _iterations = iterations;
@@ -271,10 +273,12 @@ public sealed class Vault : IDisposable
     static byte[] DeriveKey(string password, byte[] salt, int iterations) =>
         Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, KeySize);
 
-    public static Vault Create(string password)
+    /// <param name="path">The file to make; the chosen vault's when not given (take it before going to a worker).</param>
+    public static Vault Create(string password, string? path = null)
     {
+        path ??= VaultPath;
         byte[] salt = RandomNumberGenerator.GetBytes(SaltSize);
-        var vault = new Vault(DeriveKey(password, salt, DefaultIterations), salt, DefaultIterations, new VaultData());
+        var vault = new Vault(path, DeriveKey(password, salt, DefaultIterations), salt, DefaultIterations, new VaultData());
         vault.Save();
         return vault;
     }
@@ -282,21 +286,24 @@ public sealed class Vault : IDisposable
     /// <summary>Opens vault.rmv, or the previous save (vault.rmv.bak) when the main file is damaged (a power cut, an
     /// antivirus). The damaged file is kept beside the vault, never deleted.</summary>
     /// <exception cref="InvalidPasswordException">The password does not decrypt the file.</exception>
-    public static Vault Open(string password)
+    /// <param name="path">The file to open; the chosen vault's when not given (take it before going to a worker).</param>
+    public static Vault Open(string password, string? path = null)
     {
-        byte[] file = File.ReadAllBytes(VaultPath);
-        byte[]? backup = File.Exists(BackupPath) ? File.ReadAllBytes(BackupPath) : null;
+        path ??= VaultPath;
+        string backupPath = path + ".bak";
+        byte[] file = File.ReadAllBytes(path);
+        byte[]? backup = File.Exists(backupPath) ? File.ReadAllBytes(backupPath) : null;
         if (HeaderOk(file, out int iterations, out byte[] salt))
         {
             byte[] key = DeriveKey(password, salt, iterations);
             if (Decrypt(file, key) is { } data)
-                return new Vault(key, salt, iterations, data);
+                return new Vault(path, key, salt, iterations, data);
             // Wrong password, or a damaged file? The previous save was made with the same key (the salt only changes
             // with the password), so if it opens with this key the main file is what's broken.
             if (backup is not null && HeaderOk(backup, out int backupIterations, out byte[] backupSalt)
                 && backupIterations == iterations && backupSalt.AsSpan().SequenceEqual(salt)
                 && Decrypt(backup, key) is { } previous)
-                return Recovered(key, salt, iterations, previous);
+                return Recovered(path, key, salt, iterations, previous);
             CryptographicOperations.ZeroMemory(key);
             throw new InvalidPasswordException();
         }
@@ -305,7 +312,7 @@ public sealed class Vault : IDisposable
         {
             byte[] key = DeriveKey(password, salt, iterations);
             if (Decrypt(backup, key) is { } previous)
-                return Recovered(key, salt, iterations, previous);
+                return Recovered(path, key, salt, iterations, previous);
             CryptographicOperations.ZeroMemory(key);
             throw new InvalidPasswordException();
         }
@@ -317,10 +324,11 @@ public sealed class Vault : IDisposable
     /// <exception cref="InvalidPasswordException">The key doesn't open the file.</exception>
     public static Vault OpenWithKey(byte[] key, byte[] salt, int iterations)
     {
-        byte[] file = File.ReadAllBytes(VaultPath);
+        string path = VaultPath;
+        byte[] file = File.ReadAllBytes(path);
         if (HeaderOk(file, out int fileIterations, out byte[] fileSalt) && fileIterations == iterations
             && fileSalt.AsSpan().SequenceEqual(salt) && Decrypt(file, key) is { } data)
-            return new Vault(key, salt, iterations, data);
+            return new Vault(path, key, salt, iterations, data);
         CryptographicOperations.ZeroMemory(key);
         throw new InvalidPasswordException();
     }
@@ -386,19 +394,19 @@ public sealed class Vault : IDisposable
     }
 
     /// <summary>Puts the previous save back in place of the damaged main file, which is kept as vault.rmv.damaged-….</summary>
-    static Vault Recovered(byte[] key, byte[] salt, int iterations, VaultData data)
+    static Vault Recovered(string path, byte[] key, byte[] salt, int iterations, VaultData data)
     {
         try
         {
-            File.Move(VaultPath, VaultPath + ".damaged-" + Stamp());
-            File.Copy(BackupPath, VaultPath);
+            File.Move(path, path + ".damaged-" + Stamp());
+            File.Copy(path + ".bak", path);
             Log.Note("vault.rmv was damaged; opened from vault.rmv.bak and kept the damaged file beside it.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Log.Write(ex); // the next save writes vault.rmv afresh
         }
-        return new Vault(key, salt, iterations, data);
+        return new Vault(path, key, salt, iterations, data);
     }
 
     /// <summary>
@@ -734,7 +742,7 @@ public sealed class Vault : IDisposable
         // the person's to delete.) The change itself has succeeded by now, so a file that won't go is only logged.
         try
         {
-            File.Delete(BackupPath);
+            File.Delete(_path + ".bak"); // this vault's, whichever is chosen now
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

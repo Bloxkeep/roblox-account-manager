@@ -16,7 +16,8 @@ public sealed partial class AppController
         SwitchToNewVault();
         if (Vault.Exists)
             throw new UserError(L.T("Bloxkeep is already set up."));
-        var created = await Task.Run(() => Vault.Create(password));
+        string path = Vault.VaultPath;
+        var created = await Task.Run(() => Vault.Create(password, path));
         // Another create or unlock finished first: that vault stays open, and the file is made its own again (this may have overwritten it).
         if (_vault is not null)
         {
@@ -37,9 +38,11 @@ public sealed partial class AppController
         if (password.Length == 0)
             throw new UserError(L.T("Enter your master password."));
         Vault vault;
+        var unlocking = Vaults.Current;
+        string path = Vault.VaultPath; // now, not when the worker starts: another vault may be picked meanwhile
         try
         {
-            vault = await Task.Run(() => Vault.Open(password));
+            vault = await Task.Run(() => Vault.Open(password, path));
         }
         catch (Exception ex) when (ex is InvalidPasswordException or IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
         {
@@ -53,8 +56,9 @@ public sealed partial class AppController
                 _ => L.F("Couldn't open the data file: {0}", ErrorText(ex)),
             });
         }
-        // Another unlock finished first (two commands at once): that vault stays the open one, this copy is let go.
-        if (_vault is not null)
+        // Another unlock finished first (two commands at once), or another vault was picked while this one's key was being
+        // worked out: this copy is let go (opened, it would be shown as the other vault's).
+        if (_vault is not null || Vaults.Current != unlocking)
         {
             vault.Dispose();
             return BuildState();
