@@ -1630,7 +1630,18 @@
 
   async function deletePreset(p) {
     if (!await confirmBox(t('ps.deleteQ', { name: p.name }), { title: t('ps.deleteTitle'), ok: t('ps.delete'), danger: true, remember: 'deletePreset' })) return false;
-    if (await call('deletePreset', { id: p.id }) === undefined) return false;
+    // With "Don't ask again" nothing stands between two quick clicks: the second asked to delete a preset already on its
+    // way out and showed an error (review, 2026-10-30). One delete per preset at a time.
+    const key = `delPreset:${p.id}`;
+    if (inFlight.has(key)) return false;
+    inFlight.add(key);
+    let r;
+    try {
+      r = await call('deletePreset', { id: p.id });
+    } finally {
+      inFlight.delete(key);
+    }
+    if (r === undefined) return false;
     toast(t('ps.deleted'), 'ok');
     return true;
   }

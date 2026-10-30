@@ -883,6 +883,16 @@ export default [
   S('presets-icons', 'view=presets&noicons=1', async s => { await s.wait(600); }),
   S('presets-long', 'view=presets&long=1', null, { langs: ['en'] }),
   S('presets-search-none', 'view=presets', async s => { await s.type('zzzz', key('pv.search')); await s.wait(300); }),
+  // "Don't ask again" ticked, then a quick double click on another preset's Delete: one deletePreset, not two (the second
+  // asked for a preset already gone and showed an error; review, 2026-10-30).
+  S('presets-delete-twice', 'view=presets', async s => {
+    await s.click({ css: '.pv-item[data-id="p2"] [data-pv=del]' });
+    await s.click({ css: '.overlay #dont-ask' });
+    await s.click({ css: '.overlay .btn.danger' });
+    await s.wait(300);
+    await s.eval(`(() => { const b = document.querySelector('.pv-item[data-id="p1"] [data-pv=del]'); b.click(); b.click(); })()`);
+    await s.wait(300);
+  }),
   S('presets-move-top', 'view=presets', async s => { await s.click({ css: '.pv-item[data-id="p2"] [data-move="-1"]' }); }),
   S('presets-drag', 'view=presets', async s => {
     await s.drag({ css: '.pv-item[data-id="p3"] .pv-grip' }, { css: '.pv-item[data-id="p1"]' }, -12);
