@@ -61,6 +61,7 @@ export function PerfPage({ title }: { title: string }) {
           call('setSettings', { ramLimitMb: Number(e.target.value) });
         }}>
           <option value="0">{t('set.ramLimitOff')}</option>
+          <option value="-1">{t('set.ramLimitAuto')}</option>
           <option value="1024">1 GB</option>
           <option value="1536">1.5 GB</option>
           <option value="2048">2 GB</option>

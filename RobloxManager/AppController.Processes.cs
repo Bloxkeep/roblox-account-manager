@@ -333,7 +333,7 @@ public sealed partial class AppController
             NoteClientMemory(players);
             EmitMetrics(players, windows, memory);
             GuardResources(players, memory, now);
-            LimitRestingRam(players, windows);
+            LimitRestingRam(players, windows, now, memory);
         }, "EmitMetrics, GuardResources");
         Step(() => RunDueRejoin(now));
         Step(() => RestartDueClients(now));
@@ -580,7 +580,37 @@ public sealed partial class AppController
     }
 
     /// <summary>The choices of Settings › Staying in game › RAM limit for resting windows, in MB (0 = off).</summary>
-    internal static readonly int[] RamLimitChoices = [0, 1024, 1536, 2048];
+    internal static readonly int[] RamLimitChoices = [0, RamLimitAuto, 1024, 1536, 2048];
+
+    /// <summary>
+    /// "Auto": each resting window's limit found for its own game (2026-10-30, two designs measured on a stand-in game:
+    /// a limit above what a game keeps touching costs nothing, one below it makes the game fetch its own pages back for
+    /// ever, ~430k faults/s and 5 fps). Starts at 3/4 of what the window holds, comes down a quarter at a time while it
+    /// barely faults, goes up half again when it faults a lot, and a window that needed it twice is left alone a while.
+    /// Only once the PC has used <see cref="AutoRamLoad"/> % of its RAM: below that a limit frees RAM nobody needs.
+    /// </summary>
+    internal const int RamLimitAuto = -1;
+    internal const int AutoRamLoad = 60, AutoRamFloorMb = 768;
+    static readonly TimeSpan AutoRamRested = TimeSpan.FromSeconds(60), AutoRamStep = TimeSpan.FromSeconds(60), AutoRamRaisedHold = TimeSpan.FromMinutes(10),
+        AutoRamLeftAlone = TimeSpan.FromMinutes(30);
+    /// <summary>Faults a second (median of the last few looks): under this the limit may come down, over the next it goes up.
+    /// A game at its own pace faulted under 700/s on the stand-in; one short of what it touches, hundreds of thousands.</summary>
+    const double AutoRamCalm = 5_000, AutoRamStarved = 25_000, AutoRamHardStarved = 50;
+
+    /// <summary>Auto's state for a window: its limit, since when, raises, fault counts last seen, recent rates.</summary>
+    sealed class AutoRam
+    {
+        public long CapMb;
+        public DateTime ChangedAt, RestingSince;
+        public int Raises;
+        public DateTime? LeftAloneUntil;
+        public long Faults = -1, HardFaults = -1;
+        public DateTime LastLook;
+        public readonly List<(double Soft, double Hard)> Rates = [];
+    }
+    readonly Dictionary<int, AutoRam> _autoRam = new();
+    /// <summary>Windows Windows refused a limit for, said once each in the log.</summary>
+    readonly HashSet<int> _ramLimitRefused = [];
 
     /// <summary>Clients given a RAM limit, and the limit (-1: one found already limited, by a Bloxkeep that closed before lifting it).</summary>
     readonly Dictionary<int, long> _ramLimited = new();
@@ -588,14 +618,19 @@ public sealed partial class AppController
 
     /// <summary>
     /// RAM limit for resting windows: a Roblox window that isn't drawing (minimized, or hidden by Bloxkeep) keeps at most
-    /// the chosen RAM, the rest waiting in virtual memory, so more accounts fit on one PC (a resting game uses little of
-    /// what it holds: about 1 of its 3 GB, measured 2026-10-29). Lifted once the window shows, comes to the front, or the
-    /// option is off. Not for one in view: it still draws, and limited it took twice the CPU.
+    /// the chosen RAM (or Auto's, <see cref="RamLimitAuto"/>), the rest waiting in compressed memory or virtual memory, so
+    /// more accounts fit on one PC (a resting game uses little of what it holds: about 1 of its 3 GB, measured 2026-10-29).
+    /// Lifted once the window shows, comes to the front, or the option is off. Not for one in view: it still draws, and
+    /// limited it took twice the CPU. Every limit set, changed and lifted is noted in the log (pid and MB only), so a
+    /// window seen above its limit can be told apart from one that wasn't limited then (the owner saw 2 GB, 2026-10-30).
     /// </summary>
-    void LimitRestingRam(List<RobloxProcesses.PlayerProcess> players, Dictionary<int, List<IntPtr>> windows)
+    void LimitRestingRam(List<RobloxProcesses.PlayerProcess> players, Dictionary<int, List<IntPtr>> windows, DateTime now, MemoryStatus memory)
     {
         foreach (int gone in _ramLimited.Keys.Where(pid => players.All(p => p.Pid != pid)).ToList())
             _ramLimited.Remove(gone);
+        foreach (int gone in _autoRam.Keys.Where(pid => players.All(p => p.Pid != pid)).ToList())
+            _autoRam.Remove(gone);
+        _ramLimitRefused.RemoveWhere(pid => players.All(p => p.Pid != pid));
         if (!_ramLimitsAdopted)
         {
             _ramLimitsAdopted = true;
@@ -605,28 +640,102 @@ public sealed partial class AppController
         // A window shown unseen for a moment (anti-AFK's nudge, /pc screenshot) is left as it is meanwhile.
         if (_nudging || _picturing)
             return;
-        long limit = _vault!.Data.Settings.RamLimitMb;
+        long setting = _vault!.Data.Settings.RamLimitMb;
         int front = RobloxProcesses.ForegroundPid();
         foreach (var p in players)
         {
             var window = windows.TryGetValue(p.Pid, out var list) ? RobloxProcesses.MainWindowOf(list) : IntPtr.Zero;
-            bool resting = limit > 0 && p.Pid != front && window != IntPtr.Zero
+            bool resting = setting != 0 && p.Pid != front && window != IntPtr.Zero
                            && (RobloxProcesses.IsMinimised(window) || RobloxProcesses.IsHidden(window));
-            bool limited = _ramLimited.TryGetValue(p.Pid, out long now);
-            if (resting && (!limited || now != limit))
+            long? want = !resting ? null : setting == RamLimitAuto ? AutoLimit(p, now, memory) : setting;
+            bool limited = _ramLimited.TryGetValue(p.Pid, out long had);
+            if (!resting)
+                _autoRam.Remove(p.Pid);
+            if (want is { } limit && (!limited || had != limit))
             {
                 if (RobloxProcesses.LimitRam(p.Pid, limit))
+                {
                     _ramLimited[p.Pid] = limit;
+                    Log.Note($"RAM limit: Roblox window {p.Pid} limited to {limit} MB ({(setting == RamLimitAuto ? "auto" : "chosen")}), holding {p.Ram / MB} MB.");
+                }
+                else if (_ramLimitRefused.Add(p.Pid))
+                    Log.Note($"RAM limit: Windows refused a limit for Roblox window {p.Pid}.");
             }
-            else if (!resting && limited)
+            else if (want is null && limited)
             {
                 RobloxProcesses.LimitRam(p.Pid, null);
                 _ramLimited.Remove(p.Pid);
+                Log.Note($"RAM limit: lifted for Roblox window {p.Pid} ({(resting ? "auto left it alone" : "shown, in front, or the option off")}).");
             }
         }
     }
 
-    /// <summary>Every client's RAM limit lifted (Bloxkeep closing: none is left limited without it).</summary>
+    /// <summary>
+    /// Auto's limit for a resting window now (MB), or null for none: not before it rested <see cref="AutoRamRested"/>, nor
+    /// below <see cref="AutoRamLoad"/> % of RAM used (a limit already set stays), nor while it is left alone after needing
+    /// more twice. Its fault rates (median of the last five looks, so one garbage collection's burst is no reason) move it.
+    /// </summary>
+    long? AutoLimit(RobloxProcesses.PlayerProcess p, DateTime now, MemoryStatus memory)
+    {
+        if (!_autoRam.TryGetValue(p.Pid, out var a))
+            _autoRam[p.Pid] = a = new AutoRam { RestingSince = now, LastLook = now };
+        if (p.PageFaults > 0 && a.Faults >= 0 && now > a.LastLook)
+        {
+            double seconds = (now - a.LastLook).TotalSeconds;
+            a.Rates.Add((Math.Max(0, p.PageFaults - a.Faults) / seconds, Math.Max(0, p.HardFaults - a.HardFaults) / seconds));
+            if (a.Rates.Count > 5)
+                a.Rates.RemoveAt(0);
+        }
+        (a.Faults, a.HardFaults, a.LastLook) = (p.PageFaults, p.HardFaults, now);
+        if (a.LeftAloneUntil is { } until)
+        {
+            if (now < until)
+                return null;
+            a.LeftAloneUntil = null;
+            a.Raises = 0;
+            a.CapMb = 0;
+        }
+        if (a.CapMb == 0)
+        {
+            if (now - a.RestingSince < AutoRamRested || memory.LoadPercent < AutoRamLoad)
+                return null;
+            a.CapMb = Math.Max(AutoRamFloorMb, p.Ram / MB * 3 / 4 / 64 * 64);
+            a.ChangedAt = now;
+            a.Rates.Clear();
+            return a.CapMb;
+        }
+        if (a.Rates.Count >= 3)
+        {
+            double soft = Median(a.Rates.Select(r => r.Soft)), hard = Median(a.Rates.Select(r => r.Hard));
+            if (soft > AutoRamStarved || hard > AutoRamHardStarved)
+            {
+                if (++a.Raises >= 3)
+                {
+                    a.LeftAloneUntil = now + AutoRamLeftAlone;
+                    Log.Note($"RAM limit: Roblox window {p.Pid} needs its RAM ({soft:0} faults/s, {hard:0} from disk); left alone for {AutoRamLeftAlone.TotalMinutes:0} min.");
+                    return null;
+                }
+                a.CapMb = a.CapMb * 3 / 2 / 64 * 64;
+                a.ChangedAt = now + AutoRamRaisedHold - AutoRamStep; // held a while before it may come down again
+                a.Rates.Clear();
+            }
+            else if (soft < AutoRamCalm && hard < 1 && now - a.ChangedAt >= AutoRamStep && a.CapMb > AutoRamFloorMb
+                     && memory.LoadPercent >= AutoRamLoad)
+            {
+                a.CapMb = Math.Max(AutoRamFloorMb, a.CapMb * 3 / 4 / 64 * 64);
+                a.ChangedAt = now;
+                a.Rates.Clear();
+            }
+        }
+        return a.CapMb;
+    }
+
+    static double Median(IEnumerable<double> values)
+    {
+        var sorted = values.Order().ToList();
+        return sorted.Count == 0 ? 0 : sorted[sorted.Count / 2];
+    }
+
     /// <summary>Every window Bloxkeep lowered gets its normal RAM priority back (the option turned off, Bloxkeep closing).</summary>
     void GiveMemoryPriorityBack()
     {
@@ -635,6 +744,7 @@ public sealed partial class AppController
         _lowMemoryPriority.Clear();
     }
 
+    /// <summary>Every client's RAM limit lifted (Bloxkeep closing: none is left limited without it).</summary>
     void LiftRamLimits()
     {
         foreach (int pid in _ramLimited.Keys)

@@ -74,7 +74,10 @@ public static class RobloxProcesses
     /// <param name="WorkingSet">Its RAM in use, with what it shares with every other program (Roblox's own code, Windows'
     /// libraries, the graphics driver): Windows holds that once for all of them.</param>
     /// <param name="PrivateWorkingSet">Its RAM in use that is its own (Task Manager's "Memory"); 0 when not read.</param>
-    public readonly record struct PlayerProcess(int Pid, long WorkingSet, int Parent = 0, long Created = 0, long Private = 0, long PrivateWorkingSet = 0)
+    /// <param name="PageFaults">Its page faults so far, and HardFaults those read from disk (0 when not read): a window
+    /// short of RAM it needs keeps faulting (RAM limit, Auto).</param>
+    public readonly record struct PlayerProcess(int Pid, long WorkingSet, int Parent = 0, long Created = 0, long Private = 0, long PrivateWorkingSet = 0,
+        long PageFaults = 0, long HardFaults = 0)
     {
         /// <summary>
         /// The RAM it takes, as shown (cards, sidebar total, Mini, Game monitor, Discord): its own, so windows added up
@@ -143,8 +146,8 @@ public static class RobloxProcesses
     {
         if (IntPtr.Size != 8)
             return null;
-        const int WorkingSetPrivate = 8, CreateTime = 32, NameLength = 56, NameBuffer = 64, ProcessId = 80, ParentId = 88, WorkingSetSize = 144,
-            PrivatePageCount = 200, EntryEnd = 208;
+        const int WorkingSetPrivate = 8, HardFaultCount = 16, CreateTime = 32, NameLength = 56, NameBuffer = 64, ProcessId = 80, ParentId = 88,
+            PageFaultCount = 128, WorkingSetSize = 144, PrivatePageCount = 200, EntryEnd = 208;
         const string Image = PlayerProcessName + ".exe";
         for (int attempt = 0; attempt < 4; attempt++)
         {
@@ -170,7 +173,7 @@ public static class RobloxProcesses
                     if (length == Image.Length * 2 && (long)name >= (long)buffer && (long)name + length <= end && IsImage(name, Image))
                         players.Add(new PlayerProcess((int)Marshal.ReadInt64(entry, ProcessId), Marshal.ReadInt64(entry, WorkingSetSize),
                             (int)Marshal.ReadInt64(entry, ParentId), Marshal.ReadInt64(entry, CreateTime), Marshal.ReadInt64(entry, PrivatePageCount),
-                            Marshal.ReadInt64(entry, WorkingSetPrivate)));
+                            Marshal.ReadInt64(entry, WorkingSetPrivate), (uint)Marshal.ReadInt32(entry, PageFaultCount), (uint)Marshal.ReadInt32(entry, HardFaultCount)));
                     int next = Marshal.ReadInt32(entry, 0);
                     if (next <= 0)
                         break;
