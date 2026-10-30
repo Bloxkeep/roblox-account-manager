@@ -77,7 +77,7 @@ public sealed partial class AppController
     {
         if ((!atLock && now - _started < RelaunchAfterStart) || Settling || HomeSessionsActive)
             return false;
-        if (OpeningRoblox || _restarts.Count > 0 || _nudging || now < _sweepBackgroundUntil)
+        if (OpeningRoblox || _restarts.Count > 0 || _nudging || now < _sweepBackgroundUntil || ScheduleDueSoon())
             return false;
         if (_quickLogin is not null || _vaultImportOpening || _vaultImportPath is not null || _backupWrite is { IsCompleted: false }
             || _signInCheckRunning || _discordSending || _saveFailed || PageBusy || Ui.ModalsOpen > 0)
@@ -98,6 +98,19 @@ public sealed partial class AppController
         || _rejoinQueue.Any(r => r.Due - DateTime.UtcNow < RejoinSoon) || _rejoining || _closingForRejoin.Count > 0;
 
     static readonly TimeSpan RejoinSoon = TimeSpan.FromSeconds(30);
+
+    /// <summary>A scheduled preset starts within this, or its minute is on and it hasn't run yet: a restart now could carry
+    /// it past its minute, and a missed minute isn't caught up (a restart at 03:00:10 skipped the 03:00 preset without a
+    /// word, 2026-10-30 review).</summary>
+    static readonly TimeSpan RelaunchBeforeSchedule = TimeSpan.FromMinutes(3);
+
+    bool ScheduleDueSoon()
+    {
+        if (_vault is not { } vault)
+            return false;
+        var local = DateTime.Now;
+        return vault.Data.Settings.Presets.Any(p => NextRun(p.Schedule) is { } at && at - local < RelaunchBeforeSchedule);
+    }
 
     /// <param name="atLock">The "Updating" window shows (when Bloxkeep's is on screen), as for the button.</param>
     async Task RelaunchAsync(bool atLock = false)

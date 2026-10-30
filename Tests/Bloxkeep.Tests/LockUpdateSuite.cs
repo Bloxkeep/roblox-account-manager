@@ -55,6 +55,25 @@ static class LockUpdateSuite
             !Offered() && !Goes() && LockUpdate().ValueKind == JsonValueKind.Null);
         c.Check("…and the update waits for a quiet moment: not in the first minutes, nor with the window on screen and the PC in use",
             !Quiet(false));
+
+        // 2026-10-30 review: a quiet restart a few seconds before a scheduled preset's minute carried it past that minute,
+        // and missed minutes aren't caught up.
+        Harness.Set(app, "_started", DateTime.UtcNow - TimeSpan.FromMinutes(10));
+        window = "hidden";
+        c.Check("in the tray a while after the start: the update goes", Quiet(false));
+        var vault = Harness.Get<Vault>(app, "_vault");
+        var preset = new LaunchPreset { Name = "Night" };
+        vault.Data.Settings.Presets.Add(preset);
+        string At(TimeSpan from) => DateTime.Now.Add(from).ToString("HH:mm");
+        preset.Schedule = new PresetSchedule { Enabled = true, Time = At(TimeSpan.FromMinutes(2)), Days = [0, 1, 2, 3, 4, 5, 6] };
+        c.Check("…but not with a scheduled preset due in 2 minutes (fails on the old code)", !Quiet(false));
+        preset.Schedule.Time = At(TimeSpan.Zero);
+        c.Check("…nor in its minute before it ran", !Quiet(false));
+        preset.Schedule.LastRun = DateTime.Now.ToString("yyyy-MM-dd ") + preset.Schedule.Time;
+        c.Check("…once it ran, the update goes", Quiet(false));
+        preset.Schedule = new PresetSchedule { Enabled = true, Time = At(TimeSpan.FromMinutes(20)), Days = [0, 1, 2, 3, 4, 5, 6] };
+        c.Check("…and with the next one 20 minutes away", Quiet(false));
+        vault.Data.Settings.Presets.Remove(preset);
         Status("idle");
     }
 }
