@@ -854,7 +854,7 @@ public static class L
         ["Delete my accounts and settings"] = "Xóa tài khoản và cài đặt",
         ["Deletes the vault with your saved accounts, your settings and logs in {0}. This can't be undone."] =
             "Xóa vault chứa tài khoản đã lưu, cài đặt và nhật ký trong {0}. Không thể hoàn tác.",
-        ["Kept if you don't choose within a minute."] = "Không chọn trong một phút thì sẽ giữ lại tất cả.",
+        ["Kept if you don't choose within 20 seconds."] = "Không chọn trong 20 giây thì sẽ giữ lại tất cả.",
         ["Bloxkeep can post to this channel. Choose what it sends under Settings › Discord."] =
             "Bloxkeep gửi được tin vào kênh này. Chọn tin cần gửi ở Cài đặt › Discord.",
     };

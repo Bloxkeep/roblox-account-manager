@@ -30,7 +30,9 @@ static class Program
             .SetAutoApplyOnStartup(!anotherRuns)
             .OnBeforeUninstallFastCallback(_ =>
             {
-                var deadline = DateTime.UtcNow.AddSeconds(50);
+                // Velopack ends this step after 30 s, counted from before this process started: the question below is
+                // answered by 22 s, which leaves time to delete the data (2026-10-30 review: 50 s were planned).
+                var deadline = DateTime.UtcNow.AddSeconds(22);
                 CloseRunningApp();
                 Vault.DeleteCaches();
                 // Sign-in and captcha browser profiles in %TEMP%, normally removed at the next start that never comes.
@@ -155,7 +157,7 @@ static class Program
         }
     }
 
-    /// <summary>Before uninstalling: asks a running Bloxkeep to close and waits up to 15 s (of the hook's 60). Velopack 1.2
+    /// <summary>Before uninstalling: asks a running Bloxkeep to close and waits up to 10 s (of the hook's 30). Velopack 1.2
     /// already ends processes in the program folder; this covers one it couldn't see (running elevated).</summary>
     static void CloseRunningApp()
     {
@@ -169,7 +171,7 @@ static class Program
         {
             try
             {
-                if (single.WaitOne(TimeSpan.FromSeconds(15)))
+                if (single.WaitOne(TimeSpan.FromSeconds(10)))
                     single.ReleaseMutex();
             }
             catch (AbandonedMutexException)
@@ -183,7 +185,7 @@ static class Program
     }
 
     /// <summary>Velopack's uninstall run without Bloxkeep's uninstaller window: asks whether the accounts go too; kept when
-    /// unanswered by <paramref name="deadline"/>, before Velopack's minute for this step runs out.</summary>
+    /// unanswered by <paramref name="deadline"/>, before Velopack's 30 s for this step run out.</summary>
     static bool AskToDeleteData(DateTime deadline)
     {
         Prefs.Load();
@@ -198,8 +200,8 @@ static class Program
                 new Dialog.Choice(L.T("Delete my accounts and settings"),
                     L.F("Deletes the vault with your saved accounts, your settings and logs in {0}. This can't be undone.", Vault.DataDir), Danger: true),
             ],
-            defaultIndex: 0, cancelIndex: 0, footnote: L.T("Kept if you don't choose within a minute."),
-            timeout: TimeSpan.FromMilliseconds(Math.Clamp((deadline - DateTime.UtcNow).TotalMilliseconds, 5000, 50000)));
+            defaultIndex: 0, cancelIndex: 0, footnote: L.T("Kept if you don't choose within 20 seconds."),
+            timeout: TimeSpan.FromMilliseconds(Math.Clamp((deadline - DateTime.UtcNow).TotalMilliseconds, 5000, 20000)));
         return picked == 1;
     }
 
