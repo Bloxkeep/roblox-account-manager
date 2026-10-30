@@ -52,6 +52,14 @@ static class FeedbackSuite
         c.Check("preview: the message, contact and version", preview.Contains("The mini window forgets its size.") && preview.Contains("me#1") && preview.Contains("Bloxkeep "));
         string noLog = Text(await Harness.Call(app, "feedbackPreview", Args("An idea for presets.", log: false, kind: "idea")), "preview");
         c.Check("no log asked: none in the preview", !noLog.Contains("error-log") && !noLog.Contains("NoobMaster99"), noLog);
+        // An emoji across the length limits (2026-10-30 review): left out whole, never cut in half (that can't go as JSON).
+        var cut = Harness.Invoke(app, "ReadFeedback", JsonSerializer.SerializeToElement(new
+        {
+            kind = "idea", text = new string('a', 1999) + "\U0001F600", contact = new string('b', 99) + "\U0001F600", log = false,
+        }))!;
+        string cutText = (string)cut.GetType().GetProperty("Text")!.GetValue(cut)!, cutContact = (string)cut.GetType().GetProperty("Contact")!.GetValue(cut)!;
+        c.Check("an emoji at the text's and the contact's limit is left out whole", cutText.Length == 1999 && cutContact.Length == 99,
+            $"{cutText.Length} {cutContact.Length}");
 
         // The service: a little server here that answers what each step needs.
         var (listener, url) = Listen();

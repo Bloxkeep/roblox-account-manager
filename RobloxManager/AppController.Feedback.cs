@@ -43,8 +43,8 @@ public sealed partial class AppController
                 throw new UserError(L.T("Unlock Bloxkeep to add the error log: account names are taken out of it first."));
             log = ScrubbedLog();
         }
-        return new Feedback(kind, text.Length > FeedbackTextMax ? text[..FeedbackTextMax] : text,
-            contact.Length > FeedbackContactMax ? contact[..FeedbackContactMax] : contact,
+        // Cut between whole characters: half an emoji at the limit made the request's JSON fail (2026-10-30 review).
+        return new Feedback(kind, CutText(text, FeedbackTextMax), CutText(contact, FeedbackContactMax),
             _updater.CurrentVersion, WindowsText(), L.Language, log);
     }
 
