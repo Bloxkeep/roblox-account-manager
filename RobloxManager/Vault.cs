@@ -517,7 +517,19 @@ public sealed class Vault : IDisposable
     public static void ReplaceFile(byte[] bytes)
     {
         lock (FileGate)
+        {
             WriteAtomic(VaultPath, bytes);
+            // The replaced vault, left as the spare by the write: with its password (the usual one) Open would take the
+            // restored file for damaged and put this one back. A copy of it is in old-vaults.
+            try
+            {
+                File.Delete(VaultPath + ".bak");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Note($"Restore: the replaced vault's spare copy couldn't be removed ({ex.GetType().Name}).");
+            }
+        }
     }
 
     /// <summary>

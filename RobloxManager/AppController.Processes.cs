@@ -91,6 +91,7 @@ public sealed partial class AppController
             _nudgeRetryAt[pid] = MovedBack(_nudgeRetryAt[pid], back);
         _signInCheckRetryAt = MovedBack(_signInCheckRetryAt, back);
         MoveDiscordBack(back);
+        _autoRam.Clear(); // starts over: its times would hold it back by as much
         if (Prefs.LastSignInCheck is { } checkedAt)
             Prefs.LastSignInCheck = MovedBack(checkedAt, back); // written with the next prefs change; a restart clamps it anyway
     }
@@ -641,6 +642,8 @@ public sealed partial class AppController
         if (_nudging || _picturing)
             return;
         long setting = _vault!.Data.Settings.RamLimitMb;
+        if (setting != RamLimitAuto)
+            _autoRam.Clear(); // back on Auto later, it waits and measures again
         int front = RobloxProcesses.ForegroundPid();
         foreach (var p in players)
         {
@@ -704,7 +707,7 @@ public sealed partial class AppController
         {
             if (now - a.RestingSince < AutoRamRested || memory.LoadPercent < AutoRamLoad)
                 return null;
-            a.CapMb = Math.Max(AutoRamFloorMb, p.Ram / MB * 3 / 4 / 64 * 64);
+            a.CapMb = Math.Max(AutoRamFloorMb, p.WorkingSet / MB * 3 / 4 / 64 * 64); // what's shared counts towards a limit too
             a.ChangedAt = now;
             a.Rates.Clear();
             return a.CapMb;
@@ -729,6 +732,7 @@ public sealed partial class AppController
             {
                 a.CapMb = Math.Max(AutoRamFloorMb, a.CapMb * 3 / 4 / 64 * 64);
                 a.ChangedAt = now;
+                a.Raises = 0; // calm again: an asset load an hour ago is no reason to give up on it
                 a.Rates.Clear();
             }
         }

@@ -69,6 +69,13 @@ static class DataFolderSuite
         var damaged = Directory.GetFiles(data, "prefs.json.damaged-*");
         c.Check("a prefs.json that can't be read is kept aside as it was before the defaults are saved",
             damaged.Length == 1 && File.ReadAllText(damaged[0]) == "x", damaged.Length);
+        // Held by another program as Bloxkeep starts: not damaged, so this run's defaults aren't saved over it either.
+        string prefsFile = Path.Combine(data, "prefs.json");
+        using (new FileStream(prefsFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            Prefs.Load();
+        Prefs.Save();
+        c.Check("a prefs.json held by another program at the start isn't overwritten with defaults", File.ReadAllText(prefsFile) == "x", File.ReadAllText(prefsFile));
+        typeof(Prefs).GetField("_unreadable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.SetValue(null, false);
 
         // Every uninstall drops the browser caches; in a folder BLOXKEEP_DATA points at (as here), a "webview" folder at the
         // top may be the person's own and stays (review, 2026-10-30: it was deleted, even with "keep my data").

@@ -200,5 +200,25 @@ static class VaultsSuite
             failedUnlock is UserError e && e.Message.Contains(replaced, StringComparison.Ordinal), (failedUnlock as Exception)?.Message);
         await Harness.Call(app, "unlock", new { password = FarmPassword });
         c.Check("…once it opens, not said again", Harness.Get<Vault?>(app, "_vault") is not null && Harness.Get<object?>(app, "_restoredOver") is null);
+
+        // A backup made under another password, restored and unlocked with the usual one (review, 2026-10-30): the replaced
+        // vault, left as the spare, opened with it and put itself back, the restored file set aside as "damaged".
+        await Harness.Call(app, "lock", new { });
+        string otherPassword = "the backup's own password", older = Path.Combine(dir, "other-password.rmv");
+        using (var o = Vault.Create(otherPassword, older))
+            o.Save();
+        typeof(AppController).Assembly.GetType("RobloxManager.Backup")!.GetMethod("Restore", Harness.F)!.Invoke(null, [older, true]);
+        bool usualOpened = true;
+        try
+        {
+            Vault.Open(FarmPassword).Dispose();
+        }
+        catch (InvalidPasswordException)
+        {
+            usualOpened = false;
+        }
+        c.Check("a restored backup with another password: the usual password doesn't bring the old vault back", !usualOpened);
+        using (var restored = Vault.Open(otherPassword))
+            c.Check("…its own opens it, the file still the restored one", restored.Id.Length > 0 && !Directory.GetFiles(data, "*.damaged-*").Any(f => f.Contains(thirdVault.File)));
     }
 }

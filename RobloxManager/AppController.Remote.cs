@@ -228,6 +228,11 @@ public sealed partial class AppController
         {
             outcome = RemoteSay(ErrorText(ex));
         }
+        catch (Exception ex)
+        {
+            Log.Write(ex);
+            outcome = RemoteSay(L.T("Something went wrong on this PC. Try again."));
+        }
         _remote?.Later(id, outcome);
     }
 
@@ -277,11 +282,27 @@ public sealed partial class AppController
         return RemoteSay(L.F("Closing {0}…", DiscordName(account)));
     }
 
+    /// <summary>A /pc switch waiting for Roblox's server list: commands run side by side, and Hopping only knows of it after.</summary>
+    bool _remoteSwitching;
+
     async Task<JsonObject> RemoteSwitchAsync(string name)
     {
         // Asked again before the last switch landed (Discord's /pc sent over and over): not moved again meanwhile.
-        if (Hopping())
+        if (Hopping() || _remoteSwitching)
             return RemoteSay(L.T("Accounts are still moving to another server. Try again once they're in."));
+        _remoteSwitching = true;
+        try
+        {
+            return await RemoteSwitchNowAsync(name);
+        }
+        finally
+        {
+            _remoteSwitching = false;
+        }
+    }
+
+    async Task<JsonObject> RemoteSwitchNowAsync(string name)
+    {
         if (IsAllAccounts(name))
         {
             var playing = PlayingAccounts();
@@ -353,6 +374,9 @@ public sealed partial class AppController
             Notify(L.F("{0} took a screenshot of this PC's Roblox windows from Discord.", link.User ?? "Discord"), "info", "remote");
             foreach (var account in accounts.Take(MaxShots))
             {
+                // Locked, or turned off, since it was asked: no pictures go out.
+                if (!RemoteOpen)
+                    return null;
                 if (!_running.TryGetValue(account.Id, out var run))
                     continue;
                 var window = RobloxProcesses.MainWindowOf(RobloxProcesses.VisibleWindows([run.Pid])[run.Pid]);

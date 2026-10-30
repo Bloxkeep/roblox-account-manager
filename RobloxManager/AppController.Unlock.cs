@@ -215,6 +215,10 @@ public sealed partial class AppController
         if (_vault is not null)
             RememberSchedulesForLock();
         _ = FinalDiscordBoard(closing: false);
+        // Nothing looks after the windows while locked (a window opened from the taskbar stayed limited, at low priority).
+        LiftRamLimits();
+        _autoRam.Clear();
+        GiveMemoryPriorityBack();
         _vault?.Dispose();
         _vault = null;
         // The idle lock screen closes for real only now: a lock refused above leaves it up.

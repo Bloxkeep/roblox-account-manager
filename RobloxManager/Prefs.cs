@@ -247,7 +247,7 @@ public static class Prefs
     {
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(PrefsPath));
+            using var doc = JsonDocument.Parse(ReadPrefs());
             var root = doc.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {
@@ -399,6 +399,30 @@ public static class Prefs
             // Missing or unreadable prefs: defaults. One that isn't JSON any more is kept aside first.
             if (ex is JsonException or InvalidOperationException)
                 KeepDamaged();
+            // Held by another program: nothing is known to be wrong with it, so this run's defaults don't overwrite it.
+            else if (File.Exists(PrefsPath))
+            {
+                _unreadable = true;
+                Log.Note($"prefs.json couldn't be opened ({ex.GetType().Name}); this run's settings won't be saved over it.");
+            }
+        }
+    }
+
+    static bool _unreadable;
+
+    /// <summary>A moment's wait for an antivirus or sync program holding the file as Bloxkeep starts.</summary>
+    static string ReadPrefs()
+    {
+        for (int tries = 1; ; tries++)
+        {
+            try
+            {
+                return File.ReadAllText(PrefsPath);
+            }
+            catch (Exception ex) when (tries < 5 && ex is IOException and not FileNotFoundException and not DirectoryNotFoundException)
+            {
+                Thread.Sleep(200);
+            }
         }
     }
 
@@ -420,6 +444,8 @@ public static class Prefs
     /// <summary>Written to a temp file first, so a crash mid-write never leaves an empty prefs.json (and defaults).</summary>
     public static void Save()
     {
+        if (_unreadable)
+            return;
         try
         {
             Directory.CreateDirectory(Vault.DataDir);

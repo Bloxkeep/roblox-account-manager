@@ -28,14 +28,15 @@ function fromHsv({ h, s, v }: { h: number; s: number; v: number }) {
 export function ColorInput({ id, value, label, onChange }: { id: string; value: string; label: string; onChange: (hex: string) => void }) {
   const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const byKeys = useRef(false);
   const close = (refocus: boolean) => {
     setOpen(false);
     if (refocus) button.current?.focus();
   };
   return <>
     <button type="button" className="ct-color" id={id} ref={button} aria-label={label} title={value} aria-haspopup="dialog" aria-expanded={open}
-      data-value={value} onClick={() => setOpen(o => !o)}><span style={{ background: value }} /></button>
-    {open ? <Popup anchor={button.current!} close={close} label={label}><Picker value={value} onChange={onChange} /></Popup> : null}
+      data-value={value} onClick={e => { byKeys.current = e.detail === 0; setOpen(o => !o); }}><span style={{ background: value }} /></button>
+    {open ? <Popup anchor={button.current!} close={close} label={label} takeFocus={byKeys.current}><Picker value={value} onChange={onChange} /></Popup> : null}
   </>;
 }
 

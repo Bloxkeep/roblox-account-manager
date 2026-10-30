@@ -114,6 +114,7 @@ export class Gateway extends DurableObject {
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS removals (day TEXT NOT NULL, why TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, why))');
       // Bloxkeep on people's PCs, controlled from Discord (remote.js): each PC linked to one Discord account, and the
       // PC's name as its app last said it (to name it while it's offline).
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS pc_names (pc TEXT PRIMARY KEY, accounts TEXT NOT NULL, presets TEXT NOT NULL)');
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS links (pc TEXT PRIMARY KEY, user TEXT NOT NULL, label TEXT NOT NULL, at INTEGER NOT NULL)');
       // Codes waiting to be typed (code → { pc, until }), commands waiting for their PC's answer (id → { pc, done }),
       // commands whose outcome may still be followed up (id → { pc, token, until }), each person's last commands and
@@ -389,6 +390,12 @@ export class Gateway extends DurableObject {
     return ws ? { ws, hello: ws.deserializeAttachment()?.hello ?? null } : null;
   }
 
+  /** The accounts' and presets' names a PC's app last gave (autocomplete). */
+  namesOf(pc) {
+    const row = [...this.ctx.storage.sql.exec('SELECT accounts, presets FROM pc_names WHERE pc = ?', pc)][0];
+    return row ? { accounts: JSON.parse(row.accounts), presets: JSON.parse(row.presets) } : null;
+  }
+
   async webSocketMessage(ws, raw) {
     if (typeof raw !== 'string' || raw.length > MAX_MESSAGE)
       return ws.close(1009, 'too large');
@@ -433,15 +440,11 @@ export class Gateway extends DurableObject {
       return;
     }
     if (m.t === 'hello') { // its PC's, accounts' and presets' names (autocomplete), sent again when they change
-      me.hello = readHello(m);
-      // A socket's attachment holds little: names that don't fit are dropped (autocomplete goes without), never the rest
-      // (ask: a link waits for Allow on the PC).
-      try {
-        ws.serializeAttachment(me);
-      } catch {
-        me.hello = { ...me.hello, accounts: [], presets: [] };
-        ws.serializeAttachment(me);
-      }
+      // A socket's attachment holds 2 KB: the names (autocomplete) wait in a table, the rest stays with the socket.
+      const { accounts, presets, ...hello } = readHello(m);
+      sql.exec('INSERT OR REPLACE INTO pc_names (pc, accounts, presets) VALUES (?, ?, ?)', pc, JSON.stringify(accounts), JSON.stringify(presets));
+      me.hello = hello;
+      ws.serializeAttachment(me);
       sql.exec('UPDATE links SET label = ? WHERE pc = ?', me.hello.name, pc);
       return;
     }
@@ -471,6 +474,7 @@ export class Gateway extends DurableObject {
     }
     if (m.t === 'unlink') { // turned off in the app, or unlinked there
       sql.exec('DELETE FROM links WHERE pc = ?', pc);
+      sql.exec('DELETE FROM pc_names WHERE pc = ?', pc);
       for (const [code, c] of this.codes)
         if (c.pc === pc)
           this.codes.delete(code);
@@ -650,7 +654,7 @@ export class Gateway extends DurableObject {
     if (focused.name === 'pc')
       return answer(pcs.map(p => p.label));
     const pc = this.pickPc(pcs, options.find(o => o.name === 'pc')?.value);
-    const hello = typeof pc === 'string' ? null : this.appOf(pc.pc)?.hello;
+    const hello = typeof pc !== 'string' && this.appOf(pc.pc) ? this.namesOf(pc.pc) : null;
     if (focused.name === 'name')
       return answer(hello?.presets ?? []);
     if (focused.name === 'account')

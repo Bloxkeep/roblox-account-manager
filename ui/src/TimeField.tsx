@@ -27,6 +27,7 @@ function Field({ kind, className, ref, ...attrs }: BoxProps & { kind: 'time' | '
   const box = useRef<HTMLInputElement | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const byKeys = useRef(false);
   const label = t(kind === 'time' ? 'tf.pickTime' : 'tf.pickDate');
   const close = (refocus: boolean) => {
     setOpen(false);
@@ -40,13 +41,14 @@ function Field({ kind, className, ref, ...attrs }: BoxProps & { kind: 'time' | '
       // The browser's own keys for its drop-down (Alt+Down, F4) open this one instead.
       if ((e.altKey && e.key === 'ArrowDown') || e.key === 'F4') {
         e.preventDefault();
+        byKeys.current = true;
         setOpen(true);
       }
       attrs.onKeyDown?.(e);
     }} />
     <button type="button" className="tf-btn" ref={button} aria-label={label} title={label} aria-haspopup="dialog" aria-expanded={open}
-      disabled={attrs.disabled} onClick={() => setOpen(o => !o)}><Icon name={kind === 'time' ? 'clock' : 'calendar'} /></button>
-    {open && box.current ? <Popup anchor={button.current!} close={close} label={label}>
+      disabled={attrs.disabled} onClick={e => { byKeys.current = e.detail === 0; setOpen(o => !o); }}><Icon name={kind === 'time' ? 'clock' : 'calendar'} /></button>
+    {open && box.current ? <Popup anchor={button.current!} close={close} label={label} takeFocus={byKeys.current}>
       {kind === 'time'
         ? <TimeList value={box.current.value} pick={v => putValue(box.current!, v)} />
         : <Calendar value={box.current.value} pick={v => { putValue(box.current!, v); close(true); }} />}
@@ -57,8 +59,9 @@ function Field({ kind, className, ref, ...attrs }: BoxProps & { kind: 'time' | '
 // The list under (or over, near the bottom) its button, inside its dialog so the dialog's keys and focus still hold.
 // Closes on the button again, a click outside, Escape (before the dialog hears it), Enter, or the window resizing.
 // fit: as wide as its anchor and lined up with its left edge (a box's suggestions), not ending at its right edge.
-export function Popup({ anchor, close, label, role = 'dialog', fit = false, id, children }: {
-  anchor: HTMLElement; close: (refocus: boolean) => void; label: string; role?: string; fit?: boolean; id?: string; children: ReactNode;
+// takeFocus: opened from the keyboard, so the keys go on inside it (it sits at the end of its dialog, Tab took ages to reach it).
+export function Popup({ anchor, close, label, role = 'dialog', fit = false, id, takeFocus = false, children }: {
+  anchor: HTMLElement; close: (refocus: boolean) => void; label: string; role?: string; fit?: boolean; id?: string; takeFocus?: boolean; children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number; width?: number } | null>(null);
@@ -86,12 +89,19 @@ export function Popup({ anchor, close, label, role = 'dialog', fit = false, id, 
     watch.observe(panel.current!);
     return () => watch.disconnect();
   }, [placeIt]);
+  const placed = place !== null;
+  useEffect(() => {
+    if (placed && takeFocus)
+      panel.current?.querySelector<HTMLElement>('.on, button, input')?.focus();
+  }, [placed, takeFocus]);
   useEffect(() => {
     // Any scroll but its own list's: its button moved with what scrolled. Scrolled out of sight there, it closes (it
     // would otherwise hang beside a box that isn't there any more).
     const scrolled = (e: Event) => {
       const at = e.target;
       if (at instanceof Node && panel.current?.contains(at)) return;
+      // Something else scrolling (a log behind a dialog) didn't move its button.
+      if (at instanceof Element && !at.contains(anchor)) return;
       const a = anchor.getBoundingClientRect();
       const view = at instanceof Element ? at.getBoundingClientRect() : { top: 0, bottom: innerHeight, left: 0, right: innerWidth };
       if (a.bottom <= view.top || a.top >= view.bottom || a.right <= view.left || a.left >= view.right) return close(false);
@@ -104,8 +114,10 @@ export function Popup({ anchor, close, label, role = 'dialog', fit = false, id, 
     // Window capture runs before the dialog's own key handler (document, capture): Escape closes this, not the dialog.
     const key = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' && !(e.key === 'Enter' && panel.current?.contains(document.activeElement))) return;
-      e.preventDefault();
       e.stopImmediatePropagation();
+      // Enter on one of its buttons is that button's click (a day, the next month): cancelled here, it picked nothing.
+      if (e.key === 'Enter' && document.activeElement?.tagName === 'BUTTON') return;
+      e.preventDefault();
       close(true);
     };
     // The button's own click toggles it; any other press outside closes it.
@@ -126,7 +138,7 @@ export function Popup({ anchor, close, label, role = 'dialog', fit = false, id, 
   // The open dialog it was opened from, else the page.
   const host = anchor.closest('.overlay') || document.body;
   return createPortal(<div className={`tf-pop${fit ? ' fit' : ''}`} ref={panel} role={role} aria-label={label} id={id}
-    style={place ? { left: place.left, top: place.top, width: place.width } : { visibility: 'hidden', left: 0, top: 0 }}>{children}</div>, host);
+    style={place ? { left: place.left, top: place.top, width: place.width } : { opacity: 0, left: 0, top: 0 }}>{children}</div>, host);
 }
 
 /** Whether times are shown with AM/PM here, as the box itself shows them (the browser's own setting). */

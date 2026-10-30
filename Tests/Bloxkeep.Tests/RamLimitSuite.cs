@@ -122,7 +122,7 @@ static class RamLimitSuite
         Look(61, 100, load: 40);
         c.Check("…nor with the PC's RAM mostly free (40 % used)", Cap() is null, Cap());
         Look(2, 100);
-        c.Check("…rested a minute with RAM 80 % used: limited to 3/4 of what it holds (2048 -> 1536 MB)", Cap() == 1536 && Limited(), Cap());
+        c.Check("…rested a minute with RAM 80 % used: limited to 3/4 of what it holds (2200 -> 1600 MB)", Cap() == 1600 && Limited(), Cap());
         for (int i = 0; i < 32; i++)
             Look(2, 100); // 50 faults/s: calm
         c.Check("…calm a minute: a quarter lower (1152 MB)", Cap() == 1152, Cap());
@@ -156,6 +156,18 @@ static class RamLimitSuite
         c.Check("(the test can read its own memory priority)", MemoryPriority() == 2, MemoryPriority());
         Harness.Invoke(app, "GuardResources", new List<RobloxProcesses.PlayerProcess> { new(me, 0) }, new MemoryStatus(16000, 8000, 50), DateTime.UtcNow);
         c.Check("a window left at low priority by an earlier Bloxkeep: normal again at the first look (Save RAM off)", MemoryPriority() == 5, MemoryPriority());
+        RobloxProcesses.SetMemoryPriority(me, background: true);
+        Harness.Get<HashSet<int>>(app, "_lowMemoryPriority").Add(me);
+
+        // Locked, nothing looks after the windows: a window opened from the taskbar mustn't stay limited or low.
+        await Harness.Call(app, "setSettings", new { ramLimitMb = 1024 });
+        Tick();
+        bool limitedBeforeLock = Limited();
+        await Harness.Call(app, "lock", new { });
+        c.Check("locking the vault lifts the limit and gives the priority back", limitedBeforeLock && !Limited() && MemoryPriority() == 5, MemoryPriority());
+        await Harness.Call(app, "unlock", new { password = Harness.Password });
+        Tick();
+        c.Check("…unlocked: limited again", Limited());
         RobloxProcesses.SetMemoryPriority(me, background: true);
         Harness.Get<HashSet<int>>(app, "_lowMemoryPriority").Add(me);
 

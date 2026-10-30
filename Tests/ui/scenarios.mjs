@@ -112,6 +112,22 @@ export default [
     await s.click({ css: '.tf-pop [data-col="m"] button:nth-child(31)' });
     await s.snap('picked');
     await s.key('Escape');
+    // From the keyboard: the keys go on inside it, and Enter on an hour picks it, the list staying open.
+    await s.click({ css: '#s-dc-daily-time' });
+    await s.key('F4');
+    await s.wait(100);
+    const inside = await s.eval(`!!document.activeElement.closest('.tf-pop')`);
+    if (!inside) throw new Error('opened from the keyboard, the focus stayed outside the list');
+    await s.eval(`document.querySelector('.tf-pop [data-col="h"] button:nth-child(4)').focus()`);
+    await s.key('Enter');
+    const after = await s.eval(`[!!document.querySelector('.tf-pop'), document.querySelector('#s-dc-daily-time').value]`);
+    if (!after[0] || Number(after[1].slice(0, 2)) % 12 !== 3) throw new Error('Enter on an hour: ' + JSON.stringify(after));
+    // Something else scrolling behind it leaves it open.
+    await s.eval(`(() => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;left:0;top:0;width:50px;height:50px;overflow:auto'; d.innerHTML = '<div style="height:500px"></div>'; document.body.append(d); d.scrollTop = 40; window.__scroller = d; })()`);
+    await s.wait(100);
+    if (!await s.eval(`!!document.querySelector('.tf-pop')`)) throw new Error('closed by an unrelated scroll');
+    await s.eval(`window.__scroller.remove()`);
+    await s.key('Escape');
   }),
   // The custom theme: picked from its swatch (its colours and picture rows show), a picture chosen (the page behind
   // glass), and one with a picture already, on a light background too.

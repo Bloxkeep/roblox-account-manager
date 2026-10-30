@@ -1064,7 +1064,7 @@ html [data-theme="dark" lang="vi"]
                           div.t "Hằng ngày lúc"
                         div.ctl
                           span.field.sm.tf.time
-                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:30"]
+                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="15:30"]
                             button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ" FOCUSED]
                               svg.i #ktpp14
                     div.set-row
@@ -1182,4 +1182,4 @@ html [data-theme="dark" lang="vi"]
 #layer
 #toasts
 -- commands
-  (none)
+  setDiscord {"summaryDailyTime":"15:30"}

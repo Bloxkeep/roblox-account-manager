@@ -24,8 +24,16 @@ static class Program
         // A downloaded update is applied at start (Velopack's default) only when no Bloxkeep runs: a second start (the
         // shortcut clicked to bring the window forward) would otherwise apply it, and its Update.exe kills the running one
         // mid-launch, unsaved (2026-10-30 review). That one applies it itself, at a quiet moment or on quitting.
-        bool anotherRuns = Mutex.TryOpenExisting(SingleInstanceMutex, out var already);
-        already?.Dispose();
+        bool anotherRuns;
+        try
+        {
+            anotherRuns = Mutex.TryOpenExisting(SingleInstanceMutex, out var already);
+            already?.Dispose();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            anotherRuns = true; // one started as administrator
+        }
         VelopackApp.Build()
             .SetAutoApplyOnStartup(!anotherRuns)
             .OnBeforeUninstallFastCallback(_ =>

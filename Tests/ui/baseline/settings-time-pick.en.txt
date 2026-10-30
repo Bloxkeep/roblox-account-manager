@@ -1064,7 +1064,7 @@ html [data-theme="dark" lang="en"]
                           div.t "Every day at"
                         div.ctl
                           span.field.sm.tf.time
-                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:30"]
+                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Every day at" value="15:30"]
                             button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time" FOCUSED]
                               svg.i #ktpp14
                     div.set-row
@@ -1182,4 +1182,4 @@ html [data-theme="dark" lang="en"]
 #layer
 #toasts
 -- commands
-  (none)
+  setDiscord {"summaryDailyTime":"15:30"}

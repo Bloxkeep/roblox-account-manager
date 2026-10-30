@@ -357,7 +357,10 @@ try {
   r = await interact(pc('link', { code: big.last('code').code }, { user: 'u11', name: 'Eleven' }));
   check('a PC with 150 accounts and 60 presets: asked to allow, not linked at once', /asking whether to allow/.test(contentOf(r))
     && await waitFor(() => big.last('ask'), 3000) && !big.last('link')?.linked, contentOf(r));
+  big.send({ t: 'allow', user: 'u11' });
+  await waitFor(() => big.last('link')?.linked, 3000);
   r = await interact(pc('preset', { name: 'Pre' }, { user: 'u11', type: 4, focused: 'name' }));
+  check('…and its names are still offered: they don\'t depend on what a socket\'s attachment holds', r.type === 8 && r.data.choices.length > 0 && r.data.choices[0].name.startsWith('Preset'), JSON.stringify(r));
   big.ws.close();
 
   // ── an app sending far more than an app does: its socket is closed ──
