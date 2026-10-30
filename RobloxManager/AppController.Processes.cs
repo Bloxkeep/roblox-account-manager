@@ -137,6 +137,9 @@ public sealed partial class AppController
             if (pids.Contains(info.Pid))
                 continue;
             _running.Remove(id);
+            // A scheduled stop closing it is done: another preset with this account opened later doesn't wait 20 s for it
+            // (2026-10-30 review: only the same preset's next run cleared it).
+            _stopClosing.Remove(id);
             PersistSoon(); // the open clients on disk (see Persist)
             // Read before the log watcher drops the pid below, with the log's last lines (a leave logged right before quitting).
             var log = EndedState(info.Pid);

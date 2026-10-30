@@ -638,6 +638,7 @@ public sealed partial class AppController
         foreach (var id in set)
         {
             _running.Remove(id);
+            _stopClosing.Remove(id);
             _rejoinsInARow.Remove(id);
             _restarts.Remove(id);
             _offlineStrikes.Remove(id);
