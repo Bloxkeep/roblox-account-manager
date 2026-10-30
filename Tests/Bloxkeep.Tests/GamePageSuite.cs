@@ -23,16 +23,19 @@ static class GamePageSuite
         ResetHours();
 
         // ── the hours ──
-        var noon = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Local).ToUniversalTime();
+        // An hour far from now: the page notes the count it just saw at this hour, which mustn't land on the one checked
+        // (run at 12:xx, it did: 1300 became the stand-in's count).
+        int at = (DateTime.Now.Hour + 12) % 24, next = (at + 1) % 24;
+        var noon = new DateTime(2026, 10, 29, at, 0, 0, DateTimeKind.Local).ToUniversalTime();
         GameHours.Note(Universe, 1000, noon);
         GameHours.Note(Universe, 2000, noon.AddDays(1));
         GameHours.Note(Universe, 0, noon.AddHours(1)); // nothing said: not noted
         var hours = GameHours.Of(Universe);
         c.Check("an hour's figure leans on the newest (1000, then 2000: 1300), other hours unknown",
-            hours is { Length: 24 } && hours[12] == 1300 && hours[13] is null && hours.Count(h => h is not null) == 1, hours is null ? "null" : string.Join(",", hours));
+            hours is { Length: 24 } && hours[at] == 1300 && hours[next] is null && hours.Count(h => h is not null) == 1, hours is null ? "null" : string.Join(",", hours));
         GameHours.Save();
         ResetHours();
-        c.Check("…kept in the data folder", GameHours.Of(Universe)?[12] == 1300 && File.Exists(Path.Combine(dir, "game-hours.json")));
+        c.Check("…kept in the data folder", GameHours.Of(Universe)?[at] == 1300 && File.Exists(Path.Combine(dir, "game-hours.json")));
         for (long g = 100; g < 145; g++)
             GameHours.Note(g, 5, noon.AddDays(2).AddMinutes(g));
         c.Check("…for the 40 games noted last", GameHours.Of(Universe) is null && GameHours.Of(144) is not null && GameHours.Of(104) is null && GameHours.Of(105) is not null);
@@ -104,7 +107,8 @@ static class GamePageSuite
         c.Check("…the game's own last update (signed in) over the universe's", page.GetProperty("updated").GetDateTime() == new DateTime(2026, 10, 28, 10, 0, 0, DateTimeKind.Utc), page.GetProperty("updated").ToString());
         c.Check("…the player count asked with an account's sign-in (Roblox hides it otherwise), the rest without",
             asked.Contains("+games.roblox.com") && asked.Contains("-develop.roblox.com"), string.Join(",", asked));
-        c.Check("…its hours, with the count just seen noted too", page.GetProperty("hours")[12].GetInt64() == 1300 && page.GetProperty("hours").GetArrayLength() == 24
+        c.Check("…its hours, with the count just seen noted too", page.GetProperty("hours")[at].GetInt64() == 1300
+            && page.GetProperty("hours")[DateTime.Now.Hour].ValueKind == JsonValueKind.Number && page.GetProperty("hours").GetArrayLength() == 24
             && page.GetProperty("accounts").GetArrayLength() == 2, page.GetProperty("hours").ToString());
         c.Check("a Place ID Roblox doesn't know: said so", await Harness.Try(app, "gameDetails", new { placeId = 123 }) is UserError e
             && e.Message == "Roblox has no game with this Place ID.");
