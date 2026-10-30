@@ -118,7 +118,7 @@ export function AppearancePage({ title }: { title: string }) {
         })}
       </div> : null}
       <Row title={t('set.language')}>
-        <div className="lang" role="group" aria-label="Language">
+        <div className="lang" role="group" aria-label={t('set.language')}>
           {(['en', 'vi'] as const).map(l => <button key={l} data-act="lang" data-lang={l} className={l === lang ? 'on' : ''} aria-pressed={l === lang}
             title={tIn(l, 'lang.name')}>{l.toUpperCase()}</button>)}
         </div>

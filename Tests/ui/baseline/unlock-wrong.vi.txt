@@ -4,7 +4,7 @@ html [data-theme="dark" lang="vi"]
   div.lock
     div.dots
     div.lock-lang
-      div.lang [role="group" aria-label="Language"]
+      div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
     form.lock-card.shake [id="lock-form" autocomplete="off"]

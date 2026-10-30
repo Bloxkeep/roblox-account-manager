@@ -152,7 +152,7 @@ html [data-theme="dark" lang="en"]
                                 option [value="everyone"] "@everyone"
                                 option [value="user"] "A person…"
                                 option [value="role"] "A role…"
-                              input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID" value="123456789012345678"]
+                              input.dc-id.field.sm [placeholder="ID (17–20 digits)" autocomplete="off" maxlength="20" aria-label="ID (17–20 digits)" value="123456789012345678"]
                             label.switch
                               input [id="s-dc-ev-drop" type="checkbox" aria-label="Account dropped or auto-rejoin" checked=true]
                               span

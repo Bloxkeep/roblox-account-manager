@@ -260,7 +260,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Mở Roblox bằng"
                         div.d "Bloxstrap và Fishstrap giữ nguyên mod của bạn."
                       div.ctl
-                        select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                        select.select [id="s-launch" aria-label="Mở Roblox bằng" value="auto"]
                           option [value="auto"] "Mặc định (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
@@ -561,7 +561,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Mở Roblox bằng"
                         div.d "Bloxstrap và Fishstrap giữ nguyên mod của bạn."
                       div.ctl
-                        select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                        select.select [id="s-launch" aria-label="Mở Roblox bằng" value="auto"]
                           option [value="auto"] "Mặc định (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
@@ -843,7 +843,7 @@ html [data-theme="dark" lang="vi"]
                         div.t "Mở Roblox bằng"
                         div.d "Bloxstrap và Fishstrap giữ nguyên mod của bạn."
                       div.ctl
-                        select.select [id="s-launch" aria-label="Roblox client" value="auto"]
+                        select.select [id="s-launch" aria-label="Mở Roblox bằng" value="auto"]
                           option [value="auto"] "Mặc định (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"

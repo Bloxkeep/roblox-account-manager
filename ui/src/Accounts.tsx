@@ -593,8 +593,8 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
         and the bar then dropped a recent game to make room for it (wide-1600, 2026-10-29). */}
     {g.placeId && g.kind !== 'private' && g.kind !== 'server'
       ? <span className="gname gname-link" role="button" tabIndex={0} data-act="game-page" title={t('gp.open')}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>{g.name || `Place ${g.placeId}`}</span>
-      : <span className="gname" title={g.name}>{g.name || `Place ${g.placeId}`}</span>}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>{g.name || t('dock.placeN', { id: g.placeId })}</span>
+      : <span className="gname" title={g.name}>{g.name || t('dock.placeN', { id: g.placeId })}</span>}
     {g.kind === 'private' ? <span className="kind">{t('dock.private')}</span> : g.kind === 'server' ? <span className="kind">{t('dock.server')}</span> : null}
     {g.creator ? <span className="creator">{t('dock.by', { c: g.creator })}</span> : null}
     {g.playing ? <span className="players">{t('dock.playing', { n: fmtNum(g.playing) })}</span> : null}
@@ -657,13 +657,13 @@ function Picker({ P }: { P: PageState['picker'] }) {
       : !rows.length ? <div className="picker-empty">{t(P.mode === 'search' ? 'picker.noResults' : `picker.empty.${P.tab}`)}</div>
       : saved ? rows.map((s, i) => <div key={s.id} className={`game-row saved ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={s.iconUrl || ''} url={s.iconUrl} holder={() => <span className="gph"><Icon name="bookmark" /></span>} />
-        <div className="gtxt"><b title={s.name}>{s.name}</b><small>{[s.gameName || (s.placeId ? `Place ${s.placeId}` : ''), s.link ? t('sv.kindLink') : '', s.code ? t('sv.kindCode', { code: s.code }) : ''].filter(Boolean).join(' · ')}</small></div>
+        <div className="gtxt"><b title={s.name}>{s.name}</b><small>{[s.gameName || (s.placeId ? t('dock.placeN', { id: s.placeId }) : ''), s.link ? t('sv.kindLink') : '', s.code ? t('sv.kindCode', { code: s.code }) : ''].filter(Boolean).join(' · ')}</small></div>
         {s.code ? <button className="icon-btn" tabIndex={-1} data-act="copy-server-code" data-i={i} title={t('sv.copyCode')} aria-label={t('sv.copyCode')}><Icon name="copy" /></button> : null}
         <button className="icon-btn" tabIndex={-1} data-act="delete-server" data-i={i} title={t('sv.delete')} aria-label={t('sv.delete')}><Icon name="x" /></button>
       </div>)
       : rows.map((g, i) => <div key={`${g.placeId}-${i}`} className={`game-row ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={g.iconUrl || ''} url={g.iconUrl} holder={() => <span className="gph"><Icon name="gamepad" /></span>} />
-        <div className="gtxt"><b title={g.name}>{g.name}</b><small>{g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : `Place ${g.placeId}`}</small></div>
+        <div className="gtxt"><b title={g.name}>{g.name}</b><small>{g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : t('dock.placeN', { id: g.placeId })}</small></div>
         <button className={`icon-btn pin ${g.pinned ? 'on' : ''}`} tabIndex={-1} data-act="pin-game" data-i={i} title={t(g.pinned ? 'picker.unpin' : 'picker.pin')}><Icon name={g.pinned ? 'starFill' : 'star'} /></button>
       </div>)}</div>
   </>;

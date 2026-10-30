@@ -345,7 +345,7 @@ function GameBox({ place, setPlace, chose }: { place: string; setPlace: (v: stri
             : rows.map((g, i) => <div key={`${g.placeId}-${i}`} className={`game-row ${i === index ? 'on' : ''}`} role="option" id={`psg-${i}`}
               aria-selected={i === index} data-g={i} onClick={() => choose(g)}>
               {g.iconUrl ? <GameIcon src={g.iconUrl} /> : <span className="gph"><Icon name="gamepad" /></span>}
-              <div className="gtxt"><b title={g.name}>{g.name}</b><small>{g.playing ? t('dock.playing', { n: host.fmtNum(g.playing) }) : `Place ${g.placeId}`}</small></div>
+              <div className="gtxt"><b title={g.name}>{g.name}</b><small>{g.playing ? t('dock.playing', { n: host.fmtNum(g.playing) }) : t('dock.placeN', { id: g.placeId })}</small></div>
             </div>)}
         </div>
       </> : null}

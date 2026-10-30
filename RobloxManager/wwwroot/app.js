@@ -1310,7 +1310,7 @@
     if (!g?.ok) return;
     const place = $('#place').value.trim();
     const hasLink = g.kind === 'private' || g.kind === 'share';
-    const game = g.name || (g.placeId ? `Place ${g.placeId}` : '');
+    const game = g.name || (g.placeId ? t('dock.placeN', { id: g.placeId }) : '');
     modal({
       title: t('sv.title'),
       body: window.BloxkeepUI.saveServer(game, hasLink),
@@ -1372,7 +1372,7 @@
     if (!g?.placeId) return;
     let unmount = null;
     const api = modal({
-      title: t('srv.title', { game: esc(g.name || `Place ${g.placeId}`) }),
+      title: t('srv.title', { game: esc(g.name || t('dock.placeN', { id: g.placeId })) }),
       top: true,
       body: '',
       // Its layout hangs on this class: a :has() rule did it and re-styled the whole page on every change.
@@ -2377,7 +2377,7 @@
       if (launchBusy()) return ui.form.say(t('jp.launching'), 'warn'); // one started meanwhile (a scheduled preset)
       close();
       // Toasts escape their text themselves.
-      toast(tn('jp.found', ids.length, { name: who, game: r.game || `Place ${r.placeId}` }), 'info');
+      toast(tn('jp.found', ids.length, { name: who, game: r.game || t('dock.placeN', { id: r.placeId }) }), 'info');
       joinServer(ids, r.placeId, r.jobId, false, { follow: ui.form.follow(), followUserId: r.userId, followName: r.name });
     };
     modal({

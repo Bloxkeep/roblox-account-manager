@@ -402,7 +402,7 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
                       div
                         div.t "Ngôn ngữ"
                       div.ctl
-                        div.lang [role="group" aria-label="Language"]
+                        div.lang [role="group" aria-label="Ngôn ngữ"]
                           button [title="English" aria-pressed="false"] "EN"
                           button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
                     div.set-row
@@ -826,7 +826,7 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#ec4899;--
                       div
                         div.t "Ngôn ngữ"
                       div.ctl
-                        div.lang [role="group" aria-label="Language"]
+                        div.lang [role="group" aria-label="Ngôn ngữ"]
                           button [title="English" aria-pressed="false"] "EN"
                           button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
                     div.set-row
@@ -1246,7 +1246,7 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#ec4899;--
                       div
                         div.t "Ngôn ngữ"
                       div.ctl
-                        div.lang [role="group" aria-label="Language"]
+                        div.lang [role="group" aria-label="Ngôn ngữ"]
                           button [title="English" aria-pressed="false"] "EN"
                           button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
                     div.set-row

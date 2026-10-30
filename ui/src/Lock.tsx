@@ -10,8 +10,8 @@ export type LockMode = 'create' | 'unlock' | 'pick';
 
 /** The language buttons (app.js's click handler changes the language: data-act="lang"). */
 export function LangSwitch() {
-  const { lang, tIn } = useHost();
-  return <div className="lang" role="group" aria-label="Language">{(['en', 'vi'] as const).map(l =>
+  const { lang, t, tIn } = useHost();
+  return <div className="lang" role="group" aria-label={t('set.language')}>{(['en', 'vi'] as const).map(l =>
     <button key={l} data-act="lang" data-lang={l} className={l === lang ? 'on' : ''} aria-pressed={l === lang} title={tIn(l, 'lang.name')}>{l.toUpperCase()}</button>)}</div>;
 }
 
