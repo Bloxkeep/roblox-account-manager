@@ -221,6 +221,23 @@ static class ClaimsSuite
             if (wasArmed)
                 MultiInstance.Enable();
         }
+
+        // Opened again after Close all: the earlier launch still awaited late leaves the launches to close as well (it
+        // stayed there for the rest of the run); one of the account's still opening, to be closed, stays.
+        var closeWhen = Harness.Get<object>(app, "_closeWhenClaimed");
+        bool In(object set, object item) => (bool)set.GetType().GetMethod("Contains")!.Invoke(set, [item])!;
+        void Add(object set, object item) => set.GetType().GetMethod("Add")!.Invoke(set, [item]);
+        var lateOne = Launch(a, 150, First);
+        var closing = Launch(a, 5, First);
+        Add(late, lateOne);
+        Add(closeWhen, lateOne);
+        pending.Add(closing);
+        Add(closeWhen, closing);
+        Harness.Invoke(app, "ForgetLate", a.Id);
+        c.Check("opened again: the earlier late launch is forgotten, from the launches to close too", !In(late, lateOne) && !In(closeWhen, lateOne));
+        c.Check("…one still opening, to be closed, isn't", In(closeWhen, closing));
+        closeWhen.GetType().GetMethod("Clear")!.Invoke(closeWhen, null);
+        Reset();
         // Roblox's updater read from Windows' process list (a stand-in under its name: ping, copied).
         string updaterDir = Path.Combine(dir, "updater");
         Directory.CreateDirectory(updaterDir);

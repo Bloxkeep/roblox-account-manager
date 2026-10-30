@@ -683,7 +683,7 @@ public sealed partial class AppController
         string tracker = RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
-        _late.RemoveWhere(l => l.AccountId == account.Id); // opened again: a window of the earlier try is not this one's
+        ForgetLate(account.Id); // opened again: a window of the earlier try is not this one's
         _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker });
         NoteActivity(restart ? "reopened" : rejoin ? "rejoined" : "opened", account.Id, target?.PlaceId); // Statistics › Activity
         account.LastUsed = DateTime.Now;
@@ -712,6 +712,19 @@ public sealed partial class AppController
             return;
         ApplyWatchNames();
         MultiInstance.Enable();
+    }
+
+    /// <summary>
+    /// Also from the launches to close once claimed: Close all put the late ones there, and one left behind stayed for the
+    /// rest of the run (review, 2026-10-30).
+    /// </summary>
+    void ForgetLate(Guid accountId)
+    {
+        foreach (var earlier in _late.Where(l => l.AccountId == accountId).ToList())
+        {
+            _late.Remove(earlier);
+            _closeWhenClaimed.Remove(earlier);
+        }
     }
 
     object? CancelLaunch()
