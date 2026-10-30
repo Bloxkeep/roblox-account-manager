@@ -49,6 +49,7 @@ static class WindowIcons
             if (made is not null)
                 Destroy(made);
             ByPid[pid] = next;
+            Save();
             return;
         }
         if (!check)
@@ -58,6 +59,7 @@ static class WindowIcons
             if (Get(hWnd, ICON_BIG) != made.Big)
                 Put(hWnd, made);
         }
+        Save();
     }
 
     /// <summary>The client checked longest ago, once <see cref="CheckEvery"/> has passed (null when none is due), noted as
@@ -89,15 +91,78 @@ static class WindowIcons
             Set(hWnd, own.Big, own.Small);
         }
         Destroy(made);
+        Save();
     }
 
     public static void Forget(IReadOnlySet<int> alive)
     {
+        bool gone = false;
         foreach (int pid in ByPid.Keys.Where(pid => !alive.Contains(pid)).ToList())
         {
             Destroy(ByPid[pid]);
             ByPid.Remove(pid);
+            gone = true;
         }
+        if (gone)
+            Save();
+    }
+
+    // ───────── icons a run that ended suddenly left ─────────
+    // The icons are Bloxkeep's: after a crash or End task its windows pointed at icons gone with it (no icon), and the
+    // next run took those for the windows' own and put them back later (review 2026-10-30). The windows given icons are
+    // written down (client and window), as hidden windows are, and cleared at the next start.
+
+    static string IconsFile => Path.Combine(Vault.DataDir, "window-icons.txt");
+    /// <summary>What the file holds now ("" for none), so an unchanged list isn't written again at every check.</summary>
+    static string? _saved;
+
+    static void Save()
+    {
+        var lines = ByPid.SelectMany(p => p.Value.Own.Keys.Select(h => $"{p.Key} {h.ToInt64()}")).Order(StringComparer.Ordinal);
+        string text = string.Join(Environment.NewLine, lines);
+        if (text == _saved)
+            return;
+        try
+        {
+            if (text.Length == 0)
+                File.Delete(IconsFile);
+            else
+                File.WriteAllText(IconsFile, text);
+            _saved = text;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Write(ex);
+        }
+    }
+
+    /// <summary>At start: the windows a run that ended suddenly gave icons (only those still there, of the same process)
+    /// are left with none of Bloxkeep's, so they show their program's.</summary>
+    public static int ClearLeftovers()
+    {
+        int cleared = 0;
+        try
+        {
+            if (!File.Exists(IconsFile))
+                return 0;
+            foreach (string line in File.ReadAllLines(IconsFile))
+            {
+                var parts = line.Split(' ');
+                if (parts.Length == 2 && int.TryParse(parts[0], out int pid) && long.TryParse(parts[1], out long handle)
+                    && new IntPtr(handle) is var hWnd && RobloxProcesses.StillOf(hWnd, pid))
+                {
+                    Set(hWnd, IntPtr.Zero, IntPtr.Zero);
+                    cleared++;
+                }
+            }
+            File.Delete(IconsFile);
+            _saved = "";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Write(ex);
+        }
+        return cleared;
     }
 
     public static IEnumerable<int> Pids => ByPid.Keys.ToList();

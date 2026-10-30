@@ -251,7 +251,8 @@ public static class RobloxProcesses
     static readonly Dictionary<IntPtr, int> _hidden = new();
     static string HiddenFile => Path.Combine(Vault.DataDir, "hidden-windows.txt");
 
-    static bool StillOf(IntPtr hWnd, int pid) => IsWindow(hWnd) && GetWindowThreadProcessId(hWnd, out uint owner) != 0 && owner == pid;
+    /// <summary>The window is still there and still that process's (a handle can be taken by another window).</summary>
+    internal static bool StillOf(IntPtr hWnd, int pid) => IsWindow(hWnd) && GetWindowThreadProcessId(hWnd, out uint owner) != 0 && owner == pid;
 
     public static bool IsHidden(IntPtr hWnd)
     {
