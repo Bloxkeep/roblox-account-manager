@@ -11,7 +11,7 @@ const DOWNLOAD = `${REPO}/releases/latest/download/Bloxkeep-Setup.exe`;
 const PORTABLE = `${REPO}/releases/latest/download/Bloxkeep-Portable.zip`;
 
 /** The guide's topic pages (docs/guide/<topic>.md and .vi.md), in the guide's own order. */
-export const TOPICS = ['getting-started', 'accounts', 'playing', 'multi-roblox', 'presets', 'staying-in-game',
+export const TOPICS = ['run-multiple-accounts', 'getting-started', 'accounts', 'playing', 'multi-roblox', 'presets', 'staying-in-game',
   'windows-and-stats', 'discord', 'settings', 'backup-and-security', 'troubleshooting'];
 
 export const T = {
@@ -21,7 +21,7 @@ export const T = {
     allTopics: 'All topics',
     alerts: { note: 'Note', tip: 'Tip', important: 'Important', warning: 'Warning', caution: 'Caution' },
     topics: {
-      'getting-started': 'Getting started', accounts: 'Accounts', playing: 'Playing', 'multi-roblox': 'Multi-Roblox',
+      'run-multiple-accounts': 'Run multiple accounts', 'getting-started': 'Getting started', accounts: 'Accounts', playing: 'Playing', 'multi-roblox': 'Multi-Roblox',
       presets: 'Presets and schedules', 'staying-in-game': 'Staying in game', 'windows-and-stats': 'Windows and statistics',
       discord: 'Discord', settings: 'Settings', 'backup-and-security': 'Backup and security', troubleshooting: 'Troubleshooting',
     },
@@ -36,7 +36,7 @@ export const T = {
     allTopics: 'Các chủ đề',
     alerts: { note: 'Lưu ý', tip: 'Mẹo', important: 'Quan trọng', warning: 'Cảnh báo', caution: 'Cẩn thận' },
     topics: {
-      'getting-started': 'Bắt đầu', accounts: 'Tài khoản', playing: 'Vào game', 'multi-roblox': 'Multi-Roblox',
+      'run-multiple-accounts': 'Chạy nhiều tài khoản', 'getting-started': 'Bắt đầu', accounts: 'Tài khoản', playing: 'Vào game', 'multi-roblox': 'Multi-Roblox',
       presets: 'Preset và hẹn giờ', 'staying-in-game': 'Treo game', 'windows-and-stats': 'Cửa sổ và thống kê',
       discord: 'Discord', settings: 'Cài đặt', 'backup-and-security': 'Sao lưu và bảo mật', troubleshooting: 'Gỡ rối',
     },

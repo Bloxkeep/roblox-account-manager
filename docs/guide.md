@@ -13,7 +13,7 @@ Short pages, one per topic. Read the first three to get going; open the others w
 3. [Pick a game and play](guide/playing.md)
 
 > [!TIP]
-> Playing on several accounts at once? Turn on [Multi-Roblox](guide/multi-roblox.md) first. Press **Ctrl+K** in the app to find any action or setting by name.
+> Playing on several accounts at once? [Run multiple accounts](guide/run-multiple-accounts.md) shows the whole way, with [Multi-Roblox](guide/multi-roblox.md) turned on first. Press **Ctrl+K** in the app to find any action or setting by name.
 
 ## Topics
 

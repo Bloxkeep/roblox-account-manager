@@ -13,7 +13,7 @@ Mỗi chủ đề một trang ngắn. Đọc ba trang đầu là dùng được 
 3. [Chọn game và vào chơi](guide/playing.vi.md)
 
 > [!TIP]
-> Muốn chơi nhiều tài khoản cùng lúc? Bật [Multi-Roblox](guide/multi-roblox.vi.md) trước. Trong app, bấm **Ctrl+K** để tìm nhanh bất kỳ thao tác hay cài đặt nào theo tên.
+> Muốn chơi nhiều tài khoản cùng lúc? [Chạy nhiều tài khoản](guide/run-multiple-accounts.vi.md) có đủ các bước, nhớ bật [Multi-Roblox](guide/multi-roblox.vi.md) trước. Trong app, bấm **Ctrl+K** để tìm nhanh bất kỳ thao tác hay cài đặt nào theo tên.
 
 ## Các chủ đề
 
