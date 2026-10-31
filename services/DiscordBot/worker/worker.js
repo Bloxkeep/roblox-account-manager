@@ -691,7 +691,7 @@ export class Gateway extends DurableObject {
         if (!await this.isDeveloper(i.member?.user?.id ?? i.user?.id))
           return reply({ content: "Only Bloxkeep's developers can see this." }, true);
         const key = await dashboardKey(this.env.DISCORD_TOKEN);
-        return reply(onlineMessage(this.onlineNow(), key ? `${this.env.PUBLIC_URL || PUBLIC_URL}/online?key=${key}` : null), true);
+        return reply(onlineMessage(this.onlineNow(), key ? `${this.env.PUBLIC_URL || PUBLIC_URL}/online?key=${key}` : null, await this.botReach()), true);
       }
     }
     if (!i.guild_id)
@@ -812,6 +812,16 @@ export class Gateway extends DurableObject {
       this.developers = { ids: ids.filter(Boolean), at: Date.now() };
     }
     return this.developers.ids.includes(who);
+  }
+
+  /** How far the bot reaches, for /online: Discord's approximate counts (none if it's slow, an answer has 3 s) and the PCs linked. */
+  async botReach() {
+    const ask = api(this.env, 'GET', '/applications/@me').then(res => res.json()).catch(() => ({}));
+    const app = await Promise.race([ask, new Promise(done => setTimeout(() => done({}), 1500))]);
+    return {
+      servers: app.approximate_guild_count, installs: app.approximate_user_install_count,
+      linked: [...this.ctx.storage.sql.exec('SELECT COUNT(*) AS n FROM links')][0].n,
+    };
   }
 
   // ───────────────────────────── online now ─────────────────────────────

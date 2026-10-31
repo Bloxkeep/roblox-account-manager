@@ -90,8 +90,8 @@ export function weekChart(days, today) {
   return `https://quickchart.io/chart?v=4&w=640&h=240&devicePixelRatio=2&bkg=${encodeURIComponent('#2b2d31')}&c=${encodeURIComponent(JSON.stringify(chart))}`;
 }
 
-/** /online's card: online now with today's peak, the last 7 days' peaks as a chart, the versions in use, the dashboard link. */
-export function onlineMessage(o, link) {
+/** /online's card: online now with today's peak, the last 7 days' peaks as a chart, the versions in use, how far the bot reaches, the dashboard link. */
+export function onlineMessage(o, link, bot) {
   const time = at => `<t:${Math.floor(at / 1000)}:t>`;
   const text = content => ({ type: 10, content });
   const peak = o.today.peak ? `Peak today **${o.today.peak}**, at ${time(o.today.at)} · **${o.today.people ?? 0}** ${o.today.people === 1 ? 'person' : 'people'} today`
@@ -102,6 +102,8 @@ export function onlineMessage(o, link) {
   const why = Object.entries(t.why ?? {}).filter(([k]) => k !== 'none').map(([k, n]) => `${WHY_WORDS[k] ?? k} ${n}`).join(', ');
   const stay = `**Today** ${t.installs ?? 0} new ${t.installs === 1 ? 'install' : 'installs'} · had it a day ${ages.new ?? 0}, a week ${ages.week ?? 0}, longer ${ages.old ?? 0}`
     + ` · removed ${t.removed ?? 0}${why ? ` (${why})` : ''}`;
+  const count = (n, one, many) => `**${n ?? '?'}** ${n === 1 ? one : many}`;
+  const reach = bot && `**Bot** ${count(bot.servers, 'server', 'servers')} · ${count(bot.installs, 'user install', 'user installs')} · ${count(bot.linked, 'PC linked', 'PCs linked')}`;
   return {
     flags: 1 << 15,
     components: [{
@@ -110,7 +112,7 @@ export function onlineMessage(o, link) {
         // No chart of seven empty days.
         ...(o.days.slice(-7).some(d => d.peak)
           ? [{ type: 12, items: [{ media: { url: weekChart(o.days, o.today.day) }, description: "Each day's most at once and its people, the last 7 days" }] }] : []),
-        text([stay, ...(versions ? [`**Versions** ${versions}`] : []),
+        text([stay, ...(versions ? [`**Versions** ${versions}`] : []), ...(reach ? [reach] : []),
           `-# The chart: each day's most at once and how many different PCs had Bloxkeep open, the last 7 days. An app counts while it said it's open within ${o.forMinutes} minutes.`].join('\n')),
         ...(link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : []),
       ],

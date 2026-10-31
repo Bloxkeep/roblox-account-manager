@@ -72,6 +72,7 @@ const rest = http.createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/channels/nochan/messages') return send(403, { message: 'Missing Access', code: 50001 });
     // u1 owns the application: one of Bloxkeep's developers.
     if (req.method === 'GET' && req.url === '/oauth2/applications/@me') return send(200, { id: 'app1', owner: { id: 'u1' } });
+    if (req.method === 'GET' && req.url === '/applications/@me') return send(200, { id: 'app1', approximate_guild_count: 3, approximate_user_install_count: 1 });
     if (req.method === 'PATCH' && /\/messages\/gone$/.test(req.url)) return send(404, { message: 'Unknown Message', code: 10008 });
     if (req.method === 'POST' && /^\/channels\/\w+\/invites$/.test(req.url)) return send(200, { code: `inv${++inviteNo}` });
     // g1's roles, low to high: rv (/verify's), an app's own, rme (u1's), rmod; u0 owns it.
@@ -361,6 +362,8 @@ try {
     && chart.startsWith('https://quickchart.io/chart?v=4&') && JSON.stringify(drawn.data?.datasets?.[0]?.data) === '[0,0,0,0,0,0,2]'
     // Days before people were counted: no bar (null), not 0.
     && JSON.stringify(drawn.data?.datasets?.[1]?.data) === '[null,null,null,null,null,null,2]' && drawn.data.labels.at(-1) === 'Today', `${said} ${chart.slice(0, 200)}`);
+  check('…and how far the bot reaches: servers and user installs from Discord, the PCs linked',
+    /\*\*Bot\*\* \*\*3\*\* servers · \*\*1\*\* user install · \*\*\d+\*\* PCs? linked/.test(said), said);
   const dashboard = linksOf(card)[0] ?? '';
   check('…and a Dashboard button, its link carrying the key', /^http:\/\/127\.0\.0\.1:\d+\/online\?key=[\w-]{24}$/.test(dashboard), dashboard);
   let page = await fetch(dashboard);
