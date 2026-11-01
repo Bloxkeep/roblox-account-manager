@@ -19,12 +19,50 @@ static class RamLimitSuite
     static uint MemoryPriority() =>
         GetProcessInformation(System.Diagnostics.Process.GetCurrentProcess().Handle, 0, out uint p, sizeof(uint)) ? p : 0;
 
+    /// <summary>The limit on another process that keeps touching 800 MB (a stand-in, not Roblox): its RAM falls to the limit and
+    /// stays there while its memory is all still its own, and comes back once the limit is lifted.</summary>
+    static async Task RealProcessStaysUnder(Checks c)
+    {
+        const string Toucher = "Add-Type -TypeDefinition 'public static class T { public static void Run() { var a = new byte[800 * 1024 * 1024]; " +
+            "while (true) { for (int i = 0; i < a.Length; i += 4096) a[i]++; System.Threading.Thread.Sleep(50); } } }'; [T]::Run()";
+        using var child = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("powershell.exe", $"-NoProfile -NonInteractive -Command \"{Toucher}\"")
+            { UseShellExecute = false, CreateNoWindow = true })!;
+        long Mb() { child.Refresh(); return child.WorkingSet64 / (1024 * 1024); }
+        try
+        {
+            for (int i = 0; i < 40 && Mb() < 800; i++)
+                await Task.Delay(500);
+            long before = Mb();
+            c.Check("the stand-in holds its 800 MB", before >= 800, before);
+            bool set = RobloxProcesses.LimitRam(child.Id, 256);
+            await Task.Delay(4000);
+            long worst = 0;
+            for (int i = 0; i < 12; i++)
+            {
+                worst = Math.Max(worst, Mb());
+                await Task.Delay(250);
+            }
+            child.Refresh();
+            c.Check("another process limited to 256 MB: its RAM stays there while it keeps working", set && worst <= 270 && !child.HasExited, $"{before} -> {worst} MB");
+            c.Check("…its memory is still all its own, the rest paged out", child.PrivateMemorySize64 / (1024 * 1024) >= 800, child.PrivateMemorySize64 / (1024 * 1024));
+            RobloxProcesses.LimitRam(child.Id, null);
+            await Task.Delay(4000);
+            c.Check("…lifted: it takes its RAM back", Mb() >= 700, Mb());
+            Console.WriteLine($"  measured: {before} MB, limited {worst} MB, lifted {Mb()} MB");
+        }
+        finally
+        {
+            child.Kill(entireProcessTree: true);
+        }
+    }
+
     public static async Task Run(Checks c, string dir)
     {
         Harness.UseDataFolder(dir);
         int me = Environment.ProcessId;
         c.Check("a hard RAM limit is set and lifted", RobloxProcesses.LimitRam(me, 512) && RobloxProcesses.HasRamLimit(me)
             && RobloxProcesses.LimitRam(me, null) && !RobloxProcesses.HasRamLimit(me));
+        await RealProcessStaysUnder(c);
 
         using (var seed = Vault.Create(Harness.Password))
             seed.Save();
@@ -49,7 +87,11 @@ static class RamLimitSuite
         void State(int cmd) { form.Invoke(() => ShowWindow(hWnd, cmd)); Thread.Sleep(200); }
 
         var players = new List<RobloxProcesses.PlayerProcess> { new(me, 0) };
-        void Tick() => Harness.Invoke(app, "LimitRestingRam", players, RobloxProcesses.VisibleWindows([me]), DateTime.UtcNow, new MemoryStatus(16000, 4000, 75));
+        void Tick()
+        {
+            Harness.Invoke(app, "LimitRestingRam", players, RobloxProcesses.VisibleWindows([me]), DateTime.UtcNow, new MemoryStatus(16000, 4000, 75));
+            Harness.Get<Task>(app, "_ramLimitTurn").Wait();
+        }
         bool Limited() => RobloxProcesses.HasRamLimit(me);
 
         State(6); // minimized
@@ -58,6 +100,13 @@ static class RamLimitSuite
 
         c.Check("only the choices Settings offers are taken", await Harness.Try(app, "setSettings", new { ramLimitMb = 777 }) is null
             && Harness.Get<Vault>(app, "_vault").Data.Settings.RamLimitMb == 0);
+        foreach (int mb in new[] { 512, 768 })
+        {
+            await Harness.Call(app, "setSettings", new { ramLimitMb = mb });
+            c.Check($"{mb} MB can be chosen", Harness.Get<Vault>(app, "_vault").Data.Settings.RamLimitMb == mb);
+        }
+        await Harness.Call(app, "setSettings", new { ramLimitMb = 0 });
+        Tick();
         await Harness.Call(app, "setSettings", new { ramLimitMb = 1024 });
         Tick();
         c.Check("1 GB chosen: the minimized window is limited", Limited());
@@ -78,6 +127,19 @@ static class RamLimitSuite
         Thread.Sleep(200);
         Tick();
         c.Check("…shown again: lifted", !Limited());
+
+        // Windows takes the RAM back before it answers (1.5 s for five windows on the owner's PC): not on the interface's thread.
+        State(6);
+        var turn = new TaskCompletionSource();
+        Harness.Set(app, "_ramLimitTurn", turn.Task);
+        Harness.Invoke(app, "LimitRestingRam", players, RobloxProcesses.VisibleWindows([me]), DateTime.UtcNow, new MemoryStatus(16000, 4000, 75));
+        c.Check("the process check doesn't wait for a limit being set", !Limited());
+        Harness.Invoke(app, "FrontMemory", me);
+        turn.SetResult();
+        Harness.Get<Task>(app, "_ramLimitTurn").Wait();
+        c.Check("…and a lift asked meanwhile comes after it, so the window isn't left limited", !Limited());
+        State(4);
+        Tick();
 
         // Ctrl+Alt+M and Ctrl+Alt+N (AppController.Hotkeys.cs), on the same window.
         [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
@@ -116,6 +178,7 @@ static class RamLimitSuite
             faults += faultsMore;
             Harness.Invoke(app, "LimitRestingRam", new List<RobloxProcesses.PlayerProcess> { new(me, holding * MB, PrivateWorkingSet: Math.Min(2048, holding) * MB, PageFaults: faults) },
                 RobloxProcesses.VisibleWindows([me]), t, new MemoryStatus(32000, 6000, load));
+            Harness.Get<Task>(app, "_ramLimitTurn").Wait();
         }
         Look(0, 0);
         c.Check("Auto: a window minimized a moment ago isn't limited yet", Cap() is null && !Limited(), Cap());
@@ -149,6 +212,42 @@ static class RamLimitSuite
         await Harness.Call(app, "setSettings", new { ramLimitMb = 0 });
         Tick();
         c.Check("turned off: lifted, though still minimized", !Limited());
+
+        // Save RAM empties a resting window's RAM once a minute into its rest (EmptyRestingRamOnce), on the same process.
+        var block = new byte[300 * MB];
+        void Touch() => Array.Fill(block, (byte)1);
+        long Held() { using var p = System.Diagnostics.Process.GetCurrentProcess(); return p.WorkingSet64; }
+        var rest = DateTime.UtcNow;
+        void Rest(int seconds) => Harness.Invoke(app, "EmptyRestingRamOnce", players, RobloxProcesses.VisibleWindows([me]), rest.AddSeconds(seconds));
+        bool Emptied(int seconds)
+        {
+            Touch();
+            long held = Held();
+            Rest(seconds);
+            Thread.Sleep(100);
+            return Held() < held - 200 * MB;
+        }
+        State(6);
+        c.Check("Save RAM off: a resting window keeps its RAM", !Emptied(0) && !Emptied(100));
+        await Harness.Call(app, "setSettings", new { trimBackground = true });
+        c.Check("Save RAM on: not emptied when its rest begins", !Emptied(100));
+        c.Check("…nor half a minute on", !Emptied(130));
+        c.Check("…emptied a minute on", Emptied(161));
+        c.Check("…only once", !Emptied(300));
+        Harness.Set(app, "_nudging", true);
+        State(4);
+        c.Check("…left alone while anti-AFK shows it for a moment", !Emptied(400));
+        State(6);
+        Harness.Set(app, "_nudging", false);
+        c.Check("…and that doesn't start a new rest", !Emptied(500));
+        State(1);
+        Thread.Sleep(200);
+        Rest(600);
+        State(6);
+        c.Check("shown and minimized again: a new rest, waiting its minute", !Emptied(601));
+        c.Check("…then emptied once more", Emptied(662));
+        await Harness.Call(app, "setSettings", new { trimBackground = false });
+        GC.KeepAlive(block);
 
         // Save RAM's low memory priority (GuardResources), on the same process: a window left low by a Bloxkeep that
         // crashed gets its priority set at the first look, and one lowered is raised again when Bloxkeep closes.

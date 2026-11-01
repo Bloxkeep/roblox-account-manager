@@ -597,6 +597,22 @@ public sealed partial class AppController
         return changed;
     }
 
+    /// <summary>Each account's own limit in Roblox, from its next opening; 0 takes it off.</summary>
+    object SetFpsCap(Guid[] ids, int fps)
+    {
+        if (fps != 0 && !RobloxGameSettings.FpsChoices.Contains(fps))
+            return 0;
+        int changed = 0;
+        foreach (var account in RequireVault().Data.Accounts.Where(a => ids.Contains(a.Id)))
+        {
+            account.FpsCap = fps;
+            changed++;
+        }
+        Persist();
+        PushState();
+        return changed;
+    }
+
     object SetAutoRejoin(Guid[] ids, bool enabled)
     {
         int changed = 0;

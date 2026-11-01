@@ -9,7 +9,7 @@ public static class RobloxLauncher
     /// launcher found here ("custom" is <see cref="AppSettings.CustomLauncher"/>).</summary>
     public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct", "store", "custom", "vng"];
 
-    const string OtherPrefix = "other:";
+    internal const string OtherPrefix = "other:";
 
     public static string Other(string name) => OtherPrefix + name;
 
@@ -100,6 +100,8 @@ public static class RobloxLauncher
         return $"roblox-player:1+launchmode:play+gameinfo:{ticket}+launchtime:{now}+placelauncherurl:{placeLauncher}{tail}";
     }
 
+    static string MissingFile => L.T("Roblox is missing a file (RobloxPlayerBeta.dll). Install Roblox again from roblox.com/download.");
+
     /// <param name="launchVia">"auto" = whatever Windows opens roblox-player: links with; "bloxstrap"/"fishstrap" = that
     /// launcher, keeping its mods; "roblox" = the official client; "direct" = the newest RobloxPlayerBeta.exe;
     /// "other:&lt;Name&gt;" and "custom" get the link as their first argument, as Windows would.</param>
@@ -109,6 +111,16 @@ public static class RobloxLauncher
     {
         string tracker = NewBrowserTrackerId();
         string uri = BuildLaunchUri(ticket, target, tracker);
+        // Windows would only show its own error for a client missing its DLL: another build opens instead, or this is said.
+        if (launchVia is "auto" or "" && RobloxInstalls.HandlerBroken())
+        {
+            if (RobloxInstalls.FindAnyClient() is null)
+                throw new FileNotFoundException(MissingFile);
+            launchVia = "direct";
+        }
+        else if (launchVia is "roblox" or "direct" && RobloxInstalls.OwnBuildBroken()
+                 && (launchVia == "roblox" ? RobloxInstalls.FindOfficialClient() : RobloxInstalls.FindAnyClient() ?? RobloxInstalls.FindVngClient()) is null)
+            throw new FileNotFoundException(MissingFile);
         if (OtherName(launchVia) is { } other)
         {
             Start(RobloxInstalls.FindBootstrapper(other) ?? throw new FileNotFoundException(L.F("{0} is not installed.", other)), uri);

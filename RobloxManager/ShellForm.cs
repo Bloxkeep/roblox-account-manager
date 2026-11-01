@@ -608,10 +608,25 @@ public sealed class ShellForm : Form
         // Maximised or restored with the title bar's button (no ResizeEnd for that): remembered for the next start.
         if (WindowState != _lastState)
         {
+            bool restored = _lastState == FormWindowState.Maximized && WindowState == FormWindowState.Normal;
             _lastState = WindowState;
+            if (restored && IsHandleCreated)
+                BeginInvoke(FitRestored); // not inside the resize that's under way
             if (WindowState != FormWindowState.Minimized)
                 SavePlace();
         }
+    }
+
+    void FitRestored()
+    {
+        if (IsDisposed || WindowState != FormWindowState.Normal)
+            return;
+        var place = RobloxProcesses.RestoredPlace(Bounds, Screen.FromHandle(Handle).WorkingArea, RobloxProcesses.ResizeBorder(Handle),
+            new Size(LogicalToDeviceUnits(1320), LogicalToDeviceUnits(840)));
+        if (place == Bounds)
+            return;
+        Bounds = place;
+        SavePlace();
     }
 
     protected override void OnResizeEnd(EventArgs e)

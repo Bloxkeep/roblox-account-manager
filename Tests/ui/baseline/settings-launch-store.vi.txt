@@ -38,6 +38,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -81,7 +82,7 @@ html [data-theme="dark" lang="vi"]
               span "Khởi chạy"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Phiên bản & đồ họa Roblox"
+              span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Treo game"
@@ -123,7 +124,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), hiện ở taskbar và Alt+Tab."
+                        div.d "Dễ nhận ra cửa sổ nào của tài khoản nào."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
@@ -138,17 +139,17 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Nút trên taskbar"
-                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Bạn có thể tách mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm (cửa sổ mở ngoài preset vẫn gộp chung)."
+                        div.t "Nút trên thanh tác vụ"
+                        div.d "Mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi Preset một nhóm."
                       div.ctl
-                        select.select [id="s-taskbar" aria-label="Nút trên taskbar" value="roblox"]
+                        select.select [id="s-taskbar" aria-label="Nút trên thanh tác vụ" value="roblox"]
                           option [value="roblox"] "Gộp chung một nút"
                           option [value="account"] "Mỗi tài khoản một nút"
                           option [value="preset"] "Mỗi preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
-                        div.d "Cửa sổ phóng to vẫn là cửa sổ, không dùng chung chế độ toàn màn hình của Roblox. Muốn xếp cạnh nhau cần bật Multi-Roblox."
+                        div.d "Xếp cạnh nhau cần bật Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="roblox"]
                           option [value="roblox"] "Để Roblox tự chọn"
@@ -157,7 +158,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia đều màn hình theo số cửa sổ. Kiểu lưới thì mỗi cửa sổ chiếm một ô từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
+                        div.d "Tự vừa chia đều màn hình. Kiểu lưới có thể làm 2 cửa sổ nhỏ."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
@@ -253,7 +254,7 @@ html [data-theme="dark" lang="vi"]
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
                             span.snap-name "Tự chọn"
                 div.set-grp [id="sec-client"]
-                  h3.set-grp-title "Launcher & thời gian chờ"
+                  h3.set-grp-title "Cách mở Roblox & thời gian chờ"
                   div.set-card
                     div.set-row
                       div
@@ -266,14 +267,14 @@ html [data-theme="dark" lang="vi"]
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
                           option [value="other:Voidstrap"] "Voidstrap"
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
-                          option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
+                          option [value="direct"] "Mở thẳng Roblox (không qua launcher)"
                           option [value="store"] "Roblox (Microsoft Store, thử nghiệm)"
                           option [value="vng" disabled] "Roblox VNG (chưa cài)"
                         button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
                     div [id="s-store"]
                       div.set-note
                         svg.i #v9c4u6
-                        span "Roblox bản Microsoft Store mới được hỗ trợ và vẫn đang thử nghiệm: mỗi tài khoản mở một cửa sổ riêng. Nếu lỗi, hãy báo ở Cài đặt › Bloxkeep › Gửi góp ý."
+                        span "Roblox bản Microsoft Store đang thử nghiệm. Nếu lỗi, hãy báo ở Cài đặt › Bloxkeep › Gửi góp ý."
                     div.set-row
                       div
                         div.t "Chờ giữa các tài khoản"
@@ -331,6 +332,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -374,7 +376,7 @@ html [data-theme="dark" lang="vi"]
               span "Khởi chạy"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Phiên bản & đồ họa Roblox"
+              span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Treo game"
@@ -416,7 +418,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Hiện tên tài khoản trên cửa sổ"
-                        div.d "Tiêu đề mỗi cửa sổ Roblox ghi tên tài khoản và mã tiến trình (PID), hiện ở taskbar và Alt+Tab."
+                        div.d "Dễ nhận ra cửa sổ nào của tài khoản nào."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Hiện tên tài khoản trên cửa sổ" checked=true]
@@ -431,17 +433,17 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
-                        div.t "Nút trên taskbar"
-                        div.d "Windows gộp mọi cửa sổ Roblox vào một nút. Bạn có thể tách mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi preset một nhóm (cửa sổ mở ngoài preset vẫn gộp chung)."
+                        div.t "Nút trên thanh tác vụ"
+                        div.d "Mỗi tài khoản một nút riêng kèm ảnh, hoặc mỗi Preset một nhóm."
                       div.ctl
-                        select.select [id="s-taskbar" aria-label="Nút trên taskbar" value="roblox"]
+                        select.select [id="s-taskbar" aria-label="Nút trên thanh tác vụ" value="roblox"]
                           option [value="roblox"] "Gộp chung một nút"
                           option [value="account"] "Mỗi tài khoản một nút"
                           option [value="preset"] "Mỗi preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
-                        div.d "Cửa sổ phóng to vẫn là cửa sổ, không dùng chung chế độ toàn màn hình của Roblox. Muốn xếp cạnh nhau cần bật Multi-Roblox."
+                        div.d "Xếp cạnh nhau cần bật Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="roblox"]
                           option [value="roblox"] "Để Roblox tự chọn"
@@ -450,7 +452,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Cách xếp cửa sổ Roblox khi bấm Xếp cửa sổ (và khi tự xếp sau khi mở). Tự vừa chia đều màn hình theo số cửa sổ. Kiểu lưới thì mỗi cửa sổ chiếm một ô từ góc trên bên trái, dù mở bao nhiêu cửa sổ, nên 2 cửa sổ cũng có thể nhỏ. Hoặc tự chọn kích thước."
+                        div.d "Tự vừa chia đều màn hình. Kiểu lưới có thể làm 2 cửa sổ nhỏ."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
@@ -546,7 +548,7 @@ html [data-theme="dark" lang="vi"]
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
                             span.snap-name "Tự chọn"
                 div.set-grp [id="sec-client"]
-                  h3.set-grp-title "Launcher & thời gian chờ"
+                  h3.set-grp-title "Cách mở Roblox & thời gian chờ"
                   div.set-card
                     div.set-row
                       div
@@ -559,7 +561,7 @@ html [data-theme="dark" lang="vi"]
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
                           option [value="other:Voidstrap"] "Voidstrap"
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
-                          option [value="direct"] "Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)"
+                          option [value="direct"] "Mở thẳng Roblox (không qua launcher)"
                           option [value="store"] "Roblox (Microsoft Store, thử nghiệm)"
                           option [value="vng" disabled] "Roblox VNG (chưa cài)"
                         button.btn.sm [title="Chọn launcher khác…"] "Chọn…"

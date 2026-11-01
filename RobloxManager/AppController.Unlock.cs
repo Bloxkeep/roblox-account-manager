@@ -150,7 +150,7 @@ public sealed partial class AppController
             endedChanged = true;
         }
         var sessions = _running
-            .Select(r => new OpenSession { AccountId = r.Key, Pid = r.Value.Pid, StartedAt = r.Value.Launch.StartedAt, Target = r.Value.Launch.Target, PresetId = r.Value.Launch.PresetId })
+            .Select(r => new OpenSession { AccountId = r.Key, Pid = r.Value.Pid, StartedAt = r.Value.Launch.StartedAt, Target = r.Value.Launch.Target, PresetId = r.Value.Launch.PresetId, FpsLimit = r.Value.Launch.FpsLimit })
             .ToList();
         var noted = vault.Data.OpenSessions;
         if (noted.Count == sessions.Count && noted.Zip(sessions).All(p => p.First.AccountId == p.Second.AccountId && p.First.Pid == p.Second.Pid))
@@ -190,7 +190,7 @@ public sealed partial class AppController
             if (SameClient(session) && vault.Data.Accounts.Any(a => a.Id == session.AccountId)
                 && !_running.ContainsKey(session.AccountId) && !_running.Values.Any(r => r.Pid == session.Pid))
             {
-                _running[session.AccountId] = (session.Pid, new PendingLaunch(session.AccountId, [], session.StartedAt, session.Target, PresetId: session.PresetId));
+                _running[session.AccountId] = (session.Pid, new PendingLaunch(session.AccountId, [], session.StartedAt, session.Target, PresetId: session.PresetId) { FpsLimit = session.FpsLimit });
                 // A light-AFK window was minimised once already, before Bloxkeep closed: one the person brought back up stays up.
                 _afkMinimised.Add(session.Pid);
             }

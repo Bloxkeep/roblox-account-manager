@@ -1,8 +1,8 @@
 // Settings › Roblox version & graphics: Roblox closing windows, the installed and newest builds, what the watch found in
-// the next builds, builds seen here (with release-notes links); then the settings Bloxkeep gives Roblox before it opens.
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
+// the next builds, builds seen here (with release-notes links). RobloxConfig: the settings Bloxkeep gives Roblox before it opens (shown in Settings › Staying in game).
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, useAppState, useHost } from '../host';
-import { Group, Page, Row, useLocal } from './parts';
+import { Group, Page, Row, Switch, useLocal } from './parts';
 
 /** Roblox's id for a build ("version-cec3ad5889b447cf"), shortened to its first 8 characters. */
 const shortBuild = (b: string) => String(b || '').replace(/^version-/i, '').slice(0, 8);
@@ -14,12 +14,14 @@ const Pill = ({ tone, title, children }: { tone: string; title?: string; childre
 const RC_LISTS: Record<string, [string, string | null][]> = {
   mode: [['off', null], ['all', null], ['marked', null]],
   graphics: [['0', null], ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => [String(n), String(n)] as [string, string])],
-  fps: [['0', null], ...[30, 60, 144, 240].map(n => [String(n), `${n} FPS`] as [string, string])],
+  fps: [['0', null], ...[15, 20, 30, 45, 60, 120, 144, 240].map(n => [String(n), `${n} FPS`] as [string, string])],
   volume: [['-1', null], ['0', null], ...[25, 50, 75, 100].map(n => [String(n), `${n}%`] as [string, string])],
 };
 
 export function RobloxPage({ title }: { title: string }) {
-  const { t, tn, lang, locale } = useHost();
+  const { t, tn, lang, locale, call } = useHost();
+  const [autoUpdate, setAutoUpdate] = useLocal(useAppState().settings?.autoUpdateRoblox !== false);
+  const setting = (key: string, set: (v: boolean) => void) => (v: boolean) => { set(v); call('setSettings', { [key]: v }); };
   const app = useAppState();
   const ru = app.robloxUpdates || {}, rv = app.robloxVersion || {};
 
@@ -62,9 +64,6 @@ export function RobloxPage({ title }: { title: string }) {
     (next || document.querySelector<HTMLElement>(`#view-settings [data-set-page="${page.dataset.page}"]`))?.focus();
   });
 
-  const rc = app.settings?.robloxConfig || { mode: 'off', graphics: 0, fps: 0, volume: -1 };
-  const chosen = (app.accounts || []).filter((a: { useRobloxConfig?: boolean }) => a.useRobloxConfig).length;
-
   return <Page id="roblox" title={title}>
     <Group id="rbxupd" title={t('ru.title')}>
       <div id="s-rbxclosed" ref={closedBox}>
@@ -76,6 +75,9 @@ export function RobloxPage({ title }: { title: string }) {
       <div id="s-rbxver">
         <Row title={t('rbx.title')} desc={rvText}><Pill tone={rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'}>{rv.installed || '—'}</Pill>
           {canUpdate ? <button type="button" className="btn sm" data-act="rbx-update" disabled={!!rv.updating}>{t(rv.updating ? 'rbx.updating' : 'rbx.update')}</button> : null}</Row>
+        {rv.oldWindows ? <Row title={tn('rbx.oldWindows', rv.oldWindows)} desc={t('rbx.oldWindowsDesc')}>
+          <button type="button" className="btn sm" data-act="rbx-reopen" disabled={!!rv.updating}>{t('rbx.reopen')}</button></Row> : null}
+        <Row title={t('rbx.auto')} desc={t('rbx.autoDesc')}><Switch id="s-rbx-auto" label={t('rbx.auto')} checked={autoUpdate} onChange={setting('autoUpdateRoblox', setAutoUpdate)} /></Row>
       </div>
       <div id="s-rbxupd">
         <Row title={t('ru.installed')} desc={inst?.source ? t('ru.via', { s: inst.source }) : ''}>
@@ -107,26 +109,61 @@ export function RobloxPage({ title }: { title: string }) {
         })}</ul> : <p className="set-hint">{t('ru.none')}</p>}
       </div>
     </Group>
-    <Group id="rc" title={t('rc.title')}>
-      <Row title={t('rc.mode')} desc={<span id="s-rc-hint">{rc.mode === 'off' ? '' : rc.mode === 'all' ? t('rc.hint.all')
-        : <>{tn('rc.hint.chosen', chosen)} <button type="button" className="link" data-act="rc-pick">{t('rc.pick')}</button></>}</span>}>
-        <RcSelect name="mode" rc={rc} />
-      </Row>
-      <Row title={t('rc.graphics')}><RcSelect name="graphics" rc={rc} /></Row>
-      <Row title={t('rc.fps')}><RcSelect name="fps" rc={rc} /></Row>
-      <Row title={t('rc.volume')}><RcSelect name="volume" rc={rc} /></Row>
-    </Group>
   </Page>;
 }
 
-/** A Roblox setting: a value its list doesn't offer shows the first choice ("leave as is"); all but the mode wait while it's off. */
+/** What each mode sets, and how hard it works the PC. One shows as picked while the settings all say the same. */
+const LEVELS = [
+  { id: 'light', load: 1, rc: { mode: 'all', graphics: 1, fps: 20, volume: 0 }, ramLimitMb: -1, trimBackground: true, splitCores: true },
+  { id: 'medium', load: 2, rc: { mode: 'all', graphics: 3, fps: 45, volume: -1 }, ramLimitMb: 0, trimBackground: true, splitCores: true },
+  { id: 'off', load: 3, rc: { mode: 'off', graphics: 0, fps: 0, volume: -1 }, ramLimitMb: 0, trimBackground: false, splitCores: false },
+];
+
+export function RobloxConfig() {
+  const { t, tn, call } = useHost();
+  const app = useAppState();
+  const rc = app.settings?.robloxConfig || { mode: 'off', graphics: 0, fps: 0, volume: -1 };
+  const chosen = (app.accounts || []).filter((a: { useRobloxConfig?: boolean }) => a.useRobloxConfig).length;
+  const ownFps = (app.accounts || []).filter((a: { fpsCap?: number }) => a.fpsCap).length;
+  const st = app.settings || {};
+  const level = LEVELS.find(l => (l.rc.mode === 'off' ? rc.mode === 'off'
+      : rc.mode === l.rc.mode && rc.graphics === l.rc.graphics && rc.fps === l.rc.fps && rc.volume === l.rc.volume)
+    && (st.ramLimitMb || 0) === l.ramLimitMb && !!st.trimBackground === l.trimBackground && !!st.splitCores === l.splitCores)?.id;
+  // Custom is shown on request, or by itself once the settings match no mode.
+  const [custom, setCustom] = useState(false);
+  const shown = custom || !level ? 'own' : level;
+  return <Group id="rc" title={t('rc.title')}>
+    <div className="rc-modes" id="s-rc-levels" role="group" aria-label={t('rc.level')}>
+      {LEVELS.map(({ id, load, rc: values, ...others }) => <button type="button" key={id} className={`rc-mode${id === shown ? ' on' : ''}`} aria-pressed={id === shown}
+        data-level={id} onClick={() => { setCustom(false); if (id !== level) call('setSettings', { robloxConfig: values, ...others }); }}>
+        <span className="rc-load" data-n={load}><i /><i /><i /></span><b>{t(`rc.level.${id}`)}</b><small>{t(`rc.level.${id}.says`)}</small></button>)}
+      <button type="button" className={`rc-mode${shown === 'own' ? ' on' : ''}`} aria-pressed={shown === 'own'} data-level="own" onClick={() => setCustom(true)}>
+        <span className="rc-load" /><b>{t('rc.level.own')}</b><small>{t('rc.level.own.says')}</small></button>
+    </div>
+    <p className="rc-note" id="s-rc-reopen">{t('rc.reopen')}</p>
+    {ownFps ? <p className="rc-note" id="s-rc-own-fps">{tn('rc.ownFps', ownFps)}</p> : null}
+    {shown !== 'own' ? null : <>
+    <Row title={t('rc.mode')} desc={<span id="s-rc-hint">{rc.mode === 'off' ? '' : rc.mode === 'all' ? t('rc.hint.all')
+      : <>{tn('rc.hint.chosen', chosen)} <button type="button" className="link" data-act="rc-pick">{t('rc.pick')}</button></>}</span>}>
+      <RcSelect name="mode" rc={rc} />
+    </Row>
+    {rc.mode === 'off' ? null : <>
+      <Row title={t('rc.graphics')}><RcSelect name="graphics" rc={rc} /></Row>
+      <Row title={t('rc.fps')}><RcSelect name="fps" rc={rc} /></Row>
+      <Row title={t('rc.volume')}><RcSelect name="volume" rc={rc} /></Row>
+    </>}
+    </>}
+  </Group>;
+}
+
+/** A Roblox setting: a value its list doesn't offer shows the first choice ("leave as is"). */
 function RcSelect({ name, rc }: { name: string; rc: Record<string, string | number> }) {
   const { t, call } = useHost();
   const list = RC_LISTS[name];
   const saved = String(rc[name]);
   const [value, setValue] = useLocal(list.some(([v]) => v === saved) ? saved : list[0][0]);
   const words = (v: string, own: string | null) => own ?? (name === 'mode' ? t(`rc.mode.${v}`) : v === '0' && name === 'volume' ? t('rc.mute') : t('rc.keep'));
-  return <select className="select" id={`s-rc-${name}`} aria-label={t(`rc.${name}`)} value={value} disabled={name !== 'mode' && rc.mode === 'off'} onChange={e => {
+  return <select className="select" id={`s-rc-${name}`} aria-label={t(`rc.${name}`)} value={value} onChange={e => {
     setValue(e.target.value);
     call('setSettings', { robloxConfig: { [name]: name === 'mode' ? e.target.value : +e.target.value } });
   }}>

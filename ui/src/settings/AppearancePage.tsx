@@ -22,6 +22,8 @@ export function AppearancePage({ title }: { title: string }) {
     && (a.blur || 0) === (b.blur || 0) && a.picture === b.picture;
   const inUse = current === 'custom' && custom ? saved.find(s => same(s.look, custom)) : undefined;
   const [deleting, setDeleting] = useState<string | null>(null);
+  // One group at a time, starting at the one of the theme in use.
+  const [group, setGroup] = useState(() => Object.keys(themes).find(g => themes[g].includes(current)) || Object.keys(themes)[0]);
 
   // The swatches are one Tab stop; the arrow keys (Home/End to the ends) move between them and pick as they go, like radio buttons.
   const keys = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -38,22 +40,22 @@ export function AppearancePage({ title }: { title: string }) {
   return <Page id="appearance" title={title}>
     <Group id="appearance">
       <Row title={t('set.theme')} desc={<span id="s-theme-name">{t(`theme.${current}`)}</span>} />
+      <div className="tg-tabs" id="s-theme-groups">
+        {Object.keys(themes).map(g => <button type="button" key={g} className={`chip ${g === group ? 'on' : ''}`} data-group={g} aria-pressed={g === group}
+          onClick={() => setGroup(g)}>{t(`theme.group.${g}`)}</button>)}
+      </div>
       <div className="themes" id="s-themes" role="radiogroup" aria-label={t('set.theme')} onKeyDown={keys}>
-        {Object.entries(themes).map(([group, ids]) => <div className="tg" key={group}>
-          <span className="tg-label">{t(`theme.group.${group}`)}</span>
-          <div className="tg-list">
-            {ids.map(id => {
-              const on = id === current, name = t(`theme.${id}`);
-              // data-name: shown on hover and focus; data-theme gives each swatch its theme's own colours.
-              return <button key={id} className={`swatch ${on ? 'on' : ''}`} data-act="theme" data-id={id} role="radio" aria-checked={on}
-                tabIndex={on ? 0 : -1} aria-label={name} data-name={name}>
-                {id === 'system' ? <><span data-theme="light" /><span data-theme="dark" /></>
-                  : id === 'custom' && customLook ? <span data-theme="custom" data-tone={customLook.tone} style={{ ...customLook.vars, '--backdrop': customLook.swatch } as CSSProperties}><em /></span>
-                  : <span data-theme={id}><em /></span>}
-              </button>;
-            })}
-          </div>
-        </div>)}
+        {themes[group].map((id, i) => {
+          const on = id === current, name = t(`theme.${id}`);
+          // data-theme gives each tile its theme's own colours. Another group's theme in use: the first tile takes the Tab stop.
+          return <button key={id} className={`swatch ${on ? 'on' : ''}`} data-act="theme" data-id={id} role="radio" aria-checked={on}
+            tabIndex={on || (i === 0 && !themes[group].includes(current)) ? 0 : -1} aria-label={name}>
+            {id === 'system' ? <><span data-theme="light" /><span data-theme="dark" /></>
+              : id === 'custom' && customLook ? <span data-theme="custom" data-tone={customLook.tone} style={{ ...customLook.vars, '--backdrop': customLook.swatch } as CSSProperties}><em /></span>
+              : <span data-theme={id}><em /></span>}
+            <b>{name}</b>
+          </button>;
+        })}
       </div>
       {/* Custom chosen: its two colours (shown as they are dragged, saved once they rest) and a picture behind the page. */}
       {current === 'custom' && custom ? <div className="ct" id="s-custom">

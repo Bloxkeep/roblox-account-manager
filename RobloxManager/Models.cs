@@ -30,6 +30,8 @@ public sealed class Account
     public bool RejoinOffBySignOut { get; set; }
     /// <summary>Opened with the shared Roblox settings when those apply to chosen accounts only.</summary>
     public bool UseRobloxConfig { get; set; }
+    /// <summary>This account's own frame rate limit in Roblox (see <see cref="RobloxGameSettings.ForLaunch"/>); 0: none.</summary>
+    public int FpsCap { get; set; }
     /// <summary>The authenticator (2-step) key, null when none. A secret like <see cref="Password"/>: only its current code leaves the app.</summary>
     public TotpKey? Authenticator { get; set; }
     /// <summary>What Roblox's public profile of the account said at the last check (see AppController.Health.cs); null until asked.</summary>
@@ -82,6 +84,8 @@ public sealed class AppSettings
     public int AutoLockMinutes { get; set; }
     public bool MemoryWarnings { get; set; } = true;
     public bool TrimBackground { get; set; }
+    /// <summary>A launcher installs Roblox's newest build by itself while no Roblox window is open.</summary>
+    public bool AutoUpdateRoblox { get; set; } = true;
     /// <summary>
     /// The most RAM a minimized or hidden Roblox window keeps, in MB; the rest waits in virtual memory (0 = no limit,
     /// the default). See AppController.LimitRestingRam.
@@ -391,4 +395,6 @@ public sealed class OpenSession
     public GameTarget? Target { get; set; }
     /// <summary>The preset that opened it, whose options still apply to it; null for one opened otherwise.</summary>
     public Guid? PresetId { get; set; }
+    /// <summary>The frame rate limit Bloxkeep gave it as it opened; 0: none.</summary>
+    public int FpsLimit { get; set; }
 }

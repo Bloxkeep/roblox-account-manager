@@ -1,0 +1,361 @@
+== art
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav.on [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Cài đặt"
+        div.set-layout
+          nav.set-nav [aria-label="Cài đặt"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Khởi chạy"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản Roblox"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Treo game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Thông báo"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #d2zp05
+              span "Giao diện"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & bảo mật"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Sao lưu & dữ liệu"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-appearance" aria-labelledby="set-page-appearance-h"]
+                h2.set-page-title [id="set-page-appearance-h"] "Giao diện"
+                div.set-grp [id="sec-appearance"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Chủ đề"
+                        div.d
+                          span [id="s-theme-name"] "Tối"
+                      div.ctl
+                    div.tg-tabs [id="s-theme-groups"]
+                      button.chip [type="button" aria-pressed="false"] "Cơ bản"
+                      button.chip [type="button" aria-pressed="false"] "Phong cảnh"
+                      button.chip [type="button" aria-pressed="false"] "Màu sắc"
+                      button.chip [type="button" aria-pressed="false"] "Phong cách"
+                      button.chip [type="button" aria-pressed="false"] "Theo mùa"
+                      button.chip [type="button" aria-pressed="false"] "Động"
+                      button.chip.on [type="button" aria-pressed="true" FOCUSED] "Tranh"
+                      button.chip [type="button" aria-pressed="false"] "Của bạn"
+                    div.themes [id="s-themes" role="radiogroup" aria-label="Chủ đề"]
+                      button.swatch [role="radio" tabindex="0" aria-checked="false" aria-label="Đêm đầy sao"]
+                        span [data-theme="starrynight"]
+                          em
+                        b "Đêm đầy sao"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sóng lớn"]
+                        span [data-theme="greatwave"]
+                          em
+                        b "Sóng lớn"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Hoa súng"]
+                        span [data-theme="waterlilies"]
+                          em
+                        b "Hoa súng"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Lập thể"]
+                        span [data-theme="cubism"]
+                          em
+                        b "Lập thể"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Ô màu"]
+                        span [data-theme="blocksart"]
+                          em
+                        b "Ô màu"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Dát vàng"]
+                        span [data-theme="goldleaf"]
+                          em
+                        b "Dát vàng"
+                    div.set-row
+                      div
+                        div.t "Theme của bạn"
+                        div.d "Theme bạn lưu, hoặc thêm từ file người khác gửi, sẽ hiện ở đây."
+                      div.ctl
+                        button.btn.sm [id="s-ct-import"] "Thêm từ file…"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Ngôn ngữ"
+                      div.ctl
+                        div.lang [role="group" aria-label="Ngôn ngữ"]
+                          button [title="English" aria-pressed="false"] "EN"
+                          button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+                    div.set-row
+                      div
+                        div.t "Ẩn tên tài khoản"
+                        div.d "Hiện “Tài khoản 1”, “Tài khoản 2”… thay cho tên, khi chụp màn hình hay livestream."
+                      div.ctl
+                        label.switch
+                          input [id="s-hidenames" type="checkbox" aria-label="Ẩn tên tài khoản" checked=false]
+                          span
+#layer
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+== end
+html [data-theme="starrynight" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav.on [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Cài đặt"
+        div.set-layout
+          nav.set-nav [aria-label="Cài đặt"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Tìm cài đặt" autocomplete="off" maxlength="60" aria-label="Tìm cài đặt" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Khởi chạy"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản Roblox"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Treo game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Thông báo"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #d2zp05
+              span "Giao diện"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & bảo mật"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Sao lưu & dữ liệu"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-appearance" aria-labelledby="set-page-appearance-h"]
+                h2.set-page-title [id="set-page-appearance-h"] "Giao diện"
+                div.set-grp [id="sec-appearance"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Chủ đề"
+                        div.d
+                          span [id="s-theme-name"] "Đêm đầy sao"
+                      div.ctl
+                    div.tg-tabs [id="s-theme-groups"]
+                      button.chip [type="button" aria-pressed="false"] "Cơ bản"
+                      button.chip [type="button" aria-pressed="false"] "Phong cảnh"
+                      button.chip [type="button" aria-pressed="false"] "Màu sắc"
+                      button.chip [type="button" aria-pressed="false"] "Phong cách"
+                      button.chip [type="button" aria-pressed="false"] "Theo mùa"
+                      button.chip [type="button" aria-pressed="false"] "Động"
+                      button.chip.on [type="button" aria-pressed="true"] "Tranh"
+                      button.chip [type="button" aria-pressed="false"] "Của bạn"
+                    div.themes [id="s-themes" role="radiogroup" aria-label="Chủ đề"]
+                      button.on.swatch [role="radio" tabindex="0" aria-checked="true" aria-label="Đêm đầy sao" FOCUSED]
+                        span [data-theme="starrynight"]
+                          em
+                        b "Đêm đầy sao"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Sóng lớn"]
+                        span [data-theme="greatwave"]
+                          em
+                        b "Sóng lớn"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Hoa súng"]
+                        span [data-theme="waterlilies"]
+                          em
+                        b "Hoa súng"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Lập thể"]
+                        span [data-theme="cubism"]
+                          em
+                        b "Lập thể"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Ô màu"]
+                        span [data-theme="blocksart"]
+                          em
+                        b "Ô màu"
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Dát vàng"]
+                        span [data-theme="goldleaf"]
+                          em
+                        b "Dát vàng"
+                    div.set-row
+                      div
+                        div.t "Theme của bạn"
+                        div.d "Theme bạn lưu, hoặc thêm từ file người khác gửi, sẽ hiện ở đây."
+                      div.ctl
+                        button.btn.sm [id="s-ct-import"] "Thêm từ file…"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Ngôn ngữ"
+                      div.ctl
+                        div.lang [role="group" aria-label="Ngôn ngữ"]
+                          button [title="English" aria-pressed="false"] "EN"
+                          button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
+                    div.set-row
+                      div
+                        div.t "Ẩn tên tài khoản"
+                        div.d "Hiện “Tài khoản 1”, “Tài khoản 2”… thay cho tên, khi chụp màn hình hay livestream."
+                      div.ctl
+                        label.switch
+                          input [id="s-hidenames" type="checkbox" aria-label="Ẩn tên tài khoản" checked=false]
+                          span
+#layer
+#toasts
+-- commands
+  setTheme {"theme":"starrynight"}

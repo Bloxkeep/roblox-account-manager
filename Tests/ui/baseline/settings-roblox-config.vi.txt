@@ -38,6 +38,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -79,10 +80,10 @@ html [data-theme="dark" lang="vi"]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
-            button.set-nav-item [type="button" aria-current="page"]
-              svg.i #sy1lqp
-              span "Phiên bản & đồ họa Roblox"
             button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản Roblox"
+            button.set-nav-item [type="button" aria-current="page"]
               svg.i #1l5qw3q
               span "Treo game"
             button.set-nav-item [type="button"]
@@ -105,69 +106,38 @@ html [data-theme="dark" lang="vi"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
-              section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
-                h2.set-page-title [id="set-page-roblox-h"] "Phiên bản & đồ họa Roblox"
-                div.set-grp [id="sec-rbxupd"]
-                  h3.set-grp-title "Cập nhật Roblox"
-                  div.set-card
-                    div [id="s-rbxclosed"]
-                    div [id="s-rbxver"]
-                      div.set-row
-                        div
-                          div.t "Phiên bản Roblox"
-                          div.d "Đã là bản mới nhất"
-                        div.ctl
-                          span.ok.state-pill "0.742.0.7421053"
-                    div [id="s-rbxupd"]
-                      div.set-row
-                        div
-                          div.t "Bản đang cài"
-                          div.d "Từ Bloxstrap"
-                        div.ctl
-                          span.ru-build [title="version-cec3ad5889b447cf"] "mã cec3ad58"
-                      div.set-row
-                        div
-                          div.t "Kiểm tra Multi-Roblox"
-                          div.d "Mỗi bản Roblox mới, Bloxkeep đều kiểm tra xem có gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn."
-                            button.link [type="button"] "Cách hoạt động"
-                        div.ctl
-                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "Không có thay đổi"
-                      div.set-row
-                        div
-                          div.t "Bản Roblox sắp ra"
-                          div.d "0.743.0.7431134, đã kiểm tra trước khi Roblox phát hành"
-                        div.ctl
-                          span.ok.state-pill "Không có thay đổi"
-                      div.ru-head "Lịch sử cập nhật"
-                      ul.ru-list
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.742.0.7421053"
-                              span.ru-note "bản mới, cùng số phiên bản"
-                              span.ok.ru-note "Multi-Roblox không đổi"
-                            div.ru-sub "16:00 15 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-cec3ad5889b447cf"] "mã cec3ad58"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.742.0.7421053"
-                              span.ok.ru-note "Multi-Roblox chạy tốt ở máy này"
-                            div.ru-sub "10:00 14 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-5b1e07d2a6c84f13"] "mã 5b1e07d2"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.741.0.7410829"
-                              span.ru-note "đã có từ trước"
-                            div.ru-sub "12:00 7 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-91f0c3ab72d14e6e"] "mã 91f0c3ab"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.741.0.7410829"] "Ghi chú"
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Treo game"
                 div.set-grp [id="sec-rc"]
                   h3.set-grp-title "Cấu hình Roblox"
                   div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Chế độ"]
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "Treo máy"
+                        small "20 FPS · Đồ họa 1 · Tắt tiếng · Tự giới hạn RAM"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Vừa treo vừa chơi"
+                        small "45 FPS · Đồ họa 3 · Giữ âm lượng"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox gốc"
+                        small "Bloxkeep không đổi gì"
+                      button.on.rc-mode [type="button" aria-pressed="true"]
+                        span.rc-load
+                        b "Tự chỉnh"
+                        small "Chọn từng mục bên dưới"
+                    p.rc-note [id="s-rc-reopen"] "Có hiệu lực từ lần mở tài khoản sau."
                     div.set-row
                       div
                         div.t "Áp dụng cho"
@@ -200,8 +170,12 @@ html [data-theme="dark" lang="vi"]
                       div.ctl
                         select.select [id="s-rc-fps" aria-label="Giới hạn FPS" value="144"]
                           option [value="0"] "Giữ nguyên"
+                          option [value="15"] "15 FPS"
+                          option [value="20"] "20 FPS"
                           option [value="30"] "30 FPS"
+                          option [value="45"] "45 FPS"
                           option [value="60"] "60 FPS"
+                          option [value="120"] "120 FPS"
                           option [value="144"] "144 FPS"
                           option [value="240"] "240 FPS"
                     div.set-row
@@ -215,6 +189,74 @@ html [data-theme="dark" lang="vi"]
                           option [value="50"] "50%"
                           option [value="75"] "75%"
                           option [value="100"] "100%"
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Giữ tài khoản trong game"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Tự vào lại"
+                        div.d "Cho mọi tài khoản. Chỉnh riêng trong menu ⋯ hoặc Preset."
+                      div.ctl
+                        select.select [id="s-rejoin" aria-label="Tự vào lại" value="some"]
+                          option [value="on"] "Bật cho mọi tài khoản"
+                          option [value="off"] "Tắt cho mọi tài khoản"
+                          option [value="some" disabled hidden] "Bật cho 1/7 tài khoản"
+                    div.set-row
+                      div
+                        div.t "Chống AFK"
+                        div.d "Không bị kick khi đi vắng. Không chạy khi máy khóa."
+                      div.ctl
+                        label.switch
+                          input [id="s-antiafk" type="checkbox" aria-label="Chống AFK" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Kiểm tra đăng nhập mỗi ngày"
+                        div.d "Báo tài khoản nào bị Roblox đăng xuất."
+                          span [id="s-daily-when"] "Kiểm tra lần cuối: 7:00."
+                      div.ctl
+                        label.switch
+                          input [id="s-daily" type="checkbox" aria-label="Kiểm tra đăng nhập mỗi ngày" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "RAM & CPU"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Báo khi sắp hết RAM"
+                      div.ctl
+                        label.switch
+                          input [id="s-memwarn" type="checkbox" aria-label="Báo khi sắp hết RAM" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Tiết kiệm RAM cho cửa sổ chạy nền"
+                        div.d "Cửa sổ nền nhường RAM trước."
+                      div.ctl
+                        label.switch
+                          input [id="s-trim" type="checkbox" aria-label="Tiết kiệm RAM cho cửa sổ chạy nền" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Giới hạn RAM khi thu nhỏ hoặc ẩn"
+                        div.d "Quá thấp có thể gây giật."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="Giới hạn RAM khi thu nhỏ hoặc ẩn" value="0"]
+                          option [value="0"] "Không giới hạn"
+                          option [value="-1"] "Tự động (theo game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Ưu tiên cửa sổ đang chơi"
+                        div.d "Cửa sổ nền chạy chậm lại để cửa sổ này mượt hơn."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Ưu tiên cửa sổ đang chơi" checked=false]
+                          span
 #layer
 #toasts
 -- commands
@@ -268,6 +310,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -309,10 +352,10 @@ html [data-theme="dark" lang="vi"]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Khởi chạy"
-            button.set-nav-item [type="button" aria-current="page"]
-              svg.i #sy1lqp
-              span "Phiên bản & đồ họa Roblox"
             button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Phiên bản Roblox"
+            button.set-nav-item [type="button" aria-current="page"]
               svg.i #1l5qw3q
               span "Treo game"
             button.set-nav-item [type="button"]
@@ -335,69 +378,38 @@ html [data-theme="dark" lang="vi"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
-              section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
-                h2.set-page-title [id="set-page-roblox-h"] "Phiên bản & đồ họa Roblox"
-                div.set-grp [id="sec-rbxupd"]
-                  h3.set-grp-title "Cập nhật Roblox"
-                  div.set-card
-                    div [id="s-rbxclosed"]
-                    div [id="s-rbxver"]
-                      div.set-row
-                        div
-                          div.t "Phiên bản Roblox"
-                          div.d "Đã là bản mới nhất"
-                        div.ctl
-                          span.ok.state-pill "0.742.0.7421053"
-                    div [id="s-rbxupd"]
-                      div.set-row
-                        div
-                          div.t "Bản đang cài"
-                          div.d "Từ Bloxstrap"
-                        div.ctl
-                          span.ru-build [title="version-cec3ad5889b447cf"] "mã cec3ad58"
-                      div.set-row
-                        div
-                          div.t "Kiểm tra Multi-Roblox"
-                          div.d "Mỗi bản Roblox mới, Bloxkeep đều kiểm tra xem có gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn."
-                            button.link [type="button"] "Cách hoạt động"
-                        div.ctl
-                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "Không có thay đổi"
-                      div.set-row
-                        div
-                          div.t "Bản Roblox sắp ra"
-                          div.d "0.743.0.7431134, đã kiểm tra trước khi Roblox phát hành"
-                        div.ctl
-                          span.ok.state-pill "Không có thay đổi"
-                      div.ru-head "Lịch sử cập nhật"
-                      ul.ru-list
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.742.0.7421053"
-                              span.ru-note "bản mới, cùng số phiên bản"
-                              span.ok.ru-note "Multi-Roblox không đổi"
-                            div.ru-sub "16:00 15 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-cec3ad5889b447cf"] "mã cec3ad58"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.742.0.7421053"
-                              span.ok.ru-note "Multi-Roblox chạy tốt ở máy này"
-                            div.ru-sub "10:00 14 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-5b1e07d2a6c84f13"] "mã 5b1e07d2"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.741.0.7410829"
-                              span.ru-note "đã có từ trước"
-                            div.ru-sub "12:00 7 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-91f0c3ab72d14e6e"] "mã 91f0c3ab"
-                          button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Ghi chú phát hành của Roblox viết cho người làm game, ít khi nói về thay đổi của app Roblox." aria-label="Ghi chú phát hành của Roblox 0.741.0.7410829"] "Ghi chú"
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Treo game"
                 div.set-grp [id="sec-rc"]
                   h3.set-grp-title "Cấu hình Roblox"
                   div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Chế độ"]
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "Treo máy"
+                        small "20 FPS · Đồ họa 1 · Tắt tiếng · Tự giới hạn RAM"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Vừa treo vừa chơi"
+                        small "45 FPS · Đồ họa 3 · Giữ âm lượng"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox gốc"
+                        small "Bloxkeep không đổi gì"
+                      button.on.rc-mode [type="button" aria-pressed="true"]
+                        span.rc-load
+                        b "Tự chỉnh"
+                        small "Chọn từng mục bên dưới"
+                    p.rc-note [id="s-rc-reopen"] "Có hiệu lực từ lần mở tài khoản sau."
                     div.set-row
                       div
                         div.t "Áp dụng cho"
@@ -408,43 +420,74 @@ html [data-theme="dark" lang="vi"]
                           option [value="off"] "Không áp dụng"
                           option [value="all"] "Mọi tài khoản"
                           option [value="marked"] "Tài khoản đã chọn"
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Giữ tài khoản trong game"
+                  div.set-card
                     div.set-row
                       div
-                        div.t "Đồ họa"
+                        div.t "Tự vào lại"
+                        div.d "Cho mọi tài khoản. Chỉnh riêng trong menu ⋯ hoặc Preset."
                       div.ctl
-                        select.select [id="s-rc-graphics" aria-label="Đồ họa" value="5" disabled]
-                          option [value="0"] "Giữ nguyên"
-                          option [value="1"] "1"
-                          option [value="2"] "2"
-                          option [value="3"] "3"
-                          option [value="4"] "4"
-                          option [value="5"] "5"
-                          option [value="6"] "6"
-                          option [value="7"] "7"
-                          option [value="8"] "8"
-                          option [value="9"] "9"
-                          option [value="10"] "10"
+                        select.select [id="s-rejoin" aria-label="Tự vào lại" value="some"]
+                          option [value="on"] "Bật cho mọi tài khoản"
+                          option [value="off"] "Tắt cho mọi tài khoản"
+                          option [value="some" disabled hidden] "Bật cho 1/7 tài khoản"
                     div.set-row
                       div
-                        div.t "Giới hạn FPS"
+                        div.t "Chống AFK"
+                        div.d "Không bị kick khi đi vắng. Không chạy khi máy khóa."
                       div.ctl
-                        select.select [id="s-rc-fps" aria-label="Giới hạn FPS" value="144" disabled]
-                          option [value="0"] "Giữ nguyên"
-                          option [value="30"] "30 FPS"
-                          option [value="60"] "60 FPS"
-                          option [value="144"] "144 FPS"
-                          option [value="240"] "240 FPS"
+                        label.switch
+                          input [id="s-antiafk" type="checkbox" aria-label="Chống AFK" checked=false]
+                          span
                     div.set-row
                       div
-                        div.t "Âm lượng"
+                        div.t "Kiểm tra đăng nhập mỗi ngày"
+                        div.d "Báo tài khoản nào bị Roblox đăng xuất."
+                          span [id="s-daily-when"] "Kiểm tra lần cuối: 7:00."
                       div.ctl
-                        select.select [id="s-rc-volume" aria-label="Âm lượng" value="0" disabled]
-                          option [value="-1"] "Giữ nguyên"
-                          option [value="0"] "Tắt tiếng"
-                          option [value="25"] "25%"
-                          option [value="50"] "50%"
-                          option [value="75"] "75%"
-                          option [value="100"] "100%"
+                        label.switch
+                          input [id="s-daily" type="checkbox" aria-label="Kiểm tra đăng nhập mỗi ngày" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "RAM & CPU"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Báo khi sắp hết RAM"
+                      div.ctl
+                        label.switch
+                          input [id="s-memwarn" type="checkbox" aria-label="Báo khi sắp hết RAM" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Tiết kiệm RAM cho cửa sổ chạy nền"
+                        div.d "Cửa sổ nền nhường RAM trước."
+                      div.ctl
+                        label.switch
+                          input [id="s-trim" type="checkbox" aria-label="Tiết kiệm RAM cho cửa sổ chạy nền" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Giới hạn RAM khi thu nhỏ hoặc ẩn"
+                        div.d "Quá thấp có thể gây giật."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="Giới hạn RAM khi thu nhỏ hoặc ẩn" value="0"]
+                          option [value="0"] "Không giới hạn"
+                          option [value="-1"] "Tự động (theo game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Ưu tiên cửa sổ đang chơi"
+                        div.d "Cửa sổ nền chạy chậm lại để cửa sổ này mượt hơn."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Ưu tiên cửa sổ đang chơi" checked=false]
+                          span
 #layer
 #toasts
 -- commands

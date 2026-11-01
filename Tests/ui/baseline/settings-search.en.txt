@@ -38,6 +38,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -81,7 +82,7 @@ html [data-theme="dark" lang="en"]
               span "Launching"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Roblox version & graphics"
+              span "Roblox version"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Staying in game"
@@ -113,7 +114,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Auto-rejoin"
-                        div.d "For every account at once; each account’s ⋯ menu turns it on or off for that one. A preset that sets it decides for the windows it opens."
+                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
                       div.ctl
                         select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
                           option [value="on"] "On for all accounts"
@@ -157,24 +158,6 @@ html [data-theme="dark" lang="en"]
                               input [id="s-dc-ev-drop" type="checkbox" aria-label="Account dropped or auto-rejoin" checked=true]
                               span
                     p.set-hint "To ping a person or a role you need its ID: in Discord, turn on Settings › Advanced › Developer Mode, then right-click the person or role › Copy ID."
-              section.set-page [id="set-page-security" aria-labelledby="set-page-security-h"]
-                h2.set-page-title [id="set-page-security-h"] "Vault & security"
-                div.set-grp [id="sec-autolock"]
-                  h3.set-grp-title "When you’re away"
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Lock automatically"
-                        div.d "When nobody has used the PC’s keyboard or mouse for this long, Bloxkeep asks for the master password again. Roblox, auto-rejoin, scheduled presets and Discord keep running meanwhile."
-                      div.ctl
-                        select.select [id="s-autolock" aria-label="Lock automatically" value="0"]
-                          option [value="0"] "Never"
-                          option [value="5"] "After 5 minutes"
-                          option [value="10"] "After 10 minutes"
-                          option [value="15"] "After 15 minutes"
-                          option [value="30"] "After 30 minutes"
-                          option [value="60"] "After 1 hour"
-                          option [value="120"] "After 2 hours"
               section.set-page [id="set-page-updates" aria-labelledby="set-page-updates-h"]
                 h2.set-page-title [id="set-page-updates-h"] "Bloxkeep"
                 div.set-grp [id="sec-app"]

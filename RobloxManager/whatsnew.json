@@ -1,5 +1,79 @@
 [
   {
+    "version": "1.0.15",
+    "date": "2026-11-01",
+    "highlights": [
+      {
+        "icon": "palette",
+        "go": "settings:appearance",
+        "image": "whatsnew/1.0.15-photos.{lang}.webp",
+        "en": [
+          "Themes from real photos",
+          "Neon Miami, a night harbour, Hoi An lanterns, jellyfish and snowfall: the water, traffic and snow move and react to your mouse. 24 new themes in all.",
+          "Pick one"
+        ],
+        "vi": [
+          "Theme động từ ảnh thật",
+          "Miami neon, bến cảng đêm, hoa đăng Hội An, sứa biển và tuyết rơi: mặt nước, xe cộ và tuyết chuyển động theo chuột. Tổng cộng 24 theme mới.",
+          "Chọn theme"
+        ]
+      },
+      {
+        "icon": "sliders",
+        "go": "settings:perf",
+        "image": "whatsnew/1.0.15-modes.{lang}.webp",
+        "en": [
+          "Modes for Roblox",
+          "Pick AFK farming, Play and farm or Roblox as is. Each account can also keep its own FPS.",
+          "Pick a mode"
+        ],
+        "vi": [
+          "Chế độ cho Roblox",
+          "Chọn Treo máy, Vừa treo vừa chơi hoặc Roblox gốc. Mỗi tài khoản cũng có thể đặt FPS riêng.",
+          "Chọn chế độ"
+        ]
+      }
+    ],
+    "improved": {
+      "en": [
+        "The sidebar shows how much CPU and GPU your Roblox windows use.",
+        "Account cards and the sign-in window are cleaner and easier to read.",
+        "Opening Roblox directly no longer plays on an old copy: a launcher's copy is updated first.",
+        "Each open window shows its Roblox version, and an old one is marked. A button closes the windows, updates Roblox and reopens them.",
+        "A launcher updates Roblox by itself while no Roblox window is open. You can turn this off.",
+        "The RAM limit can go down to 512 MB or 768 MB, and minimizing many windows no longer holds Bloxkeep still.",
+        "Arranged Roblox windows sit edge to edge, with no gaps between them.",
+        "Settings › Discord shows how your alerts and status message will look.",
+        "Changing theme now fades smoothly."
+      ],
+      "vi": [
+        "Thanh bên hiện % CPU và GPU mà các cửa sổ Roblox đang dùng.",
+        "Thẻ tài khoản và cửa sổ đăng nhập gọn và dễ đọc hơn.",
+        "Mở thẳng Roblox không còn chạy bản cũ: bản của launcher được cập nhật trước.",
+        "Mỗi cửa sổ đang mở hiện phiên bản Roblox, bản cũ có nhãn riêng. Có nút đóng, cập nhật rồi mở lại.",
+        "Launcher tự cập nhật Roblox khi không mở cửa sổ nào. Có thể tắt.",
+        "Limit RAM có thêm mức 512 MB và 768 MB, thu nhỏ nhiều cửa sổ không còn làm Bloxkeep khựng.",
+        "Sắp xếp cửa sổ Roblox khít nhau, không còn khe hở.",
+        "Cài đặt › Discord có xem trước cảnh báo và tin trạng thái.",
+        "Đổi theme giờ chuyển mượt."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Fixed Windows' own error when a Roblox build lost its DLL: Bloxkeep opens another build or says to install Roblox again.",
+        "A window minimized while it loads stays minimized.",
+        "Bloxkeep's window no longer covers the taskbar when you restore it from maximized.",
+        "The list view's checkbox no longer covers the ⋮ button."
+      ],
+      "vi": [
+        "Sửa lỗi Windows báo khi Roblox mất tệp DLL: Bloxkeep mở bản khác hoặc nhắc cài lại Roblox.",
+        "Cửa sổ thu nhỏ lúc đang tải không còn tự phóng to lại.",
+        "Cửa sổ Bloxkeep không còn đè taskbar khi thoát phóng to.",
+        "Ô chọn ở dạng danh sách không còn che nút ⋮."
+      ]
+    }
+  },
+  {
     "version": "1.0.14",
     "date": "2026-10-30",
     "highlights": [

@@ -24,6 +24,8 @@ public sealed partial class AppController : IDisposable
         public string? Tracker { get; init; }
         /// <summary>The rejoin's earlier tries that opened no window (see <see cref="RejoinRequest.OpenRetries"/>).</summary>
         public int OpenRetries { get; init; }
+        /// <summary>The frame rate limit Bloxkeep gave it as it opened; 0: none. Its card says so.</summary>
+        public int FpsLimit { get; init; }
     }
 
     /// <param name="NetworkRetries">Attempts that failed only because there was no connection.</param>
@@ -176,6 +178,7 @@ public sealed partial class AppController : IDisposable
     bool _checking, _lastArmed, _presenceBusy, _presenceLoaded, _rejoining, _trimRefusedShown, _disposed;
     DateTime _nextPresence, _lastFullPresence, _lastMemoryWarning, _installsReadAt, _sweepBackgroundUntil, _resumedAt, _lastSessionStart, _lastTick;
     string? _lastMetrics, _lastState, _pageView;
+    readonly RobloxUsage _robloxUsage = new();
     InstallsInfo? _installs;
     /// <summary>The launcher that can update the client the launch option starts (<see cref="RobloxInstalls.UpdaterFor"/>).</summary>
     string? _updaterExe;
@@ -464,6 +467,7 @@ public sealed partial class AppController : IDisposable
         "setAutoRejoin" => Done(SetAutoRejoin(Ids(a), Bool(a, "enabled"))),
         "cancelRejoin" => Done(CancelRejoin(Id(a))),
         "setUseRobloxConfig" => Done(SetUseRobloxConfig(Ids(a), Bool(a, "enabled"))),
+        "setFpsCap" => Done(SetFpsCap(Ids(a), (int)Long(a, "fps"))),
         "reveal" => Done(Reveal(Id(a), Str(a, "field"))),
         "totpCode" => Done(AuthenticatorCode(Id(a))),
         "totpCheck" => Done(CheckAuthenticator(Str(a, "key"))),
@@ -556,6 +560,7 @@ public sealed partial class AppController : IDisposable
         "hideRobloxClosed" => Done(HideRobloxClosed()),
         "multiOnly" => Done(MultiOnly(Bool(a, "on"))),
         "updateRoblox" => Done(UpdateRoblox()),
+        "updateAndReopen" => Done(UpdateAndReopen()),
         "openRobloxWatch" => Done(OpenUrl(RobloxWatch.DocsUrl)),
         // The user guide on GitHub, in the app's language (docs/guide.md, docs/guide.vi.md).
         "openGuide" => Done(OpenUrl($"https://github.com/Bloxkeep/roblox-account-manager/blob/main/docs/guide{(L.Language == "vi" ? ".vi" : "")}.md")),

@@ -29,7 +29,7 @@ A real screenshot from one PC: five accounts open at once, four in the game and 
 | See every window at once | **Windows › Arrange Roblox windows** | [Windows and statistics](windows-and-stats.md) |
 | Get back in after a disconnect | **Auto-rejoin** | [Staying in game](staying-in-game.md) |
 | Not be kicked for idling | **Anti-AFK** | [Staying in game](staying-in-game.md) |
-| Fit more accounts on the PC | **RAM limit for resting windows** | [Staying in game](staying-in-game.md) |
+| Fit more accounts on the PC | **RAM limit when minimized or hidden** | [Staying in game](staying-in-game.md) |
 | Open the same accounts with one click, or on a schedule | **Presets** | [Presets and schedules](presets.md) |
 
 ## Questions

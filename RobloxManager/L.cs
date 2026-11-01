@@ -130,6 +130,8 @@ public static class L
         ["Couldn't open the private server link (HTTP {0}). Check the link, or try again in a moment."] = "Không mở được link server riêng (HTTP {0}). Kiểm tra lại link hoặc thử lại sau giây lát.",
         ["The private server link is invalid or has expired."] = "Link server riêng không hợp lệ hoặc đã hết hạn.",
         ["Roblox is rate-limiting requests; try again shortly."] = "Roblox đang tạm chặn vì có quá nhiều yêu cầu. Chờ chút rồi thử lại.",
+        ["Roblox is missing a file (RobloxPlayerBeta.dll). Install Roblox again from roblox.com/download."] =
+            "Roblox thiếu tệp RobloxPlayerBeta.dll. Hãy cài lại Roblox từ roblox.com/download.",
         ["RobloxPlayerBeta.exe was not found. Pick another option under Settings › Launching › Open Roblox with, or reinstall Roblox."] =
             "Không tìm thấy RobloxPlayerBeta.exe. Chọn cách mở khác ở Cài đặt › Khởi chạy › Mở Roblox bằng, hoặc cài lại Roblox.",
         ["{0} is not installed."] = "Máy chưa cài {0}.",
@@ -421,6 +423,8 @@ public static class L
         ["No launcher here can update Roblox by itself. Roblox updates the next time it opens."] =
             "Máy này không có launcher nào tự cập nhật Roblox được. Roblox sẽ tự cập nhật ở lần mở tới.",
         ["{0} found no newer Roblox to install."] = "{0} không thấy bản Roblox mới hơn để cài.",
+        ["Some Roblox windows didn't close, so Roblox wasn't updated."] = "Có cửa sổ Roblox chưa đóng nên chưa cập nhật được.",
+        ["Waiting for Roblox to finish updating…"] = "Đang chờ Roblox cập nhật xong…",
         ["Checking that the server lets {0} in…"] = "Đang xem server có cho {0} vào không…",
         ["That server is full or has closed, so the accounts go to another one with room for them all."] =
             "Server đó đã đầy hoặc đã đóng, các tài khoản sẽ vào server khác đủ chỗ cho tất cả.",

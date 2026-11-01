@@ -55,7 +55,6 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 | **Close** in the game bar, **Close Roblox**, **Force close** | None of the selected accounts is open on this PC. |
 | **Edit…**, **Join this server**, **Roblox profile**, **Open website**, the **Copy** items | Several accounts are selected. **Join this server** also needs a known server; **Open website** isn't available for Roblox VNG. |
 | **Run** on a preset | It has no accounts left, or another launch is running. |
-| **Graphics quality**, **Frame rate limit**, **Volume** | **Apply to** is **Nobody**. |
 | The kinds under **Which events** | **Windows notifications** is off. |
 | **Back up now** | No backup folder chosen yet. |
 | **Ask again** | You haven't skipped any question. |

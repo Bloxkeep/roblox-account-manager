@@ -38,6 +38,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -81,7 +82,7 @@ html [data-theme="dark" lang="vi"]
               span "Khởi chạy"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Phiên bản & đồ họa Roblox"
+              span "Phiên bản Roblox"
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #1l5qw3q
               span "Treo game"
@@ -107,13 +108,53 @@ html [data-theme="dark" lang="vi"]
             div.settings
               section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
                 h2.set-page-title [id="set-page-perf-h"] "Treo game"
+                div.set-grp [id="sec-rc"]
+                  h3.set-grp-title "Cấu hình Roblox"
+                  div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Chế độ"]
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "Treo máy"
+                        small "20 FPS · Đồ họa 1 · Tắt tiếng · Tự giới hạn RAM"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Vừa treo vừa chơi"
+                        small "45 FPS · Đồ họa 3 · Giữ âm lượng"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox gốc"
+                        small "Bloxkeep không đổi gì"
+                      button.on.rc-mode [type="button" aria-pressed="true"]
+                        span.rc-load
+                        b "Tự chỉnh"
+                        small "Chọn từng mục bên dưới"
+                    p.rc-note [id="s-rc-reopen"] "Có hiệu lực từ lần mở tài khoản sau."
+                    div.set-row
+                      div
+                        div.t "Áp dụng cho"
+                        div.d
+                          span [id="s-rc-hint"]
+                      div.ctl
+                        select.select [id="s-rc-mode" aria-label="Áp dụng cho" value="off"]
+                          option [value="off"] "Không áp dụng"
+                          option [value="all"] "Mọi tài khoản"
+                          option [value="marked"] "Tài khoản đã chọn"
                 div.set-grp [id="sec-perf"]
                   h3.set-grp-title "Giữ tài khoản trong game"
                   div.set-card
                     div.set-row
                       div
                         div.t "Tự vào lại"
-                        div.d "Áp dụng cho mọi tài khoản. Bật/tắt riêng từng tài khoản trong menu ⋯. Preset có đặt riêng thì cửa sổ do preset mở sẽ theo preset."
+                        div.d "Cho mọi tài khoản. Chỉnh riêng trong menu ⋯ hoặc Preset."
                       div.ctl
                         select.select [id="s-rejoin" aria-label="Tự vào lại" value="on" FOCUSED]
                           option [value="on"] "Bật cho mọi tài khoản"
@@ -122,7 +163,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Chống AFK"
-                        div.d "Treo game không bị kick khi bạn đi vắng hay đang dùng cửa sổ khác. Không hoạt động khi máy đang khóa."
+                        div.d "Không bị kick khi đi vắng. Không chạy khi máy khóa."
                       div.ctl
                         label.switch
                           input [id="s-antiafk" type="checkbox" aria-label="Chống AFK" checked=true]
@@ -130,7 +171,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Kiểm tra đăng nhập mỗi ngày"
-                        div.d "Phát hiện tài khoản bị Roblox đăng xuất để bạn biết trước khi bấm Vào game."
+                        div.d "Báo tài khoản nào bị Roblox đăng xuất."
                           span [id="s-daily-when"] "Kiểm tra lần cuối: 7:00."
                       div.ctl
                         label.switch
@@ -149,29 +190,31 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Tiết kiệm RAM cho cửa sổ chạy nền"
-                        div.d "Khi máy sắp hết RAM, cửa sổ chạy nền nhường RAM cho cửa sổ bạn đang chơi."
+                        div.d "Cửa sổ nền nhường RAM trước."
                       div.ctl
                         label.switch
                           input [id="s-trim" type="checkbox" aria-label="Tiết kiệm RAM cho cửa sổ chạy nền" checked=true]
                           span
                     div.set-row
                       div
-                        div.t "Giới hạn RAM cửa sổ treo"
-                        div.d "Cửa sổ Roblox thu nhỏ hoặc đang ẩn chỉ giữ tối đa chừng này RAM, phần còn lại để ở bộ nhớ ảo, nên chạy được nhiều tài khoản hơn. Mở cửa sổ ra là về bình thường. Tự động thì đặt mức riêng cho từng game, game nào cần thêm sẽ được nới."
+                        div.t "Giới hạn RAM khi thu nhỏ hoặc ẩn"
+                        div.d "Quá thấp có thể gây giật."
                       div.ctl
-                        select.select [id="s-ramlimit" aria-label="Giới hạn RAM cửa sổ treo" value="1024"]
+                        select.select [id="s-ramlimit" aria-label="Giới hạn RAM khi thu nhỏ hoặc ẩn" value="1024"]
                           option [value="0"] "Không giới hạn"
                           option [value="-1"] "Tự động (theo game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
                           option [value="1024"] "1 GB"
                           option [value="1536"] "1.5 GB"
                           option [value="2048"] "2 GB"
                     div.set-row
                       div
-                        div.t "Nhường nhân mạnh cho cửa sổ đang chơi"
-                        div.d "Cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows (như trong Task Manager): nhường cửa sổ bạn đang chơi và chạy chủ yếu trên 16 nhân tiết kiệm của CPU, chỉ dùng nhân mạnh khi nhân đó đang rảnh. Bấm vào cửa sổ nào là cửa sổ đó chạy hết tốc lực ngay. Treo nhiều tài khoản vẫn mượt, laptop mát hơn."
+                        div.t "Ưu tiên cửa sổ đang chơi"
+                        div.d "Cửa sổ nền chạy chậm lại để cửa sổ này mượt hơn."
                       div.ctl
                         label.switch
-                          input [id="s-cores" type="checkbox" aria-label="Nhường nhân mạnh cho cửa sổ đang chơi" checked=false]
+                          input [id="s-cores" type="checkbox" aria-label="Ưu tiên cửa sổ đang chơi" checked=false]
                           span
 #layer
 #toasts

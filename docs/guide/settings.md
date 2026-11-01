@@ -41,20 +41,17 @@ For the Microsoft Store option, Bloxkeep starts the Store's Roblox inside its pa
 
 </details>
 
-## Roblox version & graphics
+## Roblox version
 
 | Row | What it does | Default |
 |---|---|---|
 | **Roblox version** | "Up to date", or that a newer one is out and how to get it. Roblox updates the next time it opens; with **RobloxPlayerBeta directly**, open Roblox normally once; the Microsoft Store's Roblox updates through the Store. | — |
+| **Close, update, reopen** | Shown when a window runs an old build. Closes the Roblox windows, updates Roblox and reopens the ones in a game. It asks first. | — |
+| **Update automatically** | A launcher updates Roblox while no Roblox window is open. | On |
 | **Installed build**, **Newest from Roblox** | The build on this PC and the launcher it comes from; the newest build, only when different. | — |
 | **Multi-Roblox check**, **Next Roblox build** | Checks each new Roblox build for changes that could stop Multi-Roblox. **How it works** explains it; a warning offers **Check for a Bloxkeep update**. | — |
 | **Update history** | Every Roblox build seen on this PC, newest first, with **Notes** (Roblox's release notes for game creators). | — |
-| **Apply to** | Who gets the three values below: **Nobody**, **All accounts**, **Chosen accounts** (**Choose accounts…**, or **⋯ › Use Roblox settings** on each account). | Nobody |
-| **Graphics quality** | **Leave as is**, 1–10. | Leave as is |
-| **Frame rate limit** | **Leave as is**, 30 / 60 / 144 / 240 FPS. | Leave as is |
-| **Volume** | **Leave as is**, **Muted**, 25 / 50 / 75 / 100 %. | Leave as is |
 
-The three values are greyed out while **Apply to** is **Nobody**. Bloxkeep writes them into Roblox's settings just before opening an account and puts your own back once Roblox is running.
 
 ## Staying in game
 
@@ -62,13 +59,20 @@ Details for each row are in [Staying in game](staying-in-game.md).
 
 | Row | What it does | Default |
 |---|---|---|
+| **Mode** | **AFK farming**, **Play and farm**, **Roblox as is** or **Custom**. Each one shows what it sets; **Custom** opens the rows below. | Roblox as is |
+| **Apply to** | Who gets the three values below: **Nobody**, **All accounts**, **Chosen accounts** (**Choose accounts…**, or **⋯ › Use Roblox settings** on each account). | Nobody |
+| **Graphics quality** | **Leave as is**, 1–10. | Leave as is |
+| **Frame rate limit** | **Leave as is**, 15 / 20 / 30 / 45 / 60 / 120 / 144 / 240 FPS. An account's own limit (**⋯ › FPS limit in Roblox**) goes over this one. | Leave as is |
+| **Volume** | **Leave as is**, **Muted**, 25 / 50 / 75 / 100 %. | Leave as is |
 | **Auto-rejoin** | **On for all accounts** / **Off for all accounts** ("On for *n* of *m*" when mixed). Each account's ⋯ menu sets it for that one. | Off |
 | **Anti-AFK** | Stay in game while you're away or busy in another window. Doesn't work when the PC is locked. | Off |
 | **Check sign-ins every day** | Finds accounts Roblox signed out, before you press Play. Shows "Last check: …". | On |
 | **Low RAM warning** | Asks before opening when RAM or Windows' virtual memory is short, and warns while playing. | On |
-| **Save RAM on background windows** | Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first. | Off |
-| **RAM limit for resting windows** | **No limit**, **Auto (per game)**, **1 GB**, **1.5 GB**, **2 GB**: the most a minimized or hidden Roblox window keeps in RAM, the rest in virtual memory. See [Staying in game](staying-in-game.md). | No limit |
-| **Fast cores for the window you play** | Roblox windows in the background run in Windows' efficiency mode: they give way to the one you play and lean on the CPU's efficiency cores. | Off |
+| **Save RAM on background windows** | Roblox windows you aren't playing in get a low memory priority, so Windows takes RAM from them first. One minimized or hidden for a minute has its RAM emptied once. | Off |
+| **RAM limit when minimized or hidden** | **No limit**, **Auto (per game)**, **512 MB**, **768 MB**, **1 GB**, **1.5 GB**, **2 GB**: the most a minimized or hidden Roblox window keeps in RAM, the rest in virtual memory. See [Staying in game](staying-in-game.md). | No limit |
+| **Put the window you play first** | Roblox windows in the background run in Windows' efficiency mode: they give way to the one you play and lean on the CPU's efficiency cores. | Off |
+
+The three value rows show once **Apply to** isn't **Nobody**. Bloxkeep writes them into Roblox's settings just before opening an account and puts your own back once Roblox is running.
 
 ## Notifications
 
@@ -89,7 +93,7 @@ Every row is explained in [Sending to Discord](discord.md): **Show on my Discord
 
 | Row | What it does | Default |
 |---|---|---|
-| **Theme** | **Sync with Windows** (light or dark like Windows), or one of 74 themes in **Basic**, **Scenery**, **Colourful**, **Styles** and **Seasonal**. Arrow keys try them; the pick is saved once you stop. | Dark |
+| **Theme** | **Sync with Windows** (light or dark like Windows), or one of 98 themes in **Basic**, **Scenery**, **Colourful**, **Styles**, **Seasonal**, **Animated** and **Paintings**. Arrow keys try them; the pick is saved once you stop. | Dark |
 | **Your own › Custom** | Pick a **Background color** and an **Accent color** (buttons, switches, what is selected); the words turn light or dark to stay readable. **Choose…** puts a picture or a video (MP4, WebM) from your PC behind the page; **Background color over the picture** sets how much it shows through and **Blur the background** blurs it. A video plays muted, only while the window is open. Bloxkeep keeps a copy in its data folder. **Save this theme** keeps it under a name. | — |
 | **Your themes** | The themes you saved: click one to use it. **Save as a file** shares one as a `.bloxkeeptheme` file, and **Add from file…** adds one someone shared. | — |
 | **Language** | EN / VI. | EN |

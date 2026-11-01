@@ -76,6 +76,7 @@ export function DiscordPage({ title }: { title: string }) {
   const picked = (s.accounts || []).length;
 
   return <Page id="discord" title={title}>
+    <DiscordPreview name={d.username} avatar={d.avatarUrl} plain={style === 'plain'} language={lang} hide={hideNames} ping={d.pings?.drop} minutes={+minutes || 5} />
     {/* "Playing Bloxkeep" on the person's profile (the Discord app on this PC), once Bloxkeep's Discord application exists. */}
     {d.presenceReady ? <Group id="dc-profile">
       <Row title={t('dc.presence')} desc={t('dc.presenceDesc')}>
@@ -232,6 +233,66 @@ export function DiscordPage({ title }: { title: string }) {
       </More>
     </Group>
   </Page>;
+}
+
+// How the page's choices come out in Discord, with made-up accounts: an alert or the status message, in the words
+// AppController.DiscordAlerts.cs and BoardMessage send, as a card (colour by meaning) or plain text (DiscordWebhook.PlainText).
+function DiscordPreview({ name, avatar, plain, language, hide, ping, minutes }: {
+  name?: string; avatar?: string; plain: boolean; language: string; hide: boolean; ping?: string; minutes: number;
+}) {
+  const { t, tIn, lang: appLang, logo } = useHost();
+  const [kind, setKind] = useState<'alert' | 'board'>('alert');
+  const [failed, setFailed] = useState('');
+  const w = (key: string) => tIn(language === 'en' || language === 'vi' ? language : appLang, `dcv.${key}`);
+  const who = (n: number) => hide ? tIn(language === 'en' || language === 'vi' ? language : appLang, 'hide.account').replace('{n}', String(n)) : `Player_0${n}`;
+  const m = kind === 'alert'
+    ? {
+      author: who(1), title: w('alertTitle'), color: 'yellow', text: [] as string[],
+      fields: [{ name: w('game'), lines: ['Obby'], link: true }, { name: w('played'), lines: [w('long')] }, { name: w('reason'), lines: [w('reasonSample')] }],
+      small: '', footer: w('alertFoot'),
+    }
+    : {
+      author: '', title: w('boardTitle'), color: 'blue', text: [`1 ${w('boardOff')}`],
+      fields: [
+        { name: who(1), lines: ['Obby', `${w('inGame')} · ${w('long')}`, 'PID 1234 · 1228 MB'], link: true },
+        { name: who(2), lines: ['Obby', `${w('off')} · ${w('short')}`, 'PID 5678 · 1229 MB'], link: true },
+      ],
+      small: w('ram'), footer: w('boardFoot').replace('{n}', String(minutes)),
+    };
+  const [mode] = (kind === 'alert' && ping || 'none').split(':');
+  const mention = { here: '@here', everyone: '@everyone', user: '@user', role: '@role' }[mode];
+  const picture = avatar && failed !== avatar ? avatar : logo;
+  return <Group id="dc-preview" title={w('title')}>
+    <div className="tg-tabs" id="s-dc-preview-kinds">
+      {([['alert', 'dc.events'], ['board', 'dc.board']] as const).map(([k, label]) => <button type="button" key={k} className={`chip ${k === kind ? 'on' : ''}`} data-kind={k} aria-pressed={k === kind}
+        onClick={() => setKind(k)}>{t(label)}</button>)}
+    </div>
+    <div className="dcv" id="s-dc-preview" inert>
+      <img className="dcv-pic" src={picture} alt="" onError={() => setFailed(avatar || '')} />
+      <div className="dcv-body">
+        <div className="dcv-head"><b>{name || 'Bloxkeep'}</b><span className="dcv-app">APP</span><time>14:30</time></div>
+        {mention ? <div><span className="dcv-at">{mention}</span></div> : null}
+        {plain
+          ? <div className="dcv-plain">
+            <div><b>{m.author ? `${m.author} · ` : ''}{m.title}</b></div>
+            {m.text.map(l => <div key={l}>{l}</div>)}
+            {m.small ? <small>{m.small}</small> : null}
+            {m.fields.map(f => <div key={f.name}><b>{f.name}:</b> {f.lines.join(' · ')}</div>)}
+            <small>{m.footer}</small>
+          </div>
+          : <div className={`dcv-embed ${m.color}`}>
+            {m.author ? <div className="dcv-author">{m.author}</div> : null}
+            <div className="dcv-title">{m.title}</div>
+            {m.text.map(l => <div key={l}>{l}</div>)}
+            {m.small ? <small>{m.small}</small> : null}
+            <div className="dcv-fields">{m.fields.map(f => <div key={f.name}><b>{f.name}</b>
+              {f.lines.map((l, i) => <div key={l} className={f.link && i === 0 ? 'dcv-link' : ''}>{l}</div>)}</div>)}</div>
+            <small className="dcv-foot">{m.footer}</small>
+          </div>}
+      </div>
+    </div>
+    <p className="set-hint">{w('sample')}</p>
+  </Group>;
 }
 
 // Who a message pings: nobody, @here and @everyone save at once; a user or a role waits for its ID in the box beside the

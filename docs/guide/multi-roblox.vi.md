@@ -63,7 +63,7 @@ Nút **Tắt Multi-Roblox** ở cuối hộp thoại để tắt tính năng.
 
 ## Kiểm tra Multi-Roblox
 
-Nằm ở **Cài đặt › Phiên bản & đồ họa Roblox › Cập nhật Roblox › Kiểm tra Multi-Roblox**. Mỗi khi Roblox có bản mới, Bloxkeep xem bản đó có thay đổi gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn.
+Nằm ở **Cài đặt › Phiên bản Roblox › Cập nhật Roblox › Kiểm tra Multi-Roblox**. Mỗi khi Roblox có bản mới, Bloxkeep xem bản đó có thay đổi gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn.
 
 <img src="../screenshots/vi/roblox-updates.png" width="760" alt="Cài đặt, trang Phiên bản và đồ họa Roblox: Kiểm tra Multi-Roblox báo Có thay đổi, có thể bị chặn, kèm dòng ghi chú nên làm gì và lịch sử cập nhật">
 

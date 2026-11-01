@@ -1,0 +1,905 @@
+== light
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Staying in game"
+                div.set-grp [id="sec-rc"]
+                  h3.set-grp-title "Roblox settings"
+                  div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Mode"]
+                      button.on.rc-mode [type="button" aria-pressed="true" FOCUSED]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "AFK farming"
+                        small "20 FPS · Graphics 1 · Muted · Auto RAM limit"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Play and farm"
+                        small "45 FPS · Graphics 3 · Keeps volume"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox as is"
+                        small "Bloxkeep changes nothing"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load
+                        b "Custom"
+                        small "Set each one below"
+                    p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Keeping accounts going"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Auto-rejoin"
+                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
+                      div.ctl
+                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
+                          option [value="on"] "On for all accounts"
+                          option [value="off"] "Off for all accounts"
+                          option [value="some" disabled hidden] "On for 1 of 7"
+                    div.set-row
+                      div
+                        div.t "Anti-AFK"
+                        div.d "Stay in game while you’re away. Not while the PC is locked."
+                      div.ctl
+                        label.switch
+                          input [id="s-antiafk" type="checkbox" aria-label="Anti-AFK" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Check sign-ins every day"
+                        div.d "Tells you which accounts Roblox signed out."
+                          span [id="s-daily-when"] "Last check: 7:00 AM."
+                      div.ctl
+                        label.switch
+                          input [id="s-daily" type="checkbox" aria-label="Check sign-ins every day" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "RAM & CPU"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Low RAM warning"
+                      div.ctl
+                        label.switch
+                          input [id="s-memwarn" type="checkbox" aria-label="Low RAM warning" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Save RAM on background windows"
+                        div.d "Background windows give up RAM first."
+                      div.ctl
+                        label.switch
+                          input [id="s-trim" type="checkbox" aria-label="Save RAM on background windows" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "RAM limit when minimized or hidden"
+                        div.d "Too low can make windows slow."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="RAM limit when minimized or hidden" value="-1"]
+                          option [value="0"] "No limit"
+                          option [value="-1"] "Auto (per game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Put the window you play first"
+                        div.d "Background windows slow down so it runs smoother."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Put the window you play first" checked=true]
+                          span
+#layer
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  setSettings {"ramLimitMb":-1,"robloxConfig":{"fps":20,"graphics":1,"mode":"all","volume":0},"splitCores":true,"trimBackground":true}
+== medium
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Staying in game"
+                div.set-grp [id="sec-rc"]
+                  h3.set-grp-title "Roblox settings"
+                  div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Mode"]
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "AFK farming"
+                        small "20 FPS · Graphics 1 · Muted · Auto RAM limit"
+                      button.on.rc-mode [type="button" aria-pressed="true" FOCUSED]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Play and farm"
+                        small "45 FPS · Graphics 3 · Keeps volume"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox as is"
+                        small "Bloxkeep changes nothing"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load
+                        b "Custom"
+                        small "Set each one below"
+                    p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Keeping accounts going"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Auto-rejoin"
+                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
+                      div.ctl
+                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
+                          option [value="on"] "On for all accounts"
+                          option [value="off"] "Off for all accounts"
+                          option [value="some" disabled hidden] "On for 1 of 7"
+                    div.set-row
+                      div
+                        div.t "Anti-AFK"
+                        div.d "Stay in game while you’re away. Not while the PC is locked."
+                      div.ctl
+                        label.switch
+                          input [id="s-antiafk" type="checkbox" aria-label="Anti-AFK" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Check sign-ins every day"
+                        div.d "Tells you which accounts Roblox signed out."
+                          span [id="s-daily-when"] "Last check: 7:00 AM."
+                      div.ctl
+                        label.switch
+                          input [id="s-daily" type="checkbox" aria-label="Check sign-ins every day" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "RAM & CPU"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Low RAM warning"
+                      div.ctl
+                        label.switch
+                          input [id="s-memwarn" type="checkbox" aria-label="Low RAM warning" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Save RAM on background windows"
+                        div.d "Background windows give up RAM first."
+                      div.ctl
+                        label.switch
+                          input [id="s-trim" type="checkbox" aria-label="Save RAM on background windows" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "RAM limit when minimized or hidden"
+                        div.d "Too low can make windows slow."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="RAM limit when minimized or hidden" value="0"]
+                          option [value="0"] "No limit"
+                          option [value="-1"] "Auto (per game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Put the window you play first"
+                        div.d "Background windows slow down so it runs smoother."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Put the window you play first" checked=true]
+                          span
+#layer
+#toasts
+-- commands
+  setSettings {"ramLimitMb":0,"robloxConfig":{"fps":45,"graphics":3,"mode":"all","volume":-1},"splitCores":true,"trimBackground":true}
+== own
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Staying in game"
+                div.set-grp [id="sec-rc"]
+                  h3.set-grp-title "Roblox settings"
+                  div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Mode"]
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "AFK farming"
+                        small "20 FPS · Graphics 1 · Muted · Auto RAM limit"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Play and farm"
+                        small "45 FPS · Graphics 3 · Keeps volume"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox as is"
+                        small "Bloxkeep changes nothing"
+                      button.on.rc-mode [type="button" aria-pressed="true"]
+                        span.rc-load
+                        b "Custom"
+                        small "Set each one below"
+                    p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
+                    div.set-row
+                      div
+                        div.t "Apply to"
+                        div.d
+                          span [id="s-rc-hint"] "Every account Bloxkeep opens gets these settings."
+                      div.ctl
+                        select.select [id="s-rc-mode" aria-label="Apply to" value="all"]
+                          option [value="off"] "Nobody"
+                          option [value="all"] "All accounts"
+                          option [value="marked"] "Chosen accounts"
+                    div.set-row
+                      div
+                        div.t "Graphics quality"
+                      div.ctl
+                        select.select [id="s-rc-graphics" aria-label="Graphics quality" value="3"]
+                          option [value="0"] "Leave as is"
+                          option [value="1"] "1"
+                          option [value="2"] "2"
+                          option [value="3"] "3"
+                          option [value="4"] "4"
+                          option [value="5"] "5"
+                          option [value="6"] "6"
+                          option [value="7"] "7"
+                          option [value="8"] "8"
+                          option [value="9"] "9"
+                          option [value="10"] "10"
+                    div.set-row
+                      div
+                        div.t "Frame rate limit"
+                      div.ctl
+                        select.select [id="s-rc-fps" aria-label="Frame rate limit" value="60" FOCUSED]
+                          option [value="0"] "Leave as is"
+                          option [value="15"] "15 FPS"
+                          option [value="20"] "20 FPS"
+                          option [value="30"] "30 FPS"
+                          option [value="45"] "45 FPS"
+                          option [value="60"] "60 FPS"
+                          option [value="120"] "120 FPS"
+                          option [value="144"] "144 FPS"
+                          option [value="240"] "240 FPS"
+                    div.set-row
+                      div
+                        div.t "Volume"
+                      div.ctl
+                        select.select [id="s-rc-volume" aria-label="Volume" value="-1"]
+                          option [value="-1"] "Leave as is"
+                          option [value="0"] "Muted"
+                          option [value="25"] "25%"
+                          option [value="50"] "50%"
+                          option [value="75"] "75%"
+                          option [value="100"] "100%"
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Keeping accounts going"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Auto-rejoin"
+                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
+                      div.ctl
+                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
+                          option [value="on"] "On for all accounts"
+                          option [value="off"] "Off for all accounts"
+                          option [value="some" disabled hidden] "On for 1 of 7"
+                    div.set-row
+                      div
+                        div.t "Anti-AFK"
+                        div.d "Stay in game while you’re away. Not while the PC is locked."
+                      div.ctl
+                        label.switch
+                          input [id="s-antiafk" type="checkbox" aria-label="Anti-AFK" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Check sign-ins every day"
+                        div.d "Tells you which accounts Roblox signed out."
+                          span [id="s-daily-when"] "Last check: 7:00 AM."
+                      div.ctl
+                        label.switch
+                          input [id="s-daily" type="checkbox" aria-label="Check sign-ins every day" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "RAM & CPU"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Low RAM warning"
+                      div.ctl
+                        label.switch
+                          input [id="s-memwarn" type="checkbox" aria-label="Low RAM warning" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Save RAM on background windows"
+                        div.d "Background windows give up RAM first."
+                      div.ctl
+                        label.switch
+                          input [id="s-trim" type="checkbox" aria-label="Save RAM on background windows" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "RAM limit when minimized or hidden"
+                        div.d "Too low can make windows slow."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="RAM limit when minimized or hidden" value="0"]
+                          option [value="0"] "No limit"
+                          option [value="-1"] "Auto (per game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Put the window you play first"
+                        div.d "Background windows slow down so it runs smoother."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Put the window you play first" checked=true]
+                          span
+#layer
+#toasts
+-- commands
+  setSettings {"robloxConfig":{"fps":60}}
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & security"
+            button.set-nav-item [type="button"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Staying in game"
+                div.set-grp [id="sec-rc"]
+                  h3.set-grp-title "Roblox settings"
+                  div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Mode"]
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "AFK farming"
+                        small "20 FPS · Graphics 1 · Muted · Auto RAM limit"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Play and farm"
+                        small "45 FPS · Graphics 3 · Keeps volume"
+                      button.on.rc-mode [type="button" aria-pressed="true" FOCUSED]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox as is"
+                        small "Bloxkeep changes nothing"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load
+                        b "Custom"
+                        small "Set each one below"
+                    p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Keeping accounts going"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Auto-rejoin"
+                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
+                      div.ctl
+                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
+                          option [value="on"] "On for all accounts"
+                          option [value="off"] "Off for all accounts"
+                          option [value="some" disabled hidden] "On for 1 of 7"
+                    div.set-row
+                      div
+                        div.t "Anti-AFK"
+                        div.d "Stay in game while you’re away. Not while the PC is locked."
+                      div.ctl
+                        label.switch
+                          input [id="s-antiafk" type="checkbox" aria-label="Anti-AFK" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Check sign-ins every day"
+                        div.d "Tells you which accounts Roblox signed out."
+                          span [id="s-daily-when"] "Last check: 7:00 AM."
+                      div.ctl
+                        label.switch
+                          input [id="s-daily" type="checkbox" aria-label="Check sign-ins every day" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "RAM & CPU"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Low RAM warning"
+                      div.ctl
+                        label.switch
+                          input [id="s-memwarn" type="checkbox" aria-label="Low RAM warning" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Save RAM on background windows"
+                        div.d "Background windows give up RAM first."
+                      div.ctl
+                        label.switch
+                          input [id="s-trim" type="checkbox" aria-label="Save RAM on background windows" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "RAM limit when minimized or hidden"
+                        div.d "Too low can make windows slow."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="RAM limit when minimized or hidden" value="0"]
+                          option [value="0"] "No limit"
+                          option [value="-1"] "Auto (per game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Put the window you play first"
+                        div.d "Background windows slow down so it runs smoother."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Put the window you play first" checked=false]
+                          span
+#layer
+#toasts
+-- commands
+  setSettings {"ramLimitMb":0,"robloxConfig":{"fps":0,"graphics":0,"mode":"off","volume":-1},"splitCores":false,"trimBackground":false}

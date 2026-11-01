@@ -4,6 +4,9 @@
    The app's background per theme is repeated in Themes.cs (window and title bar). */
 /* Dark is the base for every dark theme; each one below changes only what differs. */
 :root, [data-theme="dark"], [data-theme="dim"], [data-theme="black"],
+[data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"],
+[data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="rose"], [data-theme="olive"], [data-theme="solarized"],
+[data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"],
 [data-theme="frost"], [data-theme="ocean"], [data-theme="forest"], [data-theme="mocha"], [data-theme="grape"], [data-theme="terminal"],
 [data-theme="halloween"], [data-theme="lunar"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="macosdark"], [data-theme="kde"],
 [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="midnight"], [data-theme="indigo"], [data-theme="crimson"], [data-theme="teal"], [data-theme="amber"], [data-theme="chalkboard"], [data-theme="arcade"], [data-theme="cyberpunk"],
@@ -16,8 +19,8 @@
   --surface-3: #1d2331;
   --raised: #151a25;
   --field: #0b0e15;
-  --card: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .015));
-  --card-hover: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
+  --card: #12161f;
+  --card-hover: #161b26;
   --tint: 255, 255, 255;
   --line: rgba(var(--tint), .06);
   --line-2: rgba(var(--tint), .1);
@@ -783,6 +786,8 @@
   --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 /* Light is the base for the light themes. */
+[data-theme="dalat"], [data-theme="savanna"], [data-theme="coral"],
+[data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"],
 [data-theme="light"], [data-theme="paper"], [data-theme="sakura"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="macos"], [data-theme="gnome"], [data-theme="ubuntu"],
 [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"], [data-theme="gray"], [data-theme="contrastlight"], [data-theme="sky"], [data-theme="lavender"], [data-theme="peach"], [data-theme="mint"], [data-theme="notebook"], [data-theme="brutal"], [data-theme="macclassic"],
 [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="candy"], [data-theme="matcha"], [data-theme="newspaper"], [data-theme="retro"], [data-theme="gameboy"],
@@ -1653,8 +1658,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .nav span { flex: 1; }
 .nav em { font-style: normal; font-size: 12px; color: var(--muted); background: var(--hover); padding: 1px 8px; border-radius: 20px; }
 
-.side-card { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 12px; contain: layout paint style; }
-.side-card h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.side-card { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; padding: 12px 6px; contain: layout paint style; }
+.side-card h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); font-weight: 650; }
 .sys-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--text-2); }
 .sys-row b { font: 650 18px/1.2 var(--font-display); color: var(--text); }
 .meter { position: relative; height: 6px; border-radius: 6px; background: var(--surface-3); overflow: hidden; margin: 8px 0 4px; }
@@ -1664,8 +1669,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 #sys-card.hot .sys-foot { color: var(--warn-ink); }
 .sys-foot { font-size: 11.5px; color: var(--muted); }
 
-.multi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); transition: border-color .15s, background .15s; }
-.multi:hover { border-color: var(--line-3); }
+.multi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 6px; border-radius: 0; border: 0; border-top: 1px solid var(--line); background: transparent; transition: border-color .15s, background .15s; }
+.multi:hover { background: var(--hover); }
 .multi-open { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .multi div { flex: 1; min-width: 0; }
 .multi b { display: block; font-size: 13px; }
@@ -1674,7 +1679,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .led { width: 10px; height: 10px; border-radius: 50%; background: var(--dim); flex: none; }
 .multi.ok .led { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
 .multi.ok small { color: var(--ok-ink); }
-.multi.warn { border-color: var(--warn-line); background: color-mix(in srgb, var(--warn) 6%, transparent); }
+.multi.warn { background: color-mix(in srgb, var(--warn) 8%, transparent); border-radius: 12px; }
 .multi.warn .led { background: var(--warn); animation: blink 1.4s ease-in-out infinite; }
 .multi.warn small { color: var(--warn-ink); }
 @keyframes blink { 50% { opacity: .35; } }
@@ -1718,8 +1723,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 #chips.fade-r { mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent); }
 #chips.fade-l { mask-image: linear-gradient(to left, #000 calc(100% - 72px), transparent); }
 #chips.fade-l.fade-r { mask-image: linear-gradient(to right, transparent, #000 72px, #000 calc(100% - 72px), transparent); }
-.sort-btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; flex: none; border-radius: 20px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font-size: 13px; font-weight: 600; white-space: nowrap; }
-.sort-btn:hover { border-color: var(--line-3); color: var(--text); }
+.sort-btn { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; flex: none; border-radius: 9px; border: 0; background: transparent; color: var(--text-2); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.sort-btn:hover { background: var(--hover); color: var(--text); }
 .sort-btn .i { width: 15px; height: 15px; flex: none; }
 #group-btn { max-width: 240px; }
 #group-btn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1728,8 +1733,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .lang button:hover { color: var(--text); }
 .lang button.on { background: var(--inv); color: var(--inv-ink); }
 .lock-lang { position: absolute; top: 18px; right: 22px; z-index: 1; }
-.chip { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 20px; border: 1px solid var(--line-2); background: rgba(var(--tint), .02); color: var(--text-2); font-size: 13px; font-weight: 600; transition: all .15s; }
-.chip:hover { border-color: var(--line-3); color: var(--text); }
+.chip { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border-radius: 9px; border: 0; background: transparent; color: var(--text-2); font-size: 13px; font-weight: 600; transition: all .15s; }
+.chip:hover { background: var(--hover); color: var(--text); }
 .chip.on { background: var(--inv); color: var(--inv-ink); border-color: transparent; }
 .chip em { font-style: normal; font-size: 11.5px; padding: 0 7px; border-radius: 10px; background: var(--active); }
 .chip.on em { background: color-mix(in srgb, var(--inv-ink) 14%, transparent); }
@@ -1740,11 +1745,11 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 
 /* ───────── account card ───────── */
 .card {
-  position: relative; display: flex; flex-direction: column; padding: 18px 16px 14px; border-radius: 20px; cursor: pointer;
+  position: relative; display: flex; flex-direction: column; padding: 14px; border-radius: 16px; cursor: pointer;
   background: var(--card); border: 1px solid var(--line);
   transition: transform .16s ease, border-color .16s, box-shadow .16s, background .16s; contain: layout paint;
   /* Offscreen cards skip layout and paint entirely; matters with hundreds of accounts. */
-  content-visibility: auto; contain-intrinsic-size: auto 340px;
+  content-visibility: auto; contain-intrinsic-size: auto 230px;
 }
 .grid.intro .card { animation: pop .3s ease both; }
 /* Compact list: a flat table, one thin line per account. */
@@ -1754,15 +1759,15 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .card.row:hover { transform: none; background: var(--hover); }
 .card.row.local { background: color-mix(in srgb, var(--ok) 5%, transparent); }
 .card.row.sel { background: var(--active); box-shadow: inset 3px 0 0 var(--inv); border-color: var(--line); }
-.avatar.sm { width: 30px; height: 30px; margin: 0; padding: 2px; flex: none; }
-.avatar.sm img, .avatar.sm .initials { border-width: 2px; }
+.avatar.sm { width: 30px; height: 30px; margin: 0; padding: 1px; flex: none; border-radius: 9px; }
+.avatar.sm img, .avatar.sm .initials { border-width: 1.5px; border-radius: 8px; }
 .avatar.sm .initials { font-size: 11px; }
-.avatar.sm .pdot { width: 10px; height: 10px; border-width: 2px; right: -1px; bottom: -1px; }
-/* When the line is tight the status gives way first, then the @username, and the name last. */
-.row-name { flex: 0 .3 240px; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.avatar.sm .pdot { width: 10px; height: 10px; border-width: 2px; border-radius: 4px; right: -2px; bottom: -2px; }
+/* Room for a 20-letter name and @username in full. When the line is tight the status gives way first down to its minimum, then the @username, and the name last. */
+.row-name { flex: 0 .3 320px; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .row-name b { font-size: 13.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-name small { flex-shrink: 4; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-status { flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-status { flex: 1 1 0; min-width: 130px; font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-status.ingame { color: var(--ok-ink); }
 .row-status.online, .row-status.launching { color: var(--online-ink); }
 .row-status.studio { color: var(--studio-ink); }
@@ -1781,7 +1786,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .cell > * { grid-area: 1 / 1; }
 .sizer { visibility: hidden; display: inline-flex; align-items: center; }
 .row-status .badge { height: 20px; margin-right: 8px; padding: 0 7px; font-size: 11px; vertical-align: 1px; } /* the card's red pill: banned / needs sign-in */
-.sort-btn.on { border-color: var(--line-3); color: var(--text); } /* a group chosen in the Group menu */
+.sort-btn.on { background: var(--active); color: var(--text); } /* a group chosen in the Group menu */
 .row-live { flex: none; width: 64px; text-align: right; font-size: 12px; color: var(--ok-ink); font-variant-numeric: tabular-nums; }
 .row-actions { flex: none; display: flex; gap: 2px; }
 /* A row's main button, with its words (RowAction keeps every row's as wide as the longest). */
@@ -1797,57 +1802,57 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .row-act:disabled { opacity: .5; cursor: default; }
 .icon-btn.play { color: var(--ok); }
 .icon-btn.stop { color: var(--bad); }
-.seg { display: inline-flex; flex: none; gap: 2px; padding: 2px; height: 32px; border-radius: 20px; border: 1px solid var(--line-2); }
+.seg { display: inline-flex; flex: none; gap: 2px; padding: 2px; height: 30px; border-radius: 9px; border: 0; background: var(--hover); }
 .seg:empty { display: none; }
-.seg button { display: grid; place-items: center; width: 30px; border-radius: 16px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button { display: grid; place-items: center; width: 28px; border-radius: 7px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .seg button.on { background: var(--surface-3); color: var(--text); }
 .seg .i { width: 15px; height: 15px; }
 @media (max-width: 1180px) { .grid.list { margin: 4px 22px 24px; } .start-steps { margin: 4px 22px 12px; } }
 @media (max-width: 900px) { .row-meta, .row-live { display: none; } .row-name { flex-basis: 170px; } .row-name small { display: none; } }
 @keyframes pop { from { opacity: 0; transform: translateY(6px); } }
-.card:hover { transform: translateY(-2px); border-color: var(--line-3); background: var(--card-hover); }
+.card:hover { border-color: var(--line-3); background: var(--card-hover); }
 .card.sel { border-color: color-mix(in srgb, var(--inv) 80%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--inv) 45%, transparent); }
-.card.local { background: linear-gradient(color-mix(in srgb, var(--ok) 7%, transparent), color-mix(in srgb, var(--ok) 7%, transparent)), var(--card); }
-.card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 24px; margin: -4px -2px 2px; }
-.check { flex: none; width: 21px; height: 21px; display: grid; place-items: center; border-radius: 7px; border: 1.5px solid var(--line-3); color: var(--text); opacity: .3; transition: opacity .15s, background .15s; }
+.card.local { background: linear-gradient(color-mix(in srgb, var(--ok) 6%, transparent), color-mix(in srgb, var(--ok) 6%, transparent)), var(--card); border-color: var(--ok-line); }
+/* The tick stands in the corner; the card says the rest in its own lines. */
+.check { position: absolute; top: 12px; right: 12px; z-index: 1; width: 21px; height: 21px; display: grid; place-items: center; border-radius: 7px; border: 1.5px solid var(--line-3); color: var(--text); opacity: .45; transition: opacity .15s, background .15s; }
+.tag.old { border: 0; color: var(--warn-ink); background: color-mix(in srgb, var(--warn-ink) 14%, transparent); font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.ver { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.card.row .check { position: static; flex: none; } /* a list row's comes first: in the corner it covered the row's ⋮ */
 .check .i { width: 13px; height: 13px; stroke-width: 3; opacity: 0; }
 .card:hover .check, .card.sel .check { opacity: 1; }
 .card.sel .check { background: var(--inv); border-color: var(--inv); color: var(--inv-ink); }
 .card.sel .check .i { opacity: 1; }
 .badge { min-width: 0; overflow: hidden; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; }
-.badge.run { color: var(--ok-ink); background: var(--ok-soft); border: 1px solid var(--ok-line); }
-/* The ring is a copy of the dot scaled up and faded (transform/opacity only: no repaint every frame, unlike a growing box-shadow). */
-.badge.run .pulse { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
-/* A few pulses when a window starts, then a still dot (and on hover): pulsing for hours kept the page drawing ~180 frames a second. */
-.badge.run .pulse::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--ok); opacity: .6; animation: pulse 1.8s 3; }
-.card:hover .badge.run .pulse::after { animation: pulse 1.8s infinite; }
-@keyframes pulse { 70% { transform: scale(3); opacity: 0; } 100% { transform: scale(3); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .badge.run .pulse::after { animation: none; opacity: 0; } }
-.badge.wait { color: var(--online-ink); background: var(--online-soft); border: 1px solid var(--online-line); }
 .badge.bad { color: var(--bad-ink); background: var(--bad-soft); border: 1px solid var(--bad-line); }
 
-.avatar { position: relative; width: 78px; height: 78px; margin: 0 auto 12px; border-radius: 50%; padding: 3px; background: var(--line-2); }
+.avatar { position: relative; width: 78px; height: 78px; margin: 0 auto 12px; border-radius: 16px; padding: 2px; background: var(--line-2); }
 .avatar.ingame { background: var(--ok); }
 .avatar.online { background: var(--online); }
 .avatar.invalid { background: color-mix(in srgb, var(--bad) 60%, transparent); }
 .avatar.kicked { background: var(--warn); }
-.avatar img, .avatar .initials { width: 100%; height: 100%; border-radius: 50%; display: block; object-fit: cover; background: var(--surface-3); border: 3px solid var(--surface); }
+.avatar img, .avatar .initials { width: 100%; height: 100%; border-radius: 14px; display: block; object-fit: cover; background: var(--surface-3); border: 2px solid var(--surface); }
 .avatar .initials { display: grid; place-items: center; font: 700 24px var(--font-display); color: #fff; background: hsl(var(--h) 38% 40%); }
-.pdot { position: absolute; right: 3px; bottom: 3px; width: 18px; height: 18px; border-radius: 50%; border: 3.5px solid var(--surface); background: var(--dim); }
+.pdot { position: absolute; right: -2px; bottom: -2px; width: 16px; height: 16px; border-radius: 6px; border: 3px solid var(--surface); background: var(--dim); }
 .pdot.ingame { background: var(--ok); }
 .pdot.online { background: var(--online); }
 .pdot.studio { background: var(--studio); }
 .pdot.kicked { background: var(--warn); }
 
-.name { font: 650 16px/1.25 var(--font-display); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; }
+.name { font: 650 15.5px/1.25 var(--font-display); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; }
 .sub { margin-top: 2px; font-size: 12.5px; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub:empty::before { content: "\00a0"; } /* names hidden (no @username): the card keeps its height */
+/* The picture beside the name, so more accounts fit on the screen. */
+.card:not(.row) > .avatar { position: absolute; left: 14px; top: 14px; width: 52px; height: 52px; margin: 0; }
+.card:not(.row) > .avatar .initials { font-size: 19px; }
+.card:not(.row) > .avatar .pdot { width: 14px; height: 14px; border-width: 2.5px; border-radius: 5px; right: -3px; bottom: -3px; }
+.card:not(.row) > .name { margin: 5px 26px 0 64px; text-align: left; }
+.card:not(.row) > .sub { margin: 2px 0 19px 64px; text-align: left; }
 
-.activity { display: flex; align-items: center; gap: 10px; margin-top: 13px; padding: 9px 10px; border-radius: 13px; background: var(--well); border: 1px solid var(--line); min-height: 54px; }
+.activity { display: flex; align-items: center; gap: 10px; margin-top: 0; padding: 11px 0 0; border-top: 1px solid var(--line); min-height: 51px; }
 .activity .gicon { width: 36px; height: 36px; border-radius: 9px; flex: none; object-fit: cover; background: var(--surface-3); display: grid; place-items: center; color: var(--muted); }
 .activity .gicon .i { width: 17px; height: 17px; }
 .activity .txt { min-width: 0; flex: 1; }
-.activity .k { font-size: 11.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity .k { font-size: 12px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .activity .v { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .activity.ingame .k { color: var(--ok-ink); }
 .activity.online .k { color: var(--online-ink); }
@@ -1859,13 +1864,13 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .activity.offline .v, .activity.unknown .v { color: var(--muted); }
 .activity.launching .k { color: var(--online-ink); }
 
-.live { display: flex; gap: 6px; margin-top: 8px; }
-.live span { display: inline-flex; align-items: center; gap: 5px; flex: 1; min-width: 0; white-space: nowrap; justify-content: center; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--ok) 7%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 16%, transparent); font-size: 12px; font-weight: 600; color: var(--ok-ink); font-variant-numeric: tabular-nums; }
-.live .i { width: 13px; height: 13px; color: var(--ok-ink); }
+.live { display: flex; align-items: center; gap: 12px; margin-top: 10px; min-height: 20px; }
+.live span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; font-size: 12.5px; color: var(--text-2); }
+.live .i { width: 13px; height: 13px; color: var(--muted); }
 /* The client's process id: small and muted next to the live numbers; a button, so a click copies it. */
 /* Gives way first on a narrow card (a six-digit PID next to "12 giờ 5 phút"): the RAM and time chips keep their text. */
-.pid { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; height: 26px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 8px; background: transparent; font: 600 11.5px var(--font); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: copy; }
-.pid:hover { color: var(--text); border-color: var(--line-3); background: var(--hover); }
+.pid { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; height: 20px; margin-left: auto; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; font: 600 11.5px var(--font); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: copy; }
+.pid:hover { color: var(--text); background: var(--hover); }
 .pid.hidden-win { flex: none; display: inline-grid; place-items: center; padding: 0 6px; margin-right: 6px; cursor: pointer; color: var(--accent); }
 .row-live { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: auto; min-width: 0; }
 .row-live .pid { height: 24px; padding: 0 7px; }
@@ -1875,7 +1880,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .row-up { flex: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .row-up .i { width: 12px; height: 12px; }
 
-.meta { display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-top: 11px; font-size: 12px; color: var(--muted); min-height: 22px; }
+.meta { display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); min-height: 22px; }
 .tag { max-width: 50%; padding: 2px 9px; border-radius: 20px; background: var(--hover); color: var(--text-2); font-weight: 650; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rejoin { display: inline-flex; color: var(--online); }
 .rejoin .i { width: 14px; height: 14px; }
@@ -1883,15 +1888,15 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .ago .i { width: 13px; height: 13px; }
 .note { margin-top: 8px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.card-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 13px; }
-.pill-btn { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--surface-2); font-weight: 650; font-size: 13px; transition: all .15s; }
+.card-actions { display: flex; gap: 4px; margin-top: auto; padding-top: 12px; }
+.pill-btn { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface-2); font-weight: 650; font-size: 13px; transition: all .15s; }
 .pill-btn .i { width: 15px; height: 15px; }
 .pill-btn.play:hover:not(:disabled) { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .pill-btn.stop { color: var(--bad-ink); }
 .pill-btn.relogin:hover { background: var(--inv); border-color: transparent; color: var(--inv-ink); }
 .pill-btn.stop:hover { background: color-mix(in srgb, var(--bad) 16%, transparent); border-color: var(--bad-line); }
 .pill-btn:disabled { opacity: .5; }
-.card-actions .icon-btn { width: 36px; height: 36px; border: 1px solid var(--line-2); background: var(--surface-2); }
+.card-actions .icon-btn { width: 34px; height: 34px; border: 0; background: transparent; }
 
 .empty { display: grid; place-items: center; text-align: center; padding: 70px 20px; }
 .empty .art { width: 88px; height: 88px; margin-bottom: 18px; }
@@ -1918,21 +1923,33 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* ───────── launch dock ───────── */
 .dock {
   position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 18px; row-gap: 12px; align-items: start;
-  margin: 0 22px 20px; padding: 14px 16px; border-radius: 22px; border: 1px solid var(--line-2);
-  background: var(--surface); box-shadow: 0 -10px 30px color-mix(in srgb, var(--shadow) 70%, transparent);
+  margin: 0; padding: 12px 30px 14px; border-radius: 0; border: 0; border-top: 1px solid var(--line-2);
+  background: var(--surface);
 }
-.game-thumb { align-self: center; width: 64px; height: 64px; padding: 0; border-radius: 16px; display: grid; place-items: center; background: var(--surface-3); color: var(--muted); overflow: hidden; border: 1px solid var(--line-2); transition: border-color .15s; }
+.game-thumb { align-self: center; width: 64px; height: 64px; padding: 0; border-radius: 14px; display: grid; place-items: center; background: var(--surface-3); color: var(--muted); overflow: hidden; border: 1px solid var(--line-2); transition: border-color .15s; }
 .game-thumb:hover { border-color: var(--line-3); color: var(--text-2); }
 .game-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .game-thumb .i { width: 26px; height: 26px; }
 /* A step: its numbered caption, its box or button, and the line of smaller buttons (or what the game box holds) under it. */
 .dock-step { min-width: 0; display: grid; row-gap: 7px; align-content: start; }
 .step-cap { display: flex; align-items: center; gap: 7px; height: 16px; font-size: 12px; font-weight: 650; color: var(--text-2); white-space: nowrap; }
-.step-cap b { flex: none; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: var(--inv); color: var(--inv-ink); font-size: 10.5px; font-weight: 800; }
+.step-cap b { flex: none; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 5px; background: var(--active); color: var(--text-2); font-size: 10.5px; font-weight: 750; }
 .step-cap small { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.rc-modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 14px 16px; }
+.rc-note { margin: -4px 16px 12px; font-size: 12px; color: var(--muted); }
+@media (max-width: 1180px) { .rc-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.rc-mode { display: grid; gap: 5px; align-content: start; min-height: 86px; padding: 12px; text-align: left; border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: var(--text); font: inherit; cursor: pointer; transition: background .15s, border-color .15s; }
+.rc-mode:hover { background: var(--hover); border-color: var(--line-3); }
+.rc-mode.on { border-color: var(--inv); box-shadow: inset 0 0 0 1px var(--inv); background: var(--hover); }
+.rc-mode b { font-size: 14px; font-weight: 650; }
+.rc-mode small { font-size: 12px; line-height: 1.4; color: var(--muted); }
+/* How hard it works the PC: blocks, more of them the heavier it is. */
+.rc-load { display: flex; gap: 3px; height: 8px; margin-bottom: 3px; }
+.rc-load i { width: 14px; border-radius: 2px; background: var(--active); }
+.rc-load[data-n="1"] i:nth-child(-n+1), .rc-load[data-n="2"] i:nth-child(-n+2), .rc-load[data-n="3"] i:nth-child(-n+3) { background: var(--text-2); }
 .dock-sub { display: flex; align-items: center; gap: 6px; min-height: 28px; }
-.sub-btn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text-2); font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
-.sub-btn:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+.sub-btn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: 8px; border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
+.sub-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
 .sub-btn:disabled { opacity: .45; cursor: default; }
 .sub-btn .i { width: 14px; height: 14px; flex: none; }
 /* Play fills its step, as wide as the buttons under it. */
@@ -2031,7 +2048,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .set-page { display: grid; align-content: start; }
 .set-page[hidden] { display: none; }
 /* Sizes step down: "Settings" (26) › the page (18, quieter) › a group (16, bold) › a row (14). */
-.set-page-title { margin: 0 0 14px; font: 650 18px var(--font-display); letter-spacing: -.01em; color: var(--text-2); }
+.set-page-title { margin: 0 0 16px; font: 700 22px/1.2 var(--font-display); letter-spacing: -.015em; color: var(--text); }
 .set-layout.searching .set-page { margin-bottom: 22px; }
 .set-layout.searching .set-page-title { font-size: 17px; margin-bottom: 10px; color: var(--text-2); }
 .set-grp { margin-bottom: 22px; }
@@ -2302,6 +2319,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .pv-main small { font-size: 12.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* What it does in one plain line (two at most when narrow), then when it runs next / ran last, quieter. No icons. */
 .pv-sum { margin-top: 3px; font-size: 12px; color: var(--text-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.pv-sum { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* one line; all of it in its tooltip */
+.pv-item:not(:hover, :focus-within) .ord-btns { opacity: 0; }
 .pv-next { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pv-next:empty { display: none; }
 /* Avatars overlap a little, like a stack; the column has one width so the buttons line up row under row. */
@@ -2328,21 +2347,30 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 @media (max-width: 1180px) { .pv-list { padding: 4px 22px 24px; } }
 /* Narrow: the avatars go; "No accounts left" (why Run is off) stays. */
 @media (max-width: 900px) { .pv-accs:not(.none) { display: none; } .pv-accs.none { width: auto; } }
+/* Settings › Discord: a message as Discord shows it, so in Discord's colours whatever the theme. */
+.dcv { display: flex; gap: 14px; padding: 14px 16px; margin-bottom: 8px; border-radius: 10px; background: #313338; color: #dbdee1; font: 400 14px/1.4 var(--font); user-select: none; }
+.dcv b { font-weight: 650; color: #f2f3f5; }
+.dcv small { display: block; font-size: 12px; color: #949ba4; }
+.dcv-pic { width: 40px; height: 40px; flex: none; border-radius: 50%; object-fit: cover; background: #1e1f22; }
+.dcv-body { min-width: 0; flex: 1; }
+.dcv-head { display: flex; align-items: center; gap: 6px; }
+.dcv-app { padding: 0 4px; border-radius: 3px; background: #5865f2; color: #fff; font-size: 10px; font-weight: 650; line-height: 15px; }
+.dcv time { font-size: 12px; color: #949ba4; }
+.dcv-at { padding: 0 2px; border-radius: 3px; background: rgb(88 101 242 / .3); color: #c9cdfb; font-weight: 500; }
+.dcv-embed { max-width: 520px; margin-top: 4px; padding: 10px 14px 12px; border-left: 4px solid #4e5058; border-radius: 4px; background: #2b2d31; }
+.dcv-embed.yellow { border-left-color: #fee75c; }
+.dcv-embed.blue { border-left-color: #5865f2; }
+.dcv-author { font-size: 13px; font-weight: 500; color: #f2f3f5; }
+.dcv-title { margin-top: 4px; font-weight: 650; color: #f2f3f5; }
+.dcv-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 16px; margin-top: 8px; font-size: 13px; }
+.dcv-link { color: #00a8fc; }
+.dcv-foot { margin-top: 8px; }
 /* Theme picker: a line of small swatches per group, each drawn in its own theme's colours. */
-.themes { display: grid; gap: 10px; padding: 2px 0 16px; }
-.tg { display: flex; align-items: center; gap: 14px; }
-.tg-label { width: 92px; flex: none; font-size: 12px; color: var(--muted); }
-.tg-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.swatch { position: relative; width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 1px solid var(--line-3); background: none; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .15s, transform .1s; }
-.swatch:hover { transform: scale(1.08); }
-.swatch:hover, .swatch:focus-visible { z-index: 3; }
-/* Each theme's name shows above its swatch on hover and on keyboard focus (the chosen one is also named above the list). */
-.swatch::after {
-  content: attr(data-name); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
-  padding: 4px 9px; border-radius: 8px; background: var(--inv); color: var(--inv-ink); font: 600 12px/1.3 var(--font); white-space: nowrap;
-  opacity: 0; pointer-events: none; transition: opacity .12s;
-}
-.swatch:hover::after, .swatch:focus-visible::after { opacity: 1; }
+.tg-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 12px; }
+.themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; padding: 2px 2px 16px; }
+.swatch { position: relative; min-width: 0; padding: 66px 0 0; border: 0; border-radius: 10px; background: none; color: var(--text); text-align: left; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .15s; }
+.swatch > b { display: block; padding: 6px 2px 2px; font: 500 12px/1.3 var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.swatch:hover > b, .swatch.on > b { color: var(--text); }
 .swatch.on { outline-color: var(--text); }
 /* Settings › Appearance › Custom: the colour wells, the size of a button. */
 /* The custom theme's picture or video (app.js showCustomMedia): under the page, blurred as asked. */
@@ -2408,20 +2436,21 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
 .cf-hex.field.sm { width: 100%; font-variant-numeric: tabular-nums; }
 .swatch:focus-visible { outline-color: var(--focus); outline-offset: 3px; }
-/* Background on the left, the theme's highlight colour on the right, its Play colour in the middle. */
-.swatch > span { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: linear-gradient(90deg, transparent 50%, var(--inv) 50%), var(--backdrop); }
-.swatch > span + span, .swatch > span[data-theme="light"] { background: var(--backdrop); }
+/* A small page in the theme: its background, a panel, a line of text and its Play button. */
+.swatch > span { position: absolute; inset: 0 0 auto; height: 66px; border: 1px solid var(--line-3); border-radius: 10px; overflow: hidden; background: var(--backdrop); }
+.swatch > span::before { content: ""; position: absolute; left: 8px; right: 8px; top: 8px; bottom: 8px; border-radius: 6px; background: var(--surface); }
+.swatch > span::after { content: ""; position: absolute; left: 15px; top: 16px; width: 44%; height: 5px; border-radius: 3px; background: var(--text); }
 .swatch > span + span { clip-path: inset(0 0 0 50%); }
-.swatch em { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg); }
+.swatch em { position: absolute; left: 15px; bottom: 15px; width: 34px; height: 12px; border-radius: 4px; background: var(--accent); }
 
 /* Glass themes: panels blur the scenery under them. Cards are only see-through: blurring hundreds of them would
    cost GPU time on every scroll. --blur is "none" in every other theme. */
 .side, .dock, .picker, .modal, .menu, .toast, .lock-card, .set-card { backdrop-filter: var(--blur); }
 /* Settings' page list and group headings sit straight on the picture, and the bright parts of some (lit windows, pale
    trees) left them hard to read: on the picture themes the page gets the sidebar's veil behind it. */
-:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) #view-settings { background: var(--bg-2); }
+:is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) #view-settings { background: var(--bg-2); }
 /* The warning look of the Multi-Roblox card keeps the card's surface under its tint, or its text sat on the picture. */
-:is([data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .multi.warn { background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
+:is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .multi.warn { background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
 
 /* ───────── statistics ─────────
    Totals, a bar per day (or hour, for today), play time per account and the top games. Bars are plain blocks in the
@@ -2534,7 +2563,8 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .overlay.at-top > .modal { max-height: calc(100vh - max(20px, 7vh) - 20px); }
 #app[inert] { pointer-events: none; }
 @keyframes fade { from { opacity: 0; } }
-.modal { width: min(520px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; border-radius: 22px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: 0 30px 90px var(--shadow); animation: rise .25s cubic-bezier(.2, .9, .3, 1.15); }
+/* Over the opaque page colour: in a glass theme the cards behind a window no longer show through its words. */
+.modal { width: min(520px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; border-radius: 22px; border: 1px solid var(--line-2); background: linear-gradient(var(--surface), var(--surface)), var(--bg); box-shadow: 0 30px 90px var(--shadow); animation: rise .25s cubic-bezier(.2, .9, .3, 1.15); }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 6px 24px; }
 .modal-head h3 { margin: 0; font: 650 18px var(--font-display); }
 .modal-body { padding: 8px 24px 6px; overflow-y: auto; }
@@ -2576,16 +2606,18 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 /* Username + password sign-in. */
 .modal.auth { position: relative; width: min(420px, 100%); }
 .modal.auth .modal-head { position: absolute; top: 10px; right: 10px; z-index: 1; padding: 0; }
-.modal.auth .modal-body { padding: 30px 32px 26px; }
+.modal.auth .modal-body { padding: 26px 28px 22px; }
 .auth-head { display: grid; justify-items: center; gap: 12px; margin-bottom: 20px; text-align: center; }
 .auth-head img { width: 48px; height: 48px; }
+/* Not tall enough for the logo as well: the sign-in fields come first. */
+@media (max-height: 860px) { .auth-head img { display: none; } }
 .auth-head h3 { margin: 0; font: 600 22px/1.2 var(--font-display); letter-spacing: -.01em; }
 .btn.go { border: 0; background: var(--accent); color: var(--accent-ink); }
 .btn.go:hover:not(:disabled) { background: var(--accent-hover); }
 .btn.go.busy::after { border-color: color-mix(in srgb, var(--accent-ink) 25%, transparent); border-top-color: var(--accent-ink); }
 .auth-or { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; color: var(--muted); font-size: 12.5px; }
 .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
-.auth-more { display: grid; grid-template-columns: repeat(3, max-content); row-gap: 8px; column-gap: 6px; justify-content: center; margin: 16px 0 0; font-size: 12.5px; color: var(--muted); }
+.auth-more { margin: 16px 0 0; font-size: 12.5px; color: var(--muted); }
 .seg.wide { display: flex; width: 100%; height: 38px; margin: 4px 0 0; padding: 3px; border-radius: 12px; background: var(--field); }
 .seg.wide button { flex: 1; height: 100%; border-radius: 9px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
 .seg.wide button:hover:not(.on) { color: var(--text-2); }
@@ -2597,7 +2629,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .auth .btn.w .i { width: 17px; height: 17px; }
 .auth-form .btn.primary { margin-top: 4px; }
 .auth .form-error { margin: 0; }
-.auth-note { display: flex; gap: 9px; margin: 18px -32px 0; padding: 16px 32px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.5; color: var(--muted); }
+.auth-note { display: flex; gap: 9px; margin: 16px -28px 0; padding: 14px 28px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.5; color: var(--muted); }
 .auth-note .i { width: 14px; height: 14px; flex: none; margin-top: 2px; }
 .auth-added { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 10px 12px; border-radius: 11px; border: 1px solid var(--ok-line); background: color-mix(in srgb, var(--ok) 8%, transparent); color: var(--ok-ink); font-size: 12.5px; line-height: 1.45; }
 .auth-added .i { width: 15px; height: 15px; flex: none; margin-top: 1px; color: var(--ok); }
@@ -2628,10 +2660,9 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 /* The other ways, one per line (here and in the sign-in window's .auth-more): the words in a column of their own
    (right-aligned) and the buttons lined up after them, so the buttons start at the same place on every line. A line
    with two buttons uses the third column. */
-.start-more { display: grid; grid-template-columns: repeat(3, max-content); row-gap: 8px; column-gap: 6px; justify-content: center; margin-top: 14px; font-size: 12.5px; color: var(--muted); }
-.ways { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
-.ways > span { justify-self: end; margin-right: 2px; }
-.ways > .btn { justify-self: start; }
+.start-more { margin: 14px auto 0; font-size: 12.5px; color: var(--muted); }
+.ways { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
+.ways > span { flex-basis: 100%; text-align: center; }
 .ways .btn.sm { padding: 0 8px; color: var(--text-2); }
 .ways .btn.sm:hover { color: var(--text); }
 .ways .btn.sm .i { width: 15px; height: 15px; }
@@ -2792,7 +2823,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .top { padding: 30px 38px 16px; }
   .bar { padding: 0 38px 16px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; padding: 4px 38px 30px; }
-  .dock { margin: 0 30px 24px; }
+  .dock { padding-left: 38px; padding-right: 38px; }
   .start-steps { margin: 4px 38px 16px; }
   .set-nav { padding-left: 38px; }
   .settings { padding: 4px 38px 44px 24px; }
@@ -2801,7 +2832,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .dock-info .creator { display: none; }
 }
 @media (max-width: 1280px) {
-  .search { width: 220px; }
+  .search { width: 260px; }
   /* The game step gets the picture's room for the game's name and a recent game; the game box opens the list too. */
   .dock { grid-template-columns: minmax(0, 1fr) auto auto; }
   .game-thumb { display: none; }
@@ -2809,6 +2840,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 /* Narrow windows: the sidebar collapses to icons. */
 @media (max-width: 1180px) {
   .shell { grid-template-columns: 76px minmax(0, 1fr); }
+  .side > .side-nav { scrollbar-width: none; } /* in a short window it still scrolls: a bar would squeeze the icons */
   .brand-name, .brand-sub, .nav span, .nav em, .side-card, .multi div, .multi .switch, .side-foot .btn span:not(.vault-face), .warn-card span { display: none; }
   .warn-card { justify-content: center; padding: 10px 0; }
   .brand { justify-content: center; padding: 2px 0 18px; }
@@ -2831,15 +2863,14 @@ body:has(.lock) #toasts { bottom: 24px; }
   .set-layout { grid-template-columns: 222px minmax(0, 1fr); } /* "Phiên bản & đồ họa" on one line */
   .set-nav { padding-left: 22px; }
   .settings { padding: 4px 22px 30px 14px; }
-  .dock { margin: 0 16px 16px; }
+  .dock { padding-left: 22px; padding-right: 22px; }
 }
 /* No room for two columns: the pages become a row of tabs over the page. */
 @media (max-width: 920px) {
   .set-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  /* The search box stays at the start of the row while the tabs scroll under it; a tab brought into view stops clear
-     of it and of the window's edge. */
-  .set-nav { flex-direction: row; align-items: center; gap: 4px; overflow-x: auto; overflow-y: hidden; padding: 0 22px 12px; scroll-padding-inline: 234px 22px; }
-  .search.set-search { flex: none; width: 200px; margin: 0 6px 0 0; position: sticky; left: 0; z-index: 1; border-radius: 11px; background: var(--raised); }
+  /* The tabs wrap rather than scroll: every page stays in sight. */
+  .set-nav { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px; overflow: visible; padding: 0 22px 12px; }
+  .search.set-search { flex: none; width: 200px; margin: 0 6px 0 0; border-radius: 11px; background: var(--raised); }
   .set-nav-item { width: auto; flex: none; white-space: nowrap; }
   .settings { padding: 4px 22px 30px; }
 }
@@ -2849,10 +2880,20 @@ body:has(.lock) #toasts { bottom: 24px; }
   .dock { column-gap: 14px; }
   .pw-form { grid-template-columns: 1fr 1fr; }
 }
-/* Too narrow for one row: the game on top, the server and Play side by side under it. */
+/* Narrow: the small buttons keep their icons (their names on hover), so all three steps stay on one row and the cards keep their height. */
 @media (max-width: 900px) {
-  .dock { grid-template-columns: minmax(0, 1fr) auto; }
-  .dock-game { grid-column: 1 / -1; }
+  .sub-btn { padding: 0 8px; }
+  .sub-btn span { display: none; }
+  .inwrap.job { width: 180px; }
+}
+/* Narrower still: the game box keeps the room, the game's name stays over the player count, and the filters show only
+   their icons (their names on hover), so the chips stay readable. */
+@media (max-width: 780px) {
+  .sort-btn span { display: none; }
+  .dock { grid-template-columns: minmax(0, 1fr) 120px minmax(0, 205px); }
+  .inwrap.job { width: auto; }
+  .dock-info .players { display: none; }
+  .dock-go .play-btn { padding: 0 10px; }
 }
 /* Short windows: tighter vertical rhythm so more cards fit. */
 /* The app's smallest window: the title and its line (selection, Clear) share one row, and the dock keeps the game's
@@ -2863,16 +2904,12 @@ body:has(.lock) #toasts { bottom: 24px; }
   .top p { margin: 0; }
   .dock-info .creator, .dock-info .recents { display: none; }
   .dock-step { row-gap: 6px; }
-  .step-cap { display: none; } /* the numbered captions give their line to the cards */
   .dock-info { min-height: 22px; }
   .bar { padding-bottom: 8px; }
   /* A whole card fits between the header and the dock: smaller avatar, tighter spacing, the note left to its tooltip. */
   .card:not(.row) { padding: 8px 12px 8px; }
-  .card:not(.row) .card-top { margin-bottom: -6px; }
-  .card:not(.row) .avatar { width: 46px; height: 46px; margin-bottom: 4px; }
-  .card:not(.row) .avatar .initials { font-size: 15px; }
-  .card:not(.row) .activity { margin-top: 7px; min-height: 42px; padding: 4px 8px; }
-  .card:not(.row) .meta { margin-top: 7px; }
+  .card:not(.row) .activity { min-height: 42px; padding-top: 7px; }
+  .card:not(.row) .meta { margin-top: 5px; }
   .card:not(.row) .note { display: none; }
   .card:not(.row) .card-actions { padding-top: 8px; }
 }
@@ -2884,7 +2921,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 @media (max-height: 760px) and (min-width: 1181px) {
   .side { gap: 4px; padding-top: 14px; }
   .nav { height: 36px; }
-  #sys-card .meter, #sys-card .sys-foot, #sys-card .sys-ver { display: none; }
+  #sys-card .meter, #sys-card .sys-foot, #sys-card .sys-ver { display: none; } /* #sys-usage is a .sys-foot */
   .side-card { padding: 10px 12px; }
 }
 /* The sign-in window in a short window: tighter, so the other ways and the privacy note are within reach. */
@@ -2895,23 +2932,24 @@ body:has(.lock) #toasts { bottom: 24px; }
   .auth-form { gap: 10px; margin-top: 12px; }
   .auth .field, .auth .btn.w { height: 40px; }
   .auth-or { margin: 12px 0 10px; }
-  .auth-head img { display: none; }
+
   .auth .seg.wide { height: 34px; }
   .auth-phone { margin-top: 10px; }
   .auth-phone .start-opt { padding: 9px 14px; }
   .auth-phone + .auth-or { margin: 8px 0; }
   .auth-form.tight { gap: 8px; }
   .auth-more { margin-top: 10px; }
-  .auth-note { margin-top: 12px; padding-top: 10px; }
+  /* Its line runs edge to edge, so its side margins follow the padding above: left at the taller window's 32px, the
+     window scrolled sideways. */
+  .auth-note { margin: 12px -28px 0; padding: 10px 28px 0; }
 }
 @media (max-height: 760px) {
   .top { padding-top: 16px; padding-bottom: 10px; }
   .top h1 { font-size: 22px; }
   .bar { padding-bottom: 10px; }
-  .card { padding: 14px 14px 12px; }
-  .avatar { width: 64px; height: 64px; margin: 0 auto 8px; }
-  .activity { margin-top: 10px; min-height: 48px; padding: 7px 9px; }
-  .dock { margin-bottom: 12px; padding: 10px 12px; }
+  .card { padding: 12px 14px; }
+  .dock { padding-top: 10px; padding-bottom: 10px; }
+  .step-cap { display: none; } /* the numbered captions give their line to the cards */
   .game-thumb { width: 52px; height: 52px; border-radius: 13px; }
   .play-btn { height: 46px; }
   .brand { padding-bottom: 10px; }
@@ -3952,6 +3990,807 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="jungle"] { --card: rgba(14, 44, 32, .8); --card-hover: rgba(14, 44, 32, .86); --surface: rgba(14, 44, 32, .82); }
 [data-theme="moon"] { --card: rgba(16, 18, 32, .8); --card-hover: rgba(16, 18, 32, .86); --surface: rgba(16, 18, 32, .82); }
 
+/* ───────── themes added 2026-11-01 ───────── */
+[data-theme="dalat"] {
+  /* Da Lat: pine hills round a still lake at dawn, behind glass. */
+  --backdrop: url("scene-dalat.svg") center / cover no-repeat, #e2ebe4;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 25, 60, 50;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #12291f;
+  --text-2: #2f4a3f;
+  --muted: #3f5a4e;
+  --dim: #688077;
+  --inv: #2f7d62;
+  --inv-hover: #27694f;
+  --inv-ink: #fff;
+  --accent: #2f7d62;
+  --accent-hover: #27694f;
+  --accent-ink: #fff;
+  --meter: #2f4a3f;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f4a3f' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="savanna"] {
+  /* Savanna: acacias and a low gold sun, behind glass. */
+  --backdrop: url("scene-savanna.svg") center / cover no-repeat, #f2c27e;
+  --blur: blur(18px) saturate(150%);
+  --bg: rgba(255, 255, 255, .42);
+  --bg-2: rgba(255, 255, 255, .55);
+  --surface: rgba(255, 255, 255, .74);
+  --surface-2: rgba(255, 255, 255, .6);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .95);
+  --field: rgba(255, 255, 255, .65);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .78);
+  --well: rgba(255, 255, 255, .4);
+  --tint: 70, 40, 10;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #2a1a08;
+  --text-2: #54391b;
+  --muted: #664a28;
+  --dim: #8a6c47;
+  --inv: #a8541a;
+  --inv-hover: #8f4614;
+  --inv-ink: #fff;
+  --accent: #a8541a;
+  --accent-hover: #8f4614;
+  --accent-ink: #fff;
+  --meter: #54391b;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2354391b' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="phongnha"] {
+  /* Phong Nha: a boat on a green river inside the cave, behind glass. */
+  --backdrop: url("scene-phongnha.svg") center / cover no-repeat, #0a1416;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(6, 16, 18, .32);
+  --bg-2: rgba(6, 16, 18, .56);
+  --surface: rgba(12, 30, 32, .82);
+  --surface-2: rgba(215, 240, 228, .08);
+  --surface-3: rgba(215, 240, 228, .15);
+  --raised: rgba(12, 30, 32, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(12, 30, 32, .8);
+  --card-hover: rgba(12, 30, 32, .86);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 215, 240, 228;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #e6f4ec;
+  --text-2: #b4d2c4;
+  --muted: #9fbfb0;
+  --dim: #6e8f80;
+  --inv: #4fd0a0;
+  --inv-hover: #6adcb2;
+  --inv-ink: #04261a;
+  --accent: #4fd0a0;
+  --accent-hover: #6adcb2;
+  --accent-ink: #04261a;
+  --meter: #b4d2c4;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 10, 14, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b4d2c4' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="nightbeach"] {
+  /* A beach at night: the moon’s path on the water, behind glass. */
+  --backdrop: url("scene-nightbeach.svg") center / cover no-repeat, #071028;
+  --blur: blur(18px) saturate(130%);
+  --bg: rgba(6, 12, 30, .32);
+  --bg-2: rgba(6, 12, 30, .56);
+  --surface: rgba(14, 24, 50, .82);
+  --surface-2: rgba(225, 232, 250, .08);
+  --surface-3: rgba(225, 232, 250, .15);
+  --raised: rgba(14, 24, 50, .95);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(14, 24, 50, .8);
+  --card-hover: rgba(14, 24, 50, .86);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 225, 232, 250;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #eaeef8;
+  --text-2: #bcc6dc;
+  --muted: #a4afc8;
+  --dim: #74809c;
+  --inv: #f2d67a;
+  --inv-hover: #f7e29c;
+  --inv-ink: #2a2005;
+  --accent: #f2d67a;
+  --accent-hover: #f7e29c;
+  --accent-ink: #2a2005;
+  --meter: #bcc6dc;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 10, 14, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bcc6dc' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="coral"] {
+  /* Coral: warm paper and a coral accent. */
+  --bg: #fbefe9;
+  --bg-2: #f6e1d8;
+  --surface: #fff9f5;
+  --surface-2: #faeee7;
+  --surface-3: #f2dbd0;
+  --raised: #fff9f5;
+  --field: #fffdfb;
+  --card: #fff9f5;
+  --card-hover: #fffcfa;
+  --tint: 90, 40, 25;
+  --text: #2e1a14;
+  --text-2: #5c3c32;
+  --muted: #6e4f45;
+  --dim: #9a7b70;
+  --inv: #c9472f;
+  --inv-hover: #ad3a25;
+  --inv-ink: #ffffff;
+  --accent: #c9472f;
+  --accent-hover: #ad3a25;
+  --accent-ink: #ffffff;
+  --meter: #5c3c32;
+  --meter-2: #f2dbd0;
+  --scrim: rgba(60, 25, 15, .3);
+  --shadow: rgba(80, 35, 20, .14);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235c3c32' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="rose"] {
+  /* Rose: dark wine with a rose accent. */
+  --bg: #1d1216;
+  --bg-2: #180e12;
+  --surface: #27181e;
+  --surface-2: #2f1d24;
+  --surface-3: #3c2630;
+  --raised: #27181e;
+  --field: #180e12;
+  --card: #27181e;
+  --card-hover: #2c1b22;
+  --tint: 255, 225, 235;
+  --text: #f6e7ec;
+  --text-2: #d6bcc6;
+  --muted: #b39aa5;
+  --dim: #8d7681;
+  --inv: #f0749b;
+  --inv-hover: #f58fb0;
+  --inv-ink: #2a0d18;
+  --accent: #f0749b;
+  --accent-hover: #f58fb0;
+  --accent-ink: #2a0d18;
+  --meter: #d6bcc6;
+  --meter-2: #3c2630;
+  --scrim: rgba(0, 0, 0, .55);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d6bcc6' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="olive"] {
+  /* Olive: dark olive and a moss accent. */
+  --bg: #17180f;
+  --bg-2: #13140c;
+  --surface: #202216;
+  --surface-2: #27291b;
+  --surface-3: #333625;
+  --raised: #202216;
+  --field: #13140c;
+  --card: #202216;
+  --card-hover: #25271a;
+  --tint: 240, 240, 210;
+  --text: #eeeedd;
+  --text-2: #c8c9ad;
+  --muted: #a8a98d;
+  --dim: #83846b;
+  --inv: #b5bf5a;
+  --inv-hover: #c5ce70;
+  --inv-ink: #1c1e08;
+  --accent: #b5bf5a;
+  --accent-hover: #c5ce70;
+  --accent-ink: #1c1e08;
+  --meter: #c8c9ad;
+  --meter-2: #333625;
+  --scrim: rgba(0, 0, 0, .55);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c8c9ad' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="solarized"] {
+  /* Solarized: the dark palette programmers know, its blue-greens and cream. */
+  --bg: #002b36;
+  --bg-2: #00232d;
+  --surface: #073642;
+  --surface-2: #0c3f4c;
+  --surface-3: #174c5a;
+  --raised: #073642;
+  --field: #00232d;
+  --card: #073642;
+  --card-hover: #0a3c49;
+  --tint: 238, 232, 213;
+  --text: #eee8d5;
+  --text-2: #c3c8bd;
+  --muted: #a3b0ae;
+  --dim: #7f9393;
+  --inv: #2aa198;
+  --inv-hover: #35b8ae;
+  --inv-ink: #00191f;
+  --accent: #2aa198;
+  --accent-hover: #35b8ae;
+  --accent-ink: #00191f;
+  --meter: #c3c8bd;
+  --meter-2: #174c5a;
+  --scrim: rgba(0, 10, 14, .55);
+  --shadow: rgba(0, 0, 0, .4);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c3c8bd' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* ───────── the animated themes (livescene.js moves things over the picture; no blur, it would be redrawn every frame) ───────── */
+#live-scene, #live-photo { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100%; pointer-events: none; }
+/* Changing theme: the old look fades into the new one (showTheme, app.js); the page stays clickable meanwhile. */
+::view-transition { pointer-events: none; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .2s; animation-timing-function: ease-out; }
+.theme-probe { position: fixed; width: 0; height: 0; visibility: hidden; background: var(--backdrop); }
+[data-theme="blockworld"] {
+  /* A world of blocks: clouds, a windmill, little people; a click drops a block. */
+  --backdrop: url("scene-blockworld.svg") center / cover no-repeat, #8ed5f5;
+  --blur: none;
+  --bg: rgba(255, 255, 255, .16);
+  --bg-2: rgba(255, 255, 255, .74);
+  --surface: rgba(255, 255, 255, .86);
+  --surface-2: rgba(255, 255, 255, .74);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .97);
+  --field: rgba(255, 255, 255, .8);
+  --card: rgba(255, 255, 255, .76);
+  --card-hover: rgba(255, 255, 255, .88);
+  --well: rgba(255, 255, 255, .5);
+  --tint: 30, 60, 40;
+  --line: rgba(var(--tint), .12);
+  --line-2: rgba(var(--tint), .18);
+  --line-3: rgba(var(--tint), .3);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #13241a;
+  --text-2: #2f4a36;
+  --muted: #3f5a46;
+  --dim: #65806c;
+  --inv: #2f8a3c;
+  --inv-hover: #267232;
+  --inv-ink: #fff;
+  --accent: #2f8a3c;
+  --accent-hover: #267232;
+  --accent-ink: #fff;
+  --meter: #2f4a36;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f4a36' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="peachfall"] {
+  /* Peach blossom falling in the Tết wind. */
+  --backdrop: url("scene-peachfall.svg") center / cover no-repeat, #fbe6ea;
+  --blur: none;
+  --bg: rgba(255, 255, 255, .3);
+  --bg-2: rgba(255, 255, 255, .84);
+  --surface: rgba(255, 255, 255, .86);
+  --surface-2: rgba(255, 255, 255, .74);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .97);
+  --field: rgba(255, 255, 255, .8);
+  --card: rgba(255, 255, 255, .82);
+  --card-hover: rgba(255, 255, 255, .88);
+  --well: rgba(255, 255, 255, .5);
+  --tint: 110, 40, 60;
+  --line: rgba(var(--tint), .12);
+  --line-2: rgba(var(--tint), .18);
+  --line-3: rgba(var(--tint), .3);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #2e141c;
+  --text-2: #5a3040;
+  --muted: #6e4453;
+  --dim: #97707e;
+  --inv: #c8386a;
+  --inv-hover: #ae2d5a;
+  --inv-ink: #fff;
+  --accent: #c8386a;
+  --accent-hover: #ae2d5a;
+  --accent-ink: #fff;
+  --meter: #5a3040;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a3040' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="greatwave"] {
+  /* The great wave, in the manner of Japanese woodblock prints. */
+  --backdrop: url("scene-greatwave.svg") center / cover no-repeat, #f0e5c9;
+  --blur: none;
+  --bg: rgba(255, 255, 255, .2);
+  --bg-2: rgba(255, 255, 255, .8);
+  --surface: rgba(255, 255, 255, .86);
+  --surface-2: rgba(255, 255, 255, .92);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .97);
+  --field: rgba(255, 255, 255, .8);
+  --card: rgba(255, 255, 255, .72);
+  --card-hover: rgba(255, 255, 255, .8);
+  --well: rgba(255, 255, 255, .5);
+  --tint: 20, 50, 90;
+  --line: rgba(var(--tint), .12);
+  --line-2: rgba(var(--tint), .18);
+  --line-3: rgba(var(--tint), .3);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #0f2340;
+  --text-2: #2c4568;
+  --muted: #3f5878;
+  --dim: #6a7f9a;
+  --inv: #1f4e86;
+  --inv-hover: #173f6e;
+  --inv-ink: #fff;
+  --accent: #1f4e86;
+  --accent-hover: #173f6e;
+  --accent-ink: #fff;
+  --meter: #2c4568;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c4568' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="waterlilies"] {
+  /* Water lilies in dabs of paint, in the manner of Monet. */
+  --backdrop: url("scene-waterlilies.svg") center / cover no-repeat, #86a9c0;
+  --blur: none;
+  --bg: rgba(255, 255, 255, .36);
+  --bg-2: rgba(255, 255, 255, .86);
+  --surface: rgba(255, 255, 255, .86);
+  --surface-2: rgba(255, 255, 255, .74);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .97);
+  --field: rgba(255, 255, 255, .8);
+  --card: rgba(255, 255, 255, .82);
+  --card-hover: rgba(255, 255, 255, .88);
+  --well: rgba(255, 255, 255, .5);
+  --tint: 30, 60, 80;
+  --line: rgba(var(--tint), .12);
+  --line-2: rgba(var(--tint), .18);
+  --line-3: rgba(var(--tint), .3);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #10242e;
+  --text-2: #2c4756;
+  --muted: #3d5968;
+  --dim: #647f8d;
+  --inv: #2a6f7f;
+  --inv-hover: #205d6b;
+  --inv-ink: #fff;
+  --accent: #2a6f7f;
+  --accent-hover: #205d6b;
+  --accent-ink: #fff;
+  --meter: #2c4756;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c4756' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="blocksart"] {
+  /* Colour blocks and black lines, in the manner of Mondrian. */
+  --backdrop: url("scene-blocksart.svg") center / cover no-repeat, #f6f1e3;
+  --blur: none;
+  --bg: rgba(255, 255, 255, .3);
+  --bg-2: rgba(255, 255, 255, .9);
+  --surface: rgba(255, 255, 255, .86);
+  --surface-2: rgba(255, 255, 255, .74);
+  --surface-3: rgba(var(--tint), .1);
+  --raised: rgba(255, 255, 255, .97);
+  --field: rgba(255, 255, 255, .8);
+  --card: rgba(255, 255, 255, .82);
+  --card-hover: rgba(255, 255, 255, .88);
+  --well: rgba(255, 255, 255, .5);
+  --tint: 20, 20, 20;
+  --line: rgba(var(--tint), .12);
+  --line-2: rgba(var(--tint), .18);
+  --line-3: rgba(var(--tint), .3);
+  --meter-2: rgba(var(--tint), .18);
+  --scrim: rgba(20, 25, 35, .3);
+  --shadow: rgba(20, 30, 50, .18);
+  --text: #141414;
+  --text-2: #333333;
+  --muted: #4a4a4a;
+  --dim: #777777;
+  --inv: #c9261f;
+  --inv-hover: #ae1f19;
+  --inv-ink: #fff;
+  --accent: #c9261f;
+  --accent-hover: #ae1f19;
+  --accent-ink: #fff;
+  --meter: #333333;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333333' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="miaminight"] {
+  /* Neon Miami: Ocean Drive at dusk with moving traffic; a click brings a patrol car's lights. */
+  --backdrop: url("photo-miaminight.jpg") center / cover no-repeat, #1d2a5c;
+  --blur: none;
+  --bg: rgba(14, 12, 40, 0.14);
+  --bg-2: rgba(14, 12, 40, 0.72);
+  --surface: rgba(20, 16, 52, 0.88);
+  --surface-2: rgba(20, 16, 52, 0.74);
+  --surface-3: rgba(232, 226, 250, .15);
+  --raised: rgba(20, 16, 52, 0.97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(20, 16, 52, 0.84);
+  --card-hover: rgba(20, 16, 52, 0.9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 232, 226, 250;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #f2eefb;
+  --text-2: #cbc4e6;
+  --muted: #aba4cc;
+  --dim: #7a739c;
+  --inv: #ff4fa3;
+  --inv-hover: #ff78ba;
+  --inv-ink: #34041d;
+  --accent: #ff4fa3;
+  --accent-hover: #ff78ba;
+  --accent-ink: #34041d;
+  --meter: #cbc4e6;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 8, 18, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbc4e6' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="lanternriver"] {
+  /* Lantern river: Hội An by night, its water moving; a click sets a new lantern down. */
+  --backdrop: url("photo-lanternriver.jpg") center / cover no-repeat, #050610;
+  --blur: none;
+  --bg: rgba(6, 7, 18, 0.14);
+  --bg-2: rgba(6, 7, 18, 0.72);
+  --surface: rgba(14, 15, 34, 0.88);
+  --surface-2: rgba(14, 15, 34, 0.74);
+  --surface-3: rgba(232, 228, 240, .15);
+  --raised: rgba(14, 15, 34, 0.97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(14, 15, 34, 0.84);
+  --card-hover: rgba(14, 15, 34, 0.9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 232, 228, 240;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #f1eff6;
+  --text-2: #cac7d8;
+  --muted: #a9a6ba;
+  --dim: #78758a;
+  --inv: #f5a742;
+  --inv-hover: #f8bb68;
+  --inv-ink: #2a1604;
+  --accent: #f5a742;
+  --accent-hover: #f8bb68;
+  --accent-ink: #2a1604;
+  --meter: #cac7d8;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 8, 18, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cac7d8' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="deepsea"] {
+  /* Jellyfish: a real photograph that sways as under water, with specks and bubbles. */
+  --backdrop: url("photo-deepsea.jpg") center / cover no-repeat, #0a2c56;
+  --blur: none;
+  --bg: rgba(4, 18, 42, 0.14);
+  --bg-2: rgba(4, 18, 42, 0.72);
+  --surface: rgba(6, 28, 58, 0.88);
+  --surface-2: rgba(6, 28, 58, 0.74);
+  --surface-3: rgba(205, 232, 250, .15);
+  --raised: rgba(6, 28, 58, 0.97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(6, 28, 58, 0.84);
+  --card-hover: rgba(6, 28, 58, 0.9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 205, 232, 250;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #e8f4fc;
+  --text-2: #b9d5e8;
+  --muted: #9dbcd2;
+  --dim: #6c8ba1;
+  --inv: #7fd3ff;
+  --inv-hover: #a5e1ff;
+  --inv-ink: #04233a;
+  --accent: #7fd3ff;
+  --accent-hover: #a5e1ff;
+  --accent-ink: #04233a;
+  --meter: #b9d5e8;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 8, 18, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9d5e8' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="snowfall"] {
+  /* Snowfall: a forest road with snow that parts round the pointer; a click sends a gust. */
+  --backdrop: linear-gradient(rgba(10, 18, 30, .4), rgba(10, 18, 30, .4)), url("photo-snowfall.jpg") center / cover no-repeat, #3a424c;
+  --blur: none;
+  --bg: rgba(12, 20, 30, 0.14);
+  --bg-2: rgba(12, 20, 30, 0.72);
+  --surface: rgba(18, 28, 40, 0.88);
+  --surface-2: rgba(18, 28, 40, 0.74);
+  --surface-3: rgba(222, 234, 246, .15);
+  --raised: rgba(18, 28, 40, 0.97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(18, 28, 40, 0.84);
+  --card-hover: rgba(18, 28, 40, 0.9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 222, 234, 246;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #eef4fa;
+  --text-2: #c4d4e4;
+  --muted: #a6b9cc;
+  --dim: #74879b;
+  --inv: #ffc23d;
+  --inv-hover: #ffd26e;
+  --inv-ink: #2c1f02;
+  --accent: #ffc23d;
+  --accent-hover: #ffd26e;
+  --accent-ink: #2c1f02;
+  --meter: #c4d4e4;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 8, 18, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c4d4e4' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="nightharbour"] {
+  /* Night harbour: moving water and ferries; a click over the sky sets off a firework. */
+  --backdrop: url("photo-nightharbour.jpg") center / cover no-repeat, #181218;
+  --blur: none;
+  --bg: rgba(14, 10, 18, 0.14);
+  --bg-2: rgba(14, 10, 18, 0.72);
+  --surface: rgba(24, 18, 30, 0.88);
+  --surface-2: rgba(24, 18, 30, 0.74);
+  --surface-3: rgba(236, 228, 240, .15);
+  --raised: rgba(24, 18, 30, 0.97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(24, 18, 30, 0.84);
+  --card-hover: rgba(24, 18, 30, 0.9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 236, 228, 240;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #f3eef6;
+  --text-2: #cfc6d6;
+  --muted: #afa6b8;
+  --dim: #7e7588;
+  --inv: #c9a4ff;
+  --inv-hover: #dac0ff;
+  --inv-ink: #1e0c38;
+  --accent: #c9a4ff;
+  --accent-hover: #dac0ff;
+  --accent-ink: #1e0c38;
+  --meter: #cfc6d6;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 8, 18, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cfc6d6' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="koipond"] {
+  /* Koi pond: fish that scatter from the pointer and come to a click. */
+  --backdrop: url("scene-koipond.svg") center / cover no-repeat, #0d3a3a;
+  --blur: none;
+  --bg: rgba(6, 30, 32, .14);
+  --bg-2: rgba(6, 30, 32, .72);
+  --surface: rgba(10, 40, 42, .88);
+  --surface-2: rgba(10, 40, 42, .74);
+  --surface-3: rgba(210, 240, 235, .15);
+  --raised: rgba(10, 40, 42, .97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(10, 40, 42, .84);
+  --card-hover: rgba(10, 40, 42, .9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 210, 240, 235;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #e8f5f1;
+  --text-2: #b8d6cf;
+  --muted: #a0c0b8;
+  --dim: #6f8f88;
+  --inv: #f08a3c;
+  --inv-hover: #f5a25e;
+  --inv-ink: #2a1204;
+  --accent: #f08a3c;
+  --accent-hover: #f5a25e;
+  --accent-ink: #2a1204;
+  --meter: #b8d6cf;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 10, 14, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8d6cf' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="fireflies"] {
+  /* Fireflies in a night forest; they come towards the pointer. */
+  --backdrop: url("scene-fireflies.svg") center / cover no-repeat, #07141a;
+  --blur: none;
+  --bg: rgba(5, 14, 18, .1);
+  --bg-2: rgba(5, 14, 18, .72);
+  --surface: rgba(12, 26, 28, .88);
+  --surface-2: rgba(12, 26, 28, .74);
+  --surface-3: rgba(220, 240, 200, .15);
+  --raised: rgba(12, 26, 28, .97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(12, 26, 28, .76);
+  --card-hover: rgba(12, 26, 28, .9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 220, 240, 200;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #eef5df;
+  --text-2: #c3d4ae;
+  --muted: #a7ba93;
+  --dim: #768a66;
+  --inv: #d6ea5e;
+  --inv-hover: #e2f27e;
+  --inv-ink: #1e2404;
+  --accent: #d6ea5e;
+  --accent-hover: #e2f27e;
+  --accent-ink: #1e2404;
+  --meter: #c3d4ae;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 10, 14, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c3d4ae' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="rainglass"] {
+  /* Rain on a window at night; the pointer wipes the glass. */
+  --backdrop: url("scene-rainglass.svg") center / cover no-repeat, #0c1322;
+  --blur: none;
+  --bg: rgba(8, 12, 22, .12);
+  --bg-2: rgba(8, 12, 22, .72);
+  --surface: rgba(16, 22, 38, .88);
+  --surface-2: rgba(16, 22, 38, .74);
+  --surface-3: rgba(220, 230, 250, .15);
+  --raised: rgba(16, 22, 38, .97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(16, 22, 38, .76);
+  --card-hover: rgba(16, 22, 38, .9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 220, 230, 250;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #e9eef8;
+  --text-2: #bcc6da;
+  --muted: #a3aec6;
+  --dim: #727d96;
+  --inv: #7fb6ff;
+  --inv-hover: #9cc8ff;
+  --inv-ink: #08182e;
+  --accent: #7fb6ff;
+  --accent-hover: #9cc8ff;
+  --accent-ink: #08182e;
+  --meter: #bcc6da;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 10, 14, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bcc6da' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="starrynight"] {
+  /* Starry night: strokes flowing round the swirls, in the manner of Van Gogh. */
+  --backdrop: url("scene-starrynight.svg") center / cover no-repeat, #14306f;
+  --blur: none;
+  --bg: rgba(8, 16, 44, .54);
+  --bg-2: rgba(8, 16, 44, .86);
+  --surface: rgba(14, 26, 62, .88);
+  --surface-2: rgba(14, 26, 62, .74);
+  --surface-3: rgba(225, 232, 250, .15);
+  --raised: rgba(14, 26, 62, .97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(14, 26, 62, .84);
+  --card-hover: rgba(14, 26, 62, .9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 225, 232, 250;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #eef1fa;
+  --text-2: #c2cbe2;
+  --muted: #aab5d2;
+  --dim: #7683a4;
+  --inv: #f2cd4a;
+  --inv-hover: #f7dc72;
+  --inv-ink: #2a2004;
+  --accent: #f2cd4a;
+  --accent-hover: #f7dc72;
+  --accent-ink: #2a2004;
+  --meter: #c2cbe2;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 10, 14, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c2cbe2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="cubism"] {
+  /* Cubism: an original picture whose planes catch the light. */
+  --backdrop: url("scene-cubism.svg") center / cover no-repeat, #2a2420;
+  --blur: none;
+  --bg: rgba(24, 20, 16, .56);
+  --bg-2: rgba(24, 20, 16, .9);
+  --surface: rgba(38, 32, 26, .88);
+  --surface-2: rgba(38, 32, 26, .74);
+  --surface-3: rgba(240, 228, 205, .15);
+  --raised: rgba(38, 32, 26, .97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(38, 32, 26, .84);
+  --card-hover: rgba(38, 32, 26, .9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 240, 228, 205;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #f3ead8;
+  --text-2: #d2c6ae;
+  --muted: #b6a98f;
+  --dim: #8a7e66;
+  --inv: #e0a43a;
+  --inv-hover: #eab658;
+  --inv-ink: #2a1c04;
+  --accent: #e0a43a;
+  --accent-hover: #eab658;
+  --accent-ink: #2a1c04;
+  --meter: #d2c6ae;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 10, 14, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d2c6ae' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="goldleaf"] {
+  /* Gold leaf: mosaic tiles and spirals, in the manner of Klimt. */
+  --backdrop: url("scene-goldleaf.svg") center / cover no-repeat, #1a120a;
+  --blur: none;
+  --bg: rgba(20, 13, 6, .56);
+  --bg-2: rgba(20, 13, 6, .9);
+  --surface: rgba(32, 22, 10, .88);
+  --surface-2: rgba(32, 22, 10, .74);
+  --surface-3: rgba(245, 225, 170, .15);
+  --raised: rgba(32, 22, 10, .97);
+  --field: rgba(0, 0, 0, .3);
+  --card: rgba(32, 22, 10, .84);
+  --card-hover: rgba(32, 22, 10, .9);
+  --well: rgba(0, 0, 0, .25);
+  --tint: 245, 225, 170;
+  --line: rgba(var(--tint), .1);
+  --line-2: rgba(var(--tint), .16);
+  --line-3: rgba(var(--tint), .28);
+  --text: #f7ecd0;
+  --text-2: #d8c89e;
+  --muted: #bdaa7d;
+  --dim: #8f7e56;
+  --inv: #e3b341;
+  --inv-hover: #edc565;
+  --inv-ink: #2a1c04;
+  --accent: #e3b341;
+  --accent-hover: #edc565;
+  --accent-ink: #2a1c04;
+  --meter: #d8c89e;
+  --meter-2: rgba(255, 255, 255, .22);
+  --scrim: rgba(4, 10, 14, .58);
+  --shadow: rgba(0, 0, 0, .45);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d8c89e' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 [data-theme="macos"] {
   /* macOS: a light window, a translucent sidebar and Dock, soft rounded cards, Apple's blue and its green switches. */
   --blur: blur(22px) saturate(180%);
@@ -4455,3 +5294,5 @@ body.tray-page { background: var(--surface); overflow: hidden; }
 .tray :focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .tray:focus { outline: none; }
 .set-row .d .warn-text { color: var(--warn-ink); }
+/* The dock is the page's foot in every theme: rounded corners would stand off the window's edge. */
+.dock { border-radius: 0 !important; }

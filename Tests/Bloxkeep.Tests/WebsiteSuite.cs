@@ -268,10 +268,8 @@ static class WebsiteSuite
         await Task.Delay(500);
         await coreO.ExecuteScriptAsync("location.href = 'https://example.com/'");
         await Task.Delay(1500);
-        bool stayed = !coreO.Source.Contains("example.com");
-        coreO.Navigate("https://example.org/");
-        await Task.Delay(1500);
-        c.Check("a page off Roblox's site doesn't load in the tab (a link, a redirect, a script)", stayed && !coreO.Source.Contains("example.org"), coreO.Source);
+        // By script only: WebView2 counts Navigate() as the person's own click, and that opens their real browser.
+        c.Check("a page off Roblox's site doesn't load in the tab (a link, a redirect, a script)", !coreO.Source.Contains("example.com"), coreO.Source);
         bool May(string url) => (bool)typeof(WebsiteTab).GetMethod("MayOpenHere", Harness.F)!.Invoke(null, [url])!;
         c.Check("…Roblox's own pages and Play's link may", May("https://www.roblox.com/games/1") && May("https://auth.roblox.com/v2/login")
             && May("roblox-player:1+launchmode:play+gameinfo:x") && !May("https://roblox.com.evil.example/")

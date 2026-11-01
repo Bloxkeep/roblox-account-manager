@@ -90,7 +90,8 @@ Open it with **⋯ More** on a card, or right-click the account. If the account 
 | **Switch to another server** | Closes the window and opens it again in another server of the same game with room. Accounts of the same game switched together land in the same server. | None of the selected accounts is playing in a public server on this PC. |
 | **Solve the bot check** | Only on a card that says **Roblox wants a bot check**: shows Roblox's check in Bloxkeep's own window, then opens the window again into its game once Roblox lets it in. | — |
 | **Auto-rejoin** | Turns auto-rejoin on or off for these accounts. | — |
-| **Use Roblox settings** | Includes these accounts in **Roblox settings** (graphics, FPS, volume). | Shown only when **Settings › Roblox version & graphics › Apply to** is **Chosen accounts**. |
+| **FPS limit in Roblox** | This account's own limit, from its next opening. Works even when **Apply to** is **Nobody**. Check it with Shift+F5 in the Roblox window. | — |
+| **Use Roblox settings** | Includes these accounts in **Roblox settings** (graphics, FPS, volume). | Shown only when **Settings › Staying in game › Apply to** is **Chosen accounts**. |
 | **Roblox profile** | Opens the profile on roblox.com in your browser. | Several selected, or no user ID. |
 | **Open website** | Opens roblox.com signed in as this account, in the Bloxkeep browser window. | Several selected, or Roblox VNG. |
 | **Copy username** | Copies the username. | Several selected. |

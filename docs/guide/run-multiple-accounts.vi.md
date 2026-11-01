@@ -29,7 +29,7 @@ Bình thường Roblox chỉ cho mở một cửa sổ trên mỗi máy: mở c�
 | Thấy hết các cửa sổ | **Cửa sổ › Xếp cửa sổ Roblox** | [Cửa sổ và thống kê](windows-and-stats.vi.md) |
 | Tự vào lại khi mất kết nối | **Tự vào lại game** | [Treo game](staying-in-game.vi.md) |
 | Không bị kick vì đứng yên | **Chống AFK** | [Treo game](staying-in-game.vi.md) |
-| Treo được nhiều tài khoản hơn | **Giới hạn RAM cửa sổ treo** | [Treo game](staying-in-game.vi.md) |
+| Treo được nhiều tài khoản hơn | **Giới hạn RAM khi thu nhỏ hoặc ẩn** | [Treo game](staying-in-game.vi.md) |
 | Mở đúng các tài khoản đó bằng một cú bấm, hoặc theo giờ | **Preset** | [Preset và hẹn giờ](presets.vi.md) |
 
 ## Câu hỏi

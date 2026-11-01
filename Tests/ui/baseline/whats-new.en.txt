@@ -38,6 +38,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -81,7 +82,7 @@ html [data-theme="dark" lang="en"]
               span "Launching"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Roblox version & graphics"
+              span "Roblox version"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Staying in game"
@@ -148,7 +149,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Hotkeys"
-                        div.d "Ctrl+Alt+H hides or shows every Roblox window, Ctrl+Alt+M minimizes or opens them all, Ctrl+Alt+N goes to the next one, Ctrl+Alt+A arranges them, Ctrl+Alt+B opens Bloxkeep, from any app."
+                        div.d "In any app, Ctrl+Alt plus: H hide or show all, M minimize or open all, N next window, A arrange, B open Bloxkeep."
                       div.ctl
                         label.switch
                           input [id="s-hotkeys" type="checkbox" aria-label="Hotkeys" checked=true]
@@ -198,7 +199,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Add me to the online count"
-                        div.d "While Bloxkeep is open, it says so every minute, so the person who makes it can see how many people use it right now. Only a code made from this PC (it cannot be traced back, and stays the same if you reinstall), the version and the language are sent."
+                        div.d "Every minute while open, Bloxkeep reports in so its maker can see how many use it. Sends only a code made from this PC (can’t be traced back, stays the same after a reinstall), the version and the language."
                       div.ctl
                         label.switch
                           input [id="s-online" type="checkbox" aria-label="Add me to the online count" checked=true]
@@ -211,43 +212,48 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.14 · October 30, 2026"
+              small "Bloxkeep 1.0.15 · November 1, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
-          article.plain.wn-feat
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:577px" src="whatsnew/1.0.15-photos.en.webp"]
             div.wn-feat-text
-              h3 "RAM limit: Auto"
-              p "Bloxkeep finds the amount for each game: less while the game stays calm, more when it needs it."
-              button.wn-go [type="button" FOCUSED] "Set it"
+              h3 "Themes from real photos"
+              p "Neon Miami, a night harbour, Hoi An lanterns, jellyfish and snowfall: the water, traffic and snow move and react to your mouse. 24 new themes in all."
+              button.wn-go [type="button" FOCUSED] "Pick one"
                 svg.i #1g7f83q
-          article.plain.wn-feat
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:577px" src="whatsnew/1.0.15-modes.en.webp"]
             div.wn-feat-text
-              h3 "Each vault has its own Discord link"
-              p "Control from Discord is now turned on per vault, so one person's /pc never reaches another's accounts."
+              h3 "Modes for Roblox"
+              p "Pick AFK farming, Play and farm or Roblox as is. Each account can also keep its own FPS."
+              button.wn-go [type="button"] "Pick a mode"
+                svg.i #1g7f83q
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
-            li "Group and player boxes suggest names in Bloxkeep's own list."
-            li "The Allow box for /pc link shows the asker's @username."
-            li "The time, date and colour pickers work from the keyboard."
-            li "The main window fits the screen it opens on, and saved windows come back inside the screen."
-            li "The lock screen after the PC sat unused offers only the password."
+            li "The sidebar shows how much CPU and GPU your Roblox windows use."
+            li "Account cards and the sign-in window are cleaner and easier to read."
+            li "A launcher's copy is updated first."
+              b "Opening Roblox directly no longer plays on an old copy"
+            li "Each open window shows its Roblox version, and an old one is marked. A button closes the windows, updates Roblox and reopens them."
+            li "A launcher updates Roblox by itself while no Roblox window is open. You can turn this off."
+            li "The RAM limit can go down to 512 MB or 768 MB, and minimizing many windows no longer holds Bloxkeep still."
+            li "Arranged Roblox windows sit edge to edge, with no gaps between them."
+            li "Settings › Discord shows how your alerts and status message will look."
+            li "Changing theme now fades smoothly."
         section.fixed.wn-group
           h4.wn-kind "Fixed"
           ul.wn-notes
-            li "Fixed Bloxkeep opening a test build of Roblox left on the PC instead of the real one."
-            li "Fixed accounts opening a second window while Roblox was still updating."
-            li "Fixed a rejoin giving up when the launch opened no window."
-            li "Fixed a hidden Roblox window showing up again when minimized or maximized."
-            li "Fixed Quick Login on the Roblox VNG tab renewing with a Roblox code."
-            li "Fixed a preset saved just before its scheduled minute running twice, and a scheduled stop holding up another preset."
-            li "Fixed Arrange changing tile sizes when windows move to a screen at another scale."
-            li "Fixed switching server leaving accounts marked as moving."
-            li "Fixed an install cut off by an update refusing to install again."
-            li "Fixed a vault with a damaged file not opening from its previous save."
-            li "Fixed restoring from a backup that was cut short."
+            li "Bloxkeep opens another build or says to install Roblox again."
+              b "Fixed Windows' own error when a Roblox build lost its DLL"
+            li "A window minimized while it loads stays minimized."
+            li "Bloxkeep's window no longer covers the taskbar when you restore it from maximized."
+            li "The list view's checkbox no longer covers the ⋮ button."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

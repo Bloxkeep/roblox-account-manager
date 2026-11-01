@@ -1,6 +1,6 @@
 // A small headless-Edge driver over the Chrome DevTools Protocol. Node 22+ (global WebSocket and fetch): no packages.
 // Edge is on every Windows 10/11 PC and on GitHub's Windows machines.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,6 +20,12 @@ function findEdge() {
 
 /** Starts Edge with a throwaway profile and returns a driver for its one tab. */
 export async function launch({ width = 1280, height = 800, scale = 1, locale = 'en-US', timezone = 'Asia/Ho_Chi_Minh' } = {}) {
+  // What an interrupted run left: old enough that no run still uses it.
+  for (const d of fs.readdirSync(os.tmpdir())) {
+    if (!d.startsWith('bloxkeep-ui-')) continue;
+    const old = path.join(os.tmpdir(), d);
+    try { if (Date.now() - fs.statSync(old).mtimeMs > 6 * 3600e3) fs.rmSync(old, { recursive: true, force: true }); } catch { /* still in use */ }
+  }
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'bloxkeep-ui-'));
   // No password manager: where it's on, Edge marks a new-password box aria-autocomplete="list" itself, which isn't
   // the page's doing and differs from PC to PC (it did between this PC and GitHub's).
@@ -153,9 +159,11 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
       await Promise.race([send('Browser.close').catch(() => {}), sleep(2000)]);
       ws.close();
       await sleep(600);
-      try { proc.kill(); } catch { /* exited */ }
-      for (let i = 0; i < 10; i++) {
-        try { fs.rmSync(profile, { recursive: true, force: true }); break; } catch { await sleep(400); }
+      // Edge's helpers too: they hold the profile, and profiles left behind had reached 12 GB of Temp (2026-11-01).
+      if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+      else try { proc.kill(); } catch { /* exited */ }
+      for (let i = 0; i < 30; i++) {
+        try { fs.rmSync(profile, { recursive: true, force: true }); break; } catch { await sleep(500); }
       }
     },
   };

@@ -32,6 +32,18 @@ import { serve } from './serve.mjs';
 import { decode, compare } from './png.mjs';
 import scenarios from './scenarios.mjs';
 
+/** Another program holding the file a moment (a virus scan, the indexer) fails the write with UNKNOWN: tried again. */
+function writeSoon(file, text) {
+  for (let tries = 0; ; tries++) {
+    try {
+      return fs.writeFileSync(file, text);
+    } catch (e) {
+      if (tries >= 6) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+    }
+  }
+}
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const args = process.argv.slice(2);
@@ -266,11 +278,11 @@ async function runOne(b, { sc, lang }) {
   }
   const text = parts.join('\n') + '\n';
   const file = path.join(BASE_DIR, `${id}.txt`);
-  fs.writeFileSync(path.join(dirs.actual, `${id}.txt`), text);
+  writeSoon(path.join(dirs.actual, `${id}.txt`), text);
   const broke = /(^|\n)== (FAILED|page errors)\n/.test(text); // a step that fails first leaves it at the very start
   let ok;
   if (UPDATE && !broke) {
-    fs.writeFileSync(file, text);
+    writeSoon(file, text);
     say.push(`  saved  ${id}`);
     ok = true;
   } else if (!fs.existsSync(file)) {

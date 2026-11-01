@@ -46,7 +46,7 @@ public sealed partial class AppController
             var c = s.RobloxConfig;
             if (OptStr(rc, "mode") is "off" or "all" or "marked") c.Mode = OptStr(rc, "mode")!;
             if (Has(rc, "graphics", JsonValueKind.Number)) c.Graphics = (int)Math.Clamp(Long(rc, "graphics"), 0, 10);
-            if (Has(rc, "fps", JsonValueKind.Number)) c.Fps = Long(rc, "fps") is 30 or 60 or 144 or 240 ? (int)Long(rc, "fps") : 0;
+            if (Has(rc, "fps", JsonValueKind.Number)) c.Fps = RobloxGameSettings.FpsChoices.Contains((int)Long(rc, "fps")) ? (int)Long(rc, "fps") : 0;
             if (Has(rc, "volume", JsonValueKind.Number)) c.Volume = (int)Math.Clamp(Long(rc, "volume"), -1, 100);
         }
         if (OptBool(a, "trimBackground") is { } trim)
@@ -54,6 +54,8 @@ public sealed partial class AppController
             s.TrimBackground = trim;
             _trimRefusedShown = false;
         }
+        if (OptBool(a, "autoUpdateRoblox") is { } autoUpdate)
+            s.AutoUpdateRoblox = autoUpdate;
         if (Has(a, "ramLimitMb", JsonValueKind.Number) && RamLimitChoices.Contains((int)Long(a, "ramLimitMb")))
             s.RamLimitMb = (int)Long(a, "ramLimitMb");
         if (OptBool(a, "splitCores") is { } split)

@@ -1,0 +1,6 @@
+The animated themes' photographs, from Wikimedia Commons, each marked public domain or CC0 on its page:
+photo-miaminight.jpg: "Beacon Hotel at Night.jpg", Public domain, https://commons.wikimedia.org/wiki/File:Beacon_Hotel_at_Night.jpg
+photo-lanternriver.jpg: "Hoi An - HoiAn1441.jpg", CC0, https://commons.wikimedia.org/wiki/File:Hoi_An_-_HoiAn1441.jpg
+photo-deepsea.jpg: "Floating jellyfish (Unsplash).jpg", CC0, https://commons.wikimedia.org/wiki/File:Floating_jellyfish_(Unsplash).jpg
+photo-snowfall.jpg: "Road in snowy forest (Unsplash).jpg", CC0, https://commons.wikimedia.org/wiki/File:Road_in_snowy_forest_(Unsplash).jpg
+photo-nightharbour.jpg: "City Lights at Night (Unsplash -uzgaA9LfNw).jpg", CC0, https://commons.wikimedia.org/wiki/File:City_Lights_at_Night_(Unsplash_-uzgaA9LfNw).jpg

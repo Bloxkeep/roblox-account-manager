@@ -38,6 +38,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -118,10 +119,10 @@ html [data-theme="dark" lang="vi"]
               svg.i #19k0rtd
             button.on [title="Dạng danh sách" aria-label="Dạng danh sách" aria-pressed="true" FOCUSED]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+          button.sort-btn [id="group-btn" title="Nhóm: Tất cả" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Nhóm: Tất cả"
-          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+          button.sort-btn [id="sort-btn" title="Sắp xếp: Tên" aria-haspopup="menu"]
             svg.i #1ui218d
             span "Sắp xếp: Tên"
         div.scroll [id="scroll"]
@@ -346,9 +347,9 @@ html [data-theme="dark" lang="vi"]
               b "2"
               span "Server"
               small "tùy chọn"
-            label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
+            label.inwrap.job [title="Mã của một server, để đưa nhiều tài khoản vào cùng server."]
               svg.i #ej9lod
-              input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
+              input [id="job" placeholder="Mã server (Job ID)" maxlength="60" aria-label="Mã server (Job ID)" value=""]
             div.dock-sub
               button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
                 svg.i #uj30io

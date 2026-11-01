@@ -1,7 +1,8 @@
-// Settings › Staying in game: auto-rejoin for every account, Anti-AFK, the daily sign-in check; then RAM and CPU (the low-RAM
+// Settings › Staying in game: the Roblox settings; auto-rejoin for every account, Anti-AFK, the daily sign-in check; then RAM and CPU (the low-RAM
 // warning, saving RAM on background windows, the RAM limit for resting ones, fast cores for the played window). Tray and GPU drawing: Settings › Bloxkeep.
 import { useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
+import { RobloxConfig } from './RobloxPage';
 
 export function PerfPage({ title }: { title: string }) {
   const { t, tn, locale, call, toast } = useHost();
@@ -32,6 +33,7 @@ export function PerfPage({ title }: { title: string }) {
   const setting = (key: string, set: (v: boolean) => void) => (v: boolean) => { set(v); call('setSettings', { [key]: v }); };
 
   return <Page id="perf" title={title}>
+    <RobloxConfig />
     <Group id="perf" title={t('set.g.keep')}>
       <Row title={t('set.rejoin')} desc={t('set.rejoinDesc')}>
         <select className="select" id="s-rejoin" aria-label={t('set.rejoin')} value={rejoin} disabled={!accounts.length} onChange={async e => {
@@ -62,6 +64,8 @@ export function PerfPage({ title }: { title: string }) {
         }}>
           <option value="0">{t('set.ramLimitOff')}</option>
           <option value="-1">{t('set.ramLimitAuto')}</option>
+          <option value="512">512 MB</option>
+          <option value="768">768 MB</option>
           <option value="1024">1 GB</option>
           <option value="1536">1.5 GB</option>
           <option value="2048">2 GB</option>

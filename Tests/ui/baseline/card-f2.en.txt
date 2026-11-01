@@ -38,6 +38,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -119,19 +120,18 @@ html [data-theme="dark" lang="en"]
               svg.i #19k0rtd
             button [title="List" aria-label="List" aria-pressed="false"]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+          button.sort-btn [id="group-btn" title="Group: All" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Group: All"
-          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+          button.sort-btn [id="sort-btn" title="Sort: Name" aria-haspopup="menu"]
             svg.i #1ui218d
             span "Sort: Name"
         div.scroll [id="scroll"]
           div [id="grid"]
             div.grid [role="listbox" aria-label="Accounts" aria-multiselectable="true"]
               article.card [role="option" tabindex="-1" aria-label="Alt" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:83" src=#c108i9]
                   i.pdot.studio
@@ -156,11 +156,8 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Open on this PC · PID 2222"] "On this PC"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:243" src=#uinvo6]
                   i.ingame.pdot
@@ -192,10 +189,8 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.sel [role="option" tabindex="0" aria-label="Farm 2" aria-selected="true"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Needs sign-in"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:244" src=#n0d7cr]
                   i.offline.pdot
@@ -221,11 +216,8 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="0" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Main" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Open on this PC · PID 1111"] "On this PC"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:204" src=#1qk25wb]
                   i.ingame.pdot
@@ -260,9 +252,8 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:297" src=#1u67et1]
                   i.ingame.pdot
@@ -289,11 +280,8 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Testing" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Launching"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:217"] "TE"
                   i.offline.pdot
@@ -316,10 +304,8 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
@@ -332,6 +318,7 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Status unknown"] "Status unknown"
                     div.v [title="Updating…"] "Updating…"
                 div.meta
+                  span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 2 days ago"

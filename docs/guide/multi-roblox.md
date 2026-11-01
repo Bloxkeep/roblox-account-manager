@@ -63,7 +63,7 @@ While Multi-Roblox is on, its details dialog has two switches:
 
 ## The Multi-Roblox check
 
-Find it under **Settings › Roblox version & graphics › Roblox updates › Multi-Roblox check**. Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC.
+Find it under **Settings › Roblox version › Roblox updates › Multi-Roblox check**. Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC.
 
 <img src="../screenshots/roblox-updates.png" width="760" alt="Settings, Roblox version and graphics: the Multi-Roblox check shows Changed, may be blocked, with a what-to-do note and the update history">
 

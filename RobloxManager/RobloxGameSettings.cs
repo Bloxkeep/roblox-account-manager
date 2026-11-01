@@ -14,7 +14,7 @@ namespace RobloxManager;
 /// </summary>
 public static class RobloxGameSettings
 {
-    static readonly string RobloxDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox");
+    static string RobloxDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox");
     static string BaselinePath => Path.Combine(Vault.DataDir, "roblox-settings.json");
 
     /// <summary>The values Bloxkeep manages, as (element type, name) in the file.</summary>
@@ -69,6 +69,25 @@ public static class RobloxGameSettings
 
     /// <summary>The graphics slider (1–10) as Roblox's internal quality level (1–21) in the same file.</summary>
     public static int EngineQuality(int slider) => slider >= 10 ? 21 : slider * 2 - 1;
+
+    /// <summary>The frame rate limits offered, for the shared setup and each account (written like Roblox's own menu writes
+    /// its 30, 60, 144 and 240).</summary>
+    public static readonly int[] FpsChoices = [15, 20, 30, 45, 60, 120, 144, 240];
+
+    /// <summary>
+    /// What a client opens with; null: nothing of Bloxkeep's. An account's own limit (<see cref="Account.FpsCap"/>) goes over
+    /// the shared setup's and works without it; light AFK stays light, so only a lower limit goes over its own.
+    /// </summary>
+    public static RobloxConfig? ForLaunch(RobloxConfig shared, bool afk, bool usesShared, int accountFps)
+    {
+        var config = afk ? LightAfk : usesShared ? new RobloxConfig { Graphics = shared.Graphics, Fps = shared.Fps, Volume = shared.Volume } : null;
+        if (accountFps <= 0)
+            return config;
+        config ??= new RobloxConfig();
+        if (!afk || accountFps < config.Fps)
+            config.Fps = accountFps;
+        return config;
+    }
 
     /// <summary>A preset's light AFK profile: lowest graphics, the lowest FPS limit Roblox's menu offers (30; lower is
     /// untested) and no sound.</summary>
@@ -264,7 +283,7 @@ public sealed class RobloxConfig
     public string Mode { get; set; } = "off";
     /// <summary>1–10 like Roblox's graphics slider; 0 = leave as it is.</summary>
     public int Graphics { get; set; }
-    /// <summary>Frame rate limit (30, 60, 144, 240); 0 = leave as it is.</summary>
+    /// <summary>Frame rate limit (one of <see cref="RobloxGameSettings.FpsChoices"/>); 0 = leave as it is.</summary>
     public int Fps { get; set; }
     /// <summary>0–100 %; -1 = leave as it is.</summary>
     public int Volume { get; set; } = -1;

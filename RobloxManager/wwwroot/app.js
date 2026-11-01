@@ -549,19 +549,57 @@
   /** Typed passwords don't stay in the page once Settings is left (Settings › Security, React, empties its boxes). */
   function clearPwForm() { uiSignal('clearPassword'); }
 
+  /** Puts a theme on the page: the old look fades into the new one once the new one's picture is ready, so it doesn't pop in
+   *  after the fade. The first theme of a start shows at once, and so does a colour being changed (instant). The latest pick wins. */
+  let themeComing = null, themeFades = false;
+  async function showTheme(id, instant) {
+    const root = document.documentElement, fade = themeFades && !instant && !document.hidden && document.startViewTransition;
+    themeFades = true;
+    if (id === (themeComing ?? root.dataset.theme)) return;
+    themeComing = null;
+    if (!fade) {
+      root.dataset.theme = id;
+      return;
+    }
+    themeComing = id;
+    await themePictureReady(id);
+    if (themeComing !== id) return;
+    themeComing = null;
+    if (root.dataset.theme !== id) document.startViewTransition(() => { root.dataset.theme = id; }).ready.catch(() => { /* skipped: the theme is on anyway */ });
+  }
+  /** A slow picture isn't waited for long: the pick has to answer. */
+  function themePictureReady(id) {
+    const probe = document.createElement('span');
+    probe.className = 'theme-probe';
+    probe.dataset.theme = id;
+    document.body.append(probe);
+    const custom = id === 'custom' ? customNow() : null;
+    const urls = custom ? (custom.picture && !custom.video ? [custom.picture] : [])
+      : [...getComputedStyle(probe).backgroundImage.matchAll(/url\("([^"]+)"\)/g)].map(m => m[1]);
+    probe.remove();
+    return Promise.race([
+      Promise.all(urls.map(url => {
+        const picture = new Image();
+        picture.src = url;
+        return picture.decode().catch(() => { /* the theme's colour shows without it */ });
+      })),
+      new Promise(done => setTimeout(done, 120)),
+    ]);
+  }
+
   /** A theme picked with the arrow keys shows at once; the app saves it once the keys rest. */
   let themeTimer = 0;
-  function previewTheme(id) {
+  function previewTheme(id, wait = 400) {
     clearTimeout(themeTimer);
     setThemePending(id);
-    if (id !== 'system') document.documentElement.dataset.theme = id;
+    if (id !== 'system') showTheme(id);
     themeTimer = setTimeout(async () => {
       if (id !== S.app.theme) await call('setTheme', { theme: id });
       if (S.themePending !== id) return;
       setThemePending(null);
       // The state that came with the answer was held back while this pick waited: the theme the app applied shows now.
-      document.documentElement.dataset.theme = S.app.themeApplied || S.app.theme;
-    }, 400);
+      showTheme(S.app.themeApplied || S.app.theme);
+    }, wait);
   }
 
   /** The theme being previewed, or null: Settings › Appearance (React) marks it as the chosen one. */
@@ -641,7 +679,7 @@
     S.customPreview = { ...customNow(), ...change };
     clearTimeout(themeTimer);
     setThemePending(null);
-    document.documentElement.dataset.theme = 'custom';
+    showTheme('custom', true);
     applyCustomTheme();
     uiListeners.forEach(f => f());
     clearTimeout(customTimer);
@@ -1053,10 +1091,12 @@
 
   const THEMES = {
     basic: ['system', 'light', 'paper', 'gray', 'dim', 'dark', 'midnight', 'black', 'contrast', 'contrastlight'],
-    scenery: ['aurora', 'sunset', 'city', 'space', 'moon', 'mist', 'snow', 'desert', 'meadow', 'halong', 'terraces', 'hoian', 'fuji', 'jungle', 'underwater', 'skyislands'],
-    color: ['frost', 'ocean', 'teal', 'forest', 'mocha', 'amber', 'grape', 'indigo', 'crimson', 'lava', 'neon', 'candy', 'matcha', 'mint', 'sky', 'lavender', 'peach', 'sakura'],
-    style: ['macos', 'macosdark', 'gnome', 'ubuntu', 'kde', 'retro', 'macclassic', 'terminal', 'gameboy', 'arcade', 'blueprint', 'newspaper', 'notebook', 'chalkboard', 'brutal', 'cyberpunk'],
+    scenery: ['aurora', 'sunset', 'city', 'space', 'moon', 'mist', 'snow', 'desert', 'meadow', 'savanna', 'halong', 'terraces', 'hoian', 'dalat', 'fuji', 'jungle', 'phongnha', 'underwater', 'nightbeach', 'skyislands'],
+    color: ['frost', 'ocean', 'teal', 'forest', 'olive', 'mocha', 'amber', 'grape', 'indigo', 'crimson', 'rose', 'lava', 'neon', 'candy', 'matcha', 'mint', 'sky', 'lavender', 'peach', 'coral', 'sakura'],
+    style: ['macos', 'macosdark', 'gnome', 'ubuntu', 'kde', 'retro', 'macclassic', 'terminal', 'solarized', 'gameboy', 'arcade', 'blueprint', 'newspaper', 'notebook', 'chalkboard', 'brutal', 'cyberpunk'],
     season: ['lunar', 'valentine', 'spring', 'flametree', 'summer', 'kites', 'rainy', 'school', 'midautumn', 'autumn', 'skylanterns', 'halloween', 'winter', 'christmas', 'newyear'],
+    live: ['koipond', 'fireflies', 'rainglass', 'blockworld', 'peachfall', 'miaminight', 'nightharbour', 'lanternriver', 'deepsea', 'snowfall'],
+    art: ['starrynight', 'greatwave', 'waterlilies', 'cubism', 'blocksart', 'goldleaf'],
     custom: ['custom'],
   };
   function syncSettings() {
@@ -1961,6 +2001,8 @@
     return null;
   }
 
+  const FPS_CAPS = [15, 20, 30, 45, 60, 120, 144, 240];
+
   /** "Chosen accounts": tick them in one list instead of going through each account's ⋯ menu. */
   function pickRobloxConfigAccounts() {
     const list = accounts().slice().sort((x, y) => compareText(x.label, y.label));
@@ -1997,10 +2039,32 @@
     if (n !== undefined) toast(tn(enable ? 't.rcOn' : 't.rcOff', n), 'ok');
   }
 
+  /** Each account's own frame rate limit in Roblox: a second menu where the account's menu was. */
+  function fpsMenu(ids, x, y) {
+    const now = new Set(ids.map(i => byId(i)?.fpsCap || 0));
+    const pick = async fps => {
+      const n = await call('setFpsCap', { ids, fps });
+      if (n !== undefined) toast(tn(fps ? 't.fpsOn' : 't.fpsOff', n, { fps }), 'ok');
+    };
+    openMenu([
+      { text: t('m.fpsNone'), checked: now.size === 1 && now.has(0), run: () => pick(0) },
+      ...FPS_CAPS.map(fps => ({ text: `${fps} FPS`, checked: now.size === 1 && now.has(fps), run: () => pick(fps) })),
+    ], x, y);
+  }
+
   async function toggleRejoin(ids) {
     const enable = !ids.every(i => byId(i) && rejoinOn(byId(i))); // the opposite of the tick the menu showed
     const n = await call('setAutoRejoin', { ids, enabled: enable });
     if (n !== undefined) toast(tn(enable ? 't.rejoinOn' : 't.rejoinOff', n), 'ok');
+  }
+
+  /** Says the layout too: a 4 × 4 grid chosen long ago makes two windows small, with nothing else telling why. */
+  function arrangedText(n) {
+    const st = S.app.settings || {}, layout = st.windowLayout || 'fill';
+    const how = layout === 'fill' ? t('snap.fill')
+      : layout === 'custom' ? t('snap.custom', { w: st.windowWidth || 640, h: st.windowHeight || 480 })
+      : /^\dx\d$/.test(layout) ? t('snap.grid', { g: layout.replace('x', ' × ') }) : null;
+    return how ? tn('t.arrangedAs', n, { how }) : tn('t.arranged', n);
   }
 
   /** Tiles all Roblox windows; with several monitors the user picks one first. */
@@ -2008,7 +2072,7 @@
     const monitors = S.app.monitors || [];
     const run = async monitor => {
       const n = await call('arrangeWindows', { monitor });
-      if (n !== undefined) toast(n ? tn('t.arranged', n) : t('t.noWindows'), n ? 'ok' : 'info');
+      if (n !== undefined) toast(n ? arrangedText(n) : t('t.noWindows'), n ? 'ok' : 'info');
     };
     if (monitors.length <= 1 || !anchor) return run(monitors.find(m => m.primary)?.index ?? 0);
     menuAt(anchor, monitors.map(m => ({
@@ -2047,6 +2111,7 @@
         title: ids.some(i => { const x = byId(i); return x?.session && x.session.autoRejoin !== undefined && x.session.autoRejoin !== x.autoRejoin; }) ? t('m.rejoinPreset') : '' },
       ...(S.app.settings?.robloxConfig?.mode === 'marked'
         ? [{ icon: 'sliders', text: t('m.robloxConfig'), checked: ids.every(i => byId(i)?.useRobloxConfig), run: () => toggleRobloxConfig(ids) }] : []),
+      { icon: 'sliders', text: t('m.fps'), hint: !many && a.fpsCap ? `${a.fpsCap} FPS` : '', run: () => fpsMenu(ids, x, y) },
       { icon: 'external', text: t('m.profile'), disabled: many || !a.userId, run: () => call('openProfile', { userId: a.userId }) },
       // roblox.com signed in as this account, in a window of Bloxkeep's own (one per account, several side by side).
       { icon: 'globe', text: t('m.website'), disabled: many || a.realm === 'vng', title: a.realm === 'vng' ? t('card.vngNoWebsite') : '',
@@ -2436,9 +2501,9 @@
       case 'ct-clear': return call('clearThemePicture');
       case 'theme':
         clearTimeout(themeTimer); // a click wins over a pick still waiting to be saved
+        if (el.dataset.id !== S.app.theme) return previewTheme(el.dataset.id, 0); // shows now, not once the app has answered
         setThemePending(null);
-        if (el.dataset.id !== S.app.theme) return call('setTheme', { theme: el.dataset.id });
-        document.documentElement.dataset.theme = S.app.themeApplied || S.app.theme; // back from a preview
+        showTheme(S.app.themeApplied || S.app.theme); // back from a preview
         return;
       case 'lang': return el.dataset.lang !== lang && call('setLanguage', { language: el.dataset.lang });
       case 'view': return setView(el.dataset.view);
@@ -2558,6 +2623,12 @@
         const rv = S.app.robloxVersion || {}, n = S.metrics.robloxCount;
         if (rv.updating || (n && !await confirmBox(tn('rbx.updateQ', n, { l: rv.updater }), { title: t('rbx.updateTitle'), ok: t('rbx.updateOk') }))) return;
         if (await call('updateRoblox') !== undefined) toast(t('rbx.updateStarted', { l: rv.updater }), 'info');
+      })();
+      case 'rbx-reopen': return (async () => {
+        const rv = S.app.robloxVersion || {}, n = S.metrics.robloxCount;
+        const q = rv.reopens ? tn('rbx.reopenQ', n, { m: rv.reopens }) : tn('rbx.reopenNone', n);
+        if (rv.updating || !await confirmBox(q, { title: t('rbx.reopenTitle'), ok: t('rbx.reopenOk') })) return;
+        await call('updateAndReopen');
       })();
       case 'ru-open': return openSettings('rbxupd');
       case 'rw-how': return call('openRobloxWatch');
@@ -2826,7 +2897,7 @@
     S.app = st;
     maskNames(st); // before anything renders a name
     uiListeners.forEach(f => f()); // the React parts (useAppState) draw again with it
-    if (st.themeApplied && !S.themePending) document.documentElement.dataset.theme = st.themeApplied;
+    if (st.themeApplied && !S.themePending) showTheme(st.themeApplied);
     applyCustomTheme(); // new colours or picture, with the theme itself unchanged
     if (st.locked) {
       // Toasts from before the lock may name accounts: they don't stay on the lock screen.

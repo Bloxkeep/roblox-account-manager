@@ -129,11 +129,7 @@ html [data-theme="dark" lang="en"]
                 div.ways
                   span "Other ways:"
                   button.btn.ghost.sm "Paste a cookie"
-                div.ways
-                  span "Import from:"
                   button.btn.ghost.sm [title="Bring accounts over from Bloxkeep on another PC, or from a backup (a .rmv file)"] "Bloxkeep file"
-                div.ways
-                  span "Only need the website?"
                   button.btn.ghost.sm [title="Each window is a separate account: sign in on the site, save it to Bloxkeep if you like"] "Open roblox.com"
 #layer
 #toasts

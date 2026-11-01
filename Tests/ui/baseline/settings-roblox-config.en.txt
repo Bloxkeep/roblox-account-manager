@@ -38,6 +38,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -79,10 +80,10 @@ html [data-theme="dark" lang="en"]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
-            button.set-nav-item [type="button" aria-current="page"]
-              svg.i #sy1lqp
-              span "Roblox version & graphics"
             button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button" aria-current="page"]
               svg.i #1l5qw3q
               span "Staying in game"
             button.set-nav-item [type="button"]
@@ -105,69 +106,38 @@ html [data-theme="dark" lang="en"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
-              section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
-                h2.set-page-title [id="set-page-roblox-h"] "Roblox version & graphics"
-                div.set-grp [id="sec-rbxupd"]
-                  h3.set-grp-title "Roblox updates"
-                  div.set-card
-                    div [id="s-rbxclosed"]
-                    div [id="s-rbxver"]
-                      div.set-row
-                        div
-                          div.t "Roblox version"
-                          div.d "Up to date"
-                        div.ctl
-                          span.ok.state-pill "0.742.0.7421053"
-                    div [id="s-rbxupd"]
-                      div.set-row
-                        div
-                          div.t "Installed build"
-                          div.d "From Bloxstrap"
-                        div.ctl
-                          span.ru-build [title="version-cec3ad5889b447cf"] "build cec3ad58"
-                      div.set-row
-                        div
-                          div.t "Multi-Roblox check"
-                          div.d "Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC."
-                            button.link [type="button"] "How it works"
-                        div.ctl
-                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "No change found"
-                      div.set-row
-                        div
-                          div.t "Next Roblox build"
-                          div.d "0.743.0.7431134, checked before Roblox releases it"
-                        div.ctl
-                          span.ok.state-pill "No change found"
-                      div.ru-head "Update history"
-                      ul.ru-list
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.742.0.7421053"
-                              span.ru-note "new build, same version"
-                              span.ok.ru-note "Multi-Roblox: no change"
-                            div.ru-sub "Oct 15, 2026, 4:00 PM · · Bloxstrap"
-                              span [title="version-cec3ad5889b447cf"] "build cec3ad58"
-                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.742.0.7421053"
-                              span.ok.ru-note "Multi-Roblox worked here"
-                            div.ru-sub "Oct 14, 2026, 10:00 AM · · Bloxstrap"
-                              span [title="version-5b1e07d2a6c84f13"] "build 5b1e07d2"
-                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.741.0.7410829"
-                              span.ru-note "first seen"
-                            div.ru-sub "Oct 7, 2026, 12:00 PM · · Bloxstrap"
-                              span [title="version-91f0c3ab72d14e6e"] "build 91f0c3ab"
-                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.741.0.7410829"] "Notes"
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Staying in game"
                 div.set-grp [id="sec-rc"]
                   h3.set-grp-title "Roblox settings"
                   div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Mode"]
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "AFK farming"
+                        small "20 FPS · Graphics 1 · Muted · Auto RAM limit"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Play and farm"
+                        small "45 FPS · Graphics 3 · Keeps volume"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox as is"
+                        small "Bloxkeep changes nothing"
+                      button.on.rc-mode [type="button" aria-pressed="true"]
+                        span.rc-load
+                        b "Custom"
+                        small "Set each one below"
+                    p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
                     div.set-row
                       div
                         div.t "Apply to"
@@ -200,8 +170,12 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         select.select [id="s-rc-fps" aria-label="Frame rate limit" value="144"]
                           option [value="0"] "Leave as is"
+                          option [value="15"] "15 FPS"
+                          option [value="20"] "20 FPS"
                           option [value="30"] "30 FPS"
+                          option [value="45"] "45 FPS"
                           option [value="60"] "60 FPS"
+                          option [value="120"] "120 FPS"
                           option [value="144"] "144 FPS"
                           option [value="240"] "240 FPS"
                     div.set-row
@@ -215,6 +189,74 @@ html [data-theme="dark" lang="en"]
                           option [value="50"] "50%"
                           option [value="75"] "75%"
                           option [value="100"] "100%"
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Keeping accounts going"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Auto-rejoin"
+                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
+                      div.ctl
+                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
+                          option [value="on"] "On for all accounts"
+                          option [value="off"] "Off for all accounts"
+                          option [value="some" disabled hidden] "On for 1 of 7"
+                    div.set-row
+                      div
+                        div.t "Anti-AFK"
+                        div.d "Stay in game while you’re away. Not while the PC is locked."
+                      div.ctl
+                        label.switch
+                          input [id="s-antiafk" type="checkbox" aria-label="Anti-AFK" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "Check sign-ins every day"
+                        div.d "Tells you which accounts Roblox signed out."
+                          span [id="s-daily-when"] "Last check: 7:00 AM."
+                      div.ctl
+                        label.switch
+                          input [id="s-daily" type="checkbox" aria-label="Check sign-ins every day" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "RAM & CPU"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Low RAM warning"
+                      div.ctl
+                        label.switch
+                          input [id="s-memwarn" type="checkbox" aria-label="Low RAM warning" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Save RAM on background windows"
+                        div.d "Background windows give up RAM first."
+                      div.ctl
+                        label.switch
+                          input [id="s-trim" type="checkbox" aria-label="Save RAM on background windows" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "RAM limit when minimized or hidden"
+                        div.d "Too low can make windows slow."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="RAM limit when minimized or hidden" value="0"]
+                          option [value="0"] "No limit"
+                          option [value="-1"] "Auto (per game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Put the window you play first"
+                        div.d "Background windows slow down so it runs smoother."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Put the window you play first" checked=false]
+                          span
 #layer
 #toasts
 -- commands
@@ -268,6 +310,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -309,10 +352,10 @@ html [data-theme="dark" lang="en"]
             button.set-nav-item [type="button"]
               svg.i #1ewcuky
               span "Launching"
-            button.set-nav-item [type="button" aria-current="page"]
-              svg.i #sy1lqp
-              span "Roblox version & graphics"
             button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button" aria-current="page"]
               svg.i #1l5qw3q
               span "Staying in game"
             button.set-nav-item [type="button"]
@@ -335,69 +378,38 @@ html [data-theme="dark" lang="en"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
-              section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
-                h2.set-page-title [id="set-page-roblox-h"] "Roblox version & graphics"
-                div.set-grp [id="sec-rbxupd"]
-                  h3.set-grp-title "Roblox updates"
-                  div.set-card
-                    div [id="s-rbxclosed"]
-                    div [id="s-rbxver"]
-                      div.set-row
-                        div
-                          div.t "Roblox version"
-                          div.d "Up to date"
-                        div.ctl
-                          span.ok.state-pill "0.742.0.7421053"
-                    div [id="s-rbxupd"]
-                      div.set-row
-                        div
-                          div.t "Installed build"
-                          div.d "From Bloxstrap"
-                        div.ctl
-                          span.ru-build [title="version-cec3ad5889b447cf"] "build cec3ad58"
-                      div.set-row
-                        div
-                          div.t "Multi-Roblox check"
-                          div.d "Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC."
-                            button.link [type="button"] "How it works"
-                        div.ctl
-                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "No change found"
-                      div.set-row
-                        div
-                          div.t "Next Roblox build"
-                          div.d "0.743.0.7431134, checked before Roblox releases it"
-                        div.ctl
-                          span.ok.state-pill "No change found"
-                      div.ru-head "Update history"
-                      ul.ru-list
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.742.0.7421053"
-                              span.ru-note "new build, same version"
-                              span.ok.ru-note "Multi-Roblox: no change"
-                            div.ru-sub "Oct 15, 2026, 4:00 PM · · Bloxstrap"
-                              span [title="version-cec3ad5889b447cf"] "build cec3ad58"
-                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.742.0.7421053"
-                              span.ok.ru-note "Multi-Roblox worked here"
-                            div.ru-sub "Oct 14, 2026, 10:00 AM · · Bloxstrap"
-                              span [title="version-5b1e07d2a6c84f13"] "build 5b1e07d2"
-                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
-                        li.ru-item
-                          div.ru-text
-                            div.ru-main
-                              b "0.741.0.7410829"
-                              span.ru-note "first seen"
-                            div.ru-sub "Oct 7, 2026, 12:00 PM · · Bloxstrap"
-                              span [title="version-91f0c3ab72d14e6e"] "build 91f0c3ab"
-                          button.link.ru-link [type="button" title="Roblox release notes — Roblox’s release notes are written for game creators and rarely mention changes to the Roblox app itself." aria-label="Roblox release notes 0.741.0.7410829"] "Notes"
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Staying in game"
                 div.set-grp [id="sec-rc"]
                   h3.set-grp-title "Roblox settings"
                   div.set-card
+                    div.rc-modes [id="s-rc-levels" role="group" aria-label="Mode"]
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="1"]
+                          i
+                          i
+                          i
+                        b "AFK farming"
+                        small "20 FPS · Graphics 1 · Muted · Auto RAM limit"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="2"]
+                          i
+                          i
+                          i
+                        b "Play and farm"
+                        small "45 FPS · Graphics 3 · Keeps volume"
+                      button.rc-mode [type="button" aria-pressed="false"]
+                        span.rc-load [data-n="3"]
+                          i
+                          i
+                          i
+                        b "Roblox as is"
+                        small "Bloxkeep changes nothing"
+                      button.on.rc-mode [type="button" aria-pressed="true"]
+                        span.rc-load
+                        b "Custom"
+                        small "Set each one below"
+                    p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
                     div.set-row
                       div
                         div.t "Apply to"
@@ -408,43 +420,74 @@ html [data-theme="dark" lang="en"]
                           option [value="off"] "Nobody"
                           option [value="all"] "All accounts"
                           option [value="marked"] "Chosen accounts"
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Keeping accounts going"
+                  div.set-card
                     div.set-row
                       div
-                        div.t "Graphics quality"
+                        div.t "Auto-rejoin"
+                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
                       div.ctl
-                        select.select [id="s-rc-graphics" aria-label="Graphics quality" value="5" disabled]
-                          option [value="0"] "Leave as is"
-                          option [value="1"] "1"
-                          option [value="2"] "2"
-                          option [value="3"] "3"
-                          option [value="4"] "4"
-                          option [value="5"] "5"
-                          option [value="6"] "6"
-                          option [value="7"] "7"
-                          option [value="8"] "8"
-                          option [value="9"] "9"
-                          option [value="10"] "10"
+                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
+                          option [value="on"] "On for all accounts"
+                          option [value="off"] "Off for all accounts"
+                          option [value="some" disabled hidden] "On for 1 of 7"
                     div.set-row
                       div
-                        div.t "Frame rate limit"
+                        div.t "Anti-AFK"
+                        div.d "Stay in game while you’re away. Not while the PC is locked."
                       div.ctl
-                        select.select [id="s-rc-fps" aria-label="Frame rate limit" value="144" disabled]
-                          option [value="0"] "Leave as is"
-                          option [value="30"] "30 FPS"
-                          option [value="60"] "60 FPS"
-                          option [value="144"] "144 FPS"
-                          option [value="240"] "240 FPS"
+                        label.switch
+                          input [id="s-antiafk" type="checkbox" aria-label="Anti-AFK" checked=false]
+                          span
                     div.set-row
                       div
-                        div.t "Volume"
+                        div.t "Check sign-ins every day"
+                        div.d "Tells you which accounts Roblox signed out."
+                          span [id="s-daily-when"] "Last check: 7:00 AM."
                       div.ctl
-                        select.select [id="s-rc-volume" aria-label="Volume" value="0" disabled]
-                          option [value="-1"] "Leave as is"
-                          option [value="0"] "Muted"
-                          option [value="25"] "25%"
-                          option [value="50"] "50%"
-                          option [value="75"] "75%"
-                          option [value="100"] "100%"
+                        label.switch
+                          input [id="s-daily" type="checkbox" aria-label="Check sign-ins every day" checked=true]
+                          span
+                div.set-grp [id="sec-memory"]
+                  h3.set-grp-title "RAM & CPU"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Low RAM warning"
+                      div.ctl
+                        label.switch
+                          input [id="s-memwarn" type="checkbox" aria-label="Low RAM warning" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Save RAM on background windows"
+                        div.d "Background windows give up RAM first."
+                      div.ctl
+                        label.switch
+                          input [id="s-trim" type="checkbox" aria-label="Save RAM on background windows" checked=false]
+                          span
+                    div.set-row
+                      div
+                        div.t "RAM limit when minimized or hidden"
+                        div.d "Too low can make windows slow."
+                      div.ctl
+                        select.select [id="s-ramlimit" aria-label="RAM limit when minimized or hidden" value="0"]
+                          option [value="0"] "No limit"
+                          option [value="-1"] "Auto (per game)"
+                          option [value="512"] "512 MB"
+                          option [value="768"] "768 MB"
+                          option [value="1024"] "1 GB"
+                          option [value="1536"] "1.5 GB"
+                          option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Put the window you play first"
+                        div.d "Background windows slow down so it runs smoother."
+                      div.ctl
+                        label.switch
+                          input [id="s-cores" type="checkbox" aria-label="Put the window you play first" checked=false]
+                          span
 #layer
 #toasts
 -- commands

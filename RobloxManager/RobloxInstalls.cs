@@ -96,12 +96,92 @@ public static class RobloxInstalls
             return Directory.EnumerateDirectories(versions)
                 .Select(dir => Path.Combine(dir, "RobloxPlayerBeta.exe"))
                 .Where(File.Exists)
+                .Where(exe => !IsBroken(exe))
                 .ToList();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return [];
         }
+    }
+
+    const string ClientDll = "RobloxPlayerBeta.dll";
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<(string, DateTime), bool> NeedsDll = new();
+
+    /// <summary>A client that can't start: the DLL it names isn't beside it (a user's report on a rival, 2026-10-30), and Windows
+    /// would only show its own error. Builds from before that DLL don't name it, so they stay usable. The exe (about 137 MB)
+    /// is read only when the DLL is gone.</summary>
+    public static bool IsBroken(string exe)
+    {
+        try
+        {
+            if (Path.GetDirectoryName(exe) is not { } dir || File.Exists(Path.Combine(dir, ClientDll)) || !File.Exists(exe))
+                return false;
+            return NeedsDll.GetOrAdd((exe, File.GetLastWriteTimeUtc(exe)), _ => FileMentions(exe, ClientDll));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    static bool FileMentions(string file, string text)
+    {
+        byte[] wanted = System.Text.Encoding.ASCII.GetBytes(text);
+        byte[] buffer = new byte[1 << 20];
+        using var stream = File.OpenRead(file);
+        int kept = 0, read;
+        while ((read = stream.Read(buffer, kept, buffer.Length - kept)) > 0)
+        {
+            int have = kept + read;
+            if (buffer.AsSpan(0, have).IndexOf(wanted) >= 0)
+                return true;
+            // The name may lie across two reads.
+            kept = Math.Min(wanted.Length - 1, have);
+            Array.Copy(buffer, have - kept, buffer, 0, kept);
+        }
+        return false;
+    }
+
+    /// <summary>The links open a client that can't start.</summary>
+    public static bool HandlerBroken() =>
+        UsableHandlerPath() is { } handler && Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase) && IsBroken(handler);
+
+    /// <summary>Roblox's own install has a build that can't start: said in place of "not installed" when no other is left.</summary>
+    public static bool OwnBuildBroken()
+    {
+        string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+        foreach (string root in new[] { Path.Combine(Local, "Roblox"), Path.Combine(programFiles, "Roblox") })
+        {
+            string versions = Path.Combine(root, "Versions");
+            try
+            {
+                if (Directory.Exists(versions) && Directory.EnumerateDirectories(versions).Any(dir => IsBroken(Path.Combine(dir, "RobloxPlayerBeta.exe"))))
+                    return true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+        return false;
+    }
+
+    /// <summary>Whether a client behind Roblox's newest build gets updated when it opens: Roblox's own install runs its updater
+    /// (the owner's logs, 2026-10-30), a launcher updates its copy first. Started by itself, a client in a launcher's folder
+    /// finds no updater ("Updater not found. Skipping update") and goes on into the game on the old build.</summary>
+    public static bool UpdatesOnOpen(string? exe) => exe is null || IsRobloxOwn(exe) || UpdaterFor("direct") is not null;
+
+    /// <summary>"Directly" with a client behind the newest build, in a launcher's folder: this once through that launcher, which
+    /// updates it first. An old build isn't played on (accounts were reported banned for "a disallowed version of Roblox",
+    /// 2026-10-31, unconfirmed by Roblox). Anything else, or the newest build not known, is left as chosen.</summary>
+    public static string UpdatingOption(string launchVia, bool? upToDate)
+    {
+        if (launchVia != "direct" || upToDate != false || UpdaterFor(launchVia) is not { } updater)
+            return launchVia;
+        string name = Path.GetFileNameWithoutExtension(updater);
+        return name.Equals("Bloxstrap", StringComparison.OrdinalIgnoreCase) ? "bloxstrap"
+            : name.Equals("Fishstrap", StringComparison.OrdinalIgnoreCase) ? "fishstrap"
+            : RobloxLauncher.OtherPrefix + name;
     }
 
     /// <summary>
@@ -162,7 +242,8 @@ public static class RobloxInstalls
         try
         {
             return Path.GetDirectoryName(Path.GetDirectoryName(exe)) is { } versions
-                && File.Exists(Path.Combine(versions, folder, "RobloxPlayerBeta.exe"));
+                && File.Exists(Path.Combine(versions, folder, "RobloxPlayerBeta.exe"))
+                && !IsBroken(Path.Combine(versions, folder, "RobloxPlayerBeta.exe"));
         }
         catch (Exception ex) when (ex is ArgumentException or IOException)
         {
@@ -188,10 +269,10 @@ public static class RobloxInstalls
         }
         if (UsableHandlerPath() is { } handler)
         {
-            if (Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase))
-                clients.Add(handler);
-            else
+            if (!Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase))
                 clients.AddRange(ClientsIn(Path.GetDirectoryName(handler)));
+            else if (!IsBroken(handler))
+                clients.Add(handler);
         }
         return Newest(clients.Distinct(StringComparer.OrdinalIgnoreCase));
     }
@@ -262,6 +343,13 @@ public static class RobloxInstalls
         }
         return null;
     }
+
+    /// <summary>A client's build is behind Roblox's newest. Only builds in "version-&lt;hash>" folders can tell (the Store's has
+    /// none); a newer number than Roblox serves is another channel's.</summary>
+    public static bool IsBehind(ClientVersion? client, ClientVersion? latest) =>
+        client is not null && latest is not null && client.Folder != latest.Folder
+        && client.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase) && latest.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase)
+        && !(Version.TryParse(client.Version, out var have) && Version.TryParse(latest.Version, out var newest) && have > newest);
 
     /// <summary>Reads the version stamped in a client's file (the file is only read, never run).</summary>
     public static ClientVersion? VersionOf(string? exe)

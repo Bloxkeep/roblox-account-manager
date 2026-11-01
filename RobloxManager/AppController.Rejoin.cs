@@ -469,7 +469,7 @@ public sealed partial class AppController
         // One client at a time, after the wait between accounts. A multi-account launch lets rejoins go while it waits
         // between two, except of the accounts it is about to open.
         if (_rejoinQueue.Count == 0 || _rejoining || _openingHome || (_launchCts is not null && _launchWaiting is null) || now < _sweepBackgroundUntil
-            || _pending.Count > 0 || Settling)
+            || _pending.Count > 0 || Settling || _updateReopenSince is not null)
             return;
         var due = _rejoinQueue.FirstOrDefault(r => r.Due <= now && _launchWaiting?.Contains(r.AccountId) != true);
         if (due is null || now - _lastSessionStart < RejoinSpacing(due))

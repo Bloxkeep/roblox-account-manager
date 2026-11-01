@@ -129,11 +129,7 @@ html [data-theme="dark" lang="vi"]
                 div.ways
                   span "Cách khác:"
                   button.btn.ghost.sm "Dán cookie"
-                div.ways
-                  span "Nhập từ:"
                   button.btn.ghost.sm [title="Lấy tài khoản từ Bloxkeep trên máy khác, hoặc từ bản sao lưu (file .rmv)"] "File Bloxkeep"
-                div.ways
-                  span "Chỉ cần dùng trang web?"
                   button.btn.ghost.sm [title="Mỗi cửa sổ là một tài khoản riêng: đăng nhập trên web, muốn giữ thì lưu vào Bloxkeep"] "Mở roblox.com"
 #layer
 #toasts

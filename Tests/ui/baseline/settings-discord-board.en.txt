@@ -38,6 +38,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -81,7 +82,7 @@ html [data-theme="dark" lang="en"]
               span "Launching"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Roblox version & graphics"
+              span "Roblox version"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Staying in game"
@@ -107,12 +108,42 @@ html [data-theme="dark" lang="en"]
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-preview"]
+                  h3.set-grp-title "Preview"
+                  div.set-card
+                    div.tg-tabs [id="s-dc-preview-kinds"]
+                      button.chip.on [type="button" aria-pressed="true"] "Alerts"
+                      button.chip [type="button" aria-pressed="false"] "Status message"
+                    div.dcv [id="s-dc-preview"]
+                      img.dcv-pic [alt="" src="logo.svg"]
+                      div.dcv-body
+                        div.dcv-head
+                          b "Bloxkeep"
+                          span.dcv-app "APP"
+                          time "14:30"
+                        div
+                          span.dcv-at "@user"
+                        div.dcv-embed.yellow
+                          div.dcv-author "Player_01"
+                          div.dcv-title "Disconnected, rejoining"
+                          div.dcv-fields
+                            div
+                              b "Game"
+                              div.dcv-link "Obby"
+                            div
+                              b "Played"
+                              div "1 h 24 min"
+                            div
+                              b "Reason"
+                              div "Disconnected"
+                          small.dcv-foot "Bloxkeep · Alerts"
+                    p.set-hint "A sample with made-up accounts. Sent messages use your real ones."
                 div.set-grp [id="sec-dc-profile"]
                   div.set-card
                     div.set-row
                       div
                         div.t "Show on my Discord profile"
-                        div.d "Your Discord profile shows “Playing Bloxkeep” with how many Roblox windows are open and the game, never an account’s name, and a link to Bloxkeep. Needs the Discord app running on this PC."
+                        div.d "Shows the game and window count, never account names. Needs the Discord app."
                       div.ctl
                         label.switch
                           input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
@@ -122,7 +153,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Control from Discord"
-                        div.d "Type /pc in Discord to see your accounts, run a preset, close windows or switch server on this PC, from anywhere."
+                        div.d "Type /pc in Discord to control this PC from anywhere."
                       div.ctl
                         label.switch
                           input [id="s-dc-remote" type="checkbox" aria-label="Control from Discord" checked=false]
@@ -132,7 +163,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Send to Discord"
-                        div.d "Posts play-time summaries, a live status message and alerts to a channel of yours through a webhook. Off until you turn it on."
+                        div.d "Posts summaries, a live status and alerts to your channel through a webhook."
                       div.ctl
                         label.switch [title=""]
                           input [id="s-dc-on" type="checkbox" aria-label="Send to Discord" checked=true]
@@ -143,7 +174,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Webhook link"
                         div.d
                           span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
-                          div "In Discord: Channel settings › Integrations › Webhooks › New Webhook › Copy Webhook URL. Kept encrypted with your accounts."
+                          div "In Discord: Channel settings › Integrations › Webhooks › New Webhook › Copy Webhook URL. Kept encrypted."
                       div.ctl
                         button.btn.sm [id="s-dc-paste"] "Replace…"
                         button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Show"
@@ -180,7 +211,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "When a scheduled preset finishes"
-                        div.d "Sent half a minute after its accounts close, counting that preset’s accounts only (to its own channel when it has one)."
+                        div.d "Sent half a minute after its accounts close, counting only them."
                       div.ctl
                         label.switch
                           input [id="s-dc-after" type="checkbox" aria-label="When a scheduled preset finishes" checked=true]
@@ -188,7 +219,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Covers"
-                        div.d "For the daily summary and “Send one now”. The weekly one covers 7 days; the one after a schedule, today so far."
+                        div.d "For the daily summary and “Send one now”."
                       div.ctl
                         select.select.sm [id="s-dc-days" aria-label="Covers" value="1"]
                           option [value="1"] "Last 24 hours"
@@ -229,7 +260,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Send alerts"
-                        div.d "Separate from the Windows notifications. Alerts within 10 seconds go out as one message."
+                        div.d "Separate from Windows notifications. Alerts within 10 seconds go out as one message."
                       div.ctl
                         label.switch
                           input [id="s-dc-alerts" type="checkbox" aria-label="Send alerts" checked=true]
@@ -255,7 +286,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Keep a status message up to date"
-                        div.d "One message, edited in place: which accounts are open, their game, time playing, PID and RAM. It never pings."
+                        div.d "One message, edited in place: open accounts, game, time, PID and RAM. Never pings."
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="How often" value="15"]
                           option [value="2"] "Every 2 min"
@@ -344,6 +375,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -387,7 +419,7 @@ html [data-theme="dark" lang="en"]
               span "Launching"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Roblox version & graphics"
+              span "Roblox version"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Staying in game"
@@ -413,12 +445,42 @@ html [data-theme="dark" lang="en"]
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-preview"]
+                  h3.set-grp-title "Preview"
+                  div.set-card
+                    div.tg-tabs [id="s-dc-preview-kinds"]
+                      button.chip.on [type="button" aria-pressed="true"] "Alerts"
+                      button.chip [type="button" aria-pressed="false"] "Status message"
+                    div.dcv [id="s-dc-preview"]
+                      img.dcv-pic [alt="" src="logo.svg"]
+                      div.dcv-body
+                        div.dcv-head
+                          b "Bloxkeep"
+                          span.dcv-app "APP"
+                          time "14:30"
+                        div
+                          span.dcv-at "@user"
+                        div.dcv-embed.yellow
+                          div.dcv-author "Player_01"
+                          div.dcv-title "Disconnected, rejoining"
+                          div.dcv-fields
+                            div
+                              b "Game"
+                              div.dcv-link "Obby"
+                            div
+                              b "Played"
+                              div "1 h 24 min"
+                            div
+                              b "Reason"
+                              div "Disconnected"
+                          small.dcv-foot "Bloxkeep · Alerts"
+                    p.set-hint "A sample with made-up accounts. Sent messages use your real ones."
                 div.set-grp [id="sec-dc-profile"]
                   div.set-card
                     div.set-row
                       div
                         div.t "Show on my Discord profile"
-                        div.d "Your Discord profile shows “Playing Bloxkeep” with how many Roblox windows are open and the game, never an account’s name, and a link to Bloxkeep. Needs the Discord app running on this PC."
+                        div.d "Shows the game and window count, never account names. Needs the Discord app."
                       div.ctl
                         label.switch
                           input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
@@ -428,7 +490,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Control from Discord"
-                        div.d "Type /pc in Discord to see your accounts, run a preset, close windows or switch server on this PC, from anywhere."
+                        div.d "Type /pc in Discord to control this PC from anywhere."
                       div.ctl
                         label.switch
                           input [id="s-dc-remote" type="checkbox" aria-label="Control from Discord" checked=false]
@@ -438,7 +500,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Send to Discord"
-                        div.d "Posts play-time summaries, a live status message and alerts to a channel of yours through a webhook. Off until you turn it on."
+                        div.d "Posts summaries, a live status and alerts to your channel through a webhook."
                       div.ctl
                         label.switch [title=""]
                           input [id="s-dc-on" type="checkbox" aria-label="Send to Discord" checked=true]
@@ -449,7 +511,7 @@ html [data-theme="dark" lang="en"]
                         div.t "Webhook link"
                         div.d
                           span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
-                          div "In Discord: Channel settings › Integrations › Webhooks › New Webhook › Copy Webhook URL. Kept encrypted with your accounts."
+                          div "In Discord: Channel settings › Integrations › Webhooks › New Webhook › Copy Webhook URL. Kept encrypted."
                       div.ctl
                         button.btn.sm [id="s-dc-paste"] "Replace…"
                         button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Show"
@@ -486,7 +548,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "When a scheduled preset finishes"
-                        div.d "Sent half a minute after its accounts close, counting that preset’s accounts only (to its own channel when it has one)."
+                        div.d "Sent half a minute after its accounts close, counting only them."
                       div.ctl
                         label.switch
                           input [id="s-dc-after" type="checkbox" aria-label="When a scheduled preset finishes" checked=true]
@@ -494,7 +556,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Covers"
-                        div.d "For the daily summary and “Send one now”. The weekly one covers 7 days; the one after a schedule, today so far."
+                        div.d "For the daily summary and “Send one now”."
                       div.ctl
                         select.select.sm [id="s-dc-days" aria-label="Covers" value="1"]
                           option [value="1"] "Last 24 hours"
@@ -535,7 +597,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Send alerts"
-                        div.d "Separate from the Windows notifications. Alerts within 10 seconds go out as one message."
+                        div.d "Separate from Windows notifications. Alerts within 10 seconds go out as one message."
                       div.ctl
                         label.switch
                           input [id="s-dc-alerts" type="checkbox" aria-label="Send alerts" checked=true]
@@ -561,7 +623,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Keep a status message up to date"
-                        div.d "One message, edited in place: which accounts are open, their game, time playing, PID and RAM. It never pings."
+                        div.d "One message, edited in place: open accounts, game, time, PID and RAM. Never pings."
                       div.ctl
                         select.select.sm [id="s-dc-minutes" aria-label="How often" value="15"]
                           option [value="2"] "Every 2 min"

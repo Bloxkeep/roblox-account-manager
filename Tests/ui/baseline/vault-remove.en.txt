@@ -50,7 +50,7 @@ html [data-theme="dark" lang="en"]
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "It goes off the list. Its file isn’t deleted: it stays in Bloxkeep’s data folder, and Restore from a backup brings it back."
+        p.modal-text.pre "It leaves the list, but its file stays. Restore from a backup brings it back."
       div.modal-foot
         button.btn [FOCUSED] "Cancel"
         button.btn.danger "Remove"

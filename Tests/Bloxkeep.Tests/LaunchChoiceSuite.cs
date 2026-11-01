@@ -94,6 +94,40 @@ static class LaunchChoiceSuite
             File.Delete(Path.Combine(local, "Roblox", "Versions", "version-other", "RobloxPlayerBeta.exe"));
         }
 
+        // A build whose DLL is gone can't start (the exe names it); one from before that DLL, or with it beside, can.
+        string broken = Client("Roblox", "version-broken");
+        File.WriteAllBytes(broken, [.. new byte[(1 << 20) - 5], .. System.Text.Encoding.ASCII.GetBytes("RobloxPlayerBeta.dll"), 0]);
+        c.Check("a client missing the DLL it names, the name across two reads: can't start", RobloxInstalls.IsBroken(broken));
+        c.Check("…and isn't picked while another build is there", RobloxInstalls.FindOfficialClient() == global, RobloxInstalls.FindOfficialClient());
+        c.Check("…and isn't the build said to be installed", !RobloxInstalls.HasBuild(global, "version-broken"));
+        c.Check("…Roblox's install is said to have one", RobloxInstalls.OwnBuildBroken());
+        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(broken)!, "RobloxPlayerBeta.dll"), []);
+        c.Check("with the DLL beside it: fine", !RobloxInstalls.IsBroken(broken));
+        c.Check("a client that doesn't name the DLL: fine without it", !RobloxInstalls.IsBroken(global));
+        Directory.Delete(Path.GetDirectoryName(broken)!, recursive: true);
+
+        // A client behind Roblox's newest build isn't played on: Roblox's own updates itself, a launcher's goes through it.
+        c.Check("\"directly\", up to date: stays directly", RobloxInstalls.UpdatingOption("direct", true) == "direct");
+        c.Check("\"directly\", newest build not known: stays directly", RobloxInstalls.UpdatingOption("direct", null) == "direct");
+        c.Check("Roblox's own client updates itself when opened", RobloxInstalls.UpdatesOnOpen(global));
+        c.Check("another option, out of date: left as chosen", RobloxInstalls.UpdatingOption("roblox", false) == "roblox");
+        string strapExe = Path.Combine(local, "Bloxstrap", "Bloxstrap.exe");
+        string strapClient = Client("Bloxstrap", "version-copy");
+        File.WriteAllBytes(strapExe, []);
+        File.Copy(Path.Combine(Environment.SystemDirectory, "notepad.exe"), strapClient, overwrite: true);
+        c.Check("\"directly\" on a launcher's old copy: through that launcher", RobloxInstalls.UpdatingOption("direct", false) == "bloxstrap", RobloxInstalls.UpdatingOption("direct", false));
+        Directory.Delete(Path.Combine(local, "Bloxstrap"), recursive: true);
+
+        // A window's build against Roblox's newest.
+        RobloxInstalls.ClientVersion Build(string version, string folder) => new(version, folder, "", "");
+        var newestBuild = Build("0.745.0.100", "version-new");
+        c.Check("a window on the newest build isn't behind", !RobloxInstalls.IsBehind(Build("0.745.0.100", "version-new"), newestBuild));
+        c.Check("a window on an older build is", RobloxInstalls.IsBehind(Build("0.744.0.100", "version-old"), newestBuild));
+        c.Check("a new build under the same number counts too", RobloxInstalls.IsBehind(Build("0.745.0.100", "version-old"), newestBuild));
+        c.Check("a newer number is another channel's, not behind", !RobloxInstalls.IsBehind(Build("0.746.0.100", "version-test"), newestBuild));
+        c.Check("the Store's copy has no build folder: not compared", !RobloxInstalls.IsBehind(Build("2.744.1.0", ""), newestBuild));
+        c.Check("newest or window not known: not behind", !RobloxInstalls.IsBehind(null, newestBuild) && !RobloxInstalls.IsBehind(newestBuild, null));
+
         // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
         Directory.Delete(Path.Combine(local, "Roblox"), recursive: true);
         if (RobloxInstalls.FindAnyClient() is null)

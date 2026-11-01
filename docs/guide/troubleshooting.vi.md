@@ -55,7 +55,6 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 | **Đóng** ở thanh dưới, **Đóng Roblox**, **Buộc tắt** | Không tài khoản nào đã chọn đang mở trên máy này. |
 | **Sửa…**, **Vào cùng server**, **Trang cá nhân Roblox**, **Mở trang web**, các mục **Sao chép** | Đang chọn nhiều tài khoản. **Vào cùng server** còn cần biết server; **Mở trang web** không dùng được cho Roblox VNG. |
 | **Chạy** của preset | Preset không còn tài khoản, hoặc đang có lượt mở khác. |
-| **Đồ họa**, **Giới hạn FPS**, **Âm lượng** | **Áp dụng cho** đang là **Không áp dụng**. |
 | Các dòng trong **Loại sự kiện** | **Thông báo Windows** đang tắt. |
 | **Sao lưu ngay** | Chưa chọn thư mục sao lưu. |
 | **Hỏi lại** | Bạn chưa bỏ qua câu hỏi nào. |

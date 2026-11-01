@@ -15,7 +15,7 @@ Mọi trang của **Cài đặt**, mỗi trang một bảng gọn: từng dòng,
 | **Multi-Roblox** | Chơi nhiều tài khoản cùng lúc. **Chi tiết** mở các bước. Xem [Multi-Roblox](multi-roblox.vi.md). | Tắt |
 | **Hiện tên tài khoản trên cửa sổ** | Ghi tên tài khoản và mã tiến trình (PID) lên tiêu đề cửa sổ Roblox ("Roblox - Main (PID 33588)"), dễ phân biệt dưới taskbar và khi bấm Alt+Tab, và dễ tìm trong Task Manager. | Bật |
 | **Ảnh tài khoản làm biểu tượng cửa sổ** | Mỗi cửa sổ Roblox hiện ảnh của tài khoản thay cho biểu tượng Roblox. | Bật |
-| **Nút trên taskbar** | Gộp chung mọi cửa sổ Roblox (như Windows vẫn làm), mỗi tài khoản một nút (kèm ảnh), hoặc mỗi preset một nhóm. | Gộp chung |
+| **Nút trên thanh tác vụ** | Gộp chung mọi cửa sổ Roblox (như Windows vẫn làm), mỗi tài khoản một nút (kèm ảnh), hoặc mỗi preset một nhóm. | Gộp chung |
 | **Khi cửa sổ Roblox mở ra** | **Để Roblox tự chọn**, **Phóng to** hoặc **Xếp cạnh nhau** (cần bật Multi-Roblox). | Để Roblox tự chọn |
 | **Kiểu xếp cửa sổ** | Cách xếp khi bấm **Xếp cửa sổ** (và khi tự xếp sau khi mở), chọn bằng hình mẫu: **Tự vừa**, lưới từ **2 × 1** đến **4 × 4** (mỗi cửa sổ một ô, dù mở bao nhiêu), hoặc kích thước tự chọn (rộng × cao, tính bằng pixel). | Tự vừa |
 | **Mở Roblox bằng** | Chương trình dùng để mở Roblox (bảng dưới). **Chọn…** để chọn chương trình của bạn. | Mặc định |
@@ -41,20 +41,17 @@ Với lựa chọn Microsoft Store, Bloxkeep mở Roblox của Store ngay bên t
 
 </details>
 
-## Phiên bản & đồ họa Roblox
+## Phiên bản Roblox
 
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
 | **Phiên bản Roblox** | "Đã là bản mới nhất", hoặc đã có bản mới và cách lấy về. Roblox tự cập nhật lần mở tới; nếu dùng **Chạy thẳng RobloxPlayerBeta** thì mở Roblox bình thường một lần; Roblox bản Microsoft Store cập nhật qua Store. | — |
+| **Đóng, cập nhật, mở lại** | Hiện khi có cửa sổ chạy bản cũ. Đóng các cửa sổ Roblox, cập nhật, rồi mở lại cửa sổ đang trong game. Có hỏi trước. | — |
+| **Tự cập nhật** | Launcher cập nhật Roblox khi không mở cửa sổ nào. | Bật |
 | **Bản đang cài**, **Bản mới nhất của Roblox** | Bản đang cài trên máy kèm launcher nó đến từ; bản mới nhất, chỉ hiện khi khác bản đang cài. | — |
 | **Kiểm tra Multi-Roblox**, **Bản Roblox sắp ra** | Kiểm tra từng bản Roblox mới xem có thay đổi nào có thể chặn Multi-Roblox không. **Cách hoạt động** giải thích; khi có cảnh báo sẽ có nút **Kiểm tra bản cập nhật Bloxkeep**. | — |
 | **Lịch sử cập nhật** | Mọi bản Roblox đã thấy trên máy, mới nhất ở trên, mỗi bản có link **Ghi chú** (ghi chú phát hành viết cho người làm game). | — |
-| **Áp dụng cho** | Ai nhận ba giá trị bên dưới: **Không áp dụng**, **Mọi tài khoản**, **Tài khoản đã chọn** (**Chọn tài khoản…**, hoặc **⋯ › Dùng cấu hình Roblox** trên từng tài khoản). | Không áp dụng |
-| **Đồ họa** | **Giữ nguyên**, 1–10. | Giữ nguyên |
-| **Giới hạn FPS** | **Giữ nguyên**, 30 / 60 / 144 / 240 FPS. | Giữ nguyên |
-| **Âm lượng** | **Giữ nguyên**, **Tắt tiếng**, 25 / 50 / 75 / 100 %. | Giữ nguyên |
 
-Ba dòng giá trị bị mờ khi **Áp dụng cho** là **Không áp dụng**. Bloxkeep ghi các giá trị này vào cài đặt của Roblox ngay trước khi mở tài khoản, rồi trả lại cài đặt của bạn khi Roblox đã chạy.
 
 ## Treo game
 
@@ -62,13 +59,20 @@ Chi tiết từng dòng nằm ở [Giữ tài khoản trong game](staying-in-gam
 
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
+| **Chế độ** | **Treo máy**, **Vừa treo vừa chơi**, **Roblox gốc** hoặc **Tự chỉnh**. Mỗi chế độ ghi rõ thông số; **Tự chỉnh** mở các dòng bên dưới. | Roblox gốc |
+| **Áp dụng cho** | Ai nhận ba giá trị bên dưới: **Không áp dụng**, **Mọi tài khoản**, **Tài khoản đã chọn** (**Chọn tài khoản…**, hoặc **⋯ › Dùng cấu hình Roblox** trên từng tài khoản). | Không áp dụng |
+| **Đồ họa** | **Giữ nguyên**, 1–10. | Giữ nguyên |
+| **Giới hạn FPS** | **Giữ nguyên**, 15 / 20 / 30 / 45 / 60 / 120 / 144 / 240 FPS. Giới hạn riêng của tài khoản (**⋯ › Giới hạn FPS trong Roblox**) được ưu tiên hơn. | Giữ nguyên |
+| **Âm lượng** | **Giữ nguyên**, **Tắt tiếng**, 25 / 50 / 75 / 100 %. | Giữ nguyên |
 | **Tự vào lại game** | **Bật cho mọi tài khoản** / **Tắt cho mọi tài khoản** (khi chỗ bật chỗ tắt ghi "Bật cho *n*/*m* tài khoản"). Menu ⋯ của từng tài khoản bật/tắt riêng cho tài khoản đó. | Tắt |
 | **Chống AFK** | Treo máy không lo bị kick, kể cả khi bạn đi vắng hay đang dùng cửa sổ khác. Không hoạt động khi máy đang khóa. | Tắt |
 | **Kiểm tra đăng nhập mỗi ngày** | Tìm các tài khoản Roblox đã đăng xuất, để bạn biết trước khi bấm Vào game. Ghi "Lần kiểm tra gần nhất: …". | Bật |
 | **Báo khi sắp hết RAM** | Hỏi trước khi mở nếu thiếu RAM hoặc bộ nhớ ảo của Windows, và cảnh báo khi đang chơi. | Bật |
-| **Tiết kiệm RAM cho cửa sổ chạy nền** | Cửa sổ Roblox bạn không chơi bị hạ mức ưu tiên bộ nhớ, nên Windows lấy RAM của chúng trước. | Tắt |
-| **Giới hạn RAM cửa sổ treo** | **Không giới hạn**, **Tự động (theo game)**, **1 GB**, **1.5 GB**, **2 GB**: mức RAM tối đa cửa sổ Roblox thu nhỏ hoặc đang ẩn được giữ, phần còn lại ở bộ nhớ ảo. Xem [Treo game](staying-in-game.vi.md). | Không giới hạn |
-| **Nhường nhân mạnh cho cửa sổ đang chơi** | Cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm của CPU. | Tắt |
+| **Tiết kiệm RAM cho cửa sổ chạy nền** | Cửa sổ Roblox bạn không chơi bị hạ mức ưu tiên bộ nhớ, nên Windows lấy RAM của chúng trước. Cửa sổ thu nhỏ hoặc ẩn được 1 phút được dọn RAM một lần. | Tắt |
+| **Giới hạn RAM khi thu nhỏ hoặc ẩn** | **Không giới hạn**, **Tự động (theo game)**, **512 MB**, **768 MB**, **1 GB**, **1.5 GB**, **2 GB**: mức RAM tối đa cửa sổ Roblox thu nhỏ hoặc đang ẩn được giữ, phần còn lại ở bộ nhớ ảo. Xem [Treo game](staying-in-game.vi.md). | Không giới hạn |
+| **Ưu tiên cửa sổ đang chơi** | Cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm của CPU. | Tắt |
+
+Ba dòng giá trị chỉ hiện khi **Áp dụng cho** khác **Không áp dụng**. Bloxkeep ghi các giá trị này vào cài đặt của Roblox ngay trước khi mở tài khoản, rồi trả lại cài đặt của bạn khi Roblox đã chạy.
 
 ## Thông báo
 
@@ -89,7 +93,7 @@ Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **H
 
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
-| **Chủ đề** | **Theo Windows** (sáng hay tối theo Windows), hoặc một trong 74 chủ đề thuộc các nhóm **Cơ bản**, **Phong cảnh**, **Màu sắc**, **Phong cách** và **Theo mùa**. Dùng phím mũi tên để xem thử; chủ đề được lưu khi bạn dừng tay. | Tối |
+| **Chủ đề** | **Theo Windows** (sáng hay tối theo Windows), hoặc một trong 93 chủ đề thuộc các nhóm **Cơ bản**, **Phong cảnh**, **Màu sắc**, **Phong cách**, **Theo mùa**, **Động** và **Tranh**. Dùng phím mũi tên để xem thử; chủ đề được lưu khi bạn dừng tay. | Tối |
 | **Của bạn › Tùy chỉnh** | Chọn **Màu nền** và **Màu nhấn** (nút, công tắc, mục đang chọn); chữ tự sáng hay tối để luôn dễ đọc. **Chọn…** đặt một ảnh hoặc video (MP4, WebM) trên máy làm nền phía sau. **Phủ màu nền lên ảnh** chỉnh mức nền hiện qua, **Làm mờ nền** làm nền mờ đi. Video không có tiếng, chỉ chạy khi cửa sổ đang mở. Bloxkeep giữ một bản sao trong thư mục dữ liệu. **Lưu theme này** lưu theme lại kèm tên. | — |
 | **Theme của bạn** | Các theme bạn đã lưu, bấm vào để dùng. **Lưu thành file** để gửi một theme dưới dạng file `.bloxkeeptheme`, **Thêm từ file…** để thêm theme người khác gửi. | — |
 | **Ngôn ngữ** | EN / VI. | EN |

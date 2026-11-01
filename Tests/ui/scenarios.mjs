@@ -21,6 +21,8 @@ export default [
   S('accounts-list-vng', 'vng=1', async s => { await s.click(key('layout.list')); }),
   S('accounts-select', 'select=1'),
   S('account-menu', 'menu=1'),
+  S('settings-rc-own-fps', '', async s => { await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' }); await s.click(key('m.fps')); await s.click({ text: '20 FPS', within: '.menu' }); await s.click({ css: '[data-view="settings"]' }); await s.click({ css: '#view-settings [data-set-page="perf"]' }); await s.wait(200); }),
+  S('account-fps-cap', '', async s => { await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' }); await s.click(key('m.fps')); await s.snap('list'); await s.click({ text: '20 FPS', within: '.menu' }); await s.snap('set'); await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' }); }),
   S('account-edit', 'edit=1'),
   S('accounts-empty', 'empty=1'),
   // Getting started: accounts never opened yet. The game step ticks once a game is in the box; Play is the step left.
@@ -38,6 +40,11 @@ export default [
   S('accounts-join-failed', 'phase=joinFailed'),
   // A window hidden while its game runs: the eye before its PID shows it again; the account menu hides or shows.
   S('accounts-window-hidden', 'winhidden=1', async s => { await s.click({ css: '[data-act="show-window"]' }); }),
+  // A window opened with Bloxkeep's FPS limit: its card says so.
+  S('accounts-fps-limit', 'fps=20'),
+  // A window left on an older Roblox: said on its card and in the list; a click goes to where it can be updated.
+  S('accounts-old-build', 'oldwin=1&rbxold=1'),
+  S('accounts-old-build-list', 'oldwin=1&rbxold=1', async s => { await s.click({ css: '.seg button[aria-pressed="false"]' }); }),
   S('accounts-window-hide-menu', '', async s => { await s.click({ css: '.card[data-id="00000000-0000-4000-8000-000000000001"] [data-act="card-menu"]' }); await s.snap('menu'); await s.click(key('m.hideWindow')); }),
   // Roblox holds the join for its bot check: Verify is the card's and the row's main button.
   S('accounts-challenged', 'phase=challenged', async s => { await s.click({ css: '[data-act="bot-check"]' }); }),
@@ -132,7 +139,7 @@ export default [
   // The custom theme: picked from its swatch (its colours and picture rows show), a picture chosen (the page behind
   // glass), and one with a picture already, on a light background too.
   S('settings-custom-theme', 'settings=appearance', async s => {
-    await s.click({ css: '.swatch[data-id="custom"]' });
+    await s.click({ css: '#s-theme-groups [data-group="custom"]' }); await s.click({ css: '.swatch[data-id="custom"]' });
     await s.wait(500);
     await s.snap('picked');
     await s.click({ key: 'ct.pick' });
@@ -540,7 +547,7 @@ export default [
     await s.click({ css: '[data-act=relogin]' });
     await s.wait(900);
   }, { langs: ['en'] }),
-  S('add-browser', '', async s => { await s.click(key('acc.add')); await s.click(key('ql.browser')); await s.wait(500); }),
+  S('add-browser', '', async s => { await s.click(key('acc.add')); await s.click({ css: '.overlay [data-realm=""]' }); await s.click(key('pw.withBrowser')); await s.wait(500); }),
   S('add-cookie', '', async s => {
     await s.click(key('acc.add'));
     await s.click(key('start.cookie'));
@@ -1210,7 +1217,8 @@ export default [
   S('settings-roblox-renamed', 'settings=roblox&rw=renamed'),
   S('settings-roblox-worked', 'settings=roblox&rw=worked', null, { langs: ['en'] }),
   S('settings-roblox-unread', 'settings=roblox&rw=none', null, { langs: ['en'] }),
-  S('settings-roblox-config', 'settings=roblox', async s => {
+  S('settings-roblox-config', 'settings=perf', async s => {
+    await s.click({ css: '#s-rc-levels [data-level="own"]' });
     await s.choose({ css: '#s-rc-mode' }, 'all');
     await s.choose({ css: '#s-rc-graphics' }, '5');
     await s.choose({ css: '#s-rc-fps' }, '144');
@@ -1234,7 +1242,9 @@ export default [
   }),
   S('settings-language', 'settings=appearance', async s => { await s.click({ css: '[data-act=lang][data-lang=vi]' }); }, { langs: ['en'] }),
   S('settings-hide-names', 'settings=appearance', async s => { await s.click({ css: 'label:has(#s-hidenames), #s-hidenames' }); }),
-  S('settings-roblox-pick', 'settings=roblox', async s => { await s.choose({ css: '#s-rc-mode' }, 'marked'); await s.snap('marked'); await s.click(key('rc.pick')); }),
+  S('settings-rc-levels', 'settings=perf', async s => { await s.click({ css: '#s-rc-levels [data-level="light"]' }); await s.snap('light'); await s.click({ css: '#s-rc-levels [data-level="medium"]' }); await s.snap('medium'); await s.click({ css: '#s-rc-levels [data-level="own"]' }); await s.choose({ css: '#s-rc-fps' }, '60'); await s.snap('own'); await s.click({ css: '#s-rc-levels [data-level="off"]' }); }),
+  S('settings-theme-groups', 'settings=appearance', async s => { await s.click({ css: '#s-theme-groups [data-group="art"]' }); await s.snap('art'); await s.click({ css: '.swatch[data-id="starrynight"]' }); }),
+  S('settings-roblox-pick', 'settings=perf', async s => { await s.click({ css: '#s-rc-levels [data-level="own"]' }); await s.choose({ css: '#s-rc-mode' }, 'marked'); await s.snap('marked'); await s.click(key('rc.pick')); }),
   S('settings-launcher', 'settings=launch', async s => { await s.click(key('launch.pickBtn')); }),
   S('settings-discord-paste', 'settings=discord', async s => {
     await s.click(key('dc.paste'));
@@ -1256,6 +1266,9 @@ export default [
     await s.snap('accounts');
     await s.key('Escape');
     await s.click({ css: '[data-dc=parts]' });
+  }),
+  S('settings-discord-preview', 'settings=discord&discord=1', async s => {
+    await s.click({ css: '#s-dc-preview-kinds [data-kind="board"]' }); await s.snap('board');
   }),
   S('settings-discord-nolink', 'settings=discord', async s => { await s.click({ css: 'label:has(#s-dc-on)' }); }),
   S('settings-discord-gone', 'settings=discord&dcgone=1'),

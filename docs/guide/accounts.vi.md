@@ -90,7 +90,8 @@ Mở bằng **⋯ Tùy chọn khác** trên thẻ, hoặc bấm chuột phải v
 | **Sang server khác** | Đóng cửa sổ rồi mở lại vào một server khác còn chỗ của cùng game. Các tài khoản cùng game đổi một lượt sẽ vào chung một server. | Không tài khoản nào đang chọn đang chơi ở server công khai trên máy này. |
 | **Xác minh không phải bot** | Chỉ hiện khi thẻ ghi **Roblox đòi xác minh không phải bot**: hiện bước xác minh của Roblox trong cửa sổ của Bloxkeep, rồi mở lại cửa sổ vào game khi Roblox cho vào. | — |
 | **Tự vào lại game** | Bật hoặc tắt tự vào lại game cho các tài khoản này. | — |
-| **Dùng cấu hình Roblox** | Cho các tài khoản này dùng **Cấu hình Roblox** (đồ họa, FPS, âm lượng). | Chỉ hiện khi **Cài đặt › Phiên bản & đồ họa Roblox › Áp dụng cho** là **Tài khoản đã chọn**. |
+| **Giới hạn FPS trong Roblox** | Giới hạn riêng của tài khoản, có hiệu lực từ lần mở sau. Vẫn dùng được khi **Áp dụng cho** là **Không áp dụng**. Xem FPS bằng Shift+F5 trong cửa sổ Roblox. | — |
+| **Dùng cấu hình Roblox** | Cho các tài khoản này dùng **Cấu hình Roblox** (đồ họa, FPS, âm lượng). | Chỉ hiện khi **Cài đặt › Treo game › Áp dụng cho** là **Tài khoản đã chọn**. |
 | **Trang cá nhân Roblox** | Mở trang cá nhân trên roblox.com bằng trình duyệt của bạn. | Đang chọn nhiều tài khoản, hoặc không có ID người dùng. |
 | **Mở trang web** | Mở roblox.com với tài khoản này đã đăng nhập sẵn, trong cửa sổ trình duyệt của Bloxkeep. | Đang chọn nhiều tài khoản, hoặc là tài khoản Roblox VNG. |
 | **Sao chép tên đăng nhập** | Sao chép tên đăng nhập. | Đang chọn nhiều tài khoản. |

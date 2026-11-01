@@ -137,7 +137,8 @@ public sealed partial class AppController
     /// it (<see cref="RobloxInstalls.UpdaterFor"/>). Bloxstrap does it in the background, leaving windows open, when it can
     /// (its own setting, at most one version behind, 5 GB free); otherwise it closes every Roblox window, so the page asks
     /// first. The result shows as "Roblox updated to …"; a launcher ending without a new build is said too.</summary>
-    object? UpdateRoblox()
+    /// <param name="quiet">Bloxkeep's own idea, not a click: a launcher that found nothing new isn't worth saying.</param>
+    object? UpdateRoblox(bool quiet = false)
     {
         if (_robloxUpdating)
             return null;
@@ -152,12 +153,107 @@ public sealed partial class AppController
         System.Diagnostics.Process.Start(psi)?.Dispose();
         _robloxUpdating = true;
         PushState();
-        _ = WatchRobloxUpdateAsync(Path.GetFileNameWithoutExtension(exe), before, startedAt);
+        _ = WatchRobloxUpdateAsync(Path.GetFileNameWithoutExtension(exe), before, startedAt, quiet);
         return null;
     }
 
+    /// <summary>The build each client runs, read once from its file by the path it started from; null when Windows wouldn't say.</summary>
+    readonly Dictionary<int, RobloxInstalls.ClientVersion?> _clientBuilds = new();
+    /// <summary>The newest build the automatic update was tried for: once each, so a launcher that can't doesn't run every tick.</summary>
+    string? _autoUpdatedFor;
+    /// <summary>When "Close, update, reopen" closed the windows; null when none is under way. Rejoins wait for it.</summary>
+    DateTime? _updateReopenSince;
+    bool _updateReopenUpdating;
+    static readonly TimeSpan UpdateReopenCloseLimit = TimeSpan.FromSeconds(30);
+
+    void NoteClientBuilds(IReadOnlyList<RobloxProcesses.PlayerProcess> players)
+    {
+        foreach (var player in players)
+        {
+            if (!_clientBuilds.ContainsKey(player.Pid))
+                _clientBuilds[player.Pid] = RobloxInstalls.VersionOf(RobloxProcesses.LaunchPath(player.Pid, player.Created));
+        }
+        foreach (int gone in _clientBuilds.Keys.Where(pid => players.All(p => p.Pid != pid)).ToList())
+            _clientBuilds.Remove(gone);
+    }
+
+    /// <summary>A window on a build older than Roblox's newest. Roblox VNG has its own builds, so it's never compared.</summary>
+    bool RunsOldBuild(Account account, int pid) =>
+        account.Realm != Realm.Vng && RobloxInstalls.IsBehind(_clientBuilds.GetValueOrDefault(pid), _latestRoblox);
+
+    /// <summary>In a game, and auto-rejoin's path would open it again (see RestartDueClients).</summary>
+    bool CanReopen(Guid id, (int Pid, PendingLaunch Launch) run) =>
+        run.Launch.Target is not null && _logs.StateOf(run.Pid) is { Status: "ingame" }
+        && FindAccount(id) is { Banned: not true, CookieValid: not false };
+
+    /// <summary>The newest build goes in by itself once no window could be cut off by it (a launcher's copy: Roblox's own updates
+    /// itself as it opens). <see cref="AppSettings.AutoUpdateRoblox"/>.</summary>
+    void AutoUpdateRoblox(IReadOnlyList<RobloxProcesses.PlayerProcess> players)
+    {
+        if (_vault?.Data.Settings.AutoUpdateRoblox != true || players.Count > 0 || _robloxUpdating || _updateReopenSince is not null
+            || OpeningRoblox || _rejoinQueue.Count > 0 || Settling || ScheduleDueSoon())
+            return;
+        var version = RobloxVersionDto();
+        if (version.UpToDate != false || version.Updater is null || version.Latest == _autoUpdatedFor)
+            return;
+        _autoUpdatedFor = version.Latest;
+        UpdateRoblox(quiet: true);
+    }
+
+    /// <summary>Settings › Roblox version › Close, update, reopen: every Roblox window closes, the launcher updates Roblox (with none,
+    /// Roblox does as the first window opens), then the ones that were in a game open again, like a preset's restart.</summary>
+    object? UpdateAndReopen()
+    {
+        if (_vault is null || _robloxUpdating || _updateReopenSince is not null)
+            return null;
+        var tracked = new HashSet<int>();
+        foreach (var (id, run) in _running.ToList())
+        {
+            tracked.Add(run.Pid);
+            if (CanReopen(id, run))
+                _restarts[id] = (RestartTarget(run), DateTime.UtcNow);
+            else
+                _userClosed.Add(id);
+            _closingForRejoin.Add(run.Pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
+            RobloxProcesses.Close(run.Pid, InGameNow(run.Pid));
+        }
+        foreach (int other in RobloxProcesses.GetPlayerPids().Where(pid => !tracked.Contains(pid)))
+            RobloxProcesses.Close(other);
+        _updateReopenSince = DateTime.UtcNow;
+        _updateReopenUpdating = false;
+        PushState();
+        return null;
+    }
+
+    void TickUpdateReopen(DateTime now)
+    {
+        if (_updateReopenSince is not { } since)
+            return;
+        if (!_updateReopenUpdating)
+        {
+            RobloxProcesses.CloseTrayCopies();
+            if (RobloxProcesses.GetPlayerPids().Length > 0)
+            {
+                if (now - since < UpdateReopenCloseLimit && now >= since)
+                    return;
+                Notify(L.T("Some Roblox windows didn't close, so Roblox wasn't updated."), "warn", "launch");
+                _updateReopenSince = null;
+                PushState();
+                return;
+            }
+            _updateReopenUpdating = true;
+            _installsReadAt = DateTime.MinValue;
+            if (Installs() is not null && _updaterExe is { } exe && File.Exists(exe))
+                UpdateRoblox(quiet: true);
+        }
+        if (_robloxUpdating)
+            return;
+        _updateReopenSince = null; // the windows' rejoins go now
+        PushState();
+    }
+
     /// <summary>Until the client's build changes or the launcher's processes for it have all ended, at most 15 minutes.</summary>
-    async Task WatchRobloxUpdateAsync(string launcher, string? before, DateTime startedAt)
+    async Task WatchRobloxUpdateAsync(string launcher, string? before, DateTime startedAt, bool quiet = false)
     {
         var until = DateTime.UtcNow + TimeSpan.FromMinutes(15);
         try
@@ -170,7 +266,8 @@ public sealed partial class AppController
                     return; // Installs said "Roblox updated to …"
                 if (!LauncherRunningSince(launcher, startedAt))
                 {
-                    Toast(L.F("{0} found no newer Roblox to install.", launcher), "info");
+                    if (!quiet)
+                        Toast(L.F("{0} found no newer Roblox to install.", launcher), "info");
                     return;
                 }
                 await Task.Delay(TimeSpan.FromSeconds(3));

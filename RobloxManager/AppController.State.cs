@@ -135,8 +135,10 @@ public sealed partial class AppController
     /// <param name="UpToDate">null until both versions are known.</param>
     /// <param name="Store">Roblox from the Microsoft Store is chosen: the Store installs its updates, not Roblox itself.</param>
     /// <param name="Updater">The launcher that can update this copy of Roblox now (its name), when there is one.</param>
+    /// <param name="OldWindows">Windows still on a build older than Roblox's newest.</param>
+    /// <param name="Reopens">Of all the windows open, those "Close, update, reopen" would open again.</param>
     sealed record RobloxVersionInfo(string? Installed, string? Latest, bool? UpToDate, bool Direct, bool Store = false, string? Updater = null,
-        bool Updating = false);
+        bool Updating = false, int OldWindows = 0, int Reopens = 0);
 
     /// <summary>Registry facts shown on the page; BuildState runs on every push, so they're re-read at most every 30 s.</summary>
     (bool Protocol, bool TrayAutostart) RegistryInfo()
@@ -198,7 +200,7 @@ public sealed partial class AppController
     }
 
     /// <summary>The version the chosen launcher starts, next to the newest Roblox serves. An older client updates itself on
-    /// its next start (that window takes longer), except when started directly.</summary>
+    /// its next start (that window takes longer); Direct only when nothing would update it (<see cref="RobloxInstalls.UpdatesOnOpen"/>).</summary>
     RobloxVersionInfo RobloxVersionDto()
     {
         var installed = Installs().Client;
@@ -216,8 +218,9 @@ public sealed partial class AppController
         string? shown = installed?.Version;
         if (upToDate == false && RobloxInstalls.HasBuild(installed!.Exe, _latestRoblox!.Folder))
             (shown, upToDate) = (_latestRoblox.Version, true);
-        return new RobloxVersionInfo(shown, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct",
-            _vault?.Data.Settings.LaunchVia == "store", _updaterExe is { } updater ? Path.GetFileNameWithoutExtension(updater) : null, _robloxUpdating);
+        return new RobloxVersionInfo(shown, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct" && !RobloxInstalls.UpdatesOnOpen(installed?.Exe),
+            _vault?.Data.Settings.LaunchVia == "store", _updaterExe is { } updater ? Path.GetFileNameWithoutExtension(updater) : null, _robloxUpdating || _updateReopenSince is not null,
+            _running.Count(r => FindAccount(r.Key) is { } a && RunsOldBuild(a, r.Value.Pid)), _running.Count(r => CanReopen(r.Key, r.Value)));
     }
 
     async Task RefreshLatestRobloxAsync()
@@ -255,6 +258,7 @@ public sealed partial class AppController
         a.LastUsed,
         a.AutoRejoin,
         a.UseRobloxConfig,
+        a.FpsCap,
         avatarUrl = _avatarUrls.GetValueOrDefault(a.UserId),
         robux = RobuxOf(a),
         robuxWait = RobuxWaiting(a),
@@ -279,6 +283,9 @@ public sealed partial class AppController
                 jobId = _logs.StateOf(run.Pid)?.JobId,
                 jobPlaceId = _logs.StateOf(run.Pid)?.PlaceId,
                 hidden = RobloxProcesses.HasHidden(run.Pid),
+                fpsLimit = run.Launch.FpsLimit,
+                robloxVersion = _clientBuilds.GetValueOrDefault(run.Pid)?.Version,
+                oldBuild = RunsOldBuild(a, run.Pid),
                 // The preset that opened it may turn auto-rejoin on or off for this client.
                 autoRejoin = RejoinOn(a, run.Launch.PresetId),
             }
@@ -410,6 +417,7 @@ public sealed partial class AppController
         s.LaunchDelaySeconds,
         s.MemoryWarnings,
         s.TrimBackground,
+        s.AutoUpdateRoblox,
         s.RamLimitMb,
         s.SplitCores,
         cores = CoresDto(),

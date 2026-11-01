@@ -38,6 +38,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -118,21 +119,18 @@ html [data-theme="dark" lang="vi"]
               svg.i #19k0rtd
             button [title="Dạng danh sách" aria-label="Dạng danh sách" aria-pressed="false"]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+          button.sort-btn [id="group-btn" title="Nhóm: Tất cả" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Nhóm: Tất cả"
-          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+          button.sort-btn [id="sort-btn" title="Sắp xếp: Tên" aria-haspopup="menu"]
             svg.i #1ui218d
             span "Sắp xếp: Tên"
         div.scroll [id="scroll"]
           div [id="grid"]
             div.grid [role="listbox" aria-label="Tài khoản" aria-multiselectable="true"]
               article.card.local [role="option" tabindex="0" aria-label="Farm 1" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 2222"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:243" src=#uinvo6]
                   i.ingame.pdot
@@ -164,10 +162,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:244" src=#n0d7cr]
                   i.offline.pdot
@@ -193,9 +189,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:297" src=#1u67et1]
                   i.ingame.pdot
@@ -222,11 +217,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 1111"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:204" src=#1qk25wb]
                   i.ingame.pdot
@@ -261,9 +253,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:83" src=#c108i9]
                   i.pdot.studio
@@ -288,11 +279,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Đang mở"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:217"] "TH"
                   i.offline.pdot
@@ -315,10 +303,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
@@ -331,6 +317,7 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
@@ -367,9 +354,9 @@ html [data-theme="dark" lang="vi"]
               b "2"
               span "Server"
               small "tùy chọn"
-            label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
+            label.inwrap.job [title="Mã của một server, để đưa nhiều tài khoản vào cùng server."]
               svg.i #ej9lod
-              input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
+              input [id="job" placeholder="Mã server (Job ID)" maxlength="60" aria-label="Mã server (Job ID)" value=""]
             div.dock-sub
               button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
                 svg.i #uj30io
@@ -425,13 +412,13 @@ html [data-theme="dark" lang="vi"]
             div.gtxt
               b [title="Kiwi"] "Kiwi"
               small "@kiwi_runner · bạn của Tài khoản chính"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
           div.srv-friend
             span.ph
             div.gtxt
               b [title="Mochi"] "Mochi"
               small "@mochi_cat · bạn của Farm 1"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
         div.srv-head "Server công khai"
         div.srv-sort
           button.chip.on [aria-pressed="true" FOCUSED] "Đông nhất"
@@ -448,7 +435,7 @@ html [data-theme="dark" lang="vi"]
             b "14/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "131 ms"
             span.srv-ping "57 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="13/15 người"]
               i [style="transform:scaleX(0.867)"]
@@ -457,70 +444,70 @@ html [data-theme="dark" lang="vi"]
                 svg.i #v823bm
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "122 ms"
             span.srv-ping "53 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="12/15 người"]
               i [style="transform:scaleX(0.8)"]
             b "12/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "113 ms"
             span.srv-ping "60 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="11/15 người"]
               i [style="transform:scaleX(0.733)"]
             b "11/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "104 ms"
             span.srv-ping "56 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="10/15 người"]
               i [style="transform:scaleX(0.667)"]
             b "10/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "95 ms"
             span.srv-ping "52 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="9/15 người"]
               i [style="transform:scaleX(0.6)"]
             b "9/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "86 ms"
             span.srv-ping "59 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="8/15 người"]
               i [style="transform:scaleX(0.533)"]
             b "8/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "77 ms"
             span.srv-ping "55 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="7/15 người"]
               i [style="transform:scaleX(0.467)"]
             b "7/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "68 ms"
             span.srv-ping "51 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="6/15 người"]
               i [style="transform:scaleX(0.4)"]
             b "6/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "59 ms"
             span.srv-ping "58 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="5/15 người"]
               i [style="transform:scaleX(0.333)"]
             b "5/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "50 ms"
             span.srv-ping "54 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="4/15 người"]
               i [style="transform:scaleX(0.267)"]
             b "4/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "41 ms"
             span.srv-ping "50 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.full.srv-row
             div.srv-fill [title="15/15 người"]
               i [style="transform:scaleX(1)"]
@@ -580,6 +567,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -660,21 +648,18 @@ html [data-theme="dark" lang="vi"]
               svg.i #19k0rtd
             button [title="Dạng danh sách" aria-label="Dạng danh sách" aria-pressed="false"]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+          button.sort-btn [id="group-btn" title="Nhóm: Tất cả" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Nhóm: Tất cả"
-          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+          button.sort-btn [id="sort-btn" title="Sắp xếp: Tên" aria-haspopup="menu"]
             svg.i #1ui218d
             span "Sắp xếp: Tên"
         div.scroll [id="scroll"]
           div [id="grid"]
             div.grid [role="listbox" aria-label="Tài khoản" aria-multiselectable="true"]
               article.card.local [role="option" tabindex="0" aria-label="Farm 1" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 2222"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:243" src=#uinvo6]
                   i.ingame.pdot
@@ -706,10 +691,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:244" src=#n0d7cr]
                   i.offline.pdot
@@ -735,9 +718,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:297" src=#1u67et1]
                   i.ingame.pdot
@@ -764,11 +746,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 1111"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:204" src=#1qk25wb]
                   i.ingame.pdot
@@ -803,9 +782,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:83" src=#c108i9]
                   i.pdot.studio
@@ -830,11 +808,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Đang mở"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:217"] "TH"
                   i.offline.pdot
@@ -857,10 +832,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
@@ -873,6 +846,7 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
@@ -909,9 +883,9 @@ html [data-theme="dark" lang="vi"]
               b "2"
               span "Server"
               small "tùy chọn"
-            label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
+            label.inwrap.job [title="Mã của một server, để đưa nhiều tài khoản vào cùng server."]
               svg.i #ej9lod
-              input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
+              input [id="job" placeholder="Mã server (Job ID)" maxlength="60" aria-label="Mã server (Job ID)" value=""]
             div.dock-sub
               button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
                 svg.i #uj30io
@@ -967,13 +941,13 @@ html [data-theme="dark" lang="vi"]
             div.gtxt
               b [title="Kiwi"] "Kiwi"
               small "@kiwi_runner · bạn của Tài khoản chính"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
           div.srv-friend
             span.ph
             div.gtxt
               b [title="Mochi"] "Mochi"
               small "@mochi_cat · bạn của Farm 1"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
         div.srv-head "Server công khai"
         div.srv-sort
           button.chip [aria-pressed="false"] "Đông nhất"
@@ -990,7 +964,7 @@ html [data-theme="dark" lang="vi"]
             b "14/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "131 ms"
             span.srv-ping "57 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="13/15 người"]
               i [style="transform:scaleX(0.867)"]
@@ -999,70 +973,70 @@ html [data-theme="dark" lang="vi"]
                 svg.i #v823bm
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "122 ms"
             span.srv-ping "53 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="12/15 người"]
               i [style="transform:scaleX(0.8)"]
             b "12/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "113 ms"
             span.srv-ping "60 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="11/15 người"]
               i [style="transform:scaleX(0.733)"]
             b "11/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "104 ms"
             span.srv-ping "56 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="10/15 người"]
               i [style="transform:scaleX(0.667)"]
             b "10/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "95 ms"
             span.srv-ping "52 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="9/15 người"]
               i [style="transform:scaleX(0.6)"]
             b "9/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "86 ms"
             span.srv-ping "59 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="8/15 người"]
               i [style="transform:scaleX(0.533)"]
             b "8/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "77 ms"
             span.srv-ping "55 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="7/15 người"]
               i [style="transform:scaleX(0.467)"]
             b "7/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "68 ms"
             span.srv-ping "51 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="6/15 người"]
               i [style="transform:scaleX(0.4)"]
             b "6/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "59 ms"
             span.srv-ping "58 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="5/15 người"]
               i [style="transform:scaleX(0.333)"]
             b "5/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "50 ms"
             span.srv-ping "54 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="4/15 người"]
               i [style="transform:scaleX(0.267)"]
             b "4/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "41 ms"
             span.srv-ping "50 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.full.srv-row
             div.srv-fill [title="15/15 người"]
               i [style="transform:scaleX(1)"]
@@ -1116,6 +1090,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -1196,21 +1171,18 @@ html [data-theme="dark" lang="vi"]
               svg.i #19k0rtd
             button [title="Dạng danh sách" aria-label="Dạng danh sách" aria-pressed="false"]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+          button.sort-btn [id="group-btn" title="Nhóm: Tất cả" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Nhóm: Tất cả"
-          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+          button.sort-btn [id="sort-btn" title="Sắp xếp: Tên" aria-haspopup="menu"]
             svg.i #1ui218d
             span "Sắp xếp: Tên"
         div.scroll [id="scroll"]
           div [id="grid"]
             div.grid [role="listbox" aria-label="Tài khoản" aria-multiselectable="true"]
               article.card.local [role="option" tabindex="0" aria-label="Farm 1" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 2222"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:243" src=#uinvo6]
                   i.ingame.pdot
@@ -1242,10 +1214,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:244" src=#n0d7cr]
                   i.offline.pdot
@@ -1271,9 +1241,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:297" src=#1u67et1]
                   i.ingame.pdot
@@ -1300,11 +1269,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 1111"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:204" src=#1qk25wb]
                   i.ingame.pdot
@@ -1339,9 +1305,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:83" src=#c108i9]
                   i.pdot.studio
@@ -1366,11 +1331,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Đang mở"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:217"] "TH"
                   i.offline.pdot
@@ -1393,10 +1355,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
@@ -1409,6 +1369,7 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
@@ -1445,9 +1406,9 @@ html [data-theme="dark" lang="vi"]
               b "2"
               span "Server"
               small "tùy chọn"
-            label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
+            label.inwrap.job [title="Mã của một server, để đưa nhiều tài khoản vào cùng server."]
               svg.i #ej9lod
-              input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
+              input [id="job" placeholder="Mã server (Job ID)" maxlength="60" aria-label="Mã server (Job ID)" value=""]
             div.dock-sub
               button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
                 svg.i #uj30io
@@ -1503,13 +1464,13 @@ html [data-theme="dark" lang="vi"]
             div.gtxt
               b [title="Kiwi"] "Kiwi"
               small "@kiwi_runner · bạn của Tài khoản chính"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
           div.srv-friend
             span.ph
             div.gtxt
               b [title="Mochi"] "Mochi"
               small "@mochi_cat · bạn của Farm 1"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng server này"
         div.srv-head "Server công khai"
         div.srv-sort
           button.chip [aria-pressed="false"] "Đông nhất"
@@ -1526,7 +1487,7 @@ html [data-theme="dark" lang="vi"]
             b "14/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "131 ms"
             span.srv-ping "57 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="13/15 người"]
               i [style="transform:scaleX(0.867)"]
@@ -1535,70 +1496,70 @@ html [data-theme="dark" lang="vi"]
                 svg.i #v823bm
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "122 ms"
             span.srv-ping "53 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="12/15 người"]
               i [style="transform:scaleX(0.8)"]
             b "12/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "113 ms"
             span.srv-ping "60 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="11/15 người"]
               i [style="transform:scaleX(0.733)"]
             b "11/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "104 ms"
             span.srv-ping "56 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="10/15 người"]
               i [style="transform:scaleX(0.667)"]
             b "10/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "95 ms"
             span.srv-ping "52 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="9/15 người"]
               i [style="transform:scaleX(0.6)"]
             b "9/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "86 ms"
             span.srv-ping "59 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="8/15 người"]
               i [style="transform:scaleX(0.533)"]
             b "8/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "77 ms"
             span.srv-ping "55 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="7/15 người"]
               i [style="transform:scaleX(0.467)"]
             b "7/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "68 ms"
             span.srv-ping "51 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="6/15 người"]
               i [style="transform:scaleX(0.4)"]
             b "6/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "59 ms"
             span.srv-ping "58 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="5/15 người"]
               i [style="transform:scaleX(0.333)"]
             b "5/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "50 ms"
             span.srv-ping "54 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.srv-row
             div.srv-fill [title="4/15 người"]
               i [style="transform:scaleX(0.267)"]
             b "4/15 người"
             span.srv-ping [title="Ping trung bình của người chơi trong server (không phải ping của bạn)"] "41 ms"
             span.srv-ping "50 FPS"
-            button.btn.sm [title="Điền server này vào ô Job ID. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
+            button.btn.sm [title="Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game."] "Dùng"
           div.full.srv-row
             div.srv-fill [title="15/15 người"]
               i [style="transform:scaleX(1)"]

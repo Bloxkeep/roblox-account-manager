@@ -257,6 +257,7 @@ public sealed partial class AppController
         RunAntiAfk(now, windows);
         MinimiseAfkWindows(windows);
         MaximiseNewWindows(now, windows);
+        KeepWindowSizes(now, windows);
         Took("rejoins, play time, anti-AFK and window states", part);
 
         if (_vault is { Data.Settings.RenameWindows: true })
@@ -335,7 +336,15 @@ public sealed partial class AppController
             EmitMetrics(players, windows, memory);
             GuardResources(players, memory, now);
             LimitRestingRam(players, windows, now, memory);
+            EmptyRestingRamOnce(players, windows, now);
         }, "EmitMetrics, GuardResources");
+        if (scan)
+            Step(() =>
+            {
+                NoteClientBuilds(players);
+                AutoUpdateRoblox(players);
+            });
+        Step(() => TickUpdateReopen(now));
         Step(() => RunDueRejoin(now));
         Step(() => RestartDueClients(now));
         Step(() => RunSignInCheckIfDue(now));
@@ -468,6 +477,8 @@ public sealed partial class AppController
         if (!PageAttached || _screenLocked)
             return;
         var workingSets = players.ToDictionary(p => p.Pid, p => p.Ram);
+        if (!_pageAsleep)
+            _robloxUsage.Refresh(workingSets.Keys);
         string json = JsonSerializer.Serialize(new
         {
             accounts = _running.Select(r => new { id = r.Key, ramMb = workingSets.GetValueOrDefault(r.Value.Pid) / MB }),
@@ -478,6 +489,8 @@ public sealed partial class AppController
             systemMb = memory.TotalMb,
             availableMb = memory.AvailableMb / 128 * 128, // coarse, so idle jitter doesn't repaint the page
             usedPct = memory.LoadPercent,
+            cpuPct = _robloxUsage.CpuPct,
+            gpuPct = _robloxUsage.GpuPct,
         }, Json);
         // A sleeping page gets the figures of the moment it wakes, not a queue of old ones.
         if (json == _lastMetrics || _pageAsleep)
@@ -570,8 +583,8 @@ public sealed partial class AppController
                 _lowMemoryPriority.Remove(p.Pid);
         }
 
-        // No emptying their RAM outright: a background game needed it all back at once, and with 5 windows some
-        // stuttered, a window grabbed to drag most of all (the owner's video, 2026-10-21).
+        // No emptying the RAM of windows in view: a background game needed it all back at once, and with 5 windows some
+        // stuttered, a window grabbed to drag most of all (the owner's video, 2026-10-21). Resting ones: EmptyRestingRamOnce.
         if (refused && !_trimRefusedShown)
         {
             _trimRefusedShown = true;
@@ -580,8 +593,65 @@ public sealed partial class AppController
         }
     }
 
+    /// <summary>Since when each window has rested, and the ones already emptied this rest (see EmptyRestingRamOnce).</summary>
+    readonly Dictionary<int, DateTime> _restingSince = new();
+    readonly HashSet<int> _ramEmptied = [];
+    static readonly TimeSpan EmptyRamRested = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// Save RAM: a window that has rested a minute (minimized, or hidden by Bloxkeep) has its RAM emptied, once each rest:
+    /// what the game doesn't touch stays out of RAM and the rest comes back. Not again and again, and not a window in view
+    /// (both stuttered, 2026-10-21); the rest of the time only the low priority of GuardResources applies. Noted in the
+    /// log (pid and MB only), to tell from a real game what it gave. Not yet tried on real Roblox (2026-10-31).
+    /// </summary>
+    void EmptyRestingRamOnce(List<RobloxProcesses.PlayerProcess> players, Dictionary<int, List<IntPtr>> windows, DateTime now)
+    {
+        foreach (int gone in _restingSince.Keys.Where(pid => players.All(p => p.Pid != pid)).ToList())
+            _restingSince.Remove(gone);
+        _ramEmptied.RemoveWhere(pid => players.All(p => p.Pid != pid));
+        // A window shown unseen for a moment (anti-AFK's nudge, /pc screenshot) goes on resting.
+        if (_nudging || _picturing)
+            return;
+        if (!_vault!.Data.Settings.TrimBackground)
+        {
+            _restingSince.Clear();
+            _ramEmptied.Clear();
+            return;
+        }
+        int front = RobloxProcesses.ForegroundPid();
+        foreach (var p in players)
+        {
+            var window = windows.TryGetValue(p.Pid, out var list) ? RobloxProcesses.MainWindowOf(list) : IntPtr.Zero;
+            if (p.Pid == front || window == IntPtr.Zero || !(RobloxProcesses.IsMinimised(window) || RobloxProcesses.IsHidden(window)))
+            {
+                _restingSince.Remove(p.Pid);
+                _ramEmptied.Remove(p.Pid);
+                continue;
+            }
+            if (!_restingSince.TryAdd(p.Pid, now) && now - _restingSince[p.Pid] >= EmptyRamRested && _ramEmptied.Add(p.Pid))
+                _ = EmptyRamInTurn(p.Pid, p.WorkingSet / MB);
+        }
+    }
+
+    readonly WindowSizeKeeper _windowSizes = new();
+
+    /// <summary>A window leaving full screen comes back at the size it had. A window shown unseen for a moment is left out.</summary>
+    void KeepWindowSizes(DateTime now, Dictionary<int, List<IntPtr>> windows)
+    {
+        _windowSizes.Forget(windows.Keys);
+        if (_nudging || _picturing)
+            return;
+        foreach (var (pid, list) in windows)
+        {
+            var window = RobloxProcesses.MainWindowOf(list);
+            if (window != IntPtr.Zero && RobloxProcesses.WindowRect(window) is { } rect
+                && _windowSizes.Look(pid, rect, RobloxProcesses.IsFullscreen(window, rect), RobloxProcesses.IsPlainWindow(window), now) is { } back)
+                RobloxProcesses.PlaceWindow(window, back);
+        }
+    }
+
     /// <summary>The choices of Settings › Staying in game › RAM limit for resting windows, in MB (0 = off).</summary>
-    internal static readonly int[] RamLimitChoices = [0, RamLimitAuto, 1024, 1536, 2048];
+    internal static readonly int[] RamLimitChoices = [0, RamLimitAuto, 512, 768, 1024, 1536, 2048];
 
     /// <summary>
     /// "Auto": each resting window's limit found for its own game (2026-10-30, two designs measured on a stand-in game:
@@ -656,20 +726,49 @@ public sealed partial class AppController
                 _autoRam.Remove(p.Pid);
             if (want is { } limit && (!limited || had != limit))
             {
-                if (RobloxProcesses.LimitRam(p.Pid, limit))
-                {
-                    _ramLimited[p.Pid] = limit;
-                    Log.Note($"RAM limit: Roblox window {p.Pid} limited to {limit} MB ({(setting == RamLimitAuto ? "auto" : "chosen")}), holding {p.Ram / MB} MB.");
-                }
-                else if (_ramLimitRefused.Add(p.Pid))
-                    Log.Note($"RAM limit: Windows refused a limit for Roblox window {p.Pid}.");
+                _ramLimited[p.Pid] = limit;
+                _ = SetRamLimit(p.Pid, limit, setting == RamLimitAuto ? "auto" : "chosen", p.Ram / MB);
             }
             else if (want is null && limited)
             {
-                RobloxProcesses.LimitRam(p.Pid, null);
+                _ = LimitRamInTurn(p.Pid, null);
                 _ramLimited.Remove(p.Pid);
                 Log.Note($"RAM limit: lifted for Roblox window {p.Pid} ({(resting ? "auto left it alone" : "shown, in front, or the option off")}).");
             }
+        }
+    }
+
+    /// <summary>
+    /// Off the interface's thread and one at a time, in the order asked: Windows takes the RAM back before it answers, and
+    /// five windows minimized together held the app still for 1.5 s (the owner's log, 2026-11-01).
+    /// </summary>
+    Task<bool> InRamTurn(Func<bool> ask)
+    {
+        var work = _ramLimitTurn.ContinueWith(_ => ask(), TaskScheduler.Default);
+        _ramLimitTurn = work;
+        return work;
+    }
+    Task _ramLimitTurn = Task.CompletedTask;
+
+    Task<bool> LimitRamInTurn(int pid, long? mb) => InRamTurn(() => RobloxProcesses.LimitRam(pid, mb));
+
+    async Task EmptyRamInTurn(int pid, long heldMb)
+    {
+        if (await InRamTurn(() => RobloxProcesses.EmptyRam(pid)))
+            Log.Note($"Save RAM: Roblox window {pid} emptied once, it held {heldMb} MB.");
+    }
+
+    /// <summary>A refused limit is forgotten, so the next look asks again.</summary>
+    async Task SetRamLimit(int pid, long limit, string why, long holdingMb)
+    {
+        if (await LimitRamInTurn(pid, limit))
+            Log.Note($"RAM limit: Roblox window {pid} limited to {limit} MB ({why}), holding {holdingMb} MB.");
+        else
+        {
+            if (_ramLimited.TryGetValue(pid, out long now) && now == limit)
+                _ramLimited.Remove(pid);
+            if (_ramLimitRefused.Add(pid))
+                Log.Note($"RAM limit: Windows refused a limit for Roblox window {pid}.");
         }
     }
 
@@ -757,7 +856,8 @@ public sealed partial class AppController
     void LiftRamLimits()
     {
         foreach (int pid in _ramLimited.Keys)
-            RobloxProcesses.LimitRam(pid, null);
+            _ = LimitRamInTurn(pid, null);
         _ramLimited.Clear();
+        _ramLimitTurn.Wait(TimeSpan.FromSeconds(5)); // one asked just before mustn't land after Bloxkeep is gone
     }
 }

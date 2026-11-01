@@ -521,7 +521,14 @@ public sealed partial class AppController
                 continue;
             if ((foreground ??= RobloxProcesses.ForegroundPid()) != run.Pid && AntiAfk.PersonActive())
                 continue; // the next tick: not over what the person is doing
-            RobloxProcesses.Maximise(RobloxProcesses.MainWindowOf(list));
+            var main = RobloxProcesses.MainWindowOf(list);
+            // Put away while it was loading: it stays away (maximised, it also lost its RAM limit for resting windows).
+            if (RobloxProcesses.IsMinimised(main) || RobloxProcesses.IsHidden(main))
+            {
+                _maximised[run.Pid] = "ingame";
+                continue;
+            }
+            RobloxProcesses.Maximise(main);
             _maximised[run.Pid] = step;
         }
     }
@@ -544,7 +551,7 @@ public sealed partial class AppController
             if (now - restart.At > RestartCloseTimeout || now < restart.At)
                 _restarts.Remove(id);
         }
-        if (_vault is null || _running.Count == 0 || _restarts.Count > 0 || Settling || _rejoining || _launchCts is not null
+        if (_vault is null || _running.Count == 0 || _restarts.Count > 0 || Settling || _rejoining || _launchCts is not null || _updateReopenSince is not null
             || _pending.Count > 0 || _rejoinQueue.Any(r => r.Restart) || now < _sweepBackgroundUntil || now - _lastSessionStart < RestartSpacing)
             return;
         int? foreground = null;

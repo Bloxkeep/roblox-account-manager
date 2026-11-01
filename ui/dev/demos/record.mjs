@@ -86,6 +86,47 @@ const takes = {
       await sleep(500);
     };
   },
+  /** The themes from photos: one after another, the mouse moving over each so the scene answers. */
+  async photos() {
+    await b.goto(`http://localhost:5178/ui/dev/preview.html?settings=appearance&theme=miaminight&lang=${lang}&nodelay=1`);
+    await sleep(1500);
+    await b.eval(`document.querySelector('#s-theme-groups .chip[data-group="live"]').click()`);
+    await sleep(500);
+    await drawCursor();
+    at = await where('.swatch[data-id="miaminight"]');
+    await mouse('mouseMoved', at);
+    await sleep(1000);
+    return async () => {
+      for (const id of ['nightharbour', 'lanternriver', 'deepsea', 'snowfall', 'miaminight']) {
+        await click(`.swatch[data-id="${id}"]`, 500);
+        await sleep(700);
+        const here = at;
+        await move({ x: W * .86, y: H * .78 }, 800);
+        await move(here, 700);
+      }
+      await sleep(300);
+    };
+  },
+  /** The modes for Roblox: each picked in turn, back to the one in use. */
+  async modes() {
+    await b.goto(`http://localhost:5178/ui/dev/preview.html?settings=perf&open=s-rc-levels&lang=${lang}&nodelay=1`);
+    await sleep(1500);
+    await b.eval(`document.querySelector('#s-rc-levels').scrollIntoView({ block: 'center' })`);
+    await sleep(300);
+    await drawCursor();
+    const button = n => `#s-rc-levels button:nth-of-type(${n})`;
+    const inUse = await b.eval(`[...document.querySelectorAll('#s-rc-levels button')].findIndex(x => x.classList.contains('on')) + 1`) || 1;
+    const others = [1, 2, 3].filter(n => n !== inUse);
+    at = await where(button(inUse));
+    await mouse('mouseMoved', at);
+    return async () => {
+      await sleep(900);
+      for (const n of [...others, inUse]) {
+        await click(button(n), 700);
+        await sleep(1300);
+      }
+    };
+  },
 };
 
 const take = await takes[name]();

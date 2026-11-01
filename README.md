@@ -37,7 +37,7 @@ Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play
 | **Roblox your way** | Graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap or your own launcher. [Settings](docs/guide/settings.md) |
 | **Stats and Discord** | Play time, sessions and disconnects; alerts and a live status in your Discord channel. [Discord](docs/guide/discord.md) |
 | **Safe by default** | Encrypted vault, lock, backups to a OneDrive or Google Drive folder, hide names for streams. [Backup and security](docs/guide/backup-and-security.md) |
-| **Yours** | 74 themes, English and Vietnamese, quick search with `Ctrl+K`. |
+| **Yours** | 98 themes, English and Vietnamese, quick search with `Ctrl+K`. |
 
 ## Download and install
 

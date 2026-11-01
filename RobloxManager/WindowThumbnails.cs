@@ -138,17 +138,24 @@ sealed class WindowThumbnails : ScrollableControl
 
     static int Scale(int logical, int dpi) => (int)Math.Round(logical * dpi / 96.0);
 
-    /// <summary>Columns: 1, 2, 2×2, 3×2, 3×3, 4×3, 4×4, then a square-ish grid; fewer when tiles would be narrower than
-    /// <see cref="MinTileWidth"/> (a tall narrow window stacks them).</summary>
-    public static int Columns(int count, int width, int dpi)
+    /// <summary>The columns that show the biggest 16:9 picture in the tab as it is now (two windows in a tall tab stack, so
+    /// they aren't banded by empty space, 2026-11-01); none narrower than <see cref="MinTileWidth"/>.</summary>
+    public static int Columns(int count, Size client, int dpi)
     {
-        if (count <= 1)
-            return 1;
-        int cols = count switch { 2 => 2, <= 4 => 2, <= 6 => 3, <= 9 => 3, <= 16 => 4, _ => (int)Math.Ceiling(Math.Sqrt(count)) };
-        int pad = Scale(TilePad, dpi), minW = Scale(MinTileWidth, dpi);
-        while (cols > 1 && (width - pad * (cols + 1)) / cols < minW)
-            cols--;
-        return cols;
+        int pad = Scale(TilePad, dpi), minW = Scale(MinTileWidth, dpi), minH = Scale(MinTileHeight, dpi);
+        int best = 1, bestWidth = 0;
+        for (int cols = 1; cols <= count; cols++)
+        {
+            int width = (client.Width - pad * (cols + 1)) / cols;
+            if (cols > 1 && width < minW)
+                break;
+            int rows = (count + cols - 1) / cols;
+            int height = Math.Max(minH, (client.Height - pad * (rows + 1)) / rows);
+            int picture = Math.Min(width, height * 16 / 9);
+            if (picture > bestWidth)
+                (best, bestWidth) = (cols, picture);
+        }
+        return best;
     }
 
     /// <summary>The tiles' rectangles in device pixels. Rows share the height; tiles never go below
@@ -159,7 +166,7 @@ sealed class WindowThumbnails : ScrollableControl
         if (count <= 0)
             return [];
         int pad = Scale(TilePad, dpi), minW = Scale(MinTileWidth, dpi), minH = Scale(MinTileHeight, dpi);
-        int cols = Columns(count, client.Width, dpi), rows = (count + cols - 1) / cols;
+        int cols = Columns(count, client, dpi), rows = (count + cols - 1) / cols;
         int tileW = Math.Max(minW, (client.Width - pad * (cols + 1)) / cols);
         int tileH = Math.Max(minH, (client.Height - pad * (rows + 1)) / rows);
         contentHeight = pad + rows * (tileH + pad);

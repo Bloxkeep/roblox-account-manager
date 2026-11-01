@@ -59,7 +59,7 @@
     { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', alias: tx('Main', 'Tài khoản chính'), label: tx('Main', 'Tài khoản chính'), group: 'Main', note: tx("My main account, don't farm on it", 'Tài khoản chơi chính, đừng dùng farm'),
       hasPassword: true, hasAuthenticator: true, cookieValid: true, robux: 12450, autoRejoin: true, lastUsed: minsAgo(3), avatarUrl: face('#2b3a55', '#f2c94c', '#3b82f6'), state: 'running',
       presence: { type: 'ingame', game: games[2753915549].name, placeId: 2753915549, iconUrl: games[2753915549].iconUrl },
-      session: { pid: 1111, since: minsAgo(47), game: g(2753915549), connection: 'ingame', hidden: params.has('winhidden') } },
+      session: { pid: 1111, since: minsAgo(47), game: g(2753915549), connection: 'ingame', hidden: params.has('winhidden'), fpsLimit: Number(params.get('fps')) || 0, robloxVersion: params.has('oldwin') ? '0.742.0.7421053' : null, oldBuild: params.has('oldwin') } },
     { id: id(2), userId: 5140000002, username: 'pixelfarmer01', displayName: 'pixelfarmer01', alias: 'Farm 1', label: 'Farm 1', group: 'Farm', note: '',
       hasPassword: false, cookieValid: true, robux: 80, lastUsed: minsAgo(2), avatarUrl: face('#1f3b2d', '#f2c94c', '#22c55e'), state: 'running',
       presence: { type: 'online' }, session: { pid: 2222, since: minsAgo(params.has('kicked') ? 12 : 1), game: g(2753915549), connection: params.has('kicked') ? 'disconnected' : params.get('phase') === 'joinFailed' ? 'menu' : 'joining',
@@ -186,7 +186,7 @@
   const themeApplied = () => theme !== 'system' ? theme : matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   let settings = {
     lastPlaceInput: 'https://www.roblox.com/games/2753915549/Blox-Fruits', lastJobId: '', renameWindows: true, windowPictures: true, taskbarGroups: 'roblox', launchVia: 'auto', launchDelaySeconds: 8, autoLockMinutes: 0,
-    memoryWarnings: true, trimBackground: false, antiAfk: false,
+    memoryWarnings: true, trimBackground: false, autoUpdateRoblox: true, antiAfk: false,
     // The fast cores for the window played; ?cpuone=1: a CPU with one kind of core (only power saving to give).
     splitCores: false, cores: params.has('cpuone') ? { hybrid: false, efficient: 0, logical: 8 } : { hybrid: true, efficient: 16, logical: 32 }, robloxConfig: { mode: params.has('rc') ? 'marked' : 'off', graphics: 1, fps: 30, volume: 0 },
     recentGames: [2753915549, 920587237, 4924922222].map(p => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl })),
@@ -288,7 +288,7 @@
     multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, savedThemes, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
-      updater: settings.launchVia === 'store' ? null : 'Bloxstrap', updating: robloxUpdating },
+      updater: settings.launchVia === 'store' ? null : 'Bloxstrap', updating: robloxUpdating, oldWindows: params.has('oldwin') ? 1 : 0, reopens: params.has('oldwin') ? 1 : 0 },
     // Settings › Roblox updates, newest first: a new build under the same version, an update, the first build seen.
     // ?rbxclosed=1: Roblox closed windows when another one opened (the warning there and on the Multi-Roblox card).
     // ?rw=changed|renamed|gone: what the Roblox watch found in the installed build (default: no change, and the next
@@ -329,7 +329,7 @@
     accounts: accounts.filter(a => a.state === 'running').map((a, i) => ({ id: a.id, ramMb: 780 + i * 140 + Math.round(Math.random() * 30) })),
     robloxCount: accounts.filter(a => a.state === 'running').length + orphans,
     monitorCount: accounts.filter(a => a.state === 'running').length + orphans,
-    totalMb: 1750 + Math.round(Math.random() * 40), systemMb: 32 * 1024, usedPct: 63, availableMb: 12 * 1024,
+    totalMb: 1750 + Math.round(Math.random() * 40), systemMb: 32 * 1024, usedPct: 63, availableMb: 12 * 1024, cpuPct: 12, gpuPct: 34,
   });
   // The panel's numbers go with every change to the cards, not only on the next 1.5 s tick: a window opened or closed
   // is then counted in the sidebar as soon as its card says so, and Tests/ui doesn't write down one or the other by
@@ -471,6 +471,7 @@
         case 'openWebsiteBlank': console.log('openWebsiteBlank'); return null; // likewise, blank, to sign in on the site
         case 'hideRobloxClosed': rbxClosedHidden = true; push(); return null;
         case 'updateRoblox': robloxUpdating = true; push(); return null;
+        case 'updateAndReopen': robloxUpdating = true; push(); return null;
         case 'multiOnly': multiAtStart = !!a.on; push(); return null;
         // Like the app: only the fields sent change; a ping is { kind, value }, an alert switch { kind, enabled }.
         case 'setDiscordPresence': discord = { ...discord, presence: !!a.enabled }; push(); return null;
@@ -782,6 +783,10 @@
         case 'monitorArea': return null; // the live pictures are the app's own; the preview shows the empty area
         case 'setUseRobloxConfig':
           accounts.forEach(x => { if (a.ids.includes(x.id)) x.useRobloxConfig = a.enabled; });
+          push();
+          return a.ids.length;
+        case 'setFpsCap':
+          accounts.forEach(x => { if (a.ids.includes(x.id)) x.fpsCap = a.fps; });
           push();
           return a.ids.length;
         case 'setAutoRejoin':

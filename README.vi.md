@@ -31,7 +31,7 @@ Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản
 | **Roblox theo ý bạn** | Đồ họa, FPS, âm lượng riêng cho từng tài khoản; mở bằng Roblox, Bloxstrap, Fishstrap hoặc trình mở của bạn. [Cài đặt](docs/guide/settings.vi.md) |
 | **Thống kê và Discord** | Thời gian chơi, số phiên, số lần văng; cảnh báo và trạng thái trực tiếp trong kênh Discord của bạn. [Discord](docs/guide/discord.vi.md) |
 | **An toàn sẵn** | Kho mã hóa, khóa app, sao lưu vào thư mục OneDrive hoặc Google Drive, ẩn tên khi livestream. [Sao lưu và bảo mật](docs/guide/backup-and-security.vi.md) |
-| **Của riêng bạn** | 74 giao diện, tiếng Việt và tiếng Anh, tìm nhanh bằng `Ctrl+K`. |
+| **Của riêng bạn** | 98 giao diện, tiếng Việt và tiếng Anh, tìm nhanh bằng `Ctrl+K`. |
 
 ## Tải về và cài đặt
 

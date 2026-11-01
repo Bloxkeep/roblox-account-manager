@@ -38,6 +38,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -81,7 +82,7 @@ html [data-theme="dark" lang="en"]
               span "Launching"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Roblox version & graphics"
+              span "Roblox version"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Staying in game"
@@ -123,7 +124,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Show account names on windows"
-                        div.d "Each Roblox window’s title carries its account’s name and its process ID (PID), on the taskbar and in Alt+Tab."
+                        div.d "So you can tell which window is which."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Show account names on windows" checked=true]
@@ -139,7 +140,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Taskbar buttons"
-                        div.d "Windows puts every Roblox window under one button. Each account can have its own button, with its picture, or each preset its own group (windows opened without a preset stay together)."
+                        div.d "Give each account its own button with its picture, or each preset its own group."
                       div.ctl
                         select.select [id="s-taskbar" aria-label="Taskbar buttons" value="roblox"]
                           option [value="roblox"] "One for all Roblox windows"
@@ -148,7 +149,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "When a Roblox window opens"
-                        div.d "Maximised windows are still windows, so they don’t share Roblox’s one fullscreen setting. Tiling needs Multi-Roblox."
+                        div.d "Tiling needs Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="When a Roblox window opens" value="roblox"]
                           option [value="roblox"] "As Roblox sizes it"
@@ -157,7 +158,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
+                        div.d "Auto fills the screen. A grid can leave 2 windows small."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Arrange Roblox windows"]
@@ -253,7 +254,7 @@ html [data-theme="dark" lang="en"]
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
                             span.snap-name "Custom"
                 div.set-grp [id="sec-client"]
-                  h3.set-grp-title "Launcher & timing"
+                  h3.set-grp-title "How Roblox opens, and waiting times"
                   div.set-card
                     div.set-row
                       div
@@ -339,6 +340,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -382,7 +384,7 @@ html [data-theme="dark" lang="en"]
               span "Launching"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Roblox version & graphics"
+              span "Roblox version"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Staying in game"
@@ -424,7 +426,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Show account names on windows"
-                        div.d "Each Roblox window’s title carries its account’s name and its process ID (PID), on the taskbar and in Alt+Tab."
+                        div.d "So you can tell which window is which."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Show account names on windows" checked=true]
@@ -440,7 +442,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Taskbar buttons"
-                        div.d "Windows puts every Roblox window under one button. Each account can have its own button, with its picture, or each preset its own group (windows opened without a preset stay together)."
+                        div.d "Give each account its own button with its picture, or each preset its own group."
                       div.ctl
                         select.select [id="s-taskbar" aria-label="Taskbar buttons" value="roblox"]
                           option [value="roblox"] "One for all Roblox windows"
@@ -449,7 +451,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "When a Roblox window opens"
-                        div.d "Maximised windows are still windows, so they don’t share Roblox’s one fullscreen setting. Tiling needs Multi-Roblox."
+                        div.d "Tiling needs Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="When a Roblox window opens" value="roblox"]
                           option [value="roblox"] "As Roblox sizes it"
@@ -458,7 +460,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
+                        div.d "Auto fills the screen. A grid can leave 2 windows small."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Arrange Roblox windows"]
@@ -554,7 +556,7 @@ html [data-theme="dark" lang="en"]
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
                             span.snap-name "Custom"
                 div.set-grp [id="sec-client"]
-                  h3.set-grp-title "Launcher & timing"
+                  h3.set-grp-title "How Roblox opens, and waiting times"
                   div.set-card
                     div.set-row
                       div
@@ -621,6 +623,7 @@ html [data-theme="dark" lang="en"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
               i.dot.ok
@@ -664,7 +667,7 @@ html [data-theme="dark" lang="en"]
               span "Launching"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Roblox version & graphics"
+              span "Roblox version"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Staying in game"
@@ -706,7 +709,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Show account names on windows"
-                        div.d "Each Roblox window’s title carries its account’s name and its process ID (PID), on the taskbar and in Alt+Tab."
+                        div.d "So you can tell which window is which."
                       div.ctl
                         label.switch
                           input [id="s-rename" type="checkbox" aria-label="Show account names on windows" checked=true]
@@ -722,7 +725,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Taskbar buttons"
-                        div.d "Windows puts every Roblox window under one button. Each account can have its own button, with its picture, or each preset its own group (windows opened without a preset stay together)."
+                        div.d "Give each account its own button with its picture, or each preset its own group."
                       div.ctl
                         select.select [id="s-taskbar" aria-label="Taskbar buttons" value="roblox"]
                           option [value="roblox"] "One for all Roblox windows"
@@ -731,7 +734,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "When a Roblox window opens"
-                        div.d "Maximised windows are still windows, so they don’t share Roblox’s one fullscreen setting. Tiling needs Multi-Roblox."
+                        div.d "Tiling needs Multi-Roblox."
                       div.ctl
                         select.select [id="s-openas" aria-label="When a Roblox window opens" value="roblox"]
                           option [value="roblox"] "As Roblox sizes it"
@@ -740,7 +743,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "How Arrange windows (and tiling after opening) lays out the Roblox windows. Auto fills the screen with as many tiles as windows. In a grid every window takes one cell from the top-left, however many windows there are, so 2 windows can be small too. Or give them a size of your own."
+                        div.d "Auto fills the screen. A grid can leave 2 windows small."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Arrange Roblox windows"]
@@ -836,7 +839,7 @@ html [data-theme="dark" lang="en"]
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
                             span.snap-name "Custom"
                 div.set-grp [id="sec-client"]
-                  h3.set-grp-title "Launcher & timing"
+                  h3.set-grp-title "How Roblox opens, and waiting times"
                   div.set-card
                     div.set-row
                       div

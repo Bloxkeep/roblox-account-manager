@@ -12,6 +12,8 @@ export interface SavedTheme { id: string; name: string; look: CustomTheme }
 export type Metrics = {
   accounts: { id: string; ramMb: number }[]; robloxCount: number; monitorCount?: number;
   totalMb: number; systemMb: number; availableMb?: number; usedPct?: number;
+  /** Roblox's windows only; null when Windows doesn't say. */
+  cpuPct?: number | null; gpuPct?: number | null;
 };
 /** The page's own state, kept by app.js (S): the tab shown, the live figures… A new object whenever any of it changes. */
 export interface PageState {

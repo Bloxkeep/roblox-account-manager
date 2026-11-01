@@ -4,7 +4,7 @@
 
 Cách Bloxkeep giữ các tài khoản luôn ở trong game: Tự vào lại game, Chống AFK, kiểm tra đăng nhập mỗi ngày, và các tùy chọn về RAM, nằm ở **Cài đặt › Treo game**; chạy ẩn dưới khay hệ thống nằm ở **Cài đặt › Bloxkeep**.
 
-<img src="../screenshots/vi/settings-staying.png" width="760" alt="Cài đặt, trang Treo game: Tự vào lại game, Chống AFK, Kiểm tra đăng nhập mỗi ngày, Báo khi sắp hết RAM, Tiết kiệm RAM cho cửa sổ chạy nền và Nhường nhân mạnh cho cửa sổ đang chơi">
+<img src="../screenshots/vi/settings-staying.png" width="760" alt="Cài đặt, trang Treo game: Tự vào lại game, Chống AFK, Kiểm tra đăng nhập mỗi ngày, Báo khi sắp hết RAM, Tiết kiệm RAM cho cửa sổ chạy nền và Ưu tiên cửa sổ đang chơi">
 
 ## Làm nhanh
 
@@ -84,30 +84,31 @@ Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do: bạn dùng máy l
 
 ## Tiết kiệm RAM cho cửa sổ chạy nền
 
-**Cài đặt › Treo game › Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn). Các cửa sổ Roblox bạn không chơi được đặt mức ưu tiên bộ nhớ thấp, nên Windows lấy RAM của chúng trước, chỉ khi máy thiếu RAM. Bloxkeep không ép xả hết RAM của chúng: làm vậy game bị giật khi cần RAM lại.
+**Cài đặt › Treo game › Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn). Các cửa sổ Roblox bạn không chơi được đặt mức ưu tiên bộ nhớ thấp, nên Windows lấy RAM của chúng trước, chỉ khi máy thiếu RAM. Cửa sổ thu nhỏ hoặc đang ẩn được 1 phút sẽ được dọn RAM một lần, phần game còn dùng tự quay lại. Cửa sổ đang hiện thì không dọn, vì game sẽ bị giật khi cần RAM lại.
 
 Cửa sổ ở phía trước được trả lại mức ưu tiên bình thường. Nếu Windows không cho, cửa sổ đó chạy như thường.
 
 Game mà RAM cứ tăng dần sau nhiều giờ chỉ trả lại RAM khi Roblox mở lại: dùng **Mở lại Roblox** của Preset (xem [Preset](presets.vi.md)).
 
-## Giới hạn RAM cửa sổ treo
+## Giới hạn RAM khi thu nhỏ hoặc ẩn
 
-**Cài đặt › Treo game › Giới hạn RAM cửa sổ treo**: **Không giới hạn** (mặc định), **Tự động (theo game)**, **1 GB**, **1.5 GB** hoặc **2 GB**. Cửa sổ Roblox thu nhỏ, hoặc bị Bloxkeep ẩn, chỉ giữ tối đa chừng đó trong RAM; phần còn lại của game nằm ở bộ nhớ ảo của Windows. Game để treo dùng rất ít trong số bộ nhớ nó giữ, nên một máy chạy được nhiều tài khoản hơn.
+**Cài đặt › Treo game › Giới hạn RAM khi thu nhỏ hoặc ẩn**: **Không giới hạn** (mặc định), **Tự động (theo game)**, **512 MB**, **768 MB**, **1 GB**, **1.5 GB** hoặc **2 GB**. Cửa sổ Roblox thu nhỏ, hoặc bị Bloxkeep ẩn, chỉ giữ tối đa chừng đó trong RAM; phần còn lại của game nằm ở bộ nhớ ảo của Windows. Game để treo dùng rất ít trong số bộ nhớ nó giữ, nên một máy chạy được nhiều tài khoản hơn.
 
 **Tự động** đặt mức riêng cho từng game: bắt đầu khi cửa sổ đã nghỉ một phút và máy dùng tới 60 % RAM, giảm dần khi game ổn, nới thêm khi game cần.
 
 | | |
 |---|---|
 | Tác dụng | Trong một lần thử, game giữ khoảng 3 GB vẫn chạy bình thường với 1 GB trong RAM. |
+| Thấp hơn mức game cần | Cửa sổ có thể chạy chậm vì game phải liên tục lấy lại dữ liệu từ bộ nhớ ảo. Khi đó hãy chọn mức cao hơn hoặc **Tự động**. |
 | Khi nào gỡ | Ngay khi bạn mở cửa sổ, đưa nó lên trước, chọn **Không giới hạn**, hoặc tắt Bloxkeep. |
 | Cửa sổ đang hiện | Không bị giới hạn, kể cả khi bị cửa sổ khác che: nó vẫn vẽ hình, giới hạn thì tốn CPU hơn. |
 | Cần gì | Bộ nhớ ảo đủ lớn, tốt nhất trên SSD. Bloxkeep sẽ báo khi bộ nhớ ảo sắp đầy. |
 
 Preset Light AFK tự thu nhỏ cửa sổ, nên cũng được giới hạn.
 
-## Nhường nhân mạnh cho cửa sổ đang chơi
+## Ưu tiên cửa sổ đang chơi
 
-**Cài đặt › Treo game › Nhường nhân mạnh cho cửa sổ đang chơi** (tắt sẵn). Phần lớn CPU đời mới có hai loại nhân: nhân mạnh và nhân tiết kiệm (Intel đời 12 trở lên, nhiều laptop đời mới). Khi bật, mọi cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows, giống trong Task Manager: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, chỉ dùng nhân mạnh khi có nhân đang rảnh, nên không cửa sổ nào bị thiếu CPU. Bấm sang cửa sổ Roblox khác thì cửa sổ đó chạy hết tốc lực ngay.
+**Cài đặt › Treo game › Ưu tiên cửa sổ đang chơi** (tắt sẵn). Phần lớn CPU đời mới có hai loại nhân: nhân mạnh và nhân tiết kiệm (Intel đời 12 trở lên, nhiều laptop đời mới). Khi bật, mọi cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows, giống trong Task Manager: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, chỉ dùng nhân mạnh khi có nhân đang rảnh, nên không cửa sổ nào bị thiếu CPU. Bấm sang cửa sổ Roblox khác thì cửa sổ đó chạy hết tốc lực ngay.
 
 - Treo nhiều acc mà cửa sổ đang chơi vẫn mượt, laptop mát hơn.
 - CPU chỉ có một loại nhân thì cửa sổ nền chỉ được đặt chế độ tiết kiệm điện.

@@ -727,6 +727,20 @@ public static class RobloxProcesses
 
     public static readonly Size LeastWindow = new(160, 120), MostWindow = new(7680, 4320);
 
+    /// <summary>
+    /// Where Bloxkeep's window comes back to from maximised. Its normal size stays, unless it can't fit its screen and runs
+    /// past it (2560 × 1398 on a 1380-high work area, 2026-11-01: back under the taskbar, and "restore" hardly changed
+    /// anything): then <paramref name="preferred"/>, centred. A window snapped to an edge is only bigger by Windows'
+    /// invisible resize border (<paramref name="slack"/>), and stays.
+    /// </summary>
+    public static Rectangle RestoredPlace(Rectangle r, Rectangle area, int slack, Size preferred)
+    {
+        if ((r.Width <= area.Width && r.Height <= area.Height) || Rectangle.Inflate(area, slack, slack).Contains(r))
+            return r;
+        var size = new Size(Math.Min(preferred.Width, area.Width), Math.Min(preferred.Height, area.Height));
+        return new Rectangle(area.Left + (area.Width - size.Width) / 2, area.Top + (area.Height - size.Height) / 2, size.Width, size.Height);
+    }
+
     /// <summary>See <see cref="Settings.WindowLayout"/>: grids up to 8 × 8.</summary>
     public static bool IsLayout(string layout) =>
         layout is "fill" or "small" or "medium" or "large" or "custom" || GridOf(layout) is not null;
@@ -769,7 +783,8 @@ public static class RobloxProcesses
         var (cols, width, height) = GridCells(windows.Count, area.Size, layout, custom);
         var cell = new Size(width, height);
         List<Rectangle> tiles;
-        if ((windows.Count + cols - 1) / cols * height <= area.Height)
+        bool sideBySide = (windows.Count + cols - 1) / cols * height <= area.Height;
+        if (sideBySide)
         {
             tiles = windows.Select((_, i) => new Rectangle(area.X + i % cols * width, area.Y + i / cols * height, width, height)).ToList();
             for (int i = 0; i < windows.Count; i++)
@@ -784,7 +799,11 @@ public static class RobloxProcesses
         if (await KeptSizeAsync(windows, cell) is { } size)
             await StackAsync(windows, OverlapSpots(windows.Count, area, size), size);
         else
+        {
             await GrowShrunkAsync(windows, tiles);
+            if (sideBySide)
+                CloseGaps(windows, tiles);
+        }
         if (app != IntPtr.Zero)
             await RaiseAsync(windows, app);
         return windows.Count;
@@ -839,6 +858,34 @@ public static class RobloxProcesses
     }
 
     /// <summary>
+    /// A window's rectangle holds Windows' unseen resize borders (9 px left, right and below at 150 %, the owner's PC,
+    /// 2026-11-01), which showed as gaps of 18 and 9 between tiles. Each window goes over its tile by its own borders, read
+    /// now that it is on its screen, so what shows fills the tile, as Windows' own Snap does.
+    /// </summary>
+    static void CloseGaps(List<IntPtr> windows, List<Rectangle> tiles)
+    {
+        for (int i = 0; i < windows.Count; i++)
+        {
+            if (WindowRect(windows[i]) is not { } all || SeenFrame(windows[i]) is not { } seen)
+                continue;
+            var t = tiles[i];
+            PlaceWindow(windows[i], Rectangle.FromLTRB(t.Left - (seen.Left - all.Left), t.Top - (seen.Top - all.Top),
+                t.Right + (all.Right - seen.Right), t.Bottom + (all.Bottom - seen.Bottom)));
+        }
+    }
+
+    [DllImport("dwmapi.dll")]
+    static extern int DwmGetWindowAttribute(IntPtr hWnd, int attribute, out RECT value, int size);
+
+    /// <summary>The window as it shows, without the unseen borders; null when Windows can't say.</summary>
+    public static Rectangle? SeenFrame(IntPtr hWnd)
+    {
+        const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+        return DwmGetWindowAttribute(hWnd, DWMWA_EXTENDED_FRAME_BOUNDS, out var r, Marshal.SizeOf<RECT>()) == 0 && r.Right > r.Left
+            ? Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom) : null;
+    }
+
+    /// <summary>
     /// Windows lets an app stack windows under the one in front, never over it (tried on the owner's PC, 2026-10-21):
     /// so each goes under the next, the last under <paramref name="app"/>, then app under them all and the last in front.
     /// </summary>
@@ -890,6 +937,14 @@ public static class RobloxProcesses
         uint dpi = GetDpiForWindow(hWnd) is > 0 and var d ? d : 96;
         return GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi) + 2;
     }
+
+    /// <summary>Covers its whole screen, without a title bar: how Roblox goes full screen.</summary>
+    public static bool IsFullscreen(IntPtr hWnd, Rectangle r) =>
+        (GetWindowLong(hWnd, GWL_STYLE) & WS_CAPTION) != WS_CAPTION && r.Contains(Screen.FromHandle(hWnd).Bounds);
+
+    /// <summary>Shown as an ordinary window, title bar and all.</summary>
+    public static bool IsPlainWindow(IntPtr hWnd) =>
+        !IsHidden(hWnd) && !IsIconic(hWnd) && !IsZoomed(hWnd) && (GetWindowLong(hWnd, GWL_STYLE) & WS_CAPTION) == WS_CAPTION;
 
     /// <summary>As Arrange gives its tiles (without Roblox's least size).</summary>
     public static void PlaceWindow(IntPtr hWnd, Rectangle r) =>
@@ -1050,6 +1105,25 @@ public static class RobloxProcesses
             // A high soft maximum with the limit off: nothing is taken from it now (-1 would empty its RAM at once).
             long all = Math.Max(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, 4L * 1024 * 1024 * 1024);
             return SetProcessWorkingSetSizeEx(handle, (IntPtr)(50L * 1024 * 1024), (IntPtr)all, QUOTA_LIMITS_HARDWS_MAX_DISABLE | QUOTA_LIMITS_HARDWS_MIN_DISABLE);
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
+    [DllImport("psapi.dll", SetLastError = true)]
+    static extern bool EmptyWorkingSet(IntPtr process);
+
+    /// <summary>Takes the client's pages out of RAM now: what it still uses comes back as it touches it, nothing is lost.</summary>
+    public static bool EmptyRam(int pid)
+    {
+        IntPtr handle = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, false, pid);
+        if (handle == IntPtr.Zero)
+            return false;
+        try
+        {
+            return EmptyWorkingSet(handle);
         }
         finally
         {

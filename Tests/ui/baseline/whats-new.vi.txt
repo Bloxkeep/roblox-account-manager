@@ -38,6 +38,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -81,7 +82,7 @@ html [data-theme="dark" lang="vi"]
               span "Khởi chạy"
             button.set-nav-item [type="button"]
               svg.i #sy1lqp
-              span "Phiên bản & đồ họa Roblox"
+              span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
               span "Treo game"
@@ -148,7 +149,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Phím tắt"
-                        div.d "Ctrl+Alt+H ẩn hoặc hiện mọi cửa sổ Roblox, Ctrl+Alt+M thu nhỏ hoặc mở lại tất cả, Ctrl+Alt+N sang cửa sổ kế tiếp, Ctrl+Alt+A xếp cửa sổ, Ctrl+Alt+B mở Bloxkeep, dùng được trong mọi app."
+                        div.d "Dùng trong mọi app, Ctrl+Alt cộng: H ẩn hoặc hiện tất cả, M thu nhỏ hoặc mở lại tất cả, N cửa sổ kế tiếp, A xếp cửa sổ, B mở Bloxkeep."
                       div.ctl
                         label.switch
                           input [id="s-hotkeys" type="checkbox" aria-label="Phím tắt" checked=true]
@@ -198,7 +199,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Tính vào số người đang dùng"
-                        div.d "Khi đang mở, Bloxkeep báo mỗi phút một lần để người làm app biết lúc này có bao nhiêu người dùng. Chỉ gửi một mã tạo từ máy này (không truy ngược được, cài lại vẫn giữ nguyên), phiên bản và ngôn ngữ."
+                        div.d "Khi đang mở, mỗi phút báo một lần để người làm app biết số người dùng. Chỉ gửi mã tạo từ máy này (không truy ngược được, cài lại vẫn giữ nguyên), phiên bản và ngôn ngữ."
                       div.ctl
                         label.switch
                           input [id="s-online" type="checkbox" aria-label="Tính vào số người đang dùng" checked=true]
@@ -211,43 +212,48 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.14 · 30 tháng 10, 2026"
+              small "Bloxkeep 1.0.15 · 1 tháng 11, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
-          article.plain.wn-feat
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:577px" src="whatsnew/1.0.15-photos.vi.webp"]
             div.wn-feat-text
-              h3 "Giới hạn RAM: Tự động"
-              p "Bloxkeep tự đặt mức riêng cho từng game: giảm khi game ổn, nới thêm khi game cần."
-              button.wn-go [type="button" FOCUSED] "Cài đặt"
+              h3 "Theme động từ ảnh thật"
+              p "Miami neon, bến cảng đêm, hoa đăng Hội An, sứa biển và tuyết rơi: mặt nước, xe cộ và tuyết chuyển động theo chuột. Tổng cộng 24 theme mới."
+              button.wn-go [type="button" FOCUSED] "Chọn theme"
                 svg.i #1g7f83q
-          article.plain.wn-feat
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:577px" src="whatsnew/1.0.15-modes.vi.webp"]
             div.wn-feat-text
-              h3 "Mỗi vault có liên kết Discord riêng"
-              p "Điều khiển qua Discord giờ bật theo từng vault, /pc của người này không đụng tới tài khoản của người khác."
+              h3 "Chế độ cho Roblox"
+              p "Chọn Treo máy, Vừa treo vừa chơi hoặc Roblox gốc. Mỗi tài khoản cũng có thể đặt FPS riêng."
+              button.wn-go [type="button"] "Chọn chế độ"
+                svg.i #1g7f83q
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "Ô nhóm và ô người chơi gợi ý bằng danh sách của Bloxkeep."
-            li "Hộp Cho phép của /pc link hiện @username của người hỏi."
-            li "Ô giờ, ô ngày và ô màu dùng được bằng bàn phím."
-            li "Cửa sổ chính vừa với màn hình đang mở, cửa sổ đã lưu không còn nằm ngoài màn hình."
-            li "Màn hình tự khóa khi không dùng máy chỉ còn ô mật khẩu."
+            li "Thanh bên hiện % CPU và GPU mà các cửa sổ Roblox đang dùng."
+            li "Thẻ tài khoản và cửa sổ đăng nhập gọn và dễ đọc hơn."
+            li "Bản của launcher được cập nhật trước."
+              b "Mở thẳng Roblox không còn chạy bản cũ"
+            li "Mỗi cửa sổ đang mở hiện phiên bản Roblox, bản cũ có nhãn riêng. Có nút đóng, cập nhật rồi mở lại."
+            li "Launcher tự cập nhật Roblox khi không mở cửa sổ nào. Có thể tắt."
+            li "Limit RAM có thêm mức 512 MB và 768 MB, thu nhỏ nhiều cửa sổ không còn làm Bloxkeep khựng."
+            li "Sắp xếp cửa sổ Roblox khít nhau, không còn khe hở."
+            li "Cài đặt › Discord có xem trước cảnh báo và tin trạng thái."
+            li "Đổi theme giờ chuyển mượt."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "Sửa lỗi Bloxkeep mở bản thử nghiệm của Roblox còn sót trên máy thay vì bản thật."
-            li "Sửa lỗi tài khoản mở thêm cửa sổ khi Roblox đang cập nhật."
-            li "Sửa lỗi tự vào lại bỏ cuộc khi lần mở không hiện cửa sổ."
-            li "Sửa lỗi cửa sổ Roblox đang ẩn tự hiện lại khi thu nhỏ hoặc phóng to."
-            li "Sửa lỗi Đăng nhập nhanh ở tab Roblox VNG lấy lại mã của Roblox."
-            li "Sửa lỗi preset lưu sát giờ hẹn chạy hai lần, và lịch dừng làm preset khác phải chờ."
-            li "Sửa lỗi Xếp cửa sổ đổi cỡ ô khi cửa sổ sang màn hình có tỉ lệ khác."
-            li "Sửa lỗi sang server khác để tài khoản mãi ở trạng thái đang chuyển."
-            li "Sửa lỗi không cài lại được khi bản cập nhật bị ngắt giữa chừng."
-            li "Sửa lỗi vault có file hỏng không mở được từ bản lưu trước."
-            li "Sửa lỗi khôi phục từ bản sao lưu chưa tạo xong."
+            li "Bloxkeep mở bản khác hoặc nhắc cài lại Roblox."
+              b "Sửa lỗi Windows báo khi Roblox mất tệp DLL"
+            li "Cửa sổ thu nhỏ lúc đang tải không còn tự phóng to lại."
+            li "Cửa sổ Bloxkeep không còn đè taskbar khi thoát phóng to."
+            li "Ô chọn ở dạng danh sách không còn che nút ⋮."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q

@@ -17,6 +17,8 @@ static class ArrangeSuite
     delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     [DllImport("user32.dll")]
     static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+    [DllImport("user32.dll")]
+    static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
 
     /// <summary>A window that sizes itself back up to its least size whenever it is made smaller, however that was done.</summary>
     sealed class GrowsBack : Form
@@ -53,6 +55,33 @@ static class ArrangeSuite
 
     public static async Task Run(Checks c, string dir)
     {
+        // Bloxkeep's own window coming back from maximised: as measured on the owner's PC, 2026-11-01.
+        Rectangle work = new(2560, 0, 2560, 1380), small = new(2560, 20, 1857, 1078), snapped = new(2551, -9, 1298, 1398);
+        Size wanted = new(1650, 1050);
+        c.Check("restored from maximised: a size that fits stays", RobloxProcesses.RestoredPlace(small, work, 9, wanted) == small);
+        c.Check("…a window snapped to an edge stays", RobloxProcesses.RestoredPlace(snapped, work, 9, wanted) == snapped);
+        var tooBig = RobloxProcesses.RestoredPlace(new Rectangle(2560, 20, 2560, 1398), work, 9, wanted);
+        c.Check("…one too tall and running past the screen comes back smaller, inside it", tooBig == new Rectangle(3015, 165, 1650, 1050), tooBig.ToString());
+
+        // A Roblox window leaving full screen.
+        var sizes = new WindowSizeKeeper();
+        Rectangle mine = new(100, 100, 700, 500), monitor = new(0, 0, 2560, 1440), roblox = new(200, 200, 1224, 957);
+        var clock = new DateTime(2026, 11, 1);
+        c.Check("a window's size is noted, nothing moved", sizes.Look(1, mine, false, true, clock) is null);
+        c.Check("…going full screen moves nothing", sizes.Look(1, monitor, true, false, clock.AddSeconds(2)) is null);
+        c.Check("…back at Roblox's default: back to its own size", sizes.Look(1, roblox, false, true, clock.AddSeconds(4)) == mine);
+        c.Check("…Roblox sizing it again as it settles: again", sizes.Look(1, roblox, false, true, clock.AddSeconds(6)) == mine);
+        c.Check("…once there, nothing more", sizes.Look(1, mine, false, true, clock.AddSeconds(7)) is null);
+        Rectangle dragged = new(100, 100, 900, 600);
+        c.Check("…a size dragged later is the person's", sizes.Look(1, dragged, false, true, clock.AddSeconds(20)) is null
+            && sizes.Look(1, monitor, true, false, clock.AddSeconds(21)) is null && sizes.Look(1, roblox, false, true, clock.AddSeconds(22)) == dragged);
+        var neverSeen = new WindowSizeKeeper();
+        c.Check("a window opened full screen has no size to go back to", neverSeen.Look(2, monitor, true, false, clock) is null
+            && neverSeen.Look(2, roblox, false, true, clock.AddSeconds(1)) is null);
+        sizes.Look(1, monitor, true, false, clock.AddSeconds(40));
+        sizes.Clear();
+        c.Check("arranged meanwhile: the tile stays", sizes.Look(1, roblox, false, true, clock.AddSeconds(41)) is null);
+
         // Picked in the page: a layout the app knows is kept, anything else left as it was; the size held to what it takes.
         Harness.UseDataFolder(dir);
         Vault.Create(Harness.Password).Dispose();
@@ -108,6 +137,7 @@ static class ArrangeSuite
         var done = new TaskCompletionSource();
         var thread = new Thread(() =>
         {
+            SetThreadDpiAwarenessContext(-4); // per-monitor v2, as Bloxkeep and Roblox: a window's rectangles in real pixels
             using var host = new Form { ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), Size = new Size(300, 200) };
             host.Load += async (_, _) =>
             {
@@ -134,12 +164,13 @@ static class ArrangeSuite
                         return opened;
                     }
                     var arrange = typeof(RobloxProcesses).GetMethod("ArrangeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
-                    async Task<List<Rectangle>> Arrange(List<Form> these, Form? app = null, string layout = "fill", Size custom = default)
+                    // Side by side what shows fills the tile (no gaps from Windows' unseen borders); overlapping, the windows' own rectangles.
+                    async Task<List<Rectangle>> Arrange(List<Form> these, Form? app = null, string layout = "fill", Size custom = default, bool overlapping = false)
                     {
                         await Task.Delay(200);
                         int count = await (Task<int>)arrange.Invoke(null, [these.Select(w => w.Handle).ToList(), area, layout, app?.Handle ?? IntPtr.Zero, custom])!;
                         await Task.Delay(300);
-                        return count == these.Count ? these.Select(w => w.Bounds).ToList() : [];
+                        return count == these.Count ? these.Select(w => overlapping ? w.Bounds : RobloxProcesses.SeenFrame(w.Handle) ?? w.Bounds).ToList() : [];
                     }
                     int Rank(Form f)
                     {
@@ -160,7 +191,7 @@ static class ArrangeSuite
                     // across and 350 down.
                     var stubborn = Open(() => new GrowsBack { MinimumSize = new Size(400, 300) });
                     var spread = new[] { (0, 0), (250, 0), (500, 0), (0, 350), (250, 350) }.Select(p => new Rectangle(area.X + p.Item1, area.Y + p.Item2, 400, 350)).ToList();
-                    got = await Arrange(stubborn);
+                    got = await Arrange(stubborn, overlapping: true);
                     c.Check("windows that grow back to their least size: spread evenly over the area, none past its edge", got.SequenceEqual(spread), string.Join(" ", got));
                     var order = new List<IntPtr>();
                     EnumWindows((h, _) => { order.Add(h); return true; }, IntPtr.Zero);
@@ -174,6 +205,8 @@ static class ArrangeSuite
                     foreach (bool later in new[] { false, true })
                     {
                         var scaled = Open(() => new ShrinksOnMove(later));
+                        // Not already on its tile: the scale changes with the move onto the screen, not with the last nudge over the borders.
+                        scaled[0].Location = new Point(area.X + 25, area.Y + 25);
                         foreach (var w in scaled.Cast<ShrinksOnMove>())
                             w.Armed = true;
                         got = await Arrange(scaled);
@@ -190,7 +223,7 @@ static class ArrangeSuite
                     c.Check("a 3 × 2 grid with 2 windows: its first two cells, not half the area each",
                         got.SequenceEqual([new Rectangle(area.X, area.Y, 300, 350), new Rectangle(area.X + 300, area.Y, 300, 350)]), string.Join(" ", got));
                     // A 2 × 2 grid with 5: more than its 4 cells, so cell-sized windows spread over the area, none past its edge.
-                    got = await Arrange(grid, layout: "2x2");
+                    got = await Arrange(grid, layout: "2x2", overlapping: true);
                     var overflow = new[] { (0, 0), (225, 0), (450, 0), (0, 350), (225, 350) }.Select(p => new Rectangle(area.X + p.Item1, area.Y + p.Item2, 450, 350)).ToList();
                     c.Check("…more windows than cells: their cell's size, spread evenly over the area", got.SequenceEqual(overflow), string.Join(" ", got));
                     // A size of one's own: 200 × 150, side by side from the top-left.

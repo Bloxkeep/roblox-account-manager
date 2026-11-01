@@ -90,7 +90,7 @@ html [data-theme="dark" lang="en"]
               button.btn.primary [title="Other ways to add" aria-haspopup="menu"]
                 svg.i #u1ag9u
         div.bar
-          div.chips.fade-r [id="chips"]
+          div.chips [id="chips"]
             button.chip.on [aria-pressed="true"] "All"
               em "7"
             button.chip [aria-pressed="false"] "Needs sign-in"
@@ -113,10 +113,10 @@ html [data-theme="dark" lang="en"]
               svg.i #19k0rtd
             button.on [title="List" aria-label="List" aria-pressed="true" FOCUSED]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+          button.sort-btn [id="group-btn" title="Group: All" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Group: All"
-          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+          button.sort-btn [id="sort-btn" title="Sort: Name" aria-haspopup="menu"]
             svg.i #1ui218d
             span "Sort: Name"
         div.scroll [id="scroll"]

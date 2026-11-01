@@ -109,9 +109,9 @@ export function AccountsBar() {
     <div className="seg" id="layout-seg">{list.length ? (['cards', 'list'] as const).map(l =>
       <button key={l} className={layout === l ? 'on' : ''} data-act="layout" data-l={l} title={t(`layout.${l}`)} aria-label={t(`layout.${l}`)} aria-pressed={layout === l}>
         <Icon name={l === 'cards' ? 'grid' : 'rows'} /></button>) : null}</div>
-    <button className={`sort-btn ${group ? 'on' : ''}`} data-act="group-menu" id="group-btn" aria-haspopup="menu" hidden={!groups.length} title={group ? `${t('grp.label')}: ${group}` : ''}>
+    <button className={`sort-btn ${group ? 'on' : ''}`} data-act="group-menu" id="group-btn" aria-haspopup="menu" hidden={!groups.length} title={`${t('grp.label')}: ${group || t('chip.all')}`}>
       <Icon name="tag" /><span>{`${t('grp.label')}: ${group || t('chip.all')}`}</span></button>
-    <button className="sort-btn" data-act="sort-menu" id="sort-btn" aria-haspopup="menu" hidden={list.length < 2}><Icon name="sort" /><span>{`${t('sort.label')}: ${t(`sort.${sort}`)}`}</span></button>
+    <button className="sort-btn" data-act="sort-menu" id="sort-btn" aria-haspopup="menu" hidden={list.length < 2} title={`${t('sort.label')}: ${t(`sort.${sort}`)}`}><Icon name="sort" /><span>{`${t('sort.label')}: ${t(`sort.${sort}`)}`}</span></button>
   </div>;
 }
 
@@ -127,9 +127,10 @@ export function AddOptions() {
       <button className="start-opt" data-act="add-browser"><Icon name="globe" /><span><b>{t('start.browser')}</b><small>{t('start.browserSub')}</small></span><Icon name="chevronRight" /></button>
     </div>
     <div className="start-more">
-      <div className="ways"><span>{t('start.more')}</span><button className="btn sm ghost" data-act="add-cookie">{t('start.cookie')}</button></div>
-      <div className="ways"><span>{t('start.importFrom')}</span><button className="btn sm ghost" data-act="import-vault" title={t('start.vaultTip')}>{t('start.vault')}</button></div>
-      <div className="ways"><span>{t('start.webQ')}</span><button className="btn sm ghost" data-act="open-web" title={t('start.webTip')}>{t('start.web')}</button></div>
+      <div className="ways"><span>{t('start.more')}</span>
+        <button className="btn sm ghost" data-act="add-cookie">{t('start.cookie')}</button>
+        <button className="btn sm ghost" data-act="import-vault" title={t('start.vaultTip')}>{t('start.vault')}</button>
+        <button className="btn sm ghost" data-act="open-web" title={t('start.webTip')}>{t('start.web')}</button></div>
     </div>
   </>;
 }
@@ -213,12 +214,13 @@ export function AccountGrid() {
 
 // The list's columns after the status, as the longest value among the rows shown ("" or false: no column). Strings, so
 // the rows are drawn again only when it changes.
-type Cols = { vng: boolean; robux: string; group: string; rejoin: boolean; pid: string; live: boolean };
+type Cols = { vng: boolean; robux: string; oldBuild: boolean; group: string; rejoin: boolean; pid: string; live: boolean };
 function listColumns(shown: Account[], fmtNum: (n: number) => string): string {
   const longest = (list: string[]) => list.reduce((a, b) => (b.length > a.length ? b : a), '');
   const cols: Cols = {
     vng: shown.some(a => a.realm === 'vng'),
     robux: longest(shown.map(a => typeof a.robux === 'number' ? fmtNum(a.robux) : a.robuxWait ? '…' : '')),
+    oldBuild: shown.some(a => a.session?.oldBuild),
     group: longest(shown.map(a => a.group || '')),
     rejoin: shown.some(rejoinOn),
     pid: longest(shown.filter(isLocal).map(a => a.session?.pid > 0 ? `PID ${a.session.pid}` : '')),
@@ -329,7 +331,7 @@ function Live({ a, row }: { a: Account; row?: boolean }) {
   const ram = mb ? fmtMb(mb) : '…';
   const up = a.session ? duration(a.session.since) : '';
   return row
-    ? <span className="row-ram" title={t('card.ramTip')}><b className="ram">{ram}</b></span>
+    ? <span className="row-ram" title={a.session?.fpsLimit > 0 ? `${t('card.ramTip')} · ${a.session.fpsLimit} FPS. ${t('card.fpsTip')}` : t('card.ramTip')}><b className="ram">{ram}</b></span>
     : <div className="live"><span title={t('card.ramTip')}><Icon name="chip" /><b className="ram">{ram}</b></span><span title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span><Pid a={a} /></div>;
 }
 /** The client's process id, for tools that pick a Roblox window by it; a click copies it. Nothing until the window is there. */
@@ -353,6 +355,7 @@ function RowColumns({ a, c, local }: { a: Account; c: Cols; local: boolean }) {
       {cell(c.robux, typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span>
         : a.robuxWait ? <span className="robux wait" title={t('card.robuxTip')}><Icon name="robux" />…</span> : null,
         <span className="robux"><Icon name="robux" />{c.robux}</span>, true)}
+      {cell(c.oldBuild, a.session?.oldBuild ? <OldBuild a={a} /> : null, <span className="tag old">{t('card.old')}</span>)}
       {cell(c.group, a.group ? <span className="tag" title={a.group}>{a.group}</span> : null, <span className="tag">{c.group}</span>)}
       {cell(c.rejoin, rejoinOn(a) ? <span className="rejoin" title={t('card.rejoinTip')}><Icon name="repeat" /></span> : null, <span className="rejoin"><Icon name="repeat" /></span>)}
     </div>
@@ -362,12 +365,20 @@ function RowColumns({ a, c, local }: { a: Account; c: Cols; local: boolean }) {
     </div>
   </>;
 }
+/** A window on an older Roblox than the newest: a click goes to where it can be updated. */
+function OldBuild({ a }: { a: Account }) {
+  const { t } = useHost();
+  return <button className="tag old" data-act="ru-open" title={t('card.oldTip', { v: a.session.robloxVersion })}>{t('card.old')}</button>;
+}
 function Meta({ a }: { a: Account }) {
   const { t, fmtNum } = useHost();
   return <>
     {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
     {typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span>
       : a.robuxWait ? <span className="robux wait" title={t('card.robuxTip')}><Icon name="robux" />…</span> : null}
+    {a.session?.oldBuild ? <OldBuild a={a} /> : a.session?.robloxVersion
+      ? <span className="ver" title={`Roblox ${a.session.robloxVersion}`}>{a.session.robloxVersion.split('.').slice(0, 2).join('.')}</span> : null}
+    {a.session?.fpsLimit > 0 ? <span className="tag" title={t('card.fpsTip')}>{`${a.session.fpsLimit} FPS`}</span> : null}
     {a.group ? <span className="tag" title={a.group}>{a.group}</span> : null}
     {rejoinOn(a) ? <span className="rejoin" title={t('card.rejoinTip')}><Icon name="repeat" /></span> : null}
   </>;
@@ -377,11 +388,8 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
   const { t } = useHost();
   const ago = useAgo();
   const local = isLocal(a), pType = presenceType(a);
-  // A ban says more than the sign-in state, so it takes the badge's place.
-  const badge = local ? <span className="badge run" title={a.session?.pid > 0 ? t('card.runningPid', { pid: a.session.pid }) : ''}><i className="pulse" />{t('card.local')}</span>
-    : a.state === 'launching' ? <span className="badge wait"><span className="spin" />{t('card.launching')}</span>
-    : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>
-    : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null;
+  // Only what no other line says: the status line already tells running, opening and signed out.
+  const badge = !local && a.state !== 'launching' && a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span> : null;
   const sub = [a.username ? `@${a.username}` : '', a.displayName && a.displayName !== a.username && a.displayName !== a.label ? a.displayName : ''].filter(Boolean).join(' · ');
   // A new button, not the old one changed (the focus then goes to the card). Held on Roblox's bot check: Verify, in Bloxkeep's own window.
   const action = held(a)
@@ -394,14 +402,14 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
       ? <button key="relogin" className="pill-btn relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" />{t('card.relogin')}</button>
       : <button key="play-one" className="pill-btn play" data-act="play-one" disabled={a.state === 'launching'}><Icon name="play" />{t('card.play')}</button>;
   return <article className={`card ${local ? 'local' : ''}${sel ? ' sel' : ''}`} data-id={a.id} data-act="card" role="option" tabIndex={-1} aria-selected={sel} aria-label={a.label}>
-    <div className="card-top"><span className="check"><Icon name="check" /></span>{badge}</div>
+    <span className="check"><Icon name="check" /></span>
     <div className={`avatar ${ringOf(a)}`}><Avatar a={a} /><i className={`pdot ${pType}`} /></div>
     <div className="name" title={a.label}>{a.label}</div>
     <div className="sub" title={sub}>{sub}</div>
     <Activity a={a} />
     {local ? <Live a={a} /> : null}
     {/* "Opened 8 h ago" only while the account isn't running here (a running card shows its play time instead). */}
-    <div className="meta"><Meta a={a} />{local ? null : <span className="ago" title={t('card.lastTip')}><Icon name="history" />{a.lastUsed ? <span>{ago(a.lastUsed, 'card.opened')}</span> : t('card.never')}</span>}</div>
+    <div className="meta">{badge}<Meta a={a} />{local ? null : <span className="ago" title={t('card.lastTip')}><Icon name="history" />{a.lastUsed ? <span>{ago(a.lastUsed, 'card.opened')}</span> : t('card.never')}</span>}</div>
     {a.note ? <div className="note" title={a.note}>{a.note}</div> : null}
     <div className="card-actions">
       {action}

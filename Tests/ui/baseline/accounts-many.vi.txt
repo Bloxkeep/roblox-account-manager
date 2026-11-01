@@ -38,6 +38,7 @@ html [data-theme="dark" lang="vi"]
             i.roblox [style="transform:scaleX(0.054)"]
             i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
           div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
           div.sys-ver [id="sys-ver"]
             span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
               i.dot.ok
@@ -118,21 +119,18 @@ html [data-theme="dark" lang="vi"]
               svg.i #19k0rtd
             button [title="Dạng danh sách" aria-label="Dạng danh sách" aria-pressed="false"]
               svg.i #uj30io
-          button.sort-btn [id="group-btn" title="" aria-haspopup="menu"]
+          button.sort-btn [id="group-btn" title="Nhóm: Tất cả" aria-haspopup="menu"]
             svg.i #1mp3g6t
             span "Nhóm: Tất cả"
-          button.sort-btn [id="sort-btn" aria-haspopup="menu"]
+          button.sort-btn [id="sort-btn" title="Sắp xếp: Tên" aria-haspopup="menu"]
             svg.i #1ui218d
             span "Sắp xếp: Tên"
         div.scroll [id="scroll"]
           div [id="grid"]
             div.grid [role="listbox" aria-label="Tài khoản" aria-multiselectable="true"]
               article.card.local [role="option" tabindex="0" aria-label="Farm 1" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 2222"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:243" src=#uinvo6]
                   i.ingame.pdot
@@ -164,11 +162,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 8" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20008"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:68" src=#uinvo6]
                   i.ingame.pdot
@@ -200,11 +195,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 15" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20015"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:16" src=#uinvo6]
                   i.ingame.pdot
@@ -236,11 +228,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 22" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20022"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:44" src=#uinvo6]
                   i.ingame.pdot
@@ -272,11 +261,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 29" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20029"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:51" src=#uinvo6]
                   i.ingame.pdot
@@ -308,11 +294,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 36" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20036"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:79" src=#uinvo6]
                   i.ingame.pdot
@@ -344,10 +327,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:244" src=#n0d7cr]
                   i.offline.pdot
@@ -373,10 +354,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 9" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:310" src=#n0d7cr]
                   i.offline.pdot
@@ -402,10 +381,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 16" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:288" src=#n0d7cr]
                   i.offline.pdot
@@ -431,10 +408,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 23" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:316" src=#n0d7cr]
                   i.offline.pdot
@@ -460,10 +435,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 30" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:344" src=#n0d7cr]
                   i.offline.pdot
@@ -489,10 +462,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 37" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge "Cần đăng nhập lại"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:351" src=#n0d7cr]
                   i.offline.pdot
@@ -518,9 +489,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:297" src=#1u67et1]
                   i.ingame.pdot
@@ -547,9 +517,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 10" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:253" src=#1u67et1]
                   i.ingame.pdot
@@ -576,9 +545,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 17" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:260" src=#1u67et1]
                   i.ingame.pdot
@@ -605,9 +573,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 24" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:288" src=#1u67et1]
                   i.ingame.pdot
@@ -634,9 +601,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 31" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:316" src=#1u67et1]
                   i.ingame.pdot
@@ -663,9 +629,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 38" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:323" src=#1u67et1]
                   i.ingame.pdot
@@ -692,11 +657,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 1111"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:204" src=#1qk25wb]
                   i.ingame.pdot
@@ -731,11 +693,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính 7" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20007"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:292" src=#1qk25wb]
                   i.ingame.pdot
@@ -770,11 +729,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính 14" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20014"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:342" src=#1qk25wb]
                   i.ingame.pdot
@@ -809,11 +765,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính 21" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20021"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:10" src=#1qk25wb]
                   i.ingame.pdot
@@ -848,11 +801,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính 28" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20028"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:17" src=#1qk25wb]
                   i.ingame.pdot
@@ -887,11 +837,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính 35" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.run [title="Đang mở trên máy này · PID 20035"] "Trên máy này"
-                    i.pulse
+                span.check
+                  svg.i #14iobj
                 div.avatar.ingame
                   img [alt="" style="--h:45" src=#1qk25wb]
                   i.ingame.pdot
@@ -926,9 +873,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:83" src=#c108i9]
                   i.pdot.studio
@@ -953,9 +899,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ 11" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:116" src=#c108i9]
                   i.pdot.studio
@@ -980,9 +925,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ 18" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:123" src=#c108i9]
                   i.pdot.studio
@@ -1007,9 +951,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ 25" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:151" src=#c108i9]
                   i.pdot.studio
@@ -1034,9 +977,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ 32" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:179" src=#c108i9]
                   i.pdot.studio
@@ -1061,9 +1003,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ 39" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   img [alt="" style="--h:186" src=#c108i9]
                   i.pdot.studio
@@ -1088,11 +1029,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Đang mở"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:217"] "TH"
                   i.offline.pdot
@@ -1115,11 +1053,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm 13" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Đang mở"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:352"] "TH"
                   i.offline.pdot
@@ -1142,11 +1077,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm 20" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Đang mở"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:20"] "TH"
                   i.offline.pdot
@@ -1169,11 +1101,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm 27" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Đang mở"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:27"] "TH"
                   i.offline.pdot
@@ -1196,11 +1125,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm 34" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.badge.wait "Đang mở"
-                    span.spin
+                span.check
+                  svg.i #14iobj
                 div.avatar
                   span.initials [style="--h:55"] "TH"
                   i.offline.pdot
@@ -1223,10 +1149,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:218" src=#kgijcs]
                   i.pdot
@@ -1239,6 +1163,7 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
@@ -1251,10 +1176,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade 12" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:102" src=#kgijcs]
                   i.pdot
@@ -1267,6 +1190,7 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
@@ -1279,10 +1203,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade 19" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:109" src=#kgijcs]
                   i.pdot
@@ -1295,6 +1217,7 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
@@ -1307,10 +1230,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade 26" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:137" src=#kgijcs]
                   i.pdot
@@ -1323,6 +1244,7 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
@@ -1335,10 +1257,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade 33" aria-selected="false"]
-                div.card-top
-                  span.check
-                    svg.i #14iobj
-                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
+                span.check
+                  svg.i #14iobj
                 div.avatar.invalid
                   img [alt="" style="--h:165" src=#kgijcs]
                   i.pdot
@@ -1351,6 +1271,7 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
+                  span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
@@ -1387,9 +1308,9 @@ html [data-theme="dark" lang="vi"]
               b "2"
               span "Server"
               small "tùy chọn"
-            label.inwrap.job [title="Job ID của một server cụ thể, để đưa nhiều tài khoản vào cùng một server."]
+            label.inwrap.job [title="Mã của một server, để đưa nhiều tài khoản vào cùng server."]
               svg.i #ej9lod
-              input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
+              input [id="job" placeholder="Mã server (Job ID)" maxlength="60" aria-label="Mã server (Job ID)" value=""]
             div.dock-sub
               button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
                 svg.i #uj30io

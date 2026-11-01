@@ -654,6 +654,12 @@ public sealed partial class AppController
         ct.ThrowIfCancellationRequested();
         if (FindAccount(account.Id) is null)
             throw new UserError(L.T("Account not found."));
+        // A launcher installing the new build: a window opened now would be closed by it, or start the old one.
+        while (_robloxUpdating)
+        {
+            Progress(L.T("Waiting for Roblox to finish updating…"));
+            await Task.Delay(500, ct);
+        }
         // Roblox's tray copy would take this launch over and open no window (Bloxstrap: "Roblox failed to launch").
         await CloseTrayCopiesAsync(ct);
         var before = RobloxProcesses.GetPlayerPids().ToHashSet();
@@ -662,15 +668,16 @@ public sealed partial class AppController
         bool windowed = settings.MultiInstance && settings.MultiInstanceWindowed;
         // A light-AFK preset's values, whatever the shared setup says; the next client gets the person's own back.
         bool afk = PresetFor(presetId)?.Profile == AfkProfile;
-        if (afk || config.Mode != "off" || windowed || RobloxGameSettings.HasBaseline)
+        var own = RobloxGameSettings.ForLaunch(config, afk, config.Mode == "all" || (config.Mode == "marked" && account.UseRobloxConfig), account.FpsCap);
+        if (own is not null || windowed || RobloxGameSettings.HasBaseline)
         {
-            bool use = afk || config.Mode == "all" || (config.Mode == "marked" && account.UseRobloxConfig);
-            if (RobloxGameSettings.PrepareFor(afk ? RobloxGameSettings.LightAfk : config, use, windowed))
+            if (RobloxGameSettings.PrepareFor(own ?? config, own is not null, windowed))
             {
                 _robloxSettingsPending = true;
                 _robloxSettingsWrittenAt = DateTime.UtcNow;
             }
         }
+        launchVia = RobloxInstalls.UpdatingOption(launchVia, RobloxVersionDto().UpToDate);
         // Light AFK's leanest drawing (Fast Flags) for this window only: any other gets the person's own file back first.
         if (afk)
         {
@@ -689,7 +696,7 @@ public sealed partial class AppController
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
         ForgetLate(account.Id); // opened again: a window of the earlier try is not this one's
-        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker, OpenRetries = openRetries });
+        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker, OpenRetries = openRetries, FpsLimit = own?.Fps ?? 0 });
         NoteActivity(restart ? "reopened" : rejoin ? "rejoined" : "opened", account.Id, target?.PlaceId); // Statistics › Activity
         account.LastUsed = DateTime.Now;
         SignInAccepted(account);
@@ -802,7 +809,10 @@ public sealed partial class AppController
     async Task<object?> ArrangeWindowsAsync(int monitor, bool auto = false)
     {
         var screens = Screen.AllScreens;
-        var screen = monitor >= 0 && monitor < screens.Length ? screens[monitor] : Screen.PrimaryScreen ?? screens[0];
+        // No monitor picked (the hotkey, after a launch): the one Bloxkeep is on, else, while it's in the tray, the one the mouse is on.
+        var screen = monitor >= 0 && monitor < screens.Length ? screens[monitor]
+            : _owner.IsHandleCreated && _owner.Visible && _owner.WindowState != FormWindowState.Minimized ? Screen.FromHandle(_owner.Handle)
+            : Screen.FromPoint(Cursor.Position);
         var tracked = _running
             .OrderBy(r => FindAccount(r.Key)?.Label ?? "", StringComparer.CurrentCultureIgnoreCase)
             .Select(r => r.Value.Pid)
@@ -812,6 +822,7 @@ public sealed partial class AppController
         // Clicked: the windows come over every other app (not after a launch: the person may be busy elsewhere).
         var app = !auto && _owner.IsHandleCreated && _owner.Visible && _owner.WindowState != FormWindowState.Minimized ? _owner.Handle : IntPtr.Zero;
         var s = _vault?.Data.Settings;
+        _windowSizes.Clear();
         return await RobloxProcesses.ArrangeGridAsync(tracked.Concat(others).Where(p => !afk.Contains(p)).ToList(), screen.WorkingArea,
             s?.WindowLayout ?? "fill", skipMinimized: auto, app: app, custom: s is null ? default : new Size(s.WindowWidth, s.WindowHeight));
     }

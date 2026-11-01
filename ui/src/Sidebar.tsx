@@ -72,6 +72,9 @@ function SysCard({ mini }: { mini: string }) {
     <div className="meter" id="sys-meter"><i className="roblox" style={{ transform: `scaleX(${(robloxPct / 100).toFixed(3)})` }} />
       <i className="other" style={{ transform: `translateX(${robloxPct.toFixed(1)}%) scaleX(${((usedPct - robloxPct) / 100).toFixed(3)})` }} /></div>
     <div className="sys-foot" id="sys-foot">{m.systemMb ? t('sys.used', { pct: Math.round(usedPct), free: fmtMb(m.availableMb || 0) }) : ''}</div>
+    {m.robloxCount && (m.cpuPct != null || m.gpuPct != null)
+      ? <div className="sys-foot" id="sys-usage" title={t('sys.usageTip')}>{[m.cpuPct != null ? `CPU ${m.cpuPct}%` : '', m.gpuPct != null ? `GPU ${m.gpuPct}%` : ''].filter(Boolean).join(' · ')}</div>
+      : null}
     <div className="sys-ver" id="sys-ver">{rv.installed
       ? rv.upToDate === false
         // Out of date: Settings › Roblox version says how to update (and has Update now when a launcher here can).
