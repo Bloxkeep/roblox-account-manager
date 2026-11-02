@@ -216,7 +216,7 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.16 · November 2, 2026"
+              small "Bloxkeep 1.0.16 · November 3, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
