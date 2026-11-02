@@ -4,9 +4,11 @@ import json, os, sys
 from PIL import Image
 
 src, out = sys.argv[1], sys.argv[2]
-crop = [float(v) * 1.5 for v in sys.argv[3:7]] if len(sys.argv) >= 7 else None
 meta = json.load(open(os.path.join(src, 'frames.json')))
 frames, end = meta['frames'], meta['end']
+# The page is 1280 CSS px wide; the frames may come at that size or bigger (the screen's scale).
+scale = Image.open(os.path.join(src, frames[0]['file'])).width / 1280
+crop = [float(v) * scale for v in sys.argv[3:7]] if len(sys.argv) >= 7 else None
 kept = []
 for f in frames:
     if kept and f['t'] - kept[-1]['t'] < 1 / 30:

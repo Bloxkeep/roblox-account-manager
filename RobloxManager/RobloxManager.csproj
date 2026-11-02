@@ -24,6 +24,9 @@
     <PublishReadyToRun>true</PublishReadyToRun>
     <!-- The WebView2 package also ships its WPF control, which drags in a WindowsBase version mismatch we never load. -->
     <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+    <!-- Windows' own text recognition (MacroOcr.cs) is called through its COM tables by hand: the Windows SDK's .NET
+         projection that a windows10 target framework brings adds 57 MB to the app (measured 2026-11-02). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -39,6 +42,8 @@
     <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
     <!-- GitHub repository releases are published to (build.bat passes it); empty = never looks for updates. -->
     <AssemblyMetadata Include="UpdateRepo" Value="$(UpdateRepo)" />
+    <!-- The macro and board checks (Tests/Bloxkeep.Tests/MacroSuite.cs) drive the player and the maths directly. -->
+    <InternalsVisibleTo Include="Bloxkeep.Tests" />
   </ItemGroup>
 
   <ItemGroup>

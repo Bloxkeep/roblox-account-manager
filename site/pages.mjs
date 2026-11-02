@@ -12,7 +12,7 @@ const PORTABLE = `${REPO}/releases/latest/download/Bloxkeep-Portable.zip`;
 
 /** The guide's topic pages (docs/guide/<topic>.md and .vi.md), in the guide's own order. */
 export const TOPICS = ['run-multiple-accounts', 'getting-started', 'accounts', 'playing', 'multi-roblox', 'presets', 'staying-in-game',
-  'windows-and-stats', 'discord', 'settings', 'backup-and-security', 'troubleshooting'];
+  'windows-and-stats', 'macros', 'discord', 'settings', 'backup-and-security', 'troubleshooting'];
 
 export const T = {
   en: {
@@ -22,7 +22,7 @@ export const T = {
     alerts: { note: 'Note', tip: 'Tip', important: 'Important', warning: 'Warning', caution: 'Caution' },
     topics: {
       'run-multiple-accounts': 'Run multiple accounts', 'getting-started': 'Getting started', accounts: 'Accounts', playing: 'Playing', 'multi-roblox': 'Multi-Roblox',
-      presets: 'Presets and schedules', 'staying-in-game': 'Staying in game', 'windows-and-stats': 'Windows and statistics',
+      presets: 'Presets and schedules', 'staying-in-game': 'Staying in game', 'windows-and-stats': 'Windows and statistics', macros: 'Macros',
       discord: 'Discord', settings: 'Settings', 'backup-and-security': 'Backup and security', troubleshooting: 'Troubleshooting',
     },
     foot: {
@@ -37,7 +37,7 @@ export const T = {
     alerts: { note: 'Lưu ý', tip: 'Mẹo', important: 'Quan trọng', warning: 'Cảnh báo', caution: 'Cẩn thận' },
     topics: {
       'run-multiple-accounts': 'Chạy nhiều tài khoản', 'getting-started': 'Bắt đầu', accounts: 'Tài khoản', playing: 'Vào game', 'multi-roblox': 'Multi-Roblox',
-      presets: 'Preset và hẹn giờ', 'staying-in-game': 'Treo game', 'windows-and-stats': 'Cửa sổ và thống kê',
+      presets: 'Preset và hẹn giờ', 'staying-in-game': 'Treo game', 'windows-and-stats': 'Cửa sổ và thống kê', macros: 'Macro',
       discord: 'Discord', settings: 'Cài đặt', 'backup-and-security': 'Sao lưu và bảo mật', troubleshooting: 'Gỡ rối',
     },
     foot: {
@@ -52,29 +52,44 @@ const L = {
     title: 'Bloxkeep: run several Roblox accounts at once on Windows',
     description: 'Free, open-source Roblox account manager for Windows. Play several accounts at once with Multi-Roblox, auto-rejoin, anti-AFK, presets on a schedule and Discord alerts. Your accounts stay encrypted on your PC.',
     h1: 'Run several Roblox accounts at once on Windows',
-    lead: 'Bloxkeep keeps your Roblox accounts in one place. Pick a game, pick accounts, press Play, and each one opens in its own window. Free and open source; your accounts stay encrypted on your PC.',
+    lead: 'Every Roblox account in one place. Pick a game, pick accounts, press Play, and each one opens in its own window.',
     download: 'Download Bloxkeep',
     portable: 'Portable ZIP',
     all: 'All downloads',
-    meta: v => `Version ${v} · Windows 10 or 11, 64-bit · Free`,
+    meta: v => `Free and open source · Version ${v} · Windows 10 or 11, 64-bit`,
     heroAlt: "Bloxkeep's main window: account cards, the game bar at the bottom, Multi-Roblox on in the sidebar",
     proofTitle: 'See it working',
-    proofText: "A real screenshot from one Windows PC: five Roblox accounts open at once with Bloxkeep. Four are already in the game, the fifth is joining, and Bloxkeep's sidebar counts 5 windows with Multi-Roblox on.",
-    proofAlt: 'Five Roblox windows open at once on one PC, titled Roblox - Account 1 to Roblox - Account 5, four in the same game and the fifth joining, with Bloxkeep behind them',
-    proofCaption: 'Names in the game are blurred. Roblox 0.743, October 2026.',
+    proofText: 'A real screenshot from one Windows PC: six Roblox accounts open at once with Bloxkeep, all in the same game, tiled side by side with one click.',
+    proofAlt: 'Six Roblox windows open at once on one PC, tiled three by two, titled Roblox - Account 1 to Roblox - Account 7, all in the same game',
+    proofCaption: 'Account names are hidden. Roblox 0.745, November 2026.',
     proofLink: 'How to turn on Multi-Roblox',
     featuresTitle: 'What it does',
     more: 'How it works',
     features: [
       ['multi-roblox', 'multi-roblox-real-detail.jpg', 'Several Roblox windows at once', 'Turn on Multi-Roblox and every account plays in its own window, opened windowed and tiled the way you choose. Each new Roblox build is checked.'],
       ['accounts', 'accounts-list.png', 'All your accounts in one place', 'Add accounts with a code from the Roblox phone app, a password (2-step verification works), the Roblox page or a cookie. See who is online, in a game or needs to sign in.'],
-      ['playing', 'game-picker.png', 'Pick a game, pick a server', 'Find a game by name or link. Choose the server with the most players, the fewest, the lowest ping or room for all your accounts, or join a friend.'],
-      ['presets', 'presets.png', 'Presets and schedules', 'Save accounts, a game and a server and start them in one click, or on a schedule that also stops them, with timed restarts.'],
-      ['staying-in-game', 'card-rejoin.png', 'Stay in game', 'Anti-AFK keeps windows from being kicked for idling. Auto-rejoin goes back in after a disconnect, waiting a little longer each try instead of giving up.'],
-      ['windows-and-stats', 'stats.png', 'Game monitor and statistics', "Live pictures of every Roblox window, a mini window, a warning before RAM or Windows' virtual memory runs out, and play time per account and game."],
+      ['playing', 'demo-servers.webp', 'Pick a game, pick a server', 'Find a game by name or link. Choose the server with the most players, the fewest, the lowest ping or room for all your accounts, or join a friend.'],
+      ['presets', 'demo-presets.webp', 'Presets and schedules', 'Save accounts, a game and a server and start them in one click, or on a schedule that also stops them, with timed restarts.'],
+      ['staying-in-game', 'demo-rejoin.webp', 'Stay in game', 'Anti-AFK keeps windows from being kicked for idling. Auto-rejoin goes back in after a disconnect, waiting a little longer each try instead of giving up.'],
+      ['windows-and-stats#game-monitor', 'game-monitor-real.jpg', 'Game monitor', "Live pictures of every Roblox window, a mini window, and a warning before RAM or Windows' virtual memory runs out."],
+      ['windows-and-stats#statistics', 'stats.png', 'Statistics', 'A timeline of what each account played, why windows dropped and how much time it cost, and play time by account and game.'],
+      ['discord#control-from-discord', 'discord-control.png', 'Control from your phone', 'Type /pc in Discord to see your accounts, run a preset, close windows or switch server, from anywhere.'],
       ['discord', 'discord-alert.png', 'Discord alerts', 'Alerts, a live status message and play-time summaries in your own Discord channel.'],
+      ['windows-and-stats#arrange-windows', 'arrange-layouts.png', 'Arrange windows', "Pick a layout from pictures, like Windows' snap layouts, or a size of your own. Ctrl+Alt+A arranges them from any app."],
+      ['settings', 'roblox-updates.png', 'Roblox your way', 'Graphics, FPS and volume for each account. Open Roblox with Bloxstrap, Fishstrap or your own launcher.'],
+      ['troubleshooting#keyboard-shortcuts', 'palette.png', 'Find anything with Ctrl+K', 'Type a few letters to find an account, a game, a setting or an action.'],
+      ['settings#appearance', 'theme-photos.jpg', 'Themes with real photos', 'Nearly 100 themes, some of them real photos that move, or a picture or video of your own behind the page.'],
       ['backup-and-security', 'lock.png', 'Locked with your password', 'Accounts are encrypted with your master password and stay on your PC. Back them up to a OneDrive or Google Drive folder and restore them on a new PC.'],
+      ['getting-started#updates', 'lock-update.png', 'Updates itself', "New versions install by themselves while you aren't using Bloxkeep. Your Roblox windows keep running."],
     ],
+    startTitle: 'Start in three steps',
+    start: [
+      ['Set a master password', "It unlocks Bloxkeep and keeps your accounts encrypted. It can't be recovered, so pick one you'll remember."],
+      ['Add your accounts', 'Sign in with your phone (recommended), a username and password, or a browser window.'],
+      ['Pick a game and press Play', 'Type a game in the bar at the bottom, click accounts to choose them, press Play.'],
+    ],
+    startLink: 'Getting started, step by step',
+    demoAlt: 'Choosing two accounts, switching the game, looking at the server list, then changing the theme',
     safeTitle: 'Your accounts stay yours',
     safe: [
       ['On your PC only', 'Bloxkeep has no server of its own. Your accounts are kept in a file on your PC, encrypted with your master password.'],
@@ -83,13 +98,17 @@ const L = {
     ],
     caution: 'Only download Bloxkeep from its GitHub Releases page or this site. A copy from anywhere else may have been changed to steal accounts.',
     getTitle: 'Download',
-    getText: 'Bloxkeep-Setup.exe is a small installer: it downloads the newest Bloxkeep as it installs (about 60 MB) and installs Microsoft Edge WebView2 if your PC lacks it. You choose the folder, on any drive, and it needs no admin rights. Bloxkeep then updates itself; to get new features earlier, turn on Get beta versions in Settings › Bloxkeep updates.',
+    getText: [
+      'A small installer: it downloads the newest Bloxkeep (about 60 MB) as it installs.',
+      'Any folder on any drive, no admin rights. It installs Microsoft Edge WebView2 if your PC lacks it.',
+      'Bloxkeep then updates itself. To get new features earlier, turn on Get beta versions in Settings › Bloxkeep updates.',
+    ],
     smartscreen: "The files aren't code-signed yet, so Windows SmartScreen may warn the first time: click More info, then Run anyway.",
     faqTitle: 'Questions',
     faq: [
       ['Is Bloxkeep free?', 'Yes. It is free and open source under the MIT license, with no account or subscription.'],
       ['Does it need Microsoft Edge or a particular browser?', 'No. It uses WebView2, a part of Windows, whatever browser you use; Setup installs it if it is missing.'],
-      ['Does Multi-Roblox really work?', 'Yes: the screenshot above is real, five accounts at once on one PC. Roblox can change how it blocks several windows in any update, so Bloxkeep checks every new Roblox build and tells you when one may stop it.'],
+      ['Does Multi-Roblox really work?', 'Yes: the screenshot above is real, six accounts at once on one PC. Roblox can change how it blocks several windows in any update, so Bloxkeep checks every new Roblox build and tells you when one may stop it.'],
       ['Is running several Roblox windows allowed?', "Roblox doesn't officially support running several clients, so use Multi-Roblox at your own risk. It is off until you turn it on."],
       ['Where do I get help?', 'Read the guide, use Send feedback in the app (Settings › Bloxkeep updates), or open an issue on GitHub.'],
     ],
@@ -99,29 +118,44 @@ const L = {
     title: 'Bloxkeep: chơi nhiều tài khoản Roblox cùng lúc trên Windows',
     description: 'App quản lý tài khoản Roblox miễn phí, mã nguồn mở cho Windows. Chơi nhiều tài khoản cùng lúc với Multi-Roblox, tự vào lại game, chống AFK, Preset hẹn giờ và báo về Discord. Tài khoản được mã hóa, chỉ nằm trên máy bạn.',
     h1: 'Chơi nhiều tài khoản Roblox cùng lúc trên Windows',
-    lead: 'Bloxkeep giữ các tài khoản Roblox của bạn ở một chỗ. Chọn game, chọn tài khoản, bấm Vào game, mỗi tài khoản mở một cửa sổ riêng. Miễn phí, mã nguồn mở, tài khoản được mã hóa và chỉ nằm trên máy bạn.',
+    lead: 'Mọi tài khoản Roblox ở một chỗ. Chọn game, chọn tài khoản, bấm Vào game, mỗi tài khoản mở một cửa sổ riêng.',
     download: 'Tải Bloxkeep',
     portable: 'Bản portable (ZIP)',
     all: 'Tất cả bản tải',
-    meta: v => `Phiên bản ${v} · Windows 10 hoặc 11, 64-bit · Miễn phí`,
+    meta: v => `Miễn phí, mã nguồn mở · Phiên bản ${v} · Windows 10 hoặc 11, 64-bit`,
     heroAlt: 'Cửa sổ chính của Bloxkeep: các thẻ tài khoản, thanh chọn game ở dưới, Multi-Roblox đang bật ở thanh bên',
     proofTitle: 'Chạy thật trên một máy',
-    proofText: 'Ảnh chụp thật trên một máy Windows: năm tài khoản Roblox mở cùng lúc bằng Bloxkeep. Bốn tài khoản đã vào game, tài khoản thứ năm đang vào, thanh bên của Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật.',
-    proofAlt: 'Năm cửa sổ Roblox mở cùng lúc trên một máy, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, bốn cửa sổ cùng ở trong một game và cửa sổ thứ năm đang vào, phía sau là Bloxkeep',
-    proofCaption: 'Tên trong game đã được làm mờ. Roblox 0.743, tháng 10/2026.',
+    proofText: 'Ảnh chụp thật trên một máy Windows: sáu tài khoản Roblox mở cùng lúc bằng Bloxkeep, cùng ở trong một game, xếp cạnh nhau chỉ bằng một cú bấm.',
+    proofAlt: 'Sáu cửa sổ Roblox mở cùng lúc trên một máy, xếp thành lưới ba nhân hai, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7, cùng ở trong một game',
+    proofCaption: 'Tên tài khoản đã được ẩn. Roblox 0.745, tháng 11/2026.',
     proofLink: 'Cách bật Multi-Roblox',
     featuresTitle: 'Bloxkeep làm được gì',
     more: 'Xem cách dùng',
     features: [
       ['multi-roblox', 'multi-roblox-real-detail.jpg', 'Nhiều cửa sổ Roblox cùng lúc', 'Bật Multi-Roblox là mỗi tài khoản chơi trong một cửa sổ riêng, mở ở chế độ cửa sổ và xếp theo ý bạn. Mỗi bản Roblox mới đều được kiểm tra.'],
       ['accounts', 'accounts-list.png', 'Mọi tài khoản ở một chỗ', 'Thêm tài khoản bằng mã từ app Roblox trên điện thoại, bằng mật khẩu (có xác minh 2 bước), qua trang Roblox hoặc bằng cookie. Xem ngay ai đang online, đang trong game hay cần đăng nhập lại.'],
-      ['playing', 'game-picker.png', 'Chọn game, chọn server', 'Tìm game theo tên hoặc link. Chọn server đông nhất, vắng nhất, ping thấp nhất hay đủ chỗ cho mọi tài khoản, hoặc vào cùng bạn bè.'],
-      ['presets', 'presets.png', 'Preset và hẹn giờ', 'Lưu sẵn tài khoản, game và server rồi mở bằng một cú bấm, hoặc theo lịch tự mở tự tắt, kèm khởi động lại định kỳ.'],
-      ['staying-in-game', 'card-rejoin.png', 'Treo game yên tâm', 'Chống AFK giữ cửa sổ khỏi bị kick vì đứng yên. Tự vào lại game sau khi bị văng, mỗi lần chờ lâu hơn một chút chứ không bỏ cuộc.'],
-      ['windows-and-stats', 'stats.png', 'Theo dõi game và thống kê', 'Hình trực tiếp của mọi cửa sổ Roblox, cửa sổ nhỏ, cảnh báo trước khi hết RAM hoặc bộ nhớ ảo của Windows, và thời gian chơi theo tài khoản và game.'],
+      ['playing', 'demo-servers.webp', 'Chọn game, chọn server', 'Tìm game theo tên hoặc link. Chọn server đông nhất, vắng nhất, ping thấp nhất hay đủ chỗ cho mọi tài khoản, hoặc vào cùng bạn bè.'],
+      ['presets', 'demo-presets.webp', 'Preset và hẹn giờ', 'Lưu sẵn tài khoản, game và server rồi mở bằng một cú bấm, hoặc theo lịch tự mở tự tắt, kèm khởi động lại định kỳ.'],
+      ['staying-in-game', 'demo-rejoin.webp', 'Treo game yên tâm', 'Chống AFK giữ cửa sổ khỏi bị kick vì đứng yên. Tự vào lại game sau khi bị văng, mỗi lần chờ lâu hơn một chút chứ không bỏ cuộc.'],
+      ['windows-and-stats#theo-dõi-game', 'game-monitor-real.jpg', 'Theo dõi game', 'Hình trực tiếp của mọi cửa sổ Roblox, cửa sổ nhỏ, và cảnh báo trước khi hết RAM hoặc bộ nhớ ảo của Windows.'],
+      ['windows-and-stats#thống-kê', 'stats.png', 'Thống kê', 'Dòng thời gian từng tài khoản chơi gì, vì sao rớt và mất bao lâu, cùng giờ chơi theo tài khoản và game.'],
+      ['discord#điều-khiển-từ-discord', 'discord-control.png', 'Điều khiển từ điện thoại', 'Gõ /pc trong Discord để xem tài khoản, chạy preset, đóng cửa sổ hay đổi server, ở đâu cũng được.'],
       ['discord', 'discord-alert.png', 'Báo về Discord', 'Cảnh báo, tin trạng thái cập nhật liên tục và tổng kết giờ chơi gửi vào kênh Discord của bạn.'],
+      ['windows-and-stats#xếp-cửa-sổ', 'arrange-layouts.png', 'Xếp cửa sổ', 'Chọn kiểu xếp bằng hình mẫu như snap layouts của Windows, hoặc kích thước tự chọn. Ctrl+Alt+A xếp ngay từ app nào cũng được.'],
+      ['settings', 'roblox-updates.png', 'Roblox theo ý bạn', 'Đồ họa, FPS và âm lượng riêng cho từng tài khoản. Mở Roblox bằng Bloxstrap, Fishstrap hoặc launcher của bạn.'],
+      ['troubleshooting#phím-tắt', 'palette.png', 'Tìm mọi thứ bằng Ctrl+K', 'Gõ vài chữ là ra tài khoản, game, cài đặt hay thao tác cần tìm.'],
+      ['settings#giao-diện', 'theme-photos.jpg', 'Theme ảnh thật', 'Gần 100 theme, có theme là ảnh thật chuyển động, hoặc đặt ảnh, video của riêng bạn làm nền.'],
       ['backup-and-security', 'lock.png', 'Khóa bằng mật khẩu của bạn', 'Tài khoản được mã hóa bằng mật khẩu chủ và chỉ nằm trên máy bạn. Sao lưu vào thư mục OneDrive hoặc Google Drive, rồi khôi phục trên máy mới.'],
+      ['getting-started#cập-nhật', 'lock-update.png', 'Tự cập nhật', 'Bản mới tự cài khi bạn không dùng Bloxkeep. Các cửa sổ Roblox vẫn chạy bình thường.'],
     ],
+    startTitle: 'Bắt đầu trong 3 bước',
+    start: [
+      ['Đặt mật khẩu chủ', 'Dùng để mở Bloxkeep và mã hóa tài khoản. Quên là không lấy lại được, nên chọn cái bạn nhớ.'],
+      ['Thêm tài khoản', 'Đăng nhập bằng điện thoại (nên dùng), tên đăng nhập và mật khẩu, hoặc cửa sổ trình duyệt.'],
+      ['Chọn game, bấm Vào game', 'Gõ tên game ở thanh dưới, bấm vào các tài khoản để chọn, rồi bấm Vào game.'],
+    ],
+    startLink: 'Xem từng bước có hình',
+    demoAlt: 'Chọn hai tài khoản, đổi game, xem danh sách server rồi đổi theme',
     safeTitle: 'Tài khoản vẫn là của bạn',
     safe: [
       ['Chỉ nằm trên máy bạn', 'Bloxkeep không có máy chủ riêng. Tài khoản nằm trong một file trên máy bạn, được mã hóa bằng mật khẩu chủ.'],
@@ -130,13 +164,17 @@ const L = {
     ],
     caution: 'Chỉ tải Bloxkeep từ trang Releases trên GitHub hoặc từ trang này. Bản tải ở nơi khác có thể đã bị sửa để lấy cắp tài khoản.',
     getTitle: 'Tải về',
-    getText: 'Bloxkeep-Setup.exe là bộ cài nhỏ: khi cài nó tải bản Bloxkeep mới nhất (khoảng 60 MB) và tự cài Microsoft Edge WebView2 nếu máy chưa có. Bạn chọn thư mục cài, ở ổ nào cũng được, không cần quyền admin. Sau đó Bloxkeep tự cập nhật; muốn dùng tính năng mới sớm hơn, bật Nhận bản beta trong Cài đặt › Cập nhật Bloxkeep.',
+    getText: [
+      'Bộ cài nhỏ: khi cài sẽ tải bản Bloxkeep mới nhất (khoảng 60 MB).',
+      'Cài vào thư mục nào, ổ nào cũng được, không cần quyền admin. Tự cài Microsoft Edge WebView2 nếu máy chưa có.',
+      'Sau đó Bloxkeep tự cập nhật. Muốn có tính năng mới sớm hơn, bật Nhận bản beta trong Cài đặt › Cập nhật Bloxkeep.',
+    ],
     smartscreen: 'File chưa có chữ ký số nên lần đầu chạy Windows SmartScreen có thể cảnh báo: bấm More info (Thông tin thêm) rồi Run anyway (Vẫn chạy).',
     faqTitle: 'Hỏi đáp',
     faq: [
       ['Bloxkeep có mất phí không?', 'Không. Bloxkeep miễn phí và mã nguồn mở theo giấy phép MIT, không cần tài khoản hay đăng ký gói nào.'],
       ['Có cần Microsoft Edge hay trình duyệt nào không?', 'Không. Bloxkeep dùng WebView2, một thành phần của Windows, bạn dùng trình duyệt nào cũng được; bộ cài tự cài WebView2 nếu máy chưa có.'],
-      ['Multi-Roblox có chạy được thật không?', 'Có: ảnh ở trên là ảnh chụp thật, năm tài khoản cùng lúc trên một máy. Roblox có thể đổi cách chặn nhiều cửa sổ ở bất kỳ bản cập nhật nào, nên Bloxkeep kiểm tra từng bản Roblox mới và báo cho bạn khi có bản có thể chặn.'],
+      ['Multi-Roblox có chạy được thật không?', 'Có: ảnh ở trên là ảnh chụp thật, sáu tài khoản cùng lúc trên một máy. Roblox có thể đổi cách chặn nhiều cửa sổ ở bất kỳ bản cập nhật nào, nên Bloxkeep kiểm tra từng bản Roblox mới và báo cho bạn khi có bản có thể chặn.'],
       ['Chạy nhiều cửa sổ Roblox có được phép không?', 'Roblox không chính thức hỗ trợ chạy nhiều cửa sổ cùng lúc, nên bạn tự cân nhắc khi dùng Multi-Roblox. Tính năng này tắt sẵn cho tới khi bạn bật.'],
       ['Cần giúp thì hỏi ở đâu?', 'Đọc hướng dẫn, dùng Gửi góp ý trong app (Cài đặt › Cập nhật Bloxkeep), hoặc mở issue trên GitHub.'],
     ],
@@ -145,7 +183,7 @@ const L = {
 };
 
 /** Real screenshots of Roblox windows (not Bloxkeep's interface): the same picture in every language. */
-const SHARED = new Set(['multi-roblox-real.jpg', 'multi-roblox-real-detail.jpg']);
+const SHARED = new Set(['multi-roblox-real.jpg', 'multi-roblox-real-detail.jpg', 'game-monitor-real.jpg']);
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -154,63 +192,102 @@ export function landing(lang, { version, rel }) {
   const l = L[lang];
   const home = lang === 'vi' ? 'vi/' : '';
   const shot = name => rel(`screenshots/${lang === 'vi' && !SHARED.has(name) ? 'vi/' : ''}${name}`);
+  const link = page => { const [topic, part] = page.split('#'); return rel(`${home}guide/${topic}/`) + (part ? `#${part}` : ''); };
   const buttons = `<div class="cta">
-      <a class="btn primary" href="${DOWNLOAD}">${esc(l.download)}</a>
-      <a class="btn" href="${PORTABLE}">${esc(l.portable)}</a>
-      <a class="btn ghost" href="${REPO}/releases/latest">${esc(l.all)}</a>
+      <a class="btn primary big" href="${DOWNLOAD}">${esc(l.download)}</a>
+      <a class="btn big" href="${PORTABLE}">${esc(l.portable)}</a>
     </div>
-    <p class="meta">${esc(l.meta(version))}</p>`;
-  const body = `<section class="hero wrap">
-  <div class="hero-text">
-    <h1>${esc(l.h1)}</h1>
-    <p class="lead">${esc(l.lead)}</p>
-    ${buttons}
+    <p class="meta">${esc(l.meta(version))} · <a href="${REPO}/releases/latest">${esc(l.all)}</a></p>`;
+  // Multi-Roblox is the real screenshot above it; of the rest, the first six get a row each, picture beside words, and
+  // the others share rows of four.
+  const rest = l.features.filter(([page]) => page !== 'multi-roblox');
+  const rows = rest.slice(0, 6), small = rest.slice(6);
+  const body = `<section class="hero">
+  <div class="wrap">
+    <div class="hero-text">
+      <h1>${esc(l.h1)}</h1>
+      <p class="lead">${esc(l.lead)}</p>
+      ${buttons}
+    </div>
+    <img class="shot hero-shot" src="${shot('hero.png')}" width="1920" height="1200" alt="${esc(l.heroAlt)}">
   </div>
-  <img class="shot hero-shot" src="${shot('hero.png')}" width="1320" height="840" alt="${esc(l.heroAlt)}">
 </section>
 
-<section class="wrap proof" aria-labelledby="proof">
-  <h2 id="proof">${esc(l.proofTitle)}</h2>
-  <p>${esc(l.proofText)}</p>
-  <figure>
-    <a href="${shot('multi-roblox-real.jpg')}"><img class="shot" src="${shot('multi-roblox-real.jpg')}" width="1920" height="1080" alt="${esc(l.proofAlt)}"></a>
-    <figcaption>${esc(l.proofCaption)} <a href="${rel(`${home}guide/multi-roblox/`)}">${esc(l.proofLink)} ›</a></figcaption>
-  </figure>
+<section class="band alt proof" aria-labelledby="proof">
+  <div class="wrap">
+    <h2 id="proof">${esc(l.proofTitle)}</h2>
+    <p class="intro">${esc(l.proofText)}</p>
+    <figure>
+      <a href="${shot('multi-roblox-real.jpg')}"><img class="shot" src="${shot('multi-roblox-real.jpg')}" width="1702" height="1019" loading="lazy" decoding="async" alt="${esc(l.proofAlt)}"></a>
+      <figcaption>${esc(l.proofCaption)} <a href="${rel(`${home}guide/multi-roblox/`)}">${esc(l.proofLink)} ›</a></figcaption>
+    </figure>
+  </div>
 </section>
 
-<section class="wrap" aria-labelledby="features">
-  <h2 id="features">${esc(l.featuresTitle)}</h2>
-  <div class="features">
-${l.features.map(([topic, img, title, text]) => `    <article class="feature">
-      <a href="${rel(`${home}guide/${topic}/`)}"><img class="shot" src="${shot(img)}" loading="lazy" decoding="async" alt=""></a>
-      <h3>${esc(title)}</h3>
-      <p>${esc(text)}</p>
-      <a class="more" href="${rel(`${home}guide/${topic}/`)}">${esc(l.more)} ›</a>
+<section class="band" aria-labelledby="start">
+  <div class="wrap start">
+    <div>
+      <h2 id="start">${esc(l.startTitle)}</h2>
+      <ol class="start-steps">
+${l.start.map(([title, text]) => `        <li><h3>${esc(title)}</h3><p>${esc(text)}</p></li>`).join('\n')}
+      </ol>
+      <a class="more" href="${rel(`${home}guide/getting-started/`)}">${esc(l.startLink)} ›</a>
+    </div>
+    <img class="shot" src="${shot('demo.gif')}" width="960" height="611" loading="lazy" decoding="async" alt="${esc(l.demoAlt)}">
+  </div>
+</section>
+
+<section class="band alt" aria-labelledby="features">
+  <div class="wrap">
+    <h2 id="features">${esc(l.featuresTitle)}</h2>
+${rows.map(([page, img, title, text]) => `    <article class="row">
+      <a class="row-shot" href="${link(page)}" tabindex="-1"><img class="shot" src="${shot(img)}" loading="lazy" decoding="async" alt=""></a>
+      <div class="row-text">
+        <h3>${esc(title)}</h3>
+        <p>${esc(text)}</p>
+        <a class="more" href="${link(page)}">${esc(l.more)} ›</a>
+      </div>
     </article>`).join('\n')}
+    <div class="minis">
+${small.map(([page, img, title, text]) => `      <article class="mini">
+        <a class="mini-shot" href="${link(page)}" tabindex="-1"><img src="${shot(img)}" loading="lazy" decoding="async" alt=""></a>
+        <h3>${esc(title)}</h3>
+        <p>${esc(text)}</p>
+        <a class="more" href="${link(page)}">${esc(l.more)} ›</a>
+      </article>`).join('\n')}
+    </div>
   </div>
 </section>
 
-<section class="wrap" aria-labelledby="safe">
-  <h2 id="safe">${esc(l.safeTitle)}</h2>
-  <div class="cards">
-${l.safe.map(([title, text]) => `    <div class="card"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`).join('\n')}
+<section class="band" aria-labelledby="safe">
+  <div class="wrap">
+    <h2 id="safe">${esc(l.safeTitle)}</h2>
+    <div class="cards">
+${l.safe.map(([title, text]) => `      <div class="card"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`).join('\n')}
+    </div>
+    <div class="alert alert-caution"><p>${esc(l.caution)}</p></div>
   </div>
-  <div class="alert alert-caution"><p>${esc(l.caution)}</p></div>
 </section>
 
-<section class="wrap get" id="download" aria-labelledby="get">
-  <h2 id="get">${esc(l.getTitle)}</h2>
-  <p>${esc(l.getText)}</p>
-  ${buttons}
-  <p class="small">${esc(l.smartscreen)}</p>
+<section class="band alt get" id="download" aria-labelledby="get">
+  <div class="wrap">
+    <h2 id="get">${esc(l.getTitle)}</h2>
+    <ul class="steps">
+${l.getText.map(x => `      <li>${esc(x)}</li>`).join('\n')}
+    </ul>
+    ${buttons}
+    <p class="small">${esc(l.smartscreen)}</p>
+  </div>
 </section>
 
-<section class="wrap" aria-labelledby="faq">
-  <h2 id="faq">${esc(l.faqTitle)}</h2>
-  <dl class="faq">
-${l.faq.map(([q, a]) => `    <dt>${esc(q)}</dt><dd>${esc(a)}</dd>`).join('\n')}
-  </dl>
-  <p><a class="btn" href="${rel(home + 'guide/')}">${esc(l.guideLink)}</a></p>
+<section class="band" aria-labelledby="faq">
+  <div class="wrap narrow">
+    <h2 id="faq">${esc(l.faqTitle)}</h2>
+    <div class="faq">
+${l.faq.map(([q, a]) => `      <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n')}
+    </div>
+    <p><a class="btn" href="${rel(home + 'guide/')}">${esc(l.guideLink)} ›</a></p>
+  </div>
 </section>`;
   const jsonLd = {
     '@context': 'https://schema.org',

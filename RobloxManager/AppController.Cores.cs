@@ -28,7 +28,7 @@ public sealed partial class AppController
 
     /// <summary>
     /// A window brought to the front gets its cores at once: dragging a background one was slow for 0.7 s (2026-10-21).
-    /// One anti-AFK brings forward (<see cref="_nudging"/>) waits, so a nudge doesn't flip the windows back and forth.
+    /// One brought forward for a moment (<see cref="WindowsInTurn"/>) waits, so a nudge doesn't flip the windows back and forth.
     /// </summary>
     void WatchForeground()
     {
@@ -46,7 +46,7 @@ public sealed partial class AppController
             if (!_splitCoresOn || _corePids.Count == 0)
                 return;
             _coreCheck.Stop();
-            if (_nudging)
+            if (WindowsInTurn)
                 _coreCheck.Start();
             else
                 Step(() => SplitCores(_corePids));
@@ -60,7 +60,7 @@ public sealed partial class AppController
         if (_lowMemoryPriority.Remove(front))
             RobloxProcesses.SetMemoryPriority(front, background: false);
         // Its RAM limit too (not for anti-AFK's moment in front: limited again right after, for nothing).
-        if (!_nudging && !_picturing && _ramLimited.Remove(front))
+        if (!WindowsInTurn && _ramLimited.Remove(front))
         {
             _ = LimitRamInTurn(front, null);
             Log.Note($"RAM limit: lifted for Roblox window {front} (came to the front).");

@@ -8,8 +8,8 @@
 <p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/T%E1%BA%A3i_cho_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Tải Bloxkeep cho Windows (Bloxkeep-Setup.exe, bản mới nhất)"></a></p>
 <p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
-<p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="Ảnh chụp thật trên một máy Windows: năm cửa sổ Roblox mở cùng lúc, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, phía sau là Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật"></p>
-<p align="center"><sub>Ảnh chụp thật trên một máy: năm tài khoản Roblox mở cùng lúc bằng Bloxkeep. Tên trong game đã được làm mờ.</sub></p>
+<p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="Ảnh chụp thật trên một máy Windows: sáu cửa sổ Roblox mở cùng lúc, được Bloxkeep xếp cạnh nhau, cùng ở trong một game, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7"></p>
+<p align="center"><sub>Ảnh chụp thật trên một máy: sáu tài khoản Roblox mở cùng lúc bằng Bloxkeep, xếp cạnh nhau. Tên tài khoản đã được ẩn.</sub></p>
 
 Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản, bấm **Vào game**. Mọi thứ nằm trên máy của bạn, được mã hóa bằng mật khẩu chủ. Bloxkeep không có máy chủ riêng.
 
@@ -27,9 +27,10 @@ Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản
 | **Multi-Roblox** | Mở nhiều cửa sổ Roblox cùng lúc. Tắt sẵn cho tới khi bạn bật; mỗi bản Roblox mới đều được kiểm tra. [Multi-Roblox](docs/guide/multi-roblox.vi.md) |
 | **Preset** | Lưu sẵn tài khoản, game và server để mở bằng một cú bấm, có hẹn giờ mở và tắt. [Preset](docs/guide/presets.vi.md) |
 | **Ở lại trong game** | Chống AFK để không bị đá vì đứng yên, tự vào lại khi bị văng. [Ở lại trong game](docs/guide/staying-in-game.vi.md) |
-| **Cửa sổ** | Xếp cửa sổ bằng hình mẫu (giống Snap của Windows) hoặc kích thước tự chọn, Theo dõi game, cửa sổ nhỏ, cảnh báo sắp hết RAM. [Cửa sổ và thống kê](docs/guide/windows-and-stats.vi.md) |
+| **Macro (Beta)** | Các bước viết thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ, lặp lại, Nếu. Ghi lại thao tác hoặc bắt đầu từ mẫu, chạy thử, rồi kéo điểm và vùng ngay trên game. Mỗi macro có bảng nhỏ cạnh game với tab, công tắc, danh sách tích chọn và điểm do người chơi tự đặt. Bị kẹt thì macro tự chạy các bước gỡ kẹt. [Macro](docs/guide/macros.vi.md) |
+| **Cửa sổ** | Xếp cửa sổ bằng hình mẫu (giống Snap của Windows) hoặc kích thước tự chọn, Theo dõi game có nút thu nhỏ từng cửa sổ, cửa sổ nhỏ, cảnh báo sắp hết RAM. [Cửa sổ và thống kê](docs/guide/windows-and-stats.vi.md) |
 | **Roblox theo ý bạn** | Đồ họa, FPS, âm lượng riêng cho từng tài khoản; mở bằng Roblox, Bloxstrap, Fishstrap hoặc trình mở của bạn. [Cài đặt](docs/guide/settings.vi.md) |
-| **Thống kê và Discord** | Thời gian chơi, số phiên, số lần văng; cảnh báo và trạng thái trực tiếp trong kênh Discord của bạn. [Discord](docs/guide/discord.vi.md) |
+| **Thống kê và Discord** | Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu; cảnh báo và trạng thái trực tiếp trong kênh Discord của bạn. [Discord](docs/guide/discord.vi.md) |
 | **An toàn sẵn** | Kho mã hóa, khóa app, sao lưu vào thư mục OneDrive hoặc Google Drive, ẩn tên khi livestream. [Sao lưu và bảo mật](docs/guide/backup-and-security.vi.md) |
 | **Của riêng bạn** | 98 giao diện, tiếng Việt và tiếng Anh, tìm nhanh bằng `Ctrl+K`. |
 
@@ -70,7 +71,7 @@ Hướng dẫn từng bước có hình: [Bắt đầu](docs/guide/getting-start
 
 ## Phím tắt
 
-`Ctrl+K` tìm nhanh · `Ctrl+F` tìm kiếm · `Ctrl+L` ô chọn game · `Ctrl+A` chọn tất cả · `Enter` vào game · `F2` sửa · `Delete` xóa · `Esc` bỏ chọn. Chuột phải vào tài khoản để mở menu của nó. Đầy đủ: [Phím tắt](docs/guide/troubleshooting.vi.md#phím-tắt).
+`Ctrl+K` tìm nhanh · `Ctrl+F` tìm kiếm · `Ctrl+L` ô chọn game · `Ctrl+A` chọn tất cả · `Enter` vào game · `F2` sửa · `Delete` xóa · `Esc` bỏ chọn · `Ctrl+Alt+1`–`9` chạy macro, `Ctrl+Alt+0` dừng mọi macro. Chuột phải vào tài khoản để mở menu của nó. Đầy đủ: [Phím tắt](docs/guide/troubleshooting.vi.md#phím-tắt).
 
 ## Dữ liệu và bảo mật
 
@@ -94,7 +95,9 @@ Bật **Cài đặt › Sao lưu và dữ liệu › Sao lưu vào thư mục** 
 
 **Multi-Roblox chạy được thật không?** Được, ảnh ở đầu trang là ảnh thật. Roblox có thể đổi cách chặn nhiều cửa sổ ở bất kỳ bản cập nhật nào, nên Bloxkeep kiểm tra mọi bản Roblox mới. [Multi-Roblox](docs/guide/multi-roblox.vi.md)
 
-**Tài khoản có bị ban không?** Không ai hứa được điều đó. Roblox không chính thức hỗ trợ chạy nhiều cửa sổ, và có game cấm dùng acc phụ. Bloxkeep đăng nhập và mở game giống cách roblox.com làm, không bao giờ đụng vào bộ nhớ của game.
+**Tài khoản có bị ban không?** Không ai hứa được điều đó. Roblox không chính thức hỗ trợ chạy nhiều cửa sổ, và có game cấm dùng tài khoản phụ. Bloxkeep đăng nhập và mở game giống cách roblox.com làm, không bao giờ đụng vào bộ nhớ của game.
+
+**Macro có phải hack không?** Không. Macro chỉ bấm phím, bấm chuột trong cửa sổ Roblox và nhìn hình của nó, như người chơi làm. Nó không bao giờ đọc hay sửa bộ nhớ của game. Dù vậy, có game vẫn cấm dùng macro: hãy xem luật của game.
 
 **Ở Việt Nam không vào được roblox.com thì dùng được không?** Được một phần: đăng nhập bằng điện thoại và bằng mật khẩu đi qua API của Roblox, không qua www.roblox.com; đăng nhập bằng trình duyệt thì cần www.roblox.com. Bloxkeep không có VPN. Tài khoản Roblox VNG thêm được, nhưng chưa mở game được.
 
@@ -108,7 +111,7 @@ Thêm câu trả lời: [Khắc phục sự cố](docs/guide/troubleshooting.vi.
 
 ## Chưa thử với tài khoản thật
 
-Tự vào lại game và **Mở lại Roblox** trong nhiều giờ · Preset hẹn giờ · Discord · **Treo máy nhẹ** · cửa sổ rất nhỏ · điền sẵn mã 2FA · tài khoản bị ban thật · **Vào cùng người chơi…** · bước cuối của đăng nhập bằng điện thoại · Windows 10. Gặp lỗi thì gửi góp ý ngay trong app giúp mình nhé.
+Macro trong game thật nhiều giờ liền · tự vào lại game và **Mở lại Roblox** trong nhiều giờ · Preset hẹn giờ · Discord · **Treo máy nhẹ** · cửa sổ rất nhỏ · điền sẵn mã 2FA · tài khoản bị ban thật · **Vào cùng người chơi…** · bước cuối của đăng nhập bằng điện thoại · Windows 10. Gặp lỗi thì gửi góp ý ngay trong app giúp mình nhé.
 
 ## Tự build từ mã nguồn
 

@@ -56,6 +56,8 @@ public sealed partial class AppController
         }
         if (OptBool(a, "autoUpdateRoblox") is { } autoUpdate)
             s.AutoUpdateRoblox = autoUpdate;
+        if (OptBool(a, "fastFlags") is { } fastFlags)
+            s.FastFlags = fastFlags;
         if (Has(a, "ramLimitMb", JsonValueKind.Number) && RamLimitChoices.Contains((int)Long(a, "ramLimitMb")))
             s.RamLimitMb = (int)Long(a, "ramLimitMb");
         if (OptBool(a, "splitCores") is { } split)

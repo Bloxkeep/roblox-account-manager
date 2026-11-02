@@ -2347,6 +2347,109 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 @media (max-width: 1180px) { .pv-list { padding: 4px 22px 24px; } }
 /* Narrow: the avatars go; "No accounts left" (why Run is off) stays. */
 @media (max-width: 900px) { .pv-accs:not(.none) { display: none; } .pv-accs.none { width: auto; } }
+
+/* ── Macros (Beta): the tab (rows like Presets', each window's run as a chip with a word and an icon, not colour alone),
+   the recording bar, the templates, and the macro form: settings and steps on the left, the window picture on the right. ── */
+.nav em.nav-beta { color: var(--warn-ink); background: var(--warn-soft); font-size: 11px; font-weight: 700; }
+.mc-beta { display: inline-block; margin-left: 10px; vertical-align: 5px; font-family: var(--font); letter-spacing: 0; }
+.mc-stop-all kbd { font: 11px var(--font); color: var(--muted); margin-left: 2px; }
+.mc-stop-all:disabled kbd { color: inherit; }
+.mc-live { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.mc-rec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 30px 10px; padding: 8px 10px 8px 14px; border-radius: 12px; border: 1px solid var(--bad-line); background: var(--bad-soft); color: var(--bad-ink); font-size: 13px; }
+.mc-rec b { font-weight: 650; }
+.mc-rec small { color: var(--text-2); font-size: 12px; }
+.mc-rec .btn { margin-left: auto; }
+.mc-rec.in-form { margin: 0 0 8px; }
+.mc-rec-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--bad); animation: mc-blink 1.2s ease-in-out infinite; }
+@keyframes mc-blink { 50% { opacity: .35; } }
+@media (max-width: 1180px) { .mc-rec { margin: 0 22px 10px; } }
+.mc-icon { color: var(--text-2); }
+.avatar.xs { width: 18px; height: 18px; margin: 0; padding: 0; flex: none; border-radius: 50%; background: none; }
+.avatar.xs img, .avatar.xs .initials { border: 0; border-radius: 50%; font-size: 8px; }
+.mc-empty { padding-top: 40px; }
+.menu .menu-head { padding: 6px 10px 3px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* The form: wide, the picture beside the steps (under them in a narrow window). */
+.modal.mc-modal { width: min(1120px, 100%); }
+.mc-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 20px; align-items: start; }
+.mc-side { position: sticky; top: 0; display: grid; gap: 8px; }
+@media (max-width: 980px) { .mc-cols { grid-template-columns: minmax(0, 1fr); } .mc-side { position: static; } }
+.mc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.mc-grid > span:empty { display: none; }
+.mc-top .select { width: 100%; min-width: 0; max-width: none; height: 40px; }
+.mc-accs { max-height: 180px; }
+.form .mc-accs label.rc-item { display: flex; gap: 10px; font-size: 13px; font-weight: 400; color: var(--text); }
+.mc-note, .mc-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: 12.5px; color: var(--muted); }
+.mc-warn { padding: 8px 10px; border-radius: 10px; background: var(--warn-soft); color: var(--warn-ink); }
+.mc-note .i, .mc-warn .i { width: 15px; height: 15px; flex: none; margin-top: 1px; }
+.form label.mc-switch-row { display: flex; align-items: center; gap: 12px; font-weight: 400; }
+.mc-switch-row > span:last-child { display: grid; gap: 1px; }
+.mc-switch-row b { font-size: 13px; font-weight: 650; color: var(--text); }
+.mc-switch-row small { font-size: 12px; color: var(--muted); }
+.mc-steps-sec { display: grid; gap: 8px; margin-top: 18px; }
+.mc-steps-head { display: flex; align-items: center; gap: 8px; }
+.mc-steps-head > b { flex: 1; font-size: 14px; font-weight: 650; }
+.mc-steps-head .muted { font-weight: 400; }
+.mc-steps-none { margin: 0; padding: 14px; border: 1px dashed var(--line-2); border-radius: 12px; font-size: 13px; color: var(--muted); text-align: center; }
+.mc-steps { display: grid; gap: 4px; }
+.mc-steps:empty { display: none; }
+.mc-step { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 8px; margin-left: calc(var(--d, 0) * 22px); padding: 6px 4px 6px 2px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+.mc-step:focus-within { border-color: var(--line-2); }
+.mc-step.bad { border-color: var(--bad-line); }
+.mc-step.dragging { opacity: .45; background: var(--active); }
+.mc-step > .ord-grip { height: 32px; }
+.mc-step-n { width: 22px; flex: none; height: 32px; line-height: 32px; text-align: right; font-size: 12px; font-weight: 650; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mc-step-fields { flex: 1 1 260px; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 10px; }
+.mc-step-fields:empty { display: none; }
+.mc-step-acts { display: flex; flex: none; margin-left: auto; }
+.mc-step-acts .icon-btn { width: 30px; height: 32px; }
+.mc-step-acts .i { width: 15px; height: 15px; }
+.mc-step:not(:hover, :focus-within) .mc-step-acts .icon-btn:not(:disabled) { opacity: .55; }
+.mc-step-probs { flex-basis: 100%; display: grid; gap: 2px; margin: 0; padding: 0 0 2px 60px; list-style: none; font-size: 12px; color: var(--bad-ink); }
+.mc-step-probs li { display: flex; align-items: center; gap: 5px; }
+.mc-step-probs li.warn { color: var(--warn-ink); }
+.mc-step-probs .i { width: 13px; height: 13px; flex: none; }
+.mc-f { display: grid; gap: 3px; font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+.mc-f.wide { flex: 1 1 240px; }
+.mc-step .field.sm { width: 140px; height: 32px; padding: 0 9px; border-radius: 9px; font-size: 13px; }
+.mc-step .field.sm.num { width: 78px; }
+.mc-f.wide .field.sm { width: 100%; }
+.mc-step .select.sm { min-width: 0; max-width: 190px; height: 32px; font-size: 13px; }
+.mc-check { display: inline-flex; align-items: center; gap: 6px; height: 32px; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
+.mc-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+.mc-imgf { display: inline-flex; align-items: center; gap: 6px; }
+.mc-thumb { max-width: 72px; max-height: 40px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface-3); object-fit: contain; }
+.mc-thumb.none { display: grid; place-items: center; width: 40px; height: 32px; color: var(--dim); }
+.mc-thumb.none .i { width: 16px; height: 16px; }
+.btn.sm.on { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 2px var(--focus-ring); }
+.mc-f-note { align-self: center; font-size: 12px; color: var(--muted); }
+.mc-pending { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--well); border: 1px solid var(--line); font-size: 13px; }
+.mc-pending > span { margin-right: auto; font-weight: 600; }
+.mc-problems { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--well); font-size: 12.5px; }
+.mc-problems > b { display: block; margin-bottom: 4px; font-weight: 650; }
+.mc-problems ul { display: grid; gap: 3px; margin: 0; padding-left: 18px; color: var(--bad-ink); }
+.mc-problems li.warn { color: var(--warn-ink); }
+.mc-problems .link { color: inherit; text-align: left; }
+
+/* The window picture: the dry run's points (numbered by step), areas dashed, what Try found outlined. */
+.mc-pic { display: grid; gap: 8px; padding: 10px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--well); }
+.mc-pic-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mc-pic-head > b { flex: 1; font-size: 13.5px; font-weight: 650; }
+.mc-pic-head .select.sm { min-width: 0; max-width: 150px; height: 30px; font-size: 12.5px; }
+.mc-pic-none { margin: 0; padding: 18px 8px; font-size: 12.5px; color: var(--muted); text-align: center; }
+.mc-pic-frame { position: relative; line-height: 0; border-radius: 8px; overflow: hidden; background: #000; cursor: crosshair; touch-action: none; user-select: none; }
+.mc-pic-frame:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mc-pic-frame img { width: 100%; height: auto; display: block; pointer-events: none; }
+.mc-pic-dot { position: absolute; display: grid; place-items: center; width: 20px; height: 20px; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid #fff; background: var(--accent); color: #fff; font: 700 10.5px/1 var(--font); box-shadow: 0 1px 4px rgba(0, 0, 0, .5); pointer-events: none; }
+.mc-pic-dot.on { width: 24px; height: 24px; background: var(--bad); }
+.mc-pic-area, .mc-pic-found, .mc-pic-drag { position: absolute; pointer-events: none; }
+.mc-pic-area { border: 2px dashed var(--accent); border-radius: 4px; }
+.mc-pic-area i { position: absolute; left: 2px; top: 2px; padding: 1px 5px; border-radius: 4px; background: var(--accent); color: #fff; font: 700 10px/1.4 var(--font); font-style: normal; }
+.mc-pic-found { border: 2px solid var(--ok); border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .5); }
+.mc-pic-drag { border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .6); background: rgba(255, 255, 255, .12); }
+.mc-pic-hint { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; font-size: 12px; color: var(--text-2); }
+.mc-pic-hint > span { flex: 1 1 180px; }
+.mc-pic-hint small { color: var(--muted); }
 /* Settings › Discord: a message as Discord shows it, so in Discord's colours whatever the theme. */
 .dcv { display: flex; gap: 14px; padding: 14px 16px; margin-bottom: 8px; border-radius: 10px; background: #313338; color: #dbdee1; font: 400 14px/1.4 var(--font); user-select: none; }
 .dcv b { font-weight: 650; color: #f2f3f5; }
@@ -2470,14 +2573,53 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .stat-card h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font: 650 15px var(--font-display); }
 .stat-card h3 .i { color: var(--text-2); }
 .stat-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
-.sbars { display: flex; align-items: flex-end; gap: 4px; height: calc(var(--bar-h) + 24px); padding-top: 4px; }
-.sbar { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
-.sbar i { display: block; width: 100%; max-width: 34px; border-radius: 4px 4px 0 0; background: var(--meter); }
-.sbar.zero i { background: var(--surface-3); }
-.sbar.now i { background: var(--accent); }
-.sbar.future i { opacity: .35; }
-.sbar.future span { color: var(--dim); }
-.sbar span { height: 18px; margin-top: 6px; font-size: 11px; line-height: 18px; color: var(--muted); white-space: nowrap; }
+.tl { display: grid; gap: 7px; }
+.tl-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 24px; }
+.tl-track { position: relative; height: 22px; border-radius: 5px; background: var(--surface-3); }
+.tl-seg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; gap: 6px; overflow: hidden; box-sizing: border-box; min-width: 3px; padding: 0 6px 0 2px; border-radius: 4px; background: var(--meter); color: #0b1220; font-size: 11.5px; font-weight: 600; line-height: 22px; font-style: normal; white-space: nowrap; }
+.tl-seg img { width: 18px; height: 18px; flex: none; border-radius: 4px; object-fit: cover; }
+.tl-seg span { overflow: hidden; text-overflow: ellipsis; }
+.tl.one .tl-row { grid-template-columns: minmax(0, 1fr); }
+.tl-axis.one { margin-left: 0; }
+.days { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; height: 150px; }
+.day { display: grid; grid-template-rows: minmax(0, 1fr) 18px; min-width: 0; }
+.day-bar { display: flex; align-items: flex-end; border-radius: 4px; }
+.day-bar i { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: var(--meter); }
+.day:hover .day-bar { background: var(--surface-3); }
+.day small { overflow: visible; font-size: 11px; line-height: 18px; color: var(--muted); text-align: center; white-space: nowrap; }
+.stat-delta { display: block; margin-top: 3px; font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-delta span { font-weight: 400; color: var(--muted); }
+.stat-delta.good { color: var(--ok-ink, var(--ok)); }
+.stat-delta.bad { color: var(--bad-ink); }
+.tl-seg.drop::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 4px; background: var(--bad); }
+.tl-axis { position: relative; height: 18px; margin-left: 162px; font-size: 11px; line-height: 18px; color: var(--muted); }
+.tl-axis span { position: absolute; white-space: nowrap; }
+.tl-keys { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 12px; color: var(--text-2); }
+.tl-keys span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 220px; }
+.tl-keys em { overflow: hidden; font-style: normal; white-space: nowrap; text-overflow: ellipsis; }
+.tl-keys .tl-seg { position: static; flex: none; width: 10px; min-width: 10px; height: 10px; padding: 0; border-radius: 3px; }
+.tl-keys .tl-seg.drop { border-radius: 50%; background: var(--bad); }
+.stat-table tr.opens { cursor: pointer; }
+.stat-table tr.opens:hover td { background: var(--surface-2); }
+.stat-table .sacc-open { width: 14px; height: 14px; flex: none; color: var(--muted); }
+.stat-table td.st-time { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+.stat-table.by-account { table-layout: fixed; }
+.by-account .c-acc { width: 36%; } .by-account .c-time { width: 24%; } .by-account .c-game { width: 30%; } .by-account .c-n { width: 10%; }
+.by-account th, .by-account td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.by-account th:first-child, .by-account td:first-child { width: auto; max-width: none; }
+.tl-seg img[hidden] { display: none; }
+.st-game > span { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.st-game img, .st-game .gph { width: 24px; height: 24px; flex: none; border-radius: 6px; object-fit: cover; background: var(--surface-3); display: grid; place-items: center; color: var(--dim); }
+.st-game .gph .i { width: 14px; height: 14px; }
+.st-game em { overflow: hidden; font-style: normal; white-space: nowrap; text-overflow: ellipsis; color: var(--text-2); }
+.stat-table tr.st-open td { padding: 4px 8px 12px; background: var(--surface-2); }
+.tl-keys .tl-seg.drop::after { content: none; }
+.stat-card h3 .sd-lost { margin-left: auto; font-size: 18px; color: var(--bad-ink); }
+.sd-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+.sd-text { flex: 1; min-width: 0; }
+.sd-text b { display: block; font-size: 13.5px; }
+.sd-text small { display: block; overflow: hidden; font-size: 12px; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
+.sd-time { flex: none; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .stat-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .stat-table th { padding: 4px 8px 8px; border-bottom: 1px solid var(--line-2); text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .stat-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
@@ -2486,7 +2628,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .stat-table td.n { color: var(--text-2); }
 .stat-table td.n:first-of-type { color: var(--text); font-weight: 600; }
 /* The name column takes what the numbers leave and cuts a long label short instead of widening the table. */
-.stat-table th:first-child, .stat-table td:first-child { width: 100%; max-width: 0; }
+.stat-table th:first-child, .stat-table td:first-child { width: 42%; max-width: 0; }
 .sacc { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sacc b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sgames { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
@@ -2508,7 +2650,6 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 @media (min-width: 1500px) {
   .stats, #view-stats .top { max-width: 1700px; }
   .stat.wide { display: block; }
-  .stat-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .stat-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 4fr); }
   .stat-side { display: contents; }
 }
@@ -5296,3 +5437,192 @@ body.tray-page { background: var(--surface); overflow: hidden; }
 .set-row .d .warn-text { color: var(--warn-ink); }
 /* The dock is the page's foot in every theme: rounded corners would stand off the window's edge. */
 .dock { border-radius: 0 !important; }
+
+/* Steps read as one line (a sentence); a click opens the step under it. */
+.mc-step-head { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 13px; text-align: left; }
+button.mc-step-head { cursor: pointer; }
+button.mc-step-head:hover { background: var(--hover); }
+button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.mc-step-head > .i { width: 16px; height: 16px; flex: none; color: var(--text-2); }
+.mc-step-head > .i:last-child { width: 14px; height: 14px; margin-left: auto; color: var(--muted); }
+.mc-step-head > b { flex: none; font-weight: 650; }
+.mc-say { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-step-head > b + .mc-say { color: var(--text-2); }
+.mc-step > .mc-step-fields { order: 2; flex-basis: 100%; padding: 4px 6px 4px 60px; }
+.mc-step > .mc-step-probs { order: 3; }
+.mc-step.picked { border-color: var(--line-2); background: var(--surface-2); }
+/* A template's to-do list, on top of its form until each is done. */
+.mc-todo { display: grid; gap: 6px; margin-bottom: 14px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--warn-line, var(--line-2)); background: var(--warn-soft); }
+.mc-todo > b { font-size: 13px; font-weight: 650; color: var(--warn-ink); }
+.mc-todo ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.mc-todo li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+.mc-todo li .i { width: 14px; height: 14px; flex: none; color: var(--warn-ink); }
+.mc-todo li.done { color: var(--muted); text-decoration: line-through; }
+.mc-todo li.done .i { color: var(--ok); }
+.mc-todo li small { color: var(--muted); }
+.mc-todo li .btn { margin-left: auto; }
+/* The macro list: a line per macro saying what it does or when it runs; Panel, Run or Stop, and ⋮. */
+.mc-line { font-size: 12.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-line.live { color: var(--ok-ink); }
+.mc-line.bad { color: var(--bad-ink); }
+.mc-icon.on { color: var(--ok); }
+.mc-item > .btn.sm { flex: none; height: 34px; padding: 0 12px; }
+.mc-item > .icon-btn { flex: none; width: 34px; height: 34px; }
+.mc-fix .i { color: var(--bad-ink); }
+@media (max-width: 760px) { .mc-item > .mc-panel span, .mc-item > .mc-fix span { display: none; } }
+/* No macros yet: the three ways to start, as large tiles. */
+.mc-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: min(640px, 100%); margin: 6px auto 12px; }
+.mc-tile { display: grid; justify-items: center; gap: 4px; padding: 18px 12px 16px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface); color: var(--text); font: inherit; text-align: center; cursor: pointer; }
+.mc-tile:hover { background: var(--hover); }
+.mc-tile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mc-tile .i { width: 22px; height: 22px; margin-bottom: 4px; color: var(--accent); }
+.mc-tile b { font-size: 14px; font-weight: 650; }
+.mc-tile small { font-size: 12px; color: var(--muted); }
+@media (max-width: 640px) { .mc-tiles { grid-template-columns: minmax(0, 1fr); } }
+
+/* The form's top: the name and Try it, then one line that opens to when it runs, on whom, its hotkey. */
+.mc-main { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.mc-name-row { display: flex; align-items: flex-end; gap: 10px; }
+.mc-name-row > label { flex: 1; min-width: 0; }
+.mc-try-it { flex: none; height: 40px; }
+.mc-try-it .i { color: var(--ok); }
+.mc-try-it.on .i { color: var(--bad); }
+.mc-when { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--well); }
+.mc-when > summary { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 12px; border-radius: 12px; font-size: 13px; color: var(--text-2); cursor: pointer; list-style: none; }
+.mc-when > summary::-webkit-details-marker { display: none; }
+.mc-when > summary:hover { background: var(--hover); }
+.mc-when > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.mc-when > summary > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-when > summary .i { width: 14px; height: 14px; flex: none; color: var(--muted); transition: transform .15s; }
+.mc-when[open] > summary .i { transform: rotate(180deg); }
+.mc-when-body { display: grid; gap: 10px; padding: 6px 12px 12px; }
+.mc-when-more { padding-top: 12px; border-top: 1px solid var(--line); }
+.mc-when-nums { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 720px) { .mc-when-nums { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.mc-top .mc-sent .select.sm { width: auto; height: 32px; }
+.form .mc-sent { font-weight: 400; }
+
+/* A step as a sentence with its values in place: lists, numbers, a point's dot, a colour, a picture. */
+.mc-step.open { border-color: var(--line-2); background: var(--surface-2); }
+.mc-step > .mc-step-fields { display: grid; gap: 6px; align-items: start; }
+.mc-sent { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; font-size: 13.5px; line-height: 32px; color: var(--text); }
+.mc-sent .select.sm, .mc-step .mc-sent .select.sm { width: auto; max-width: 230px; height: 32px; font-size: 13px; }
+.mc-sent .field.sm { height: 32px; padding: 0 9px; border-radius: 9px; font-size: 13px; }
+.mc-sent .field.sm.num, .mc-step .mc-sent .field.sm.num { width: 78px; }
+.mc-step .mc-text { width: 170px; }
+.mc-step .mc-text.wide { width: min(100%, 360px); }
+.mc-unit { display: inline-flex; align-items: center; gap: 4px; }
+.mc-step .mc-unit .field.sm.num { width: 70px; }
+.mc-unit > span { font-size: 12.5px; color: var(--muted); }
+.mc-pt { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border: 2px solid #fff; border-radius: 13px; background: var(--accent); color: var(--accent-ink, #fff); font: 700 12px/1 var(--font); box-shadow: 0 0 0 1px var(--line-3); cursor: pointer; }
+.mc-pt:disabled { cursor: default; }
+.mc-pt:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mc-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.mc-colourf, .mc-keyf { display: inline-flex; align-items: center; gap: 6px; }
+.mc-pick .i, .mc-cut .i, .mc-keycap .i { width: 14px; height: 14px; }
+.mc-tune > summary { width: max-content; font-size: 12.5px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.mc-tune > div { display: grid; gap: 2px; margin: 4px 0 0 4px; padding: 2px 0 0 12px; border-left: 2px solid var(--line); }
+/* "Player can change": the values of the open step the player may set on the panel. */
+.mc-ticks { display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; padding: 2px 10px; border: 1px dashed var(--line-2); border-radius: 10px; background: var(--well); }
+.mc-ticks > span { font-size: 12.5px; font-weight: 650; color: var(--text-2); }
+@media (max-width: 980px) { .mc-step > .mc-step-fields { padding-left: 8px; } }
+
+/* On the game: Edit on game, the window (or its picture) with the same dots and boxes, the areas, Try it's lines. */
+.mc-game { display: grid; gap: 8px; padding: 10px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--well); }
+.mc-game-say { margin: 0; font-size: 12.5px; color: var(--text-2); }
+.mc-game-say.on { color: var(--ok-ink); font-weight: 600; }
+.mc-pic-frame { cursor: default; }
+.mc-pic-frame.cutting { cursor: crosshair; }
+.mc-pic-frame.blank { display: grid; place-items: center; border: 1px dashed var(--line-2); background: var(--surface-3); }
+.mc-pic-blank { padding: 0 12px; font-size: 12.5px; line-height: 1.4; color: var(--muted); text-align: center; }
+.mc-pic-frame .mc-pic-dot { pointer-events: auto; cursor: grab; }
+.mc-pic-frame .mc-pic-area { pointer-events: auto; border-style: solid; cursor: move; }
+.mc-pic-frame.cutting :is(.mc-pic-dot, .mc-pic-area) { pointer-events: none; }
+.mc-pic-frame :is(.mc-pic-dot, .mc-pic-area):focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.mc-pic-handle { position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; border: 1px solid #fff; border-radius: 2px; cursor: nwse-resize; }
+.mc-pic-acts { display: flex; align-items: center; gap: 8px; }
+.mc-pic-acts small { min-width: 0; font-size: 12px; color: var(--muted); }
+.mc-areas { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.mc-areas-head { display: flex; align-items: center; gap: 8px; }
+.mc-areas-head b { flex: 1; font-size: 13px; font-weight: 650; }
+.mc-areas ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.mc-areas li { display: flex; align-items: center; gap: 8px; }
+.mc-areas li > i { width: 16px; height: 12px; flex: none; border: 2px solid; border-radius: 3px; }
+.mc-areas li .field.sm { flex: 1; min-width: 0; height: 30px; }
+.mc-areas li .icon-btn { width: 30px; height: 30px; }
+.mc-areas .mc-pic-none { padding: 2px 0; text-align: left; }
+.mc-tries { display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--surface); }
+.mc-tries > b { font-size: 13px; font-weight: 650; }
+.mc-tries ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
+.mc-tries li { display: flex; align-items: flex-start; gap: 6px; }
+.mc-tries li .i { width: 14px; height: 14px; flex: none; margin-top: 1px; }
+.mc-tries li.ok .i { color: var(--ok); }
+.mc-tries li.no { color: var(--warn-ink); }
+.mc-tries li.busy { color: var(--muted); }
+.mc-tries-note { font-size: 12px; color: var(--muted); }
+
+/* Player sees: the macro's panel as the app draws it beside the game, in its own small dark window on any theme. */
+/* If stuck: where the macro's own steps end, so it stands apart from them. */
+.mc-step:has(> .k-recover) { margin-top: 10px; border-style: dashed; }
+.mc-step-head.k-recover .mc-say { font-weight: 650; }
+.mc-sees { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.mc-sees-head { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; row-gap: 1px; align-items: center; }
+.mc-sees-head > b, .mc-sees-head > small { grid-column: 1; }
+.mc-sees-head > .btn { grid-column: 2; grid-row: 1 / span 2; }
+.mc-sees-head b { font-size: 14px; font-weight: 650; }
+.mc-sees-head small { font-size: 12.5px; color: var(--muted); }
+.mc-sees label.mc-switch-row { display: flex; align-items: center; gap: 12px; }
+.mc-panel-game { padding-left: 52px; }
+.mp-win { width: min(360px, 100%); border-radius: 10px; border: 1px solid #2a3140; background: #10141c; color: #e7ebf3; box-shadow: 0 6px 20px rgba(0, 0, 0, .3); overflow: hidden; font-size: 12.5px; }
+.mp-title { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px 0 10px; background: #161b26; border-bottom: 1px solid #232a38; }
+.mp-title b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.mp-title em { padding: 0 6px; border-radius: 8px; background: #3a2f12; color: #f5c451; font-style: normal; font-size: 10px; font-weight: 700; }
+.mp-x { display: grid; place-items: center; width: 20px; height: 20px; color: #9aa3b5; }
+.mp-x .i { width: 12px; height: 12px; }
+.mp-run { display: flex; align-items: center; justify-content: center; gap: 8px; height: 34px; margin: 10px 10px 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink, #fff); font-weight: 700; }
+.mp-run .i { width: 13px; height: 13px; }
+.mp-run kbd { padding: 0 6px; border-radius: 5px; background: rgba(0, 0, 0, .2); font: 650 11px/18px var(--font); }
+.mp-status { margin: 8px 10px 0; font-size: 12px; color: #9aa3b5; }
+.mp-opts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; margin: 8px 0 0; padding: 0 6px; list-style: none; }
+.mp-opts li { display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 4px; border-radius: 7px; }
+.mp-opts li:hover, .mp-opts li:focus-within { background: #161b26; }
+.mp-label { flex: 1; min-width: 0; height: 26px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px; background: none; color: #e7ebf3; font: 600 12.5px var(--font); }
+.mp-label:hover { border-color: #2f3747; }
+.mp-label:focus { outline: none; border-color: var(--accent); background: #181e2a; }
+.mp-val { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+.mp-swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #4a5468; }
+.mp-mini { height: 22px; padding: 0 7px; border-radius: 6px; background: #232a38; color: #c7cede; font-size: 11px; font-weight: 650; line-height: 22px; }
+.mp-field { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 56px; height: 24px; padding: 0 8px; border-radius: 6px; border: 1px solid #2f3747; background: #181e2a; font-size: 12px; font-variant-numeric: tabular-nums; }
+.mp-field .i { width: 12px; height: 12px; color: #9aa3b5; }
+.mp-switch { position: relative; width: 30px; height: 18px; border-radius: 9px; background: #3a4356; }
+.mp-switch span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #e7ebf3; }
+.mp-switch.on { background: var(--accent); }
+.mp-switch.on span { left: 14px; }
+.mp-val kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid #3a4356; background: #181e2a; font: 650 11px/18px var(--font); }
+.mp-acts { display: inline-flex; flex: none; }
+.mp-acts .icon-btn { width: 24px; height: 24px; color: #9aa3b5; }
+.mp-acts .icon-btn:hover:not(:disabled) { background: #232a38; color: #e7ebf3; }
+.mp-acts .i { width: 12px; height: 12px; }
+.mp-opts li:not(:hover, :focus-within) .mp-acts { opacity: .7; }
+/* The panel's tabs, as the app draws them: a row of buttons under the status; the shown one's name typed in place. */
+.mp-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 10px 0; }
+.mp-tab { display: inline-flex; align-items: center; gap: 2px; height: 26px; padding: 0 9px; border: 1px solid #2f3747; border-radius: 6px; background: #181e2a; color: #c7cede; font: 650 11.5px var(--font); cursor: pointer; }
+.mp-tab:hover { border-color: #4a5468; color: #e7ebf3; }
+.mp-tab.on { padding: 0 2px 0 4px; border-color: var(--accent); background: #1d2433; color: #e7ebf3; cursor: default; }
+.mp-tab.add { width: 26px; padding: 0; justify-content: center; }
+.mp-tab .i { width: 12px; height: 12px; }
+.mp-tab-name { min-width: 0; height: 20px; padding: 0 4px; border: 1px solid transparent; border-radius: 4px; background: none; color: inherit; font: inherit; }
+.mp-tab-name:focus { outline: none; border-color: var(--accent); background: #10141c; }
+.mp-tab-x { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: none; color: #9aa3b5; cursor: pointer; }
+.mp-tab-x:hover { background: #232a38; color: #e7ebf3; }
+/* A heading: a title over the rows below it, a little apart from the ones above. */
+.mp-opts li.mp-head { min-height: 28px; margin-top: 6px; }
+.mp-opts li.mp-head:first-child { margin-top: 0; }
+.mp-head .mp-label { color: #9aa3b5; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.mp-choices { width: 130px; justify-content: flex-start; color: #e7ebf3; font: 12px var(--font); }
+.mp-choices:focus { outline: none; border-color: var(--accent); }
+/* A tick list also shows how many are ticked: its words' box is narrower, so the name still shows. */
+.mp-val:has(> .mp-mini) .mp-choices { width: 82px; }
+.mp-none { margin: 10px 10px 0; padding: 10px; border: 1px dashed #2f3747; border-radius: 8px; color: #8892a6; font-size: 12px; text-align: center; }
+.mp-foot { display: flex; gap: 6px; padding: 10px; }
+.mp-btn { height: 26px; padding: 0 10px; border-radius: 6px; background: #232a38; color: #c7cede; font-size: 11.5px; font-weight: 650; line-height: 26px; }

@@ -1,0 +1,175 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav.on [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-macros"]
+        header.top
+          div.top-title
+            h1 "Macros"
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback."] "Beta"
+            p [id="mc-sub"] "macros runningMacros take each Roblox window to the front for a moment, one at a time."
+              b "4"
+              span.sep "·"
+              b "3"
+              span.sep "·"
+          div.top-tools
+            button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)"]
+              svg.i #t57b2k
+              span "Stop all"
+              kbd "Ctrl+Alt+0"
+            button.btn.primary [id="mc-new" aria-haspopup="menu"]
+              svg.i #u7ty99
+              span "New macro"
+              svg.i #u1ag9u
+        p.mc-live [role="status" aria-live="polite"] "Farm route: Main: running. Farm route: Farm 1: waiting its turn"
+        div.scroll
+          div.mc-list.pv-list [id="mc-list" role="list"]
+            div.mc-item.pv-item [role="listitem" aria-label="Anti-AFK jump"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.mc-icon.on.pv-icon
+                svg.i #1ap9cll
+              div.pv-main
+                b [title="Anti-AFK jump"] "Anti-AFK jump"
+                span.live.mc-line [title="Main: running · Farm 1: paused (you’re using the PC)"] "Main: running · Farm 1: paused (you’re using the PC)"
+              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Anti-AFK jump" aria-pressed="false"]
+                svg.i #1e3syqr
+                span "Panel"
+              button.btn.mc-stop.pv-run.sm [aria-label="Stop: Anti-AFK jump"]
+                svg.i #t57b2k
+                span "Stop"
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Anti-AFK jump"]
+                svg.i #1e3omv2
+            div.mc-item.pv-item [role="listitem" aria-label="Claim daily chest"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.mc-icon.on.pv-icon
+                svg.i #kx2qfl
+              div.pv-main
+                b [title="Claim daily chest"] "Claim daily chest"
+                span.bad.mc-line [title="Main: paused (Vietnamese typing is on) · Farm 1: stopped (didn’t see what it looks for)"] "Main: paused (Vietnamese typing is on) · Farm 1: stopped (didn’t see what it looks for)"
+              button.btn.mc-fix.sm [type="button" aria-label="Fix: Claim daily chest"]
+                svg.i #yqrnd9
+                span "Fix"
+              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Claim daily chest" aria-pressed="false"]
+                svg.i #1e3syqr
+                span "Panel"
+              button.btn.mc-stop.pv-run.sm [aria-label="Stop: Claim daily chest"]
+                svg.i #t57b2k
+                span "Stop"
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Claim daily chest"]
+                svg.i #1e3omv2
+            div.mc-item.pv-item [role="listitem" aria-label="Farm route"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.mc-icon.on.pv-icon
+                svg.i #1ap9cll
+              div.pv-main
+                b [title="Farm route"] "Farm route"
+                span.live.mc-line [title="Main: running · Farm 1: waiting its turn"] "Main: running · Farm 1: waiting its turn"
+              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Farm route" aria-pressed="false"]
+                svg.i #1e3syqr
+                span "Panel"
+              button.btn.mc-stop.pv-run.sm [aria-label="Stop: Farm route"]
+                svg.i #t57b2k
+                span "Stop"
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Farm route"]
+                svg.i #1e3omv2
+            div.mc-item.pv-item [role="listitem" aria-label="Cast and reel"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.mc-icon.pv-icon
+                svg.i #kx2qfl
+              div.pv-main
+                b [title="Cast and reel"] "Cast and reel"
+                span.mc-line [title="When you press Run · Selected accounts · Ctrl+Alt+3"] "When you press Run · Selected accounts · Ctrl+Alt+3"
+              button.btn.mc-panel.on.sm [type="button" title="Hide its panel" aria-label="Panel: Cast and reel" aria-pressed="true"]
+                svg.i #1e3syqr
+                span "Panel"
+              button.btn.pv-run.sm [title="Select accounts in the Accounts tab first." aria-label="Run: Cast and reel" disabled]
+                svg.i #1ewcuky
+                span "Run"
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Cast and reel"]
+                svg.i #1e3omv2
+#layer
+#toasts
+  div.ok.toast [role="status"]
+    svg.i #14iobj
+    span "Started on 2 windows. One turn over them takes about 4 s."
+-- commands
+  getState {}
+  macroTemplates {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  runMacro {"id":"m3"}

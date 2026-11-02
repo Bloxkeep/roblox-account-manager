@@ -86,6 +86,8 @@ public sealed class AppSettings
     public bool TrimBackground { get; set; }
     /// <summary>A launcher installs Roblox's newest build by itself while no Roblox window is open.</summary>
     public bool AutoUpdateRoblox { get; set; } = true;
+    /// <summary>Roblox's leanest drawing for the windows Bloxkeep opens, Light AFK presets' too. See <see cref="RobloxFlags"/>.</summary>
+    public bool FastFlags { get; set; }
     /// <summary>
     /// The most RAM a minimized or hidden Roblox window keeps, in MB; the rest waits in virtual memory (0 = no limit,
     /// the default). See AppController.LimitRestingRam.
@@ -106,6 +108,8 @@ public sealed class AppSettings
     /// <summary>"Join a player…"'s box: the accounts it opens follow that player when they rejoin (on until unticked).</summary>
     public bool FollowJoinedPlayer { get; set; } = true;
     public List<LaunchPreset> Presets { get; set; } = new();
+    /// <summary>Macros (Beta): recorded or built input sequences played into Roblox windows (see Macro.cs, MacroPlayer.cs).</summary>
+    public List<Macro> Macros { get; set; } = new();
     /// <summary>Accounts in the order Play opens them; accounts missing here (added later) come after, as listed.</summary>
     public List<Guid> LaunchOrder { get; set; } = new();
     /// <summary>Ids this vault had before password changes (<see cref="Vault.Id"/>): backups under them are still its to prune.</summary>

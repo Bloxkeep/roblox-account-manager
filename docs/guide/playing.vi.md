@@ -79,7 +79,7 @@ Nút **Chọn server** mở danh sách server của game. Nút bị mờ khi ô 
 Giữ các server bạn hay vào lại trong tab **Đã lưu** của ô game.
 
 - **Lưu server** (dưới ô game) lưu thứ đang có trong ô: link server riêng (`privateServerLinkCode` hoặc link share), hoặc game kèm **code mà game yêu cầu**, với game có server riêng của nó phải gõ code vào trong game. Đặt tên cho dễ nhớ; lưu lại cùng một link thì Bloxkeep cập nhật server đã lưu chứ không thêm bản mới.
-- Chọn một server ở tab **Đã lưu**: link sẽ vào ô game, nên bấm **Vào game** là các tài khoản đang chọn vào thẳng server đó. Code sẽ được sao chép, game của nó vào ô game: vào game rồi dán code vào chỗ game yêu cầu. Bloxkeep không bao giờ tự gõ vào Roblox.
+- Chọn một server ở tab **Đã lưu**: link sẽ vào ô game, nên bấm **Vào game** là các tài khoản đang chọn vào thẳng server đó. Code sẽ được sao chép, game của nó vào ô game: vào game rồi dán code vào chỗ game yêu cầu. Bloxkeep không bao giờ tự gõ code đã lưu; [macro](macros.vi.md) chỉ gõ những gì bạn ghi trong bước của nó.
 - Nút **sao chép** cạnh server đã lưu sao chép lại code; nút **×** để xóa.
 
 ## Vào cùng người chơi

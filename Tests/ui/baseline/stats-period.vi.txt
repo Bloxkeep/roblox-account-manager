@@ -16,6 +16,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
           span "Theo dõi game"
@@ -88,85 +92,137 @@ html [data-theme="dark" lang="vi"]
                 div.stat
                   small "Thời gian chơi"
                   b [title="16 giờ 24 phút"] "16 giờ 24 phút"
+                  span.good.stat-delta "↑ 20 %"
+                    span "so với 7 ngày trước"
                 div.stat
-                  small "Lượt chơi"
-                  b [title="24"] "24"
+                  small "Tài khoản đã chơi"
+                  b [title="4/7"] "4"
+                    span.of "/7"
                 div.stat
                   small "Mất kết nối"
                   b [title="3"] "3"
+                  span.good.stat-delta "↓ 40 %"
+                    span "so với 7 ngày trước"
                 div.stat
-                  small "Chơi nhiều nhất"
-                  b [title="Blox Fruits"] "Blox Fruits"
-              div.stat-card
-                h3 "Thời gian chơi theo ngày"
-                div.sbars [style="--bar-h:140px"]
-                  div.sbar [title="Thứ 7, 10 thg 10 · 1 giờ 20 phút"]
-                    i [style="height:49px"]
-                    span "Thứ 7"
-                  div.sbar [title="CN, 11 thg 10 · 4 phút"]
-                    i [style="height:3px"]
-                    span "CN"
-                  div.sbar [title="Thứ 2, 12 thg 10 · 3 giờ 8 phút"]
-                    i [style="height:114px"]
-                    span "Thứ 2"
-                  div.sbar [title="Thứ 3, 13 thg 10 · 3 giờ 52 phút"]
-                    i [style="height:140px"]
-                    span "Thứ 3"
-                  div.sbar [title="Thứ 4, 14 thg 10 · 2 giờ 35 phút"]
-                    i [style="height:94px"]
-                    span "Thứ 4"
-                  div.sbar [title="Thứ 5, 15 thg 10 · 2 giờ 19 phút"]
-                    i [style="height:84px"]
-                    span "Thứ 5"
-                  div.now.sbar [title="Thứ 6, 16 thg 10 · 3 giờ 3 phút"]
-                    i [style="height:111px"]
-                    span "Thứ 6"
+                  small "Lượt dài nhất"
+                  b [title="4 giờ 55 phút"] "4 giờ 55 phút"
+                  span.stat-sub "Tài khoản chính · Blox Fruits"
+              div.stat-card [id="stats-days"]
+                h3 "Giờ chơi mỗi ngày"
+                div.days
+                  div.day [title="Thứ Bảy, 10/10 · 1 giờ 20 phút"]
+                    span.day-bar
+                      i [style="height:34.7%"]
+                    small "Thứ 7"
+                  div.day [title="Chủ Nhật, 11/10 · 4 phút"]
+                    span.day-bar
+                      i [style="height:3%"]
+                    small "CN"
+                  div.day [title="Thứ Hai, 12/10 · 3 giờ 8 phút"]
+                    span.day-bar
+                      i [style="height:81.1%"]
+                    small "Thứ 2"
+                  div.day [title="Thứ Ba, 13/10 · 3 giờ 52 phút"]
+                    span.day-bar
+                      i [style="height:100%"]
+                    small "Thứ 3"
+                  div.day [title="Thứ Tư, 14/10 · 2 giờ 35 phút"]
+                    span.day-bar
+                      i [style="height:67.2%"]
+                    small "Thứ 4"
+                  div.day [title="Thứ Năm, 15/10 · 2 giờ 19 phút"]
+                    span.day-bar
+                      i [style="height:60.2%"]
+                    small "Thứ 5"
+                  div.day [title="Thứ Sáu, 16/10 · 3 giờ 3 phút"]
+                    span.day-bar
+                      i [style="height:79.1%"]
+                    small "Hôm nay"
+              div.stat-card [id="stats-drops"]
+                h3 "Vì sao rớt"
+                  span.sd-lost [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 3 giờ 6 phút"
+                div.sd-row
+                  div.sd-text
+                    b "Bị kick vì treo máy"
+                    small [title="Tài khoản chính, Farm 1"] "2 lần · Tài khoản chính, Farm 1"
+                  span.sd-time [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 2 giờ 17 phút"
+                  button.btn.sm "Bật Chống AFK"
+                div.sd-row
+                  div.sd-text
+                    b "Mất kết nối"
+                    small [title="Farm 1"] "1 lần · Farm 1"
+                  span.sd-time [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 49 phút"
               div.stat-cols
                 div.stat-card
                   h3 "Theo tài khoản"
-                  table.stat-table
+                  table.by-account.stat-table
+                    colgroup
+                      col.c-acc
+                      col.c-time
+                      col.c-game
+                      col.c-n
                     thead
                       tr
                         th "Tài khoản"
-                        th.n "Thời gian chơi"
-                        th.n "Lượt chơi"
-                        th.n "Mất kết nối"
+                        th "Thời gian chơi"
+                        th "Chơi nhiều nhất"
+                        th.n [title="Mất kết nối"] "Rớt"
                     tbody
-                      tr
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:204" src=#1qk25wb]
                             b [title="Tài khoản chính"] "Tài khoản chính"
-                        td.n "7 giờ 22 phút"
-                        td.n "11"
+                        td.st-time "7 giờ 22 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "1"
-                      tr
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:243" src=#uinvo6]
                             b [title="Farm 1"] "Farm 1"
-                        td.n "5 giờ 24 phút"
-                        td.n "8"
+                        td.st-time "5 giờ 24 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "2"
-                      tr
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:297" src=#1u67et1]
                             b [title="Night Owl"] "Night Owl"
-                        td.n "3 giờ 16 phút"
-                        td.n "5"
+                        td.st-time "3 giờ 16 phút"
+                        td.st-game
+                          span [title="Brookhaven 🏡RP"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Brookhaven 🏡RP"
                         td.n "0"
-                      tr
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               span.initials [style="--h:148"] "TÀ"
                             b [title="Tài khoản đã xóa"] "Tài khoản đã xóa"
-                        td.n "19 phút"
-                        td.n "1"
+                        td.st-time "19 phút"
+                        td.st-game
+                          span [title="[🎃] Adopt Me!"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "[🎃] Adopt Me!"
                         td.n "0"
                 div.stat-side
                   div.stat-card
@@ -259,6 +315,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
           span "Theo dõi game"
@@ -331,154 +391,229 @@ html [data-theme="dark" lang="vi"]
                 div.stat
                   small "Thời gian chơi"
                   b [title="62 giờ 53 phút"] "62 giờ 53 phút"
+                  span.good.stat-delta "↑ 20 %"
+                    span "so với 30 ngày trước"
                 div.stat
-                  small "Lượt chơi"
-                  b [title="86"] "86"
+                  small "Tài khoản đã chơi"
+                  b [title="4/7"] "4"
+                    span.of "/7"
                 div.stat
                   small "Mất kết nối"
                   b [title="11"] "11"
+                  span.good.stat-delta "↓ 15 %"
+                    span "so với 30 ngày trước"
                 div.stat
-                  small "Chơi nhiều nhất"
-                  b [title="Blox Fruits"] "Blox Fruits"
-              div.stat-card
-                h3 "Thời gian chơi theo ngày"
-                div.sbars [style="--bar-h:140px"]
-                  div.sbar [title="Thứ 5, 17 thg 9 · 3 giờ 54 phút"]
-                    i [style="height:134px"]
-                    span
-                  div.sbar [title="Thứ 6, 18 thg 9 · 2 giờ 37 phút"]
-                    i [style="height:90px"]
-                    span
-                  div.sbar [title="Thứ 7, 19 thg 9 · 2 giờ 21 phút"]
-                    i [style="height:81px"]
-                    span
-                  div.sbar [title="CN, 20 thg 9 · 3 giờ 5 phút"]
-                    i [style="height:106px"]
-                    span
-                  div.sbar [title="Thứ 2, 21 thg 9 · 1 giờ 49 phút"]
-                    i [style="height:62px"]
-                    span "21/9"
-                  div.sbar [title="Thứ 3, 22 thg 9 · 1 giờ 33 phút"]
-                    i [style="height:53px"]
-                    span
-                  div.sbar [title="Thứ 4, 23 thg 9 · 2 giờ 16 phút"]
-                    i [style="height:78px"]
-                    span
-                  div.sbar [title="Thứ 5, 24 thg 9 · 1 giờ"]
-                    i [style="height:35px"]
-                    span
-                  div.sbar [title="Thứ 6, 25 thg 9 · 44 phút"]
-                    i [style="height:25px"]
-                    span
-                  div.sbar [title="Thứ 7, 26 thg 9 · 1 giờ 28 phút"]
-                    i [style="height:50px"]
-                    span "26/9"
-                  div.sbar [title="CN, 27 thg 9 · 12 phút"]
-                    i [style="height:7px"]
-                    span
-                  div.sbar [title="Thứ 2, 28 thg 9 · 3 giờ 15 phút"]
-                    i [style="height:112px"]
-                    span
-                  div.sbar [title="Thứ 3, 29 thg 9 · 3 giờ 59 phút"]
-                    i [style="height:137px"]
-                    span
-                  div.sbar [title="Thứ 4, 30 thg 9 · 2 giờ 43 phút"]
-                    i [style="height:93px"]
-                    span
-                  div.sbar [title="Thứ 5, 1 thg 10 · 2 giờ 27 phút"]
-                    i [style="height:84px"]
-                    span "1/10"
-                  div.sbar [title="Thứ 6, 2 thg 10 · 3 giờ 11 phút"]
-                    i [style="height:109px"]
-                    span
-                  div.sbar [title="Thứ 7, 3 thg 10 · 1 giờ 54 phút"]
-                    i [style="height:66px"]
-                    span
-                  div.sbar [title="CN, 4 thg 10 · 1 giờ 38 phút"]
-                    i [style="height:56px"]
-                    span
-                  div.sbar [title="Thứ 2, 5 thg 10 · 2 giờ 22 phút"]
-                    i [style="height:81px"]
-                    span
-                  div.sbar [title="Thứ 3, 6 thg 10 · 1 giờ 6 phút"]
-                    i [style="height:38px"]
-                    span "6/10"
-                  div.sbar [title="Thứ 4, 7 thg 10 · 50 phút"]
-                    i [style="height:29px"]
-                    span
-                  div.sbar [title="Thứ 5, 8 thg 10 · 1 giờ 33 phút"]
-                    i [style="height:54px"]
-                    span
-                  div.sbar [title="Thứ 6, 9 thg 10 · 17 phút"]
-                    i [style="height:10px"]
-                    span
-                  div.sbar [title="Thứ 7, 10 thg 10 · 1 phút"]
-                    i [style="height:3px"]
-                    span
-                  div.sbar [title="CN, 11 thg 10 · 4 giờ 5 phút"]
-                    i [style="height:140px"]
-                    span "11/10"
-                  div.sbar [title="Thứ 2, 12 thg 10 · 2 giờ 49 phút"]
-                    i [style="height:96px"]
-                    span
-                  div.sbar [title="Thứ 3, 13 thg 10 · 2 giờ 32 phút"]
-                    i [style="height:87px"]
-                    span
-                  div.sbar [title="Thứ 4, 14 thg 10 · 3 giờ 16 phút"]
-                    i [style="height:112px"]
-                    span
-                  div.sbar [title="Thứ 5, 15 thg 10 · 2 giờ"]
-                    i [style="height:69px"]
-                    span
-                  div.now.sbar [title="Thứ 6, 16 thg 10 · 1 giờ 44 phút"]
-                    i [style="height:59px"]
-                    span "16/10"
+                  small "Lượt dài nhất"
+                  b [title="18 giờ 51 phút"] "18 giờ 51 phút"
+                  span.stat-sub "Tài khoản chính · Blox Fruits"
+              div.stat-card [id="stats-days"]
+                h3 "Giờ chơi mỗi ngày"
+                div.days
+                  div.day [title="Thứ Năm, 17/9 · 3 giờ 54 phút"]
+                    span.day-bar
+                      i [style="height:95.4%"]
+                    small
+                  div.day [title="Thứ Sáu, 18/9 · 2 giờ 37 phút"]
+                    span.day-bar
+                      i [style="height:64.4%"]
+                    small
+                  div.day [title="Thứ Bảy, 19/9 · 2 giờ 21 phút"]
+                    span.day-bar
+                      i [style="height:57.7%"]
+                    small
+                  div.day [title="Chủ Nhật, 20/9 · 3 giờ 5 phút"]
+                    span.day-bar
+                      i [style="height:75.6%"]
+                    small
+                  div.day [title="Thứ Hai, 21/9 · 1 giờ 49 phút"]
+                    span.day-bar
+                      i [style="height:44.5%"]
+                    small "21/9"
+                  div.day [title="Thứ Ba, 22/9 · 1 giờ 33 phút"]
+                    span.day-bar
+                      i [style="height:37.9%"]
+                    small
+                  div.day [title="Thứ Tư, 23/9 · 2 giờ 16 phút"]
+                    span.day-bar
+                      i [style="height:55.8%"]
+                    small
+                  div.day [title="Thứ Năm, 24/9 · 1 giờ"]
+                    span.day-bar
+                      i [style="height:24.7%"]
+                    small
+                  div.day [title="Thứ Sáu, 25/9 · 44 phút"]
+                    span.day-bar
+                      i [style="height:18.1%"]
+                    small
+                  div.day [title="Thứ Bảy, 26/9 · 1 giờ 28 phút"]
+                    span.day-bar
+                      i [style="height:36%"]
+                    small "26/9"
+                  div.day [title="Chủ Nhật, 27/9 · 12 phút"]
+                    span.day-bar
+                      i [style="height:4.9%"]
+                    small
+                  div.day [title="Thứ Hai, 28/9 · 3 giờ 15 phút"]
+                    span.day-bar
+                      i [style="height:79.9%"]
+                    small
+                  div.day [title="Thứ Ba, 29/9 · 3 giờ 59 phút"]
+                    span.day-bar
+                      i [style="height:97.7%"]
+                    small
+                  div.day [title="Thứ Tư, 30/9 · 2 giờ 43 phút"]
+                    span.day-bar
+                      i [style="height:66.6%"]
+                    small
+                  div.day [title="Thứ Năm, 1/10 · 2 giờ 27 phút"]
+                    span.day-bar
+                      i [style="height:60%"]
+                    small "1/10"
+                  div.day [title="Thứ Sáu, 2/10 · 3 giờ 11 phút"]
+                    span.day-bar
+                      i [style="height:77.9%"]
+                    small
+                  div.day [title="Thứ Bảy, 3/10 · 1 giờ 54 phút"]
+                    span.day-bar
+                      i [style="height:46.8%"]
+                    small
+                  div.day [title="Chủ Nhật, 4/10 · 1 giờ 38 phút"]
+                    span.day-bar
+                      i [style="height:40.2%"]
+                    small
+                  div.day [title="Thứ Hai, 5/10 · 2 giờ 22 phút"]
+                    span.day-bar
+                      i [style="height:58.1%"]
+                    small
+                  div.day [title="Thứ Ba, 6/10 · 1 giờ 6 phút"]
+                    span.day-bar
+                      i [style="height:27%"]
+                    small "6/10"
+                  div.day [title="Thứ Tư, 7/10 · 50 phút"]
+                    span.day-bar
+                      i [style="height:20.4%"]
+                    small
+                  div.day [title="Thứ Năm, 8/10 · 1 giờ 33 phút"]
+                    span.day-bar
+                      i [style="height:38.3%"]
+                    small
+                  div.day [title="Thứ Sáu, 9/10 · 17 phút"]
+                    span.day-bar
+                      i [style="height:7.2%"]
+                    small
+                  div.day [title="Thứ Bảy, 10/10 · 1 phút"]
+                    span.day-bar
+                      i [style="height:3%"]
+                    small
+                  div.day [title="Chủ Nhật, 11/10 · 4 giờ 5 phút"]
+                    span.day-bar
+                      i [style="height:100%"]
+                    small "11/10"
+                  div.day [title="Thứ Hai, 12/10 · 2 giờ 49 phút"]
+                    span.day-bar
+                      i [style="height:68.9%"]
+                    small
+                  div.day [title="Thứ Ba, 13/10 · 2 giờ 32 phút"]
+                    span.day-bar
+                      i [style="height:62.3%"]
+                    small
+                  div.day [title="Thứ Tư, 14/10 · 3 giờ 16 phút"]
+                    span.day-bar
+                      i [style="height:80.2%"]
+                    small
+                  div.day [title="Thứ Năm, 15/10 · 2 giờ"]
+                    span.day-bar
+                      i [style="height:49.1%"]
+                    small
+                  div.day [title="Thứ Sáu, 16/10 · 1 giờ 44 phút"]
+                    span.day-bar
+                      i [style="height:42.5%"]
+                    small "Hôm nay"
+              div.stat-card [id="stats-drops"]
+                h3 "Vì sao rớt"
+                  span.sd-lost [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 11 giờ 56 phút"
+                div.sd-row
+                  div.sd-text
+                    b "Bị kick vì treo máy"
+                    small [title="Tài khoản chính, Farm 1"] "2 lần · Tài khoản chính, Farm 1"
+                  span.sd-time [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 8 giờ 48 phút"
+                  button.btn.sm "Bật Chống AFK"
+                div.sd-row
+                  div.sd-text
+                    b "Mất kết nối"
+                    small [title="Farm 1"] "1 lần · Farm 1"
+                  span.sd-time [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 3 giờ 8 phút"
               div.stat-cols
                 div.stat-card
                   h3 "Theo tài khoản"
-                  table.stat-table
+                  table.by-account.stat-table
+                    colgroup
+                      col.c-acc
+                      col.c-time
+                      col.c-game
+                      col.c-n
                     thead
                       tr
                         th "Tài khoản"
-                        th.n "Thời gian chơi"
-                        th.n "Lượt chơi"
-                        th.n "Mất kết nối"
+                        th "Thời gian chơi"
+                        th "Chơi nhiều nhất"
+                        th.n [title="Mất kết nối"] "Rớt"
                     tbody
-                      tr
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:204" src=#1qk25wb]
                             b [title="Tài khoản chính"] "Tài khoản chính"
-                        td.n "28 giờ 17 phút"
-                        td.n "39"
+                        td.st-time "28 giờ 17 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "1"
-                      tr
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:243" src=#uinvo6]
                             b [title="Farm 1"] "Farm 1"
-                        td.n "20 giờ 45 phút"
-                        td.n "28"
+                        td.st-time "20 giờ 45 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "2"
-                      tr
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:297" src=#1u67et1]
                             b [title="Night Owl"] "Night Owl"
-                        td.n "12 giờ 34 phút"
-                        td.n "17"
+                        td.st-time "12 giờ 34 phút"
+                        td.st-game
+                          span [title="Brookhaven 🏡RP"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Brookhaven 🏡RP"
                         td.n "0"
-                      tr
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               span.initials [style="--h:148"] "TÀ"
                             b [title="Tài khoản đã xóa"] "Tài khoản đã xóa"
-                        td.n "1 giờ 15 phút"
-                        td.n "2"
+                        td.st-time "1 giờ 15 phút"
+                        td.st-game
+                          span [title="[🎃] Adopt Me!"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "[🎃] Adopt Me!"
                         td.n "0"
                 div.stat-side
                   div.stat-card

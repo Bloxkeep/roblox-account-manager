@@ -14,8 +14,8 @@
 <p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/Download_for_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Download Bloxkeep for Windows (Bloxkeep-Setup.exe, the newest version)"></a></p>
 <p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="PRIVACY.md">Privacy</a></p>
 
-<p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: five Roblox windows open at once, titled Roblox - Account 1 to Roblox - Account 5, with Bloxkeep behind them counting 5 windows and Multi-Roblox on"></p>
-<p align="center"><sub>A real screenshot from one PC: five Roblox accounts open at once with Bloxkeep. Names in the game are blurred.</sub></p>
+<p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7"></p>
+<p align="center"><sub>A real screenshot from one PC: six Roblox accounts open at once with Bloxkeep, tiled side by side. Account names are hidden.</sub></p>
 
 Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play**. Everything stays on your PC, encrypted with your master password. Bloxkeep has no server of its own.
 
@@ -33,9 +33,10 @@ Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play
 | **Multi-Roblox** | Several Roblox windows at once. Off until you turn it on; every new Roblox build is checked. [Multi-Roblox](docs/guide/multi-roblox.md) |
 | **Presets** | Accounts, game and server saved for one click, with a schedule to start and stop. [Presets](docs/guide/presets.md) |
 | **Stay in game** | Anti-AFK against idle kicks, auto-rejoin after a disconnect. [Staying in game](docs/guide/staying-in-game.md) |
-| **Windows** | Arrange layouts picked from pictures (as Windows' snap layouts) or a size of your own, the Game monitor, a mini window, RAM warnings. [Windows and stats](docs/guide/windows-and-stats.md) |
+| **Macros (Beta)** | Steps written as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If. Record one or start from a template, try it, then move its points and areas right on the game. Each macro gets a small panel beside the game with tabs, switches, lists to tick and points the player sets. Stuck? It runs your recovery steps. [Macros](docs/guide/macros.md) |
+| **Windows** | Arrange layouts picked from pictures (as Windows' snap layouts) or a size of your own, the Game monitor with a minimise button on each window, a mini window, RAM warnings. [Windows and stats](docs/guide/windows-and-stats.md) |
 | **Roblox your way** | Graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap or your own launcher. [Settings](docs/guide/settings.md) |
-| **Stats and Discord** | Play time, sessions and disconnects; alerts and a live status in your Discord channel. [Discord](docs/guide/discord.md) |
+| **Stats and Discord** | Play time compared with the days before, a timeline of each account, why accounts dropped and the time it cost; alerts and a live status in your Discord channel. [Discord](docs/guide/discord.md) |
 | **Safe by default** | Encrypted vault, lock, backups to a OneDrive or Google Drive folder, hide names for streams. [Backup and security](docs/guide/backup-and-security.md) |
 | **Yours** | 98 themes, English and Vietnamese, quick search with `Ctrl+K`. |
 
@@ -76,7 +77,7 @@ Step by step, with pictures: [Getting started](docs/guide/getting-started.md).
 
 ## Keyboard shortcuts
 
-`Ctrl+K` quick search · `Ctrl+F` search · `Ctrl+L` game box · `Ctrl+A` select all · `Enter` play · `F2` edit · `Delete` delete · `Esc` clear the selection. Right-click an account for its menu. All of them: [Keyboard shortcuts](docs/guide/troubleshooting.md#keyboard-shortcuts).
+`Ctrl+K` quick search · `Ctrl+F` search · `Ctrl+L` game box · `Ctrl+A` select all · `Enter` play · `F2` edit · `Delete` delete · `Esc` clear the selection · `Ctrl+Alt+1`–`9` run a macro, `Ctrl+Alt+0` stop them all. Right-click an account for its menu. All of them: [Keyboard shortcuts](docs/guide/troubleshooting.md#keyboard-shortcuts).
 
 ## Data and security
 
@@ -102,6 +103,8 @@ Turn on **Settings › Backup & data › Back up to a folder** and pick a OneDri
 
 **Will my account get banned?** No one can promise that. Roblox doesn't officially support several clients, and some games forbid alt accounts. Bloxkeep signs in and opens games the way roblox.com does and never touches the game's memory.
 
+**Are macros cheating?** A macro only presses keys and clicks in the Roblox window and looks at its picture, like a person would. It never reads or changes the game's memory. Some games still forbid macros: check the game's rules.
+
 **Can I use it in Vietnam without roblox.com?** Partly: phone and password sign-in go through Roblox's API, not www.roblox.com; the browser sign-in needs www.roblox.com. Bloxkeep has no VPN. Roblox VNG accounts can be added, but games can't be opened for them yet.
 
 **I forgot my master password.** It can't be recovered. Restore a backup whose password you remember, or start over.
@@ -114,7 +117,7 @@ More answers: [Troubleshooting](docs/guide/troubleshooting.md).
 
 ## Not tried with real accounts yet
 
-Auto-rejoin and **Restart Roblox** over many hours · scheduled presets · Discord · **Light AFK** · very small windows · filling in 2FA codes · a really banned account · **Join a player…** · the last step of phone sign-in · Windows 10. If something breaks, please send feedback from the app.
+Macros in real games over many hours · auto-rejoin and **Restart Roblox** over many hours · scheduled presets · Discord · **Light AFK** · very small windows · filling in 2FA codes · a really banned account · **Join a player…** · the last step of phone sign-in · Windows 10. If something breaks, please send feedback from the app.
 
 ## Build from source
 

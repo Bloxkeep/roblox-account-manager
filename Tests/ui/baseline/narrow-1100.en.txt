@@ -10,6 +10,8 @@ html [data-theme="dark" lang="en"]
           svg.i #v823bm
         button.nav [title="Presets"]
           svg.i #1pvni8o
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
         button.nav [title="Game monitor"]
           svg.i #1e3syqr
         button.nav [title="Statistics"]

@@ -16,6 +16,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
           span "Theo dõi game"
@@ -432,6 +436,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
           span "Theo dõi game"
@@ -844,6 +852,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
           span "Theo dõi game"
@@ -1256,6 +1268,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
           span "Theo dõi game"

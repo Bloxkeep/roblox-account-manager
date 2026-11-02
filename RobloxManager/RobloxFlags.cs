@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 namespace RobloxManager;
 
 /// <summary>
-/// A light-AFK preset's windows get Roblox's leanest drawing on top of its lowest graphics: Fast Flags written to the
+/// With Settings › Staying in game › Fast Flags on, windows get Roblox's leanest drawing: Fast Flags written to the
 /// client's ClientSettings\ClientAppSettings.json just before it opens, and the file put back as it was once it has
 /// started (Roblox reads it in its first second: "LoadClientSettingsFromLocal" in its log). Only flags on Roblox's
 /// allowlist (devforum 3966569, 2025-09-29), each still in the client of 2026-10-29; Roblox ignores any other, and
@@ -43,7 +43,7 @@ public static class RobloxFlags
     public static bool Pending => File.Exists(StatePath);
 
     /// <summary>
-    /// Before opening a light-AFK window: the flags in the file of every build next to <paramref name="client"/> (Roblox
+    /// Before opening a window: the flags in the file of every build next to <paramref name="client"/> (Roblox
     /// starts the account's channel's build, which may be another folder than the newest). False when nothing was written.
     /// </summary>
     public static bool Apply(string? client)

@@ -678,8 +678,8 @@ public sealed partial class AppController
             }
         }
         launchVia = RobloxInstalls.UpdatingOption(launchVia, RobloxVersionDto().UpToDate);
-        // Light AFK's leanest drawing (Fast Flags) for this window only: any other gets the person's own file back first.
-        if (afk)
+        // The leanest drawing (Fast Flags) if the person has it on; off, the person's own file goes back first.
+        if (settings.FastFlags)
         {
             if (RobloxFlags.Apply(RobloxInstalls.ClientFor(launchVia, settings.CustomLauncher)))
             {
@@ -822,6 +822,8 @@ public sealed partial class AppController
         // Clicked: the windows come over every other app (not after a launch: the person may be busy elsewhere).
         var app = !auto && _owner.IsHandleCreated && _owner.Visible && _owner.WindowState != FormWindowState.Minimized ? _owner.Handle : IntPtr.Zero;
         var s = _vault?.Data.Settings;
+        // After a nudge, a picture or a macro's turn under way: each puts its window back as it found it.
+        using var turn = await InputTurn.EnterAsync("arrange");
         _windowSizes.Clear();
         return await RobloxProcesses.ArrangeGridAsync(tracked.Concat(others).Where(p => !afk.Contains(p)).ToList(), screen.WorkingArea,
             s?.WindowLayout ?? "fill", skipMinimized: auto, app: app, custom: s is null ? default : new Size(s.WindowWidth, s.WindowHeight));

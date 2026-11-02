@@ -413,11 +413,11 @@ public sealed partial class AppController
         var named = new List<string>();
         var notes = new List<string>();
         _picturing = true;
+        IDisposable? turn = null;
         try
         {
-            // A nudge under way finishes first (a few seconds at most).
-            for (int i = 0; _nudging && i < 50; i++)
-                await Task.Delay(100);
+            // A nudge or a macro's turn under way finishes first (a few seconds at most).
+            turn = await InputTurn.EnterAsync("picture");
             Notify(L.F("{0} took a screenshot of this PC's Roblox windows from Discord.", link.User ?? "Discord"), "info", "remote");
             foreach (var account in accounts.Take(MaxShots))
             {
@@ -441,6 +441,7 @@ public sealed partial class AppController
         }
         finally
         {
+            turn?.Dispose();
             _picturing = false;
             _lastShot = DateTime.UtcNow;
         }

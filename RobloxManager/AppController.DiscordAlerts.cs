@@ -65,6 +65,8 @@ public sealed partial class AppController
                 };
                 // A kick says it in its title, with the game's words: no "Reason" field saying it again.
                 return AccountAlert(en.StartsWith("{0} was kicked by the game", StringComparison.Ordinal) ? who with { Reason = null } : who, title, description, color, now);
+            case "macro" when SubjectOf(subject, now) is { } who:
+                return AccountAlert(who with { Reason = null }, DT("Macro alert"), DiscordWebhook.Escape(text), DiscordWebhook.Yellow, now);
             case "gameBan" when SubjectOf(subject, now) is { } who:
                 // The game's words are the description: no "Reason" field saying "Kicked by the game" with them again.
                 return AccountAlert(who with { Reason = null }, DT("Banned by the game"), why is null ? DT("Bloxkeep won't rejoin this game for this account.")

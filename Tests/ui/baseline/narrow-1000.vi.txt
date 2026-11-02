@@ -10,6 +10,8 @@ html [data-theme="dark" lang="vi"]
           svg.i #v823bm
         button.nav [title="Preset"]
           svg.i #1pvni8o
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
         button.nav [title="Thống kê"]

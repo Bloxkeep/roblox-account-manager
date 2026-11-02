@@ -16,7 +16,7 @@ public sealed partial class AppController
     /// <param name="RamMb">What every Roblox window on this PC holds in RAM together.</param>
     public sealed record TrayInfo(bool Open, string Multi, int RobloxCount, List<(Guid Id, string Name)> Presets,
         List<(Guid Id, string Name, bool Running)>? Accounts = null, bool MultiOnly = false, List<TrayClient>? Clients = null,
-        long RamMb = 0);
+        long RamMb = 0, List<(Guid Id, string Name, bool Shown)>? Macros = null);
 
     public sealed record TrayClient(Guid Id, string Name, string Game, int Pid, long RamMb);
 
@@ -33,7 +33,7 @@ public sealed partial class AppController
             : [];
         var clients = open ? RunningClients().Select(c => new TrayClient(c.Id, c.Label, c.Game, c.Pid, c.RamMb)).ToList() : [];
         return new TrayInfo(open, !on ? "off" : MultiInstance.Armed ? "ready" : "notReady", RobloxCount, presets, accounts, !Vault.Exists,
-            clients, _clientRam.Values.Sum() / MB);
+            clients, _clientRam.Values.Sum() / MB, TrayMacros());
     }
 
     /// <summary>The account's picture for the tray's page: Roblox's address for it, once known (its initials meanwhile).</summary>
@@ -43,7 +43,7 @@ public sealed partial class AppController
     public object TrayCustomTheme() => CustomThemeDto();
 
     /// <summary>The quick panel's eye: the account's Roblox window in front.</summary>
-    public void TrayShowClient(int pid) => RobloxProcesses.Focus(pid);
+    public void TrayShowClient(int pid) => RobloxProcesses.FocusInTurn(pid);
 
     /// <summary>The menu's Multi-Roblox item: only off while on, like the sidebar's switch (turning on asks first, in the
     /// page). With Multi-Roblox only, both ways (its warning was answered when that was chosen).</summary>

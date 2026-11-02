@@ -16,9 +16,11 @@ export interface TrayState {
   presets: { id: string; name: string }[];
   accounts: { id: string; name: string; running: boolean; avatar: string | null }[];
   clients: { id: string; name: string; game: string; pid: number; ramMb: number; avatar: string | null }[];
+  /** The macros, and whether each one's panel is showing. */
+  macros?: { id: string; name: string; shown: boolean }[];
 }
 export interface TrayApi {
-  /** A command: open, mini, multi ({ on }), account / preset ({ id }), newRoblox, closeAll, show ({ pid }), closeClient ({ id }), quit, hide. */
+  /** A command: open, mini, multi ({ on }), account / preset / panel ({ id }: shows or hides that macro's panel), newRoblox, closeAll, show ({ pid }), closeClient ({ id }), quit, hide. */
   act(what: string, args?: Record<string, unknown>): void;
   /** The page's size in its own pixels, for the window around it, and which opening it has drawn. */
   size(width: number, height: number, opened: number): void;
@@ -57,7 +59,8 @@ export function Tray({ mode, state, opened, api }: { mode: 'panel' | 'menu'; sta
   }, [opened]);
   // A page whose list emptied meanwhile (the vault locked, the last preset deleted): back to the first.
   useEffect(() => {
-    if (page === 'accounts' && !(state.open && state.accounts.length) || page === 'presets' && !(state.open && state.presets.length)) setPage('home');
+    if (page === 'accounts' && !(state.open && state.accounts.length) || page === 'presets' && !(state.open && state.presets.length)
+      || page === 'macros' && !(state.open && state.macros?.length)) setPage('home');
   }, [state, page]);
   // The window takes the page's size: measured after each drawing.
   useLayoutEffect(() => {
@@ -205,6 +208,8 @@ function Menu({ s, page, go, api }: { s: TrayState; page: string; go: (p: string
     </button>)}</div></>;
   if (page === 'presets') return <>{back(t('tray.runPreset'))}
     <div className="tray-list">{s.presets.map(p => item('layers', p.name, () => api.act('preset', { id: p.id })))}</div></>;
+  if (page === 'macros') return <>{back(t('tray.macros'))}
+    <div className="tray-list">{(s.macros ?? []).map(m => item('keyboard', m.name, () => api.act('panel', { id: m.id }), { checked: m.shown, title: t(m.shown ? 'tray.panelHide' : 'tray.panelShow') }))}</div></>;
   if (page === 'multi') return <>{back('Multi-Roblox')}
     {s.multi === 'notReady' && s.open && !s.multiOnly ? item('wrench', t('tray.fix'), () => api.act('open')) : null}
     {canSwitch(s, on) ? item('power', t(on ? 'tray.turnOff' : 'tray.turnOn'), () => api.act('multi', { on }))
@@ -223,6 +228,7 @@ function Menu({ s, page, go, api }: { s: TrayState; page: string; go: (p: string
     <div className="tray-sep" />
     {s.open && s.accounts.length ? item('play', t('tray.playAs'), () => go('accounts'), { sub: true }) : null}
     {s.open && s.presets.length ? item('layers', t('tray.runPreset'), () => go('presets'), { sub: true }) : null}
+    {s.open && s.macros?.length ? item('keyboard', t('tray.macros'), () => go('macros'), { sub: true }) : null}
     {item('userPlus', t('tray.newWindow'), () => api.act('newRoblox'), { title: t('tray.newTip') })}
     {item('layers', 'Multi-Roblox', () => go('multi'), { sub: true, id: 'multi', value: t(s.multi === 'ready' ? 'tray.on' : s.multi === 'notReady' ? 'tray.notReady' : 'tray.off') })}
     <div className="tray-sep" />

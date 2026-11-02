@@ -13,6 +13,7 @@ public sealed partial class AppController
     const int MaxRecentPlaySessions = 20000;
     static readonly TimeSpan RecentPlay = TimeSpan.FromDays(31);
     const int MaxTopGames = 8;
+    const int MaxTimelineAccounts = 30;
     /// <summary>A client still without a log after this long is counted from its launch, as playing what it was opened with.</summary>
     static readonly TimeSpan NoLogGrace = TimeSpan.FromSeconds(45);
     /// <summary>The open stay of each account with a client here (the same objects as in the vault's list).</summary>
@@ -335,6 +336,9 @@ public sealed partial class AppController
         var byPreset = new Dictionary<Guid, (double Seconds, int Sessions, int Kicks, HashSet<Guid> Accounts)>();
         var noPreset = (Seconds: 0.0, Sessions: 0, Kicks: 0, Accounts: new HashSet<Guid>());
         (double Seconds, PlaySession? Stay) longest = (0, null);
+        var segments = new Dictionary<Guid, List<object>>();
+        // Each account's time per game, for its most played one.
+        var accountGames = new Dictionary<(Guid Account, string Game), double>();
         foreach (var s in vault.Data.PlaySessions)
         {
             if (only is not null && !only.Contains(s.AccountId))
@@ -373,6 +377,20 @@ public sealed partial class AppController
             string key = universe > 0 ? $"u{universe}" : $"p{s.PlaceId}";
             var game = byGame.GetValueOrDefault(key);
             byGame[key] = (game.PlaceId == 0 ? s.PlaceId : game.PlaceId, universe, s.GameName.Length > 0 ? s.GameName : game.Name ?? "", game.Seconds + seconds, game.Sessions + 1);
+            accountGames[(s.AccountId, key)] = accountGames.GetValueOrDefault((s.AccountId, key)) + seconds;
+            if (seconds > 0)
+            {
+                if (!segments.TryGetValue(s.AccountId, out var row))
+                    segments[s.AccountId] = row = [];
+                row.Add(new
+                {
+                    from,
+                    to = end,
+                    game = key,
+                    name = s.GameName.Length > 0 ? s.GameName : _games.GetValueOrDefault(s.PlaceId)?.Name,
+                    reason = kicked ? PlayLosses.KindOf(s.ReasonCode) : null,
+                });
+            }
             for (int i = 0; i < starts.Count && seconds > 0; i++)
             {
                 var bucketEnd = i + 1 < starts.Count ? starts[i + 1] : now;
@@ -383,11 +401,45 @@ public sealed partial class AppController
             }
         }
 
+        string GameNameOf(string key)
+        {
+            var g = byGame[key];
+            return g.Name.Length > 0 ? g.Name : _games.GetValueOrDefault(g.PlaceId)?.Name is { Length: > 0 } cached ? cached : L.F("Place {0}", g.PlaceId);
+        }
+        string? GameIconOf(string key) => IconOf(byGame[key].PlaceId, byGame[key].UniverseId);
+        object? TopGameOf(Guid account) => accountGames.Where(e => e.Key.Account == account).OrderByDescending(e => e.Value)
+            .Select(e => new { key = e.Key.Game, name = GameNameOf(e.Key.Game), iconUrl = GameIconOf(e.Key.Game) }).FirstOrDefault();
+
+        // The period before, as far into it as this one has gone (today against yesterday up to this time), when the
+        // records reach back that far.
+        var previousSince = since - (hourly ? TimeSpan.FromDays(1) : TimeSpan.FromDays(days));
+        var previousEnd = previousSince + (now - since);
+        object? previous = null;
+        var counted = vault.Data.PlaySessions.Where(s => only is null || only.Contains(s.AccountId)).ToList();
+        if (counted.Count > 0 && counted.Min(s => s.StartedAt) <= previousSince)
+        {
+            double previousSeconds = 0;
+            int previousKicks = 0;
+            foreach (var s in counted)
+            {
+                var a = s.StartedAt > previousSince ? s.StartedAt : previousSince;
+                var b = s.EndedAt is { } ended && ended < previousEnd ? ended : previousEnd;
+                if (s.StartedAt < previousEnd && b > a)
+                    previousSeconds += (b - a).TotalSeconds;
+                if (s.EndReason == "disconnected" && s.EndedAt >= previousSince && s.EndedAt < previousEnd)
+                    previousKicks++;
+            }
+            previous = new { totalSeconds = (long)previousSeconds, kicks = previousKicks };
+        }
+
         return new
         {
             days,
             hourly,
             since,
+            previous,
+            icons = byGame.Keys.Select(key => (key, url: GameIconOf(key))).Where(i => i.url is not null).ToDictionary(i => i.key, i => i.url),
+            ends = rolling ? now : today.AddDays(1).ToUniversalTime(),
             recorded = vault.Data.PlaySessions.Count > 0,
             totalSeconds = (long)total,
             sessions,
@@ -405,12 +457,17 @@ public sealed partial class AppController
                     seconds = (long)a.Value.Seconds,
                     a.Value.Sessions,
                     a.Value.Kicks,
+                    topGame = TopGameOf(a.Key),
                 };
             }),
-            games = byGame.Values.OrderByDescending(g => g.Seconds).Take(MaxTopGames).Select(g => new
+            timeline = byAccount.OrderByDescending(a => a.Value.Seconds).Where(a => segments.ContainsKey(a.Key)).Take(MaxTimelineAccounts)
+                .Select(a => new { id = a.Key, segments = segments[a.Key] }),
+            losses = PlayLosses.Of(vault.Data.PlaySessions.Where(s => only is null || only.Contains(s.AccountId)).ToList(), since, now),
+            games = byGame.OrderByDescending(g => g.Value.Seconds).Take(MaxTopGames).Select(g => (g.Key, g.Value.PlaceId, g.Value.UniverseId, g.Value.Name, g.Value.Seconds, g.Value.Sessions)).Select(g => new
             {
+                key = g.Key,
                 g.PlaceId,
-                name = g.Name.Length > 0 ? g.Name : _games.GetValueOrDefault(g.PlaceId)?.Name is { Length: > 0 } cached ? cached : L.F("Place {0}", g.PlaceId),
+                name = GameNameOf(g.Key),
                 iconUrl = IconOf(g.PlaceId, g.UniverseId),
                 seconds = (long)g.Seconds,
                 g.Sessions,

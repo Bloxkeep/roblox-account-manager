@@ -45,6 +45,7 @@ sealed class RobloxInput : IDisposable
 
     [DllImport("user32.dll", SetLastError = true)] static extern bool RegisterRawInputDevices(RAWINPUTDEVICE[] devices, uint count, uint size);
     [DllImport("user32.dll")] static extern uint GetRawInputData(IntPtr input, uint command, out RAWINPUTHEADER data, ref uint size, uint headerSize);
+    [DllImport("user32.dll")] static extern uint GetRawInputData(IntPtr input, uint command, byte[] data, ref uint size, uint headerSize);
     [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT point);
     [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT point);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
@@ -55,7 +56,7 @@ sealed class RobloxInput : IDisposable
 
     const int WM_INPUT = 0x00FF;
     const uint WM_QUIT = 0x0012;
-    const uint RID_HEADER = 0x10000005, RIM_TYPEMOUSE = 0, RIM_TYPEKEYBOARD = 1;
+    const uint RID_HEADER = 0x10000005, RID_INPUT = 0x10000003, RIM_TYPEMOUSE = 0, RIM_TYPEKEYBOARD = 1;
     const uint RIDEV_INPUTSINK = 0x100, RIDEV_REMOVE = 0x1;
     const ushort GenericDesktop = 1, Mouse = 2, Keyboard = 6;
     static readonly IntPtr HWND_MESSAGE = -3;
@@ -118,6 +119,15 @@ sealed class RobloxInput : IDisposable
         ], 2, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
     }
 
+    long _personAt;
+
+    /// <summary>When a person last used a keyboard or mouse anywhere (UTC), or null: macros wait while they do.</summary>
+    public DateTime? PersonAt => Interlocked.Read(ref _personAt) is var ticks && ticks > 0 ? new DateTime(ticks, DateTimeKind.Utc) : null;
+
+    /// <summary>While set (a macro being recorded), each relative mouse move of a person's mouse (x, y, raw units), on
+    /// this thread: Roblox keeps the pointer still while the camera turns, so where the pointer goes says nothing.</summary>
+    public Action<int, int>? MouseMoved { get; set; }
+
     /// <summary>When the person's own input last reached this process's window (UTC), or null.</summary>
     public DateTime? ReachedAt(int pid)
     {
@@ -139,6 +149,9 @@ sealed class RobloxInput : IDisposable
             return;
         bool keyboard = header.dwType == RIM_TYPEKEYBOARD;
         var now = DateTime.UtcNow;
+        Interlocked.Exchange(ref _personAt, now.Ticks);
+        if (!keyboard && MouseMoved is { } moved)
+            Moved(input, size, moved);
         if (!keyboard)
         {
             if (now - _mouseLookedAt < MouseLook)
@@ -155,6 +168,26 @@ sealed class RobloxInput : IDisposable
                 _reached.Clear(); // only the last few minutes matter; this keeps the list to the windows in use
             _reached[pid] = now;
         }
+    }
+
+    /// <summary>RAWMOUSE after the header: usFlags (2 bytes, then 2 of padding), the button data (4), ulRawButtons (4),
+    /// lLastX, lLastY.</summary>
+    static void Moved(IntPtr input, uint headerSize, Action<int, int> moved)
+    {
+        const ushort MOUSE_MOVE_ABSOLUTE = 1;
+        uint size = 0;
+        GetRawInputData(input, RID_INPUT, null!, ref size, headerSize);
+        if (size < headerSize + 20 || size > 256)
+            return;
+        var data = new byte[size];
+        if (GetRawInputData(input, RID_INPUT, data, ref size, headerSize) == uint.MaxValue)
+            return;
+        int at = (int)headerSize;
+        if ((BitConverter.ToUInt16(data, at) & MOUSE_MOVE_ABSOLUTE) != 0)
+            return; // a tablet or remote desktop: positions, not moves
+        int x = BitConverter.ToInt32(data, at + 12), y = BitConverter.ToInt32(data, at + 16);
+        if (x != 0 || y != 0)
+            moved(x, y);
     }
 
     static int UnderPointer()

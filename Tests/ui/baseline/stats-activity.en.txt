@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
         button.nav [title="Game monitor"]
           svg.i #1e3syqr
           span "Game monitor"
@@ -225,6 +229,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
         button.nav [title="Game monitor"]
           svg.i #1e3syqr
           span "Game monitor"

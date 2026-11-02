@@ -142,7 +142,7 @@ static class AntiAfk
         }
     }
 
-    static uint LastInputTick()
+    internal static uint LastInputTick()
     {
         var info = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
         return GetLastInputInfo(ref info) ? info.dwTime : 0;
@@ -162,12 +162,33 @@ static class AntiAfk
         return TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - last));
     }
 
+    /// <summary>The person's last input (GetLastInputInfo's tick), our own sends left out.</summary>
+    internal static uint PersonTick()
+    {
+        uint last = LastInputTick();
+        return last == _ownInput ? _personInput : last;
+    }
+
+    /// <summary>
+    /// Our own input went out (a macro's turn, AntiAfk's own nudges do this themselves): the PC's last input now is ours,
+    /// and the person's stays <paramref name="person"/> (<see cref="PersonTick"/> read before sending).
+    /// </summary>
+    internal static void NoteOwnInput(uint person)
+    {
+        _ownInput = LastInputTick();
+        _personInput = person;
+    }
+
     /// <summary>Input within <see cref="UserIdleNeeded"/>; our own nudges don't count.</summary>
     public static bool PersonActive()
     {
         uint last = LastInputTick();
         return last != _ownInput && TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - last)) < UserIdleNeeded;
     }
+
+    /// <summary>A window left as it is (in view): only its place in the stack is noted, to go back to.</summary>
+    internal static Before Note(IntPtr hWnd, (IntPtr Above, int Depth) place) =>
+        new(hWnd, GetWindowLong(hWnd, GWL_EXSTYLE), false, 0, 255, 0, place.Above, place.Depth, false);
 
     /// <summary>A Roblox window as it was before a nudge; Above is the window it goes back under.</summary>
     internal sealed record Before(IntPtr Window, int ExStyle, bool HadAttributes, uint Key, byte Alpha, uint Flags, IntPtr Above, int Depth, bool Minimized);
@@ -264,7 +285,7 @@ static class AntiAfk
     /// The nearest shown, not-topmost window above, and the depth. Hidden ones don't count: a program's hidden
     /// input-method window rides along with its front window, so going back under one would leave the window in front.
     /// </summary>
-    static (IntPtr Above, int Depth) Place(IntPtr hWnd)
+    internal static (IntPtr Above, int Depth) Place(IntPtr hWnd)
     {
         IntPtr above = IntPtr.Zero;
         int depth = 0;
@@ -275,14 +296,20 @@ static class AntiAfk
     }
 
     /// <summary>A minimized one also loses Windows' restore animation, which the taskbar would show.</summary>
-    internal static Before Hide(IntPtr hWnd, (IntPtr Above, int Depth) place, bool minimized)
+    internal static Before Hide(IntPtr hWnd, (IntPtr Above, int Depth) place, bool minimized) => Hidden(hWnd, place, minimized, clickThrough: true);
+
+    /// <summary><see cref="Hide(IntPtr, ValueTuple{IntPtr, int}, bool)"/> for a macro's turn: its clicks must land on it
+    /// (alpha 1 still takes them), so it isn't made click-through.</summary>
+    internal static Before HideForInput(IntPtr hWnd, (IntPtr Above, int Depth) place, bool minimized) => Hidden(hWnd, place, minimized, clickThrough: false);
+
+    static Before Hidden(IntPtr hWnd, (IntPtr Above, int Depth) place, bool minimized, bool clickThrough)
     {
         int ex = GetWindowLong(hWnd, GWL_EXSTYLE);
         uint key = 0, flags = 0;
         byte alpha = 255;
         bool had = (ex & WS_EX_LAYERED) != 0 && GetLayeredWindowAttributes(hWnd, out key, out alpha, out flags);
         var before = new Before(hWnd, ex, had, key, alpha, flags, place.Above, place.Depth, minimized);
-        SetWindowLong(hWnd, GWL_EXSTYLE, ex | WS_EX_LAYERED | WS_EX_TRANSPARENT);
+        SetWindowLong(hWnd, GWL_EXSTYLE, ex | WS_EX_LAYERED | (clickThrough ? WS_EX_TRANSPARENT : 0));
         SetLayeredWindowAttributes(hWnd, 0, HiddenAlpha, LWA_ALPHA);
         if (minimized)
             Animations(hWnd, false);
@@ -323,7 +350,7 @@ static class AntiAfk
     /// Windows may refuse to hand the keyboard back (a click landed meanwhile): made topmost for an instant, your
     /// window comes back on top all the same.
     /// </summary>
-    static void GiveBack(IntPtr previous)
+    internal static void GiveBack(IntPtr previous)
     {
         if (previous == IntPtr.Zero || !IsWindow(previous))
             return;
@@ -356,6 +383,7 @@ static class AntiAfk
 
     /// <summary>
     /// Undoes a nudge cut short by Bloxkeep closing; told apart by <see cref="HiddenAlpha"/>, which nothing else uses.
+    /// A macro's turn leaves its unseen window layered but not click-through: undone the same way.
     /// </summary>
     public static void Recover(IEnumerable<IntPtr> windows)
     {
@@ -363,7 +391,7 @@ static class AntiAfk
         foreach (var w in windows)
         {
             int ex = GetWindowLong(w, GWL_EXSTYLE);
-            if ((ex & ours) != ours || !GetLayeredWindowAttributes(w, out _, out byte alpha, out uint flags) || (flags & LWA_ALPHA) == 0 || alpha != HiddenAlpha
+            if ((ex & WS_EX_LAYERED) == 0 || !GetLayeredWindowAttributes(w, out _, out byte alpha, out uint flags) || (flags & LWA_ALPHA) == 0 || alpha != HiddenAlpha
                 || IsHungAppWindow(w))
                 continue;
             SetWindowLong(w, GWL_EXSTYLE, ex & ~ours);
@@ -375,7 +403,7 @@ static class AntiAfk
     /// <summary>
     /// Windows only lets the app that last received input do it, so the foreground thread's input is shared meanwhile.
     /// </summary>
-    static bool Focus(IntPtr hWnd)
+    internal static bool Focus(IntPtr hWnd)
     {
         IntPtr foreground = GetForegroundWindow();
         if (foreground == hWnd)

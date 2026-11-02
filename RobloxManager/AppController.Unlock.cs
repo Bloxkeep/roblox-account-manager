@@ -215,6 +215,8 @@ public sealed partial class AppController
         if (_vault is not null)
             RememberSchedulesForLock();
         _ = FinalDiscordBoard(closing: false);
+        StopMacrosForLock(); // what plays and records stops with the vault
+        ClosePanelsForLock();
         // Nothing looks after the windows while locked (a window opened from the taskbar stayed limited, at low priority).
         LiftRamLimits();
         _autoRam.Clear();

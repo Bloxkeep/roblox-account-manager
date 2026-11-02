@@ -116,7 +116,7 @@ export function RobloxPage({ title }: { title: string }) {
 const LEVELS = [
   { id: 'light', load: 1, rc: { mode: 'all', graphics: 1, fps: 20, volume: 0 }, ramLimitMb: -1, trimBackground: true, splitCores: true },
   { id: 'medium', load: 2, rc: { mode: 'all', graphics: 3, fps: 45, volume: -1 }, ramLimitMb: 0, trimBackground: true, splitCores: true },
-  { id: 'off', load: 3, rc: { mode: 'off', graphics: 0, fps: 0, volume: -1 }, ramLimitMb: 0, trimBackground: false, splitCores: false },
+  { id: 'off', load: 3, rc: { mode: 'off', graphics: 0, fps: 0, volume: -1 }, ramLimitMb: 0, trimBackground: false, splitCores: false, fastFlags: false },
 ];
 
 export function RobloxConfig() {
@@ -126,7 +126,7 @@ export function RobloxConfig() {
   const chosen = (app.accounts || []).filter((a: { useRobloxConfig?: boolean }) => a.useRobloxConfig).length;
   const ownFps = (app.accounts || []).filter((a: { fpsCap?: number }) => a.fpsCap).length;
   const st = app.settings || {};
-  const level = LEVELS.find(l => (l.rc.mode === 'off' ? rc.mode === 'off'
+  const level = LEVELS.find(l => (l.rc.mode === 'off' ? rc.mode === 'off' && !st.fastFlags
       : rc.mode === l.rc.mode && rc.graphics === l.rc.graphics && rc.fps === l.rc.fps && rc.volume === l.rc.volume)
     && (st.ramLimitMb || 0) === l.ramLimitMb && !!st.trimBackground === l.trimBackground && !!st.splitCores === l.splitCores)?.id;
   // Custom is shown on request, or by itself once the settings match no mode.
@@ -142,6 +142,9 @@ export function RobloxConfig() {
     </div>
     <p className="rc-note" id="s-rc-reopen">{t('rc.reopen')}</p>
     {ownFps ? <p className="rc-note" id="s-rc-own-fps">{tn('rc.ownFps', ownFps)}</p> : null}
+    <Row title={t('rc.flags')} desc={t('rc.flagsDesc')}>
+      <Switch id="s-rc-flags" label={t('rc.flags')} checked={!!st.fastFlags} onChange={v => call('setSettings', { fastFlags: v })} />
+    </Row>
     {shown !== 'own' ? null : <>
     <Row title={t('rc.mode')} desc={<span id="s-rc-hint">{rc.mode === 'off' ? '' : rc.mode === 'all' ? t('rc.hint.all')
       : <>{tn('rc.hint.chosen', chosen)} <button type="button" className="link" data-act="rc-pick">{t('rc.pick')}</button></>}</span>}>

@@ -194,6 +194,9 @@ public static class Prefs
     /// <summary>The mini window's last place and size, "x,y,w,h" in screen pixels; null until it was moved.</summary>
     public static string? MiniWindow { get; set; }
 
+    /// <summary>Each macro panel's place (PanelForm.cs) by the macro's id: "x,y" in screen pixels.</summary>
+    public static Dictionary<string, string> PanelWindows { get; set; } = new();
+
     /// <summary>The main window's place and size when not maximised, "x,y,w,h" in screen pixels; null until it was first moved, resized or closed.</summary>
     public static string? MainWindow { get; set; }
 
@@ -236,7 +239,7 @@ public static class Prefs
     [
         "remoteGone",
         "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
-        "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow",
+        "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow", "panelWindows",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
         "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
         "knownVaultIds", "foreignRestore", "savedThemes",
@@ -372,6 +375,9 @@ public static class Prefs
                 MultiRobloxAtStart = true;
             if (root.TryGetProperty("miniWindow", out var miniWindow) && miniWindow.ValueKind == JsonValueKind.String)
                 MiniWindow = miniWindow.GetString();
+            if (root.TryGetProperty("panelWindows", out var panelWindows) && panelWindows.ValueKind == JsonValueKind.Object)
+                PanelWindows = panelWindows.EnumerateObject().Where(b => b.Value.ValueKind == JsonValueKind.String && b.Name.Length <= 40)
+                    .Take(200).ToDictionary(b => b.Name, b => b.Value.GetString()!);
             if (root.TryGetProperty("mainWindow", out var mainWindow) && mainWindow.ValueKind == JsonValueKind.String)
                 MainWindow = mainWindow.GetString();
             if (root.TryGetProperty("mainMaximized", out var mainMax) && mainMax.ValueKind == JsonValueKind.True)
@@ -487,7 +493,7 @@ public static class Prefs
                 ["vaults"] = VaultList.Select(v => new { id = v.Id, file = v.File, name = v.Name, picture = v.Picture, lastBackup = v.LastBackup, backupPending = v.BackupPending,
                     remoteControl = v.RemoteControl, remoteKey = v.RemoteKey }).ToArray(),
                 ["lastVault"] = LastVault, ["askVault"] = AskVault,
-                ["dailySignInCheck"] = DailySignInCheck, ["lastSignInCheck"] = LastSignInCheck, ["miniOpen"] = MiniOpen, ["miniWindow"] = MiniWindow,
+                ["dailySignInCheck"] = DailySignInCheck, ["lastSignInCheck"] = LastSignInCheck, ["miniOpen"] = MiniOpen, ["miniWindow"] = MiniWindow, ["panelWindows"] = PanelWindows,
                 ["mainWindow"] = MainWindow, ["mainMaximized"] = MainMaximized,
                 ["robloxHistory"] = RobloxHistory.Select(h => new { at = h.At, version = h.Version, folder = h.Folder, source = h.Source, first = h.First }).ToArray(),
                 ["robloxClosedAt"] = RobloxClosedAt, ["robloxClosedCount"] = RobloxClosedCount, ["robloxClosedNotified"] = RobloxClosedNotified,

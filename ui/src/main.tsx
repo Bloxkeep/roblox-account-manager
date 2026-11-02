@@ -15,6 +15,8 @@ import { Palette, type PaletteEntry } from './Palette';
 import { PasswordLogin, type PasswordLoginApi } from './PasswordLogin';
 import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
+import { MacroEditor, type MacroEditorApi } from './MacroEditor';
+import type { Macro } from './macros';
 import { QuickLogin, type QuickLoginApi } from './QuickLogin';
 import { Servers } from './Servers';
 import { AskBody, DiscordLinkBody, ErrorsBody, MenuItems, ModalFrame, SaveServerBody, Toasts, WhatsNewTitle, type MenuItem, type ModalOpts, type ToastsApi } from './Overlays';
@@ -119,6 +121,12 @@ const BloxkeepUI = {
   presetForm(el: HTMLElement, host: Host, opts: { base: PresetBase; isNew: boolean; accounts: OrderAccount[]; ticked: string[]; gone: number }) {
     const form = createRef<PresetFormApi>();
     const unmount = mount(el, host, <PresetForm {...opts} api={form} />);
+    return { unmount, form: form.current! };
+  },
+  /** The macro form into its dialog's body: Save reads form.collect(). */
+  macroEditor(el: HTMLElement, host: Host, opts: { base: Macro; isNew: boolean; accounts: { id: string; label: string }[]; macros: Macro[] }) {
+    const form = createRef<MacroEditorApi>();
+    const unmount = mount(el, host, <MacroEditor {...opts} api={form} />);
     return { unmount, form: form.current! };
   },
   /** A game's servers into the Servers dialog; chosen picks a server by its job, chosenPrivate a private server by its access code. */

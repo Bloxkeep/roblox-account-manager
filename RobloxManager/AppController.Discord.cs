@@ -277,7 +277,9 @@ public sealed partial class AppController
         Guid? preset = type.StartsWith("schedule", StringComparison.Ordinal) ? account : PresetOfAccount(account);
         if (type == "scheduleStop" && d.SummaryAfterSchedule)
             _discordSummariesDue[account] = now + DiscordAfterStop;
-        if (NotifyKind(type) is not { } kind || !d.Events.Contains(kind))
+        // A macro's alert (its alert step, or onFail "alert") is what the person asked Discord for: no switch of its own.
+        string? kind = type == "macro" ? "macro" : NotifyKind(type);
+        if (kind is null || (kind != "macro" && !d.Events.Contains(kind)))
             return;
         string key = $"{type}:{account}";
         // A time ahead of now (the clock was set back) doesn't hold the event back.
@@ -339,6 +341,7 @@ public sealed partial class AppController
         "signin" => DT("Sign-in needs renewing"),
         "banned" => DT("Account banned"),
         "ram" => DT("Low RAM"),
+        "macro" => DT("Macro alert"),
         _ => DT("Launch problem"),
     };
 

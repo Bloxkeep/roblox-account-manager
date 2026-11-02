@@ -4,9 +4,9 @@
 
 How to let several accounts play at once, what the Multi-Roblox card in the sidebar is telling you, and which program opens Roblox.
 
-<img src="../screenshots/multi-roblox-real.jpg" width="760" alt="A real screenshot of one Windows PC: five Roblox windows open at once, titled Roblox - Account 1 to Roblox - Account 5, four in the same game and the fifth joining, with Bloxkeep behind them counting 5 windows and Multi-Roblox on">
+<img src="../screenshots/multi-roblox-real.jpg" width="760" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7">
 
-A real screenshot from one PC: five accounts open at once with Bloxkeep, four in the game and the fifth joining. Names in the game are blurred.
+A real screenshot from one PC: six accounts open at once with Bloxkeep, all in the game and tiled side by side. Account names are hidden.
 
 ## Quick steps
 

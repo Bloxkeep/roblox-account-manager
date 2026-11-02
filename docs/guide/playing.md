@@ -79,7 +79,7 @@ Click the game's name under the box to open its page:
 Keep the servers you go back to in the game box's **Saved** tab.
 
 - **Save server** (under the game box) saves what the box holds: a private server's link (`privateServerLinkCode`, or a share link), or the game with the **code it asks for** when it has private servers of its own that you join by typing a code in the game. Give it a name; the same link saved again updates the one saved.
-- Pick a saved server in the **Saved** tab: a link goes in the game box, so **Play** sends the selected accounts straight there. A code goes on the clipboard and its game in the box: once in the game, paste the code where the game asks for it. Bloxkeep never types into Roblox.
+- Pick a saved server in the **Saved** tab: a link goes in the game box, so **Play** sends the selected accounts straight there. A code goes on the clipboard and its game in the box: once in the game, paste the code where the game asks for it. Bloxkeep never types your saved codes; a [macro](macros.md) types only what you put in its steps.
 - **Copy** next to a saved server copies its code again; **×** deletes it.
 
 ## Join a player

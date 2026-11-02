@@ -191,6 +191,7 @@ public sealed partial class AppController
     void OnSuspending()
     {
         _asleepTick = Environment.TickCount64;
+        StopMacrosForSleep();
         if (_vault is null)
         {
             // Stays left open by the lock end at this sleep, once unlocked (see ResumePlaySessions).

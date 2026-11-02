@@ -1,0 +1,413 @@
+// Macros (Beta): what a macro and its steps are (the app's AppSettings.Macros, the shared contract), the keys a step
+// may press, the settings a player may change on its panel (options) and the boxes it looks in (areas), the plain words
+// for a trigger or a step, and the checks before Save. The app runs them: one Roblox window at a time, each brought to
+// the front for its turn.
+
+export type Rect = { x: number; y: number; w: number; h: number };
+/** A number or colour may be one of the macro's options instead ("$o1"), an area one of its areas ("@a1"). */
+type V<X> = X | string;
+export type Test =
+  | { kind: 'image'; image: string; region?: V<Rect>; threshold?: V<number>; not?: boolean }
+  /** words: any of a list the player ticks ("$o1") counts, in place of the text. */
+  | { kind: 'text'; text: string; words?: string; region?: V<Rect>; not?: boolean }
+  | { kind: 'colour'; x: V<number>; y: V<number>; colour: string; tolerance: V<number>; region?: V<Rect>; not?: boolean }
+  | { kind: 'var'; name: string; op: string; value: number | string };
+/** A step as the editor holds it: its kind and that kind's fields (the contract's Step). */
+export type Step = { kind: string; [field: string]: any };
+export type Trigger = { kind: 'manual' | 'interval' | 'join' | 'rejoin'; everySeconds?: number };
+export type Macro = {
+  id: string; name: string; steps: Step[]; targets: 'selected' | 'all' | 'accounts'; accountIds: string[]; trigger: Trigger;
+  enabled: boolean; hotkey: number | null; jitterMs: number; jitterPx: number; maxMinutes: number; onFail: 'stop' | 'skip' | 'restart' | 'rejoin' | 'alert';
+  /** Stuck when what its steps look for hasn't been seen this long (then onFail); null: never. */
+  stuckMinutes?: number | null;
+  recordedSize?: { w: number; h: number };
+  /** What the player may change, on the macro's panel in this order (12 at most). */
+  options?: Option[];
+  /** Named boxes on the game the steps look in (8 at most). */
+  areas?: Area[];
+  /** Its small window beside the game: shown by itself while an account plays placeId. */
+  /** tabs: the panel's tabs, in order (fewer than two: none). */
+  panel?: { autoShow: boolean; placeId: number | null; tabs?: string[] };
+};
+/** A setting the player may change on the panel. The page makes it from a step's value the maker ticked: its name is
+ * never shown, its label comes from the step's sentence, its kind, range and unit from the field. A switch, a choice and a
+ * heading are added on the panel itself (FREE): an If reads the first two; a heading is a title over the rows below it.
+ * A point is {x, y}, parts of the window; tab: the panel's tab it shows on (none: the first). */
+export type Option = {
+  name: string; label: string; kind: 'number' | 'colour' | 'check' | 'key' | 'choice' | 'point' | 'list' | 'heading';
+  value: OptValue; default: OptValue; min?: number; max?: number; unit?: 'ms' | 's' | 'px' | '%' | ''; choices?: string[]; tab?: string;
+};
+export type OptValue = number | string | string[] | { x: number; y: number } | null;
+/** The settings made on the panel, not from a step's value: kept while no step names them. A list's value is the words
+ * the player ticked of its choices; a step reading text takes any of them. */
+/** A point setting's value ({x, y}), or null. */
+export const asPoint = (v: OptValue | undefined) => v && typeof v === 'object' && !Array.isArray(v) ? v : null;
+export const FREE = new Set<Option['kind']>(['check', 'choice', 'list', 'heading']);
+export const MAX_TABS = 6;
+export type Area = { name: string; label: string; colour: string; rect: Rect };
+export type RunStatus = 'waiting' | 'running' | 'paused' | 'done' | 'failed' | 'stopped';
+/** A run of a macro on one account; trial: the editor's Try it (shown there, not in the list). */
+export type MacroRun = { macroId: string; accountId: string; status: RunStatus; reason?: string; step?: number; loops?: number; startedAt: string; endsAt?: string; trial?: boolean };
+export type Recording = { accountId: string; startsAt: string; steps: number } | null;
+
+/** The app's limits (contract): 100 macros, 500 steps, names up to 60 characters, typed text up to 200. */
+export const MAX_MACROS = 100;
+export const MAX_STEPS = 500;
+export const MAX_OPTIONS = 30;
+export const MAX_AREAS = 8;
+/** Each new area's colour, in turn: told apart on the game and on the picture. */
+export const AREA_COLOURS = ['#22c55e', '#f59e0b', '#3b82f6', '#ec4899', '#a855f7', '#14b8a6', '#ef4444', '#eab308'];
+/** An image step's picture, cut from a window picture: at most this many pixels each way. */
+export const MAX_CUT = 256;
+
+const range = (from: number, to: number, f: (i: number) => string) => Array.from({ length: to - from + 1 }, (_, i) => f(from + i));
+/** The keys a step may press, by the names the app knows (it sends their scan codes). */
+export const KEYS = [
+  ...range(65, 90, c => String.fromCharCode(c)), ...range(0, 9, String), ...range(1, 12, n => `F${n}`),
+  'Space', 'Enter', 'Tab', 'Backspace', 'Escape', 'Shift', 'Ctrl', 'Alt', 'Up', 'Down', 'Left', 'Right',
+  'Insert', 'Delete', 'Home', 'End', 'PageUp', 'PageDown', 'Minus', 'Equals', 'LeftBracket', 'RightBracket',
+  'Semicolon', 'Quote', 'Comma', 'Period', 'Slash', 'Backslash', 'Backquote', ...range(0, 9, n => `Numpad${n}`),
+];
+/** How a key reads on a key cap ("[" rather than LeftBracket). */
+const CAPS: Record<string, string> = {
+  Minus: '-', Equals: '=', LeftBracket: '[', RightBracket: ']', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',
+  Backslash: '\\', Backquote: '`', Up: '↑', Down: '↓', Left: '←', Right: '→', PageUp: 'Page Up', PageDown: 'Page Down',
+};
+export const keyCap = (k: string) => CAPS[k] || (k.startsWith('Numpad') ? `Num ${k.slice(6)}` : k);
+/** Mouse buttons a Hold or Let go step may take instead of a key (charge-and-release casts). */
+export const MOUSE_KEYS = ['MouseLeft', 'MouseRight', 'MouseMiddle'];
+/** A key's or mouse button's name in words ("left mouse", "Space"). */
+export const keyName = (t: T, k: string) => MOUSE_KEYS.includes(k) ? t(`macro.mk.${k}`) : keyCap(k);
+
+/** A key pressed in the "Press a key" box, as a KEYS name; '' for one a macro can't press (Windows, Print Screen). */
+export function keyFromEvent(e: { code: string; key: string }): string {
+  const c = e.code;
+  if (/^Key[A-Z]$/.test(c)) return c.slice(3);
+  if (/^Digit\d$/.test(c)) return c.slice(5);
+  if (/^Numpad\d$/.test(c)) return c;
+  if (/^F([1-9]|1[0-2])$/.test(c)) return c;
+  const map: Record<string, string> = {
+    Space: 'Space', Enter: 'Enter', NumpadEnter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Escape: 'Escape', ShiftLeft: 'Shift', ShiftRight: 'Shift',
+    ControlLeft: 'Ctrl', ControlRight: 'Ctrl', AltLeft: 'Alt', AltRight: 'Alt', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+    Insert: 'Insert', Delete: 'Delete', Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown', Minus: 'Minus', Equal: 'Equals',
+    BracketLeft: 'LeftBracket', BracketRight: 'RightBracket', Semicolon: 'Semicolon', Quote: 'Quote', Comma: 'Comma', Period: 'Period',
+    Slash: 'Slash', Backslash: 'Backslash', Backquote: 'Backquote',
+  };
+  return map[c] || '';
+}
+
+/** The kinds a step can be, in the Add step menu's groups. Adding if or a loop adds its end too. */
+export const STEP_GROUPS: [string, string[]][] = [
+  ['keys', ['key', 'down', 'up', 'type']],
+  ['mouse', ['click', 'clickImage', 'clickColour', 'move', 'camera', 'scroll', 'follow']],
+  ['wait', ['wait', 'waitImage', 'waitText', 'waitColour', 'waitStill']],
+  ['check', ['if', 'else']],
+  ['flow', ['loop', 'loopUntil', 'break', 'stop', 'recover']],
+  ['other', ['setVar', 'addVar', 'rejoin', 'alert']],
+];
+/** The kinds most macros are made of: first in the Add step menu; the others are under More steps. */
+export const COMMON_STEPS = ['key', 'click', 'wait', 'clickImage', 'waitImage', 'waitColour', 'loop', 'if'];
+/** Each kind's icon (the page's own icon set). */
+export const STEP_ICON: Record<string, string> = {
+  key: 'keyboard', down: 'keyboard', up: 'keyboard', type: 'message', click: 'mouse', clickImage: 'image', move: 'mouse', camera: 'refresh', scroll: 'sort',
+  wait: 'clock', waitImage: 'image', waitText: 'search', waitColour: 'palette', waitStill: 'clock', if: 'chevronRight', else: 'chevronRight', endIf: 'chevronLeft',
+  loop: 'repeat', loopUntil: 'repeat', endLoop: 'chevronLeft', break: 'x', stop: 'stop', setVar: 'tag', addVar: 'tag', rejoin: 'refresh', alert: 'bell',
+  follow: 'gauge', clickColour: 'palette', recover: 'wrench',
+};
+/** Steps that look for something on the game: only a macro with one can be stuck. */
+export const LOOK_STEPS = ['waitImage', 'waitText', 'waitColour', 'waitStill', 'clickImage', 'clickColour', 'follow'];
+
+/** A new step of a kind, with the contract's defaults. */
+export function newStep(kind: string): Step {
+  switch (kind) {
+    case 'key': return { kind, key: 'Space', ms: 60 };
+    case 'down': case 'up': return { kind, key: 'W' };
+    case 'click': return { kind, x: 0.5, y: 0.5, button: 'left', double: false };
+    case 'clickImage': return { kind, image: '', button: 'left', threshold: 0.9, timeoutMs: 5000 };
+    case 'camera': return { kind, dx: 200, dy: 0, ms: 300, button: 'right' };
+    case 'scroll': return { kind, notches: -3 };
+    case 'move': return { kind, x: 0.5, y: 0.5 };
+    case 'wait': return { kind, ms: 1000 };
+    case 'waitImage': return { kind, image: '', threshold: 0.9, timeoutMs: 30000, gone: false };
+    case 'waitText': return { kind, text: '', timeoutMs: 30000, gone: false };
+    case 'waitColour': return { kind, x: 0.5, y: 0.5, colour: '#ffffff', tolerance: 24, timeoutMs: 30000, gone: false };
+    case 'waitStill': return { kind, ms: 2000, timeoutMs: 30000 };
+    case 'if': return { kind, test: { kind: 'text', text: '' } };
+    case 'loop': return { kind, times: 0 };
+    case 'loopUntil': return { kind, test: { kind: 'text', text: '' }, max: 0 };
+    case 'type': return { kind, text: '' };
+    case 'setVar': return { kind, name: 'count', value: 0 };
+    case 'addVar': return { kind, name: 'count', value: 1 };
+    case 'alert': return { kind, text: '', picture: false };
+    // Keeps a moving marker on a target (a reel or charge bar): the area to watch and the two colours are set after.
+    case 'follow': return { kind, target: '#22c55e', marker: '#ffffff', tolerance: 24, button: 'left', mode: 'onOff', predict: false, kp: 1, kd: 0.4, fps: 60, untilGoneMs: 1000, timeoutMs: 30000 };
+    // Clicks a patch of a colour wherever it shows in the area (buttons popping up at random spots), again while it keeps showing.
+    case 'clickColour': return { kind, colour: '#ffffff', tolerance: 24, minSize: 4, button: 'left', timeoutMs: 30000 };
+    default: return { kind };
+  }
+}
+/** What Add step puts in: a block's opening step with its end. */
+export const stepsToAdd = (kind: string): Step[] =>
+  kind === 'if' ? [newStep('if'), newStep('endIf')] : kind === 'loop' || kind === 'loopUntil' ? [newStep(kind), newStep('endLoop')] : [newStep(kind)];
+
+export const newTest = (kind: string): Test =>
+  kind === 'image' ? { kind, image: '', threshold: 0.9 } : kind === 'colour' ? { kind, x: 0.5, y: 0.5, colour: '#ffffff', tolerance: 24 }
+    : kind === 'var' ? { kind, name: 'count', op: '>=', value: 1 } : { kind: 'text', text: '' };
+
+/** A new, empty macro: by hand, on the accounts selected in the Accounts tab. */
+export const blankMacro = (): Macro => ({
+  id: '', name: '', steps: [], targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null,
+  jitterMs: 40, jitterPx: 3, maxMinutes: 10, onFail: 'stop', stuckMinutes: 5, options: [], areas: [], panel: { autoShow: false, placeId: null },
+});
+
+/** The built-in templates, the app's own (macroTemplates): macros with their options and areas filled in. A template's
+ * steps may name fields the player still has to set for their game (todo: 'region', 'colour'…): the form lists those
+ * on top until done. */
+export type MacroTemplate = Macro & { about?: string; icon?: string };
+export type Templates = { macros: MacroTemplate[] };
+
+/** A setting or area reference in a step: "$o1" (an option), "@a1" (an area). */
+export const isOpt = (v: unknown): v is string => typeof v === 'string' && /^\$[A-Za-z_][A-Za-z0-9_]{0,23}$/.test(v);
+export const isArea = (v: unknown): v is string => typeof v === 'string' && /^@[A-Za-z_][A-Za-z0-9_]{0,23}$/.test(v);
+/** The first free name with this prefix: o1, o2… or a1, a2… */
+export const freeName = (prefix: string, taken: { name: string }[]) => {
+  for (let n = 1; ; n++) if (!taken.some(x => x.name === prefix + n)) return prefix + n;
+};
+/** The counters a macro keeps (its Set and Add steps' names): each shows on its panel. */
+export const counters = (m: Pick<Macro, 'steps'>) => [...new Set(m.steps.filter(s => s.kind === 'setVar' || s.kind === 'addVar').map(s => String(s.name || '').trim()).filter(Boolean))];
+/** The steps with a point on the window (a numbered dot): its number is the step's. */
+export const pointOf = (s: Step, options: Option[] = []): { x: number; y: number } | null =>
+  ['click', 'move'].includes(s.kind) || (s.kind === 'waitColour' && !s.region) ? (typeof s.x === 'number' && typeof s.y === 'number' ? { x: s.x, y: s.y }
+    : isOpt(s.x) ? asPoint(options.find(o => '$' + o.name === s.x && o.kind === 'point')?.value) : null)
+    : (s.kind === 'if' || s.kind === 'loopUntil') && s.test?.kind === 'colour' && !s.test.region && typeof s.test.x === 'number' && typeof s.test.y === 'number' ? { x: s.test.x, y: s.test.y }
+    : null;
+
+/** A macro from before areas: each box drawn on a step becomes one of its areas ("Area 1"…), the step pointing at it. */
+export function withAreas(t: T, m: Macro): Macro {
+  const areas = [...(m.areas || [])];
+  const box = (r: unknown) => {
+    if (!r || typeof r !== 'object') return r;
+    const name = freeName('a', areas);
+    areas.push({ name, label: t('macro.area.n', { n: areas.length + 1 }), colour: AREA_COLOURS[areas.length % AREA_COLOURS.length], rect: r as Rect });
+    return '@' + name;
+  };
+  const steps = m.steps.map(s => {
+    let out = s;
+    if (s.region && typeof s.region === 'object') out = { ...out, region: box(s.region) };
+    if (s.test?.region && typeof s.test.region === 'object') out = { ...out, test: { ...s.test, region: box(s.test.region) } };
+    return out;
+  });
+  return { ...m, steps, areas, options: m.options || [], panel: m.panel || { autoShow: false, placeId: null } };
+}
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+/** "45 s", "5 min", "1 h 30 min": a length of time in plain words. */
+export function durText(t: T, seconds: number): string {
+  const s = Math.round(seconds);
+  if (s < 60) return t('macro.dur.s', { n: s });
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  return [h ? t('macro.dur.h', { n: h }) : '', m ? t('macro.dur.min', { n: m }) : '', r ? t('macro.dur.s', { n: r }) : ''].filter(Boolean).join(' ');
+}
+/** A time in words, kept in milliseconds, said in seconds ("0.6 s", "2 min"). */
+export const msText = (t: T, ms: number) => ms < 60000 && ms % 1000 ? t('macro.dur.s', { n: +(ms / 1000).toFixed(2) }) : durText(t, ms / 1000);
+
+/** When it runs, in plain words: "Every 5 min", "After joining", "Ctrl+Alt+3". */
+export function triggerParts(t: T, m: Macro): string[] {
+  const tr = m.trigger || { kind: 'manual' };
+  const when = tr.kind === 'interval' ? t('macro.trig.every', { d: durText(t, tr.everySeconds || 60) })
+    : tr.kind === 'join' ? t('macro.trig.join') : tr.kind === 'rejoin' ? t('macro.trig.rejoin') : m.hotkey ? '' : t('macro.trig.manual');
+  return [when, m.hotkey ? `Ctrl+Alt+${m.hotkey}` : ''].filter(Boolean);
+}
+
+/** What a step's sentence needs of its macro: the values of its options and the labels of its areas. */
+export type Ctx = Pick<Macro, 'options' | 'areas'>;
+/** A value, or the option it stands for. */
+export const valueOf = (m: Ctx | undefined, v: unknown) => isOpt(v) ? m?.options?.find(o => '$' + o.name === v)?.value ?? '' : v;
+/** Where a step looks, in words: "in Fish area", or "anywhere" on the window. */
+export function areaText(t: T, r: unknown, m?: Ctx): string {
+  if (isArea(r)) return t('macro.s.inArea', { area: m?.areas?.find(a => '@' + a.name === r)?.label || t('macro.s.gone') });
+  return t('macro.s.anywhere');
+}
+const button = (t: T, b: unknown) => t(`macro.s.b.${b === 'right' || b === 'middle' ? b : 'left'}`);
+/** A camera turn's direction from its drag (dx, dy). */
+export const camDir = (s: Step) => Math.abs(Number(s.dx) || 0) >= Math.abs(Number(s.dy) || 0) ? (Number(s.dx) < 0 ? 'left' : 'right') : (Number(s.dy) < 0 ? 'up' : 'down');
+
+/** What a step does as a sentence ("Hold the left button for 0.6 s at point 2", "Wait until the colour shows in Fish
+ * area"): its row's text. Points are numbered after their step (n). */
+export function stepText(t: T, s: Step, m?: Ctx, n = 0): string {
+  const v = (x: unknown) => valueOf(m, x);
+  const ms = (x: unknown) => { const y = v(x); return typeof y === 'number' ? msText(t, y) : '…'; };
+  const where = areaText(t, s.region, m);
+  const shows = s.gone ? 'gone' : 'shows';
+  switch (s.kind) {
+    case 'key': return t('macro.s.key', { k: keyName(t, String(v(s.key))) });
+    case 'down': return t('macro.s.down', { k: keyName(t, s.key) });
+    case 'up': return t('macro.s.up', { k: keyName(t, s.key) });
+    case 'type': return t('macro.s.type', { text: String(s.text || '…') });
+    case 'click': return s.holdMs ? t('macro.s.clickHold', { b: button(t, s.button), d: ms(s.holdMs), n })
+      : t(s.double ? 'macro.s.dblClick' : 'macro.s.click', { b: button(t, s.button), n });
+    case 'clickImage': return t('macro.s.clickImage', { where });
+    case 'clickColour': return t(s.eachAfterMs != null ? 'macro.s.clickEach' : 'macro.s.clickColour', { where });
+    case 'move': return t('macro.s.move', { n });
+    case 'camera': return t('macro.s.camera', { dir: t(`macro.e.dir.${camDir(s)}`) });
+    case 'scroll': return t(Number(s.notches) > 0 ? 'macro.s.scrollUp' : 'macro.s.scrollDown', { n: Math.abs(Number(s.notches) || 0) });
+    case 'wait': return t('macro.s.wait', { d: ms(s.ms) });
+    case 'waitImage': return t(`macro.s.waitImage.${shows}`, { where });
+    case 'waitText': return s.words ? t(`macro.s.waitWords.${shows}`, { name: listName(s.words, m), where })
+      : t(`macro.s.waitText.${shows}`, { text: String(s.text || '…'), where });
+    case 'waitColour': return t(`macro.s.waitColour.${shows}`, { where: s.region ? where : t('macro.s.atPoint', { n }) });
+    case 'waitStill': return t('macro.s.waitStill', { d: ms(s.ms) });
+    case 'if': case 'loopUntil': {
+      const test = s.test as Test | undefined;
+      const lead = t(s.kind === 'if' ? 'macro.s.if' : 'macro.s.until');
+      if (!test) return lead;
+      if (test.kind === 'var') {
+        // A switch or choice the player sets: by its label, "on"/"off" for a switch.
+        const o = m?.options?.find(x => x.name === test.name);
+        if (o?.kind === 'check') return `${lead} ${t(test.value ? 'macro.s.switchOn' : 'macro.s.switchOff', { name: o.label })}`;
+        return `${lead} ${t(o ? 'macro.s.settingIs' : 'macro.s.counterIs', { name: o?.label || test.name || '…', op: t(`macro.e.op.${test.op}`), v: String(v(test.value)) })}`;
+      }
+      const at = test.region ? areaText(t, test.region, m) : test.kind === 'colour' ? t('macro.s.atPoint', { n }) : t('macro.s.anywhere');
+      const what = test.kind === 'text' ? (test.words ? t('macro.s.theWords', { name: listName(test.words, m) }) : t('macro.s.theText', { text: test.text || '…' })) : t(`macro.s.the.${test.kind}`);
+      return `${lead} ${t(test.not ? 'macro.s.isGone' : 'macro.s.shows', { what, where: at })}`;
+    }
+    case 'loop': return s.times ? t('macro.s.loopN', { n: String(v(s.times)) }) : t('macro.s.loop');
+    case 'setVar': return t('macro.s.setVar', { name: s.name || '…', v: String(v(s.value)) });
+    case 'addVar': return t('macro.s.addVar', { name: s.name || '…', v: String(v(s.value)) });
+    case 'alert': return t(s.picture ? 'macro.s.alertPic' : 'macro.s.alert');
+    case 'follow': return t('macro.s.follow', { where });
+    case 'recover': return t('macro.s.recover');
+    default: return t(`macro.kind.${s.kind}`);
+  }
+}
+
+/** How deep each step sits in if and loop blocks (its own end at its opener's depth). */
+export function depths(steps: Step[]): number[] {
+  let d = 0;
+  return steps.map(s => {
+    if (s.kind === 'endIf' || s.kind === 'endLoop') d = Math.max(0, d - 1);
+    const mine = s.kind === 'else' ? Math.max(0, d - 1) : d;
+    if (s.kind === 'if' || s.kind === 'loop' || s.kind === 'loopUntil') d++;
+    return mine;
+  });
+}
+
+export type Problem = { step: number | null; text: string; warn?: boolean; field?: string };
+const okNum = (v: unknown, min: number, max: number) => isOpt(v) || (typeof v === 'number' && isFinite(v) && v >= min && v <= max);
+const okColour = (v: unknown) => isOpt(v) || (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v));
+const imageKinds = ['clickImage', 'waitImage'];
+
+/** What stops it from saving (and a warning or two that don't), each tied to its step: the app checks the same. */
+export function problems(t: T, m: Macro, macros: Macro[]): Problem[] {
+  const out: Problem[] = [];
+  const add = (step: number | null, key: string, vars?: Record<string, string | number>, warn = false, field?: string) =>
+    out.push({ step, text: t(key, { ...vars, n: step === null ? '' : step + 1 }), warn, field });
+  if (!m.name.trim()) add(null, 'macro.err.name', {}, false, 'name');
+  else if (macros.some(o => o.id !== m.id && o.name.trim().toLowerCase() === m.name.trim().toLowerCase())) add(null, 'macro.err.sameName', {}, true, 'name');
+  if (m.targets === 'accounts' && !m.accountIds.length) add(null, 'macro.err.noAccounts', {}, false, 'accounts');
+  if (m.trigger.kind === 'interval' && !okNum(m.trigger.everySeconds, 10, 86400)) add(null, 'macro.err.every', {}, false, 'every');
+  if (!m.steps.length) add(null, 'macro.err.noSteps');
+  if (m.steps.length > MAX_STEPS) add(null, 'macro.err.tooMany', { max: MAX_STEPS });
+
+  // Blocks: each if and loop closed, else and break where they belong. Keys held down let go before the end.
+  const open: { kind: string; at: number; hasElse?: boolean }[] = [];
+  const held = new Map<string, number>();
+  m.steps.forEach((s, i) => {
+    switch (s.kind) {
+      case 'if': open.push({ kind: 'if', at: i }); break;
+      case 'loop': case 'loopUntil': open.push({ kind: 'loop', at: i }); break;
+      case 'else': {
+        const top = open[open.length - 1];
+        if (top?.kind !== 'if') add(i, 'macro.err.elseAlone');
+        else if (top.hasElse) add(i, 'macro.err.elseTwice');
+        else top.hasElse = true;
+        break;
+      }
+      case 'endIf': if (open[open.length - 1]?.kind === 'if') open.pop(); else add(i, 'macro.err.endIfAlone'); break;
+      case 'endLoop': if (open[open.length - 1]?.kind === 'loop') open.pop(); else add(i, 'macro.err.endLoopAlone'); break;
+      case 'break': if (!open.some(o => o.kind === 'loop')) add(i, 'macro.err.breakAlone'); break;
+      // The macro's own steps end here; what follows runs only to get unstuck.
+      case 'recover':
+        if (open.length) add(i, 'macro.err.recoverInside');
+        else if (m.steps.findIndex(x => x.kind === 'recover') !== i) add(i, 'macro.err.recoverTwice');
+        else if (held.size) add(i, 'macro.err.heldAtRecover', { k: keyCap([...held.keys()][0]) });
+        else if (m.onFail !== 'restart' && m.onFail !== 'skip' && !m.stuckMinutes) add(i, 'macro.warn.recoverOff', {}, true);
+        break;
+      case 'down':
+        if (held.has(s.key)) add(i, 'macro.err.downTwice', { k: keyCap(s.key) });
+        else held.set(s.key, i);
+        break;
+      case 'up':
+        if (!held.has(s.key)) add(i, 'macro.err.upAlone', { k: keyCap(s.key) });
+        else held.delete(s.key);
+        break;
+    }
+    if (['key', 'down', 'up'].includes(s.kind) && !(s.kind === 'key' && isOpt(s.key)) && !KEYS.includes(s.key) && !(s.kind !== 'key' && MOUSE_KEYS.includes(s.key))) add(i, 'macro.err.key');
+    if (s.kind === 'key' && s.key === 'Alt') add(i, 'macro.err.altTap');
+    if (s.kind === 'key' && !okNum(s.ms, 30, 5000)) add(i, 'macro.err.hold');
+    if ((s.kind === 'key' || s.kind === 'down') && s.key === 'Escape') add(i, 'macro.warn.escape', {}, true);
+    if (['click', 'move', 'waitColour'].includes(s.kind) && !(okNum(s.x, 0, 1) && okNum(s.y, 0, 1))) add(i, 'macro.err.point');
+    if (imageKinds.includes(s.kind) && !s.image) add(i, 'macro.err.image', {}, false, 'image');
+    if (s.kind === 'waitText' && !s.words && !String(s.text || '').trim()) add(i, 'macro.err.text', {}, false, 'text');
+    if (s.kind === 'wait' && !okNum(s.ms, 0, 3_600_000)) add(i, 'macro.err.wait');
+    if (['clickImage', 'waitImage', 'waitText', 'waitColour', 'waitStill'].includes(s.kind) && !okNum(s.timeoutMs, 100, 3_600_000)) add(i, 'macro.err.timeout');
+    if (s.kind === 'type' && !String(s.text || '').trim()) add(i, 'macro.err.typeEmpty', {}, false, 'text');
+    if (s.kind === 'type' && String(s.text || '').length > 200) add(i, 'macro.err.typeLong');
+    if ((s.kind === 'setVar' || s.kind === 'addVar') && !String(s.name || '').trim()) add(i, 'macro.err.varName');
+    if (s.kind === 'alert' && !String(s.text || '').trim()) add(i, 'macro.err.alertEmpty', {}, false, 'text');
+    if (s.kind === 'follow') {
+      if (!s.region) add(i, 'macro.err.followArea', {}, false, 'region');
+      const edges = s.marker && typeof s.marker === 'object';
+      if (!okColour(s.target) || (edges ? !okColour(s.marker.left) || !okColour(s.marker.right) : !okColour(s.marker))) add(i, 'macro.err.colour');
+      if (s.mode === 'smooth' && (!okNum(s.kp ?? 1, 0, 10) || !okNum(s.kd ?? 0.4, 0, 10))) add(i, 'macro.err.gains');
+      if (!okNum(s.tolerance, 0, 255)) add(i, 'macro.err.tolerance');
+      if (s.button === 'key' && !KEYS.includes(s.key)) add(i, 'macro.err.key');
+      if (!okNum(s.untilGoneMs, 100, 60000)) add(i, 'macro.err.untilGone');
+      if (!okNum(s.fps ?? 60, 15, 240)) add(i, 'macro.err.fps');
+      if (!okNum(s.timeoutMs, 100, 3_600_000)) add(i, 'macro.err.timeout');
+    }
+    if (s.kind === 'waitColour' && !okColour(s.colour)) add(i, 'macro.err.colour');
+    if (s.kind === 'click' && s.holdMs !== undefined && !okNum(s.holdMs, 0, 10000)) add(i, 'macro.err.holdMs');
+    if (s.kind === 'clickColour') {
+      if (!okColour(s.colour)) add(i, 'macro.err.colour');
+      if (!okNum(s.tolerance, 0, 255)) add(i, 'macro.err.tolerance');
+      if (s.minSize !== undefined && !okNum(s.minSize, 0, 10000)) add(i, 'macro.err.minSize');
+      if (!okNum(s.timeoutMs, 100, 3_600_000)) add(i, 'macro.err.timeout');
+      if (s.repeatUntilGoneMs !== undefined && !okNum(s.repeatUntilGoneMs, 0, 600000)) add(i, 'macro.err.untilGone');
+    }
+    // A setting or area the macro no longer has: the run would stop there.
+    for (const v of [...Object.values(s), ...(s.test ? Object.values(s.test) : []), ...(s.marker && typeof s.marker === 'object' ? Object.values(s.marker) : [])]) {
+      if (isOpt(v) && !(m.options || []).some(o => '$' + o.name === v)) add(i, 'macro.err.noOption');
+      if (isArea(v) && !(m.areas || []).some(a => '@' + a.name === v)) add(i, 'macro.err.noArea', {}, false, 'region');
+    }
+    if (s.kind === 'if' || s.kind === 'loopUntil') {
+      const test = s.test as Test;
+      if (test.kind === 'image' && !test.image) add(i, 'macro.err.image', {}, false, 'image');
+      if (test.kind === 'text' && !test.words && !String(test.text || '').trim()) add(i, 'macro.err.text', {}, false, 'text');
+      if (test.kind === 'var' && !test.name.trim()) add(i, 'macro.err.varName');
+    }
+  });
+  for (const o of open) add(o.at, o.kind === 'if' ? 'macro.err.ifOpen' : 'macro.err.loopOpen');
+  for (const o of m.options || []) if (!o.label.trim()) add(null, 'macro.err.optLabel', {}, false, 'options');
+  for (const [k, i] of held) add(i, 'macro.err.neverUp', { k: keyCap(k) });
+  return out;
+}
+
+/** The label of the list a text step reads ("$o1"). */
+const listName = (ref: string, m?: Ctx) => m?.options?.find(o => '$' + o.name === ref)?.label || '…';
+
+/** A step's or test's picture check as the Try button sends it (macroTest's test). */
+export function testOf(s: Step): Test | null {
+  if (s.kind === 'if' || s.kind === 'loopUntil') return s.test as Test;
+  if (s.kind === 'clickImage' || s.kind === 'waitImage') return { kind: 'image', image: s.image, region: s.region, threshold: s.threshold };
+  if (s.kind === 'waitText') return { kind: 'text', text: s.text, region: s.region };
+  if (s.kind === 'waitColour') return { kind: 'colour', x: s.x, y: s.y, colour: s.colour, tolerance: s.tolerance, ...(s.region ? { region: s.region } : {}) } as Test;
+  return null;
+}
+
+/** A run still going (it holds its window's turn, or waits for one). */
+export const isLive = (r: MacroRun) => r.status === 'waiting' || r.status === 'running' || r.status === 'paused';
+
+/** Who started the recording now under way: the macro form (its steps get them) or New macro › Record (a new form). */
+export const recording = { for: null as 'editor' | 'new' | null };

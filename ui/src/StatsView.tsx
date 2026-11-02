@@ -1,23 +1,32 @@
 // The Statistics tab: Statistics (play time per account, game and preset over a period, with its chart) and Activity
 // (what the app saw, newest first, paged, filtered). Figures are asked for when the tab opens and every 30 s while shown;
-// they aren't part of the pushed state. The chart is plain divs, sized from the busiest bucket.
-import { Fragment, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
+// they aren't part of the pushed state. Today has a timeline (plain divs placed by their share of the day, each stay with its
+// game's icon); 7 and 30 days a bar per day instead, an account's own timeline opening from its row.
+import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Avatar } from './Avatar';
 
 const STATS_PERIODS = [1, 7, 30];
-const BAR_HEIGHT = 140;
 const AL_GROUPS = ['play', 'drops', 'schedule', 'signin', 'updates'];
 const AL_PAGE = 100;
 const NO_PRESET = '00000000-0000-0000-0000-000000000000';
 
 type Bucket = { start: string; seconds: number };
-type StatAccount = { id: string; label?: string; username?: string; avatarUrl?: string; seconds: number; sessions: number; kicks: number; deleted?: boolean };
-type StatGame = { name: string; iconUrl?: string; seconds: number; sessions: number };
+type StatAccount = { id: string; label?: string; username?: string; avatarUrl?: string; seconds: number; sessions: number; kicks: number; deleted?: boolean;
+  topGame?: { key: string; name: string; iconUrl?: string | null } | null };
+type StatGame = { key: string; name: string; iconUrl?: string; seconds: number; sessions: number };
 type StatPreset = { id: string; name: string; iconUrl?: string; seconds: number; accounts: number; kicks: number };
+type Segment = { from: string; to: string; game: string; name?: string | null; reason?: string | null };
+type Loss = { kind: string; times: number; seconds: number; accounts: string[] };
 type Stats = {
-  sessions: number; recorded: boolean; totalSeconds: number; kicks: number; hourly: boolean; buckets: Bucket[];
+  sessions: number; recorded: boolean; totalSeconds: number; kicks: number; hourly: boolean; buckets: Bucket[]; since: string; ends: string;
+  timeline: { id: string; segments: Segment[] }[]; losses: Loss[];
   accounts: StatAccount[]; games: StatGame[]; presets?: StatPreset[]; longest?: { account: string; label?: string; game?: string; seconds: number } | null;
+  /** The period before, as far into it as this one has gone; null when the records don't reach back that far. */
+  previous?: { totalSeconds: number; kicks: number } | null;
+  /** Each game's icon, by its key in the timeline. */
+  icons?: Record<string, string>;
+  days?: number;
 };
 type Entry = { at: string; tone: string; accountId?: string | null; account?: string | null; text: string };
 type Activity = { total: number; entries: Entry[]; accounts: { id: string; label: string }[] };
@@ -173,14 +182,16 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
   </>;
 }
 
-/** Statistics: tiles, the chart by hour or day, then by account, top games and by preset. */
+/** Statistics: tiles (with the change from the period before), today's timeline or the play time per day, why windows
+ * dropped, then by account, top games and by preset. */
 function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boolean; retry: (btn: HTMLElement) => void }) {
   const host = useHost();
-  const { t, tn, lang, locale, fmtNum } = host;
+  const { t, tn, fmtNum } = host;
   const app = useAppState();
   const accounts: Account[] = app.accounts || [];
-  const byId = (id: string) => accounts.find(a => a.id === id);
+  const byId =(id: string) => accounts.find(a => a.id === id);
   const hide = !!app.hideNames;
+  const [open, setOpen] = useState('');
   /** "2 h", "2 h 5 min", "1,234 h": hours grouped like other numbers, no "0 min". */
   const fmtSecs = (s: number) => {
     const m = Math.floor((s || 0) / 60), h = Math.floor(m / 60);
@@ -196,54 +207,55 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
     return <div className="empty"><span className="pv-empty-icon"><Icon name="clock" /></span>
       {d.recorded ? <h2>{t('stats.emptyPeriod')}</h2> : <><h2>{t('stats.emptyTitle')}</h2><p>{t('stats.emptyText')}</p></>}</div>;
   }
-  const top = d.games[0];
-  // Two more on a wide window (see .stat.wide): how many accounts played, and the longest stay (whose, in what).
+  // A deleted account keeps the name it had when it played; names hidden: the list's "Account N".
+  const nameOf = (a: StatAccount) => hide ? byId(a.id)?.label || t('stats.deleted') : a.label || t('stats.deleted');
   const longName = d.longest ? (hide ? byId(d.longest.account)?.label : d.longest.label) || t('stats.deleted') : '';
   const played = fmtNum(d.accounts.filter(a => a.seconds > 0).length), all = fmtNum(accounts.length);
-  const tiles: [string, ReactNode, string, string, string?][] = [
-    [t('stats.total'), fmtSecs(d.totalSeconds), '', ''], [t('stats.sessions'), fmtNum(d.sessions), '', ''], [t('stats.kicks'), fmtNum(d.kicks), '', ''],
-    [t('stats.topGame'), top ? top.name : '—', '', ''],
-    [t('stats.played'), <>{played}<span className="of">/{all}</span></>, 'wide', '', `${played}/${all}`],
-    [t('stats.longest'), d.longest ? fmtSecs(d.longest.seconds) : '—', 'wide', d.longest ? [longName, d.longest.game].filter(Boolean).join(' · ') : ''],
+  const period = d.hourly ? 1 : d.days || d.buckets.length;
+  // "↑ 20 %" against the period before; more play time is good, more disconnects bad. Nothing when there's no before.
+  const change = (now: number, before: number | undefined, moreIsGood: boolean) => {
+    if (before === undefined || before <= 0) return null;
+    const pct = Math.round((now - before) / before * 100);
+    const vs = t(`stats.vs.${period}`);
+    if (!pct) return <span className="stat-delta">{t('stats.noChange')} <span>{vs}</span></span>;
+    return <span className={`stat-delta ${(pct > 0) === moreIsGood ? 'good' : 'bad'}`}>{pct > 0 ? '↑' : '↓'} {fmtNum(Math.abs(pct))} % <span>{vs}</span></span>;
+  };
+  const tiles: [string, ReactNode, ReactNode, string?][] = [
+    [t('stats.total'), fmtSecs(d.totalSeconds), change(d.totalSeconds, d.previous?.totalSeconds, true)],
+    [t('stats.played'), <>{played}<span className="of">/{all}</span></>, null, `${played}/${all}`],
+    [t('stats.kicks'), fmtNum(d.kicks), change(d.kicks, d.previous?.kicks, false)],
+    [t('stats.longest'), d.longest ? fmtSecs(d.longest.seconds) : '—', d.longest ? <span className="stat-sub">{[longName, d.longest.game].filter(Boolean).join(' · ')}</span> : null],
   ];
+  const top = d.games[0];
   // By preset: what each preset's windows played (laid out like Top games: a list fits a narrow column better).
   const presetTop = Math.max(1, ...(d.presets || []).map(p => p.seconds));
-  // Labels: every 6th hour today, every day of the week, every 5th day of the month counted back from today. The bar
-  // holding now is marked; on Today the hours still to come are fainter.
-  const max = Math.max(1, ...d.buckets.map(b => b.seconds));
-  const every = d.hourly ? 6 : d.buckets.length > 10 ? 5 : 1;
-  const nowMs = Date.now();
-  const nowIndex = d.buckets.findLastIndex(b => new Date(b.start).getTime() <= nowMs);
   const sessionsText = (n: number) => (n === 1 ? t('stats.session1') : t('stats.sessionsN', { n: fmtNum(n) }));
 
   return <>
-    <div className="stat-tiles">{tiles.map(([label, value, cls, sub, plain], i) =>
-      <div key={i} className={`stat ${cls}`}><small>{label}</small><b title={sub || plain || String(value)}>{value}</b>{sub ? <span className="stat-sub">{sub}</span> : null}</div>)}
+    <div className="stat-tiles">{tiles.map(([label, value, sub, plain], i) =>
+      <div key={i} className="stat"><small>{label}</small><b title={plain || String(value)}>{value}</b>{sub}</div>)}
     </div>
-    <div className="stat-card"><h3>{t(d.hourly ? 'stats.byHour' : 'stats.byDay')}</h3>
-      <div className="sbars" style={{ '--bar-h': `${BAR_HEIGHT}px` } as CSSProperties}>{d.buckets.map((b, i) => {
-        const at = new Date(b.start);
-        const label = d.hourly ? at.toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' })
-          : every > 1 ? at.toLocaleDateString(locale, { day: 'numeric', month: 'numeric' }) : at.toLocaleDateString(locale, { weekday: 'short' });
-        const when = d.hourly ? label : at.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
-        const h = b.seconds ? Math.max(3, Math.round(b.seconds / max * BAR_HEIGHT)) : 2;
-        const state = i === nowIndex ? 'now' : i > nowIndex ? 'future' : '';
-        return <div key={i} className={`sbar ${state} ${b.seconds ? '' : 'zero'}`} title={`${when} · ${fmtSecs(b.seconds)}`}>
-          <i style={{ height: `${h}px` }} /><span>{(d.hourly ? i : d.buckets.length - 1 - i) % every === 0 ? label : ''}</span></div>;
-      })}</div>
-    </div>
+    {d.hourly ? <Timeline d={d} nameOf={nameOf} fmtSecs={fmtSecs} /> : <Days d={d} fmtSecs={fmtSecs} />}
+    <Drops d={d} nameOf={nameOf} fmtSecs={fmtSecs} />
     <div className="stat-cols">
       <div className="stat-card"><h3>{t('stats.byAccount')}</h3>
-        <table className="stat-table">
-          <thead><tr><th>{t('stats.account')}</th><th className="n">{t('stats.total')}</th><th className="n">{t('stats.sessions')}</th><th className="n">{t('stats.kicks')}</th></tr></thead>
+        <table className="stat-table by-account">
+          <colgroup><col className="c-acc" /><col className="c-time" /><col className="c-game" /><col className="c-n" /></colgroup>
+          <thead><tr><th>{t('stats.account')}</th><th>{t('stats.total')}</th><th>{t('stats.topGame')}</th><th className="n" title={t('stats.kicks')}>{t('stats.kicksShort')}</th></tr></thead>
           <tbody>{d.accounts.map(a => {
-            // A deleted account keeps the name it had when it played; names hidden: the list's "Account N".
-            const label = hide ? byId(a.id)?.label || t('stats.deleted') : a.label || t('stats.deleted');
-            return <tr key={a.id}>
-              <td><div className="sacc"><span className="avatar sm"><Avatar a={{ avatarUrl: a.avatarUrl, username: hide ? a.id : a.username || a.id, label }} /></span>
+            const label = nameOf(a);
+            // 7 and 30 days: the row opens the account's own timeline (today's is above already).
+            const opens = !d.hourly && d.timeline.some(r => r.id === a.id), isOpen = opens && open === a.id;
+            return <Fragment key={a.id}><tr className={opens ? 'opens' : ''} aria-expanded={opens ? isOpen : undefined}
+              title={opens ? t('stats.showPlayed') : undefined} onClick={opens ? () => setOpen(isOpen ? '' : a.id) : undefined}>
+              <td><div className="sacc">{opens ? <Icon name={isOpen ? 'chevronDown' : 'chevronRight'} className="sacc-open" /> : null}
+                <span className="avatar sm"><Avatar a={{ avatarUrl: a.avatarUrl, username: hide ? a.id : a.username || a.id, label }} /></span>
                 <b title={label}>{label}{a.deleted && a.label && !hide ? <>{' '}<small className="muted">· {t('stats.deletedTag')}</small></> : null}</b></div></td>
-              <td className="n">{fmtSecs(a.seconds)}</td><td className="n">{fmtNum(a.sessions)}</td><td className="n">{fmtNum(a.kicks)}</td>
-            </tr>;
+              <td className="st-time">{fmtSecs(a.seconds)}</td>
+              <td className="st-game">{a.topGame ? <span title={a.topGame.name}>{a.topGame.iconUrl ? <GameImg src={a.topGame.iconUrl} /> : <span className="gph"><Icon name="gamepad" /></span>}<em>{a.topGame.name}</em></span> : '—'}</td>
+              <td className="n">{fmtNum(a.kicks)}</td>
+            </tr>
+            {isOpen ? <tr className="st-open"><td colSpan={4}><Timeline d={d} nameOf={nameOf} fmtSecs={fmtSecs} only={a.id} /></td></tr> : null}</Fragment>;
           })}</tbody>
         </table>
       </div>
@@ -265,6 +277,91 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
       </div>
     </div>
   </>;
+}
+
+/** 7 and 30 days: one bar per day, its height the day's play time (the exact time on hover). */
+function Days({ d, fmtSecs }: { d: Stats; fmtSecs: (s: number) => string }) {
+  const { t, locale } = useHost();
+  const most = Math.max(1, ...d.buckets.map(b => b.seconds));
+  const every = d.buckets.length > 10 ? 5 : 1;
+  return <div className="stat-card" id="stats-days"><h3>{t('stats.byDay')}</h3>
+    <div className="days">{d.buckets.map((b, i) => {
+      const day = new Date(b.start), last = i === d.buckets.length - 1;
+      const label = every > 1 ? day.toLocaleDateString(locale, { day: 'numeric', month: 'numeric' }) : day.toLocaleDateString(locale, { weekday: 'short' });
+      return <div key={i} className="day" title={`${day.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'numeric' })} · ${fmtSecs(b.seconds)}`}>
+        <span className="day-bar"><i style={{ height: `${Math.max(b.seconds ? 3 : 0, b.seconds / most * 100).toFixed(1)}%` }} /></span>
+        <small>{last ? t('alog.today') : (d.buckets.length - 1 - i) % every === 0 ? label : ''}</small>
+      </div>;
+    })}</div>
+  </div>;
+}
+
+/** Each account's stays from the period's start up to now, each with its game's icon (its name too where it fits), a
+ * red end where one dropped. Today every account's; for 7 and 30 days one account's (only), opened from its row. */
+function Timeline({ d, nameOf, fmtSecs, only }: { d: Stats; nameOf: (a: StatAccount) => string; fmtSecs: (s: number) => string; only?: string }) {
+  const { t, lang, locale } = useHost();
+  // Up to now, not the whole day: at 2 am a day's width would squeeze everything into its first tenth. Two hours at least.
+  const since = new Date(d.since).getTime(), span = Math.max(Date.now() - since, 2 * 3600e3);
+  const at = (ms: number) => `${Math.min(100, Math.max(0, (ms - since) / span * 100)).toFixed(2)}%`;
+  const clock = (ms: number) => d.hourly
+    ? new Date(ms).toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric', minute: '2-digit' })
+    : new Date(ms).toLocaleString(locale, { weekday: 'short', hour: '2-digit', minute: '2-digit', ...(lang === 'vi' ? { hourCycle: 'h23' as const } : {}) });
+  // Labels: today by how much of it has gone, every day of the week, every 5th day of the month counted back from today.
+  const hours = span / 3600e3;
+  const every = d.hourly ? (hours <= 6 ? 1 : hours <= 12 ? 2 : hours <= 18 ? 3 : 6) : d.buckets.length > 10 ? 5 : 1;
+  const rows = only ? d.timeline.filter(r => r.id === only) : d.timeline;
+  const inner = <>
+    <div className={`tl${only ? ' one' : ''}`}>{rows.map(row => {
+      const a = d.accounts.find(x => x.id === row.id);
+      if (!a) return null;
+      const label = nameOf(a);
+      return <div key={row.id} className="tl-row">
+        {only ? null : <div className="sacc"><span className="avatar sm"><Avatar a={{ avatarUrl: a.avatarUrl, username: label === a.label ? a.username || a.id : a.id, label }} /></span><b title={label}>{label}</b></div>}
+        <div className="tl-track">
+          {row.segments.map((s, i) => {
+            const from = new Date(s.from).getTime(), to = new Date(s.to).getTime();
+            const share = (to - from) / span * 100, icon = d.icons?.[s.game];
+            const title = [s.name, `${clock(from)} – ${clock(to)}`, fmtSecs((to - from) / 1000), s.reason ? t(`stats.why.${s.reason}`) : ''].filter(Boolean).join(' · ');
+            return <i key={i} className={`tl-seg ${s.reason ? 'drop' : ''}`} title={title}
+              style={{ left: at(from), width: `${Math.max(.3, share).toFixed(2)}%` }}>
+              {icon && share >= 2 ? <img src={icon} alt="" onError={e => { e.currentTarget.hidden = true; }} /> : null}{share >= 12 ? <span>{s.name}</span> : null}</i>;
+          })}
+        </div>
+      </div>;
+    })}</div>
+    <div className={`tl-axis${only ? ' one' : ''}`} aria-hidden="true">{d.buckets.map((b, i) => {
+      const start = new Date(b.start);
+      if ((d.hourly ? i : d.buckets.length - 1 - i) % every || (start.getTime() - since) / span > .95) return null;
+      const label = d.hourly ? start.toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' })
+        : every > 1 ? start.toLocaleDateString(locale, { day: 'numeric', month: 'numeric' }) : start.toLocaleDateString(locale, { weekday: 'short' });
+      return <span key={i} style={{ left: at(start.getTime()) }}>{label}</span>;
+    })}</div>
+    {rows.some(r => r.segments.some(s => s.reason))
+      ? <div className="tl-keys"><span><i className="tl-seg drop" /><em>{t('stats.kicks')}</em></span></div> : null}
+  </>;
+  return only ? inner : <div className="stat-card" id="stats-timeline"><h3>{t('stats.timeline')}</h3>{inner}</div>;
+}
+
+/** The time disconnects cost, by why they happened, with what would have kept the account in where Bloxkeep has it. */
+function Drops({ d, nameOf, fmtSecs }: { d: Stats; nameOf: (a: StatAccount) => string; fmtSecs: (s: number) => string }) {
+  const { t, tn, go, fmtNum } = useHost();
+  const app = useAppState();
+  if (!d.losses.length) return null;
+  const accounts: (Account & { autoRejoin?: boolean })[] = app.accounts || [];
+  const total = d.losses.reduce((sum, l) => sum + l.seconds, 0);
+  const fix = (l: Loss) => l.kind === 'idle' ? !app.settings?.antiAfk && 'stats.do.antiAfk'
+    : l.kind === 'other' ? l.accounts.some(id => accounts.find(a => a.id === id)?.autoRejoin === false) && 'stats.do.rejoin' : false;
+  return <div className="stat-card" id="stats-drops"><h3>{t('stats.drops')}<span className="sd-lost" title={t('stats.lostTip')}>{t('stats.lost', { t: fmtSecs(total) })}</span></h3>
+    {d.losses.map(l => {
+      const names = l.accounts.map(id => d.accounts.find(a => a.id === id)).filter((a): a is StatAccount => !!a).map(nameOf).join(', ');
+      const action = fix(l);
+      return <div key={l.kind} className="sd-row" data-kind={l.kind}>
+        <div className="sd-text"><b>{t(`stats.why.${l.kind}`)}</b><small title={names}>{tn('stats.timesN', l.times, { n: fmtNum(l.times) })} · {names}</small></div>
+        <span className="sd-time" title={t('stats.lostTip')}>{t('stats.lost', { t: fmtSecs(l.seconds) })}</span>
+        {action ? <button className="btn sm" onClick={() => go('settings:perf')}>{t(action)}</button> : null}
+      </div>;
+    })}
+  </div>;
 }
 
 /** Activity's list: grouped by day; today's times as "5 min ago" (the exact time on hover), older ones as clock times. */

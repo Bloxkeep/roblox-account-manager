@@ -4,9 +4,9 @@
 
 Bình thường Roblox chỉ cho mở một cửa sổ trên mỗi máy: mở cửa sổ thứ hai thì cửa sổ đầu sẽ đóng. Muốn chơi nhiều tài khoản cùng lúc, hãy bật Multi-Roblox trong Bloxkeep, app quản lý tài khoản miễn phí, mã nguồn mở cho Windows 10 và 11, rồi chọn các tài khoản và bấm Vào game. Mỗi tài khoản mở trong một cửa sổ riêng.
 
-<img src="../screenshots/multi-roblox-real.jpg" width="760" alt="Ảnh chụp thật trên một máy Windows: năm cửa sổ Roblox mở cùng lúc, tiêu đề từ Roblox - Account 1 đến Roblox - Account 5, bốn cửa sổ cùng ở trong game, cửa sổ thứ năm đang vào, phía sau là Bloxkeep đếm 5 cửa sổ và Multi-Roblox đang bật">
+<img src="../screenshots/multi-roblox-real.jpg" width="760" alt="Ảnh chụp thật trên một máy Windows: sáu cửa sổ Roblox mở cùng lúc, được Bloxkeep xếp cạnh nhau, cùng ở trong một game, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7">
 
-Ảnh chụp thật trên một máy: năm tài khoản mở cùng lúc, bốn tài khoản đã vào game, tài khoản thứ năm đang vào. Tên trong game đã được làm mờ.
+Ảnh chụp thật trên một máy: sáu tài khoản mở cùng lúc, đều đã vào game và xếp cạnh nhau. Tên tài khoản đã được ẩn.
 
 ## Làm nhanh
 

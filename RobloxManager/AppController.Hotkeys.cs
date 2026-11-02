@@ -18,14 +18,18 @@ public sealed partial class AppController
     {
         if (_disposed)
             return;
+        // Hide, minimise and next wait for a nudge, a picture or a macro's turn under way (InputTurn.cs).
         if (id == HotkeyHide)
         {
-            var pids = RobloxProcesses.GetPlayerPids();
-            if (pids.Any(RobloxProcesses.HasHidden))
-                RobloxProcesses.ShowWindows();
-            else
-                RobloxProcesses.HideWindows(pids);
-            PushState();
+            InputTurn.RunWhenFree("hotkey", () =>
+            {
+                var pids = RobloxProcesses.GetPlayerPids();
+                if (pids.Any(RobloxProcesses.HasHidden))
+                    RobloxProcesses.ShowWindows();
+                else
+                    RobloxProcesses.HideWindows(pids);
+                PushState();
+            });
         }
         else if (id == HotkeyArrange && _vault is not null)
         {
@@ -33,11 +37,23 @@ public sealed partial class AppController
         }
         else if (id == HotkeyMinimize)
         {
-            MinimizeOrRestoreAll();
+            InputTurn.RunWhenFree("hotkey", () => MinimizeOrRestoreAll());
         }
         else if (id == HotkeyNext)
         {
-            FocusNextWindow();
+            InputTurn.RunWhenFree("hotkey", () => FocusNextWindow());
+        }
+        else if (id is HotkeyStopMacros or HotkeyEndRecording)
+        {
+            // Ctrl+Alt+0 stops everything; F8 only ends a recording.
+            if (id == HotkeyStopMacros)
+                _macroPlayer?.Stop(null, "byUser");
+            _ = StopRecordingAsync();
+            PushState();
+        }
+        else if (id is >= HotkeyMacroFirst and < HotkeyMacroFirst + 9 && _vault is not null)
+        {
+            RunMacroHotkey(id - HotkeyMacroFirst + 1);
         }
     }
 

@@ -10,6 +10,8 @@ html [data-theme="dark" lang="vi"]
           svg.i #v823bm
         button.nav [title="Preset"]
           svg.i #1pvni8o
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
         button.nav [title="Thống kê"]
@@ -103,6 +105,14 @@ html [data-theme="dark" lang="vi"]
                         b "Tự chỉnh"
                         small "Chọn từng mục bên dưới"
                     p.rc-note [id="s-rc-reopen"] "Có hiệu lực từ lần mở tài khoản sau."
+                    div.set-row
+                      div
+                        div.t "Fast Flags"
+                        div.d "Trời xám, không cỏ, đồ họa thấp nhất. Bớt chút RAM."
+                      div.ctl
+                        label.switch
+                          input [id="s-rc-flags" type="checkbox" aria-label="Fast Flags" checked=false]
+                          span
                 div.set-grp [id="sec-perf"]
                   h3.set-grp-title "Giữ tài khoản trong game"
                   div.set-card

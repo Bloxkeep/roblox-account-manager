@@ -16,6 +16,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
           span "Theo dõi game"
@@ -88,100 +92,105 @@ html [data-theme="dark" lang="vi"]
                 div.stat
                   small "Thời gian chơi"
                   b [title="5 giờ 57 phút"] "5 giờ 57 phút"
+                  span.good.stat-delta "↑ 20 %"
+                    span "so với hôm qua"
                 div.stat
-                  small "Lượt chơi"
-                  b [title="10"] "10"
+                  small "Tài khoản đã chơi"
+                  b [title="4/7"] "4"
+                    span.of "/7"
                 div.stat
                   small "Mất kết nối"
                   b [title="1"] "1"
+                  span.good.stat-delta "↓ 67 %"
+                    span "so với hôm qua"
                 div.stat
-                  small "Chơi nhiều nhất"
-                  b [title="Blox Fruits"] "Blox Fruits"
-              div.stat-card
-                h3 "Thời gian chơi theo giờ"
-                div.sbars [style="--bar-h:140px"]
-                  div.sbar [title="00:00 · 46 phút"]
-                    i [style="height:136px"]
-                    span "00:00"
-                  div.sbar [title="01:00 · 32 phút"]
-                    i [style="height:95px"]
-                    span
-                  div.sbar [title="02:00 · 28 phút"]
-                    i [style="height:83px"]
-                    span
-                  div.sbar [title="03:00 · 34 phút"]
-                    i [style="height:100px"]
-                    span
-                  div.sbar [title="04:00 · 20 phút"]
-                    i [style="height:59px"]
-                    span
-                  div.sbar [title="05:00 · 16 phút"]
-                    i [style="height:47px"]
-                    span
-                  div.sbar [title="06:00 · 22 phút"]
-                    i [style="height:65px"]
-                    span "06:00"
-                  div.sbar [title="07:00 · 8 phút"]
-                    i [style="height:24px"]
-                    span
-                  div.sbar [title="08:00 · 4 phút"]
-                    i [style="height:12px"]
-                    span
-                  div.sbar [title="09:00 · 10 phút"]
-                    i [style="height:29px"]
-                    span
-                  div.sbar [title="10:00 · 45 phút"]
-                    i [style="height:134px"]
-                    span
-                  div.sbar [title="11:00 · 41 phút"]
-                    i [style="height:123px"]
-                    span
-                  div.now.sbar [title="12:00 · 47 phút"]
-                    i [style="height:140px"]
-                    span "12:00"
-                  div.future.sbar.zero [title="13:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="14:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="15:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="16:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="17:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="18:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span "18:00"
-                  div.future.sbar.zero [title="19:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="20:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="21:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="22:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
-                  div.future.sbar.zero [title="23:00 · 0 phút"]
-                    i [style="height:2px"]
-                    span
+                  small "Lượt dài nhất"
+                  b [title="1 giờ 47 phút"] "1 giờ 47 phút"
+                  span.stat-sub "Tài khoản chính · Blox Fruits"
+              div.stat-card [id="stats-timeline"]
+                h3 "Dòng thời gian"
+                div.tl
+                  div.tl-row
+                    div.sacc
+                      span.avatar.sm
+                        img [alt="" style="--h:204" src=#1qk25wb]
+                      b [title="Tài khoản chính"] "Tài khoản chính"
+                    div.tl-track
+                      i.drop.tl-seg [title="Blox Fruits · 00:00 – 04:04 · 4 giờ 4 phút · Bị kick vì treo máy" style="left:0%;width:34%"]
+                        span "Blox Fruits"
+                      i.tl-seg [title="Blox Fruits · 04:33 – 08:38 · 4 giờ 4 phút" style="left:38%;width:34%"]
+                        span "Blox Fruits"
+                      i.tl-seg [title="[🎃] Adopt Me! · 09:07 – 12:00 · 2 giờ 52 phút" style="left:76%;width:24%"]
+                        span "[🎃] Adopt Me!"
+                  div.tl-row
+                    div.sacc
+                      span.avatar.sm
+                        img [alt="" style="--h:243" src=#uinvo6]
+                      b [title="Farm 1"] "Farm 1"
+                    div.tl-track
+                      i.drop.tl-seg [title="Blox Fruits · 00:36 – 03:36 · 3 giờ · Mất kết nối" style="left:5%;width:25%"]
+                        span "Blox Fruits"
+                      i.drop.tl-seg [title="[🎃] Adopt Me! · 05:16 – 07:26 · 2 giờ 9 phút · Bị kick vì treo máy" style="left:44%;width:18%"]
+                        span "[🎃] Adopt Me!"
+                      i.tl-seg [title="Blox Fruits · 08:09 – 11:09 · 3 giờ" style="left:68%;width:25%"]
+                        span "Blox Fruits"
+                  div.tl-row
+                    div.sacc
+                      span.avatar.sm
+                        img [alt="" style="--h:297" src=#1u67et1]
+                      b [title="Night Owl"] "Night Owl"
+                    div.tl-track
+                      i.tl-seg [title="Brookhaven 🏡RP · 02:24 – 06:36 · 4 giờ 12 phút" style="left:20%;width:35%"]
+                        span "Brookhaven 🏡RP"
+                      i.tl-seg [title="Blox Fruits · 07:12 – 09:36 · 2 giờ 24 phút" style="left:60%;width:20%"]
+                        span "Blox Fruits"
+                  div.tl-row
+                    div.sacc
+                      span.avatar.sm
+                        span.initials [style="--h:148"] "TÀ"
+                      b [title="Tài khoản đã xóa"] "Tài khoản đã xóa"
+                    div.tl-track
+                      i.tl-seg [title="[🎃] Adopt Me! · 01:12 – 01:33 · 21 phút" style="left:10%;width:3%"]
+                div.tl-axis [aria-hidden="true"]
+                  span [style="left:0%"] "00:00"
+                  span [style="left:16.67%"] "02:00"
+                  span [style="left:33.33%"] "04:00"
+                  span [style="left:50%"] "06:00"
+                  span [style="left:66.67%"] "08:00"
+                  span [style="left:83.33%"] "10:00"
+                div.tl-keys
+                  span
+                    i.drop.tl-seg
+                    em "Mất kết nối"
+              div.stat-card [id="stats-drops"]
+                h3 "Vì sao rớt"
+                  span.sd-lost [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 1 giờ 8 phút"
+                div.sd-row
+                  div.sd-text
+                    b "Bị kick vì treo máy"
+                    small [title="Tài khoản chính, Farm 1"] "2 lần · Tài khoản chính, Farm 1"
+                  span.sd-time [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 50 phút"
+                  button.btn.sm "Bật Chống AFK"
+                div.sd-row
+                  div.sd-text
+                    b "Mất kết nối"
+                    small [title="Farm 1"] "1 lần · Farm 1"
+                  span.sd-time [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 17 phút"
               div.stat-cols
                 div.stat-card
                   h3 "Theo tài khoản"
-                  table.stat-table
+                  table.by-account.stat-table
+                    colgroup
+                      col.c-acc
+                      col.c-time
+                      col.c-game
+                      col.c-n
                     thead
                       tr
                         th "Tài khoản"
-                        th.n "Thời gian chơi"
-                        th.n "Lượt chơi"
-                        th.n "Mất kết nối"
+                        th "Thời gian chơi"
+                        th "Chơi nhiều nhất"
+                        th.n [title="Mất kết nối"] "Rớt"
                     tbody
                       tr
                         td
@@ -189,8 +198,12 @@ html [data-theme="dark" lang="vi"]
                             span.avatar.sm
                               img [alt="" style="--h:204" src=#1qk25wb]
                             b [title="Tài khoản chính"] "Tài khoản chính"
-                        td.n "2 giờ 41 phút"
-                        td.n "5"
+                        td.st-time "2 giờ 41 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "1"
                       tr
                         td
@@ -198,8 +211,12 @@ html [data-theme="dark" lang="vi"]
                             span.avatar.sm
                               img [alt="" style="--h:243" src=#uinvo6]
                             b [title="Farm 1"] "Farm 1"
-                        td.n "1 giờ 58 phút"
-                        td.n "3"
+                        td.st-time "1 giờ 58 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "2"
                       tr
                         td
@@ -207,8 +224,12 @@ html [data-theme="dark" lang="vi"]
                             span.avatar.sm
                               img [alt="" style="--h:297" src=#1u67et1]
                             b [title="Night Owl"] "Night Owl"
-                        td.n "1 giờ 11 phút"
-                        td.n "2"
+                        td.st-time "1 giờ 11 phút"
+                        td.st-game
+                          span [title="Brookhaven 🏡RP"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Brookhaven 🏡RP"
                         td.n "0"
                       tr
                         td
@@ -216,8 +237,12 @@ html [data-theme="dark" lang="vi"]
                             span.avatar.sm
                               span.initials [style="--h:148"] "TÀ"
                             b [title="Tài khoản đã xóa"] "Tài khoản đã xóa"
-                        td.n "7 phút"
-                        td.n "1"
+                        td.st-time "7 phút"
+                        td.st-game
+                          span [title="[🎃] Adopt Me!"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "[🎃] Adopt Me!"
                         td.n "0"
                 div.stat-side
                   div.stat-card

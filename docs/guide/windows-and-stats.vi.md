@@ -4,7 +4,7 @@
 
 Cách xem, xếp gọn và thống kê các cửa sổ Roblox: thẻ **Roblox trên máy này**, Theo dõi game, Cửa sổ nhỏ, kiểu xếp cửa sổ, Thống kê và nhật ký Hoạt động.
 
-<img src="../screenshots/vi/stats.png" width="760" alt="Tab Thống kê trong 7 ngày: thời gian chơi, số lượt và số lần mất kết nối, thời gian chơi theo ngày, theo tài khoản và các game chơi nhiều">
+<img src="../screenshots/vi/stats.png" width="760" alt="Tab Thống kê trong 7 ngày: thời gian chơi, lượt chơi và số lần mất kết nối, dòng thời gian từng tài khoản chơi gì, vì sao rớt và thời gian mất, theo tài khoản và các game chơi nhiều">
 
 ## Làm nhanh
 
@@ -94,6 +94,8 @@ Muốn thu nhỏ một cửa sổ bằng tay thì kéo mép của nó: lúc kéo
 ## Thống kê
 
 **Thống kê** ở thanh bên có hai tab: **Thống kê** và **Hoạt động**.
+- **Dòng thời gian**: mỗi tài khoản một hàng, tô màu theo game, chấm đỏ là lúc rớt.
+- **Vì sao rớt**: thời gian mất theo từng lý do (từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần), kèm nút khi có cài đặt giúp được.
 
 > [!NOTE]
 > Chỉ tính các game mở bằng Bloxkeep.

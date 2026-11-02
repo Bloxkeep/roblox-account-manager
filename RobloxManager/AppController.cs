@@ -504,6 +504,27 @@ public sealed partial class AppController : IDisposable
         "setPresetOrder" => Done(SetPresetOrder(Ids(a))),
         "setPresetSchedule" => Done(SetPresetSchedule(Id(a), Bool(a, "enabled"))),
         "presetIcons" => PresetIconsAsync(),
+        "saveMacro" => Done(SaveMacro(a)),
+        "deleteMacro" => Done(DeleteMacro(Id(a))),
+        "duplicateMacro" => Done(DuplicateMacro(Id(a))),
+        "moveMacro" => Done(MoveMacro(Id(a), (int)Long(a, "to"))),
+        "runMacro" => Done(RunMacro(Id(a), Has(a, "accountIds", JsonValueKind.Array) ? GuidList(a, "accountIds") : null)),
+        "stopMacros" => Done(StopMacros(Id(a) is var stop && stop != Guid.Empty ? stop : null,
+            Guid.TryParse(Str(a, "accountId"), out var stopOn) ? stopOn : null, Bool(a, "trial"))),
+        "macroPicture" => MacroPictureAsync(Guid.TryParse(Str(a, "accountId"), out var pictured) ? pictured : Guid.Empty),
+        "macroTest" => MacroTestAsync(a),
+        "recordMacro" => Done(RecordMacro(Guid.TryParse(Str(a, "accountId"), out var recorded) ? recorded : Guid.Empty)),
+        "stopRecording" => StopRecordingAsync(),
+        "importMacro" => Done(ImportMacro()),
+        "exportMacro" => Done(ExportMacro(Id(a))),
+        "showPanel" => Done(ShowPanel(Id(a), show: true)),
+        "hidePanel" => Done(ShowPanel(Id(a), show: false)),
+        "setOption" => Done(SetOption(Id(a), Str(a, "name"), a.TryGetProperty("value", out var optionValue) ? optionValue.Clone() : default)),
+        "editOnGame" => Done(EditOnGameCommand(a)),
+        "pickOnGame" => PickOnGameCommandAsync(a),
+        "macroTryRun" => Done(MacroTryRunCommand(a)),
+        "macroTemplates" => Done(MacroTemplatesDto()),
+        "macroWatch" => Done(MacroWatchCommand(a)),
         "setLaunchOrder" => Done(SetLaunchOrder(Ids(a))),
         "closeAccounts" => Done(CloseAccounts(Ids(a), Bool(a, "force"))),
         "closeAll" => Done(CloseAll(Bool(a, "force"))),
@@ -586,8 +607,10 @@ public sealed partial class AppController : IDisposable
     static long Long(JsonElement a, string name) => Has(a, name, JsonValueKind.Number) && a.GetProperty(name).TryGetInt64(out long v) ? v : 0;
     static Guid Id(JsonElement a) => Guid.TryParse(Str(a, "id"), out var id) ? id : Guid.Empty;
 
-    static Guid[] Ids(JsonElement a) => Has(a, "ids", JsonValueKind.Array)
-        ? a.GetProperty("ids").EnumerateArray()
+    static Guid[] Ids(JsonElement a) => GuidList(a, "ids");
+
+    static Guid[] GuidList(JsonElement a, string name) => Has(a, name, JsonValueKind.Array)
+        ? a.GetProperty(name).EnumerateArray()
             .Select(e => e.ValueKind == JsonValueKind.String && Guid.TryParse(e.GetString(), out var g) ? g : Guid.Empty)
             .Where(g => g != Guid.Empty).Distinct().ToArray()
         : [];

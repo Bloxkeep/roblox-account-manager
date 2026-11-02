@@ -17,8 +17,8 @@ export function Sidebar() {
   const accounts: any[] = app.accounts || [];
   // The mini window's buttons read as pressed while it is open (the tray menu and Esc can change that too).
   const mini = t(app.miniOpen ? 'sys.miniHide' : 'sys.mini');
-  const nav = (v: string, icon: string, extra?: React.ReactNode) =>
-    <button className={`nav ${view === v ? 'on' : ''}`} data-act="view" data-view={v} title={t(`nav.${v}`)}><Icon name={icon} /><span>{t(`nav.${v}`)}</span>{extra}</button>;
+  const nav = (v: string, icon: string, extra?: React.ReactNode, tip = t(`nav.${v}`)) =>
+    <button className={`nav ${view === v ? 'on' : ''}`} data-act="view" data-view={v} title={tip}><Icon name={icon} /><span>{t(`nav.${v}`)}</span>{extra}</button>;
   const u = app.update;
   const vault: VaultInfo | null = (app.vaults?.list || []).find((v: VaultInfo) => v.id === app.vaults?.open) || null;
   return <aside className="side">
@@ -29,6 +29,8 @@ export function Sidebar() {
     <div className="side-nav">
       {nav('accounts', 'users', <em id="nav-count">{accounts.length}</em>)}
       {nav('presets', 'layers')}
+      {/* Macros are new and work differently on each PC (Roblox windows taken to the front in turn): marked Beta. */}
+      {nav('macros', 'keyboard', <em className="nav-beta">{t('macro.beta')}</em>, `${t('nav.macros')} (${t('macro.beta')})`)}
       {nav('monitor', 'screens')}
       {nav('stats', 'clock')}
       {nav('settings', 'sliders')}

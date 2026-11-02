@@ -16,6 +16,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
         button.nav [title="Theo dõi game"]
           svg.i #1e3syqr
           span "Theo dõi game"
@@ -212,48 +216,48 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.15 · 1 tháng 11, 2026"
+              small "Bloxkeep 1.0.16 · 2 tháng 11, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
           article.wn-feat
             div.wn-shot
-              img [alt="" style="width:577px" src="whatsnew/1.0.15-photos.vi.webp"]
+              img [alt="" style="width:556px" src="whatsnew/1.0.16-macros.vi.webp"]
             div.wn-feat-text
-              h3 "Theme động từ ảnh thật"
-              p "Miami neon, bến cảng đêm, hoa đăng Hội An, sứa biển và tuyết rơi: mặt nước, xe cộ và tuyết chuyển động theo chuột. Tổng cộng 24 theme mới."
-              button.wn-go [type="button" FOCUSED] "Chọn theme"
+              h3 "Macro (Beta)"
+              p "Viết các bước thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ, lặp lại, Nếu. Ghi lại thao tác hoặc bắt đầu từ mẫu, chạy thử, rồi kéo điểm và vùng ngay trên game."
+              button.wn-go [type="button" FOCUSED] "Tạo macro"
                 svg.i #1g7f83q
           article.wn-feat
             div.wn-shot
-              img [alt="" style="width:577px" src="whatsnew/1.0.15-modes.vi.webp"]
+              img [alt="" style="width:505px" src="whatsnew/1.0.16-panel.vi.webp"]
             div.wn-feat-text
-              h3 "Chế độ cho Roblox"
-              p "Chọn Treo máy, Vừa treo vừa chơi hoặc Roblox gốc. Mỗi tài khoản cũng có thể đặt FPS riêng."
-              button.wn-go [type="button"] "Chọn chế độ"
+              h3 "Bảng cạnh game"
+              p "Mỗi macro có cửa sổ nhỏ với nút Chạy và những cài đặt người chơi được đổi: tab, công tắc, lựa chọn, danh sách tích chọn, điểm đặt ngay trên game. Bảng có thể tự hiện khi tài khoản vào game bạn chọn."
+              button.wn-go [type="button"] "Mở Macro"
+                svg.i #1g7f83q
+          article.wn-feat
+            div.wn-shot
+              img [alt="" style="width:577px" src="whatsnew/1.0.16-stats.vi.webp"]
+            div.wn-feat-text
+              h3 "Thống kê mới"
+              p "Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu, kèm nút bật đúng thứ giúp được."
+              button.wn-go [type="button"] "Xem thống kê"
                 svg.i #1g7f83q
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "Thanh bên hiện % CPU và GPU mà các cửa sổ Roblox đang dùng."
-            li "Thẻ tài khoản và cửa sổ đăng nhập gọn và dễ đọc hơn."
-            li "Bản của launcher được cập nhật trước."
-              b "Mở thẳng Roblox không còn chạy bản cũ"
-            li "Mỗi cửa sổ đang mở hiện phiên bản Roblox, bản cũ có nhãn riêng. Có nút đóng, cập nhật rồi mở lại."
-            li "Launcher tự cập nhật Roblox khi không mở cửa sổ nào. Có thể tắt."
-            li "Limit RAM có thêm mức 512 MB và 768 MB, thu nhỏ nhiều cửa sổ không còn làm Bloxkeep khựng."
-            li "Sắp xếp cửa sổ Roblox khít nhau, không còn khe hở."
-            li "Cài đặt › Discord có xem trước cảnh báo và tin trạng thái."
-            li "Đổi theme giờ chuyển mượt."
+            li "Macro không thấy gì trong vài phút sẽ chạy các bước \"Khi bị kẹt\" rồi làm lại từ đầu; cũng có thể chọn vào lại game hoặc gửi cảnh báo Discord kèm ảnh cửa sổ."
+            li "Macro đọc được chữ nào người chơi tích trong danh sách (đọc sai một chữ cái vẫn nhận) và bấm từng chấm màu một lần khi nó hiện."
+            li "Ctrl+Alt+1 đến 9 chạy macro, Ctrl+Alt+0 dừng mọi macro. Menu khay và Ctrl+K hiện hoặc ẩn bảng."
+            li "Fast Flags (trời xám, không cỏ, đồ họa thấp nhất) có công tắc riêng trong Cài đặt › Treo game, mặc định tắt: bật lên để giữ trời xám của Treo máy nhẹ."
+            li "Theo dõi game có nút thu nhỏ trên từng cửa sổ, ảnh đổi theo kích thước ngay."
+            li "Ctrl+Alt+A xếp cửa sổ trên màn hình đang có chuột."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "Bloxkeep mở bản khác hoặc nhắc cài lại Roblox."
-              b "Sửa lỗi Windows báo khi Roblox mất tệp DLL"
-            li "Cửa sổ thu nhỏ lúc đang tải không còn tự phóng to lại."
-            li "Cửa sổ Bloxkeep không còn đè taskbar khi thoát phóng to."
-            li "Ô chọn ở dạng danh sách không còn che nút ⋮."
+            li "Bấm vào cửa sổ Roblox đã xếp không còn làm nó to hơn ô của nó."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q

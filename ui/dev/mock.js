@@ -229,6 +229,90 @@
     settings.presets[1].name = 'Adopt_Me_trade_with_no_spaces_in_the_name_at_all_so_it_cant_wrap';
     settings.presets[0].gameName = games[2753915549].name; settings.presets[1].gameName = games[920587237].name;
   }
+  // Macros (Beta): ?macros=1 opens their tab with three made-up macros, their windows' runs in mixed states (running,
+  // paused while the PC is used, waiting for Unikey to be turned off, failed, done); ?nomacros=1: none yet; ?macrorec=1:
+  // a recording under way. ?macroedit=<m1|m2|m3|m4> opens that macro's form; with it ?macropic=1 takes its window picture,
+  // ?macrotry=1 presses Try it, ?macrogame=1 Edit on game (?gamedrag=1: a box is then dragged on the game).
+  // macroPicture's picture is drawn here (a made-up game: sky, ground, a block player and a green CLAIM button).
+  const MACRO_BTN = 'iVBORw0KGgoAAAANSUhEUgAAACQAAAAQCAIAAADxiUp0AAAAJklEQVR42mMQbbClG2IYAMuUjsbRFI1aNmrZqGWjlg1Fy4ZhqQ8AF4uFH2pOtyIAAAAASUVORK5CYII=';
+  const MACRO_SCENE = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+    <rect width="1280" height="430" fill="#7ec8f0"/><rect y="430" width="1280" height="290" fill="#5aa04a"/>
+    <rect x="160" y="300" width="220" height="130" fill="#b97a4a"/><rect x="190" y="240" width="160" height="70" fill="#a33"/>
+    <rect x="600" y="300" width="70" height="70" fill="#f2c94c"/><rect x="590" y="370" width="90" height="100" fill="#3b82f6"/>
+    <rect x="600" y="470" width="30" height="80" fill="#1f2937"/><rect x="640" y="470" width="30" height="80" fill="#1f2937"/>
+    <rect x="24" y="20" width="44" height="44" rx="8" fill="#000" fill-opacity=".5"/><rect x="1120" y="20" width="136" height="40" rx="8" fill="#000" fill-opacity=".45"/>
+    <rect x="1000" y="540" width="180" height="64" rx="10" fill="#15803d"/><rect x="1006" y="546" width="168" height="52" rx="8" fill="#22c55e"/>
+    <text x="1090" y="582" font-family="Arial" font-size="28" font-weight="700" fill="#fff" text-anchor="middle">CLAIM</text></svg>`);
+  let macroSeq = 4;
+  let macros = params.has('nomacros') ? [] : [
+    { id: 'm1', name: tx('Anti-AFK jump', 'Nhảy chống AFK'), targets: 'accounts', accountIds: [id(1), id(2)], trigger: { kind: 'interval', everySeconds: 300 }, enabled: true, hotkey: 1,
+      steps: [{ kind: 'key', key: 'Space', ms: 60 }], recordedSize: { w: 1280, h: 720 } },
+    { id: 'm2', name: tx('Claim daily chest', 'Nhận rương hằng ngày'), targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: 2, onFail: 'skip', maxMinutes: 60,
+      steps: [{ kind: 'loop', times: 0 }, { kind: 'waitImage', image: MACRO_BTN, threshold: 0.9, timeoutMs: 600000, gone: false },
+        { kind: 'clickImage', image: MACRO_BTN, button: 'left', threshold: 0.9, timeoutMs: 5000, region: { x: 0.7, y: 0.65, w: 0.3, h: 0.3 } }, { kind: 'wait', ms: 2000 }, { kind: 'endLoop' }],
+      recordedSize: { w: 1280, h: 720 } },
+    { id: 'm3', name: tx('Farm route', 'Đường farm'), targets: 'all', accountIds: [], trigger: { kind: 'join' }, enabled: false, hotkey: null, jitterMs: 60,
+      steps: [{ kind: 'down', key: 'W' }, { kind: 'wait', ms: 2000 }, { kind: 'up', key: 'W' }, { kind: 'click', x: 0.62, y: 0.48, button: 'left', double: false },
+        { kind: 'if', test: { kind: 'text', text: 'Claim' } }, { kind: 'clickImage', image: MACRO_BTN, button: 'left', threshold: 0.9, timeoutMs: 3000 }, { kind: 'endIf' },
+        { kind: 'type', text: 'gg' }],
+      recordedSize: { w: 800, h: 600 } },
+  ].map(m => ({ jitterMs: 40, jitterPx: 3, maxMinutes: 10, onFail: 'stop', ...m }));
+  settings.macros = macros;
+  const setMacros = list => { macros = list; settings = { ...settings, macros }; };
+  let macroRuns = params.has('macros') && !params.has('nomacros') ? [
+    { macroId: 'm1', accountId: id(1), status: 'running', step: 0, loops: 12, startedAt: minsAgo(60) },
+    { macroId: 'm1', accountId: id(2), status: 'paused', reason: 'personActive', step: 0, loops: 11, startedAt: minsAgo(55) },
+    { macroId: 'm2', accountId: id(1), status: 'paused', reason: 'imeOn', step: 1, startedAt: minsAgo(3) },
+    { macroId: 'm2', accountId: id(2), status: 'failed', reason: 'notFound', step: 1, startedAt: minsAgo(14), endsAt: minsAgo(4) },
+    { macroId: 'm3', accountId: id(1), status: 'done', startedAt: minsAgo(30), endsAt: minsAgo(29) },
+  ] : [];
+  let macroRecording = params.has('macrorec') ? { accountId: id(1), startsAt: minsAgo(0.05), steps: 7 } : null;
+  let macroSweep = null;
+  const RECORDED = [{ kind: 'down', key: 'W' }, { kind: 'wait', ms: 1200 }, { kind: 'up', key: 'W' }, { kind: 'click', x: 0.703, y: 0.79, button: 'left', double: false },
+    { kind: 'wait', ms: 400 }, { kind: 'key', key: 'E', ms: 80 }];
+
+  // m4 "Cast and reel", made the new way: an area its steps look in (Fish area), two values the player may change on its
+  // panel (Hold time, Bar colour) and a fish counter. Its panel is up with ?macros=1.
+  if (!params.has('nomacros')) macros.push({ id: 'm4', name: tx('Cast and reel', 'Quăng và kéo cần'), targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: 3,
+    jitterMs: 40, jitterPx: 3, maxMinutes: 60, onFail: 'stop', recordedSize: { w: 1280, h: 720 },
+    options: [{ name: 'o1', label: tx('Hold time', 'Thời gian giữ'), kind: 'number', value: 600, default: 600, min: 0, max: 10000, unit: 's' },
+      { name: 'o2', label: tx('Bar colour', 'Màu thanh'), kind: 'colour', value: '#22c55e', default: '#22c55e' }],
+    areas: [{ name: 'a1', label: tx('Fish area', 'Vùng cá'), colour: '#22c55e', rect: { x: 0.3, y: 0.74, w: 0.4, h: 0.1 } }],
+    panel: { autoShow: true, placeId: 2753915549 },
+    steps: [
+      { kind: 'loop', times: 0 }, { kind: 'click', x: 0.5, y: 0.6, button: 'left', double: false, holdMs: '$o1' },
+      { kind: 'waitColour', x: 0.5, y: 0.5, colour: '$o2', tolerance: 24, timeoutMs: 15000, gone: false, region: '@a1' },
+      { kind: 'follow', region: '@a1', target: '$o2', marker: { left: '#ffffff', right: '#ffffff' }, tolerance: 24, button: 'left', mode: 'smooth', kp: 1, kd: 0.4,
+        predict: true, fps: 60, untilGoneMs: 1500, timeoutMs: 60000 },
+      { kind: 'addVar', name: 'fish', value: 1 }, { kind: 'endLoop' }] });
+  setMacros(macros.map(m => ({ options: [], areas: [], panel: { autoShow: false, placeId: null }, ...m })));
+  let panelsShown = params.has('macros') && !params.has('nomacros') ? ['m4'] : [];
+  const macroVars = params.has('macros') ? { [id(1)]: { fish: 12 }, [id(2)]: { fish: 9 } } : {};
+  // The built-in templates, generic (no game names): their areas and the values the player may change come with them;
+  // what still has to be set for the person's game is marked on its step (todo).
+  const TEMPLATES = {
+    macros: [
+      { id: 'tpl-keys', name: tx('Press keys on repeat', 'Bấm phím lặp lại'), about: tx('Presses a key every few seconds.', 'Bấm một phím sau mỗi vài giây.'), icon: 'keyboard',
+        targets: 'selected', accountIds: [], trigger: { kind: 'interval', everySeconds: 10 }, enabled: true, hotkey: null, jitterMs: 40, jitterPx: 3, maxMinutes: 60, onFail: 'stop',
+        options: [{ name: 'o1', label: tx('Key', 'Phím'), kind: 'key', value: 'E', default: 'E' }], areas: [], panel: { autoShow: false, placeId: null },
+        steps: [{ kind: 'key', key: '$o1', ms: 60 }] },
+      { id: 'tpl-button', name: tx('Click a button when it shows up', 'Bấm nút khi nó hiện'), about: tx('Waits for a button, clicks it, again and again.', 'Chờ nút hiện ra rồi bấm, lặp lại.'),
+        icon: 'image', targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null, jitterMs: 40, jitterPx: 3, maxMinutes: 60, onFail: 'skip',
+        options: [], areas: [], panel: { autoShow: false, placeId: null },
+        steps: [{ kind: 'loop', times: 0 }, { kind: 'waitImage', image: '', threshold: 0.9, timeoutMs: 600000, gone: false, todo: ['image'] },
+          { kind: 'clickImage', image: '', button: 'left', threshold: 0.9, timeoutMs: 5000, todo: ['image'] }, { kind: 'wait', ms: 2000 }, { kind: 'endLoop' }] },
+      { id: 'tpl-bar', name: tx('Hold to cast, then keep the bar on the target', 'Giữ để quăng, rồi giữ thanh trên mục tiêu'),
+        about: tx('For bar minigames: hold, wait for the bar, follow the target.', 'Cho minigame thanh: giữ, chờ thanh, bám mục tiêu.'), icon: 'gauge',
+        targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null, jitterMs: 40, jitterPx: 3, maxMinutes: 60, onFail: 'stop',
+        options: [{ name: 'o1', label: tx('Hold time', 'Thời gian giữ'), kind: 'number', value: 600, default: 600, min: 0, max: 10000, unit: 's' }],
+        areas: [{ name: 'a1', label: tx('Bar area', 'Vùng thanh'), colour: '#22c55e', rect: { x: 0.3, y: 0.75, w: 0.4, h: 0.1 } }],
+        panel: { autoShow: false, placeId: null },
+        steps: [{ kind: 'loop', times: 0 }, { kind: 'click', x: 0.5, y: 0.6, button: 'left', double: false, holdMs: '$o1' },
+          { kind: 'follow', region: '@a1', target: '#22c55e', marker: '#ffffff', tolerance: 24, button: 'left', mode: 'onOff', predict: false, kp: 1, kd: 0.4, fps: 60,
+            untilGoneMs: 1500, timeoutMs: 60000, todo: ['region', 'target', 'marker'] }, { kind: 'endLoop' }] },
+    ],
+  };
+  let tryTimer = 0;
   let multi = { enabled: !params.has('multioff'), armed: !params.has('notready') && !params.has('multioff'), windowed: true, tile: false, trayAutostart: true };
   /**
    * The app's launch warnings (AppController.LaunchAccountsAsync): Multi-Roblox off or not ready with several accounts,
@@ -321,6 +405,7 @@
     monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: LONG ? 'C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep' : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep', paths: { vault: locked ? null : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv', log: 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log', app: 'C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current' },
     hotkeys: { on: !params.has('nohotkeys'), taken: params.has('keystaken') ? ['Ctrl+Alt+H'] : [] },
     robloxInstalled: !params.has('noroblox'),
+    macroRuns: locked ? [] : macroRuns, macroRecording: locked ? null : macroRecording, macroVars, macroSweep, panelsShown,
     launching: false, checking: false, multi, settings: locked ? null : settings, accounts: locked ? [] : accounts, discord: locked ? null : discord,
   });
   // Roblox windows of accounts deleted while playing: like the app, deleting doesn't close them, and they still count.
@@ -918,14 +1003,155 @@
           const total = buckets.reduce((s, b) => s + b.seconds, 0), count = Math.round(total / 2700) + (total ? 2 : 0);
           const share = p => Math.round(total * p);
           return { days, hourly, since: start.toISOString(), recorded: !params.has('nostats'), totalSeconds: total, sessions: count, kicks: Math.round(total / 20000),
-            accounts: [[1, .45, 1], [2, .33, 2], [4, .2, 0], [9, .02, 0]].map(([n, p, k]) => { const acc = accounts.find(x => x.id === id(n)); return { id: id(n), label: acc?.label, username: acc?.username, avatarUrl: acc?.avatarUrl, seconds: share(p), sessions: Math.max(1, Math.round(count * p)), kicks: k }; }),
-            games: [[2753915549, .55], [920587237, .3], [4924922222, .15]].map(([p, s]) => ({ placeId: p, name: games[p].name, iconUrl: cold(games[p].iconUrl), seconds: share(s), sessions: Math.max(1, Math.round(count * s)) })),
+            // The period before, as far in: more play, fewer drops. ?noprev=1: the records don't reach back that far.
+            previous: params.has('noprev') || !total ? null : { totalSeconds: Math.round(total / 1.2), kicks: Math.round(total / 20000) + 2 },
+            icons: Object.fromEntries([2753915549, 920587237, 4924922222].map(p => ['u' + p, cold(games[p].iconUrl)])),
+            accounts: [[1, .45, 1, 2753915549], [2, .33, 2, 2753915549], [4, .2, 0, 4924922222], [9, .02, 0, 920587237]].map(([n, p, k, g]) => { const acc = accounts.find(x => x.id === id(n)); return { id: id(n), label: acc?.label, username: acc?.username, avatarUrl: acc?.avatarUrl, seconds: share(p), sessions: Math.max(1, Math.round(count * p)), kicks: k,
+              topGame: { key: 'u' + g, name: games[g].name, iconUrl: cold(games[g].iconUrl) } }; }),
+            games: [[2753915549, .55], [920587237, .3], [4924922222, .15]].map(([p, s]) => ({ key: 'u' + p, placeId: p, name: games[p].name, iconUrl: cold(games[p].iconUrl), seconds: share(s), sessions: Math.max(1, Math.round(count * s)) })),
+            ends: (() => { const e = new Date(start); e.setDate(e.getDate() + days); return e.toISOString(); })(),
+            // Stays as shares of the time so far: [from, to, game, how it ended].
+            timeline: !total ? [] : [[1, [[0, .34, 2753915549, 'idle'], [.38, .72, 2753915549], [.76, 1, 920587237]]], [2, [[.05, .3, 2753915549, 'other'], [.44, .62, 920587237, 'idle'], [.68, .93, 2753915549]]],
+              [4, [[.2, .55, 4924922222], [.6, .8, 2753915549]]], [9, [[.1, .13, 920587237]]]].map(([n, stays]) => ({ id: id(n), segments: stays.map(([from, to, p, reason]) => {
+                const when = k => new Date(start.getTime() + (now - start) * k).toISOString();
+                return { from: when(from), to: when(to), game: 'u' + p, name: games[p].name, reason: reason || null };
+              }) })),
+            losses: !total ? [] : [{ kind: 'idle', times: 2, seconds: share(.14), accounts: [id(1), id(2)] }, { kind: 'other', times: 1, seconds: share(.05), accounts: [id(2)] }],
             buckets,
             presets: [{ id: 'p1', name: 'Farm Blox Fruits', iconUrl: cold(games[2753915549].iconUrl), seconds: share(.62), sessions: Math.max(1, Math.round(count * .6)), kicks: 1, accounts: 3 },
               { id: 'p2', name: 'Adopt Me trade', iconUrl: cold(games[920587237].iconUrl), seconds: share(.25), sessions: 3, kicks: 0, accounts: 1 },
               { id: '00000000-0000-0000-0000-000000000000', name: '', iconUrl: null, seconds: share(.13), sessions: 2, kicks: 0, accounts: 2 }],
             longest: total ? { seconds: Math.round(total * .3), account: id(1), label: accounts.find(x => x.id === id(1))?.label, game: games[2753915549].name } : null };
         }
+        // Macros (Beta), as the app answers (AppController's macro commands); nothing is ever pressed or clicked here.
+        case 'saveMacro': {
+          const m = a.macro;
+          if (!String(m.name || '').trim()) throw new Error(language === 'vi' ? 'Hãy đặt tên cho macro.' : 'Give the macro a name.');
+          if (m.hotkey && macros.some(o => o.id !== m.id && o.hotkey === m.hotkey)) throw new Error(language === 'vi' ? `Ctrl+Alt+${m.hotkey} đã dùng cho macro khác.` : `Ctrl+Alt+${m.hotkey} is already another macro's.`);
+          const saved = { ...m, name: m.name.trim(), id: m.id || `m${++macroSeq}` };
+          setMacros(macros.some(o => o.id === saved.id) ? macros.map(o => o.id === saved.id ? saved : o) : [...macros, saved]);
+          push();
+          return saved;
+        }
+        case 'deleteMacro': setMacros(macros.filter(m => m.id !== a.id)); macroRuns = macroRuns.filter(r => r.macroId !== a.id); push(); return null;
+        case 'duplicateMacro': {
+          const i = macros.findIndex(m => m.id === a.id);
+          const copy = { ...macros[i], id: `m${++macroSeq}`, name: `${macros[i].name} ${language === 'vi' ? '(bản sao)' : '(copy)'}`.slice(0, 60), hotkey: null,
+            panel: { ...(macros[i].panel || { placeId: null }), autoShow: false } };
+          setMacros([...macros.slice(0, i + 1), copy, ...macros.slice(i + 1)]);
+          push();
+          return copy;
+        }
+        case 'moveMacro': {
+          const m = macros.find(x => x.id === a.id), rest = macros.filter(x => x.id !== a.id);
+          rest.splice(Math.max(0, Math.min(rest.length, a.to)), 0, m);
+          setMacros(rest);
+          push();
+          return null;
+        }
+        case 'runMacro': {
+          const m = macros.find(x => x.id === a.id);
+          if (a.accountIds && !a.accountIds.length) throw new Error(language === 'vi' ? 'Chưa chọn tài khoản nào.' : 'No accounts chosen.');
+          const want = a.accountIds || (m.targets === 'accounts' ? m.accountIds : m.targets === 'all' ? accounts.map(x => x.id) : [id(2), id(4)]);
+          const ids = want.filter(x => accounts.find(acc => acc.id === x)?.state === 'running');
+          const busy = new Set(macroRuns.filter(r => r.macroId === m.id && ['waiting', 'running', 'paused'].includes(r.status)).map(r => r.accountId));
+          const fresh = ids.filter(x => !busy.has(x));
+          macroRuns = [...macroRuns.filter(r => r.macroId !== m.id || !fresh.includes(r.accountId)),
+            ...fresh.map((x, k) => ({ macroId: m.id, accountId: x, status: k ? 'waiting' : 'running', reason: k ? 'busy' : undefined, step: k ? undefined : 0, startedAt: minsAgo(0) }))];
+          macroSweep = fresh.length ? { seconds: 2 * fresh.length } : null;
+          push();
+          return { queued: fresh.length };
+        }
+        case 'stopMacros':
+          // {id, accountId, trial: true}: only Try it's run on that window (the page asks this; see the report).
+          if (a.trial) clearTimeout(tryTimer);
+          macroRuns = macroRuns.map(r => (!a.id || r.macroId === a.id) && (!a.accountId || r.accountId === a.accountId) && (!a.trial || r.trial)
+            && ['waiting', 'running', 'paused'].includes(r.status) ? { ...r, status: 'stopped', reason: 'byUser', step: undefined, endsAt: minsAgo(0) } : r);
+          if (!a.id) macroRecording = null;
+          push();
+          return null;
+        case 'macroPicture':
+          await wait(200);
+          if (accounts.find(x => x.id === a.accountId)?.state !== 'running') throw new Error(language === 'vi' ? 'Tài khoản này chưa mở cửa sổ Roblox.' : 'This account has no Roblox window open.');
+          return { image: MACRO_SCENE, w: 1280, h: 720 };
+        // Try: a picture is found where the CLAIM button is; text "claim" is read there; a colour always matches.
+        case 'macroTest': {
+          await wait(250);
+          const tst = a.test || {};
+          if (tst.kind === 'image') return { ok: true, found: { x: 0.781, y: 0.75, w: 0.141, h: 0.089 }, score: 0.96 };
+          if (tst.kind === 'text') return String(tst.text || '').trim().toLowerCase() === 'claim' ? { ok: true, found: { x: 0.8, y: 0.77, w: 0.1, h: 0.05 }, text: 'CLAIM' } : { ok: false, text: 'CLAIM' };
+          if (tst.kind === 'colour') return { ok: true };
+          return { ok: false };
+        }
+        // Recording: the countdown, then steps as they come; Stop (or F8) hands the steps to the page.
+        case 'recordMacro':
+          if (accounts.find(x => x.id === a.accountId)?.state !== 'running') throw new Error(language === 'vi' ? 'Tài khoản này chưa mở cửa sổ Roblox.' : 'This account has no Roblox window open.');
+          macroRecording = { accountId: a.accountId, startsAt: new Date(Date.now() + 3000).toISOString(), steps: 0 };
+          push();
+          return null;
+        case 'stopRecording':
+          if (macroRecording) setTimeout(() => emit('macroRecorded', { steps: RECORDED, w: 1280, h: 720 }), 50);
+          macroRecording = null;
+          push();
+          return null;
+        case 'importMacro':
+          await wait(200);
+          return { id: '', name: tx('Fishing loop', 'Câu cá tự động'), targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null,
+            jitterMs: 40, jitterPx: 3, maxMinutes: 30, onFail: 'stop', steps: [{ kind: 'loop', times: 20 }, { kind: 'click', x: 0.5, y: 0.6, button: 'left', double: false },
+              { kind: 'waitColour', x: 0.5, y: 0.4, colour: '#ffffff', tolerance: 24, timeoutMs: 20000, gone: false }, { kind: 'click', x: 0.5, y: 0.6, button: 'left', double: false },
+              { kind: 'endLoop' }] };
+        case 'exportMacro': await wait(150); return true;
+        case 'macroTemplates': await wait(50); return TEMPLATES;
+        // The panel beside the game, and a value the player changed there.
+        case 'showPanel': if (!panelsShown.includes(a.id)) panelsShown = [...panelsShown, a.id]; push(); return null;
+        case 'hidePanel': panelsShown = panelsShown.filter(x => x !== a.id); push(); return null;
+        case 'setOption':
+          setMacros(macros.map(m => m.id !== a.id ? m : { ...m, options: (m.options || []).map(o => o.name === a.name ? { ...o, value: a.value } : o) }));
+          push();
+          return null;
+        // Edit on game: the app draws the dots and boxes on the window; ?gamedrag=1 drags Fish area there a moment later.
+        case 'editOnGame':
+          if (a.accountId && params.has('gamedrag')) setTimeout(() => emit('onGameEdit', { area: 'a1', rect: { x: 0.25, y: 0.7, w: 0.5, h: 0.12 } }), 300);
+          return null;
+        // Pick on game: the next click on the window (here the bar's green, low in the middle); null if Esc.
+        case 'pickOnGame': await wait(300); return { x: 0.52, y: 0.8, colour: '#22c55e' };
+        // Try it: the draft once on one window, as a trial run (in macroRuns with trial: true, not the list's); the steps
+        // go by a few a second. What it looks for is found, except the bar (follow), which isn't on screen until a fish
+        // bites, and a picture not cut yet; an empty value stops it there. The watch sends the window meanwhile, its last
+        // frame saying how it ended.
+        case 'macroTryRun': {
+          clearTimeout(tryTimer);
+          const m = a.macro, macroId = m.id || 'mtry', acc = a.accountId;
+          if (macroRuns.some(r => !r.trial && r.macroId === macroId && r.accountId === acc && ['waiting', 'running', 'paused'].includes(r.status)))
+            throw new Error(tx("It's running on this account already. Stop it first.", 'Macro đang chạy trên tài khoản này. Hãy dừng trước.'));
+          const empty = v => typeof v === 'string' && v.startsWith('$') && (m.options || []).find(o => '$' + o.name === v)?.value === '';
+          const runOf = () => macroRuns.find(r => r.trial && r.macroId === macroId && r.accountId === acc && r.status === 'running');
+          macroRuns = [...macroRuns.filter(r => !(r.trial && r.macroId === macroId && r.accountId === acc)),
+            { macroId, accountId: acc, status: 'running', step: 0, trial: true, startedAt: new Date().toISOString() }];
+          const set = p => { macroRuns = macroRuns.map(r => r === runOf() ? { ...r, ...p } : r); push(); };
+          const frame = (note, boxes = []) => emit('macroSeen', { accountId: acc, image: MACRO_SCENE, w: 1280, h: 720, boxes, numbers: [], note });
+          const next = i => {
+            if (!runOf()) return;
+            const st = m.steps[i];
+            if (!st) { set({ status: 'done', step: undefined, endsAt: new Date().toISOString() }); return frame(tx('Tried: it ran to the end.', 'Đã thử: chạy hết.')); }
+            set({ step: i });
+            if (Object.values(st).some(empty)) {
+              set({ status: 'failed', reason: 'missingValue', step: undefined, endsAt: new Date().toISOString() });
+              return frame(tx('Tried: it stopped (a setting or area is missing).', 'Đã thử: dừng (thiếu cài đặt hoặc vùng).'));
+            }
+            if (st.kind === 'follow' || st.image === '') {
+              set({ status: 'failed', reason: 'notFound', step: undefined, endsAt: new Date().toISOString() });
+              return frame(tx('Tried: it stopped (what it looks for wasn\'t there).', 'Đã thử: dừng (không thấy thứ cần tìm).'));
+            }
+            frame('', ['waitImage', 'clickImage', 'waitColour', 'clickColour', 'waitText', 'if'].includes(st.kind) ? [{ x: 0.781, y: 0.75, w: 0.141, h: 0.089, label: tx('found', 'thấy') }] : []);
+            tryTimer = setTimeout(() => next(i + 1), 200);
+          };
+          push();
+          tryTimer = setTimeout(() => next(0), 200);
+          return { queued: 1, macroId };
+        }
+        // The editor's live view of a window (macroSeen about 5 times a second); accountId null stops it.
+        case 'macroWatch': return null;
         default: return null;
       }
     },
@@ -959,6 +1185,16 @@
     if (params.has('lockupdatein')) setTimeout(() => { lockUpdate = '30'; push(); }, +params.get('lockupdatein') || 1500);
     if (params.has('autolockin')) setTimeout(() => { screenLock = { minutes: settings.autoLockMinutes || 15 }; locked = true; push(); }, +params.get('autolockin') || 1500);
     if (params.has('stats')) click('[data-view=stats]');
+    if (['macros', 'nomacros', 'macrorec', 'macroedit'].some(k => params.has(k))) click('[data-view=macros]');
+    if (params.has('macroedit')) setTimeout(() => {
+      click(`.mc-item[data-id="${params.get('macroedit')}"] [data-mc=more]`);
+      setTimeout(() => {
+        [...document.querySelectorAll('.menu button')].find(b => b.textContent.trim() === (window.I18N?.[language]?.['macro.edit'] || 'Edit'))?.click();
+        if (params.has('macropic')) setTimeout(() => click('#mc-pic-take'), 300);
+        if (params.has('macrotry')) setTimeout(() => click('#mc-try'), 300);
+        if (params.has('macrogame')) setTimeout(() => click('#mc-ongame'), 300);
+      }, 50);
+    }, 100);
     if (params.has('monitor')) click('[data-view=monitor]');
     if (params.has('select') || params.has('menu')) { click('.card[data-id$="2"]'); click('.card[data-id$="4"]'); }
     if (params.has('menu')) click('.card[data-id$="4"] [data-act=card-menu]');

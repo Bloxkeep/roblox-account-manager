@@ -664,6 +664,9 @@ public static class RobloxProcesses
         return tree;
     }
 
+    /// <summary><see cref="Focus"/> once a nudge, a picture or a macro's turn under way is over (InputTurn.cs).</summary>
+    public static void FocusInTurn(int pid) => InputTurn.RunWhenFree("focus", () => Focus(pid));
+
     public static void Focus(int pid)
     {
         var hWnd = MainWindow(pid);

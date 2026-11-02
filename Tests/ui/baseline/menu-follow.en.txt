@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
         button.nav [title="Game monitor"]
           svg.i #1e3syqr
           span "Game monitor"
@@ -382,7 +386,7 @@ html [data-theme="dark" lang="en"]
                 svg.i #1e3syqr
                 span "Windows"
 #layer
-  div.menu [role="menu" style="left:911.656px;top:133px"]
+  div.menu [role="menu" style="left:911.656px;top:97px"]
     button [role="menuitem"]
       svg.i #1ewcuky
       span "Play"
@@ -413,6 +417,9 @@ html [data-theme="dark" lang="en"]
     button [role="menuitem" disabled]
       svg.i #g81ucr
       span "Switch to another server"
+    button [role="menuitem"]
+      svg.i #kx2qfl
+      span "Run macro…"
     button [role="menuitem"]
       svg.i #1ap9cll
       span "Auto-rejoin"

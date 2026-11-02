@@ -77,7 +77,7 @@ public sealed partial class AppController
     {
         if ((!atLock && now - _started < RelaunchAfterStart) || Settling || HomeSessionsActive)
             return false;
-        if (OpeningRoblox || _restarts.Count > 0 || _nudging || now < _sweepBackgroundUntil || ScheduleDueSoon())
+        if (OpeningRoblox || _restarts.Count > 0 || WindowsInTurn || MacrosPlaying || now < _sweepBackgroundUntil || ScheduleDueSoon())
             return false;
         if (_quickLogin is not null || _vaultImportOpening || _vaultImportPath is not null || _backupWrite is { IsCompleted: false }
             || _signInCheckRunning || _discordSending || _saveFailed || PageBusy || Ui.ModalsOpen > 0)

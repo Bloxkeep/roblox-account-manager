@@ -125,6 +125,12 @@ public sealed partial class AppController
         monitors = Screen.AllScreens.Select((s, i) => new { index = i, s.Primary, width = s.Bounds.Width, height = s.Bounds.Height }).ToArray(),
         settings = Open is null ? null : SettingsDto(Open.Data.Settings),
         accounts = Open?.Data.Accounts.Select(AccountDto).ToArray() ?? [],
+        // Macros (Beta), AppController.Macros.cs: nothing of them while locked.
+        macroRuns = MacroRunsDto(),
+        macroRecording = MacroRecordingDto(),
+        macroVars = MacroVarsDto(),
+        macroSweep = MacroSweepDto(),
+        panelsShown = PanelsShownDto(),
     };
 
     /// <summary>Which Roblox clients and launchers exist, and the version of the client the chosen option starts.</summary>
@@ -418,6 +424,7 @@ public sealed partial class AppController
         s.MemoryWarnings,
         s.TrimBackground,
         s.AutoUpdateRoblox,
+        s.FastFlags,
         s.RamLimitMb,
         s.SplitCores,
         cores = CoresDto(),
@@ -429,6 +436,7 @@ public sealed partial class AppController
         s.RecentPlayers,
         s.FollowJoinedPlayer,
         presets = s.Presets.Select(PresetDto),
+        macros = s.Macros,
         launchOrder = LaunchOrderDto(),
     };
 

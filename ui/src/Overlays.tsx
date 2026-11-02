@@ -77,12 +77,15 @@ export function WhatsNewTitle({ sub }: { sub: string }) {
 /* ───────────── menus ───────────── */
 
 export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint?: string; danger?: boolean; checked?: boolean; disabled?: boolean; run?: (arg?: string) => void;
+  /** A group's name over its items (Add step's Keys, Mouse…): words only, the arrows pass over it. */
+  head?: boolean;
   /** Arrange windows' layouts as pictures (Snap.tsx) in place of a button: run gets the one picked. */
   snap?: { value: string; width: number; height: number } };
 
 /** A menu's items (app.js makes, places and closes the menu). split: the dock's presets scroll, Save and Edit stay at its foot. */
 export function MenuItems({ items, pick, split }: { items: MenuItem[]; pick: (i: number, byKeyboard: boolean, arg?: string) => void; split: boolean }) {
   const draw = (it: MenuItem, i: number) => it === '-' ? <hr key={i} />
+    : it.head ? <div key={i} className="menu-head" role="presentation">{it.text}</div>
     : it.snap ? <SnapPicker key={i} {...it.snap} label={it.text} onPick={l => pick(i, false, l)} />
     : <button key={i} role="menuitem" data-mi={i} className={`${it.danger ? 'danger' : ''} ${it.checked ? 'checked' : ''}`} disabled={it.disabled}
       onClick={e => pick(i, e.detail === 0)}><Icon name={it.checked ? 'check' : it.icon || ''} /><span title={it.title || undefined}>{it.text}</span>{it.hint ? <kbd>{it.hint}</kbd> : null}</button>;

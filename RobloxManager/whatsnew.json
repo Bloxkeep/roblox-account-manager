@@ -1,5 +1,82 @@
 [
   {
+    "version": "1.0.16",
+    "date": "2026-11-03",
+    "highlights": [
+      {
+        "icon": "mouse",
+        "go": "macros",
+        "image": "whatsnew/1.0.16-macros.{lang}.webp",
+        "en": [
+          "Macros (Beta)",
+          "Write steps as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If. Record one or start from a template, try it, then drag its points and areas right on the game.",
+          "Make a macro"
+        ],
+        "vi": [
+          "Macro (Beta)",
+          "Viết các bước thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ, lặp lại, Nếu. Ghi lại thao tác hoặc bắt đầu từ mẫu, chạy thử, rồi kéo điểm và vùng ngay trên game.",
+          "Tạo macro"
+        ]
+      },
+      {
+        "icon": "sliders",
+        "go": "macros",
+        "image": "whatsnew/1.0.16-panel.{lang}.webp",
+        "en": [
+          "A panel beside the game",
+          "Each macro gets a small window with Run and the settings the player may change: tabs, switches, choices, lists to tick, points set on the game. It can open by itself when an account joins your game.",
+          "Open Macros"
+        ],
+        "vi": [
+          "Bảng cạnh game",
+          "Mỗi macro có cửa sổ nhỏ với nút Chạy và những cài đặt người chơi được đổi: tab, công tắc, lựa chọn, danh sách tích chọn, điểm đặt ngay trên game. Bảng có thể tự hiện khi tài khoản vào game bạn chọn.",
+          "Mở Macro"
+        ]
+      },
+      {
+        "icon": "gauge",
+        "go": "stats",
+        "image": "whatsnew/1.0.16-stats.{lang}.webp",
+        "en": [
+          "New Statistics",
+          "Play time compared with the days before, a timeline of each account, and why accounts dropped with the time it cost, plus a button to turn on what would have helped.",
+          "See Statistics"
+        ],
+        "vi": [
+          "Thống kê mới",
+          "Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu, kèm nút bật đúng thứ giúp được.",
+          "Xem thống kê"
+        ]
+      }
+    ],
+    "improved": {
+      "en": [
+        "A macro that finds nothing for a few minutes runs your \"If stuck\" steps, then starts over; you can also have it rejoin or send a Discord alert with a picture of the window.",
+        "A macro can read any word the player ticks in a list (a letter read wrong is forgiven) and click each spot of a colour once, as it shows.",
+        "Ctrl+Alt+1 to 9 run a macro, Ctrl+Alt+0 stops them all. The tray menu and Ctrl+K show and hide the panels.",
+        "Fast Flags (grey sky, no grass, lowest graphics) now have their own switch in Settings › Staying in game, off at first: turn it on to keep Light AFK's grey sky.",
+        "The Game monitor has a minimise button on each window, and its pictures follow a resize at once.",
+        "Ctrl+Alt+A arranges the windows on the screen your mouse is on."
+      ],
+      "vi": [
+        "Macro không thấy gì trong vài phút sẽ chạy các bước \"Khi bị kẹt\" rồi làm lại từ đầu; cũng có thể chọn vào lại game hoặc gửi cảnh báo Discord kèm ảnh cửa sổ.",
+        "Macro đọc được chữ nào người chơi tích trong danh sách (đọc sai một chữ cái vẫn nhận) và bấm từng chấm màu một lần khi nó hiện.",
+        "Ctrl+Alt+1 đến 9 chạy macro, Ctrl+Alt+0 dừng mọi macro. Menu khay và Ctrl+K hiện hoặc ẩn bảng.",
+        "Fast Flags (trời xám, không cỏ, đồ họa thấp nhất) có công tắc riêng trong Cài đặt › Treo game, mặc định tắt: bật lên để giữ trời xám của Treo máy nhẹ.",
+        "Theo dõi game có nút thu nhỏ trên từng cửa sổ, ảnh đổi theo kích thước ngay.",
+        "Ctrl+Alt+A xếp cửa sổ trên màn hình đang có chuột."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Clicking an arranged Roblox window no longer leaves it bigger than its tile."
+      ],
+      "vi": [
+        "Bấm vào cửa sổ Roblox đã xếp không còn làm nó to hơn ô của nó."
+      ]
+    }
+  },
+  {
     "version": "1.0.15",
     "date": "2026-11-01",
     "highlights": [

@@ -65,6 +65,10 @@ Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết n�
 
 Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do: bạn dùng máy liên tục, máy đang khóa, có ứng dụng toàn màn hình phía trước, hoặc Windows không cho đưa cửa sổ lên trước.
 
+## Fast Flags
+
+Mặc định tắt. Bật lên, cửa sổ Bloxkeep mở sẽ có trời xám, không cỏ và đồ họa thấp nhất, bớt được chút RAM. Mở xong thì cài đặt Roblox của bạn trở lại như cũ. Nếu mở bằng Bloxstrap hay Fishstrap thì cờ của launcher được ưu tiên.
+
 ## Kiểm tra đăng nhập mỗi ngày
 
 **Cài đặt › Treo game › Kiểm tra đăng nhập mỗi ngày** (bật sẵn). Roblox có thể kết thúc phiên đăng nhập mà không báo ai.

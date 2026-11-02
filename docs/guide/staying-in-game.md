@@ -65,6 +65,10 @@ When an account's Roblox disconnects, gets kicked or loses the connection, Bloxk
 
 If an account is kicked anyway, Bloxkeep says why: the PC was in use, it was locked, a full-screen app was in front, or Windows kept the window in the background.
 
+## Fast Flags
+
+Off by default. On: the windows Bloxkeep opens get a grey sky, no grass and the lowest graphics, for a little less RAM. Your own Roblox settings come back once they've opened. With Bloxstrap or Fishstrap, the launcher's own flags win.
+
 ## Daily sign-in check
 
 **Settings › Staying in game › Check sign-ins every day** (on by default). Roblox can end a saved sign-in without telling anyone.

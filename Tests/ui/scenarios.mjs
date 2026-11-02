@@ -97,6 +97,137 @@ export default [
   S('presets-none', 'view=presets&nopresets=1'),
   S('preset-editor', 'preset=1'),
 
+  // ── Macros (Beta) ── Nothing here presses or clicks anything outside the page: the mock answers every macro command.
+  // A line per macro in words (running, paused while the PC is used, Vietnamese typing on, stopped, done), Panel, Run, ⋮.
+  S('macros', 'macros=1'),
+  S('macros-none', 'nomacros=1'),
+  S('macros-narrow', 'macros=1', null, { size: [860, 640] }),
+  S('macros-new-menu', 'macros=1', async s => { await s.click({ css: '#mc-new' }); }),
+  S('macros-more-menu', 'macros=1', async s => { await s.click({ css: '.mc-item[data-id="m4"] [data-mc=more]' }); }),
+  // A template opens as a new macro's form; saved, it is in the list.
+  S('macros-template', 'nomacros=1', async s => {
+    await s.click({ css: '.mc-tile[data-start=template]' });
+    await s.snap('menu');
+    await s.click({ css: '.menu > button:nth-of-type(1)' });
+    await s.snap('form');
+    await s.click(key('macro.save'));
+    await s.wait(300);
+  }),
+  // A blank macro saved at once: its name and steps are asked for, each problem a link to its box.
+  S('macros-empty-save', 'nomacros=1', async s => {
+    await s.click({ css: '.mc-tile[data-start=blank]' });
+    await s.click(key('macro.save'));
+  }),
+  S('macros-run', 'macros=1', async s => { await s.click({ css: '.mc-item[data-id="m3"] [data-mc=run]' }); await s.wait(300); }, { langs: ['en'] }),
+  S('macros-stop-all', 'macros=1', async s => { await s.click({ css: '.mc-stop-all' }); await s.wait(200); }, { langs: ['en'] }),
+  S('macros-move', 'macros=1', async s => {
+    await s.click({ css: '.mc-item[data-id="m1"] [data-mc=more]' });
+    await s.click({ key: 'lo.down', within: '.menu' });
+  }, { langs: ['en'] }),
+  S('macros-panel', 'macros=1', async s => { await s.click({ css: '.mc-item[data-id="m1"] [data-mc=panel]' }); await s.wait(200); }, { langs: ['en'] }),
+  S('macros-recording', 'macros=1&macrorec=1'),
+  // A failed run says so on its line, with Fix beside it (the form).
+  S('macros-fix', 'macros=1', async s => { await s.click({ css: '.mc-fix[data-fix=edit]' }); await s.wait(500); }, { langs: ['en'] }),
+  // The editor: the steps as sentences with their blocks indented, the game with the dots and boxes, the picture's
+  // aspect note (recorded on 800×600), and "Player sees".
+  S('macro-editor', 'macroedit=m3&macropic=1', async s => { await s.wait(700); }),
+  S('macro-editor-narrow', 'macroedit=m2&macropic=1', async s => { await s.wait(700); }, { size: [860, 640] }),
+  S('macro-editor-panel', 'macroedit=m4', async s => { await s.wait(500); }),
+  S('macro-add-step', 'macroedit=m1', async s => {
+    await s.click({ css: '#mc-add' });
+    await s.snap('menu');
+    await s.click({ key: 'macro.kind.if', within: '.menu' });
+  }),
+  // Steps read as sentences; the common kinds first, the rest one click away.
+  S('macro-more-steps', 'macroedit=m1', async s => {
+    await s.click({ css: '#mc-add' });
+    await s.click({ key: 'macro.moreSteps', within: '.menu' });
+  }, { langs: ['en'] }),
+  // If stuck: added last, it turns on starting again (through it) and the stuck watch.
+  S('macro-if-stuck', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '#mc-when' });
+    await s.click({ css: '#mc-add' });
+    await s.click({ key: 'macro.moreSteps', within: '.menu' });
+    await s.click({ key: 'macro.kind.recover', within: '.menu' });
+  }),
+  // The panel's own settings: a tab, a heading, a switch and a choice added there (an If can read the switch).
+  S('macro-panel-tabs', 'macroedit=m4', async s => {
+    await s.wait(500);
+    for (const key of ['macro.tab.add', 'macro.opt.add.heading', 'macro.opt.add.check', 'macro.opt.add.choice', 'macro.opt.add.list']) {
+      await s.click({ css: '#mc-sees-add' });
+      await s.click({ key, within: '.menu' });
+    }
+  }),
+  // A text step reads any word ticked in a list; a colour step clicks each spot once, as it shows.
+  S('macro-list-each', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '#mc-sees-add' });
+    await s.click({ key: 'macro.opt.add.list', within: '.menu' });
+    const pick = (id, value) => s.eval(`(() => { const el = document.querySelector('.mc-step.open select[id$="${id}"]');
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(value)} || el.options[1].value);
+      el.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    await s.click({ css: '#mc-add' });
+    await s.click({ key: 'macro.moreSteps', within: '.menu' });
+    await s.click({ key: 'macro.kind.waitText', within: '.menu' });
+    await pick('-words', '');
+    await s.wait(200);
+    await s.snap('reads a list');
+    await s.click({ css: '#mc-add' });
+    await s.click({ key: 'macro.moreSteps', within: '.menu' });
+    await s.click({ key: 'macro.kind.clickColour', within: '.menu' });
+    await pick('-each', 'each');
+    await s.wait(200);
+  }),
+  // An open step: its sentence with the values in place, and "Player can change" (ticked: on the panel; unticked: gone).
+  S('macro-step-open', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '.mc-step:nth-child(2) .mc-step-head' });
+    await s.snap('open');
+    await s.click({ css: '.mc-ticks input' });
+  }),
+  // Areas: a new one, picked by its name in a step's "where".
+  S('macro-areas', 'macroedit=m4', async s => { await s.wait(500); await s.click({ css: '#mc-area-add' }); }, { langs: ['en'] }),
+  // Pick on game: a colour clicked on the window (the mock answers the bar's green).
+  S('macro-pick', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '.mc-step:nth-child(3) .mc-step-head' });
+    await s.click({ css: '.mc-step.open .mc-pick' });
+    await s.wait(500);
+  }, { langs: ['en'] }),
+  // Try it: a line per step; the bar isn't there yet (no bite), so it stops at step 4 and says what to do.
+  S('macro-try', 'macroedit=m4&macrotry=1', async s => { await s.wait(2000); }),
+  // Edit on game: the window shows the dots and boxes; a box dragged there moves here too.
+  S('macro-on-game', 'macroedit=m4&macrogame=1&gamedrag=1', async s => { await s.wait(1200); }),
+  // The window picture: a step's picture cut from it.
+  S('macro-picture', 'macroedit=m2&macropic=1', async s => {
+    await s.wait(700);
+    await s.click({ css: '.mc-step-head.k-clickImage' });
+    await s.click({ css: '.mc-step.open .mc-cut' });
+    await s.snap('cutting');
+  }, { langs: ['en'] }),
+  // Recording from the form: the bar while it runs; stopped, the new steps are added after the old ones on request.
+  S('macro-record', 'macroedit=m1', async s => {
+    await s.click({ css: '#mc-record' });
+    await s.snap('recording');
+    await s.click({ key: 'macro.rec.stop', within: '.mc-form' });
+    await s.wait(200);
+    await s.snap('choice');
+    await s.click(key('macro.rec.append'));
+  }, { langs: ['en'] }),
+  S('macro-card-menu', '', async s => {
+    await s.click({ css: '.card[data-id$="1"] [data-act=card-menu]' });
+    await s.click(key('macro.runOn'));
+  }),
+  S('macro-palette', '', async s => { await s.key('k', ['ctrl']); await s.type('macro'); }, { langs: ['en'] }),
+  S('macro-palette-panel', 'macros=1', async s => { await s.key('k', ['ctrl']); await s.type('panel'); }, { langs: ['en'] }),
+  // A template with a to-do list on top: what is left to set for the game before it can work.
+  S('macro-template-todo', 'nomacros=1', async s => {
+    await s.click({ css: '.mc-tile[data-start=template]' });
+    await s.click({ css: '.menu > button:nth-of-type(3)' });
+    await s.wait(300);
+  }),
+
   // ── Game monitor, statistics ──
   S('monitor', 'monitor=1'),
   S('stats', 'stats=1'),
@@ -766,6 +897,7 @@ export default [
   S('tray-panel-multi', '', async s => { await s.click({ css: '.tray-multi' }); }, { page: 'tray-preview.html', size: [420, 520] }),
   S('tray-menu', 'mode=menu', null, { page: 'tray-preview.html', size: [420, 520] }),
   S('tray-menu-play', 'mode=menu', async s => { await s.click(key('tray.playAs')); }, { page: 'tray-preview.html', size: [420, 520] }),
+  S('tray-menu-macros', 'mode=menu&macros=1', async s => { await s.click(key('tray.macros')); }, { page: 'tray-preview.html', size: [420, 520] }),
   S('tray-menu-multi', 'mode=menu', async s => { await s.click({ css: '[data-item=multi]' }); }, { page: 'tray-preview.html', size: [420, 520] }),
   S('tray-menu-close', 'mode=menu', async s => { await s.click(key('tray.closeAllRoblox')); await s.click({ css: '.tray-item.danger' }); }, { page: 'tray-preview.html', size: [420, 520] }),
   S('unlock-ok', 'locked=1', async s => { await s.type('demo', key('lock.pw')); await s.key('Enter'); await s.wait(2600); }),
@@ -1121,6 +1253,9 @@ export default [
   S('stats-fail', 'stats=1&statsfail=1', async s => { await s.wait(300); await s.click(key('srv.retry')); await s.wait(300); }),
   S('stats-today', 'stats=1', async s => { await s.click(key('stats.period.1')); await s.wait(300); }),
   S('stats-hidden-names', 'stats=1&hide=1', null, { langs: ['en'] }),
+  // 7 days: an account's row opens its own timeline; with no records from before, no "vs" line.
+  S('stats-account-open', 'stats=1', async s => { await s.click(key('stats.period.7')); await s.wait(300); await s.click({ css: '.by-account tr.opens' }); await s.wait(200); }),
+  S('stats-no-before', 'stats=1&noprev=1', async s => { await s.click(key('stats.period.7')); await s.wait(300); }, { langs: ['en'] }),
   S('stats-activity-filter', 'stats=1', async s => {
     await s.click(key('alog.title'));
     await s.wait(300);

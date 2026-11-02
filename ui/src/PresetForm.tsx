@@ -233,7 +233,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
 
 // The game box with its list, keyed like the dock's box: arrows walk the list, Enter picks, Esc closes only the list
 // (the dialog's own Esc and Enter stand back while aria-expanded says a list is open).
-function GameBox({ place, setPlace, chose }: { place: string; setPlace: (v: string) => void; chose: (g: Game) => void }) {
+export function GameBox({ place, setPlace, chose }: { place: string; setPlace: (v: string) => void; chose: (g: Game) => void }) {
   const host = useHost();
   const { t, call } = host;
   const [open, setOpen] = useState(false);
@@ -355,7 +355,7 @@ function GameBox({ place, setPlace, chose }: { place: string; setPlace: (v: stri
 }
 
 /** A game's picture; a broken one becomes the gamepad placeholder (React's own, not the page-wide swap). */
-function GameIcon({ src }: { src: string }) {
+export function GameIcon({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
   return failed ? <span className="gph"><Icon name="gamepad" /></span> : <img src={src} alt="" onError={() => setFailed(true)} />;
 }

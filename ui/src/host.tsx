@@ -1,5 +1,6 @@
 // What the React parts use of the page around them (app.js uiHost()): words, icons, commands to the app, link targets.
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react';
+import type { MenuItem } from './Overlays';
 
 /** What the app last pushed (its state event: accounts, settings…), as app.js keeps it in S.app. */
 export type AppState = Record<string, any>;
@@ -72,8 +73,10 @@ export interface Host {
   discordLink(thenTurnOn: boolean): void;
   /** fn runs on each app.js signal: hideDiscordLink (Settings, its page or the window left), clearPassword (Settings
    * left), presetQuery (its search put back), presetsShown, statsShown / statsHidden, settled (after an unlock or for a
-   * new page: tabs not open yet get ready). Returns how to stop. */
-  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden' | 'settled', fn: () => void): () => void;
+   * new page: tabs not open yet get ready), macrosShown, macroRecorded (a recording's steps, as the app sent them: { steps,
+   * w, h }). Returns how to stop. */
+  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden' | 'settled' | 'macrosShown' | 'macroRecorded' | 'macroSeen' | 'onGameEdit',
+    fn: (data?: any) => void): () => void;
   /** The Presets tab's search, as app.js keeps it (a page restarted comes back with it), and a new one typed. */
   presetQuery(): string;
   setPresetQuery(q: string): void;
@@ -88,6 +91,14 @@ export interface Host {
   runPreset(id: string): Promise<unknown>;
   deletePreset(preset: object): Promise<unknown>;
   editPreset(preset: object): void;
+  /** The macro form in its dialog (app.js macroModal): a saved macro, or a new one (blank, a template's, recorded, imported). */
+  editMacro(macro: object, isNew: boolean): void;
+  /** Deletes a macro once the person says yes; whether it was deleted. */
+  deleteMacro(macro: object): Promise<boolean>;
+  /** Runs a macro on its accounts, or on these (the account menu's Run macro…); a toast says on how many windows. */
+  runMacro(id: string, accountIds?: string[]): Promise<unknown>;
+  /** A menu under a button (app.js openMenu): the same menus as the page's own, with their keys; a second click closes it. */
+  menu(button: HTMLElement, items: MenuItem[]): void;
   /** The browser's own storage for this page's small choices (app.js store; never fails: the fallback instead). */
   store: { get(key: string, fallback: string): string; set(key: string, value: string): void };
   /** Short weekday names from the browser's own calendar (0 = Sunday, like the app; app.js weekdayName). */

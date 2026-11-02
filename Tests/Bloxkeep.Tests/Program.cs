@@ -56,6 +56,8 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("home-session", false, HomeSessionSuite.Run),
     ("sign-ins", false, SignInsSuite.Run),
     ("tick-time", false, TickTimeSuite.Run),
+    ("play-losses", false, PlayLossesSuite.Run),
+    ("macros", false, MacroSuite.Run),
     ("stats-icons", true, StatsIconSuite.Run),
     ("watch-online", true, WatchSuite.RunOnline),
 };

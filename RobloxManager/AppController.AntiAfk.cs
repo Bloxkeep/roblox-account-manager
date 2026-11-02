@@ -21,7 +21,7 @@ public sealed partial class AppController
         _idleKickReported.RemoveWhere(pid => !windows.ContainsKey(pid));
         // A nudge cut short (Bloxkeep closed in the middle of one) left its window unseen and click-through. Not while a
         // window is being nudged or pictured (/pc screenshot): it is unseen on purpose then.
-        if (!_nudging && !_picturing)
+        if (!_nudging && !_picturing && !InputTurn.Busy)
             AntiAfk.Recover(windows.Values.SelectMany(w => w));
         if (_vault is null || windows.Count == 0)
             return;
@@ -128,11 +128,22 @@ public sealed partial class AppController
         return since > now ? now : since;
     }
 
+    /// <summary>A Roblox window is brought forward or shown unseen for a moment right now (a nudge, a picture, a macro's turn):
+    /// what moves, sizes or limits windows on a timer leaves them alone meanwhile.</summary>
+    bool WindowsInTurn => _nudging || _picturing || InputTurn.Busy;
+
     async Task NudgeAsync(List<(int Pid, IntPtr Window)> clients)
     {
         _nudging = true;
+        IDisposable? turn = null;
         try
         {
+            // In turn with macros and /pc screenshot (InputTurn.cs). A window a macro played into meanwhile has had its input.
+            var asked = DateTime.UtcNow;
+            turn = await InputTurn.EnterAsync("afk");
+            clients = clients.Where(c => _lastInput.GetValueOrDefault(c.Pid, DateTime.MinValue) < asked).ToList();
+            if (clients.Count == 0)
+                return;
             // Turning anti-AFK off (or locking, or quitting) stops it between two windows.
             var reached = await AntiAfk.NudgeAsync(clients.Select(c => c.Window).ToList(), () => !_disposed && clients.Any(c => AntiAfkOn(c.Pid)));
             foreach (var (pid, window) in clients)
@@ -156,6 +167,7 @@ public sealed partial class AppController
         }
         finally
         {
+            turn?.Dispose();
             _nudging = false;
         }
     }

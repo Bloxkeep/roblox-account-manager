@@ -4,6 +4,7 @@
 // push (.github/workflows/pages.yml). Run: npm ci && node build.mjs, then serve site/dist.
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { Marked } from 'marked';
 import { SITE, REPO, TOPICS, T, landing } from './pages.mjs';
 
@@ -15,6 +16,9 @@ const OUT = path.join(HERE, 'dist');
 /** The newest regular version (not a beta), from the app's own release notes. */
 const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'RobloxManager', 'whatsnew.json'), 'utf8'))
   .map(r => r.version).find(v => !v.includes('-'));
+
+// The stylesheet's address changes with it, so a browser never keeps last version's next to this version's pages.
+const CSS_VERSION = createHash('sha256').update(fs.readFileSync(path.join(HERE, 'style.css'))).digest('hex').slice(0, 10);
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const plain = html => html.replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<')
@@ -119,17 +123,17 @@ function page({ lang, url, alt, title, description, body, bodyClass = '', jsonLd
 <meta name="color-scheme" content="dark light">
 <link rel="icon" href="${rel(url, 'logo.svg')}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="${rel(url, 'icon-128.png')}">
-<link rel="stylesheet" href="${rel(url, 'style.css')}">
+<link rel="stylesheet" href="${rel(url, 'style.css')}?v=${CSS_VERSION}">
 ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>\n` : ''}</head>
 <body class="${bodyClass}">
 <header class="top">
   <div class="wrap top-in">
-    <a class="brand" href="${rel(url, home)}"><img src="${rel(url, 'logo.svg')}" width="28" height="28" alt="">Bloxkeep</a>
+    <a class="brand" href="${rel(url, home)}"><img src="${rel(url, 'logo.svg')}" width="28" height="28" alt=""><span>Bloxkeep</span></a>
     <nav>
       <a href="${rel(url, guide)}">${t.nav.guide}</a>
-      <a href="${rel(url, home)}#download">${t.nav.download}</a>
       <a href="${REPO}">GitHub</a>
       <a class="lang" href="${rel(url, alt)}" hreflang="${lang === 'vi' ? 'en' : 'vi'}" lang="${lang === 'vi' ? 'en' : 'vi'}">${t.nav.other}</a>
+      <a class="btn primary small" href="${rel(url, home)}#download">${t.nav.download}</a>
     </nav>
   </div>
 </header>
@@ -179,15 +183,23 @@ for (const lang of ['en', 'vi']) {
   for (const topic of TOPICS) {
     const url = `${home}guide/${topic}/`;
     const g = guideHtml(path.join(DOCS, 'guide', `${topic}${suffix}.md`), url, lang);
-    const list = TOPICS.map(x => `<li><a href="${rel(url, `${home}guide/${x}/`)}"${x === topic ? ' aria-current="page"' : ''}>${esc(t.topics[x])}</a></li>`).join('');
+    // Beside the page: every topic, and under this one its own sections, to jump to.
+    const parts = [...g.body.matchAll(/<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g)]
+      .map(([, id, inner]) => `<li><a href="#${id}">${esc(plain(inner))}</a></li>`).join('');
+    const list = TOPICS.map(x => x === topic
+      ? `<li><a href="${rel(url, `${home}guide/${x}/`)}" aria-current="page">${esc(t.topics[x])}</a>${parts ? `<ul class="parts">${parts}</ul>` : ''}</li>`
+      : `<li><a href="${rel(url, `${home}guide/${x}/`)}">${esc(t.topics[x])}</a></li>`).join('');
     write(url, page({
       lang, url, alt: `${other}guide/${topic}/`, title: `${g.title} · ${t.guideTitle}`, description: g.description, bodyClass: 'guide',
-      body: `<article class="wrap doc">
+      body: `<div class="wrap guide-layout">
+<nav class="side" aria-label="${esc(t.allTopics)}"><p class="side-title"><a href="${rel(url, home + 'guide/')}">${t.guideTitle}</a></p><ul>${list}</ul></nav>
+<script>{ const s = document.querySelector('.side'), c = s.querySelector('[aria-current]'); s.scrollLeft = c.offsetLeft - 20; }</script>
+<article class="doc">
 <p class="crumbs"><a href="${rel(url, home + 'guide/')}">${t.guideTitle}</a> › ${esc(g.title)}</p>
 <h1>${esc(g.title)}</h1>
 ${g.body}
-<nav class="topics" aria-label="${esc(t.allTopics)}"><h2>${t.allTopics}</h2><ul>${list}</ul></nav>
-</article>`,
+</article>
+</div>`,
     }));
     urls.push([url, `${other}guide/${topic}/`]);
   }

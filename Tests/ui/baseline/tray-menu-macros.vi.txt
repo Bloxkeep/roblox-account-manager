@@ -1,0 +1,21 @@
+== end
+html [data-theme="dark" lang="vi"]
+#tray
+  div.tray.tray-menu [role="menu" tabindex="-1" aria-label="Bloxkeep"]
+    button.tray-back [type="button"] "Macro"
+      svg.i #10tf97k
+    div.tray-list
+      button.tray-item [role="menuitem" type="button" title="Ẩn bảng"]
+        svg.i #kx2qfl
+        span.tray-item-text "Cast and reel"
+        svg.i.tray-check #14iobj
+      button.tray-item [role="menuitem" type="button" title="Hiện bảng"]
+        svg.i #kx2qfl
+        span.tray-item-text "Claim daily chest"
+-- commands
+  ready {}
+  size {"h":119,"opened":1,"w":292}
+  size {"h":129,"opened":1,"w":292}
+  size {"h":129,"opened":1,"w":292}
+  size {"h":414,"opened":1,"w":292}
+  size {"h":414,"opened":1,"w":292}

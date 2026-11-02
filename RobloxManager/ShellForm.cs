@@ -249,6 +249,7 @@ public sealed class ShellForm : Form
         tw.MultiClicked += on => _app.TrayMulti(!on); // only offered where it can switch from here
         tw.AccountClicked += _app.TrayOpenAccount;
         tw.PresetClicked += _app.TrayRunPreset;
+        tw.PanelClicked += _app.TrayTogglePanel;
         tw.NewRobloxClicked += _app.TrayNewRoblox;
         tw.CloseAllClicked += () => _app.CloseAllClients();
         tw.ShowClientClicked += _app.TrayShowClient;
@@ -432,6 +433,8 @@ public sealed class ShellForm : Form
             return;
         foreach (var (id, _) in Hotkeys)
             UnregisterHotKey(Handle, id);
+        for (int id = AppController.HotkeyStopMacros; id <= AppController.HotkeyEndRecording; id++)
+            UnregisterHotKey(Handle, id);
         var taken = new List<string>();
         if (Prefs.GlobalHotkeys)
         {
@@ -440,7 +443,18 @@ public sealed class ShellForm : Form
                 if (!RegisterHotKey(Handle, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)key))
                     taken.Add("Ctrl+Alt+" + key);
             }
+            // Macros (Beta): Ctrl+Alt+0 stops them all; Ctrl+Alt+1…9 only for the digits a macro holds.
+            if (!RegisterHotKey(Handle, AppController.HotkeyStopMacros, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.D0))
+                taken.Add("Ctrl+Alt+0");
+            foreach (int digit in _app.MacroHotkeys())
+            {
+                if (!RegisterHotKey(Handle, AppController.HotkeyMacroFirst + digit - 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.D0 + digit))
+                    taken.Add("Ctrl+Alt+" + digit);
+            }
         }
+        // F8 ends a recording, whatever the switch says (the recorder also watches for it itself).
+        if (_app.RecordingMacro)
+            RegisterHotKey(Handle, AppController.HotkeyEndRecording, MOD_NOREPEAT, (int)Keys.F8);
         _app.HotkeysTaken = taken;
     }
 

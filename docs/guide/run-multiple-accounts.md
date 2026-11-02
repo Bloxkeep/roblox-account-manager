@@ -4,9 +4,9 @@
 
 Roblox normally allows one window on a PC: opening a second one closes the first. To play on several accounts at once, turn on Multi-Roblox in Bloxkeep, a free, open-source account manager for Windows 10 and 11, then select your accounts and press Play. Each account opens in its own window.
 
-<img src="../screenshots/multi-roblox-real.jpg" width="760" alt="A real screenshot of one Windows PC: five Roblox windows open at once, titled Roblox - Account 1 to Roblox - Account 5, four in the same game and the fifth joining, with Bloxkeep behind them counting 5 windows and Multi-Roblox on">
+<img src="../screenshots/multi-roblox-real.jpg" width="760" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7">
 
-A real screenshot from one PC: five accounts open at once, four in the game and the fifth joining. Names in the game are blurred.
+A real screenshot from one PC: six accounts open at once, all in the game and tiled side by side. Account names are hidden.
 
 ## Quick steps
 

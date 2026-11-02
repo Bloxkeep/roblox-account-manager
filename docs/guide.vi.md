@@ -34,6 +34,11 @@ Mỗi chủ đề một trang ngắn. Đọc ba trang đầu là dùng được 
 <td valign="top"><a href="guide/settings.vi.md"><img src="screenshots/vi/settings.png" width="240" alt=""><br><b>Cài đặt</b></a><br>Mỗi trang cài đặt gói gọn trong một bảng.</td>
 </tr>
 <tr>
+<td valign="top"><a href="guide/macros.vi.md"><b>Macro (Beta)</b></a><br>Phím và cú bấm chạy trong cửa sổ game, kèm một bảng nhỏ cạnh game.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
 <td valign="top"><a href="guide/backup-and-security.vi.md"><img src="screenshots/vi/settings-backup.png" width="240" alt=""><br><b>Sao lưu và bảo mật</b></a><br>Sao lưu, chuyển sang máy mới, những gì chỉ nằm trên máy bạn.</td>
 <td valign="top"><a href="guide/troubleshooting.vi.md"><b>Gỡ rối</b></a><br>Cửa sổ đóng lẫn nhau, tài khoản cần đăng nhập lại, lỗi 403, phím tắt.</td>
 <td valign="top"><b>Vẫn chưa được?</b><br>Trong app: <b>Cài đặt › Bloxkeep › Gửi góp ý</b>. Hoặc mở <a href="https://github.com/Bloxkeep/roblox-account-manager/issues">issue</a> trên GitHub.</td>

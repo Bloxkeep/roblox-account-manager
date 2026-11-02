@@ -4,7 +4,7 @@
 
 How to see, arrange and count your Roblox windows: the **Roblox on this PC** card, Game monitor, Mini window, window layouts, Statistics and the Activity log.
 
-<img src="../screenshots/stats.png" width="760" alt="The Statistics tab for the last 7 days: play time, sessions and disconnects, play time by day, by account and top games">
+<img src="../screenshots/stats.png" width="760" alt="The Statistics tab for the last 7 days: play time, sessions and disconnects, a timeline of what each account played, why windows dropped and the time lost, by account and top games">
 
 ## Quick steps
 
@@ -94,6 +94,8 @@ A [preset](presets.md) has its own **Arrange windows** option (**Follow Settings
 ## Statistics
 
 **Statistics** in the sidebar has two tabs, **Statistics** and **Activity**.
+- **Timeline**: each account along the period, coloured by game, with a red dot where it dropped.
+- **Why they dropped**: the time lost to each reason (from the drop to the next session, 12 h at most), with a button where a setting helps.
 
 > [!NOTE]
 > Only games opened with Bloxkeep are counted.

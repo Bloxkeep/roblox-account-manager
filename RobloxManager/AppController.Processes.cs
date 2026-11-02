@@ -258,6 +258,8 @@ public sealed partial class AppController
         MinimiseAfkWindows(windows);
         MaximiseNewWindows(now, windows);
         KeepWindowSizes(now, windows);
+        TickMacros(now);
+        TickPanels();
         Took("rejoins, play time, anti-AFK and window states", part);
 
         if (_vault is { Data.Settings.RenameWindows: true })
@@ -610,7 +612,7 @@ public sealed partial class AppController
             _restingSince.Remove(gone);
         _ramEmptied.RemoveWhere(pid => players.All(p => p.Pid != pid));
         // A window shown unseen for a moment (anti-AFK's nudge, /pc screenshot) goes on resting.
-        if (_nudging || _picturing)
+        if (WindowsInTurn)
             return;
         if (!_vault!.Data.Settings.TrimBackground)
         {
@@ -639,7 +641,7 @@ public sealed partial class AppController
     void KeepWindowSizes(DateTime now, Dictionary<int, List<IntPtr>> windows)
     {
         _windowSizes.Forget(windows.Keys);
-        if (_nudging || _picturing)
+        if (WindowsInTurn)
             return;
         foreach (var (pid, list) in windows)
         {
@@ -709,7 +711,7 @@ public sealed partial class AppController
                 _ramLimited[p.Pid] = -1;
         }
         // A window shown unseen for a moment (anti-AFK's nudge, /pc screenshot) is left as it is meanwhile.
-        if (_nudging || _picturing)
+        if (WindowsInTurn)
             return;
         long setting = _vault!.Data.Settings.RamLimitMb;
         if (setting != RamLimitAuto)

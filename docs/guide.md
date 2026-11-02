@@ -34,6 +34,11 @@ Short pages, one per topic. Read the first three to get going; open the others w
 <td valign="top"><a href="guide/settings.md"><img src="screenshots/settings.png" width="240" alt=""><br><b>Settings</b></a><br>Every settings page in one table each.</td>
 </tr>
 <tr>
+<td valign="top"><a href="guide/macros.md"><b>Macros (Beta)</b></a><br>Key presses and clicks played in your windows, with a small panel beside the game.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
 <td valign="top"><a href="guide/backup-and-security.md"><img src="screenshots/settings-backup.png" width="240" alt=""><br><b>Backup and security</b></a><br>Backups, moving to a new PC, what stays on your PC.</td>
 <td valign="top"><a href="guide/troubleshooting.md"><b>Troubleshooting</b></a><br>Windows closing each other, accounts that need to sign in again, error 403, keyboard shortcuts.</td>
 <td valign="top"><b>Still stuck?</b><br>In the app: <b>Settings › Bloxkeep › Send feedback</b>. Or open an <a href="https://github.com/Bloxkeep/roblox-account-manager/issues">issue</a>.</td>

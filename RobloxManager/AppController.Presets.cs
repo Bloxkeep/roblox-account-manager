@@ -471,7 +471,7 @@ public sealed partial class AppController
     void MinimiseAfkWindows(Dictionary<int, List<IntPtr>> windows)
     {
         _afkMinimised.RemoveWhere(pid => !windows.ContainsKey(pid));
-        if (_vault is null)
+        if (_vault is null || InputTurn.Busy)
             return;
         int? foreground = null;
         foreach (var run in _running.Values)
@@ -503,7 +503,7 @@ public sealed partial class AppController
             _maximised.Remove(gone);
         foreach (int gone in _windowFirstSeen.Keys.Where(pid => !windows.ContainsKey(pid)).ToList())
             _windowFirstSeen.Remove(gone);
-        if (_vault is not { Data.Settings.MaximizeOnOpen: true })
+        if (_vault is not { Data.Settings.MaximizeOnOpen: true } || InputTurn.Busy)
             return;
         int? foreground = null;
         foreach (var run in _running.Values)
@@ -551,7 +551,7 @@ public sealed partial class AppController
             if (now - restart.At > RestartCloseTimeout || now < restart.At)
                 _restarts.Remove(id);
         }
-        if (_vault is null || _running.Count == 0 || _restarts.Count > 0 || Settling || _rejoining || _launchCts is not null || _updateReopenSince is not null
+        if (_vault is null || _running.Count == 0 || _restarts.Count > 0 || InputTurn.Busy || Settling || _rejoining || _launchCts is not null || _updateReopenSince is not null
             || _pending.Count > 0 || _rejoinQueue.Any(r => r.Restart) || now < _sweepBackgroundUntil || now - _lastSessionStart < RestartSpacing)
             return;
         int? foreground = null;

@@ -216,8 +216,9 @@
       // Each open modal listens; only the one on top reacts.
       if ([...document.querySelectorAll('#layer .overlay:not(.out)')].pop() !== el) return;
       if (e.key === 'Escape') {
-        // A box with its list open (the preset form's game box) closes the list first, not the whole form.
-        if (document.activeElement?.getAttribute('aria-expanded') === 'true') return;
+        // A box with its list open (the preset form's game box) closes the list first, not the whole form; so does a
+        // menu opened from the dialog (the macro form's Add step).
+        if (document.activeElement?.getAttribute('aria-expanded') === 'true' || menuEl) return;
         e.stopImmediatePropagation();
         tryClose();
       } else if (e.key === 'Enter' && enterSubmits && !e.repeat && e.target.matches('input, select') && e.target.getAttribute('aria-expanded') !== 'true') {
@@ -708,6 +709,8 @@
     $('#view-accounts').hidden = view !== 'accounts';
     $('#view-presets').hidden = view !== 'presets';
     if (view === 'presets') uiSignal('presetsShown');
+    $('#view-macros').hidden = view !== 'macros';
+    if (view === 'macros') uiSignal('macrosShown');
     $('#view-settings').hidden = view !== 'settings';
     $('#view-stats').hidden = view !== 'stats';
     $('#view-monitor').hidden = view !== 'monitor';
@@ -1006,9 +1009,9 @@
     query: S.query, filter: S.filter, group: S.group, layout: S.layout, sort: S.sort,
     introShown: S.introShown, game: S.game, progress: S.progress, hasGame: !!$('#place')?.value.trim(), picker: { ...P },
   };
-  /** What app.js tells the React parts by name (host.on): "hideDiscordLink", "clearPassword". */
+  /** What app.js tells the React parts by name (host.on): "hideDiscordLink", "clearPassword"; some with what came (a recording's steps). */
   const uiSignals = new Map();
-  const uiSignal = name => uiSignals.get(name)?.forEach(f => f());
+  const uiSignal = (name, data) => uiSignals.get(name)?.forEach(f => f(data));
   const uiHost = () => ({
     t, tn, tIn: (l, key) => DICT[l]?.[key] ?? DICT.en[key] ?? key, lang, locale: locale(), logo: LOGO, iconPaths: name => ICONS[name] || '', call,
     busy, toast, saveView, setMulti, ago,
@@ -1024,6 +1027,12 @@
     focusKey, refocus,
     presetQuery: () => PV.query, setPresetQuery: q => { PV.query = q; },
     scheduleText, nextRunText, presetOptionsText, runPreset, deletePreset, editPreset: presetModal,
+    editMacro: macroModal, deleteMacro, runMacro,
+    // A second click on the button that opened it closes it (its press closed the menu: this click isn't a new ask).
+    menu(btn, items) {
+      if (closedByButton === btn) { closedByButton = null; return; }
+      menuAt(btn, items);
+    },
     weekdayName, fmtNum, looksLikeTarget, store, copyField: copy,
     gameListsCached: () => P.lists,
     async loadGameLists() {
@@ -1050,6 +1059,7 @@
     introShown() { S.introShown = true; },
     go(target) {
       if (target.startsWith('settings:')) openSettings(target.slice(9));
+      else if (target === 'macros' || target === 'stats') setView(target);
       else if (target === 'guide') call('openGuide');
       else if (target === 'web') call('openWebsiteBlank');
       else if (target === 'feedback') feedbackModal();
@@ -1808,6 +1818,106 @@
     presetModal(null);
   }
 
+  /* ───────────────────────── macros (Beta) ─────────────────────────
+     Drawn by React (ui/src/MacrosView.tsx, the form MacroEditor.tsx); the app runs them, one Roblox window at a time. */
+  const macros = () => S.app?.settings?.macros || [];
+  const MAX_MACROS = 100; // the app's own limit
+  const BLANK_MACRO = { id: '', name: '', steps: [], targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null,
+    jitterMs: 40, jitterPx: 3, maxMinutes: 10, onFail: 'stop', options: [], areas: [], panel: { autoShow: false, placeId: null } };
+  function newMacro() {
+    if (macros().length >= MAX_MACROS) return toast(t('macro.full', { n: MAX_MACROS }), 'warn');
+    macroModal({ ...BLANK_MACRO }, true);
+  }
+
+  /** The macro form: a saved macro, or a new one (blank, a template's, recorded or imported, not saved yet). */
+  function macroModal(base, isNew) {
+    let ui = null;
+    modal({
+      title: t(isNew ? 'macro.newTitle' : 'macro.editTitle'),
+      top: true,
+      dismissable: false,
+      busy: true,
+      boxClass: 'mc-modal',
+      // Anything changed (a field, a step, their order): Esc or the X asks before throwing it away.
+      askClose: () => !!ui?.form.dirty(),
+      body: '',
+      footError: true,
+      actions: [
+        ...(isNew ? [] : [{ text: t('macro.delete'), kind: 'danger push', onClick: async ({ close }) => { if (await deleteMacro(base)) close(); } }]),
+        { text: t('common.cancel'), onClick: ({ close }) => close() },
+        {
+          text: t('macro.save'), kind: 'primary', onClick: async ({ el, close, btn, hold }) => {
+            if (btn.disabled) return;
+            // What stops it is said in the form (a toast sits behind the dialog); the box or step to fix is shown and focused.
+            const errBox = el.querySelector('.ps-err');
+            errBox.hidden = true;
+            const fail = (msg, box) => {
+              errBox.textContent = msg;
+              errBox.hidden = false;
+              box?.scrollIntoView({ block: 'nearest' });
+              box?.focus();
+            };
+            const r = ui.form.collect();
+            if (r.error) return fail(r.error, r.box);
+            let refused = null;
+            await busy(btn, () => hold(() => bridge.call('saveMacro', { macro: r.macro })).catch(e => { refused = e; }));
+            if (refused) return fail(refused.message || t('common.unknownError'));
+            close();
+          },
+        },
+      ],
+      onMount: ({ el }) => {
+        ui = window.BloxkeepUI.macroEditor(el.querySelector('.modal-body'), uiHost(), { base, isNew, accounts: accounts(), macros: macros() });
+        setTimeout(() => el.querySelector('#mc-name')?.focus(), 30);
+      },
+      onRemoved: () => ui?.unmount(),
+    });
+  }
+
+  async function deleteMacro(m) {
+    if (!await confirmBox(t('macro.deleteQ', { name: m.name }), { title: t('macro.deleteTitle'), ok: t('macro.delete'), danger: true })) return false;
+    const key = `delMacro:${m.id}`;
+    if (inFlight.has(key)) return false;
+    inFlight.add(key);
+    let r;
+    try {
+      r = await call('deleteMacro', { id: m.id });
+    } finally {
+      inFlight.delete(key);
+    }
+    if (r === undefined) return false;
+    toast(t('macro.deleted'), 'ok');
+    return true;
+  }
+
+  /** Runs a macro on its accounts (or on these): says on how many windows, and roughly how long one turn over them takes. */
+  async function runMacro(id, accountIds) {
+    const r = await call('runMacro', accountIds ? { id, accountIds } : { id });
+    if (r === undefined) return;
+    const n = r?.queued || 0;
+    if (!n) return toast(t('macro.queuedNone'), 'info');
+    // The app pushes the turn's length with the run; it may come just after the answer.
+    await new Promise(res => setTimeout(res, 50));
+    const sweep = S.app.macroSweep?.seconds;
+    // Steps that need the window the whole time (keeping a bar on a target, clicking colours as they pop up) take
+    // one account at a time: said once, plainly, so a queue isn't taken for a fault.
+    const m = macros().find(x => x.id === id);
+    const constant = m?.steps?.some(st => st.kind === 'follow' || (st.kind === 'clickColour' && st.repeatUntilGoneMs));
+    toast(tn('macro.queued', n) + (sweep ? ` ${t('macro.sweep', { d: secondsText(sweep) })}` : '') + (constant && n > 1 ? ` ${t('macro.oneAtATime')}` : ''), 'ok');
+  }
+  const secondsText = s => s < 60 ? t('macro.dur.s', { n: Math.max(1, Math.round(s)) }) : t('macro.dur.min', { n: Math.round(s / 60) });
+
+  async function stopMacros() {
+    if (await call('stopMacros', {}) !== undefined) toast(t('macro.stoppedAll'), 'ok');
+  }
+
+  /** The account menu's Run macro…: the macros to run on these accounts' windows, in a small menu where the first was. */
+  function macroRunMenu(ids, x, y) {
+    const list = macros();
+    openMenu(list.length ? list.map(m => ({ icon: 'play', text: m.name, hint: m.hotkey ? `Ctrl+Alt+${m.hotkey}` : '', run: () => runMacro(m.id, ids) }))
+      : [{ icon: 'keyboard', text: t('macro.noneYet'), disabled: true }, { icon: 'plus', text: t('macro.newPal'), run: () => { setView('macros'); newMacro(); } }], x, y);
+  }
+
   /** The sign-in window can add several accounts in a row; select whatever was added. */
   async function addBrowser(btn) {
     const r = await busy(btn, () => call('addViaBrowser'));
@@ -2106,6 +2216,9 @@
         ? [{ icon: 'eye', text: t('m.showWindow'), run: () => call('showWindows', { ids }) }] : []),
       // The window closes and opens again into another server of its game (those of the same game together).
       { icon: 'shuffle', text: t('m.switchServer'), disabled: !ids.some(i => isLocal(byId(i) || {}) && serverOf(byId(i))), run: () => call('switchServer', { ids }) },
+      // A macro on these windows only (Macros, Beta): picked from a second small menu where this one was.
+      { icon: 'keyboard', text: t('macro.runOn'), disabled: !ids.some(i => isLocal(byId(i) || {})), title: ids.some(i => isLocal(byId(i) || {})) ? '' : t('macro.runOnNoWindow'),
+        run: () => macroRunMenu(ids, x, y) },
       // Ticked as the card shows it (a running window's preset may decide), and says so when it does.
       { icon: 'repeat', text: t('m.autoRejoin'), checked: ids.every(i => byId(i) && rejoinOn(byId(i))), run: () => toggleRejoin(ids),
         title: ids.some(i => { const x = byId(i); return x?.session && x.session.autoRejoin !== undefined && x.session.autoRejoin !== x.autoRejoin; }) ? t('m.rejoinPreset') : '' },
@@ -2349,6 +2462,9 @@
       { id: 'selectAll', icon: 'check', text: t('m.selectAll'), off: !accounts().length, run: () => { setView('accounts'); selectAllVisible(); } },
       { id: 'order', icon: 'sort', text: t('m.launchOrder'), off: accounts().length < 2, run: () => launchOrderModal() },
       { id: 'preset', icon: 'layers', text: t('ps.save'), run: () => newPreset() },
+      { id: 'macro', icon: 'keyboard', text: t('macro.newPal'), keywords: ['macro', 'record', 'auto', 'click', 'ghi'], run: () => { setView('macros'); newMacro(); } },
+      { id: 'stopMacros', icon: 'stop', text: t('macro.stopAllPal'), keywords: ['macro', 'Ctrl+Alt+0'], off: !(S.app.macroRuns || []).some(r => ['waiting', 'running', 'paused'].includes(r.status)) && !S.app.macroRecording,
+        run: () => stopMacros() },
       { id: 'backup', icon: 'cloud', text: t('bk.now'), keywords: ['backup'],
         run: () => S.app.backup?.folder ? busy(null, async () => { if (await call('backupNow') !== undefined) toast(t('bk.done'), 'ok'); }) : openSection('backup')() },
       { id: 'updates', icon: 'download', text: t('pal.checkUpdates'), run: () => { openSection('updates')(); $('#sec-updates [data-act="check-updates"]')?.click(); } },
@@ -2360,9 +2476,15 @@
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
       { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => lockApp() },
     ].filter(x => !x.off).map(x => ({ ...x, kind: 'action' }));
-    const tabs = [['accounts', 'users'], ['presets', 'layers'], ['monitor', 'screens'], ['stats', 'clock'], ['settings', 'sliders']]
+    const tabs = [['accounts', 'users'], ['presets', 'layers'], ['macros', 'keyboard'], ['monitor', 'screens'], ['stats', 'clock'], ['settings', 'sliders']]
       .map(([view, ic]) => ({ id: `tab:${view}`, kind: 'tab', icon: ic, text: t(`nav.${view}`), run: go(view) }));
     tabs.push({ id: 'tab:activity', kind: 'tab', icon: 'history', text: t('alog.title'), keywords: ['log', 'history', 'events'], run: go('stats', () => statsUi?.api.showActivity()) });
+    // Each macro's panel: Show it (or Hide it, when it is up).
+    const shownPanels = new Set(S.app.panelsShown || []);
+    const panelList = macros().map(m => ({
+      id: `panel:${m.id}`, kind: 'panel', icon: 'screens', text: t(shownPanels.has(m.id) ? 'macro.panelHidePal' : 'macro.panelShowPal', { name: m.name }),
+      keywords: [m.name, 'macro', 'panel', 'bảng'], run: () => call(shownPanels.has(m.id) ? 'hidePanel' : 'showPanel', { id: m.id }),
+    }));
     const presetList = presets().filter(p => presetAccounts(p).length).map(p => ({
       id: `ps:${p.id}`, kind: 'preset', icon: 'layers', text: p.name, hint: presetSub(p), keywords: [p.gameName], run: () => runPreset(p.id),
     }));
@@ -2388,7 +2510,7 @@
       keywords: [...pg.querySelectorAll('.set-row .t, .set-grp-title')].map(x => x.textContent.trim()),
       run: openSection(pg.dataset.page),
     }));
-    return [...actions, ...tabs, ...presetList, ...games, ...list, ...sections];
+    return [...actions, ...tabs, ...presetList, ...panelList, ...games, ...list, ...sections];
   }
 
   function openPalette() {
@@ -3038,6 +3160,11 @@
   bridge.on('saveView', () => saveView(true));
   // The app has settled (after an unlock, or for a new page): the tabs not opened yet get their figures and icons ready.
   bridge.on('settled', () => uiSignal('settled'));
+  // A macro recording ended (F8, Stop, Ctrl+Alt+0): its steps go to whoever started it (the Macros tab or the macro form).
+  bridge.on('macroRecorded', d => uiSignal('macroRecorded', d));
+  bridge.on('macroSeen', d => uiSignal('macroSeen', d));
+  // Edit on game: a dot or box dragged on the Roblox window (or Done there) goes to the macro form.
+  bridge.on('onGameEdit', d => uiSignal('onGameEdit', d));
 
   toastUi = window.BloxkeepUI.toasts($('#toasts'), uiHost());
   bridge.call('getState').then(first => {
@@ -3049,7 +3176,7 @@
       S.filter = String(saved.filter || 'all').startsWith('g:') ? 'all' : saved.filter || 'all';
       S.group = typeof saved.group === 'string' ? saved.group : String(saved.filter || '').startsWith('g:') ? saved.filter.slice(2) : '';
       S.query = saved.query || '';
-      S.view = ['presets', 'settings', 'stats', 'monitor'].includes(saved.view) ? saved.view : 'accounts';
+      S.view = ['presets', 'macros', 'settings', 'stats', 'monitor'].includes(saved.view) ? saved.view : 'accounts';
       PV.query = typeof saved.presetQuery === 'string' ? saved.presetQuery : '';
       S.introShown = true;
     }

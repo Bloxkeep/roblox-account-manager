@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
         button.nav [title="Game monitor"]
           svg.i #1e3syqr
           span "Game monitor"
@@ -88,85 +92,137 @@ html [data-theme="dark" lang="en"]
                 div.stat
                   small "Play time"
                   b [title="16 h 24 min"] "16 h 24 min"
+                  span.good.stat-delta "↑ 20 %"
+                    span "vs the 7 days before"
                 div.stat
-                  small "Sessions"
-                  b [title="24"] "24"
+                  small "Accounts played"
+                  b [title="4/7"] "4"
+                    span.of "/7"
                 div.stat
                   small "Disconnects"
                   b [title="3"] "3"
+                  span.good.stat-delta "↓ 40 %"
+                    span "vs the 7 days before"
                 div.stat
-                  small "Most played"
-                  b [title="Blox Fruits"] "Blox Fruits"
-              div.stat-card
+                  small "Longest stay"
+                  b [title="4 h 55 min"] "4 h 55 min"
+                  span.stat-sub "Main · Blox Fruits"
+              div.stat-card [id="stats-days"]
                 h3 "Play time by day"
-                div.sbars [style="--bar-h:140px"]
-                  div.sbar [title="Sat, Oct 10 · 1 h 20 min"]
-                    i [style="height:49px"]
-                    span "Sat"
-                  div.sbar [title="Sun, Oct 11 · 4 min"]
-                    i [style="height:3px"]
-                    span "Sun"
-                  div.sbar [title="Mon, Oct 12 · 3 h 8 min"]
-                    i [style="height:114px"]
-                    span "Mon"
-                  div.sbar [title="Tue, Oct 13 · 3 h 52 min"]
-                    i [style="height:140px"]
-                    span "Tue"
-                  div.sbar [title="Wed, Oct 14 · 2 h 35 min"]
-                    i [style="height:94px"]
-                    span "Wed"
-                  div.sbar [title="Thu, Oct 15 · 2 h 19 min"]
-                    i [style="height:84px"]
-                    span "Thu"
-                  div.now.sbar [title="Fri, Oct 16 · 3 h 3 min"]
-                    i [style="height:111px"]
-                    span "Fri"
+                div.days
+                  div.day [title="Saturday, 10/10 · 1 h 20 min"]
+                    span.day-bar
+                      i [style="height:34.7%"]
+                    small "Sat"
+                  div.day [title="Sunday, 10/11 · 4 min"]
+                    span.day-bar
+                      i [style="height:3%"]
+                    small "Sun"
+                  div.day [title="Monday, 10/12 · 3 h 8 min"]
+                    span.day-bar
+                      i [style="height:81.1%"]
+                    small "Mon"
+                  div.day [title="Tuesday, 10/13 · 3 h 52 min"]
+                    span.day-bar
+                      i [style="height:100%"]
+                    small "Tue"
+                  div.day [title="Wednesday, 10/14 · 2 h 35 min"]
+                    span.day-bar
+                      i [style="height:67.2%"]
+                    small "Wed"
+                  div.day [title="Thursday, 10/15 · 2 h 19 min"]
+                    span.day-bar
+                      i [style="height:60.2%"]
+                    small "Thu"
+                  div.day [title="Friday, 10/16 · 3 h 3 min"]
+                    span.day-bar
+                      i [style="height:79.1%"]
+                    small "Today"
+              div.stat-card [id="stats-drops"]
+                h3 "Why they dropped"
+                  span.sd-lost [title="From each drop to the account’s next session, 12 h at most."] "3 h 6 min lost"
+                div.sd-row
+                  div.sd-text
+                    b "Kicked for being idle"
+                    small [title="Main, Farm 1"] "2 times · Main, Farm 1"
+                  span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "2 h 17 min lost"
+                  button.btn.sm "Turn on Anti-AFK"
+                div.sd-row
+                  div.sd-text
+                    b "Lost connection"
+                    small [title="Farm 1"] "Once · Farm 1"
+                  span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "49 min lost"
               div.stat-cols
                 div.stat-card
                   h3 "By account"
-                  table.stat-table
+                  table.by-account.stat-table
+                    colgroup
+                      col.c-acc
+                      col.c-time
+                      col.c-game
+                      col.c-n
                     thead
                       tr
                         th "Account"
-                        th.n "Play time"
-                        th.n "Sessions"
-                        th.n "Disconnects"
+                        th "Play time"
+                        th "Most played"
+                        th.n [title="Disconnects"] "Drops"
                     tbody
-                      tr
+                      tr.opens [title="Show what it played" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:204" src=#1qk25wb]
                             b [title="Main"] "Main"
-                        td.n "7 h 22 min"
-                        td.n "11"
+                        td.st-time "7 h 22 min"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "1"
-                      tr
+                      tr.opens [title="Show what it played" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:243" src=#uinvo6]
                             b [title="Farm 1"] "Farm 1"
-                        td.n "5 h 24 min"
-                        td.n "8"
+                        td.st-time "5 h 24 min"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "2"
-                      tr
+                      tr.opens [title="Show what it played" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:297" src=#1u67et1]
                             b [title="Night Owl"] "Night Owl"
-                        td.n "3 h 16 min"
-                        td.n "5"
+                        td.st-time "3 h 16 min"
+                        td.st-game
+                          span [title="Brookhaven 🏡RP"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Brookhaven 🏡RP"
                         td.n "0"
-                      tr
+                      tr.opens [title="Show what it played" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               span.initials [style="--h:148"] "DE"
                             b [title="Deleted account"] "Deleted account"
-                        td.n "19 min"
-                        td.n "1"
+                        td.st-time "19 min"
+                        td.st-game
+                          span [title="[🎃] Adopt Me!"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "[🎃] Adopt Me!"
                         td.n "0"
                 div.stat-side
                   div.stat-card
@@ -259,6 +315,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
         button.nav [title="Game monitor"]
           svg.i #1e3syqr
           span "Game monitor"
@@ -331,154 +391,229 @@ html [data-theme="dark" lang="en"]
                 div.stat
                   small "Play time"
                   b [title="62 h 53 min"] "62 h 53 min"
+                  span.good.stat-delta "↑ 20 %"
+                    span "vs the 30 days before"
                 div.stat
-                  small "Sessions"
-                  b [title="86"] "86"
+                  small "Accounts played"
+                  b [title="4/7"] "4"
+                    span.of "/7"
                 div.stat
                   small "Disconnects"
                   b [title="11"] "11"
+                  span.good.stat-delta "↓ 15 %"
+                    span "vs the 30 days before"
                 div.stat
-                  small "Most played"
-                  b [title="Blox Fruits"] "Blox Fruits"
-              div.stat-card
+                  small "Longest stay"
+                  b [title="18 h 51 min"] "18 h 51 min"
+                  span.stat-sub "Main · Blox Fruits"
+              div.stat-card [id="stats-days"]
                 h3 "Play time by day"
-                div.sbars [style="--bar-h:140px"]
-                  div.sbar [title="Thu, Sep 17 · 3 h 54 min"]
-                    i [style="height:134px"]
-                    span
-                  div.sbar [title="Fri, Sep 18 · 2 h 37 min"]
-                    i [style="height:90px"]
-                    span
-                  div.sbar [title="Sat, Sep 19 · 2 h 21 min"]
-                    i [style="height:81px"]
-                    span
-                  div.sbar [title="Sun, Sep 20 · 3 h 5 min"]
-                    i [style="height:106px"]
-                    span
-                  div.sbar [title="Mon, Sep 21 · 1 h 49 min"]
-                    i [style="height:62px"]
-                    span "9/21"
-                  div.sbar [title="Tue, Sep 22 · 1 h 33 min"]
-                    i [style="height:53px"]
-                    span
-                  div.sbar [title="Wed, Sep 23 · 2 h 16 min"]
-                    i [style="height:78px"]
-                    span
-                  div.sbar [title="Thu, Sep 24 · 1 h"]
-                    i [style="height:35px"]
-                    span
-                  div.sbar [title="Fri, Sep 25 · 44 min"]
-                    i [style="height:25px"]
-                    span
-                  div.sbar [title="Sat, Sep 26 · 1 h 28 min"]
-                    i [style="height:50px"]
-                    span "9/26"
-                  div.sbar [title="Sun, Sep 27 · 12 min"]
-                    i [style="height:7px"]
-                    span
-                  div.sbar [title="Mon, Sep 28 · 3 h 15 min"]
-                    i [style="height:112px"]
-                    span
-                  div.sbar [title="Tue, Sep 29 · 3 h 59 min"]
-                    i [style="height:137px"]
-                    span
-                  div.sbar [title="Wed, Sep 30 · 2 h 43 min"]
-                    i [style="height:93px"]
-                    span
-                  div.sbar [title="Thu, Oct 1 · 2 h 27 min"]
-                    i [style="height:84px"]
-                    span "10/1"
-                  div.sbar [title="Fri, Oct 2 · 3 h 11 min"]
-                    i [style="height:109px"]
-                    span
-                  div.sbar [title="Sat, Oct 3 · 1 h 54 min"]
-                    i [style="height:66px"]
-                    span
-                  div.sbar [title="Sun, Oct 4 · 1 h 38 min"]
-                    i [style="height:56px"]
-                    span
-                  div.sbar [title="Mon, Oct 5 · 2 h 22 min"]
-                    i [style="height:81px"]
-                    span
-                  div.sbar [title="Tue, Oct 6 · 1 h 6 min"]
-                    i [style="height:38px"]
-                    span "10/6"
-                  div.sbar [title="Wed, Oct 7 · 50 min"]
-                    i [style="height:29px"]
-                    span
-                  div.sbar [title="Thu, Oct 8 · 1 h 33 min"]
-                    i [style="height:54px"]
-                    span
-                  div.sbar [title="Fri, Oct 9 · 17 min"]
-                    i [style="height:10px"]
-                    span
-                  div.sbar [title="Sat, Oct 10 · 1 min"]
-                    i [style="height:3px"]
-                    span
-                  div.sbar [title="Sun, Oct 11 · 4 h 5 min"]
-                    i [style="height:140px"]
-                    span "10/11"
-                  div.sbar [title="Mon, Oct 12 · 2 h 49 min"]
-                    i [style="height:96px"]
-                    span
-                  div.sbar [title="Tue, Oct 13 · 2 h 32 min"]
-                    i [style="height:87px"]
-                    span
-                  div.sbar [title="Wed, Oct 14 · 3 h 16 min"]
-                    i [style="height:112px"]
-                    span
-                  div.sbar [title="Thu, Oct 15 · 2 h"]
-                    i [style="height:69px"]
-                    span
-                  div.now.sbar [title="Fri, Oct 16 · 1 h 44 min"]
-                    i [style="height:59px"]
-                    span "10/16"
+                div.days
+                  div.day [title="Thursday, 9/17 · 3 h 54 min"]
+                    span.day-bar
+                      i [style="height:95.4%"]
+                    small
+                  div.day [title="Friday, 9/18 · 2 h 37 min"]
+                    span.day-bar
+                      i [style="height:64.4%"]
+                    small
+                  div.day [title="Saturday, 9/19 · 2 h 21 min"]
+                    span.day-bar
+                      i [style="height:57.7%"]
+                    small
+                  div.day [title="Sunday, 9/20 · 3 h 5 min"]
+                    span.day-bar
+                      i [style="height:75.6%"]
+                    small
+                  div.day [title="Monday, 9/21 · 1 h 49 min"]
+                    span.day-bar
+                      i [style="height:44.5%"]
+                    small "9/21"
+                  div.day [title="Tuesday, 9/22 · 1 h 33 min"]
+                    span.day-bar
+                      i [style="height:37.9%"]
+                    small
+                  div.day [title="Wednesday, 9/23 · 2 h 16 min"]
+                    span.day-bar
+                      i [style="height:55.8%"]
+                    small
+                  div.day [title="Thursday, 9/24 · 1 h"]
+                    span.day-bar
+                      i [style="height:24.7%"]
+                    small
+                  div.day [title="Friday, 9/25 · 44 min"]
+                    span.day-bar
+                      i [style="height:18.1%"]
+                    small
+                  div.day [title="Saturday, 9/26 · 1 h 28 min"]
+                    span.day-bar
+                      i [style="height:36%"]
+                    small "9/26"
+                  div.day [title="Sunday, 9/27 · 12 min"]
+                    span.day-bar
+                      i [style="height:4.9%"]
+                    small
+                  div.day [title="Monday, 9/28 · 3 h 15 min"]
+                    span.day-bar
+                      i [style="height:79.9%"]
+                    small
+                  div.day [title="Tuesday, 9/29 · 3 h 59 min"]
+                    span.day-bar
+                      i [style="height:97.7%"]
+                    small
+                  div.day [title="Wednesday, 9/30 · 2 h 43 min"]
+                    span.day-bar
+                      i [style="height:66.6%"]
+                    small
+                  div.day [title="Thursday, 10/1 · 2 h 27 min"]
+                    span.day-bar
+                      i [style="height:60%"]
+                    small "10/1"
+                  div.day [title="Friday, 10/2 · 3 h 11 min"]
+                    span.day-bar
+                      i [style="height:77.9%"]
+                    small
+                  div.day [title="Saturday, 10/3 · 1 h 54 min"]
+                    span.day-bar
+                      i [style="height:46.8%"]
+                    small
+                  div.day [title="Sunday, 10/4 · 1 h 38 min"]
+                    span.day-bar
+                      i [style="height:40.2%"]
+                    small
+                  div.day [title="Monday, 10/5 · 2 h 22 min"]
+                    span.day-bar
+                      i [style="height:58.1%"]
+                    small
+                  div.day [title="Tuesday, 10/6 · 1 h 6 min"]
+                    span.day-bar
+                      i [style="height:27%"]
+                    small "10/6"
+                  div.day [title="Wednesday, 10/7 · 50 min"]
+                    span.day-bar
+                      i [style="height:20.4%"]
+                    small
+                  div.day [title="Thursday, 10/8 · 1 h 33 min"]
+                    span.day-bar
+                      i [style="height:38.3%"]
+                    small
+                  div.day [title="Friday, 10/9 · 17 min"]
+                    span.day-bar
+                      i [style="height:7.2%"]
+                    small
+                  div.day [title="Saturday, 10/10 · 1 min"]
+                    span.day-bar
+                      i [style="height:3%"]
+                    small
+                  div.day [title="Sunday, 10/11 · 4 h 5 min"]
+                    span.day-bar
+                      i [style="height:100%"]
+                    small "10/11"
+                  div.day [title="Monday, 10/12 · 2 h 49 min"]
+                    span.day-bar
+                      i [style="height:68.9%"]
+                    small
+                  div.day [title="Tuesday, 10/13 · 2 h 32 min"]
+                    span.day-bar
+                      i [style="height:62.3%"]
+                    small
+                  div.day [title="Wednesday, 10/14 · 3 h 16 min"]
+                    span.day-bar
+                      i [style="height:80.2%"]
+                    small
+                  div.day [title="Thursday, 10/15 · 2 h"]
+                    span.day-bar
+                      i [style="height:49.1%"]
+                    small
+                  div.day [title="Friday, 10/16 · 1 h 44 min"]
+                    span.day-bar
+                      i [style="height:42.5%"]
+                    small "Today"
+              div.stat-card [id="stats-drops"]
+                h3 "Why they dropped"
+                  span.sd-lost [title="From each drop to the account’s next session, 12 h at most."] "11 h 56 min lost"
+                div.sd-row
+                  div.sd-text
+                    b "Kicked for being idle"
+                    small [title="Main, Farm 1"] "2 times · Main, Farm 1"
+                  span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "8 h 48 min lost"
+                  button.btn.sm "Turn on Anti-AFK"
+                div.sd-row
+                  div.sd-text
+                    b "Lost connection"
+                    small [title="Farm 1"] "Once · Farm 1"
+                  span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "3 h 8 min lost"
               div.stat-cols
                 div.stat-card
                   h3 "By account"
-                  table.stat-table
+                  table.by-account.stat-table
+                    colgroup
+                      col.c-acc
+                      col.c-time
+                      col.c-game
+                      col.c-n
                     thead
                       tr
                         th "Account"
-                        th.n "Play time"
-                        th.n "Sessions"
-                        th.n "Disconnects"
+                        th "Play time"
+                        th "Most played"
+                        th.n [title="Disconnects"] "Drops"
                     tbody
-                      tr
+                      tr.opens [title="Show what it played" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:204" src=#1qk25wb]
                             b [title="Main"] "Main"
-                        td.n "28 h 17 min"
-                        td.n "39"
+                        td.st-time "28 h 17 min"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "1"
-                      tr
+                      tr.opens [title="Show what it played" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:243" src=#uinvo6]
                             b [title="Farm 1"] "Farm 1"
-                        td.n "20 h 45 min"
-                        td.n "28"
+                        td.st-time "20 h 45 min"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
                         td.n "2"
-                      tr
+                      tr.opens [title="Show what it played" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               img [alt="" style="--h:297" src=#1u67et1]
                             b [title="Night Owl"] "Night Owl"
-                        td.n "12 h 34 min"
-                        td.n "17"
+                        td.st-time "12 h 34 min"
+                        td.st-game
+                          span [title="Brookhaven 🏡RP"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Brookhaven 🏡RP"
                         td.n "0"
-                      tr
+                      tr.opens [title="Show what it played" aria-expanded="false"]
                         td
                           div.sacc
+                            svg.i.sacc-open #1g7f83q
                             span.avatar.sm
                               span.initials [style="--h:148"] "DE"
                             b [title="Deleted account"] "Deleted account"
-                        td.n "1 h 15 min"
-                        td.n "2"
+                        td.st-time "1 h 15 min"
+                        td.st-game
+                          span [title="[🎃] Adopt Me!"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "[🎃] Adopt Me!"
                         td.n "0"
                 div.stat-side
                   div.stat-card

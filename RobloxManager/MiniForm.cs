@@ -396,7 +396,7 @@ sealed class MiniForm : Form
             _show.Click += (_, _) =>
             {
                 if (_client is { } c && Settled)
-                    RobloxProcesses.Focus(c.Pid);
+                    RobloxProcesses.FocusInTurn(c.Pid);
             };
             _close.Click += (_, _) =>
             {

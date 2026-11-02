@@ -45,20 +45,31 @@ static class WindowShot
     /// The window's game as a JPEG no wider than <paramref name="maxWidth"/>; null when it can't be pictured (gone, not
     /// answering, no size). <paramref name="black"/> says the picture came out all but black (Windows locked, say).
     /// </summary>
-    public static async Task<(byte[] Jpeg, bool Black)?> CaptureAsync(IntPtr hWnd, int maxWidth)
+    public static Task<(byte[] Jpeg, bool Black)?> CaptureAsync(IntPtr hWnd, int maxWidth) =>
+        ShownAsync(hWnd, () => Timed(hWnd, () => Picture(hWnd, maxWidth)), null);
+
+    /// <summary>
+    /// The window's client area at full size, for a macro to look at (MacroPlayer.cs); null when it can't be pictured. A
+    /// minimized or hidden one is shown unseen for it, unless <paramref name="shown"/> (a macro's turn already did).
+    /// </summary>
+    public static Task<Bitmap?> ClientAsync(IntPtr hWnd, bool shown) =>
+        shown ? Timed(hWnd, () => Client(hWnd)) : ShownAsync(hWnd, () => Timed(hWnd, () => Client(hWnd)), null);
+
+    /// <summary><paramref name="look"/> with the window shown: unseen for the moment when it is minimized or hidden.</summary>
+    static async Task<T?> ShownAsync<T>(IntPtr hWnd, Func<Task<T?>> look, T? none)
     {
         // A window that isn't answering would hold whoever asks it to draw.
         if (hWnd == IntPtr.Zero || !IsWindow(hWnd) || IsHungAppWindow(hWnd))
-            return null;
+            return none;
         bool minimized = IsIconic(hWnd), unshown = !IsWindowVisible(hWnd);
         if (!minimized && !unshown)
-            return await Timed(hWnd, maxWidth);
+            return await look();
         var before = AntiAfk.Hide(hWnd, (IntPtr.Zero, 0), minimized);
         try
         {
             ShowWindowAsync(hWnd, SW_SHOWNOACTIVATE);
             await Task.Delay(DrawTime);
-            return IsHungAppWindow(hWnd) ? null : await Timed(hWnd, maxWidth);
+            return IsHungAppWindow(hWnd) ? none : await look();
         }
         finally
         {
@@ -74,31 +85,41 @@ static class WindowShot
     }
 
     /// <summary>The picture, off the window's thread, or null after <see cref="PictureTime"/> (left to finish on its own).</summary>
-    static async Task<(byte[] Jpeg, bool Black)?> Timed(IntPtr hWnd, int maxWidth)
+    static async Task<T?> Timed<T>(IntPtr hWnd, Func<T?> take)
     {
-        var picture = Task.Run(() => Picture(hWnd, maxWidth));
-        return await Task.WhenAny(picture, Task.Delay(PictureTime)) == picture ? await picture : null;
+        var picture = Task.Run(take);
+        return await Task.WhenAny(picture, Task.Delay(PictureTime)) == picture ? await picture : default;
     }
 
-    static (byte[] Jpeg, bool Black)? Picture(IntPtr hWnd, int maxWidth)
+    /// <summary>The client area at full size; null when it can't be pictured.</summary>
+    static Bitmap? Client(IntPtr hWnd)
     {
         if (!GetClientRect(hWnd, out var r) || r.Right - r.Left < 16 || r.Bottom - r.Top < 16)
             return null;
-        int width = r.Right - r.Left, height = r.Bottom - r.Top;
-        using var full = new Bitmap(width, height, PixelFormat.Format32bppRgb);
+        var full = new Bitmap(r.Right - r.Left, r.Bottom - r.Top, PixelFormat.Format32bppRgb);
         using (var g = Graphics.FromImage(full))
         {
             IntPtr hdc = g.GetHdc();
             try
             {
-                if (!PrintWindow(hWnd, hdc, PW_CLIENTONLY | PW_RENDERFULLCONTENT))
-                    return null;
+                if (PrintWindow(hWnd, hdc, PW_CLIENTONLY | PW_RENDERFULLCONTENT))
+                    return full;
             }
             finally
             {
                 g.ReleaseHdc(hdc);
             }
         }
+        full.Dispose();
+        return null;
+    }
+
+    static (byte[] Jpeg, bool Black)? Picture(IntPtr hWnd, int maxWidth)
+    {
+        using var full = Client(hWnd);
+        if (full is null)
+            return null;
+        int width = full.Width, height = full.Height;
         bool black = AllButBlack(full);
         double scale = Math.Min(1, (double)maxWidth / width);
         using var shown = scale < 1 ? Shrink(full, (int)Math.Round(width * scale), (int)Math.Round(height * scale)) : null;

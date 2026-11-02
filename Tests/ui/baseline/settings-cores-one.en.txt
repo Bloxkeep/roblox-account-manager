@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
         button.nav [title="Game monitor"]
           svg.i #1e3syqr
           span "Game monitor"
@@ -138,6 +142,14 @@ html [data-theme="dark" lang="en"]
                         b "Custom"
                         small "Set each one below"
                     p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
+                    div.set-row
+                      div
+                        div.t "Fast Flags"
+                        div.d "Grey sky, no grass, lowest graphics. Saves a little RAM."
+                      div.ctl
+                        label.switch
+                          input [id="s-rc-flags" type="checkbox" aria-label="Fast Flags" checked=false]
+                          span
                 div.set-grp [id="sec-perf"]
                   h3.set-grp-title "Keeping accounts going"
                   div.set-card

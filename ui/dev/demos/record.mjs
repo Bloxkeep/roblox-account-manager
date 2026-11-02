@@ -43,7 +43,7 @@ const drawCursor = () => b.eval(`(() => {
   const c = document.createElement('div');
   c.id = 'demo-cursor';
   c.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 2l14 9.5-6.2 1.3 3.6 7.2-2.9 1.4-3.6-7.2L4 19z" fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/></svg><i></i>';
-  c.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none';
+  c.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;transform:translate(-99px,-99px)';
   const s = document.createElement('style');
   s.textContent = '#demo-cursor i{position:absolute;left:-13px;top:-13px;width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.9);opacity:0}#demo-cursor.tap i{animation:tap .4s ease-out}@keyframes tap{0%{opacity:.9;transform:scale(.3)}100%{opacity:0;transform:scale(1.3)}}';
   document.head.append(s);
@@ -105,6 +105,153 @@ const takes = {
         await move(here, 700);
       }
       await sleep(300);
+    };
+  },
+  /** A macro: its picture of the game taken, a step opened and closed, its area dragged on the picture and back. */
+  async macros() {
+    await b.goto(`http://localhost:5178/ui/dev/preview.html?macroedit=m4&lang=${lang}&nodelay=1`);
+    await sleep(1800);
+    await b.eval(`document.querySelector('#mc-pic-take').click()`);
+    await sleep(900);
+    await drawCursor();
+    at = { x: 520, y: 260 };
+    await mouse('mouseMoved', { x: at.x + 1, y: at.y });
+    await mouse('mouseMoved', at);
+    const head = n => `.mc-step:nth-child(${n}) .mc-step-head`;
+    return async () => {
+      await sleep(600);
+      await click(head(3), 700);
+      await sleep(1800);
+      await click(head(3), 500);
+      await sleep(700);
+      const area = await where('.mc-pic-area');
+      const grab = { x: area.x + 20, y: area.y };
+      await move(grab, 800);
+      await sleep(150);
+      await mouse('mousePressed', at, { button: 'left', buttons: 1, clickCount: 1 });
+      await move({ x: grab.x + 60, y: grab.y - 120 }, 900, true);
+      await sleep(400);
+      await move(grab, 800, true);
+      await mouse('mouseReleased', at, { button: 'left', clickCount: 1 });
+      await sleep(500);
+      await move({ x: 520, y: 260 }, 700);
+      await sleep(400);
+    };
+  },
+  /** The panel the player sees: its tabs, a switch added from the menu and taken away again. */
+  async panel() {
+    await b.goto(`http://localhost:5178/ui/dev/preview.html?macros=1&lang=${lang}&nodelay=1`);
+    await sleep(1500);
+    const vi = lang === 'vi', tx = (en, viText) => vi ? viText : en;
+    const [fish, enchant] = [tx('Fishing', 'Câu cá'), tx('Enchant', 'Phù phép')];
+    await b.eval(`(async () => {
+      const bridge = window.__mockBridge;
+      const m4 = ((await bridge.call('getState')).state.settings?.macros || []).find(x => x.id === 'm4');
+      if (!m4) return;
+      const tabs = ${JSON.stringify([fish, enchant])};
+      const options = [
+        { ...m4.options[0], tab: tabs[0] }, { ...m4.options[1], tab: tabs[0] },
+        { name: 'o3', label: ${JSON.stringify(tx('Sell fish', 'Tự bán cá'))}, kind: 'check', value: true, default: true, tab: tabs[0] },
+        { name: 'o4', label: ${JSON.stringify(tx('Bait', 'Mồi'))}, kind: 'choice', value: ${JSON.stringify(tx('Shrimp', 'Tôm'))}, default: ${JSON.stringify(tx('Shrimp', 'Tôm'))},
+          choices: ${JSON.stringify(tx('Worm,Shrimp,Squid', 'Giun,Tôm,Mực').split(','))}, tab: tabs[0] },
+        { name: 'o5', label: ${JSON.stringify(tx('Keep', 'Giữ lại'))}, kind: 'heading', value: null, default: null, tab: tabs[1] },
+        { name: 'o6', label: ${JSON.stringify(tx('Enchants', 'Phù phép'))}, kind: 'list', value: ['Abyssal', 'Lucky'], default: [],
+          choices: ['Blessed', 'Abyssal', 'Hasty', 'Lucky', 'Resilient'], tab: tabs[1] },
+      ];
+      await bridge.call('saveMacro', { macro: { ...m4, options, panel: { ...m4.panel, tabs } } });
+    })()`);
+    await sleep(400);
+    await b.eval(`(() => {
+      document.querySelector('.mc-item[data-id="m4"] [data-mc=more]').click();
+      setTimeout(() => [...document.querySelectorAll('.menu button')].find(x => x.textContent.trim() === (window.I18N?.['${lang}']?.['macro.edit'] || 'Edit')).click(), 80);
+    })()`);
+    await sleep(900);
+    // The heading a little below the top, so the shorter tab doesn't make the dialog scroll back.
+    await b.eval(`(() => {
+      const h = document.querySelector('#mc-sees-h');
+      h.scrollIntoView({ block: 'start' });
+      let box = h.parentElement;
+      while (box && box.scrollHeight <= box.clientHeight) box = box.parentElement;
+      if (box) box.scrollTop -= 140;
+    })()`);
+    await sleep(400);
+    await drawCursor();
+    at = await where('#mc-sees-add');
+    at = { x: at.x - 120, y: at.y + 160 };
+    await mouse('mouseMoved', { x: at.x + 1, y: at.y });
+    await mouse('mouseMoved', at);
+    // The tab not shown (the shown one is a box to type its name in).
+    const tabAt = () => b.eval(`(() => { const r = document.querySelector('button.mp-tab:not(.add)').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    return async () => {
+      await sleep(700);
+      await move(await tabAt(), 700);
+      await sleep(120);
+      await mouse('mousePressed', at, { button: 'left', buttons: 1, clickCount: 1 });
+      await mouse('mouseReleased', at, { button: 'left', clickCount: 1 });
+      await sleep(1600);
+      await move(await tabAt(), 600);
+      await sleep(120);
+      await mouse('mousePressed', at, { button: 'left', buttons: 1, clickCount: 1 });
+      await mouse('mouseReleased', at, { button: 'left', clickCount: 1 });
+      await sleep(900);
+      await click('#mc-sees-add', 700);
+      await sleep(600);
+      const item = await b.eval(`(() => { const t = [...document.querySelectorAll('.menu button')].find(x => x.textContent.includes(${JSON.stringify(tx('Switch', 'Công tắc'))})); const r = t.getBoundingClientRect(); return { x: r.left + 40, y: r.top + r.height / 2 }; })()`);
+      await move(item, 500);
+      await sleep(100);
+      await mouse('mousePressed', at, { button: 'left', buttons: 1, clickCount: 1 });
+      await mouse('mouseReleased', at, { button: 'left', clickCount: 1 });
+      await sleep(1500);
+      const x = await b.eval(`(() => { const rows = document.querySelectorAll('.mp-opts li'); const r = rows[rows.length - 1].querySelector('.mp-acts .icon-btn:last-child').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+      await move(x, 700);
+      await sleep(120);
+      await mouse('mousePressed', at, { button: 'left', buttons: 1, clickCount: 1 });
+      await mouse('mouseReleased', at, { button: 'left', clickCount: 1 });
+      await sleep(600);
+      const start = await where('#mc-sees-add');
+      await move({ x: start.x - 120, y: start.y + 160 }, 700);
+      await sleep(400);
+    };
+  },
+  /** Statistics: 30 days and back, then an account opened to its timeline and closed. */
+  async stats() {
+    await b.goto(`http://localhost:5178/ui/dev/preview.html?stats=1&lang=${lang}&nodelay=1`);
+    await sleep(1800);
+    await drawCursor();
+    const byText = text => b.eval(`(() => { const t = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === ${JSON.stringify(text)}); const r = t.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    const [days30, days7] = lang === 'vi' ? ['30 ngày', '7 ngày'] : ['30 days', '7 days'];
+    const press = async () => {
+      await sleep(120);
+      await mouse('mousePressed', at, { button: 'left', buttons: 1, clickCount: 1 });
+      await mouse('mouseReleased', at, { button: 'left', clickCount: 1 });
+    };
+    const wheel = async (dy, steps = 8) => {
+      for (let i = 0; i < steps; i++) { await b.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: at.x, y: at.y, deltaX: 0, deltaY: dy / steps }); await sleep(40); }
+    };
+    const row = `tr.opens`;
+    at = { x: 760, y: 330 };
+    await mouse('mouseMoved', { x: at.x + 1, y: at.y });
+    await mouse('mouseMoved', at);
+    return async () => {
+      await sleep(600);
+      await move(await byText(days30), 700);
+      await press();
+      await sleep(1600);
+      await move(await byText(days7), 500);
+      await press();
+      await sleep(1000);
+      await move({ x: 760, y: 500 }, 600);
+      await wheel(300);
+      await sleep(500);
+      await click(row, 700);
+      await sleep(2200);
+      await click(row, 500);
+      await sleep(500);
+      await move({ x: 760, y: 450 }, 400);
+      await wheel(-300);
+      await sleep(400);
+      await move({ x: 760, y: 330 }, 500);
+      await sleep(400);
     };
   },
   /** The modes for Roblox: each picked in turn, back to the one in use. */

@@ -130,11 +130,11 @@ sealed class MonitorTab : IDisposable
             return;
         if (button == MouseButtons.Left)
         {
-            RobloxProcesses.Focus(client.Pid);
+            RobloxProcesses.FocusInTurn(client.Pid);
             return;
         }
         _menu.Show(
-            (L.T("Show"), () => RobloxProcesses.Focus(client.Pid)),
+            (L.T("Show"), () => RobloxProcesses.FocusInTurn(client.Pid)),
             (L.T("Close Roblox"), () => _app.CloseMonitorClient(client)),
             (L.T("Copy PID"), () => Ui.CopyToClipboard(client.Pid.ToString(), secret: false)));
     }

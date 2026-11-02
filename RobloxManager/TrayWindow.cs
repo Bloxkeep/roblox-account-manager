@@ -36,6 +36,8 @@ public sealed class TrayWindow : Form
     public event Action<bool>? MultiClicked;
     public event Action<Guid>? AccountClicked;
     public event Action<Guid>? PresetClicked;
+    /// <summary>"Macros ›": a macro's panel shown or hidden.</summary>
+    public event Action<Guid>? PanelClicked;
     public event Action? NewRobloxClicked;
     public event Action? CloseAllClicked;
     public event Action<int>? ShowClientClicked;
@@ -261,6 +263,10 @@ public sealed class TrayWindow : Form
                 HideTray();
                 PresetClicked?.Invoke(id);
                 break;
+            case "panel" when IdOf(a) is var id && id != Guid.Empty:
+                HideTray();
+                PanelClicked?.Invoke(id);
+                break;
             case "newRoblox":
                 HideTray();
                 NewRobloxClicked?.Invoke();
@@ -300,6 +306,7 @@ public sealed class TrayWindow : Form
             open = s.Open, multi = s.Multi, multiOnly = s.MultiOnly, robloxCount = s.RobloxCount, ramMb = s.RamMb, miniOpen = MiniOpen?.Invoke() == true,
             presets = s.Presets.Select(p => new { id = p.Id, name = p.Name }),
             accounts = (s.Accounts ?? []).Select(x => new { id = x.Id, name = x.Name, running = x.Running, avatar = PictureOf?.Invoke(x.Id) }),
+            macros = (s.Macros ?? []).Select(m => new { id = m.Id, name = m.Name, shown = m.Shown }),
             clients = (s.Clients ?? []).Select(x => new { id = x.Id, name = x.Name, game = x.Game, pid = x.Pid, ramMb = x.RamMb, avatar = PictureOf?.Invoke(x.Id) }),
         };
         return new
