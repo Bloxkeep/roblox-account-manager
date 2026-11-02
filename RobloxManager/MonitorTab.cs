@@ -26,6 +26,7 @@ sealed class MonitorTab : IDisposable
         _page = page;
         _tiles.Theme = Themes.Current;
         _tiles.TileClicked += OnTileClicked;
+        _tiles.ButtonClicked += item => ToggleMinimised(item.Hwnd);
         _timer.Tick += (_, _) => Tick();
         host.Controls.Add(_tiles);
     }
@@ -117,6 +118,8 @@ sealed class MonitorTab : IDisposable
         ApplyTheme();
         _tiles.MinimizedText = L.T("Minimised — no live picture");
         _tiles.EmptyText = L.T("No Roblox window is open.");
+        _tiles.MinimizeText = L.T("Minimise");
+        _tiles.RestoreText = L.T("Open again");
         _clients = _app.MonitorClients();
         _tiles.SetItems(_clients.Select(c => new WindowThumbnails.Item(c.Hwnd, c.Label, c.Game, Ram(c.RamMb), $"PID {c.Pid}")).ToList());
     }
@@ -135,8 +138,19 @@ sealed class MonitorTab : IDisposable
         }
         _menu.Show(
             (L.T("Show"), () => RobloxProcesses.FocusInTurn(client.Pid)),
+            (L.T(RobloxProcesses.IsMinimised(client.Hwnd) ? "Open again" : "Minimise"), () => ToggleMinimised(client.Hwnd)),
             (L.T("Close Roblox"), () => _app.CloseMonitorClient(client)),
             (L.T("Copy PID"), () => Ui.CopyToClipboard(client.Pid.ToString(), secret: false)));
+    }
+
+    /// <summary>Minimised without bringing anything to the front, or opened again where it was; the tile follows at once.</summary>
+    void ToggleMinimised(IntPtr hWnd)
+    {
+        if (RobloxProcesses.IsMinimised(hWnd))
+            RobloxProcesses.RestoreQuietly(hWnd);
+        else
+            RobloxProcesses.Minimise(hWnd);
+        Tick();
     }
 
     public void Dispose()

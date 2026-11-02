@@ -29,8 +29,9 @@ If Roblox isn't installed, a warning card says "Roblox doesn't seem to be instal
 
 **Game monitor** in the sidebar shows a live picture of every Roblox window, with its account, game, RAM and PID.
 
-- Click a picture to bring that window to the front.
-- Right-click for **Show**, **Close Roblox** and **Copy PID**.
+- Click a picture to bring that window to the front. An arranged window keeps its tile.
+- The **–** at a tile's top right minimises that window without bringing it up; click it again to open it again.
+- Right-click for **Show**, **Minimise** (or **Open again**), **Close Roblox** and **Copy PID**.
 - A minimised window shows "Minimised — no live picture".
 - The pictures step aside while a dialog or menu is open.
 
@@ -53,7 +54,7 @@ Hide a Roblox window while its game keeps running: right-click the account (or *
 | **Ctrl+Alt+H** | Hides every Roblox window, or shows them again. |
 | **Ctrl+Alt+M** | Minimizes every Roblox window, or opens them all again. Hidden ones stay hidden. |
 | **Ctrl+Alt+N** | Brings the next account's window to the front, in the list's order. |
-| **Ctrl+Alt+A** | Arranges the windows. |
+| **Ctrl+Alt+A** | Arranges the windows on the screen the mouse is on. |
 | **Ctrl+Alt+B** | Opens Bloxkeep, from the tray too. |
 
 <img src="../screenshots/hide-window.png" width="420" alt="The account menu of a playing account with Hide Roblox window among Close Roblox, Check sign-in and Auto-rejoin">

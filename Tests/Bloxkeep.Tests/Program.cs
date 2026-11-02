@@ -50,6 +50,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("roblox-usage", false, RobloxUsageSuite.Run),
     ("game-page", false, GamePageSuite.Run),
     ("window-shot", false, WindowShotSuite.Run),
+    ("monitor", false, MonitorSuite.Run),
     ("foreign-vault", false, ForeignVaultSuite.Run),
     ("window-icons", false, WindowIconsSuite.Run),
     ("taskbar-groups", false, TaskbarGroupsSuite.Run),

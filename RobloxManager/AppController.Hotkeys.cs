@@ -33,7 +33,7 @@ public sealed partial class AppController
         }
         else if (id == HotkeyArrange && _vault is not null)
         {
-            _ = ArrangeWindowsAsync(-1);
+            _ = ArrangeWindowsAsync(-1, atMouse: true);
         }
         else if (id == HotkeyMinimize)
         {

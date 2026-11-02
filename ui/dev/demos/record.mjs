@@ -1,7 +1,7 @@
 // What's new demos, filmed like a screen recording from ui/dev/preview.html (made-up accounts): the browser's own
 // screencast (frames as they are painted, with their times), a real mouse (hover states show) with a cursor drawn
 // where it is, real clicks and drags. Each take ends where it starts, so the clip loops.
-//   python -m http.server 5178            (from the repository, as .claude/launch.json's ui-preview)
+//   python -m http.server 5178            (from the repository, as .claude/launch.json's ui-preview; PORT=… for another)
 //   node ui/dev/demos/record.mjs themes vi <frames folder>
 //   python ui/dev/demos/encode.py <frames folder> RobloxManager/wwwroot/whatsnew/<version>-themes.vi.webp
 import fs from 'node:fs';
@@ -13,7 +13,8 @@ const { launch, sleep } = await import(pathToFileURL(path.join(repo, 'Tests/ui/c
 fs.mkdirSync(out, { recursive: true });
 for (const f of fs.readdirSync(out)) fs.rmSync(path.join(out, f));
 
-const W = 1280, H = 800;
+// The site's takes are 16:9, the shape of its feature cards (which cut a picture to it); What's new's are 16:10.
+const W = 1280, H = ['servers', 'presets', 'rejoin'].includes(name) ? 720 : 800, BASE = `http://localhost:${process.env.PORT || 5178}`;
 const b = await launch({ width: W, height: H, scale: 1.5, locale: lang === 'vi' ? 'vi-VN' : 'en-US' });
 let at = { x: W / 2, y: H * .7 };
 const mouse = (type, p, extra = {}) => b.send('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, ...extra });
@@ -55,7 +56,7 @@ const drawCursor = () => b.eval(`(() => {
 const takes = {
   /** Your themes: a kept theme picked (the window behind a blurred picture), its blur dragged, the plain one again. */
   async themes() {
-    await b.goto(`http://localhost:5178/ui/dev/preview.html?settings=appearance&theme=custom&saved=1&lang=${lang}&nodelay=1`);
+    await b.goto(`${BASE}/ui/dev/preview.html?settings=appearance&theme=custom&saved=1&lang=${lang}&nodelay=1`);
     await sleep(1500);
     await b.eval(`window.__mockBridge.call('useSavedTheme', { id: 't1' })`);
     await sleep(600);
@@ -88,7 +89,7 @@ const takes = {
   },
   /** The themes from photos: one after another, the mouse moving over each so the scene answers. */
   async photos() {
-    await b.goto(`http://localhost:5178/ui/dev/preview.html?settings=appearance&theme=miaminight&lang=${lang}&nodelay=1`);
+    await b.goto(`${BASE}/ui/dev/preview.html?settings=appearance&theme=miaminight&lang=${lang}&nodelay=1`);
     await sleep(1500);
     await b.eval(`document.querySelector('#s-theme-groups .chip[data-group="live"]').click()`);
     await sleep(500);
@@ -256,7 +257,7 @@ const takes = {
   },
   /** The modes for Roblox: each picked in turn, back to the one in use. */
   async modes() {
-    await b.goto(`http://localhost:5178/ui/dev/preview.html?settings=perf&open=s-rc-levels&lang=${lang}&nodelay=1`);
+    await b.goto(`${BASE}/ui/dev/preview.html?settings=perf&open=s-rc-levels&lang=${lang}&nodelay=1`);
     await sleep(1500);
     await b.eval(`document.querySelector('#s-rc-levels').scrollIntoView({ block: 'center' })`);
     await sleep(300);
@@ -272,6 +273,108 @@ const takes = {
         await click(button(n), 700);
         await sleep(1300);
       }
+    };
+  },
+  /** The site's "Pick a game, pick a server": a game searched by name, then its servers, sorted, one used. */
+  async servers() {
+    await b.goto(`${BASE}/ui/dev/preview.html?select=1&lang=${lang}&nodelay=1`);
+    await sleep(1500);
+    await drawCursor();
+    at = await where('#place');
+    at = { x: at.x + 80, y: at.y - 90 };
+    await mouse('mouseMoved', at);
+    return async () => {
+      await sleep(600);
+      await click('#place', 700);
+      await sleep(400);
+      for (const ch of 'adopt') {
+        await b.send('Input.insertText', { text: ch });
+        await sleep(110);
+      }
+      await sleep(900);
+      await click('[data-act=pick-game][data-i="0"]', 650);
+      await sleep(900);
+      await click('[data-act=servers]', 700);
+      await sleep(1300);
+      // Down to the public servers, as a wheel does.
+      const list = await where('.overlay .modal-body');
+      await move({ x: list.x, y: list.y + 40 }, 500);
+      for (let i = 0; i < 6; i++) {
+        await mouse('mouseWheel', at, { deltaX: 0, deltaY: 100 });
+        await sleep(60);
+      }
+      await sleep(700);
+      for (const sort of ['fewest', 'ping']) {
+        await click(`.overlay [data-sort="${sort}"]`, 600);
+        await sleep(1100);
+      }
+      await b.eval(`(() => { const u = [...document.querySelectorAll('.overlay .btn.sm')].find(x => !Object.keys(x.dataset).length); u.dataset.demo = 'use'; })()`);
+      await click('.overlay [data-demo=use]', 650);
+      await sleep(1800);
+      await move({ x: at.x - 120, y: at.y - 160 }, 700);
+      await sleep(600);
+    };
+  },
+  /** The site's "Presets and schedules": a preset's schedule shown and its days changed and back, another one's turned on and off. */
+  async presets() {
+    await b.goto(`${BASE}/ui/dev/preview.html?view=presets&lang=${lang}&nodelay=1`);
+    await sleep(1500);
+    await drawCursor();
+    at = await where('.pv-item[data-id="p1"] [data-pv=edit]');
+    at = { x: at.x - 160, y: at.y + 140 };
+    await mouse('mouseMoved', at);
+    return async () => {
+      await sleep(600);
+      await click('.pv-item[data-id="p1"] [data-pv=edit]', 700);
+      await sleep(1000);
+      const body = await where('.overlay .modal-body');
+      await move({ x: body.x, y: body.y }, 500);
+      for (let i = 0; i < 16; i++) {
+        await mouse('mouseWheel', at, { deltaX: 0, deltaY: 100 });
+        await sleep(55);
+      }
+      await sleep(900);
+      for (const day of [6, 0, 6, 0]) {
+        await click(`.overlay [data-day="${day}"]`, 550);
+        await sleep(600);
+      }
+      await sleep(500);
+      await click('.overlay .modal-foot [data-i="1"]', 700);
+      await sleep(900);
+      for (let i = 0; i < 2; i++) {
+        await click('.pv-item[data-id="p3"] label.switch', 650);
+        await sleep(1300);
+      }
+      const back = await where('.pv-item[data-id="p1"] [data-pv=edit]');
+      await move({ x: back.x - 160, y: back.y + 140 }, 700);
+      await sleep(500);
+    };
+  },
+  /** The site's "Stay in game": an account kicked for idling, rejoining by itself, in the game again. */
+  async rejoin() {
+    await b.goto(`${BASE}/ui/dev/preview.html?lang=${lang}&nodelay=1`);
+    await sleep(1500);
+    const game = await b.eval(`({ placeId: 2753915549, name: 'Blox Fruits' })`);
+    const set = s => b.eval(`window.__mockBridge.call('debugAccount', { n: 2, set: ${JSON.stringify(s)} })`);
+    const ago = m => new Date(Date.now() - m * 60000).toISOString();
+    const playing = since => ({ state: 'running', rejoin: null, presence: { type: 'ingame', game: game.name, placeId: game.placeId },
+      session: { pid: 2222, since, game, connection: 'ingame' } });
+    await set(playing(ago(38)));
+    await drawCursor();
+    at = await where('[data-id="00000000-0000-4000-8000-000000000002"]').catch(() => null) ?? { x: W * .45, y: H * .3 };
+    at = { x: at.x + 150, y: at.y + 160 };
+    await mouse('mouseMoved', at);
+    await sleep(800);
+    return async () => {
+      await sleep(1500);
+      await set({ presence: { type: 'online' }, session: { pid: 2222, since: ago(38), game, connection: 'disconnected', reason: 278 } });
+      await sleep(2600);
+      await set({ state: 'idle', session: null, rejoin: { at: new Date(Date.now() + 6000).toISOString(), restart: false, game: null } });
+      await sleep(2600);
+      await set({ state: 'running', rejoin: null, session: { pid: 3333, since: ago(0), game, connection: 'joining' } });
+      await sleep(2400);
+      await set(playing(ago(0)));
+      await sleep(2200);
     };
   },
 };

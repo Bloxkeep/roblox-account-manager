@@ -678,7 +678,28 @@ public static class RobloxProcesses
             ShowWindows([pid]);
         if (IsIconic(hWnd))
             ShowWindowAsync(hWnd, SW_RESTORE);
+        var place = IsPlainWindow(hWnd) ? WindowRect(hWnd) : null;
         SetForegroundWindow(hWnd);
+        if (place is { } before)
+            _ = KeepPlaceAsync(hWnd, before);
+    }
+
+    /// <summary>
+    /// Coming to the front sends Roblox the "changing" message, and it answers by growing back to its least size: a tile
+    /// Arrange made smaller came up bigger, over its neighbours, clicked in Game monitor (owner, 2026-11-02). Grown where
+    /// it stands (its corner unmoved), it gets its tile back; moved or resized by hand, it is left as it is.
+    /// </summary>
+    static async Task KeepPlaceAsync(IntPtr hWnd, Rectangle before)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            await Task.Delay(50);
+            if (WindowRect(hWnd) is not { } now || now == before)
+                continue;
+            if (now.Location == before.Location && now.Width >= before.Width && now.Height >= before.Height && IsPlainWindow(hWnd))
+                PlaceWindow(hWnd, before);
+            return;
+        }
     }
 
     public static bool IsMinimised(IntPtr hWnd) => IsIconic(hWnd);
