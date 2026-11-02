@@ -355,6 +355,8 @@
       switch (cmd) {
         case 'getState': return { resume: false, view: null, state: state() };
         case 'debugToast': emit('toast', a); return null; // for the dev tests: __mockBridge.call('debugToast', { text, kind })
+        // For the demos (ui/dev/demos): an account's card moved on, e.g. kicked, then rejoining. { n: 2, set: { session, rejoin } }
+        case 'debugAccount': { const acc = accounts.find(x => x.id === id(a.n)); if (acc) { Object.assign(acc, a.set); push(); } return null; }
         // A game's page: made-up figures, the accounts that "played" it, the hours (?gpnew=1: updated an hour ago).
         case 'gameDetails': {
           const now = Date.now(), h = n => new Date(now - n * 3600e3).toISOString();
