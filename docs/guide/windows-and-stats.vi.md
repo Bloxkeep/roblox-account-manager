@@ -29,8 +29,9 @@ Nếu máy chưa cài Roblox, một thẻ cảnh báo ghi "Hình như máy này 
 
 **Theo dõi game** ở thanh bên hiện hình trực tiếp của mọi cửa sổ Roblox, kèm tài khoản, game, RAM và PID.
 
-- Bấm vào hình để đưa cửa sổ đó lên trên cùng.
-- Chuột phải để chọn **Hiện**, **Đóng Roblox** hoặc **Sao chép PID**.
+- Bấm vào hình để đưa cửa sổ đó lên trên cùng. Cửa sổ đã xếp vẫn giữ nguyên ô.
+- Nút **–** ở góc phải mỗi ô thu nhỏ cửa sổ đó mà không cần mở nó lên; bấm lần nữa để mở lại.
+- Chuột phải để chọn **Hiện**, **Thu nhỏ** (hoặc **Mở lại**), **Đóng Roblox** hay **Sao chép PID**.
 - Cửa sổ đang thu nhỏ thì ghi "Đang thu nhỏ, không có hình trực tiếp".
 - Khi có hộp thoại hay menu mở, các hình tạm ẩn đi.
 
@@ -53,7 +54,7 @@ Một cửa sổ nhỏ luôn nằm trên cùng. Mở bằng nút **Cửa sổ nh
 | **Ctrl+Alt+H** | Ẩn mọi cửa sổ Roblox, hoặc hiện lại. |
 | **Ctrl+Alt+M** | Thu nhỏ mọi cửa sổ Roblox, hoặc mở lại tất cả. Cửa sổ đang ẩn vẫn ẩn. |
 | **Ctrl+Alt+N** | Đưa cửa sổ của tài khoản kế tiếp lên trước, theo thứ tự trong danh sách. |
-| **Ctrl+Alt+A** | Xếp cửa sổ. |
+| **Ctrl+Alt+A** | Xếp cửa sổ trên màn hình đang có chuột. |
 | **Ctrl+Alt+B** | Mở Bloxkeep, kể cả khi đang ở khay. |
 
 <img src="../screenshots/vi/hide-window.png" width="420" alt="Menu tài khoản của một tài khoản đang chơi, có Ẩn cửa sổ Roblox cạnh Đóng Roblox, Kiểm tra đăng nhập và Tự vào lại">

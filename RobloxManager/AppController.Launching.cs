@@ -806,11 +806,13 @@ public sealed partial class AppController
 
     /// <summary>Tiles every Roblox window on one monitor: tracked accounts first (by name), then any other clients.</summary>
     /// <param name="auto">Tiling after a launch: minimised windows (a light-AFK preset's) stay minimised and get no tile.</param>
-    async Task<object?> ArrangeWindowsAsync(int monitor, bool auto = false)
+    /// <param name="atMouse">The hotkey: on the screen the mouse is on, wherever Bloxkeep is (owner, 2026-11-02).</param>
+    async Task<object?> ArrangeWindowsAsync(int monitor, bool auto = false, bool atMouse = false)
     {
         var screens = Screen.AllScreens;
-        // No monitor picked (the hotkey, after a launch): the one Bloxkeep is on, else, while it's in the tray, the one the mouse is on.
+        // No monitor picked (after a launch): the one Bloxkeep is on, else, while it's in the tray, the one the mouse is on.
         var screen = monitor >= 0 && monitor < screens.Length ? screens[monitor]
+            : atMouse ? Screen.FromPoint(Cursor.Position)
             : _owner.IsHandleCreated && _owner.Visible && _owner.WindowState != FormWindowState.Minimized ? Screen.FromHandle(_owner.Handle)
             : Screen.FromPoint(Cursor.Position);
         var tracked = _running

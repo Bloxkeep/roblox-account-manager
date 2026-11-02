@@ -75,8 +75,10 @@ sealed class WindowThumbnails : ScrollableControl
     {
         public Item Item = item;
         public IntPtr Thumb;
-        public Rectangle Bounds, Picture;
+        public Rectangle Bounds, Picture, Button;
         public bool Minimized;
+        /// <summary>The window's size when its picture was last placed (empty while unknown).</summary>
+        public Size Shown;
     }
 
     readonly List<Tile> _tiles = new();
@@ -84,9 +86,28 @@ sealed class WindowThumbnails : ScrollableControl
     Themes.Theme _theme = Themes.Current;
     bool _live;
     int _hover = -1;
+    bool _hoverButton;
+    readonly ToolTip _tip = new();
+
+    /// <summary>
+    /// A picture shows the part of its window that had the window's size when placed: a window that grew (Arrange, brought
+    /// to the front) showed its top-left corner zoomed in until the next refresh, 1.5 s later (owner, 2026-11-02). So each
+    /// window's size and minimising are looked at this often, and the pictures placed again at once.
+    /// </summary>
+    readonly System.Windows.Forms.Timer _watch = new() { Interval = 50 };
 
     /// <summary>A tile was clicked with this button (right for a menu); the item as last given to <see cref="SetItems"/>.</summary>
     public event Action<Item, MouseButtons>? TileClicked;
+
+    /// <summary>A tile's own button at its top right: minimise its window, or open it again (owner, 2026-11-02).</summary>
+    public event Action<Item>? ButtonClicked;
+
+    /// <summary>The button's tooltip while the window shows, and while it is minimised.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string MinimizeText { get; set; } = "";
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string RestoreText { get; set; } = "";
 
     /// <summary>Shown in a tile instead of the picture while its window is minimised.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -101,6 +122,7 @@ sealed class WindowThumbnails : ScrollableControl
         SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
         AutoScroll = true;
         (_titleFont, _smallFont) = MakeFonts();
+        _watch.Tick += (_, _) => FollowWindows();
     }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -130,6 +152,7 @@ sealed class WindowThumbnails : ScrollableControl
                 RegisterAll();
             else
                 UnregisterAll();
+            _watch.Enabled = value;
             Relayout();
         }
     }
@@ -186,6 +209,8 @@ sealed class WindowThumbnails : ScrollableControl
         return new Rectangle(box.X + (box.Width - w) / 2, box.Y + (box.Height - h) / 2, w, h);
     }
 
+    static int ButtonSize(int dpi) => Scale(28, dpi);
+
     int CaptionHeight() =>
         TextRenderer.MeasureText("Ag", _titleFont).Height + TextRenderer.MeasureText("Ag", Font).Height + Scale(Inset, DeviceDpi) * 2 + Scale(2, DeviceDpi);
 
@@ -201,7 +226,7 @@ sealed class WindowThumbnails : ScrollableControl
             AutoScrollMinSize = minSize;
             rects = TileRects(_tiles.Count, ClientSize, dpi, out _);
         }
-        int captionH = CaptionHeight(), scrollY = AutoScrollPosition.Y;
+        int captionH = CaptionHeight(), scrollY = AutoScrollPosition.Y, button = ButtonSize(dpi);
         for (int i = 0; i < _tiles.Count; i++)
         {
             var tile = _tiles[i];
@@ -209,6 +234,8 @@ sealed class WindowThumbnails : ScrollableControl
             r.Offset(0, scrollY);
             tile.Bounds = r;
             tile.Picture = new Rectangle(r.X + inset, r.Y + captionH, r.Width - inset * 2, r.Height - captionH - inset);
+            // Beside both caption lines, in the middle of their height.
+            tile.Button = new Rectangle(r.Right - inset - button, r.Y + (captionH - button) / 2, button, button);
         }
         UpdateThumbnails();
         Invalidate();
@@ -322,6 +349,7 @@ sealed class WindowThumbnails : ScrollableControl
             };
             bool sized = DwmQueryThumbnailSourceSize(tile.Thumb, out var size) == 0 && size.cx > 0 && size.cy > 0;
             var source = sized ? new Size(size.cx, size.cy) : new Size(16, 9);
+            tile.Shown = sized ? source : Size.Empty;
             var picture = Fit(source, tile.Picture);
             var visible = Rectangle.Intersect(picture, client);
             if (tile.Minimized || tile.Picture.Width < 24 || tile.Picture.Height < 24 || visible.IsEmpty)
@@ -351,6 +379,25 @@ sealed class WindowThumbnails : ScrollableControl
             }
             if (DwmUpdateThumbnailProperties(tile.Thumb, ref props) != 0)
                 Unregister(tile); // the window went away between the two calls; registered again next time if not
+        }
+    }
+
+    /// <summary>A window resized, minimised or opened again since its picture was placed: placed again now.</summary>
+    void FollowWindows()
+    {
+        if (!_live || !IsHandleCreated)
+            return;
+        foreach (var tile in _tiles)
+        {
+            if (tile.Thumb == IntPtr.Zero || !IsWindow(tile.Item.Hwnd))
+                continue;
+            bool minimized = IsIconic(tile.Item.Hwnd) || !IsWindowVisible(tile.Item.Hwnd);
+            var size = DwmQueryThumbnailSourceSize(tile.Thumb, out var s) == 0 && s.cx > 0 && s.cy > 0 ? new Size(s.cx, s.cy) : Size.Empty;
+            if (minimized == tile.Minimized && (minimized || size == tile.Shown))
+                continue;
+            UpdateThumbnails();
+            Invalidate(); // a minimised tile's text, or the picture's new shape
+            return;
         }
     }
 
@@ -427,19 +474,31 @@ sealed class WindowThumbnails : ScrollableControl
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
-        SetHover(TileAt(e.Location));
+        int i = TileAt(e.Location);
+        SetHover(i, i >= 0 && _tiles[i].Button.Contains(e.Location));
     }
 
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        SetHover(-1);
+        SetHover(-1, false);
     }
 
-    void SetHover(int index)
+    void SetHover(int index, bool button)
     {
-        if (index == _hover)
+        if (index == _hover && button == _hoverButton)
             return;
+        if (button && index >= 0)
+            _tip.Show(_tiles[index].Minimized ? RestoreText : MinimizeText, this,
+                _tiles[index].Button.Left, _tiles[index].Button.Bottom + Scale(4, DeviceDpi), 2000);
+        else
+            _tip.Hide(this);
+        _hoverButton = button;
+        if (index == _hover)
+        {
+            Invalidate(_tiles[index].Button);
+            return;
+        }
         // Only the two tiles whose border changes are redrawn (the pictures are Windows' own, untouched either way).
         if (_hover >= 0 && _hover < _tiles.Count)
             Invalidate(_tiles[_hover].Bounds);
@@ -459,7 +518,9 @@ sealed class WindowThumbnails : ScrollableControl
     {
         base.OnMouseClick(e);
         int i = TileAt(e.Location);
-        if (i >= 0 && (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right))
+        if (i >= 0 && e.Button == MouseButtons.Left && _tiles[i].Button.Contains(e.Location))
+            ButtonClicked?.Invoke(_tiles[i].Item);
+        else if (i >= 0 && (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right))
             TileClicked?.Invoke(_tiles[i].Item, e.Button);
     }
 
@@ -513,8 +574,9 @@ sealed class WindowThumbnails : ScrollableControl
             if (tile.Picture.Width > 0 && tile.Picture.Height > 0)
                 g.FillRectangle(picture, tile.Picture);
 
+            DrawButton(g, tile, i == _hover && _hoverButton, dpi);
             var item = tile.Item;
-            int y = r.Y + inset, left = r.X + inset, width = r.Width - inset * 2;
+            int y = r.Y + inset, left = r.X + inset, width = tile.Button.Left - gap - left;
             Caption(g, item.Title, _titleFont, _theme.Text, item.Tag, left, y, width, gap);
             y += TextRenderer.MeasureText(g, "Ag", _titleFont).Height + Scale(2, dpi);
             Caption(g, item.Subtitle, Font, _theme.Text2, item.Tag2, left, y, width, gap);
@@ -527,6 +589,26 @@ sealed class WindowThumbnails : ScrollableControl
                         TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
             }
         }
+    }
+
+    /// <summary>The minimise button: a dash, or while the window is minimised a square (open it again).</summary>
+    void DrawButton(Graphics g, Tile tile, bool hot, int dpi)
+    {
+        var b = tile.Button;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        if (hot)
+        {
+            using var fill = new SolidBrush(Mix(_theme.Surface, _theme.Text, .12f));
+            using var path = Rounded(new Rectangle(b.X, b.Y, b.Width - 1, b.Height - 1), Scale(7, dpi));
+            g.FillPath(fill, path);
+        }
+        using var pen = new Pen(hot ? _theme.Text : _theme.Text2, Math.Max(1f, Scale(14, dpi) / 10f));
+        int m = b.Width * 32 / 100;
+        if (tile.Minimized)
+            g.DrawRectangle(pen, b.X + m, b.Y + m, b.Width - m * 2, b.Height - m * 2);
+        else
+            g.DrawLine(pen, b.X + m, b.Y + b.Height / 2, b.Right - m, b.Y + b.Height / 2);
+        g.SmoothingMode = SmoothingMode.None;
     }
 
     /// <summary>One caption line: text at the left, ending in "…" before the tag at the right.</summary>
@@ -549,8 +631,10 @@ sealed class WindowThumbnails : ScrollableControl
     {
         if (disposing)
         {
+            _watch.Dispose();
             UnregisterAll();
             _tiles.Clear();
+            _tip.Dispose();
             _titleFont.Dispose();
             _smallFont.Dispose();
         }

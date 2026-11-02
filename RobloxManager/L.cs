@@ -87,6 +87,8 @@ public static class L
         ["Disconnected"] = "Mất kết nối",
         ["No Roblox window is open."] = "Không có cửa sổ Roblox nào đang mở.",
         ["Minimised — no live picture"] = "Đang thu nhỏ, không xem trực tiếp được",
+        ["Minimise"] = "Thu nhỏ",
+        ["Open again"] = "Mở lại",
         ["Close Roblox"] = "Đóng Roblox",
         ["Copy PID"] = "Sao chép PID",
         ["Unlock Bloxkeep to see the accounts."] = "Mở khóa Bloxkeep để xem tài khoản.",
