@@ -291,6 +291,7 @@ static class FollowSuite
             vault.Data.Settings.MultiInstance = false;
             var pending = Harness.Get<System.Collections.IList>(app, "_pending");
             var rejoinAsync = t.GetMethod("RejoinAsync", Harness.F)!;
+            bool cardRejoining = true;
             async Task<string> StoppedUnderWay(RobloxApi.JoinAnswer answer, Action stop)
             {
                 running.Clear();
@@ -307,6 +308,8 @@ static class FollowSuite
                 var request = Activator.CreateInstance(requestType, account.Id, new GameTarget(Place) { Follow = follow }, DateTime.UtcNow, 0, null, false)!;
                 var rejoin = (Task)rejoinAsync.Invoke(app, [request])!;
                 await joinAskedNow.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                var card = Harness.Invoke(app, "AccountDto", account)!;
+                cardRejoining &= card.GetType().GetProperty("rejoin")!.GetValue(card) is not null;
                 stop();
                 joinGate.SetResult(answer);
                 await rejoin.WaitAsync(TimeSpan.FromSeconds(30));
@@ -324,6 +327,7 @@ static class FollowSuite
             c.Check("…nor goes on to open the window (Roblox busy: it would go back in the queue)", after == Nothing, after);
             after = await StoppedUnderWay(full, () => Harness.Invoke(app, "CancelRejoin", account.Id));
             c.Check("…its rejoin called off on the card: stops too", after == Nothing, after);
+            c.Check("…and while it is under way, the card says it's rejoining (Cancel and Close on it), not idle", cardRejoining);
             var runType = t.GetNestedType("ScheduledRun", Harness.F)!;
             var run = Activator.CreateInstance(runType)!;
             runType.GetField("PresetId")!.SetValue(run, Guid.NewGuid());

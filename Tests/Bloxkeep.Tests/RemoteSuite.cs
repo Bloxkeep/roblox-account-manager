@@ -116,6 +116,27 @@ static class RemoteSuite
         c.Check("/pc preset with a name it doesn't have: said so", Text(await Ask("preset", "Nope")) == "No preset is called Nope.");
         c.Check("/pc close All accounts with nothing open: said so", Text(await Ask("close", "All accounts")) == "No Roblox window is open on this PC.");
         c.Check("/pc close an account with no window: said so", Text(await Ask("close", "beta")) == "Beta has no Roblox window open.");
+        // Its window late (Roblox updating on a slow link) or its rejoin under way: /pc close stops it, as Close on the
+        // account does. Before, Discord was told it had no window open, and the window came later.
+        var launchType = typeof(AppController).GetNestedType("PendingLaunch", Harness.F)!;
+        var late = Harness.Get<object>(app, "_late");
+        var closeWhen = Harness.Get<object>(app, "_closeWhenClaimed");
+        var betaId = seed.Data.Accounts[1].Id;
+        var lateBeta = Activator.CreateInstance(launchType, betaId, new HashSet<int>(), DateTime.UtcNow.AddSeconds(-150), new GameTarget(1818), false, (Guid?)null)!;
+        late.GetType().GetMethod("Add")!.Invoke(late, [lateBeta]);
+        string closeSaid = Text(await Ask("close", "beta"));
+        c.Check("/pc close an account whose window is late: closes it once it comes", closeSaid == "Closing Beta…"
+            && (bool)closeWhen.GetType().GetMethod("Contains")!.Invoke(closeWhen, [lateBeta])!, closeSaid);
+        late.GetType().GetMethod("Clear")!.Invoke(late, null);
+        closeWhen.GetType().GetMethod("Clear")!.Invoke(closeWhen, null);
+        var requestType = typeof(AppController).GetNestedType("RejoinRequest", Harness.F)!;
+        using var rejoinCts = new CancellationTokenSource();
+        Harness.Set(app, "_rejoinInFlight", Activator.CreateInstance(requestType, betaId, new GameTarget(1818), DateTime.UtcNow, 0, null, false));
+        Harness.Set(app, "_rejoinCts", rejoinCts);
+        closeSaid = Text(await Ask("close", "beta"));
+        c.Check("…its rejoin under way: called off", closeSaid == "Closing Beta…" && rejoinCts.IsCancellationRequested, closeSaid);
+        Harness.Set(app, "_rejoinInFlight", null);
+        Harness.Set(app, "_rejoinCts", null);
         c.Check("/pc switch an account that doesn't exist: said so", Text(await Ask("switch", "Ghost")) == "No account is called Ghost.");
         c.Check("…and one that isn't playing: said why it can't", Text(await Ask("switch", "Alpha")) == "Only accounts playing in a public server can switch to another one.");
         c.Check("/pc switch All accounts with nothing open: said so", Text(await Ask("switch", "All accounts")) == "No Roblox window is open on this PC.");
