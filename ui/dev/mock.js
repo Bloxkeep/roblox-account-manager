@@ -1,10 +1,11 @@
 'use strict';
 // Fake bridge for designing the UI in a normal browser. ?locked=1 shows the lock screen, ?new=1 the first-run screen,
-// ?empty=1 an empty vault, ?theme=light (system|light|paper|dim|dark|black) a theme. Presets: ?view=presets opens their
+// ?empty=1 an empty vault, ?theme=light (system|light|paper|dim|dark|black) a theme, ?christmas=1 December's logo. Presets: ?view=presets opens their
 // tab, ?nopresets=1 has none, ?many=1 the most the app keeps (50), ?noicons=1 no game icons known yet. ?rejoin=1: an
 // account waiting minutes for auto-rejoin's next try.
 (() => {
   const params = new URLSearchParams(location.search);
+  if (params.has('christmas')) window.BloxkeepChristmas = true;
   const cdn = 'https://tr.rbxcdn.com/';
   // Made-up block-head avatars drawn here (no real player's picture or name appears in screenshots).
   const face = (bg, skin, hat) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><rect width="150" height="150" fill="${bg}"/><rect x="38" y="44" width="74" height="70" rx="16" fill="${skin}"/>${hat ? `<rect x="32" y="30" width="86" height="26" rx="10" fill="${hat}"/>` : ''}<circle cx="62" cy="76" r="5" fill="#1d1d1f"/><circle cx="88" cy="76" r="5" fill="#1d1d1f"/><path d="M60 94q15 12 30 0" stroke="#1d1d1f" stroke-width="5" fill="none" stroke-linecap="round"/></svg>`);

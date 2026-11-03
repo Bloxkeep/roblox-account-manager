@@ -1,9 +1,10 @@
 'use strict';
 // Fake app for the tray's page (tray.html) in a normal browser: ?mode=menu the right-click menu (else the quick panel),
 // ?locked=1 Bloxkeep locked, ?multi=off|notReady, ?many=1 more Roblox windows than the panel lists, ?none=1 none,
-// ?macros=1 two macros (one's panel showing and running, the other's stopped: the state P1a's tray message adds), ?theme=light a theme, ?lang=vi Vietnamese. What is clicked shows in the page's calls (Tests/ui/page-hooks.js).
+// ?macros=1 two macros (one's panel showing and running, the other's stopped: the state P1a's tray message adds), ?theme=light a theme, ?lang=vi Vietnamese, ?christmas=1 December's logo. What is clicked shows in the page's calls (Tests/ui/page-hooks.js).
 (() => {
   const params = new URLSearchParams(location.search);
+  if (params.has('christmas')) window.BloxkeepChristmas = true;
   const face = (bg, skin) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><rect width="150" height="150" fill="${bg}"/><rect x="38" y="34" width="74" height="74" rx="14" fill="${skin}"/><circle cx="62" cy="66" r="6" fill="#222"/><circle cx="88" cy="66" r="6" fill="#222"/><path d="M60 86q15 12 30 0" stroke="#222" stroke-width="5" fill="none" stroke-linecap="round"/></svg>`);
   const names = ['Main', 'Farm 1', 'Farm 2', 'Alt', 'Trader', 'Builder', 'Night Owl', 'Test'];
   const games = ['Blox Fruits', 'Adopt Me!', 'Brookhaven 🏡RP'];
