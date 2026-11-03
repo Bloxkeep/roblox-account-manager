@@ -24,7 +24,7 @@
       choices: ['Worm', 'Shrimp', long ? 'Golden worm from the Second Sea shop' : 'Golden worm', 'Squid', 'Glow bait', 'Magnet', 'Leech', 'Minnow', 'Crab', 'Sardine', 'Bagel', 'Insect'] },
     { name: 'keep', label: long ? 'Fish to keep in the backpack' : 'Fish to keep', kind: 'list', tab: 'Fishing', value: ['Salmon', 'Tuna'], def: ['Salmon', 'Tuna'],
       choices: ['Salmon', 'Tuna', 'Carp', 'Pike', 'Eel'] },
-    { name: 'colour', label: 'Button colour', kind: 'colour', tab: 'Fishing', value: '#22c55e', def: '#22c55e' },
+    { name: 'colour', label: 'Button color', kind: 'colour', tab: 'Fishing', value: '#22c55e', def: '#22c55e' },
     { name: 'adv', label: long ? 'Advanced settings for selling' : 'Advanced', kind: 'heading', tab: tabs[2] || null, value: null },
     { name: 'clicks', label: 'Clicks per reel', kind: 'number', tab: tabs[2] || null, value: 12, def: 12, min: 1, max: 50, step: 1, scale: 1, suffix: '' },
     { name: 'sellAt', label: long ? 'Sell everything once the bag is this full' : 'Sell when bag is', kind: 'number', tab: tabs[2] || null, value: 90, def: 90, min: 10, max: 100, step: 5, scale: 1, suffix: '%' },
