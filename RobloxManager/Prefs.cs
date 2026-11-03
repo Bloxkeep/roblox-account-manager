@@ -465,11 +465,14 @@ public static class Prefs
         }
     }
 
+    /// <summary>The last Save couldn't write prefs.json.</summary>
+    public static bool SaveFailed { get; private set; }
+
     /// <summary>Written to a temp file first, so a crash mid-write never leaves an empty prefs.json (and defaults).</summary>
-    public static void Save()
+    public static bool Save()
     {
         if (_unreadable)
-            return;
+            return true;
         try
         {
             Directory.CreateDirectory(Vault.DataDir);
@@ -508,10 +511,12 @@ public static class Prefs
             // Flushed to disk before it replaces the old file: a power cut can't leave it empty (language, theme and
             // the backup folder would quietly reset, and backups stop).
             DurableFile.WriteText(PrefsPath, JsonSerializer.Serialize(values));
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // The choice still applies for this session.
+            return true;
         }
     }
 }

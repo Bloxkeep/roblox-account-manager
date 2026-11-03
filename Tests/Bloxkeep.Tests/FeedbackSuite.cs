@@ -66,6 +66,7 @@ static class FeedbackSuite
         Environment.SetEnvironmentVariable("BLOXKEEP_FEEDBACK_URL", url);
         var received = new List<JsonDocument>();
         int answer = 200;
+        TaskCompletionSource? gate = null; // set: the next request is answered only when it is let go (the ones after it at once)
         var serving = Task.Run(async () =>
         {
             while (listener.IsListening)
@@ -75,8 +76,16 @@ static class FeedbackSuite
                 catch (Exception) { break; }
                 using var reader = new StreamReader(ctx.Request.InputStream);
                 received.Add(JsonDocument.Parse(await reader.ReadToEndAsync()));
-                ctx.Response.StatusCode = answer;
-                ctx.Response.Close();
+                var slow = gate;
+                gate = null;
+                int status = answer;
+                _ = Task.Run(async () =>
+                {
+                    if (slow is not null)
+                        await slow.Task;
+                    ctx.Response.StatusCode = status;
+                    ctx.Response.Close();
+                });
             }
         });
 
@@ -100,6 +109,29 @@ static class FeedbackSuite
         }
         var again = await Harness.Try(app, "sendFeedback", Args("And another thing."));
         c.Check("twice in a minute: refused", again is UserError && received.Count == 2, again);
+
+        // Two sends pressed at once (a double click, the page and a retry): the first is still on its way when the second
+        // asks, and the minute's gap counted only a send that had finished. One request goes, not two.
+        Harness.Set(app, "_feedbackSentAt", DateTime.MinValue);
+        var held = new TaskCompletionSource();
+        gate = held;
+        int sentBefore = received.Count;
+        var first = Harness.Try(app, "sendFeedback", Args("Two at once: the first."));
+        for (var wait = System.Diagnostics.Stopwatch.StartNew(); received.Count == sentBefore && wait.ElapsedMilliseconds < 5000;)
+            await Task.Delay(20);
+        var second = await Harness.Try(app, "sendFeedback", Args("Two at once: the second."));
+        held.SetResult();
+        var firstDone = await first;
+        c.Check("two sends at once: the second is refused while the first is on its way", second is UserError, second);
+        c.Check("…and the first one goes through", firstDone is not UserError, firstDone);
+        c.Check("…only one request reached the service", received.Count == sentBefore + 1, received.Count - sentBefore);
+        // A send that failed doesn't hold the next one back.
+        Harness.Set(app, "_feedbackSentAt", DateTime.MinValue);
+        answer = 500;
+        var failed = await Harness.Try(app, "sendFeedback", Args("The service is down."));
+        answer = 200;
+        var retried = await Harness.Try(app, "sendFeedback", Args("The service is back."));
+        c.Check("a failed send can be tried again at once", failed is UserError && retried is not UserError, retried);
 
         listener.Stop();
         await serving;

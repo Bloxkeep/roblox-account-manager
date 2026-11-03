@@ -27,10 +27,13 @@ public sealed partial class AppController
                    return L.F(result.Merged ? "{0} was already here — its sign-in was updated." : "{0} saved.", result.Label);
                }))
         {
-            form.ShowDialog(_owner);
+            ShowSignInWindow(form);
         }
         return new { added };
     }
+
+    /// <summary>A sign-in or captcha window, shown over the app until it is closed.</summary>
+    DialogResult ShowSignInWindow(Form form) => form.ShowDialog(_owner);
 
     /// <summary>The code on screen in the Quick Login window; one at a time.</summary>
     QuickLoginCode? _quickLogin;
@@ -343,7 +346,7 @@ public sealed partial class AppController
     {
         using (form)
         {
-            form.ShowDialog(_owner);
+            ShowSignInWindow(form);
             return form.Token;
         }
     }

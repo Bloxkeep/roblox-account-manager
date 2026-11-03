@@ -29,7 +29,11 @@ static class AutoLockSuite
 
         var posts = new List<string>();
         using var form = new Form();
-        using var app = new AppController(form, json => { lock (posts) posts.Add(json); });
+        var windowsToasts = new List<string>();
+        using var app = new AppController(form, json => { lock (posts) posts.Add(json); })
+        {
+            ShowNotification = (text, _) => { lock (windowsToasts) windowsToasts.Add(text); return true; },
+        };
         await Harness.Unlock(app);
         app.PageAttached = true;
         bool ScreenLocked() => Harness.Get<bool>(app, "_screenLocked");
@@ -164,6 +168,11 @@ static class AutoLockSuite
         c.Check("an unlock that finishes after Lock doesn't open anything", VaultNow() is null && !ScreenLocked(), late);
         await Harness.Unlock(app);
 
+        // 2026-11 audit: the sign-in and captcha windows are modal and stayed up over the lock screen, and the browser one could
+        // still save an account into the locked vault; Windows notifications ignored the lock.
+        await SignInWindows(c, app, windowsToasts);
+        await Harness.Unlock(app);
+
         // A restart for an update behind the lock screen comes back behind it (the key travels for the background).
         vault = VaultNow()!;
         var (key, salt, iterations) = vault.ExportKey();
@@ -191,5 +200,71 @@ static class AutoLockSuite
             }
         }
         System.Security.Cryptography.CryptographicOperations.ZeroMemory(key);
+    }
+
+    /// <summary>A stand-in sign-in window (a plain form, shown the way the real ones are) with the lock put over it, and the
+    /// Windows notifications behind the lock screen.</summary>
+    static async Task SignInWindows(Checks c, AppController app, List<string> windowsToasts)
+    {
+        int Toasts() { lock (windowsToasts) return windowsToasts.Count; }
+        void Notify(string type) => Harness.Invoke(app, "Notify", "Farm was kicked", "warn", type, Guid.NewGuid(), true);
+
+        // Shown on a thread of its own with a message loop; `then` runs 200 ms after it is up. True when it was closed by `then`,
+        // false when nothing closed it and the 3 s wait had to.
+        bool ClosedBy(Action then)
+        {
+            bool waitEnded = false;
+            var thread = new Thread(() =>
+            {
+                using var window = new Form { ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), Size = new Size(200, 200) };
+                using var go = new System.Windows.Forms.Timer { Interval = 200 };
+                using var wait = new System.Windows.Forms.Timer { Interval = 3000 };
+                go.Tick += (_, _) =>
+                {
+                    go.Stop();
+                    then();
+                };
+                wait.Tick += (_, _) =>
+                {
+                    wait.Stop();
+                    waitEnded = true;
+                    window.Close();
+                };
+                window.Shown += (_, _) =>
+                {
+                    go.Start();
+                    wait.Start();
+                };
+                Harness.Invoke(app, "ShowSignInWindow", window);
+            });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join();
+            return !waitEnded;
+        }
+
+        // The lock screen.
+        c.Check("a sign-in window is closed when the lock screen comes up", ClosedBy(() => Harness.Invoke(app, "ScreenLock")));
+        c.Check("…the lock screen is up", Harness.Get<bool>(app, "_screenLocked"));
+        object? refused = null;
+        try
+        {
+            Harness.Invoke(app, "AddOrMerge", new Account { Cookie = "cookie", UserId = 999, Username = "LateSignIn" });
+        }
+        catch (System.Reflection.TargetInvocationException e)
+        {
+            refused = e.InnerException;
+        }
+        c.Check("…and a sign-in finishing behind it saves nothing", refused is UserError, refused);
+        int before = Toasts();
+        Notify("drop");
+        c.Check("no Windows notification behind the lock screen", Toasts() == before, Toasts() - before);
+        await Harness.Call(app, "unlock", new { password = Harness.Password });
+        Notify("signin");
+        c.Check("…and they are shown again once it is down", Toasts() == before + 1, Toasts() - before);
+
+        // The Lock button closes the vault: the window goes with it.
+        c.Check("a sign-in window is closed when Lock closes the vault",
+            ClosedBy(() => Harness.Call(app, "lock", new { }).GetAwaiter().GetResult()));
     }
 }
