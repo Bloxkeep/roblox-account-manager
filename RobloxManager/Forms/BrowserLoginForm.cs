@@ -5,7 +5,8 @@ using Microsoft.Web.WebView2.WinForms;
 namespace RobloxManager;
 
 /// <summary>Sign-in on roblox.com in a throw-away WebView2 profile: each new session cookie goes to <c>onSignedIn</c>,
-/// then a fresh profile opens for the next account. The password typed here is never read by the app.</summary>
+/// then a fresh profile opens for the next account. The password typed here is never read by the app. Its top (the
+/// site, what to do, Retry, Done) is the app's own page (<see cref="ChromeView"/>), apart from the roblox.com one.</summary>
 public sealed class BrowserLoginForm : Form
 {
     const string ProfilePrefix = "Bloxkeep-login-";
@@ -17,20 +18,22 @@ public sealed class BrowserLoginForm : Form
     readonly Func<string, Task<string>> _onSignedIn;
     readonly System.Windows.Forms.Timer _poll = new() { Interval = 1000 };
     readonly System.Windows.Forms.Timer _slow = new() { Interval = (int)SlowAfter.TotalMilliseconds };
-    readonly Label _message;
-    readonly Button _retry;
+    readonly ChromeView _chrome;
     WebView2? _web;
     string? _profileDir;
     bool _polling, _closing;
     // What the bar says once the page is up: the instructions, or how the last sign-in went.
     string _readyText = L.T("Sign in to each account in turn. Press Done when finished.");
-    Color _readyColor;
+    string _readyTone = "";
+    // What the top shows now.
+    string _message = "", _tone = "";
+    string? _host;
+    bool _retry;
 
     /// <param name="onSignedIn">Saves the account for a new session cookie and returns a short confirmation.</param>
     public BrowserLoginForm(Func<string, Task<string>> onSignedIn)
     {
         _onSignedIn = onSignedIn;
-        _readyColor = _theme.Text2;
         Text = L.T("Sign in to Roblox");
         Icon = Ui.AppIcon;
         BackColor = _theme.Background;
@@ -38,43 +41,15 @@ public sealed class BrowserLoginForm : Form
         ShowInTaskbar = false;
         Size = new Size(LogicalToDeviceUnits(1000), LogicalToDeviceUnits(800));
 
-        _message = new Label
+        _chrome = new ChromeView(this, 52);
+        _chrome.Act += (what, _) =>
         {
-            Dock = DockStyle.Fill,
-            AutoSize = false,
-            TextAlign = ContentAlignment.MiddleLeft,
-            ForeColor = _theme.Text2,
+            if (what == "done")
+                Close();
+            else if (what == "retry")
+                Retry();
         };
-        var done = new Button
-        {
-            Text = L.T("Done"),
-            Dock = DockStyle.Right,
-            Width = LogicalToDeviceUnits(96),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = _theme.Text,
-            ForeColor = _theme.Background,
-            Cursor = Cursors.Hand,
-        };
-        done.FlatAppearance.BorderSize = 0;
-        done.Click += (_, _) => Close();
-        _retry = new Button
-        {
-            Text = L.T("Retry"),
-            Dock = DockStyle.Right,
-            Width = LogicalToDeviceUnits(96),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = _theme.Surface,
-            ForeColor = _theme.Text,
-            Cursor = Cursors.Hand,
-            Visible = false,
-        };
-        _retry.FlatAppearance.BorderColor = _theme.Line;
-        _retry.Click += (_, _) => Retry();
-        var bar = new Panel { Dock = DockStyle.Top, Height = LogicalToDeviceUnits(52), Padding = new Padding(12, 8, 10, 8), BackColor = _theme.Surface };
-        bar.Controls.Add(_message);
-        bar.Controls.Add(_retry);
-        bar.Controls.Add(done);
-        Controls.Add(bar);
+        Controls.Add(_chrome.Control);
 
         _poll.Tick += async (_, _) => await PollCookieAsync();
         _slow.Tick += (_, _) =>
@@ -89,6 +64,35 @@ public sealed class BrowserLoginForm : Form
     {
         base.OnHandleCreated(e);
         Ui.UseThemedTitleBar(this, _theme);
+        _ = StartChromeAsync();
+    }
+
+    async Task StartChromeAsync()
+    {
+        if (await _chrome.StartAsync())
+            Push();
+    }
+
+    /// <summary>What the top shows now.</summary>
+    void Push()
+    {
+        if (IsDisposed)
+            return;
+        _chrome.Show(new
+        {
+            mode = "login",
+            tabs = Array.Empty<object>(),
+            back = false,
+            forward = false,
+            host = _host,
+            message = _message,
+            tone = _tone,
+            retry = _retry,
+            save = false,
+            theme = PageLook.Theme,
+            customTheme = PageLook.CustomTheme,
+            language = L.Language,
+        });
     }
 
     /// <summary>A new WebView2 with its own empty profile, so the previous account's session can't carry over.</summary>
@@ -128,13 +132,22 @@ public sealed class BrowserLoginForm : Form
                 else if (e.IsUserInitiated)
                     WebsiteTab.OpenOutside(e.Uri);
             };
+            // The site's name only (never the address), so it's plain this is roblox.com.
+            core.SourceChanged += (_, _) =>
+            {
+                string? host = Uri.TryCreate(core.Source, UriKind.Absolute, out var uri) && WebsiteTab.IsRoblox(core.Source) ? uri.Host : null;
+                if (host == _host || _closing)
+                    return;
+                _host = host;
+                Push();
+            };
             core.ContentLoading += (_, e) =>
             {
                 if (e.IsErrorPage || _closing)
                     return;
                 _slow.Stop();
-                _retry.Visible = false;
-                Say(_readyText, _readyColor);
+                _retry = false;
+                Say(_readyText, _readyTone);
             };
             core.NavigationCompleted += (_, e) =>
             {
@@ -164,8 +177,8 @@ public sealed class BrowserLoginForm : Form
 
     void OpenLoginPage(CoreWebView2 core)
     {
-        _retry.Visible = false;
-        Say(L.T("Opening the Roblox sign-in page…"), _theme.Text2);
+        _retry = false;
+        Say(L.T("Opening the Roblox sign-in page…"), "");
         _slow.Stop();
         _slow.Start();
         core.Navigate(LoginUrl);
@@ -181,14 +194,15 @@ public sealed class BrowserLoginForm : Form
     {
         if (_closing)
             return;
-        Say(L.T("Can't reach roblox.com. Check your internet connection, then press Retry."), _theme.Bad);
-        _retry.Visible = true;
+        _retry = true;
+        Say(L.T("Can't reach roblox.com. Check your internet connection, then press Retry."), "bad");
     }
 
-    void Say(string text, Color color)
+    void Say(string text, string tone)
     {
-        _message.Text = text;
-        _message.ForeColor = color;
+        _message = text;
+        _tone = tone;
+        Push();
     }
 
     async Task PollCookieAsync()
@@ -230,9 +244,9 @@ public sealed class BrowserLoginForm : Form
         }
         if (_closing || IsDisposed)
             return;
-        _readyColor = ok ? _theme.Good : _theme.Bad;
+        _readyTone = ok ? "ok" : "bad";
         _readyText = ok ? message + "  " + L.T("Sign in to the next account, or press Done.") : message;
-        Say(_readyText, _readyColor);
+        Say(_readyText, _readyTone);
         ReleaseBrowser();
         await OpenFreshBrowserAsync();
     }

@@ -452,7 +452,6 @@ public static class L
         ["Couldn't turn it off: {0}"] = "Không tắt được: {0}",
         ["Sign in to Roblox"] = "Đăng nhập Roblox",
         ["Sign in to each account in turn. Press Done when finished."] = "Đăng nhập lần lượt từng tài khoản. Xong hết thì bấm Xong.",
-        ["Done"] = "Xong",
         ["Sign in to the next account, or press Done."] = "Đăng nhập tài khoản tiếp theo, hoặc bấm Xong.",
         ["{0} saved."] = "Đã lưu {0}.",
         ["{0} was already here — its sign-in was updated."] = "{0} đã có sẵn, chỉ cập nhật lại đăng nhập.",
@@ -460,11 +459,7 @@ public static class L
         ["Microsoft Edge WebView2 isn't installed. Install it, or add the account with a cookie."] =
             "Máy chưa có Microsoft Edge WebView2. Hãy cài WebView2, hoặc thêm tài khoản bằng cookie.",
         ["Couldn't open the sign-in browser: {0}"] = "Không mở được trình duyệt đăng nhập: {0}",
-        ["Retry"] = "Thử lại",
         ["Opening the Roblox sign-in page…"] = "Đang mở trang đăng nhập Roblox…",
-        ["Back"] = "Quay lại",
-        ["Forward"] = "Tiến",
-        ["Reload"] = "Tải lại",
         ["Opening roblox.com…"] = "Đang mở roblox.com…",
         ["Couldn't open the Roblox website: {0}"] = "Không mở được trang Roblox: {0}",
         ["Sign-out stopped"] = "Đã chặn đăng xuất",
@@ -475,11 +470,6 @@ public static class L
         ["The website can't be opened for Roblox VNG accounts yet."] = "Chưa mở được trang web cho tài khoản Roblox VNG.",
         ["Private server links are read with a Roblox account. Select one that isn't Roblox VNG."] =
             "Link server riêng cần một tài khoản Roblox để đọc. Hãy chọn một tài khoản không phải Roblox VNG.",
-        ["Save to Bloxkeep"] = "Lưu vào Bloxkeep",
-        ["Opens signed in next time. Without saving, closing this tab signs it out here."] =
-            "Lần sau mở là đã đăng nhập sẵn. Không lưu thì đóng tab này sẽ mất đăng nhập ở đây.",
-        ["New tab"] = "Tab mới",
-        ["New tab, to sign in on roblox.com (Ctrl+T)"] = "Tab mới để đăng nhập trên roblox.com (Ctrl+T)",
         ["Signed in."] = "Đã đăng nhập.",
         ["Signed in as {0}."] = "Đã đăng nhập: {0}.",
         ["Can't reach roblox.com. Check your internet connection, then press Retry."] =
