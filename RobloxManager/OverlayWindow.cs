@@ -194,7 +194,8 @@ sealed class OverlayWindow : WebToolWindow
         }
     }
 
-    /// <summary>Over the game's picture area as it is now; hidden while it is minimised, closed when it is gone.</summary>
+    /// <summary>Over the game's picture area as it is now; hidden while it is minimised or another program is in front
+    /// (it is on top of everything, so it would lie over that program), closed when the game is gone.</summary>
     void Follow()
     {
         if (IsDisposed)
@@ -204,7 +205,7 @@ sealed class OverlayWindow : WebToolWindow
             Close();
             return;
         }
-        if (IsIconic(_game) || !GetClientRect(_game, out var rc))
+        if (IsIconic(_game) || Elsewhere() || !GetClientRect(_game, out var rc))
         {
             if (Visible)
                 Hide();
@@ -219,6 +220,16 @@ sealed class OverlayWindow : WebToolWindow
             Bounds = _client = client;
         if (!Visible && IsHandleCreated)
             Show();
+    }
+
+    /// <summary>The window in front is neither the game nor one of Bloxkeep's (this overlay, the macro editor that opened it).</summary>
+    bool Elsewhere()
+    {
+        var front = GetForegroundWindow();
+        if (front == IntPtr.Zero || front == _game)
+            return false;
+        GetWindowThreadProcessId(front, out uint pid);
+        return pid != (uint)Environment.ProcessId;
     }
 
     /// <summary>Never moved to the size the page asks (it asks none) or Windows' idea of a new monitor's size: it follows the game.</summary>
@@ -255,6 +266,8 @@ sealed class OverlayWindow : WebToolWindow
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 }
 
 /// <summary>

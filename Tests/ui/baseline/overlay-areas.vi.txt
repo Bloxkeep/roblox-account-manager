@@ -4,13 +4,13 @@ html [data-theme="dark" lang="vi"]
   div [id="overlay"]
     div.ov.ov-areas [tabindex="-1" style="cursor:crosshair" FOCUSED]
       div.ov-area [style="--c:#22c55e;height:16%;left:74%;top:74%;width:22%"]
-        span.ov-tag [style="color:rgb(255, 255, 255)"] "Nút nhận"
+        span.ov-tag [title="Nút nhận" style="color:rgb(255, 255, 255)"] "Nút nhận"
         i.ov-grip.tl [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
         i.ov-grip.tr [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
         i.bl.ov-grip [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
         i.br.ov-grip [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
       div.ov-area [style="--c:#f59e0b;height:10%;left:4%;top:20%;width:30%"]
-        span.ov-tag [style="color:rgb(255, 255, 255)"] "Thanh máu"
+        span.ov-tag [title="Thanh máu" style="color:rgb(255, 255, 255)"] "Thanh máu"
         i.ov-grip.tl [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
         i.ov-grip.tr [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
         i.bl.ov-grip [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]

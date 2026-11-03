@@ -6299,8 +6299,8 @@ html:not(.in-window) body.ov-dim #overlay { position: fixed; inset: 0; backgroun
 .ov-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
 .ov-area { position: absolute; box-sizing: border-box; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 27%, transparent); }
 .ov-area.held { background: color-mix(in srgb, var(--c) 47%, transparent); }
-.ov-tag { position: absolute; left: -2px; bottom: 100%; max-width: calc(100% + 4px); padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--fs-2); font-weight: 700; line-height: 16px; background: var(--c); pointer-events: none; }
+.ov-tag { position: absolute; left: -2px; bottom: 100%; max-width: calc(100% + 4px); padding: 1px 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-1); font-weight: 600; line-height: 14px; background: var(--c); pointer-events: none; }
 .ov-grip { position: absolute; display: grid; place-items: center; }
 .ov-grip::after { content: ""; width: 8px; height: 8px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .45); }
 .ov-grip.tl { left: 0; top: 0; } .ov-grip.tr { right: 0; top: 0; } .ov-grip.bl { left: 0; bottom: 0; } .ov-grip.br { right: 0; bottom: 0; }
