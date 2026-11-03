@@ -189,13 +189,14 @@ html [data-theme="dark" lang="vi"]
                     span "Thêm bước"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-opener.mc-step [role="listitem" aria-label="Bước 1: Lặp đến khi dừng" style="--d:0"]
-                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-label="Thêm bước vào đây"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "1"
                     button.icon-btn.mc-fold [type="button" title="Thu gọn" aria-expanded="true" aria-label="Thu gọn: Bước 1"]
-                      svg.i #u1ag9u
+                      svg.i #18mpr3r
                     button.k-loop.mc-step-head [type="button" aria-expanded="false"]
                       svg.i #1ap9cll
                       span.mc-say "Lặp đến khi dừng"
@@ -209,8 +210,9 @@ html [data-theme="dark" lang="vi"]
                         svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Bước 2: Giữ chuột trái 0.6 giây tại điểm 2" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-label="Thêm bước vào đây"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "2"
@@ -227,8 +229,9 @@ html [data-theme="dark" lang="vi"]
                         svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Bước 3: Chờ đến khi màu hiện trong Vùng cá" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-label="Thêm bước vào đây"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "3"
@@ -245,8 +248,9 @@ html [data-theme="dark" lang="vi"]
                         svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Bước 4: Giữ thanh trúng đích trong Vùng cá" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-label="Thêm bước vào đây"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "4"
@@ -263,8 +267,9 @@ html [data-theme="dark" lang="vi"]
                         svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Bước 5: Cộng 1 vào bộ đếm fish" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-label="Thêm bước vào đây"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "5"
@@ -280,8 +285,9 @@ html [data-theme="dark" lang="vi"]
                       button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 5"]
                         svg.i #1e3omv2
                   div.mc-end.mc-step [role="listitem" aria-label="Bước 6: hết lặp" style="--d:0"]
-                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-label="Thêm bước vào đây"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.mc-step-n [aria-hidden="true"] "6"
                     span.mc-step-head
                       svg.i #5fto4c
