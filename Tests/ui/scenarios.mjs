@@ -1574,6 +1574,7 @@ export default [
   S('stats-days-30', 'stats=1', async s => { await s.click(key('stats.period.30')); await s.wait(300); }),
   S('stats-days-light', 'stats=1&theme=light', async s => { await s.click(key('stats.period.7')); await s.wait(300); await s.snap('7 days'); await s.click(key('stats.period.30')); await s.wait(300); }),
   S('stats-days-hover', 'stats=1', async s => { await s.click(key('stats.period.30')); await s.wait(300); await s.hover({ css: '#stats-days .day:nth-child(20)' }); await s.wait(200); }),
+  S('stats-days-narrow', 'stats=1', async s => { await s.click(key('stats.period.7')); await s.wait(300); await s.snap('7 days'); await s.click(key('stats.period.30')); await s.wait(300); }, { size: [980, 700] }),
   // Settings on a picture theme: the page list on its own panel. The game monitor with no Roblox window open.
   S('settings-picture-nav', 'settings=perf&theme=halong'),
   S('monitor-empty', 'monitor=1&empty=1'),

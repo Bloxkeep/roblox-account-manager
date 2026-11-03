@@ -996,7 +996,7 @@ window.I18N = {
     'mon.preview': 'Hình trực tiếp từ các cửa sổ Roblox hiện ở đây.',
     'stats.note': 'Chỉ tính các game mở bằng Bloxkeep.',
     'stats.period.1': 'Hôm nay', 'stats.period.7': '7 ngày', 'stats.period.30': '30 ngày',
-    'stats.total': 'Thời gian chơi', 'stats.sessions': 'Lượt chơi', 'stats.kicks': 'Lần văng', 'stats.topGame': 'Chơi nhiều nhất',
+    'stats.total': 'Giờ chơi', 'stats.sessions': 'Lượt chơi', 'stats.kicks': 'Lần văng', 'stats.topGame': 'Chơi nhiều nhất',
     'stats.timeline': 'Dòng thời gian', 'stats.drops': 'Vì sao văng', 'stats.lost': '≈ mất {t}', 'stats.lostTip': 'Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần.', 'stats.timesN': '{n} lần', 'stats.why.idle': 'Bị kick vì AFK', 'stats.why.elsewhere': 'Đăng nhập nơi khác', 'stats.why.kicked': 'Bị game kick', 'stats.why.other': 'Rớt mạng', 'stats.do.antiAfk': 'Bật Chống AFK', 'stats.do.rejoin': 'Bật Tự vào lại', 'stats.byAccount': 'Theo tài khoản', 'stats.account': 'Tài khoản',
     'stats.topGames': 'Game chơi nhiều', 'stats.sessionsN': '{n} lượt', 'stats.session1': '1 lượt', 'stats.deleted': 'Tài khoản đã xóa',
     'stats.played': 'Tài khoản đã chơi', 'stats.byDay': 'Giờ chơi mỗi ngày', 'stats.avgDay': 'Trung bình {t} mỗi ngày', 'stats.vs.1': 'so với hôm qua', 'stats.vs.7': 'so với 7 ngày trước', 'stats.vs.30': 'so với 30 ngày trước', 'stats.noChange': 'Không đổi', 'stats.kicksShort': 'Văng', 'stats.showPlayed': 'Xem đã chơi gì', 'stats.longest': 'Lượt dài nhất', 'stats.byPreset': 'Theo Preset', 'stats.preset': 'Preset', 'stats.accountsCol': 'Tài khoản', 'stats.noPreset': 'Không qua Preset', 'stats.noPresetTip': 'Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset).', 'stats.presetNote': 'Lượt chơi cũ hiện là không qua Preset.',

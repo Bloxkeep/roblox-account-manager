@@ -2636,7 +2636,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .days { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; height: 170px; padding-top: 4px; }
 /* One baseline under every bar, along the top of the date row. */
 .days::after { content: ""; position: absolute; left: 0; right: 0; bottom: 22px; height: 1px; background: var(--line-2); pointer-events: none; }
-.day { display: grid; grid-template-rows: minmax(0, 1fr) 22px; min-width: 0; }
+.day { display: grid; grid-template-rows: minmax(0, 1fr) 22px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 /* The bar's height is a share of the space under its value. */
 .day-bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; min-height: 0; }
 .day-bar b { flex: none; height: 18px; font-size: var(--fs-2); font-weight: 600; line-height: 18px; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -2645,7 +2645,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .day.today .day-bar i { background: var(--accent); }
 .day.none .day-bar b { font-weight: 500; color: var(--dim); }
 .day.today small { color: var(--text); font-weight: 650; }
-.day small { display: flex; justify-content: center; padding-top: 4px; overflow: visible; font-size: var(--fs-2); line-height: 18px; color: var(--muted); text-align: center; white-space: nowrap; }
+.day small { display: flex; justify-content: center; min-width: 0; padding-top: 4px; overflow: visible; font-size: var(--fs-2); line-height: 18px; color: var(--muted); text-align: center; white-space: nowrap; }
 /* 30 days: today's and the longest day's time, a date every 5th day; the bar under the pointer alone shows its own. */
 .days.many { gap: 3px; }
 .days.many .day-bar i { width: 100%; }
@@ -2671,7 +2671,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .stat-table .sacc-open { width: 14px; height: 14px; flex: none; color: var(--muted); }
 .stat-table td.st-time { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
 .stat-table.by-account { table-layout: fixed; }
-.by-account .c-acc { width: 32%; } .by-account .c-time { width: 24%; } .by-account .c-game { width: 30%; } .by-account .c-n { width: 14%; }
+.by-account .c-acc { width: 30%; } .by-account .c-time { width: 24%; } .by-account .c-game { width: 32%; } .by-account .c-n { width: 14%; }
 .by-account th, .by-account td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .by-account th:first-child, .by-account td:first-child { width: auto; max-width: none; }
 .tl-seg img[hidden] { display: none; }

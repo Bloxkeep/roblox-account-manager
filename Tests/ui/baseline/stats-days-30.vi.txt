@@ -90,7 +90,7 @@ html [data-theme="dark" lang="vi"]
             div.stats-in [id="stats-body"]
               div.stat-tiles
                 div.stat
-                  small "Thời gian chơi"
+                  small "Giờ chơi"
                   b [title="62 giờ 53 phút"] "62 giờ 53 phút"
                   span.good.stat-delta "↑ 20 %"
                     span "so với 30 ngày trước"
@@ -235,7 +235,7 @@ html [data-theme="dark" lang="vi"]
                     thead
                       tr
                         th "Tài khoản"
-                        th "Thời gian chơi"
+                        th "Giờ chơi"
                         th "Chơi nhiều nhất"
                         th.n [title="Lần văng"] "Văng"
                     tbody
