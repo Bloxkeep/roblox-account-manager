@@ -107,6 +107,7 @@ public sealed partial class AppController
             MoveClockBack(now, _lastTick - now);
         NoteCheckGap(now, _lastTick);
         _lastTick = now;
+        Step(() => NoteFocus(now));
         // The process list is the costly part of a tick (a few ms, whatever runs).
         bool scan = ScanDue(now);
         long part = Stopwatch.GetTimestamp();
@@ -137,6 +138,9 @@ public sealed partial class AppController
         }
         pids.ExceptWith(trays);
         players.RemoveAll(p => trays.Contains(p.Pid));
+        // Raw input only while a Roblox window may need it (anti-AFK, macros, the recorder): none running, none taken.
+        if (scan)
+            _robloxInput?.Listen(pids.Count > 0);
         ReleaseHomeSessionIfIdle(scan, scanned, trays, now);
         NoteClientStarts(pids, now, ParentOf);
         // The browser tracker id on a client's command line says which launch it is (see ClaimWindows).
@@ -491,14 +495,51 @@ public sealed partial class AppController
         Log.Write(ex);
     }
 
+    /// <summary>
+    /// The main window shown but none of Bloxkeep's in front this long (left open behind the games): its figures are sent
+    /// at most every <see cref="UnfocusedMetricsEvery"/>, and Roblox's CPU and GPU read every 15 s, not 3 (RobloxUsage).
+    /// </summary>
+    static readonly TimeSpan UnfocusedAfter = TimeSpan.FromSeconds(10), UnfocusedMetricsEvery = TimeSpan.FromSeconds(5);
+    /// <summary>After this long with none of Bloxkeep's windows in front, the main page is asked to hold less memory
+    /// (<see cref="SetPageLight"/>); in front again, it is back to normal at the next tick.</summary>
+    static readonly TimeSpan PageLightAfter = TimeSpan.FromMinutes(3);
+    DateTime? _unfocusedSince;
+    DateTime _metricsSentAt;
+    bool _pageLight;
+
+    /// <summary>The main page asked to hold less memory (true) or as usual (false); ShellForm's, on the window's thread.</summary>
+    public Action<bool>? SetPageLight { get; init; }
+
+    /// <summary>Each tick: whether a window of Bloxkeep's (the main one, a panel, the tray's, a dialog) is in front.</summary>
+    void NoteFocus(DateTime now)
+    {
+        if (RobloxProcesses.ForegroundPid() == Environment.ProcessId)
+            _unfocusedSince = null;
+        else if (_unfocusedSince is null || _unfocusedSince > now)
+            _unfocusedSince = now;
+        bool light = !_background && UnfocusedFor(now) >= PageLightAfter;
+        if (light != _pageLight)
+        {
+            _pageLight = light;
+            SetPageLight?.Invoke(light);
+        }
+    }
+
+    TimeSpan UnfocusedFor(DateTime now) => _unfocusedSince is { } since && now >= since ? now - since : TimeSpan.Zero;
+
     /// <summary>Live RAM per client and for the PC, sent apart from the state so the page can patch numbers in place.</summary>
     void EmitMetrics(List<RobloxProcesses.PlayerProcess> players, Dictionary<int, List<IntPtr>> windows, MemoryStatus memory)
     {
-        if (!PageAttached || _screenLocked)
+        // A sleeping page gets the figures of the moment it wakes, not a queue of old ones: none are made for it meanwhile.
+        if (!PageAttached || _screenLocked || _pageAsleep)
+            return;
+        var now = DateTime.UtcNow;
+        bool unfocused = UnfocusedFor(now) >= UnfocusedAfter;
+        // Behind a game for a while: the sidebar's figures less often (see UnfocusedAfter); figures owed (null) go at once.
+        if (unfocused && _lastMetrics is not null && now >= _metricsSentAt && now - _metricsSentAt < UnfocusedMetricsEvery)
             return;
         var workingSets = players.ToDictionary(p => p.Pid, p => p.Ram);
-        if (!_pageAsleep)
-            _robloxUsage.Refresh(workingSets.Keys);
+        _robloxUsage.Refresh(workingSets.Keys, slow: unfocused);
         string json = JsonSerializer.Serialize(new
         {
             accounts = _running.Select(r => new { id = r.Key, ramMb = workingSets.GetValueOrDefault(r.Value.Pid) / MB }),
@@ -512,10 +553,10 @@ public sealed partial class AppController
             cpuPct = _robloxUsage.CpuPct,
             gpuPct = _robloxUsage.GpuPct,
         }, Json);
-        // A sleeping page gets the figures of the moment it wakes, not a queue of old ones.
-        if (json == _lastMetrics || _pageAsleep)
+        if (json == _lastMetrics)
             return;
         _lastMetrics = json;
+        _metricsSentAt = now;
         Post($"{{\"type\":\"event\",\"name\":\"metrics\",\"data\":{json}}}");
     }
 

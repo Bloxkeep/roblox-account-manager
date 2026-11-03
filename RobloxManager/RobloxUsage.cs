@@ -10,7 +10,7 @@ namespace RobloxManager;
 /// </summary>
 public sealed partial class RobloxUsage
 {
-    static readonly TimeSpan Every = TimeSpan.FromSeconds(3);
+    static readonly TimeSpan Every = TimeSpan.FromSeconds(3), SlowEvery = TimeSpan.FromSeconds(15);
 
     readonly Dictionary<int, TimeSpan> _cpuTimes = [];
     DateTime _readAt;
@@ -21,7 +21,8 @@ public sealed partial class RobloxUsage
     public int? CpuPct { get; private set; }
     public int? GpuPct { get; private set; }
 
-    public void Refresh(IReadOnlyCollection<int> pids)
+    /// <param name="slow">Every 15 s, not 3: the window is left behind the games (AppController.UnfocusedAfter).</param>
+    public void Refresh(IReadOnlyCollection<int> pids, bool slow = false)
     {
         if (pids.Count == 0)
         {
@@ -33,7 +34,7 @@ public sealed partial class RobloxUsage
             }
             return;
         }
-        if (DateTime.UtcNow - _readAt < Every || Interlocked.CompareExchange(ref _reading, 1, 0) != 0)
+        if (DateTime.UtcNow - _readAt < (slow ? SlowEvery : Every) || Interlocked.CompareExchange(ref _reading, 1, 0) != 0)
             return;
         Task.Run(() =>
         {
