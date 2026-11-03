@@ -19,7 +19,8 @@ export function DateInput(props: BoxProps) {
 
 type Kind = 'time' | 'date';
 const pad = (n: number) => String(n).padStart(2, '0');
-const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/** A local day as the app writes dates: 2026-11-04. */
+export const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 /** Whether times are shown with AM/PM here, as the system's own setting has it (English only: Vietnamese is 24-hour). */
 const twelveHour = () => !!new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12;

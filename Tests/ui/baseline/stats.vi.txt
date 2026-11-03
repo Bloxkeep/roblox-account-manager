@@ -448,32 +448,30 @@ html [data-theme="dark" lang="vi"]
                     span.sa-foot
                       span.sa-game [title="[🎃] Adopt Me!" style="--h:156"] "[🎃] Adopt Me!"
                         i
-              div.one.stat-cols
-                div.stat-side
-                  div.stat-card
-                    h3 "Theo Preset"
-                    div.sgames
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
-                          small "3 tài khoản · văng 1 lần · 62 %"
-                        span.sg-time "10 giờ 10 phút"
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Adopt Me trade"] "Adopt Me trade"
-                          small "1 tài khoản · 25 %"
-                        span.sg-time "4 giờ 6 phút"
-                      div.sgame
-                        span.gph
-                          svg.i #45lggc
-                        div.gtxt
-                          b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset)."] "Không qua Preset"
-                          small "2 tài khoản · 13 %"
-                        span.sg-time "2 giờ 7 phút"
+              div.stat-card
+                h3 "Theo Preset"
+                div.sgames
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                      small "3 tài khoản · văng 1 lần · 62 %"
+                    span.sg-time "10 giờ 10 phút"
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Adopt Me trade"] "Adopt Me trade"
+                      small "1 tài khoản · 25 %"
+                    span.sg-time "4 giờ 6 phút"
+                  div.sgame
+                    span.gph
+                      svg.i #45lggc
+                    div.gtxt
+                      b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset)."] "Không qua Preset"
+                      small "2 tài khoản · 13 %"
+                    span.sg-time "2 giờ 7 phút"
 #layer
 #toasts
 -- commands

@@ -20,13 +20,15 @@ CDN = 'https://setup.rbxcdn.com'
 UA = 'Bloxkeep-RobloxWatch (+https://github.com/Bloxkeep/roblox-account-manager)'
 # The name Bloxkeep takes so Roblox can't set up its single-window check (RobloxManager/MultiInstance.cs).
 HELD = 'ROBLOX_singletonEvent'
-LOCK_NAME = re.compile(rb'(?<![A-Za-z0-9_])ROBLOX_[A-Za-z0-9_]{3,64}')
+# No lookbehind for "a whole name": it would stop re's fast literal search (about 40 times slower on 140 MB);
+# fingerprint looks at the byte before instead.
+LOCK_NAME = re.compile(rb'ROBLOX_[A-Za-z0-9_]{3,64}')
 # A lock name counts only beside the single-window code's log lines; the same prefix elsewhere is other code (0.746
 # added ROBLOX_DEFAULT, a text chat value, and "May be blocked" went out for it). Such names are kept apart, so one
 # that only moved away from that code isn't taken as a lock gone.
 CHECK = re.compile(rb'WndProcessCheck')
 NEAR = 8 * 1024
-LOCK_NAME_WIDE = re.compile(rb'(?<![A-Za-z0-9_]\x00)R\x00O\x00B\x00L\x00O\x00X\x00_\x00(?:[A-Za-z0-9_]\x00){3,64}')
+LOCK_NAME_WIDE = re.compile(rb'R\x00O\x00B\x00L\x00O\x00X\x00_\x00(?:[A-Za-z0-9_]\x00){3,64}')
 # Roblox's single-window code: its source file, log category, telemetry and the flags that tune it.
 RELATED = re.compile(rb'(?<![A-Za-z0-9_:])[A-Za-z0-9_:]*(?:SingleInstance|AppReload|WndProcessCheck|EventWaitResult|MutexWaitResult)[A-Za-z0-9_:]*')
 FLAG = re.compile(r'SingleInstance|AppReload|WndProcessCheck|Singleton(?:Event|Mutex)|MultipleInstance')
@@ -53,12 +55,14 @@ def version_key(v):
 
 def fingerprint(exe):
     checks = [m.start() for m in CHECK.finditer(exe)]
-    names = [(m.start(), m.group().decode()) for m in LOCK_NAME.finditer(exe)]
-    names += [(m.start(), m.group().decode('utf-16le')) for m in LOCK_NAME_WIDE.finditer(exe)]
-    locks = {n for at, n in names if any(abs(at - c) <= NEAR for c in checks)}
+    word = lambda at, width: at < width or not (chr(exe[at - width]).isalnum() or exe[at - width] == 0x5F)
+    # (where, name, a whole name rather than the end of a longer one such as RBX_ERROR_ROBLOX_MAINTENANCE)
+    names = [(m.start(), m.group().decode(), word(m.start(), 1)) for m in LOCK_NAME.finditer(exe)]
+    names += [(m.start(), m.group().decode('utf-16le'), word(m.start(), 2)) for m in LOCK_NAME_WIDE.finditer(exe)]
+    locks = {n for at, n, whole in names if whole and any(abs(at - c) <= NEAR for c in checks)}
     related = {m.group().decode() for m in RELATED.finditer(exe)}
-    # Inside a longer name too (RBX_ERROR_ROBLOX_MAINTENANCE, an error code an older status took for a lock).
-    elsewhere = {m.group().decode() for m in re.finditer(rb'ROBLOX_[A-Za-z0-9_]{3,64}', exe)} - locks
+    # The rest, even inside a longer name (an older status took RBX_ERROR_ROBLOX_MAINTENANCE's end for a lock).
+    elsewhere = {n for _, n, _ in names} - locks
     return {'locks': sorted(locks), 'related': sorted(related), 'elsewhere': sorted(elsewhere)}
 
 

@@ -2,7 +2,8 @@ using RobloxManager;
 
 namespace Bloxkeep.Tests;
 
-/// <summary>Statistics' hour map: a stay's hours go to the local day and hour they were played in.</summary>
+/// <summary>Statistics' hour map: a stay's hours go to the local day and hour they were played in; an account's run of
+/// whole days (23 hours or more) up to yesterday.</summary>
 static class PlayHeatSuite
 {
     public static Task Run(Checks c, string dir)
@@ -27,6 +28,20 @@ static class PlayHeatSuite
         AppController.AddHeat(outside, firstDay, Local(-1, 10), Local(-1, 12));
         AppController.AddHeat(outside, firstDay, Local(3, 10), Local(3, 12));
         c.Check("outside the period: nothing", outside.All(day => day.Sum() == 0));
+
+        // Full days in a row, counted back from yesterday (today isn't over): now is 4 November, 15:00.
+        var now = Local(3, 15);
+        Guid steady = Guid.NewGuid(), broken = Guid.NewGuid(), short_ = Guid.NewGuid();
+        PlaySession Stay(Guid id, DateTime from, DateTime? to) => new() { AccountId = id, StartedAt = from, EndedAt = to };
+        var streaks = AppController.FullDayStreaks(
+        [
+            Stay(steady, Local(0, 0), null),                                      // since 1 November, still on
+            Stay(broken, Local(1, 0), Local(2, 0)), Stay(broken, Local(2, 8), Local(2, 18)), // yesterday 10 hours only
+            Stay(short_, Local(0, 1), Local(1, 0)), Stay(short_, Local(1, 1), Local(2, 0)), Stay(short_, Local(2, 1), Local(3, 0)), // 23 hours a day
+        ], now);
+        c.Check("three whole days up to yesterday: 3", streaks[steady] == 3);
+        c.Check("yesterday not whole: no streak", streaks[broken] == 0);
+        c.Check("23 hours a day counts as whole", streaks[short_] == 3);
         return Task.CompletedTask;
     }
 }

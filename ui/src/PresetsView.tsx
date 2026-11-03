@@ -2,6 +2,8 @@
 // Close, Edit / Duplicate / Delete), a search over names and games, and their order (arrows or dragging the handle).
 import { Fragment, useEffect, useRef, useState, type DragEvent } from 'react';
 import { flushSync } from 'react-dom';
+import { clockText, hourText } from './clock';
+import { iso } from './TimeField';
 import { Ago, Icon, useAppState, useHost } from './host';
 import { richNodes } from './rich';
 import { fold } from './text';
@@ -258,8 +260,7 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
 function runToday(p: Preset, day: Date): number | null {
   const sc = p.schedule;
   if (!sc?.enabled || !/^\d{1,2}:\d{2}$/.test(sc.time)) return null;
-  const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-  if (sc.date ? sc.date !== iso : !(sc.days || []).includes(day.getDay())) return null;
+  if (sc.date ? sc.date !== iso(day) : !(sc.days || []).includes(day.getDay())) return null;
   const [h, m] = sc.time.split(':').map(Number);
   return h * 60 + m;
 }
@@ -276,9 +277,8 @@ function DayRuler({ presets, pick }: { presets: Preset[]; pick: (id: string) => 
   const runs = presets.map(p => ({ p, at: runToday(p, now) })).filter((r): r is { p: Preset; at: number } => r.at !== null).sort((a, b) => a.at - b.at);
   if (!runs.length) return null;
   const minutes = now.getHours() * 60 + now.getMinutes();
-  const clock = (min: number) => new Date(2000, 0, 1, Math.floor(min / 60), min % 60)
-    .toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric', minute: '2-digit' });
-  const hourMark = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' });
+  const clock = (min: number) => clockText(locale, lang, new Date(2000, 0, 1, Math.floor(min / 60), min % 60));
+  const hourMark = (h: number) => hourText(locale, lang, h);
   // Runs closer than 4 % of the day (about an hour) take turns above and below the line, so their icons don't cover each other.
   let lastAt = -Infinity, lift = false;
   const placed = runs.map(r => {

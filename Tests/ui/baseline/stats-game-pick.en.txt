@@ -91,8 +91,8 @@ html [data-theme="dark" lang="en"]
               div.stat-tiles
                 div.stat
                   small "Play time"
-                  b [title="62 h 53 min"] "62 h 53 min"
-                  span.good.stat-delta "↑ 20 %"
+                  b [title="18 h 51 min"] "18 h 51 min"
+                  span.bad.stat-delta "↓ 64 %"
                     span "vs the 30 days before"
                 div.stat
                   small "Accounts played"
@@ -109,7 +109,7 @@ html [data-theme="dark" lang="en"]
                   span.stat-sub "Main · Blox Fruits"
               div.stat-card [id="stats-days"]
                 h3 "Play time by day"
-                  span.days-avg "Average 2 h 5 min a day"
+                  span.days-avg "Average 37 min a day"
                 div.days.many
                   div.day
                     span.day-bar
@@ -993,7 +993,8 @@ html [data-theme="dark" lang="en"]
                   span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 3 h 8 min lost"
               div.stat-card [id="stats-games"]
                 h3 "Top games"
-                  button.chip.gm-chip.on [type="button"] "Only [🎃] Adopt Me!"
+                  button.chip.gm-chip.on [type="button"]
+                    span "Only [🎃] Adopt Me!"
                     svg.i #1tyq039
                 div.gm [style="height:236px"]
                   button.big.gm-box [type="button" title="Blox Fruits · 34 h 35 min · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:478.9px"]
@@ -1054,32 +1055,30 @@ html [data-theme="dark" lang="en"]
                     span.sa-foot
                       span.sa-game [title="[🎃] Adopt Me!" style="--h:156"] "[🎃] Adopt Me!"
                         i
-              div.one.stat-cols
-                div.stat-side
-                  div.stat-card
-                    h3 "By preset"
-                    div.sgames
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
-                          small "3 accounts · 1 drop · 62 %"
-                        span.sg-time "38 h 59 min"
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Adopt Me trade"] "Adopt Me trade"
-                          small "1 account · 25 %"
-                        span.sg-time "15 h 43 min"
-                      div.sgame
-                        span.gph
-                          svg.i #45lggc
-                        div.gtxt
-                          b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
-                          small "2 accounts · 13 %"
-                        span.sg-time "8 h 10 min"
+              div.stat-card
+                h3 "By preset"
+                div.sgames
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                      small "3 accounts · 1 drop · 207 %"
+                    span.sg-time "38 h 59 min"
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Adopt Me trade"] "Adopt Me trade"
+                      small "1 account · 83 %"
+                    span.sg-time "15 h 43 min"
+                  div.sgame
+                    span.gph
+                      svg.i #45lggc
+                    div.gtxt
+                      b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
+                      small "2 accounts · 43 %"
+                    span.sg-time "8 h 10 min"
 #layer
 #toasts
 -- commands

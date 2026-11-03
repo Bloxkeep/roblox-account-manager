@@ -144,15 +144,16 @@ export function MonitorView({ preview }: { preview: boolean }) {
   const laned = all.length > 1;
   const solo = laned && soloGame !== null ? all.find(l => l.game === soloGame) ?? null : null;
   const shown = solo ? [solo] : all;
-  const open = shown.filter(l => solo || !folded.has(l.game));
+  // Without lanes a fold left from before is no matter: the one grid shows.
+  const open = laned ? shown.filter(l => solo || !folded.has(l.game)) : all;
   // Each open lane gets an equal share of the height, less the headings; without lanes the grid has it all.
   const share = laned ? Math.max(LANE_MIN, (size.h - shown.length * (HEAD + LANE_GAP) + LANE_GAP) / Math.max(1, open.length)) : size.h;
-  const layout = new Map((laned ? open : all).map(l => {
+  const layout = new Map(open.map(l => {
     const cols = size.w ? columns(l.tiles.length, size.w, share) : 1;
     const rows = Math.ceil(l.tiles.length / cols);
     return [l.game, { cols, tileH: Math.max(MIN_H, Math.floor((share - GAP * (rows - 1)) / rows)) }];
   }));
-  const order = (laned ? open : all).flatMap(l => l.tiles);
+  const order = open.flatMap(l => l.tiles), index = new Map(order.map((x, i) => [x, i]));
   const stop = order.some(x => x.id === focus) ? focus : order[0]?.id;
 
   const act = (tile: MonitorTile, what: string) => { void host.call('monitorAct', { id: tile.id, what }, { silent: true }); };
@@ -193,7 +194,7 @@ export function MonitorView({ preview }: { preview: boolean }) {
   };
 
   const tileOf = (tile: MonitorTile, lane: Lane, cols: number) => {
-    const i = order.indexOf(tile);
+    const i = index.get(tile) ?? -1;
     const ram = tile.ramMb > 0 ? fmtMb(tile.ramMb) : '';
     const h = health(tile.status), st = stLabel(tile);
     const letter = tile.jobId ? lane.servers.get(tile.jobId) : undefined;
@@ -236,7 +237,7 @@ export function MonitorView({ preview }: { preview: boolean }) {
   if (!laned) return <div className="mon-area mon-tiles" id="mon-area" ref={area} onScroll={() => host.monitorMoved()}>{grid(all[0])}</div>;
 
   const lane = (l: Lane) => {
-    const isOpen = solo !== null || !folded.has(l.game);
+    const isOpen = open.includes(l);
     const anyUp = l.tiles.some(x => !x.minimized);
     const asking = closeAsk === l.game;
     const name = l.game || t('mon.noGame');

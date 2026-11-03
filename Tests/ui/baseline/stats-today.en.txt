@@ -179,7 +179,7 @@ html [data-theme="dark" lang="en"]
               div.stat-card [id="stats-accounts"]
                 h3 "By account"
                 div.sa-grid
-                  div.sa-card.today
+                  div.sa-card
                     span.sa-head
                       span.avatar.sm
                         img [alt="" style="--h:204" src=#1qk25wb]
@@ -216,7 +216,7 @@ html [data-theme="dark" lang="en"]
                       span.sa-kicks "1 drop"
                     span.sa-streak [title="Days played 23 hours or more, up to yesterday"] "6 full days in a row"
                       svg.i #11ja4j6
-                  div.sa-card.today
+                  div.sa-card
                     span.sa-head
                       span.avatar.sm
                         img [alt="" style="--h:243" src=#uinvo6]
@@ -253,7 +253,7 @@ html [data-theme="dark" lang="en"]
                       span.sa-kicks "2 drops"
                     span.sa-streak [title="Days played 23 hours or more, up to yesterday"] "2 full days in a row"
                       svg.i #11ja4j6
-                  div.sa-card.today
+                  div.sa-card
                     span.sa-head
                       span.avatar.sm
                         img [alt="" style="--h:297" src=#1u67et1]
@@ -287,7 +287,7 @@ html [data-theme="dark" lang="en"]
                     span.sa-foot
                       span.sa-game [title="Brookhaven 🏡RP" style="--h:149"] "Brookhaven 🏡RP"
                         i
-                  div.sa-card.today
+                  div.sa-card
                     span.sa-head
                       span.avatar.gone.sm [aria-hidden="true"]
                         svg.i #45lggc
@@ -321,32 +321,30 @@ html [data-theme="dark" lang="en"]
                     span.sa-foot
                       span.sa-game [title="[🎃] Adopt Me!" style="--h:156"] "[🎃] Adopt Me!"
                         i
-              div.one.stat-cols
-                div.stat-side
-                  div.stat-card
-                    h3 "By preset"
-                    div.sgames
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
-                          small "3 accounts · 1 drop · 62 %"
-                        span.sg-time "3 h 41 min"
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Adopt Me trade"] "Adopt Me trade"
-                          small "1 account · 25 %"
-                        span.sg-time "1 h 29 min"
-                      div.sgame
-                        span.gph
-                          svg.i #45lggc
-                        div.gtxt
-                          b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
-                          small "2 accounts · 13 %"
-                        span.sg-time "46 min"
+              div.stat-card
+                h3 "By preset"
+                div.sgames
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                      small "3 accounts · 1 drop · 62 %"
+                    span.sg-time "3 h 41 min"
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Adopt Me trade"] "Adopt Me trade"
+                      small "1 account · 25 %"
+                    span.sg-time "1 h 29 min"
+                  div.sgame
+                    span.gph
+                      svg.i #45lggc
+                    div.gtxt
+                      b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
+                      small "2 accounts · 13 %"
+                    span.sg-time "46 min"
 #layer
 #toasts
 -- commands

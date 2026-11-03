@@ -1100,8 +1100,9 @@
               { id: '00000000-0000-0000-0000-000000000000', name: '', iconUrl: null, seconds: share(.13), sessions: 2, kicks: 0, accounts: 2 }],
             longest: total ? { seconds: Math.round(total * .3), account: id(1), label: accounts.find(x => x.id === id(1))?.label, game: games[2753915549].name } : null };
           // One game only (picked on the games' map): its box, the accounts that mostly play it, its stays.
-          if (a.game) Object.assign(result, { game: { key: a.game, name: result.games.find(g => g.key === a.game)?.name || '' },
-            games: result.games.filter(g => g.key === a.game), accounts: result.accounts.filter(x => x.topGame?.key === a.game),
+          result.gamesSeconds = result.totalSeconds;
+          if (a.game) Object.assign(result, { totalSeconds: result.games.find(g => g.key === a.game)?.seconds || 0,
+            accounts: result.accounts.filter(x => x.topGame?.key === a.game),
             timeline: result.timeline.map(r => ({ ...r, segments: r.segments.filter(x => x.game === a.game) })).filter(r => r.segments.length) });
           return result;
         }

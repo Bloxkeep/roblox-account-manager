@@ -2,6 +2,7 @@
 // the games as a map of boxes sized by their play time (a click counts only that game), and each account as a card with
 // its play line, drops, main game and its run of full days.
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { clockText, hourText } from './clock';
 import { Icon, useHost, useMetrics } from './host';
 
 export type VizSegment = { from: string; to: string; game: string; name?: string | null; reason?: string | null };
@@ -22,6 +23,8 @@ const hued = (key: string) => ({ '--h': hueOf(key) } as CSSProperties);
 const C = 200, R_OUT = 158, R_IN = 66, MAX_RINGS = 24;
 /** Where on the dial a moment of the day is: midnight at the top, clockwise. */
 const point = (r: number, turn: number) => [C + r * Math.sin(turn * 2 * Math.PI), C - r * Math.cos(turn * 2 * Math.PI)];
+/** A straight line from radius r0 to r1 at a moment of the day. */
+const radial = (r0: number, r1: number, turn: number) => { const [x1, y1] = point(r0, turn), [x2, y2] = point(r1, turn); return { x1, y1, x2, y2 }; };
 function arc(r: number, from: number, to: number): string {
   const [x0, y0] = point(r, from), [x1, y1] = point(r, Math.max(to, from + .0015));
   return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${to - from > .5 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
@@ -30,9 +33,9 @@ function arc(r: number, from: number, to: number): string {
 /** Today: a ring per account (the most played outside), its stays as arcs in their game's colour, a red notch where one
  * dropped, the hand at now. The middle says today's play time and the windows open now; an account pointed at (on the
  * dial or in the list beside it) says its own. */
-export function Clock({ since, rows, accounts, icons, totalSeconds, nameOf, avatarOf, fmtSecs }: {
-  since: string; rows: { id: string; segments: VizSegment[] }[]; accounts: VizAccount[]; icons?: Record<string, string>; totalSeconds: number;
-  nameOf: (a: VizAccount) => string; avatarOf: (a: VizAccount) => ReactNode; fmtSecs: (s: number) => string;
+export function Clock<A extends VizAccount>({ since, rows, accounts, icons, totalSeconds, nameOf, avatarOf, fmtSecs }: {
+  since: string; rows: { id: string; segments: VizSegment[] }[]; accounts: A[]; icons?: Record<string, string>; totalSeconds: number;
+  nameOf: (a: A) => string; avatarOf: (a: A) => ReactNode; fmtSecs: (s: number) => string;
 }) {
   const { t, tn, lang, locale } = useHost();
   const m = useMetrics();
@@ -41,9 +44,8 @@ export function Clock({ since, rows, accounts, icons, totalSeconds, nameOf, avat
   const turn = (ms: number) => Math.min(1, Math.max(0, (ms - start) / day));
   const shown = rows.filter(r => accounts.some(a => a.id === r.id)).slice(0, MAX_RINGS);
   const n = Math.max(1, shown.length), band = Math.min(16, (R_OUT - R_IN) / n), stroke = Math.max(2, band - (n > 12 ? 1 : 2));
-  const now = turn(Date.now());
-  const hour = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' });
-  const clock = (ms: number) => new Date(ms).toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric', minute: '2-digit' });
+  const now = turn(Date.now()), hand = radial(R_OUT - band * n - 6, R_OUT + 10, now);
+  const clock = (ms: number) => clockText(locale, lang, ms);
   const focus = accounts.find(a => a.id === active);
   // The games played today, in the order they first show, for the key under the list.
   const games = new Map<string, string>();
@@ -57,30 +59,28 @@ export function Clock({ since, rows, accounts, icons, totalSeconds, nameOf, avat
           return <line key={h} className={`clk-tick${h % 6 ? '' : ' big'}`} x1={x0} y1={y0} x2={x1} y2={y1} />;
         })}
         {/* The side hours sit further out: they clear their tick by their width. */}
-        {[0, 6, 12, 18].map(h => { const [x, y] = point(R_OUT + (h % 12 ? 40 : 30), h / 24); return <text key={h} className="clk-hour" x={x} y={y}>{hour(h)}</text>; })}
+        {[0, 6, 12, 18].map(h => { const [x, y] = point(R_OUT + (h % 12 ? 40 : 30), h / 24); return <text key={h} className="clk-hour" x={x} y={y}>{hourText(locale, lang, h)}</text>; })}
         {shown.map((row, k) => {
           const r = R_OUT - band * k - band / 2;
           return <g key={row.id} className={`clk-ring${active && active !== row.id ? ' dim' : ''}`} onMouseEnter={() => setActive(row.id)}>
             <circle className="clk-track" cx={C} cy={C} r={r} strokeWidth={stroke} />
             {row.segments.map((s, i) => {
-              const a0 = turn(new Date(s.from).getTime()), a1 = turn(new Date(s.to).getTime());
+              const from = new Date(s.from).getTime(), to = new Date(s.to).getTime(), a0 = turn(from), a1 = turn(to);
               const icon = icons?.[s.game];
               const [ix, iy] = point(r, a0 + Math.min(.025, (a1 - a0) / 2));
               const size = Math.min(stroke - 2, 13);
               return <g key={i}>
                 <path className="clk-arc" d={arc(r, a0, a1)} strokeWidth={stroke} style={hued(s.game)}>
-                  <title>{[s.name, `${clock(new Date(s.from).getTime())} – ${clock(new Date(s.to).getTime())}`, s.reason ? t(`stats.why.${s.reason}`) : ''].filter(Boolean).join(' · ')}</title>
+                  <title>{[s.name, `${clock(from)} – ${clock(to)}`, s.reason ? t(`stats.why.${s.reason}`) : ''].filter(Boolean).join(' · ')}</title>
                 </path>
                 {icon && size >= 9 && a1 - a0 > .05 ? <image href={icon} x={ix - size / 2} y={iy - size / 2} width={size} height={size} className="clk-icon" /> : null}
-                {s.reason ? (() => { const [x0, y0] = point(r - stroke / 2 - 2, a1), [x1, y1] = point(r + stroke / 2 + 2, a1);
-                  return <line className="clk-drop" x1={x0} y1={y0} x2={x1} y2={y1} />; })() : null}
+                {s.reason ? <line className="clk-drop" {...radial(r - stroke / 2 - 2, r + stroke / 2 + 2, a1)} /> : null}
               </g>;
             })}
           </g>;
         })}
         {/* The hand crosses the rings only, never the words in the middle; its dot sits at the hour ring. */}
-        {(() => { const [x0, y0] = point(R_OUT - band * n - 6, now), [x, y] = point(R_OUT + 10, now);
-          return <><line className="clk-hand" x1={x0} y1={y0} x2={x} y2={y} /><circle className="clk-pin" cx={x} cy={y} r={3.5} /></>; })()}
+        <line className="clk-hand" {...hand} /><circle className="clk-pin" cx={hand.x2} cy={hand.y2} r={3.5} />
         <text className="clk-big" x={C} y={C - 8}>{fmtSecs(focus ? focus.seconds : totalSeconds)}</text>
         <text className="clk-small" x={C} y={C + 16}>{focus ? nameOf(focus) : m.robloxCount ? tn('stats.runningNow', m.robloxCount) : t('alog.today')}</text>
       </svg>
@@ -159,7 +159,7 @@ export function GameMap({ games, total, picked, pick, fmtSecs }: {
   const shown = games.filter(g => g.seconds > 0);
   const boxes = width ? squarify(shown.map(g => g.seconds), width, MAP_H) : [];
   return <div className="stat-card" id="stats-games"><h3>{t('stats.topGames')}
-    {picked ? <button type="button" className="chip on gm-chip" onClick={() => pick(null)}>{t('stats.onlyGame', { game: games.find(g => g.key === picked)?.name || '…' })}<Icon name="x" /></button> : null}</h3>
+    {picked ? <button type="button" className="chip on gm-chip" onClick={() => pick(null)}><span>{t('stats.onlyGame', { game: games.find(g => g.key === picked)?.name || '…' })}</span><Icon name="x" /></button> : null}</h3>
     <div className="gm" ref={host} style={{ height: MAP_H }}>{boxes.map((b, i) => {
       const g = shown[i], share = Math.round(g.seconds / Math.max(1, total) * 100);
       const big = b.w >= 120 && b.h >= 76, mid = b.w >= 64 && b.h >= 40;
@@ -177,9 +177,9 @@ export function GameMap({ games, total, picked, pick, fmtSecs }: {
 
 /** An account's card: its play time, a bar per hour (today) or day, its drops, main game and its run of full days.
  * 7 and 30 days: a click opens its own timeline under the cards. */
-export function AccountCards({ accounts, hourly, open, setOpen, opens, nameOf, avatarOf, fmtSecs, below }: {
-  accounts: VizAccount[]; hourly: boolean; open: string; setOpen: (id: string) => void; opens: (id: string) => boolean;
-  nameOf: (a: VizAccount) => string; avatarOf: (a: VizAccount) => ReactNode; fmtSecs: (s: number) => string; below: ReactNode;
+export function AccountCards<A extends VizAccount>({ accounts, open, setOpen, opens, nameOf, avatarOf, fmtSecs, below }: {
+  accounts: A[]; open: string; setOpen: (id: string) => void; opens: (id: string) => boolean;
+  nameOf: (a: A) => string; avatarOf: (a: A) => ReactNode; fmtSecs: (s: number) => string; below: ReactNode;
 }) {
   const { t, tn } = useHost();
   const most = Math.max(1, ...accounts.flatMap(a => a.buckets || []));
@@ -198,7 +198,7 @@ export function AccountCards({ accounts, hourly, open, setOpen, opens, nameOf, a
       </>;
       return can ? <button key={a.id} type="button" className={`sa-card opens${on ? ' on' : ''}`} aria-expanded={on} title={t('stats.showPlayed')}
         onClick={() => setOpen(on ? '' : a.id)}>{body}</button>
-        : <div key={a.id} className={`sa-card${hourly ? ' today' : ''}`}>{body}</div>;
+        : <div key={a.id} className="sa-card">{body}</div>;
     })}</div>
     {below}
   </div>;

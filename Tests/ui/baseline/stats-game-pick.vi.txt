@@ -91,8 +91,8 @@ html [data-theme="dark" lang="vi"]
               div.stat-tiles
                 div.stat
                   small "Giờ chơi"
-                  b [title="62 giờ 53 phút"] "62 giờ 53 phút"
-                  span.good.stat-delta "↑ 20 %"
+                  b [title="18 giờ 51 phút"] "18 giờ 51 phút"
+                  span.bad.stat-delta "↓ 64 %"
                     span "so với 30 ngày trước"
                 div.stat
                   small "Tài khoản đã chơi"
@@ -109,7 +109,7 @@ html [data-theme="dark" lang="vi"]
                   span.stat-sub "Tài khoản chính · Blox Fruits"
               div.stat-card [id="stats-days"]
                 h3 "Giờ chơi mỗi ngày"
-                  span.days-avg "Trung bình 2 giờ 5 phút mỗi ngày"
+                  span.days-avg "Trung bình 37 phút mỗi ngày"
                 div.days.many
                   div.day
                     span.day-bar
@@ -993,7 +993,8 @@ html [data-theme="dark" lang="vi"]
                   span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 3 giờ 8 phút"
               div.stat-card [id="stats-games"]
                 h3 "Game chơi nhiều"
-                  button.chip.gm-chip.on [type="button"] "Chỉ tính [🎃] Adopt Me!"
+                  button.chip.gm-chip.on [type="button"]
+                    span "Chỉ tính [🎃] Adopt Me!"
                     svg.i #1tyq039
                 div.gm [style="height:236px"]
                   button.big.gm-box [type="button" title="Blox Fruits · 34 giờ 35 phút · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:478.9px"]
@@ -1054,32 +1055,30 @@ html [data-theme="dark" lang="vi"]
                     span.sa-foot
                       span.sa-game [title="[🎃] Adopt Me!" style="--h:156"] "[🎃] Adopt Me!"
                         i
-              div.one.stat-cols
-                div.stat-side
-                  div.stat-card
-                    h3 "Theo Preset"
-                    div.sgames
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
-                          small "3 tài khoản · văng 1 lần · 62 %"
-                        span.sg-time "38 giờ 59 phút"
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Adopt Me trade"] "Adopt Me trade"
-                          small "1 tài khoản · 25 %"
-                        span.sg-time "15 giờ 43 phút"
-                      div.sgame
-                        span.gph
-                          svg.i #45lggc
-                        div.gtxt
-                          b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset)."] "Không qua Preset"
-                          small "2 tài khoản · 13 %"
-                        span.sg-time "8 giờ 10 phút"
+              div.stat-card
+                h3 "Theo Preset"
+                div.sgames
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                      small "3 tài khoản · văng 1 lần · 207 %"
+                    span.sg-time "38 giờ 59 phút"
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Adopt Me trade"] "Adopt Me trade"
+                      small "1 tài khoản · 83 %"
+                    span.sg-time "15 giờ 43 phút"
+                  div.sgame
+                    span.gph
+                      svg.i #45lggc
+                    div.gtxt
+                      b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset)."] "Không qua Preset"
+                      small "2 tài khoản · 43 %"
+                    span.sg-time "8 giờ 10 phút"
 #layer
 #toasts
 -- commands

@@ -2644,7 +2644,6 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .stats-in > .empty .pv-empty-icon { margin-bottom: 14px; }
 .stat-card h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font: 650 var(--fs-5) var(--font-display); }
 .stat-card h3 .i { color: var(--text-2); }
-.stat-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 .tl { display: grid; gap: 7px; }
 .tl-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 24px; }
 .tl-track { position: relative; height: 22px; border-radius: var(--r-xs); background: var(--surface-3); }
@@ -2687,35 +2686,13 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .tl-keys em { overflow: hidden; font-style: normal; white-space: nowrap; text-overflow: ellipsis; }
 /* The red end a drop leaves on a stay, as it looks there. */
 .tl-keys .tl-key-drop { flex: none; width: 4px; height: 12px; border-radius: 1px; background: var(--bad); }
-.stat-table tr.opens { cursor: pointer; }
-.stat-table tr.opens:hover td { background: var(--surface-2); }
-.stat-table .sacc-open { width: 14px; height: 14px; flex: none; color: var(--muted); }
-.stat-table td.st-time { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
-.stat-table.by-account { table-layout: fixed; }
-.by-account .c-acc { width: 30%; } .by-account .c-time { width: 24%; } .by-account .c-game { width: 32%; } .by-account .c-n { width: 14%; }
-.by-account th, .by-account td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.by-account th:first-child, .by-account td:first-child { width: auto; max-width: none; }
 .tl-seg img[hidden] { display: none; }
-.st-game > span { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.st-game img, .st-game .gph { width: 24px; height: 24px; flex: none; border-radius: 6px; object-fit: cover; background: var(--surface-3); display: grid; place-items: center; color: var(--dim); }
-.st-game .gph .i { width: 14px; height: 14px; }
-.st-game em { overflow: hidden; font-style: normal; white-space: nowrap; text-overflow: ellipsis; color: var(--text-2); }
-.stat-table tr.st-open td { padding: 4px 8px 12px; background: var(--surface-2); }
 .stat-card h3 .sd-lost { margin-left: auto; font-size: var(--fs-6); color: var(--bad-ink); }
 .sd-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
 .sd-text { flex: 1; min-width: 0; }
 .sd-text b { display: block; font-size: var(--fs-3); }
 .sd-text small { display: block; overflow: hidden; font-size: var(--fs-2); color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
 .sd-time { flex: none; font-size: var(--fs-3); font-weight: 600; font-variant-numeric: tabular-nums; }
-.stat-table { width: 100%; border-collapse: collapse; font-size: var(--fs-3); }
-.stat-table th { padding: 4px 8px 8px; border-bottom: 1px solid var(--line-2); text-align: left; font-size: var(--fs-1); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.stat-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
-.stat-table tr:last-child td { border-bottom: 0; }
-.stat-table .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.stat-table td.n { color: var(--text-2); }
-.stat-table td.n:first-of-type { color: var(--text); font-weight: 600; }
-/* The name column takes what the numbers leave and cuts a long label short instead of widening the table. */
-.stat-table th:first-child, .stat-table td:first-child { width: 42%; max-width: 0; }
 .sacc { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sacc b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sgames { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
@@ -2728,20 +2705,16 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .avatar.gone .i { width: 60%; height: 60%; }
 .sg-time { flex: none; font-size: var(--fs-3); font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (max-width: 1180px) { .stats { padding: 4px 22px 26px; } }
-/* A wide window: the page takes the room (up to 1700 px) with two more figures and the preset table as a third column. */
+/* A wide window: the page takes the room (up to 1700 px) with two more figures. */
 .stat.wide { display: none; }
 .stat b .of { font-size: var(--fs-5); font-weight: 600; color: var(--muted); }
 .stat-sub { display: block; margin-top: 2px; font-size: var(--fs-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-note { margin: 10px 2px 0; font-size: var(--fs-2); color: var(--muted); }
-/* Top games and By preset stacked in the right column; on a wide window each is a column of its own. */
-.stat-side { display: grid; gap: 16px; align-content: start; min-width: 0; }
 @media (min-width: 1500px) {
   .stats, #view-stats .top { max-width: 1700px; }
   .stat.wide { display: block; }
-  .stat-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 4fr); }
-  .stat-side { display: contents; }
 }
-@media (max-width: 1080px) { .stat-cols { grid-template-columns: minmax(0, 1fr); } .stat-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1080px) { .stat-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* The figures above the activity list; their "nothing yet" needs less room with the list under it. */
 .stats-in { display: grid; gap: 16px; min-width: 0; }
 .stats-in > .empty { padding: 36px 20px; }
@@ -6515,4 +6488,3 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
   background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); font-size: var(--fs-1); font-weight: 650; }
 .sa-streak .i { width: 12px; height: 12px; color: var(--accent); }
 .sa-open { margin-top: 14px; }
-.stat-cols.one { grid-template-columns: minmax(0, 1fr); }

@@ -1178,32 +1178,30 @@ html [data-theme="dark" lang="en"]
                     span.sa-foot
                       span.sa-game [title="[🎃] Adopt Me!" style="--h:156"] "[🎃] Adopt Me!"
                         i
-              div.one.stat-cols
-                div.stat-side
-                  div.stat-card
-                    h3 "By preset"
-                    div.sgames
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
-                          small "3 accounts · 1 drop · 62 %"
-                        span.sg-time "38 h 59 min"
-                      div.sgame
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Adopt Me trade"] "Adopt Me trade"
-                          small "1 account · 25 %"
-                        span.sg-time "15 h 43 min"
-                      div.sgame
-                        span.gph
-                          svg.i #45lggc
-                        div.gtxt
-                          b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
-                          small "2 accounts · 13 %"
-                        span.sg-time "8 h 10 min"
+              div.stat-card
+                h3 "By preset"
+                div.sgames
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                      small "3 accounts · 1 drop · 62 %"
+                    span.sg-time "38 h 59 min"
+                  div.sgame
+                    span.gph
+                      svg.i #sy1lqp
+                    div.gtxt
+                      b [title="Adopt Me trade"] "Adopt Me trade"
+                      small "1 account · 25 %"
+                    span.sg-time "15 h 43 min"
+                  div.sgame
+                    span.gph
+                      svg.i #45lggc
+                    div.gtxt
+                      b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
+                      small "2 accounts · 13 %"
+                    span.sg-time "8 h 10 min"
 #layer
 #toasts
 -- commands

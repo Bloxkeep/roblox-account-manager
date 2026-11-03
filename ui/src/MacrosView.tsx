@@ -7,7 +7,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from '
 import { Icon, useAppState, useHost, usePage, type Host } from './host';
 import { Pop } from './MacroPop';
 import { richNodes } from './rich';
-import { MAX_MACROS, STEP_ICON, blankMacro, durText, isLive, keyName, recording, type Macro, type Step, type MacroRun, type MacroTemplate, type Recording, type Templates } from './macros';
+import { MAX_MACROS, OPENERS, STEP_ICON, blankMacro, durText, isLive, keyName, recording, type Macro, type Step, type MacroRun, type MacroTemplate, type Recording, type Templates } from './macros';
 
 const NONE: Macro[] = [];
 const NO_RUNS: MacroRun[] = [];
@@ -313,11 +313,12 @@ function Shape({ steps }: { steps: Step[] }) {
   const secs = (ms: number) => `${Math.round(ms / 100) / 10}s`;
   return <span className="mc-shape" aria-hidden="true">{steps.slice(0, SHAPE_MAX).map((s, i) => {
     if (s.kind === 'endIf' || s.kind === 'endLoop') return <i key={i} className="mc-sh-end" />;
-    const opens = s.kind === 'if' || s.kind === 'loop' || s.kind === 'loopUntil';
     const label = (s.kind === 'key' || s.kind === 'down' || s.kind === 'up') && typeof s.key === 'string' ? keyName(t, s.key)
       : s.kind === 'wait' && typeof s.ms === 'number' ? secs(s.ms)
       : s.kind === 'loop' ? (typeof s.times === 'number' && s.times > 0 ? `×${s.times}` : s.times ? '' : '∞') : '';
-    return <span key={i} className={`mc-sh${opens ? ' opens' : ''}`}>{label && s.kind !== 'loop' ? null : <Icon name={STEP_ICON[s.kind] || 'info'} />}
+    // A key or a wait says itself; a loop keeps its icon beside its count.
+    const icon = !label || s.kind === 'loop';
+    return <span key={i} className={`mc-sh${OPENERS.has(s.kind) ? ' opens' : ''}`}>{icon ? <Icon name={STEP_ICON[s.kind] || 'info'} /> : null}
       {label ? <b>{label}</b> : null}</span>;
   })}{steps.length > SHAPE_MAX ? <small>+{steps.length - SHAPE_MAX}</small> : null}</span>;
 }

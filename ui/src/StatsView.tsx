@@ -3,6 +3,7 @@
 // they aren't part of the pushed state. Today has a timeline (plain divs placed by their share of the day, each stay with its
 // game's icon); 7 and 30 days a bar per day instead, an account's own timeline opening from its row.
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
+import { clockText, playedText, hourText } from './clock';
 import { Icon, useAppState, useHost } from './host';
 import { Avatar } from './Avatar';
 import { AccountCards, Clock, GameMap } from './StatsViz';
@@ -22,7 +23,7 @@ type StatPreset = { id: string; name: string; iconUrl?: string; seconds: number;
 type Segment = { from: string; to: string; game: string; name?: string | null; reason?: string | null };
 type Loss = { kind: string; times: number; seconds: number; accounts: string[] };
 type Stats = {
-  sessions: number; recorded: boolean; totalSeconds: number; kicks: number; hourly: boolean; buckets: Bucket[]; since: string; ends: string;
+  sessions: number; recorded: boolean; totalSeconds: number; gamesSeconds?: number; kicks: number; hourly: boolean; buckets: Bucket[]; since: string; ends: string;
   /** 7 and 30 days: windows running in each hour of each day (its hours of play), a row a day from the first. */
   heat?: number[][];
   timeline: { id: string; segments: Segment[] }[]; losses: Loss[];
@@ -207,13 +208,7 @@ function Figures({ data: d, failed, retry, game, setGame }: { data: Stats | null
   const byId =(id: string) => accounts.find(a => a.id === id);
   const hide = !!app.hideNames;
   const [open, setOpen] = useState('');
-  // The map keeps every game of the period while one is picked (the figures then hold that one only), to pick another.
-  const allGames = useRef<{ period: number; games: StatGame[]; total: number } | null>(null);
-  /** "2 h", "2 h 5 min", "1,234 h": hours grouped like other numbers, no "0 min". */
-  const fmtSecs = (s: number) => {
-    const m = Math.floor((s || 0) / 60), h = Math.floor(m / 60);
-    return m < 60 ? t('dur.min', { m }) : m % 60 ? t('dur.hour', { h: fmtNum(h), m: m % 60 }) : t('dur.hours', { h: fmtNum(h) });
-  };
+  const fmtSecs = (s: number) => playedText(host, s);
 
   if (!d) {
     return failed
@@ -227,12 +222,13 @@ function Figures({ data: d, failed, retry, game, setGame }: { data: Stats | null
   }
   // A deleted account keeps the name it had when it played; names hidden: the list's "Account N".
   const nameOf = (a: StatAccount) => hide ? byId(a.id)?.label || t('stats.deleted') : a.label || t('stats.deleted');
+  const avatarOf = (a: StatAccount) => <AccAvatar a={a} label={nameOf(a)} hide={hide} />;
+  // 7 and 30 days: an account with stays in the period opens its own timeline.
+  const opens = (id: string) => !d.hourly && d.timeline.some(r => r.id === id);
   const longName = d.longest ? (hide ? byId(d.longest.account)?.label : d.longest.label) || t('stats.deleted') : '';
   // Accounts still here that played (a deleted one isn't among the accounts it is counted against).
   const played = fmtNum(d.accounts.filter(a => a.seconds > 0 && !a.deleted).length), all = fmtNum(accounts.length);
   const period = d.hourly ? 1 : d.days || d.buckets.length;
-  if (!game) allGames.current = { period, games: d.games, total: d.totalSeconds };
-  const mapOf = game && allGames.current?.period === period ? allGames.current : { games: d.games, total: d.totalSeconds };
   // "↑ 20 %" against the period before; more play time is good, more disconnects bad. Nothing when there's no before.
   const change = (now: number, before: number | undefined, moreIsGood: boolean) => {
     if (before === undefined || before <= 0) return null;
@@ -255,26 +251,21 @@ function Figures({ data: d, failed, retry, game, setGame }: { data: Stats | null
       <div key={i} className="stat"><small>{label}</small><b title={plain || String(value)}>{value}</b>{sub}</div>)}
     </div>
     {d.hourly ? <Clock since={d.since} rows={d.timeline} accounts={d.accounts} icons={d.icons} totalSeconds={d.totalSeconds}
-      nameOf={a => nameOf(a as StatAccount)} avatarOf={a => <AccAvatar a={a as StatAccount} label={nameOf(a as StatAccount)} hide={hide} />} fmtSecs={fmtSecs} />
+      nameOf={nameOf} avatarOf={avatarOf} fmtSecs={fmtSecs} />
       : <Days d={d} fmtSecs={fmtSecs} />}
     {!d.hourly && d.heat?.length ? <Heat d={d} heat={d.heat} /> : null}
     <Drops d={d} nameOf={nameOf} fmtSecs={fmtSecs} />
-    <GameMap games={mapOf.games} total={mapOf.total} picked={game} pick={setGame} fmtSecs={fmtSecs} />
-    <AccountCards accounts={d.accounts} hourly={d.hourly} open={open} setOpen={setOpen} opens={id => !d.hourly && d.timeline.some(r => r.id === id)}
-      nameOf={a => nameOf(a as StatAccount)} avatarOf={a => <AccAvatar a={a as StatAccount} label={nameOf(a as StatAccount)} hide={hide} />} fmtSecs={fmtSecs}
-      below={open && !d.hourly && d.timeline.some(r => r.id === open) ? <div className="sa-open"><Timeline d={d} nameOf={nameOf} fmtSecs={fmtSecs} only={open} /></div> : null} />
-    <div className="stat-cols one">
-      <div className="stat-side">
-        {d.presets?.length ? <div className="stat-card"><h3>{t('stats.byPreset')}</h3><div className="sgames">{d.presets.map(p => {
-          const own = p.id !== NO_PRESET, name = own ? p.name : t('stats.noPreset');
-          const detail = [tn('stats.accountsN', p.accounts), p.kicks ? tn('stats.kicksN', p.kicks) : '', share(p.seconds)].filter(Boolean).join(' · ');
-          return <div key={p.id} className="sgame">{own && p.iconUrl ? <GameImg src={p.iconUrl} /> : <span className="gph"><Icon name={own ? 'layers' : 'user'} /></span>}
-            <div className="gtxt"><b title={own ? name : t('stats.noPresetTip')}>{name}</b><small>{detail}</small></div>
-            <span className="sg-time">{fmtSecs(p.seconds)}</span></div>;
-        })}</div>
-          {d.presets.every(p => p.id === NO_PRESET) ? <p className="stat-note">{t('stats.presetNote')}</p> : null}</div> : null}
-      </div>
-    </div>
+    <GameMap games={d.games} total={d.gamesSeconds ?? d.totalSeconds} picked={game} pick={setGame} fmtSecs={fmtSecs} />
+    <AccountCards accounts={d.accounts} open={open} setOpen={setOpen} opens={opens} nameOf={nameOf} avatarOf={avatarOf} fmtSecs={fmtSecs}
+      below={opens(open) ? <div className="sa-open"><Timeline d={d} nameOf={nameOf} fmtSecs={fmtSecs} only={open} /></div> : null} />
+    {d.presets?.length ? <div className="stat-card"><h3>{t('stats.byPreset')}</h3><div className="sgames">{d.presets.map(p => {
+      const own = p.id !== NO_PRESET, name = own ? p.name : t('stats.noPreset');
+      const detail = [tn('stats.accountsN', p.accounts), p.kicks ? tn('stats.kicksN', p.kicks) : '', share(p.seconds)].filter(Boolean).join(' · ');
+      return <div key={p.id} className="sgame">{own && p.iconUrl ? <GameImg src={p.iconUrl} /> : <span className="gph"><Icon name={own ? 'layers' : 'user'} /></span>}
+        <div className="gtxt"><b title={own ? name : t('stats.noPresetTip')}>{name}</b><small>{detail}</small></div>
+        <span className="sg-time">{fmtSecs(p.seconds)}</span></div>;
+    })}</div>
+      {d.presets.every(p => p.id === NO_PRESET) ? <p className="stat-note">{t('stats.presetNote')}</p> : null}</div> : null}
   </>;
 }
 
@@ -322,17 +313,17 @@ function Heat({ d, heat }: { d: Stats; heat: number[][] }) {
   const dayOf = (i: number) => { const day = new Date(first); day.setDate(first.getDate() + i); return day; };
   const dayText = (i: number) => i === last ? t('alog.today')
     : dayOf(i).toLocaleDateString(locale, many ? { day: 'numeric', month: 'numeric' } : { weekday: 'short' });
-  const hourText = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' });
+  const hourOf = (h: number) => hourText(locale, lang, h);
   // Five steps of the accent over the card: an empty hour stays the well colour.
   const level = (v: number) => v <= 0 ? 0 : Math.min(4, Math.ceil(v / most * 4));
   return <div className="stat-card" id="stats-heat"><h3>{t('stats.byHour')}<span className="heat-key" aria-hidden="true">{t('stats.heatLess')}
     {[0, 1, 2, 3, 4].map(l => <i key={l} className={`h${l}`} />)}{t('stats.heatMore')}</span></h3>
     <div className={`heat${many ? ' many' : ''}`} role="img" aria-label={t('stats.byHour')}>
-      <span style={{ gridRow: 1 }} />{Array.from({ length: 8 }, (_, k) => <small key={k} className="heat-h" style={{ gridRow: 1, gridColumn: `${k * 3 + 2} / span 3` }}>{hourText(k * 3)}</small>)}
-      {heat.map((row, i) => <Fragment key={i}>
-        <small className={`heat-d${i === last ? ' today' : ''}`}>{many && (last - i) % 5 && i !== last ? '' : dayText(i)}</small>
-        {row.map((v, h) => <i key={h} className={`h${level(v)}`} title={t('stats.heatTip', { d: dayText(i), h: hourText(h), n: fmtNum(Math.round(v * 10) / 10) })} />)}
-      </Fragment>)}
+      <span style={{ gridRow: 1 }} />{Array.from({ length: 8 }, (_, k) => <small key={k} className="heat-h" style={{ gridRow: 1, gridColumn: `${k * 3 + 2} / span 3` }}>{hourOf(k * 3)}</small>)}
+      {heat.map((row, i) => { const day = dayText(i); return <Fragment key={i}>
+        <small className={`heat-d${i === last ? ' today' : ''}`}>{many && (last - i) % 5 && i !== last ? '' : day}</small>
+        {row.map((v, h) => <i key={h} className={`h${level(v)}`} title={t('stats.heatTip', { d: day, h: hourOf(h), n: fmtNum(Math.round(v * 10) / 10) })} />)}
+      </Fragment>; })}
     </div>
   </div>;
 }
@@ -345,7 +336,7 @@ function Timeline({ d, nameOf, fmtSecs, only }: { d: Stats; nameOf: (a: StatAcco
   const since = new Date(d.since).getTime(), span = Math.max(Date.now() - since, 2 * 3600e3);
   const at = (ms: number) => `${Math.min(100, Math.max(0, (ms - since) / span * 100)).toFixed(2)}%`;
   const clock = (ms: number) => d.hourly
-    ? new Date(ms).toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric', minute: '2-digit' })
+    ? clockText(locale, lang, ms)
     : new Date(ms).toLocaleString(locale, { weekday: 'short', hour: '2-digit', minute: '2-digit', ...(lang === 'vi' ? { hourCycle: 'h23' as const } : {}) });
   // Labels: today by how much of it has gone, every day of the week, every 5th day of the month counted back from today.
   const hours = span / 3600e3;
@@ -373,7 +364,7 @@ function Timeline({ d, nameOf, fmtSecs, only }: { d: Stats; nameOf: (a: StatAcco
     <div className={`tl-axis${only ? ' one' : ''}`} aria-hidden="true">{d.buckets.map((b, i) => {
       const start = new Date(b.start);
       if ((d.hourly ? i : d.buckets.length - 1 - i) % every || (start.getTime() - since) / span > .95) return null;
-      const label = d.hourly ? start.toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' })
+      const label = d.hourly ? hourText(locale, lang, start.getHours())
         : every > 1 ? start.toLocaleDateString(locale, { day: 'numeric', month: 'numeric' }) : start.toLocaleDateString(locale, { weekday: 'short' });
       return <span key={i} style={{ left: at(start.getTime()) }}>{label}</span>;
     })}</div>
@@ -421,7 +412,7 @@ function Log({ log: d, failed, filtered, retry, more }: {
   if (!d.entries.length) return <p className="alog-empty">{t(filtered ? 'alog.emptyFilter' : 'alog.empty')}</p>;
   const now = new Date(), today = now.toDateString();
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toDateString();
-  const clockOf = (at: Date) => at.toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric', minute: '2-digit' });
+  const clockOf = (at: Date) => clockText(locale, lang, at);
   const days: { key: string; at: Date; entries: Entry[] }[] = [];
   for (const e of d.entries) {
     const at = new Date(e.at), key = at.toDateString();

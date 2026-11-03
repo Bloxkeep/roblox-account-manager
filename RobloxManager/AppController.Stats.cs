@@ -318,11 +318,12 @@ public sealed partial class AppController
     internal static Dictionary<Guid, int> FullDayStreaks(IEnumerable<PlaySession> sessions, DateTime nowUtc)
     {
         var first = nowUtc.ToLocalTime().Date.AddDays(-StreakDays);
+        var firstUtc = first.ToUniversalTime();
         var played = new Dictionary<Guid, double[][]>();
         foreach (var s in sessions)
         {
             var end = s.EndedAt is { } ended && ended < nowUtc ? ended : nowUtc;
-            if (end.ToLocalTime() <= first)
+            if (end <= firstUtc)
                 continue;
             if (!played.TryGetValue(s.AccountId, out var hours))
                 played[s.AccountId] = hours = Enumerable.Range(0, StreakDays).Select(_ => new double[24]).ToArray();
@@ -414,7 +415,7 @@ public sealed partial class AppController
         var accountGames = new Dictionary<(Guid Account, string Game), double>();
         foreach (var s in vault.Data.PlaySessions)
         {
-            if (!Counted(s))
+            if (only is not null && !only.Contains(s.AccountId))
                 continue;
             // After the period's end (a late summary): not in it.
             if (until is not null && s.StartedAt >= now)
@@ -424,6 +425,12 @@ public sealed partial class AppController
             if (end <= from && s.StartedAt < since)
                 continue;
             double seconds = Math.Max(0, (end - from).TotalSeconds);
+            // Every game goes on the map, the one picked or not (to pick another); the rest counts the picked one only.
+            string key = KeyOf(s);
+            var had = byGame.GetValueOrDefault(key);
+            byGame[key] = (had.PlaceId == 0 ? s.PlaceId : had.PlaceId, UniverseOf(s), s.GameName.Length > 0 ? s.GameName : had.Name ?? "", had.Seconds + seconds, had.Sessions + 1);
+            if (game is not null && key != game)
+                continue;
             bool kicked = s.EndReason == "disconnected" && s.EndedAt >= since && s.EndedAt <= now;
             total += seconds;
             sessions++;
@@ -445,11 +452,6 @@ public sealed partial class AppController
             }
             if (seconds > longest.Seconds)
                 longest = (seconds, s);
-            // Places of one game count together; a name learned later wins over an empty one.
-            long universe = UniverseOf(s);
-            string key = universe > 0 ? $"u{universe}" : $"p{s.PlaceId}";
-            var had = byGame.GetValueOrDefault(key);
-            byGame[key] = (had.PlaceId == 0 ? s.PlaceId : had.PlaceId, universe, s.GameName.Length > 0 ? s.GameName : had.Name ?? "", had.Seconds + seconds, had.Sessions + 1);
             accountGames[(s.AccountId, key)] = accountGames.GetValueOrDefault((s.AccountId, key)) + seconds;
             if (seconds > 0)
             {
@@ -518,12 +520,13 @@ public sealed partial class AppController
             days,
             hourly,
             since,
-            game = game is null ? null : new { key = game, name = byGame.ContainsKey(game) ? GameNameOf(game) : "" },
             previous,
             icons = byGame.Keys.Select(key => (key, url: GameIconOf(key))).Where(i => i.url is not null).ToDictionary(i => i.key, i => i.url),
             ends = rolling ? now : today.AddDays(1).ToUniversalTime(),
             recorded = vault.Data.PlaySessions.Count > 0,
             totalSeconds = (long)total,
+            // Every game's, for the map's shares while one game is picked (the total is then that game's).
+            gamesSeconds = (long)byGame.Values.Sum(g => g.Seconds),
             sessions,
             kicks,
             accounts = byAccount.OrderByDescending(a => a.Value.Seconds).Select(a =>
