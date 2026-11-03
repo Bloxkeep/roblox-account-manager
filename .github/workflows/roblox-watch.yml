@@ -43,7 +43,9 @@ jobs:
       # The README's downloads badge (the Discord bot serves it from downloads.json): how many times the install files
       # were downloaded, over every release. Counted here with this run's token: GitHub's API refuses most unsigned calls
       # from the bot's shared Cloudflare addresses. Not the update packages nor releases.win.json, which every installed
-      # copy downloads itself when it looks for an update ("2.2k downloads" of some 90 installs, 2026-10-24).
+      # copy downloads itself when it looks for an update ("2.2k downloads" of some 90 installs, 2026-10-24). Nor
+      # Bloxkeep-Setup-Offline.exe: Bloxkeep-Setup.exe downloads it as it installs, so each install counted twice
+      # (431 + 329 of it, 2026-11-04); the few people who take it straight are left out.
       - name: Count downloads
         if: success() || failure()
         continue-on-error: true
@@ -52,7 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           n=$(gh api --paginate "repos/${{ github.repository }}/releases?per_page=100" \
-            --jq '.[].assets[] | select(.name == "Bloxkeep-Setup.exe" or .name == "Bloxkeep-Setup-Offline.exe" or .name == "Bloxkeep-Portable.zip") | .download_count' \
+            --jq '.[].assets[] | select(.name == "Bloxkeep-Setup.exe" or .name == "Bloxkeep-Portable.zip") | .download_count' \
             | awk '{ s += $1 } END { print s + 0 }')
           printf '{"installs":%s}\n' "$n" > downloads.json
       - name: Save what was seen
