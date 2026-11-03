@@ -57,7 +57,24 @@ static class Harness
         catch (UserError e) { return e; }
     }
 
-    public static Task Unlock(AppController app) => Call(app, "unlock", new { password = Password });
+    /// <summary>Unlocks with the harness password. A virus scanner or the search indexer may hold the vault file for a moment
+    /// right after it was written (the app then says "another program may be using it", 3 runs in 20 of the website suite
+    /// on a PC with Defender on): tried again a few times, as a person would press Unlock again.</summary>
+    public static async Task Unlock(AppController app)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await Call(app, "unlock", new { password = Password });
+                return;
+            }
+            catch (UserError e) when (attempt < 5 && e.Message.Contains("another program may be using it", StringComparison.Ordinal))
+            {
+                await Task.Delay(500);
+            }
+        }
+    }
 
     // Fields and methods by name, private ones too. A name is looked up on the owner and its base types; "a.b" goes through
     // the field a first; a name the owner doesn't have is looked for one level down, in the fields that hold Bloxkeep's own
