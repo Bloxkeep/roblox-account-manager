@@ -318,6 +318,7 @@ public sealed partial class AppController
         s.MemoryWarnings,
         s.TrimBackground,
         s.AutoUpdateRoblox,
+        s.RobloxUpdateWhen,
         s.FastFlags,
         s.RamLimitMb,
         s.SplitCores,

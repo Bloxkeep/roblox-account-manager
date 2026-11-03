@@ -187,17 +187,28 @@ public sealed partial class AppController
         && FindAccount(id) is { Banned: not true, CookieValid: not false };
 
     /// <summary>The newest build goes in by itself once no window could be cut off by it (a launcher's copy: Roblox's own updates
-    /// itself as it opens). <see cref="AppSettings.AutoUpdateRoblox"/>.</summary>
+    /// itself as it opens), or at once with "now": every window closes as Close all does, then the update goes in like Close,
+    /// update, reopen's, with nothing reopened. <see cref="AppSettings.AutoUpdateRoblox"/>.</summary>
     void AutoUpdateRoblox(IReadOnlyList<RobloxProcesses.PlayerProcess> players)
     {
-        if (_vault?.Data.Settings.AutoUpdateRoblox != true || players.Count > 0 || _robloxUpdating || _updateReopenSince is not null
+        var s = _vault?.Data.Settings;
+        bool now = s?.RobloxUpdateWhen == "now";
+        if (s?.AutoUpdateRoblox != true || (players.Count > 0 && !now) || _robloxUpdating || _updateReopenSince is not null
             || OpeningRoblox || _rejoinQueue.Count > 0 || Settling || ScheduleDueSoon())
             return;
         var version = RobloxVersionDto();
         if (version.UpToDate != false || version.Updater is null || version.Latest == _autoUpdatedFor)
             return;
         _autoUpdatedFor = version.Latest;
-        UpdateRoblox(quiet: true);
+        if (players.Count == 0)
+        {
+            UpdateRoblox(quiet: true);
+            return;
+        }
+        CloseAll(force: false);
+        _updateReopenSince = DateTime.UtcNow; // TickUpdateReopen updates once they've all gone
+        _updateReopenUpdating = false;
+        PushState();
     }
 
     /// <summary>Settings › Roblox version › Close, update, reopen: every Roblox window closes, the launcher updates Roblox (with none,

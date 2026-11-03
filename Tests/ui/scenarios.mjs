@@ -1369,6 +1369,8 @@ export default [
   S('settings-backup-pick', 'settings=backup&long=1', async s => { await s.click(key('bk.choose')); }),
   S('settings-roblox-closed', 'settings=roblox&rbxclosed=1', async s => { await s.snap('warned'); await s.click(key('ru.hide')); }),
   S('settings-roblox-changed', 'settings=roblox&rw=changed&rbxold=1'),
+  // Update automatically: right away (closing every window first), then off hides the choice.
+  S('settings-roblox-when', 'settings=roblox', async s => { await s.choose({ css: '#s-rbx-when' }, 'now'); await s.snap('right away'); await s.click({ css: 'label:has(#s-rbx-auto)' }); }),
   // Taskbar buttons: one group per preset, and Roblox's own icon kept.
   S('settings-taskbar', 'settings=launch', async s => { await s.choose({ css: '#s-taskbar' }, 'preset'); await s.click({ css: 'label:has(#s-pictures)' }); }),
   // Roblox out of date, Bloxstrap keeping it: Update now asks first while Roblox windows are open, then waits on Bloxstrap.

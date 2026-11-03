@@ -131,6 +131,13 @@ html [data-theme="dark" lang="en"]
                           label.switch
                             input [id="s-rbx-auto" type="checkbox" aria-label="Update automatically" checked=true]
                             span
+                      div.set-row
+                        div
+                          div.t "When"
+                        div.ctl
+                          select.select [id="s-rbx-when" aria-label="When" value="idle"]
+                            option [value="idle"] "When no Roblox is open"
+                            option [value="now"] "Right away"
                     div [id="s-rbxupd"]
                       div.set-row
                         div
@@ -328,6 +335,13 @@ html [data-theme="dark" lang="en"]
                           label.switch
                             input [id="s-rbx-auto" type="checkbox" aria-label="Update automatically" checked=true]
                             span
+                      div.set-row
+                        div
+                          div.t "When"
+                        div.ctl
+                          select.select [id="s-rbx-when" aria-label="When" value="idle"]
+                            option [value="idle"] "When no Roblox is open"
+                            option [value="now"] "Right away"
                     div [id="s-rbxupd"]
                       div.set-row
                         div
