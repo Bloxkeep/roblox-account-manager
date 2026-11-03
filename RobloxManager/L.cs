@@ -436,6 +436,7 @@ public static class L
             "{0} bị kick vì AFK: đang có ứng dụng toàn màn hình ở phía trước, chống AFK không chen ngang ứng dụng đó.",
         ["{0} was kicked for being AFK: the PC was locked, and anti-AFK can't reach Roblox then."] = "{0} bị kick vì AFK: máy đang khóa nên chống AFK không điều khiển được Roblox.",
         ["{0} was kicked for being AFK: Windows didn't let Bloxkeep bring its window to the front."] = "{0} bị kick vì AFK: Windows không cho Bloxkeep đưa cửa sổ Roblox lên trước.",
+        ["{0} was kicked for being AFK: a macro kept the PC, so anti-AFK had to wait."] = "{0} bị kick vì AFK: macro đang giữ máy nên chống AFK phải chờ.",
         ["{0} was kicked for being AFK."] = "{0} bị kick vì AFK.",
         ["Wait until Bloxkeep finishes opening Roblox."] = "Chờ Bloxkeep mở Roblox xong đã.",
         ["Couldn't turn it off: {0}"] = "Không tắt được: {0}",
