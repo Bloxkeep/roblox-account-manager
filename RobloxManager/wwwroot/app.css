@@ -2674,7 +2674,8 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .days.many:has(.day:hover) .day:hover :is(.day-bar b, small) { visibility: visible; }
 /* "Today" under the last, narrow bar ends with it rather than past the card's edge. */
 .days.many .day.today small { justify-content: flex-end; }
-.stat-delta { display: block; margin-top: 3px; font-size: var(--fs-2); font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Under a tile's figure: wraps rather than cuts, for the wide letters of the pixel and typewriter themes. */
+.stat-delta { display: block; margin-top: 3px; font-size: var(--fs-2); font-weight: 600; color: var(--text-2); overflow-wrap: anywhere; }
 .stat-delta span { font-weight: 400; color: var(--muted); }
 .stat-delta.good { color: var(--ok-ink, var(--ok)); }
 .stat-delta.bad { color: var(--bad-ink); }
@@ -2708,7 +2709,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 /* A wide window: the page takes the room (up to 1700 px) with two more figures. */
 .stat.wide { display: none; }
 .stat b .of { font-size: var(--fs-5); font-weight: 600; color: var(--muted); }
-.stat-sub { display: block; margin-top: 2px; font-size: var(--fs-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-sub { display: block; margin-top: 2px; font-size: var(--fs-2); color: var(--muted); overflow-wrap: anywhere; }
 .stat-note { margin: 10px 2px 0; font-size: var(--fs-2); color: var(--muted); }
 @media (min-width: 1500px) {
   .stats, #view-stats .top { max-width: 1700px; }
@@ -4118,6 +4119,9 @@ body:has(.lock) #toasts { bottom: 24px; }
   --font: "Cascadia Mono", Consolas, ui-monospace, monospace;
   --font-display: "Cascadia Mono", Consolas, ui-monospace, monospace;
 }
+/* Bahnschrift sits its letters high in the line (79/21 above and below, Segoe UI 108/25), so every icon and box beside
+   text came out 2-3px low; given Segoe UI's proportions it lines up like the other themes. */
+@font-face { font-family: "Bahnschrift Even"; src: local("Bahnschrift"); font-weight: 300 700; ascent-override: 108%; descent-override: 25%; }
 [data-theme="cyberpunk"] {
   /* Cyberpunk: near-black panels with cut corners, warning yellow and a cold cyan. */
   --backdrop: repeating-linear-gradient(90deg, rgba(0, 240, 255, .04) 0 1px, transparent 1px 64px), #0b0b10;
@@ -4145,8 +4149,8 @@ body:has(.lock) #toasts { bottom: 24px; }
   --meter: #00e5ff;
   --meter-2: #262632;
   --scrim: rgba(0, 0, 0, .72);
-  --font: Bahnschrift, "Segoe UI", sans-serif;
-  --font-display: Bahnschrift, "Segoe UI", sans-serif;
+  --font: "Bahnschrift Even", Bahnschrift, "Segoe UI", sans-serif;
+  --font-display: "Bahnschrift Even", Bahnschrift, "Segoe UI", sans-serif;
 }
 [data-theme="macclassic"] {
   /* Classic Mac: one bit. A dithered grey desktop, white windows with striped title bars, black for the chosen. */
