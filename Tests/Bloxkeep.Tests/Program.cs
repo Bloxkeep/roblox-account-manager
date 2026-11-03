@@ -60,6 +60,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("tick-time", false, TickTimeSuite.Run),
     ("play-losses", false, PlayLossesSuite.Run),
     ("macros", false, MacroSuite.Run),
+    ("input-turn", false, InputTurnSuite.Run),
     ("server-pick", false, ServerPickSuite.Run),
     ("adopt", false, AdoptSuite.Run),
     ("stats-icons", true, StatsIconSuite.Run),

@@ -33,6 +33,13 @@ static class InputTurn
         }
     }
 
+    /// <summary>Someone of this name waits for the turn (anti-AFK's "afk": a long turn hands the PC on).</summary>
+    public static bool Waits(string who)
+    {
+        lock (Gate)
+            return Waiting.Any(w => w.Who == who && !w.Ready.Task.IsCompleted);
+    }
+
     /// <summary>The turn at once, or null when someone has it.</summary>
     public static IDisposable? TryEnter(string who)
     {

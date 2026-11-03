@@ -207,6 +207,9 @@ sealed class MacroPlayer(IMacroDesk desk)
         return stopped;
     }
 
+    /// <summary>Bloxkeep closing: every run stopped.</summary>
+    public void ReleaseAll(string why) => Stop(null, why);
+
     /// <summary>The vault went: runs stopped, variables forgotten, finished runs too.</summary>
     public void Clear(string reason)
     {

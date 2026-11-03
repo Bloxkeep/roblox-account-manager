@@ -236,6 +236,15 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
         }
     }
 
+    /// <summary>A person's input came since <paramref name="started"/>. Raw input knows a device's input from a program's;
+    /// without it, input Windows processed long after our last send.</summary>
+    internal static bool PersonSince(DateTime started, Func<DateTime?>? personAt, Func<bool>? rawWorks, uint lastInputTick, uint lastSent)
+    {
+        if (personAt is not null)
+            return personAt() is { } at && at > started;
+        return unchecked((int)(lastInputTick - lastSent)) > 150;
+    }
+
     /// <summary>A window in front for a macro's input.</summary>
     sealed class Turn(IntPtr hWnd, IntPtr previous, uint person, Func<DateTime?>? personAt) : IMacroTurn
     {
@@ -251,14 +260,7 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
 
         public bool StillFront() => GetForegroundWindow() == hWnd && IsWindow(hWnd);
 
-        public bool PersonInput()
-        {
-            // Raw input knows a device's input from a program's; without it, input processed long after our last send.
-            if (personAt is not null)
-                return personAt() is { } at && at > _started;
-            uint last = AntiAfk.LastInputTick();
-            return unchecked((int)(last - _lastSent)) > 150;
-        }
+        public bool PersonInput() => PersonSince(_started, personAt, null, AntiAfk.LastInputTick(), _lastSent);
 
         public void Send(params INPUT[] inputs)
         {

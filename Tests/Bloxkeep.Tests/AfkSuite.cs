@@ -154,6 +154,22 @@ static class AfkSuite
             c.Check("Windows' raw input set up, for the background too", inputType.GetProperty("Working")!.GetValue(input) is true);
 
         Unseen(c, afk);
+
+        // A nudge due while a macro's turn has the PC waits for it; an idle kick meanwhile is told as the macro's doing.
+        // The window is none (IntPtr.Zero) and counts as played in before the turn is handed on: nothing is ever nudged.
+        InputTurn.Reset();
+        lastInput.Clear(); retry.Clear(); held.Clear();
+        const int E = 1005;
+        lastInput[E] = DateTime.UtcNow.AddMinutes(-19);
+        var macroTurn = InputTurn.TryEnter("macro")!;
+        var nudging = (Task)t.GetMethod("NudgeAsync", Harness.F)!.Invoke(app, [new List<(int, IntPtr)> { (E, IntPtr.Zero) }])!;
+        c.Check("a nudge waiting behind a macro's turn notes why (an idle kick then says so)", Held(E) == "MacroBusy", Held(E));
+        lastInput[E] = DateTime.UtcNow.AddMinutes(1);
+        macroTurn.Dispose();
+        await Task.WhenAny(nudging, Task.Delay(5000));
+        c.Check("…and once the turn is handed on, nothing left to nudge", nudging.IsCompleted && !InputTurn.Busy, InputTurn.Holder);
+        Harness.Set(app, "_nudging", true);
+        InputTurn.Reset();
     }
 
     /// <summary>
