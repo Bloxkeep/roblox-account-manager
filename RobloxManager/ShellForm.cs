@@ -1041,26 +1041,39 @@ public sealed class ShellForm : Form
             _automaticRestarts = 0;
         }
         _lastBrowserFailure = now;
-        switch (kind)
+        switch (FailureOf(kind))
         {
             // The page's renderer died: load the page again; it re-reads the state on load.
-            case CoreWebView2ProcessFailedKind.RenderProcessExited or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive:
+            case BrowserFailure.ReloadPage:
                 BeginInvoke(() =>
                 {
                     if (_web?.CoreWebView2 == core)
                         core.Navigate(Origin + "index.html");
                 });
                 break;
-            // Chromium restarts its GPU process by itself; a second crash points at the graphics driver.
-            case CoreWebView2ProcessFailedKind.GpuProcessExited:
+            // A second crash points at the graphics driver.
+            case BrowserFailure.GpuRestarted:
                 if (++_gpuCrashes >= 2 && !Prefs.SafeRendering)
                     BeginInvoke(new Action(async () => await RestartWebViewAsync(safe: true, automatic: true)));
                 break;
-            case CoreWebView2ProcessFailedKind.BrowserProcessExited:
+            case BrowserFailure.BrowserGone:
                 BeginInvoke(new Action(async () => await RestartWebViewAsync(Prefs.SafeRendering, automatic: true)));
                 break;
         }
     }
+
+    /// <summary>
+    /// What a browser process failing means for a page, the one rule for every window of the app's pages (this one, the
+    /// page windows, the tray, the browser windows' top). Every page of the browser hears every failure, a GPU process
+    /// exit too: Chromium starts that one again by itself and the pages go on, so it is no reason to load a page again.
+    /// </summary>
+    internal static BrowserFailure FailureOf(CoreWebView2ProcessFailedKind kind) => kind switch
+    {
+        CoreWebView2ProcessFailedKind.RenderProcessExited or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive => BrowserFailure.ReloadPage,
+        CoreWebView2ProcessFailedKind.GpuProcessExited => BrowserFailure.GpuRestarted,
+        CoreWebView2ProcessFailedKind.BrowserProcessExited => BrowserFailure.BrowserGone,
+        _ => BrowserFailure.None,
+    };
 
     /// <summary>Recreates the browser (optionally switching GPU/CPU drawing). The vault stays unlocked meanwhile.</summary>
     async Task RestartWebViewAsync(bool safe, bool automatic)
@@ -1188,4 +1201,17 @@ public sealed class ShellForm : Form
         _app.Dispose();
         base.OnFormClosed(e);
     }
+}
+
+/// <summary>What a page's window does when one of its browser's processes fails (<see cref="ShellForm.FailureOf"/>).</summary>
+enum BrowserFailure
+{
+    /// <summary>Nothing: the page goes on (a helper process the pages don't need).</summary>
+    None,
+    /// <summary>The page's renderer is gone or hung: the page is loaded again.</summary>
+    ReloadPage,
+    /// <summary>The GPU process exited; Chromium starts it again by itself and the pages go on.</summary>
+    GpuRestarted,
+    /// <summary>The whole browser is gone: the page needs a new one.</summary>
+    BrowserGone,
 }

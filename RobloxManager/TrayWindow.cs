@@ -20,6 +20,7 @@ public sealed class TrayWindow : Form
     readonly System.Windows.Forms.Timer _release = new() { Interval = (int)KeepBrowser.TotalMilliseconds };
     WebView2? _web;
     Task? _starting;
+    CancellationTokenSource? _startCancel;
     TaskCompletionSource? _ready;
     /// <summary>"panel" or "menu"; a new count each time it opens, so the page starts on its first page.</summary>
     string _mode = "panel";
@@ -101,9 +102,10 @@ public sealed class TrayWindow : Form
         _release.Stop();
         try
         {
-            await EnsureBrowserAsync();
+            if (!await EnsureBrowserAsync())
+                return; // let go meanwhile (closed again, its page failed, the app quitting)
         }
-        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or WebView2RuntimeNotFoundException or TimeoutException)
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or WebView2RuntimeNotFoundException or TimeoutException or ObjectDisposedException)
         {
             Log.Write(ex);
             _showing = false;
@@ -168,33 +170,65 @@ public sealed class TrayWindow : Form
             HideTray();
     }
 
-    async Task EnsureBrowserAsync()
+    bool BrowserReady => _web?.CoreWebView2 is not null && _ready is { Task.IsCompletedSuccessfully: true };
+
+    /// <summary>Starts the page (once). False when the start was let go meanwhile (the tray closed as its page failed, the
+    /// app quitting); a start that failed throws.</summary>
+    async Task<bool> EnsureBrowserAsync()
     {
-        if (_web?.CoreWebView2 is not null && _ready is { Task.IsCompletedSuccessfully: true })
-            return;
-        _starting ??= StartBrowserAsync();
-        try
+        while (!BrowserReady)
         {
-            await _starting;
-        }
-        finally
-        {
-            if (_ready is not { Task.IsCompletedSuccessfully: true })
+            if (IsDisposed)
+                return false;
+            if (_starting is null)
+            {
+                _startCancel = new CancellationTokenSource();
+                _starting = StartBrowserAsync(_startCancel.Token);
+            }
+            var starting = _starting;
+            try
+            {
+                await starting;
+            }
+            catch (Exception) when (_starting != starting)
+            {
+                // Let go meanwhile: its failure is nobody's (WebToolWindow.EnsureBrowserAsync).
+            }
+            catch
+            {
                 _starting = null;
+                throw;
+            }
+            if (_starting != starting)
+            {
+                if (_starting is null)
+                    return false;
+                continue; // a newer start is the one that counts
+            }
+            if (!BrowserReady)
+            {
+                _starting = null;
+                return false;
+            }
         }
+        return true;
     }
 
-    async Task StartBrowserAsync()
+    /// <param name="cancel">Cancelled when the tray lets this start go (<see cref="ReleaseBrowser"/>, Dispose).</param>
+    async Task StartBrowserAsync(CancellationToken cancel)
     {
-        var env = await ShellForm.CreateEnvironmentAsync();
+        var env = await ShellForm.CreateEnvironmentAsync().WaitAsync(cancel);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
         var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Themes.Current.Surface };
         Controls.Add(web);
         _web = web;
         // The browser starts once its control has a window, and a hidden form's controls get none by themselves.
         _ = Handle;
         _ = web.Handle;
-        await web.EnsureCoreWebView2Async(env);
-        var core = web.CoreWebView2;
+        await web.EnsureCoreWebView2Async(env).WaitAsync(cancel);
+        // Disposed or let go while the browser started: nothing of this start is used.
+        if (IsDisposed || web.IsDisposed || _web != web || web.CoreWebView2 is not { } core)
+            throw new ObjectDisposedException(nameof(TrayWindow));
         var settings = core.Settings;
         settings.AreDevToolsEnabled = false;
         settings.IsStatusBarEnabled = false;
@@ -215,19 +249,31 @@ public sealed class TrayWindow : Form
             if (e.IsSuccess)
                 _ready?.TrySetResult();
         };
-        // Its page gone (the renderer crashed): the next open starts it again.
-        core.ProcessFailed += (_, _) => BeginInvoke(() => { HideTray(); ReleaseBrowser(); });
+        // Its page gone (the renderer crashed or hung, the browser gone): the next open starts it again. Not for a GPU
+        // process restart, which the page lives through (ShellForm.FailureOf).
+        core.ProcessFailed += (_, e) =>
+        {
+            if (ShellForm.FailureOf(e.ProcessFailedKind) is BrowserFailure.ReloadPage or BrowserFailure.BrowserGone && IsHandleCreated && !IsDisposed)
+                BeginInvoke(() =>
+                {
+                    if (_web != web)
+                        return;
+                    HideTray();
+                    ReleaseBrowser();
+                });
+        };
         core.WebMessageReceived += (_, e) =>
         {
             string json = e.WebMessageAsJson;
             BeginInvoke(() => OnMessage(json));
         };
-        _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         core.Navigate(ShellForm.Origin + "tray.html");
-        await _ready.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(15), cancel);
     }
 
-    /// <summary>The browser goes a minute after the tray last closed (its memory with it); the next open starts it again.</summary>
+    /// <summary>The browser goes a minute after the tray last closed (its memory with it); the next open starts it again.
+    /// A start under way is let go too.</summary>
     void ReleaseBrowser()
     {
         _release.Stop();
@@ -235,12 +281,15 @@ public sealed class TrayWindow : Form
             return;
         _ready = null;
         _starting = null;
+        var cancel = _startCancel;
+        _startCancel = null;
         if (_web is { } web)
         {
             _web = null;
             Controls.Remove(web);
             web.Dispose();
         }
+        cancel?.Cancel();
     }
 
     /// <summary>The page's messages, as the app's page sends them: { id, cmd, args }.</summary>
@@ -507,6 +556,9 @@ public sealed class TrayWindow : Form
             _refresh.Dispose();
             _release.Dispose();
             _web?.Dispose();
+            _starting = null;
+            _startCancel?.Cancel();
+            _startCancel = null;
         }
         base.Dispose(disposing);
     }
