@@ -616,6 +616,9 @@ public sealed partial class AppController
     {
         if (Open is not { } vault)
             return;
+        // No macro and no panel: nothing to show, hide or refresh (the usual case), so no lists built every tick.
+        if (vault.Data.Settings.Macros.Count == 0 && _panels.Count == 0 && _panelsAuto.Count == 0)
+            return;
         var inGame = _running.Where(r => _logs.StateOf(r.Value.Pid) is { Status: "ingame", PlaceId: > 0 }).ToList();
         var places = inGame.Select(r => _logs.StateOf(r.Value.Pid)!.PlaceId!.Value).ToHashSet();
         var playing = inGame.Select(r => r.Key).ToHashSet();
