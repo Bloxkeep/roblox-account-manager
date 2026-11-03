@@ -509,6 +509,11 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   };
   const moveDot = (i: number, x: number, y: number) => setXY(i, { x: +x.toFixed(4), y: +y.toFixed(4) });
   const moveBox = (name: string, r: Rect) => setArea(name, { rect: { x: +r.x.toFixed(4), y: +r.y.toFixed(4), w: +r.w.toFixed(4), h: +r.h.toFixed(4) } });
+  /** A step's own area (or its If's) dragged on the game. */
+  const moveRegion = (i: number, test: boolean, r: Rect) => {
+    const region = { x: +r.x.toFixed(4), y: +r.y.toFixed(4), w: +r.w.toFixed(4), h: +r.h.toFixed(4) };
+    setSteps(list => list.map((s, k) => k !== i ? s : test ? { ...s, test: { ...s.test, region } } : { ...s, region }));
+  };
   const dots = steps.flatMap((s, i) => { const p = pointOf(s, opts); return p ? [{ i, n: i + 1, ...p }] : []; });
 
   // Edit on game: the dots and boxes drawn over the window itself, dragged there; each change comes back here and the
@@ -524,11 +529,12 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
     if (!onGame) return;
     return () => { call('editOnGame', { accountId: null }, { silent: true }); };
   }, [onGame, windowId]);
-  useEffect(() => on('onGameEdit', (d?: { step?: number; x?: number; y?: number; area?: string; rect?: Rect; done?: boolean }) => {
+  useEffect(() => on('onGameEdit', (d?: { step?: number; x?: number; y?: number; area?: string; region?: number; test?: boolean; rect?: Rect; done?: boolean }) => {
     if (!d) return;
     if (d.done) return setOnGame(false);
     if (d.step != null && d.x != null && d.y != null) moveDot(d.step, d.x, d.y);
     if (d.area && d.rect) moveBox(d.area, d.rect);
+    if (d.region != null && d.rect) moveRegion(d.region, !!d.test, d.rect);
   }), [on]);
   const editOnGame = () => { if (!windowId) return toast(t('macro.need.game'), 'info'); setOnGame(x => !x); };
 

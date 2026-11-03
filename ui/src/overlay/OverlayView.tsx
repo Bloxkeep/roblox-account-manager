@@ -234,7 +234,7 @@ export function OverlayView({ data, on }: { data: OverlayData; on: OverlayOn }) 
       style={{ left: pct(d.x), top: pct(d.y), width: DOT * 2, height: DOT * 2 }}>{d.step + 1}</div>)}
     <div className="ov-bar" role="toolbar" aria-label={title}>
       <b className="ov-title">{title}</b>
-      {picking ? null : <span className="ov-hint">{t(data.mode === 'edit' ? 'ov.dragHint' : 'ov.areasHint')}</span>}
+      {picking ? null : <span className="ov-hint">{t(data.mode !== 'edit' ? 'ov.areasHint' : dots.length || areas.length ? 'ov.dragHint' : 'ov.emptyHint')}</span>}
       {picking
         ? <button type="button" className="btn sm ghost" onClick={() => on.act('cancel')}>{t('ov.cancel')}</button>
         : <button type="button" className="btn sm primary" onClick={() => on.act('done')}>{t('ov.done')}</button>}

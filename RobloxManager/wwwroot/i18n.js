@@ -891,7 +891,7 @@ window.I18N = {
     'stats.runningNow1': '1 window open now', 'stats.runningNow': '{n} windows open now', 'stats.moreRings1': '1 more account not on the clock', 'stats.moreRings': '{n} more accounts not on the clock',
     'stats.onlyGame': 'Only {game}', 'stats.allGames': 'All games', 'stats.streak': '{n} full days in a row', 'stats.streakTip': 'Days played 23 hours or more, up to yesterday',
     'mon.minimize': 'Minimize', 'mon.restore': 'Open again', 'mon.show': 'Show', 'mon.close': 'Close Roblox', 'mon.copyPid': 'Copy PID',
-    'ov.editing': 'Editing {name}', 'ov.newMacro': 'a new macro', 'ov.areas': 'Areas of {name}', 'ov.dragHint': 'Drag the dots and boxes',
+    'ov.editing': 'Editing {name}', 'ov.newMacro': 'a new macro', 'ov.areas': 'Areas of {name}', 'ov.dragHint': 'Drag the dots and boxes', 'ov.emptyHint': 'Nothing to drag yet: add a click or an area',
     'ov.areasHint': 'Drag a box, or a corner to resize',
     'ov.pick': 'Click the place on the game', 'ov.screen': 'Click the color you want', 'ov.done': 'Done', 'ov.cancel': 'Cancel (Esc)',
     // ── end P7 ──
@@ -1783,7 +1783,7 @@ window.I18N = {
     'stats.runningNow1': '1 cửa sổ đang chạy', 'stats.runningNow': '{n} cửa sổ đang chạy', 'stats.moreRings1': 'Còn 1 tài khoản không có trên đồng hồ', 'stats.moreRings': 'Còn {n} tài khoản không có trên đồng hồ',
     'stats.onlyGame': 'Chỉ tính {game}', 'stats.allGames': 'Tất cả game', 'stats.streak': '{n} ngày treo trọn liền', 'stats.streakTip': 'Số ngày liền chơi từ 23 giờ trở lên, tính đến hôm qua',
     'mon.minimize': 'Thu nhỏ', 'mon.restore': 'Mở lại', 'mon.show': 'Hiện', 'mon.close': 'Đóng Roblox', 'mon.copyPid': 'Sao chép PID',
-    'ov.editing': 'Đang sửa {name}', 'ov.newMacro': 'macro mới', 'ov.areas': 'Vùng của {name}', 'ov.dragHint': 'Kéo các điểm và vùng',
+    'ov.editing': 'Đang sửa {name}', 'ov.newMacro': 'macro mới', 'ov.areas': 'Vùng của {name}', 'ov.dragHint': 'Kéo các điểm và vùng', 'ov.emptyHint': 'Chưa có gì để kéo: thêm bước bấm hoặc vùng',
     'ov.areasHint': 'Kéo vùng, kéo góc để đổi cỡ',
     'ov.pick': 'Bấm vào chỗ cần chọn trên game', 'ov.screen': 'Bấm vào màu cần lấy', 'ov.done': 'Xong', 'ov.cancel': 'Hủy (Esc)',
     // ── end P7 ──

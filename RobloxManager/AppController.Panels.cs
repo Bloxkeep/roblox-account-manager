@@ -692,6 +692,26 @@ public sealed partial class AppController
         ColorTranslator.FromHtml(a.Colour is { Length: 7 } c && c[0] == '#' && c[1..].All(Uri.IsHexDigit) ? c : MacroOptions.AreaColour),
         MacroOptions.Rect(a.Rect) ?? new MacroRect { X = 0.25, Y = 0.25, W = 0.5, H = 0.5 })).ToList();
 
+    /// <summary>The steps' own areas (where a picture, words or a colour are looked for, written on the step rather than
+    /// named in Areas), named "step:N" or "test:N" for the step's own or its If's; amber, to tell them from named areas.</summary>
+    static List<OverlayWindow.Area> StepAreas(Macro m)
+    {
+        var list = new List<OverlayWindow.Area>();
+        for (int i = 0; i < m.Steps.Count; i++)
+        {
+            var s = m.Steps[i];
+            if (MacroOptions.Rect(s?.Region) is { } own)
+                list.Add(new($"step:{i}", L.F("Step {0}", i + 1), ColorTranslator.FromHtml("#f59e0b"), own));
+            if (MacroOptions.Rect(s?.Test?.Region) is { } test)
+                list.Add(new($"test:{i}", L.F("Step {0}", i + 1), ColorTranslator.FromHtml("#f59e0b"), test));
+        }
+        return list;
+    }
+
+    /// <summary>"step:N" / "test:N" of <see cref="StepAreas"/>: the step and whether it is its If's area.</summary>
+    static (int Step, bool Test)? StepAreaOf(string name) =>
+        name.Split(':') is [var kind and ("step" or "test"), var n] && int.TryParse(n, out int i) ? (i, kind == "test") : null;
+
     /// <summary>
     /// The editor's "Edit on game": the draft's points and areas over the account's window, the page told of each drag
     /// (onGameEdit) and calling again with the new draft; accountId null ends it.
@@ -715,7 +735,7 @@ public sealed partial class AppController
             throw new UserError(L.T("This account's Roblox isn't open."));
         string title = draft.Name ?? ""; // the page says "Editing …" (or "New macro")
         var dots = AreaGeometry.Dots(draft);
-        var areas = OverlayAreas(draft);
+        var areas = OverlayAreas(draft).Concat(StepAreas(draft)).ToList();
         if (_overlay is { IsDisposed: false, Kind: OverlayWindow.Mode.Edit } open && _overlayFor is { Page: true } on && on.Account == account)
         {
             open.Set(dots, areas, title);
@@ -725,7 +745,13 @@ public sealed partial class AppController
         var overlay = new OverlayWindow(window.Handle, OverlayWindow.Mode.Edit, title) { CustomTheme = CustomThemeDto() };
         overlay.Set(dots, areas);
         overlay.DotMoved += (step, x, y) => Emit("onGameEdit", new { step, x, y });
-        overlay.AreaChanged += (area, rect) => Emit("onGameEdit", new { area, rect });
+        overlay.AreaChanged += (area, rect) =>
+        {
+            if (StepAreaOf(area) is { } at)
+                Emit("onGameEdit", new { region = at.Step, test = at.Test, rect });
+            else
+                Emit("onGameEdit", new { area, rect });
+        };
         overlay.Done += () =>
         {
             if (_overlay == overlay)
