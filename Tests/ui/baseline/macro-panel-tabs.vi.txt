@@ -99,6 +99,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Nhảy chống AFK"] "Nhảy chống AFK"
                 span.mc-line [title="Mỗi 5 phút · 2 tài khoản · Ctrl+Alt+1"] "Mỗi 5 phút · 2 tài khoản · Ctrl+Alt+1"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh
+                  b "Space"
               button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Nhảy chống AFK" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Bảng điều khiển"
@@ -115,6 +118,17 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Nhận rương hằng ngày"] "Nhận rương hằng ngày"
                 span.mc-line [title="Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+2"] "Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+2"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh.opens
+                  svg.i #1ap9cll
+                  b "∞"
+                span.mc-sh
+                  svg.i #16jqtkh
+                span.mc-sh
+                  svg.i #16jqtkh
+                span.mc-sh
+                  b "2s"
+                i.mc-sh-end
               button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Nhận rương hằng ngày" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Bảng điều khiển"
@@ -131,6 +145,22 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Đường farm"] "Đường farm"
                 span.mc-line [title="Sau khi vào game · Mọi tài khoản · tự chạy đang tắt"] "Sau khi vào game · Mọi tài khoản · tự chạy đang tắt"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh
+                  b "W"
+                span.mc-sh
+                  b "2s"
+                span.mc-sh
+                  b "W"
+                span.mc-sh
+                  svg.i #115g1gb
+                span.mc-sh.opens
+                  svg.i #die7lc
+                span.mc-sh
+                  svg.i #16jqtkh
+                i.mc-sh-end
+                span.mc-sh
+                  svg.i #13a5dgx
               button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Đường farm" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Bảng điều khiển"
@@ -147,6 +177,19 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Quăng và kéo cần"] "Quăng và kéo cần"
                 span.mc-line [title="Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+3"] "Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+3"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh.opens
+                  svg.i #1ap9cll
+                  b "∞"
+                span.mc-sh
+                  svg.i #115g1gb
+                span.mc-sh
+                  svg.i #d2zp05
+                span.mc-sh
+                  svg.i #1l5qw3q
+                span.mc-sh
+                  svg.i #1mp3g6t
+                i.mc-sh-end
               button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Quăng và kéo cần" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Bảng điều khiển"
@@ -438,3 +481,4 @@ html [data-theme="dark" lang="vi"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

@@ -88,6 +88,18 @@ html [data-theme="dark" lang="en"]
               svg.i #u7ty99
               span "New preset"
         div.scroll
+          section.pv-ruler [aria-label="Today"]
+            h3 "Today"
+            div.pvr-track
+              span.pvr-past [style="width:50%"]
+              small.pvr-hour [style="left:0%"] "12 AM"
+              small.pvr-hour [style="left:25%"] "6 AM"
+              small.pvr-hour [style="left:50%"] "12 PM"
+              small.pvr-hour [style="left:75%"] "6 PM"
+              button.pvr-run [type="button" title="Farm Blox Fruits · 8:00 PM" aria-label="Farm Blox Fruits, 8:00 PM" style="left:83.33%"]
+                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+              span.pvr-now [style="left:50%"]
+                small "12:00 PM"
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
               span.ord-grip.pv-grip [title="Drag to reorder"]
@@ -210,3 +222,4 @@ html [data-theme="dark" lang="en"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

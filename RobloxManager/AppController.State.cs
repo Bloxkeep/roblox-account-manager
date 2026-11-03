@@ -195,10 +195,14 @@ public sealed partial class AppController
     /// <summary>What a client here is doing: "ingame", "joining" (just started or not known), "menu" (no game, or left it),
     /// "disconnected" (kicked or lost connection; the window stays on Roblox's error screen). Its log says so at once;
     /// without one, Roblox's status for the account is used.</summary>
+    /// <summary>What a client's log line says, as <see cref="Connection"/> names it.</summary>
+    static string LogConnection(string status) =>
+        status switch { "ingame" => "ingame", "joining" => "joining", "left" => "menu", "signedout" => "signedout", _ => "disconnected" };
+
     string Connection(Account a, int pid, PendingLaunch launch)
     {
         if (_logs.StateOf(pid) is { } log)
-            return log.Status switch { "ingame" => "ingame", "joining" => "joining", "left" => "menu", "signedout" => "signedout", _ => "disconnected" };
+            return LogConnection(log.Status);
         bool known = _presence.TryGetValue(a.UserId, out var p);
         if (known && p!.Type == 2)
             return "ingame";

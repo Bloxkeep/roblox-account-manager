@@ -1046,6 +1046,14 @@
         case 'exportActivity': await wait(200); return ACTIVITY.length; // the app shows Windows' Save dialog and writes the file
         // Play-time statistics: made-up stays for three of the accounts and the three games, the same on every call
         // (no randomness) so screenshots repeat. ?nostats=1: nothing recorded yet.
+        // Today's stays by account, as seconds from midnight (the cards' day strips): three accounts, one dropped at 3 am.
+        case 'todayStrips': {
+          const now = new Date(), since = new Date(now); since.setHours(0, 0, 0, 0);
+          const upTo = Math.round((now - since) / 1000), cap = x => Math.min(upTo, x);
+          const rows = Object.fromEntries([[1, [[0, 3 * 3600 + 600, 1], [3 * 3600 + 1500, upTo, 0]]], [2, [[1800, cap(9 * 3600), 0], [cap(11 * 3600), upTo, 0]]],
+            [4, [[cap(7 * 3600), cap(8 * 3600 + 1200), 1]]]].map(([n, stays]) => [id(n), stays.map(([a, b, c]) => [cap(a), cap(b), c]).filter(([a, b]) => b > a)]));
+          return { since: since.toISOString(), now: now.toISOString(), rows };
+        }
         case 'playStats': {
           await wait(200);
           if (params.has('statsms')) await new Promise(r => setTimeout(r, Number(params.get('statsms'))));
@@ -1063,12 +1071,14 @@
           });
           const total = buckets.reduce((s, b) => s + b.seconds, 0), count = Math.round(total / 2700) + (total ? 2 : 0);
           const share = p => Math.round(total * p);
-          return { days, hourly, since: start.toISOString(), recorded: !params.has('nostats'), totalSeconds: total, sessions: count, kicks: Math.round(total / 20000),
+          const result = { days, hourly, since: start.toISOString(), recorded: !params.has('nostats'), totalSeconds: total, sessions: count, kicks: Math.round(total / 20000),
             // The period before, as far in: more play, fewer drops. ?noprev=1: the records don't reach back that far.
             previous: params.has('noprev') || !total ? null : { totalSeconds: Math.round(total / 1.2), kicks: Math.round(total / 20000) + 2 },
             icons: Object.fromEntries([2753915549, 920587237, 4924922222].map(p => ['u' + p, cold(games[p].iconUrl)])),
             accounts: [[1, .45, 1, 2753915549], [2, .33, 2, 2753915549], [4, .2, 0, 4924922222], [9, .02, 0, 920587237]].map(([n, p, k, g]) => { const acc = accounts.find(x => x.id === id(n)); return { id: id(n), label: acc?.label, deleted: acc ? undefined : true, username: acc?.username, avatarUrl: acc?.avatarUrl, seconds: share(p), sessions: Math.max(1, Math.round(count * p)), kicks: k,
-              topGame: { key: 'u' + g, name: games[g].name, iconUrl: cold(games[g].iconUrl) } }; }),
+              topGame: { key: 'u' + g, name: games[g].name, iconUrl: cold(games[g].iconUrl) },
+              // Its play per hour or day, and its run of full days (the main farm account six, one other two).
+              buckets: buckets.map((b, i) => Math.round(b.seconds * p * (.5 + noise(i * 13 + n)))), streak: n === 1 ? 6 : n === 2 ? 2 : 0 }; }),
             games: [[2753915549, .55], [920587237, .3], [4924922222, .15]].map(([p, s]) => ({ key: 'u' + p, placeId: p, name: games[p].name, iconUrl: cold(games[p].iconUrl), seconds: share(s), sessions: Math.max(1, Math.round(count * s)) })),
             ends: (() => { const e = new Date(start); e.setDate(e.getDate() + days); return e.toISOString(); })(),
             // Stays as shares of the time so far: [from, to, game, how it ended].
@@ -1079,10 +1089,21 @@
               }) })),
             losses: !total ? [] : [{ kind: 'idle', times: 2, seconds: share(.14), accounts: [id(1), id(2)] }, { kind: 'other', times: 1, seconds: share(.05), accounts: [id(2)] }],
             buckets,
+            // 7 and 30 days: windows by hour, more at night (left farming), one night the PC was off, none after now.
+            heat: hourly ? undefined : Array.from({ length: days }, (_, i) => Array.from({ length: 24 }, (_, h) => {
+              const at = new Date(start); at.setDate(start.getDate() + i); at.setHours(h);
+              if (at > now || params.has('nostats') || (i === days - 4 && h >= 1 && h < 7)) return 0;
+              return Math.round(((h < 8 ? 6 : h >= 20 ? 4 : 2) + noise(i * 24 + h) * 3) * 100) / 100;
+            })),
             presets: [{ id: 'p1', name: 'Farm Blox Fruits', iconUrl: cold(games[2753915549].iconUrl), seconds: share(.62), sessions: Math.max(1, Math.round(count * .6)), kicks: 1, accounts: 3 },
               { id: 'p2', name: 'Adopt Me trade', iconUrl: cold(games[920587237].iconUrl), seconds: share(.25), sessions: 3, kicks: 0, accounts: 1 },
               { id: '00000000-0000-0000-0000-000000000000', name: '', iconUrl: null, seconds: share(.13), sessions: 2, kicks: 0, accounts: 2 }],
             longest: total ? { seconds: Math.round(total * .3), account: id(1), label: accounts.find(x => x.id === id(1))?.label, game: games[2753915549].name } : null };
+          // One game only (picked on the games' map): its box, the accounts that mostly play it, its stays.
+          if (a.game) Object.assign(result, { game: { key: a.game, name: result.games.find(g => g.key === a.game)?.name || '' },
+            games: result.games.filter(g => g.key === a.game), accounts: result.accounts.filter(x => x.topGame?.key === a.game),
+            timeline: result.timeline.map(r => ({ ...r, segments: r.segments.filter(x => x.game === a.game) })).filter(r => r.segments.length) });
+          return result;
         }
         // Macros (Beta), as the app answers (AppController's macro commands); nothing is ever pressed or clicked here.
         case 'saveMacro': {
@@ -1278,7 +1299,7 @@
 // The game monitor (?monitor=1&tiles=N): N Roblox windows, sent as the app sends them ("monitor") once the page reports
 // the tab's area, each with a stand-in picture where the app would lay the live one (the browser can't show windows).
 // ?tiles=N&mintile=1 the second one minimised, &long=1 long names and games, &hide=1 names hidden, &others=1 the last one
-// not opened by Bloxkeep. The tiles' acts (monitorAct) change the list as the app would.
+// not opened by Bloxkeep, &same=1 all in one game (no lanes), &drop=1 one cut off and one joining. The tiles' acts (monitorAct) change the list as the app would.
 (() => {
   const base = window.__mockBridge;
   const params = new URLSearchParams(location.search);
@@ -1294,6 +1315,9 @@
     <rect x="600" y="310" width="64" height="64" fill="#f2c94c"/><rect x="590" y="374" width="84" height="96" fill="#3b82f6"/>
     <rect x="598" y="470" width="30" height="78" fill="#1f2937"/><rect x="636" y="470" width="30" height="78" fill="#1f2937"/>
     <rect x="24" y="20" width="44" height="44" rx="8" fill="#000" fill-opacity=".45"/><rect x="1104" y="20" width="152" height="40" rx="8" fill="#000" fill-opacity=".4"/></svg>`);
+  /** A game icon: a coloured square with a block on it. */
+  const icon = (bg, fg) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="${bg}"/><rect x="18" y="18" width="28" height="28" rx="4" fill="${fg}"/></svg>`);
+  const ICONS = [icon('#2f6fd6', '#f2c94c'), icon('#7a3fd1', '#7ee0a1'), icon('#0f766e', '#f4b56a')];
   const PICTURES = [scene('#7ec8f0', '#5aa04a', '#b97a4a', '#9aa3ad'), scene('#f4b56a', '#c9a15b', '#7a5230', '#5b6b7a'),
     scene('#1c2a4a', '#2f4f3a', '#45607d', '#6b5b8c'), scene('#a8d8e8', '#e8eef2', '#7a8b99', '#c45c5c')];
   const NAMES = long ? ['MainAccountWithAVeryLongUsername', 'FarmAlt_number_two_2024', 'Trader'] : ['MainAccount', 'FarmAlt02', 'Trader'];
@@ -1303,8 +1327,11 @@
     return {
       id: String(1050000 + i * 2468), pid: 14280 + i * 412,
       name: other ? 'Roblox' : hide ? (vi ? `Tài khoản ${i + 1}` : `Account ${i + 1}`) : i < 3 ? NAMES[i] : `Farm${String(i).padStart(2, '0')}`,
-      game: i === 1 && !params.has('mintile') ? (vi ? 'Chưa vào game' : 'No game') : GAMES[i % 3],
+      game: params.has('same') ? GAMES[0] : i === 1 && !params.has('mintile') ? (vi ? 'Chưa vào game' : 'No game') : GAMES[i % 3],
       ramMb: [1240, 812, 960][i % 3] + i * 10, ours: !other, minimized: params.has('mintile') && i === 1, picture: PICTURES[i % PICTURES.length],
+      // &drop=1: the fourth window cut off, the seventh still joining; the rest of a game's share two servers.
+      status: i === 1 && !params.has('mintile') ? 'menu' : params.has('drop') && i === 3 ? 'disconnected' : params.has('drop') && i === 6 ? 'joining' : 'ingame',
+      jobId: i === 1 || params.has('drop') && (i === 3 || i === 6) ? null : `job-${i % 3}-${i < 5 ? 'a' : 'b'}`, iconUrl: i === 1 && !params.has('mintile') ? null : ICONS[i % 3],
     };
   });
   let emit = () => {};

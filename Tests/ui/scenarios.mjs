@@ -1277,8 +1277,10 @@ export default [
   S('stats-fail', 'stats=1&statsfail=1', async s => { await s.wait(300); await s.click(key('srv.retry')); await s.wait(300); }),
   S('stats-today', 'stats=1', async s => { await s.click(key('stats.period.1')); await s.wait(300); }),
   S('stats-hidden-names', 'stats=1&hide=1', null, { langs: ['en'] }),
-  // 7 days: an account's row opens its own timeline; with no records from before, no "vs" line.
-  S('stats-account-open', 'stats=1', async s => { await s.click(key('stats.period.7')); await s.wait(300); await s.click({ css: '.by-account tr.opens' }); await s.wait(200); }),
+  // 7 days: an account's card opens its own timeline; with no records from before, no "vs" line.
+  S('stats-account-open', 'stats=1', async s => { await s.click(key('stats.period.7')); await s.wait(300); await s.click({ css: '.sa-card.opens' }); await s.wait(200); }),
+  // A box on the games' map: the page counts that game only, the map keeps every game to pick another.
+  S('stats-game-pick', 'stats=1', async s => { await s.click(key('stats.period.30')); await s.wait(300); await s.click({ css: '.gm button:nth-child(2)' }); await s.wait(400); }),
   S('stats-no-before', 'stats=1&noprev=1', async s => { await s.click(key('stats.period.7')); await s.wait(300); }, { langs: ['en'] }),
   S('stats-activity-filter', 'stats=1', async s => {
     await s.click(key('alog.title'));
@@ -1852,14 +1854,18 @@ export default [
   S('monitor-one', 'monitor=1&tiles=1', async s => { await s.point({ css: '.mon-tile' }); }),
   S('monitor-many', 'monitor=1&tiles=9&long=1', async s => { await s.point({ css: '.mon-tile' }); }),
   S('monitor-names-hidden', 'monitor=1&tiles=3&hide=1&others=1', async s => { await s.point({ css: '.mon-tile' }); }),
-  S('monitor-minimized', 'monitor=1&tiles=3', async s => { await s.click({ css: '.mon-tile:nth-child(2) .mon-min' }); await s.wait(300); }),
+  S('monitor-minimized', 'monitor=1&tiles=3&same=1', async s => { await s.click({ css: '.mon-tile:nth-child(2) .mon-min' }); await s.wait(300); }),
   // The menu withdraws only the picture it lies over: the other two keep theirs.
-  S('monitor-menu', 'monitor=1&tiles=3', async s => {
+  S('monitor-menu', 'monitor=1&tiles=3&same=1', async s => {
     await s.click({ css: '.mon-tile:first-child .mon-pic' }, { button: 'right' });
     await s.wait(200);
     const left = await s.eval('window.__monitorArea?.pictures?.map(p => p.id).join(",")');
     if (!(await s.eval('!!document.querySelector(".menu")')) || left.split(',').length !== 2) throw new Error(`pictures left with the menu open: ${left}`);
   }),
+  S('monitor-lanes', 'monitor=1&tiles=9&drop=1', async s => { await s.point({ css: '.mon-lane' }); }),
+  S('monitor-lane-folded', 'monitor=1&tiles=9&drop=1', async s => { await s.click({ css: '.mon-lane:first-child .mon-fold' }); await s.wait(300); }),
+  S('monitor-lane-solo', 'monitor=1&tiles=9&drop=1', async s => { await s.click({ css: '.mon-lane:nth-child(2) .mon-lane-acts .icon-btn:nth-child(2)' }); await s.wait(300); }),
+  S('monitor-lane-close-ask', 'monitor=1&tiles=9&drop=1', async s => { await s.click({ css: '.mon-lane:first-child .mon-kill' }); await s.wait(200); }),
   S('monitor-none', 'monitor=1&tiles=0', async s => { await s.point({ css: '.mon-empty' }); }),
   S('monitor-light', 'monitor=1&tiles=3&theme=light', async s => { await s.point({ css: '.mon-tile' }); }),
   S('monitor-retro', 'monitor=1&tiles=4&mintile=1&theme=retro', async s => { await s.point({ css: '.mon-tile' }); }, { langs: ['en'] }),

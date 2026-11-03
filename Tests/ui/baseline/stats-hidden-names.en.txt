@@ -146,6 +146,199 @@ html [data-theme="dark" lang="en"]
                       b "3h03"
                       i [style="height:calc(79.1% - 14.238px)"]
                     small "Today"
+              div.stat-card [id="stats-heat"]
+                h3 "By hour"
+                  span.heat-key [aria-hidden="true"] "LessMore"
+                    i.h0
+                    i.h1
+                    i.h2
+                    i.h3
+                    i.h4
+                div.heat [role="img" aria-label="By hour"]
+                  span [style="grid-row-end:auto;grid-row-start:1"]
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:2;grid-row-end:auto;grid-row-start:1"] "12 AM"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:5;grid-row-end:auto;grid-row-start:1"] "3 AM"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:8;grid-row-end:auto;grid-row-start:1"] "6 AM"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:11;grid-row-end:auto;grid-row-start:1"] "9 AM"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:14;grid-row-end:auto;grid-row-start:1"] "12 PM"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:17;grid-row-end:auto;grid-row-start:1"] "3 PM"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:20;grid-row-end:auto;grid-row-start:1"] "6 PM"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:23;grid-row-end:auto;grid-row-start:1"] "9 PM"
+                  small.heat-d "Sat"
+                  i.h3 [title="Sat, 12 AM: 6.3 windows on average"]
+                  i.h3 [title="Sat, 1 AM: 6.1 windows on average"]
+                  i.h4 [title="Sat, 2 AM: 8.8 windows on average"]
+                  i.h4 [title="Sat, 3 AM: 8.6 windows on average"]
+                  i.h4 [title="Sat, 4 AM: 8.3 windows on average"]
+                  i.h4 [title="Sat, 5 AM: 8.1 windows on average"]
+                  i.h4 [title="Sat, 6 AM: 7.9 windows on average"]
+                  i.h4 [title="Sat, 7 AM: 7.6 windows on average"]
+                  i.h2 [title="Sat, 8 AM: 3.4 windows on average"]
+                  i.h2 [title="Sat, 9 AM: 3.1 windows on average"]
+                  i.h2 [title="Sat, 10 AM: 2.9 windows on average"]
+                  i.h2 [title="Sat, 11 AM: 2.6 windows on average"]
+                  i.h2 [title="Sat, 12 PM: 2.4 windows on average"]
+                  i.h1 [title="Sat, 1 PM: 2.2 windows on average"]
+                  i.h3 [title="Sat, 2 PM: 4.9 windows on average"]
+                  i.h3 [title="Sat, 3 PM: 4.7 windows on average"]
+                  i.h2 [title="Sat, 4 PM: 4.4 windows on average"]
+                  i.h2 [title="Sat, 5 PM: 4.2 windows on average"]
+                  i.h2 [title="Sat, 6 PM: 3.9 windows on average"]
+                  i.h2 [title="Sat, 7 PM: 3.7 windows on average"]
+                  i.h3 [title="Sat, 8 PM: 5.5 windows on average"]
+                  i.h3 [title="Sat, 9 PM: 5.2 windows on average"]
+                  i.h3 [title="Sat, 10 PM: 5 windows on average"]
+                  i.h3 [title="Sat, 11 PM: 4.7 windows on average"]
+                  small.heat-d "Sun"
+                  i.h3 [title="Sun, 12 AM: 6.5 windows on average"]
+                  i.h3 [title="Sun, 1 AM: 6.2 windows on average"]
+                  i.h4 [title="Sun, 2 AM: 9 windows on average"]
+                  i.h4 [title="Sun, 3 AM: 8.8 windows on average"]
+                  i.h4 [title="Sun, 4 AM: 8.5 windows on average"]
+                  i.h4 [title="Sun, 5 AM: 8.3 windows on average"]
+                  i.h4 [title="Sun, 6 AM: 8 windows on average"]
+                  i.h4 [title="Sun, 7 AM: 7.8 windows on average"]
+                  i.h2 [title="Sun, 8 AM: 3.5 windows on average"]
+                  i.h2 [title="Sun, 9 AM: 3.3 windows on average"]
+                  i.h2 [title="Sun, 10 AM: 3.1 windows on average"]
+                  i.h2 [title="Sun, 11 AM: 2.8 windows on average"]
+                  i.h2 [title="Sun, 12 PM: 2.6 windows on average"]
+                  i.h2 [title="Sun, 1 PM: 2.3 windows on average"]
+                  i.h1 [title="Sun, 2 PM: 2.1 windows on average"]
+                  i.h3 [title="Sun, 3 PM: 4.8 windows on average"]
+                  i.h3 [title="Sun, 4 PM: 4.6 windows on average"]
+                  i.h2 [title="Sun, 5 PM: 4.4 windows on average"]
+                  i.h2 [title="Sun, 6 PM: 4.1 windows on average"]
+                  i.h2 [title="Sun, 7 PM: 3.9 windows on average"]
+                  i.h3 [title="Sun, 8 PM: 5.6 windows on average"]
+                  i.h3 [title="Sun, 9 PM: 5.4 windows on average"]
+                  i.h3 [title="Sun, 10 PM: 5.1 windows on average"]
+                  i.h3 [title="Sun, 11 PM: 4.9 windows on average"]
+                  small.heat-d "Mon"
+                  i.h3 [title="Mon, 12 AM: 6.7 windows on average"]
+                  i.h3 [title="Mon, 1 AM: 6.4 windows on average"]
+                  i.h3 [title="Mon, 2 AM: 6.2 windows on average"]
+                  i.h4 [title="Mon, 3 AM: 8.9 windows on average"]
+                  i.h4 [title="Mon, 4 AM: 8.7 windows on average"]
+                  i.h4 [title="Mon, 5 AM: 8.4 windows on average"]
+                  i.h4 [title="Mon, 6 AM: 8.2 windows on average"]
+                  i.h4 [title="Mon, 7 AM: 7.9 windows on average"]
+                  i.h2 [title="Mon, 8 AM: 3.7 windows on average"]
+                  i.h2 [title="Mon, 9 AM: 3.5 windows on average"]
+                  i.h2 [title="Mon, 10 AM: 3.2 windows on average"]
+                  i.h2 [title="Mon, 11 AM: 3 windows on average"]
+                  i.h2 [title="Mon, 12 PM: 2.7 windows on average"]
+                  i.h2 [title="Mon, 1 PM: 2.5 windows on average"]
+                  i.h1 [title="Mon, 2 PM: 2.2 windows on average"]
+                  i.h1 [title="Mon, 3 PM: 2 windows on average"]
+                  i.h3 [title="Mon, 4 PM: 4.8 windows on average"]
+                  i.h3 [title="Mon, 5 PM: 4.5 windows on average"]
+                  i.h2 [title="Mon, 6 PM: 4.3 windows on average"]
+                  i.h2 [title="Mon, 7 PM: 4 windows on average"]
+                  i.h3 [title="Mon, 8 PM: 5.8 windows on average"]
+                  i.h3 [title="Mon, 9 PM: 5.5 windows on average"]
+                  i.h3 [title="Mon, 10 PM: 5.3 windows on average"]
+                  i.h3 [title="Mon, 11 PM: 5.1 windows on average"]
+                  small.heat-d "Tue"
+                  i.h4 [title="Tue, 12 AM: 6.8 windows on average"]
+                  i.h0 [title="Tue, 1 AM: 0 windows on average"]
+                  i.h0 [title="Tue, 2 AM: 0 windows on average"]
+                  i.h0 [title="Tue, 3 AM: 0 windows on average"]
+                  i.h0 [title="Tue, 4 AM: 0 windows on average"]
+                  i.h0 [title="Tue, 5 AM: 0 windows on average"]
+                  i.h0 [title="Tue, 6 AM: 0 windows on average"]
+                  i.h4 [title="Tue, 7 AM: 8.1 windows on average"]
+                  i.h2 [title="Tue, 8 AM: 3.9 windows on average"]
+                  i.h2 [title="Tue, 9 AM: 3.6 windows on average"]
+                  i.h2 [title="Tue, 10 AM: 3.4 windows on average"]
+                  i.h2 [title="Tue, 11 AM: 3.1 windows on average"]
+                  i.h2 [title="Tue, 12 PM: 2.9 windows on average"]
+                  i.h2 [title="Tue, 1 PM: 2.7 windows on average"]
+                  i.h2 [title="Tue, 2 PM: 2.4 windows on average"]
+                  i.h1 [title="Tue, 3 PM: 2.2 windows on average"]
+                  i.h3 [title="Tue, 4 PM: 4.9 windows on average"]
+                  i.h3 [title="Tue, 5 PM: 4.7 windows on average"]
+                  i.h2 [title="Tue, 6 PM: 4.4 windows on average"]
+                  i.h2 [title="Tue, 7 PM: 4.2 windows on average"]
+                  i.h3 [title="Tue, 8 PM: 6 windows on average"]
+                  i.h3 [title="Tue, 9 PM: 5.7 windows on average"]
+                  i.h3 [title="Tue, 10 PM: 5.5 windows on average"]
+                  i.h3 [title="Tue, 11 PM: 5.2 windows on average"]
+                  small.heat-d "Wed"
+                  i.h4 [title="Wed, 12 AM: 7 windows on average"]
+                  i.h3 [title="Wed, 1 AM: 6.7 windows on average"]
+                  i.h3 [title="Wed, 2 AM: 6.5 windows on average"]
+                  i.h3 [title="Wed, 3 AM: 6.3 windows on average"]
+                  i.h3 [title="Wed, 4 AM: 6 windows on average"]
+                  i.h4 [title="Wed, 5 AM: 8.8 windows on average"]
+                  i.h4 [title="Wed, 6 AM: 8.5 windows on average"]
+                  i.h4 [title="Wed, 7 AM: 8.3 windows on average"]
+                  i.h2 [title="Wed, 8 AM: 4 windows on average"]
+                  i.h2 [title="Wed, 9 AM: 3.8 windows on average"]
+                  i.h2 [title="Wed, 10 AM: 3.6 windows on average"]
+                  i.h2 [title="Wed, 11 AM: 3.3 windows on average"]
+                  i.h2 [title="Wed, 12 PM: 3.1 windows on average"]
+                  i.h2 [title="Wed, 1 PM: 2.8 windows on average"]
+                  i.h2 [title="Wed, 2 PM: 2.6 windows on average"]
+                  i.h2 [title="Wed, 3 PM: 2.3 windows on average"]
+                  i.h1 [title="Wed, 4 PM: 2.1 windows on average"]
+                  i.h3 [title="Wed, 5 PM: 4.9 windows on average"]
+                  i.h3 [title="Wed, 6 PM: 4.6 windows on average"]
+                  i.h2 [title="Wed, 7 PM: 4.4 windows on average"]
+                  i.h3 [title="Wed, 8 PM: 6.1 windows on average"]
+                  i.h3 [title="Wed, 9 PM: 5.9 windows on average"]
+                  i.h3 [title="Wed, 10 PM: 5.6 windows on average"]
+                  i.h3 [title="Wed, 11 PM: 5.4 windows on average"]
+                  small.heat-d "Thu"
+                  i.h4 [title="Thu, 12 AM: 7.2 windows on average"]
+                  i.h4 [title="Thu, 1 AM: 6.9 windows on average"]
+                  i.h3 [title="Thu, 2 AM: 6.7 windows on average"]
+                  i.h3 [title="Thu, 3 AM: 6.4 windows on average"]
+                  i.h3 [title="Thu, 4 AM: 6.2 windows on average"]
+                  i.h4 [title="Thu, 5 AM: 8.9 windows on average"]
+                  i.h4 [title="Thu, 6 AM: 8.7 windows on average"]
+                  i.h4 [title="Thu, 7 AM: 8.5 windows on average"]
+                  i.h2 [title="Thu, 8 AM: 4.2 windows on average"]
+                  i.h2 [title="Thu, 9 AM: 4 windows on average"]
+                  i.h2 [title="Thu, 10 AM: 3.7 windows on average"]
+                  i.h2 [title="Thu, 11 AM: 3.5 windows on average"]
+                  i.h2 [title="Thu, 12 PM: 3.2 windows on average"]
+                  i.h2 [title="Thu, 1 PM: 3 windows on average"]
+                  i.h2 [title="Thu, 2 PM: 2.8 windows on average"]
+                  i.h2 [title="Thu, 3 PM: 2.5 windows on average"]
+                  i.h2 [title="Thu, 4 PM: 2.3 windows on average"]
+                  i.h1 [title="Thu, 5 PM: 2 windows on average"]
+                  i.h3 [title="Thu, 6 PM: 4.8 windows on average"]
+                  i.h3 [title="Thu, 7 PM: 4.5 windows on average"]
+                  i.h3 [title="Thu, 8 PM: 6.3 windows on average"]
+                  i.h3 [title="Thu, 9 PM: 6.1 windows on average"]
+                  i.h3 [title="Thu, 10 PM: 5.8 windows on average"]
+                  i.h3 [title="Thu, 11 PM: 5.6 windows on average"]
+                  small.heat-d.today "Today"
+                  i.h4 [title="Today, 12 AM: 7.3 windows on average"]
+                  i.h4 [title="Today, 1 AM: 7.1 windows on average"]
+                  i.h4 [title="Today, 2 AM: 6.8 windows on average"]
+                  i.h3 [title="Today, 3 AM: 6.6 windows on average"]
+                  i.h3 [title="Today, 4 AM: 6.4 windows on average"]
+                  i.h3 [title="Today, 5 AM: 6.1 windows on average"]
+                  i.h4 [title="Today, 6 AM: 8.9 windows on average"]
+                  i.h4 [title="Today, 7 AM: 8.6 windows on average"]
+                  i.h2 [title="Today, 8 AM: 4.4 windows on average"]
+                  i.h2 [title="Today, 9 AM: 4.1 windows on average"]
+                  i.h2 [title="Today, 10 AM: 3.9 windows on average"]
+                  i.h2 [title="Today, 11 AM: 3.6 windows on average"]
+                  i.h2 [title="Today, 12 PM: 3.4 windows on average"]
+                  i.h0 [title="Today, 1 PM: 0 windows on average"]
+                  i.h0 [title="Today, 2 PM: 0 windows on average"]
+                  i.h0 [title="Today, 3 PM: 0 windows on average"]
+                  i.h0 [title="Today, 4 PM: 0 windows on average"]
+                  i.h0 [title="Today, 5 PM: 0 windows on average"]
+                  i.h0 [title="Today, 6 PM: 0 windows on average"]
+                  i.h0 [title="Today, 7 PM: 0 windows on average"]
+                  i.h0 [title="Today, 8 PM: 0 windows on average"]
+                  i.h0 [title="Today, 9 PM: 0 windows on average"]
+                  i.h0 [title="Today, 10 PM: 0 windows on average"]
+                  i.h0 [title="Today, 11 PM: 0 windows on average"]
               div.stat-card [id="stats-drops"]
                 h3 "Why they dropped"
                   span.sd-lost [title="From each drop to the account’s next session, 12 h at most."] "≈ 3 h 6 min lost"
@@ -160,106 +353,103 @@ html [data-theme="dark" lang="en"]
                     b "Lost connection"
                     small [title="Account 2"] "Once · Account 2"
                   span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 49 min lost"
-              div.stat-cols
-                div.stat-card
-                  h3 "By account"
-                  table.by-account.stat-table
-                    colgroup
-                      col.c-acc
-                      col.c-time
-                      col.c-game
-                      col.c-n
-                    thead
-                      tr
-                        th "Account"
-                        th "Play time"
-                        th "Most played"
-                        th.n [title="Drops"] "Drops"
-                    tbody
-                      tr.opens [title="Show what it played" aria-expanded="false"]
-                        td
-                          div.sacc
-                            svg.i.sacc-open #1g7f83q
-                            span.avatar.sm
-                              img [alt="" style="--h:140" src=#1qk25wb]
-                            b [title="Account 1"] "Account 1"
-                        td.st-time "7 h 22 min"
-                        td.st-game
-                          span [title="Blox Fruits"]
-                            span.gph
-                              svg.i #sy1lqp
-                            em "Blox Fruits"
-                        td.n "1"
-                      tr.opens [title="Show what it played" aria-expanded="false"]
-                        td
-                          div.sacc
-                            svg.i.sacc-open #1g7f83q
-                            span.avatar.sm
-                              img [alt="" style="--h:141" src=#uinvo6]
-                            b [title="Account 2"] "Account 2"
-                        td.st-time "5 h 24 min"
-                        td.st-game
-                          span [title="Blox Fruits"]
-                            span.gph
-                              svg.i #sy1lqp
-                            em "Blox Fruits"
-                        td.n "2"
-                      tr.opens [title="Show what it played" aria-expanded="false"]
-                        td
-                          div.sacc
-                            svg.i.sacc-open #1g7f83q
-                            span.avatar.sm
-                              img [alt="" style="--h:143" src=#1u67et1]
-                            b [title="Account 4"] "Account 4"
-                        td.st-time "3 h 16 min"
-                        td.st-game
-                          span [title="Brookhaven 🏡RP"]
-                            span.gph
-                              svg.i #sy1lqp
-                            em "Brookhaven 🏡RP"
-                        td.n "0"
-                      tr.opens [title="Show what it played" aria-expanded="false"]
-                        td
-                          div.sacc
-                            svg.i.sacc-open #1g7f83q
-                            span.avatar.gone.sm [aria-hidden="true"]
-                              svg.i #45lggc
-                            b [title="Deleted account"] "Deleted account"
-                        td.st-time "19 min"
-                        td.st-game
-                          span [title="[🎃] Adopt Me!"]
-                            span.gph
-                              svg.i #sy1lqp
-                            em "[🎃] Adopt Me!"
-                        td.n "0"
+              div.stat-card [id="stats-games"]
+                h3 "Top games"
+                div.gm [style="height:236px"]
+                  button.big.gm-box [type="button" title="Blox Fruits · 9 h 1 min · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:478.9px"]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "Blox Fruits"
+                      small "9 h 1 min · 55 %"
+                  button.big.gm-box [type="button" title="[🎃] Adopt Me! · 4 h 55 min · 30 %" aria-pressed="false" style="--h:156;height:232px;left:484.9px;top:2px;width:259.4px"]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-fd05afa91e29a7895178342064489a36/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "[🎃] Adopt Me!"
+                      small "4 h 55 min · 30 %"
+                  button.big.gm-box [type="button" title="Brookhaven 🏡RP · 2 h 27 min · 15 %" aria-pressed="false" style="--h:149;height:232px;left:748.3px;top:2px;width:127.7px"]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-01fa54388131d629ec74c042784454c5/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "Brookhaven 🏡RP"
+                      small "2 h 27 min · 15 %"
+              div.stat-card [id="stats-accounts"]
+                h3 "By account"
+                div.sa-grid
+                  button.opens.sa-card [type="button" title="Show what it played" aria-expanded="false"]
+                    span.sa-head
+                      span.avatar.sm
+                        img [alt="" style="--h:140" src=#1qk25wb]
+                      b [title="Account 1"] "Account 1"
+                    span.sa-time "7 h 22 min"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:13.3%"]
+                      i [style="height:8%"]
+                      i [style="height:84.3%"]
+                      i [style="height:100%"]
+                      i [style="height:64.5%"]
+                      i [style="height:55.5%"]
+                      i [style="height:69.8%"]
+                    span.sa-foot
+                      span.sa-game [title="Blox Fruits" style="--h:261"] "Blox Fruits"
+                        i
+                      span.sa-kicks "1 drop"
+                    span.sa-streak [title="Days played 23 hours or more, up to yesterday"] "6 full days in a row"
+                      svg.i #11ja4j6
+                  button.opens.sa-card [type="button" title="Show what it played" aria-expanded="false"]
+                    span.sa-head
+                      span.avatar.sm
+                        img [alt="" style="--h:141" src=#uinvo6]
+                      b [title="Account 2"] "Account 2"
+                    span.sa-time "5 h 24 min"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:26.9%"]
+                      i [style="height:8%"]
+                      i [style="height:58.3%"]
+                      i [style="height:69%"]
+                      i [style="height:44.4%"]
+                      i [style="height:38.1%"]
+                      i [style="height:47.8%"]
+                    span.sa-foot
+                      span.sa-game [title="Blox Fruits" style="--h:261"] "Blox Fruits"
+                        i
+                      span.sa-kicks "2 drops"
+                    span.sa-streak [title="Days played 23 hours or more, up to yesterday"] "2 full days in a row"
+                      svg.i #11ja4j6
+                  button.opens.sa-card [type="button" title="Show what it played" aria-expanded="false"]
+                    span.sa-head
+                      span.avatar.sm
+                        img [alt="" style="--h:143" src=#1u67et1]
+                      b [title="Account 4"] "Account 4"
+                    span.sa-time "3 h 16 min"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:14.5%"]
+                      i [style="height:8%"]
+                      i [style="height:31%"]
+                      i [style="height:36.5%"]
+                      i [style="height:23.4%"]
+                      i [style="height:19.9%"]
+                      i [style="height:24.8%"]
+                    span.sa-foot
+                      span.sa-game [title="Brookhaven 🏡RP" style="--h:149"] "Brookhaven 🏡RP"
+                        i
+                  button.opens.sa-card [type="button" title="Show what it played" aria-expanded="false"]
+                    span.sa-head
+                      span.avatar.gone.sm [aria-hidden="true"]
+                        svg.i #45lggc
+                      b [title="Deleted account"] "Deleted account"
+                    span.sa-time "19 min"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                    span.sa-foot
+                      span.sa-game [title="[🎃] Adopt Me!" style="--h:156"] "[🎃] Adopt Me!"
+                        i
+              div.one.stat-cols
                 div.stat-side
-                  div.stat-card
-                    h3 "Top games"
-                    div.sgames
-                      div.sgame
-                        em "1"
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Blox Fruits"] "Blox Fruits"
-                          small "13 sessions · 55 %"
-                        span.sg-time "9 h 1 min"
-                      div.sgame
-                        em "2"
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                          small "7 sessions · 30 %"
-                        span.sg-time "4 h 55 min"
-                      div.sgame
-                        em "3"
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                          small "4 sessions · 15 %"
-                        span.sg-time "2 h 27 min"
                   div.stat-card
                     h3 "By preset"
                     div.sgames
@@ -291,5 +481,6 @@ html [data-theme="dark" lang="en"]
   getState {}
   monitorArea {"hidden":true}
   pageShown {}
-  playStats {"days":7}
+  playStats {"days":7,"game":null}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

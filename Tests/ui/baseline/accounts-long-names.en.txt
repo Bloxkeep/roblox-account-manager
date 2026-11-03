@@ -75,7 +75,7 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Accounts"
-            p [id="acc-sub"] "accounts playing online"
+            p [id="acc-sub" title="7 accounts·3 playing·4 online · Select all"] "accounts playing online"
               b "7"
               span.sep "·"
               b "3"
@@ -147,6 +147,8 @@ html [data-theme="dark" lang="en"]
                     svg.i #hpg3hu
                   span.ago [title="Last launched from this app"] "Never opened"
                     svg.i #n87usa
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="0"] "Play"
                     svg.i #1ewcuky
@@ -174,6 +176,8 @@ html [data-theme="dark" lang="en"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
                 div.acc-note [title="A very long note about this account that goes on and on and on, and on, and on, and on."] "A very long note about this account that goes on and on and on, and on, and on, and on."
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
@@ -203,6 +207,10 @@ html [data-theme="dark" lang="en"]
                     svg.i #n87usa
                     span "Opened 5 h ago"
                 div.acc-note [title="A very long note about this account that goes on and on and on, and on, and on, and on."] "A very long note about this account that goes on and on and on, and on, and on, and on."
+                div.daystrip [role="img" title="Today: played 1 h 20 min · cut off once" aria-label="Today: played 1 h 20 min · cut off once"]
+                  i.ds-play [style="left:29.17%;width:max(2px, 5.56%)"]
+                    b.ds-cut
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
@@ -237,6 +245,10 @@ html [data-theme="dark" lang="en"]
                     svg.i #hpg3hu
                   span.tag [title="Farm farm farm farm farm farm farm"] "Farm farm farm farm farm farm farm"
                 div.acc-note [title="A very long note about this account that goes on and on and on, and on, and on, and on."] "A very long note about this account that goes on and on and on, and on, and on, and on."
+                div.daystrip [role="img" title="Today: played 9 h 30 min" aria-label="Today: played 9 h 30 min"]
+                  i.ds-play [style="left:2.08%;width:max(2px, 35.42%)"]
+                  i.ds-play [style="left:45.83%;width:max(2px, 4.17%)"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
@@ -273,6 +285,11 @@ html [data-theme="dark" lang="en"]
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
                 div.acc-note [title="A very long note about this account that goes on and on and on, and on, and on, and on."] "A very long note about this account that goes on and on and on, and on, and on, and on."
+                div.daystrip [role="img" title="Today: played 11 h 45 min · cut off once" aria-label="Today: played 11 h 45 min · cut off once"]
+                  i.ds-play [style="left:0%;width:max(2px, 13.19%)"]
+                    b.ds-cut
+                  i.ds-play [style="left:14.24%;width:max(2px, 35.76%)"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
@@ -296,6 +313,8 @@ html [data-theme="dark" lang="en"]
                     div.v [title="Brookhaven 🏡RP: Roleplay Hangout, Chill & Make Friends Worldwide (NEW!)"] "Brookhaven 🏡RP: Roleplay Hangout, Chill & Make Friends Worldwide (NEW!)"
                 div.meta
                   span.tag [title="AVeryLongTestingGroupNameWithNoBreaksAtAll"] "AVeryLongTestingGroupNameWithNoBreaksAtAll"
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
@@ -323,6 +342,8 @@ html [data-theme="dark" lang="en"]
                     svg.i #n87usa
                     span "Opened 2 days ago"
                 div.acc-note [title="Trading only"] "Trading only"
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
@@ -382,3 +403,4 @@ html [data-theme="dark" lang="en"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

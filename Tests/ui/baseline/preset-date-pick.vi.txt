@@ -88,6 +88,18 @@ html [data-theme="dark" lang="vi"]
               svg.i #u7ty99
               span "Thêm Preset"
         div.scroll
+          section.pv-ruler [aria-label="Hôm nay"]
+            h3 "Hôm nay"
+            div.pvr-track
+              span.pvr-past [style="width:50%"]
+              small.pvr-hour [style="left:0%"] "00:00"
+              small.pvr-hour [style="left:25%"] "06:00"
+              small.pvr-hour [style="left:50%"] "12:00"
+              small.pvr-hour [style="left:75%"] "18:00"
+              button.pvr-run [type="button" title="Farm Blox Fruits · 20:00" aria-label="Farm Blox Fruits, 20:00" style="left:83.33%"]
+                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+              span.pvr-now [style="left:50%"]
+                small "12:00"
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
               span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
@@ -497,6 +509,7 @@ html [data-theme="dark" lang="vi"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}
 == picked
 html [data-theme="dark" lang="vi"]
 #app
@@ -587,6 +600,18 @@ html [data-theme="dark" lang="vi"]
               svg.i #u7ty99
               span "Thêm Preset"
         div.scroll
+          section.pv-ruler [aria-label="Hôm nay"]
+            h3 "Hôm nay"
+            div.pvr-track
+              span.pvr-past [style="width:50%"]
+              small.pvr-hour [style="left:0%"] "00:00"
+              small.pvr-hour [style="left:25%"] "06:00"
+              small.pvr-hour [style="left:50%"] "12:00"
+              small.pvr-hour [style="left:75%"] "18:00"
+              button.pvr-run [type="button" title="Farm Blox Fruits · 20:00" aria-label="Farm Blox Fruits, 20:00" style="left:83.33%"]
+                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+              span.pvr-now [style="left:50%"]
+                small "12:00"
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
               span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
@@ -1031,6 +1056,18 @@ html [data-theme="dark" lang="vi"]
               svg.i #u7ty99
               span "Thêm Preset"
         div.scroll
+          section.pv-ruler [aria-label="Hôm nay"]
+            h3 "Hôm nay"
+            div.pvr-track
+              span.pvr-past [style="width:50%"]
+              small.pvr-hour [style="left:0%"] "00:00"
+              small.pvr-hour [style="left:25%"] "06:00"
+              small.pvr-hour [style="left:50%"] "12:00"
+              small.pvr-hour [style="left:75%"] "18:00"
+              button.pvr-run [type="button" title="Farm Blox Fruits · 20:00" aria-label="Farm Blox Fruits, 20:00" style="left:83.33%"]
+                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+              span.pvr-now [style="left:50%"]
+                small "12:00"
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
               span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]
@@ -1569,6 +1606,18 @@ html [data-theme="dark" lang="vi"]
               svg.i #u7ty99
               span "Thêm Preset"
         div.scroll
+          section.pv-ruler [aria-label="Hôm nay"]
+            h3 "Hôm nay"
+            div.pvr-track
+              span.pvr-past [style="width:50%"]
+              small.pvr-hour [style="left:0%"] "00:00"
+              small.pvr-hour [style="left:25%"] "06:00"
+              small.pvr-hour [style="left:50%"] "12:00"
+              small.pvr-hour [style="left:75%"] "18:00"
+              button.pvr-run [type="button" title="Farm Blox Fruits · 20:00" aria-label="Farm Blox Fruits, 20:00" style="left:83.33%"]
+                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+              span.pvr-now [style="left:50%"]
+                small "12:00"
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
               span.ord-grip.pv-grip [title="Kéo để đổi chỗ"]

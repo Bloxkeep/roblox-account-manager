@@ -117,6 +117,7 @@ html [data-theme="dark" lang="vi"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}
 == end
 html [data-theme="dark" lang="vi"]
 #app

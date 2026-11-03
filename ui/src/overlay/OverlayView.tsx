@@ -226,7 +226,7 @@ export function OverlayView({ data, on }: { data: OverlayData; on: OverlayOn }) 
       const held = dragging?.kind === 'area' && dragging.index === i;
       return <div key={a.name} className={`ov-area ${held ? 'held' : ''}`} data-area={i}
         style={{ left: pct(r.x), top: pct(r.y), width: pct(r.w), height: pct(r.h), ['--c' as string]: a.colour }}>
-        <span className="ov-tag" style={{ color: ink(a.colour) }}>{a.label}</span>
+        <span className="ov-tag" style={{ color: ink(a.colour) }} title={a.label}>{a.label}</span>
         {(['tl', 'tr', 'bl', 'br'] as const).map(g => <i key={g} className={`ov-grip ${g}`} data-grip={g} style={{ width: GRIP * 2, height: GRIP * 2, margin: -GRIP }} />)}
       </div>;
     })}

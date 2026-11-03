@@ -130,6 +130,14 @@ export function PresetsView() {
       </div>
     </header>
     <div className="scroll">
+      {all.length && !q ? <DayRuler presets={all} pick={id => {
+        const row = rowOf(id);
+        if (!row) return;
+        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        row.classList.remove('flash');
+        void row.offsetWidth; // the flash again on a second click
+        row.classList.add('flash');
+      }} /> : null}
       <div className="pv-list" id="pv-list" role="list" ref={list} onPointerUp={() => setArmed(null)} onDragOver={dragOver}
         onDrop={e => e.preventDefault()} onDragEnd={dragEnd}>
         {!all.length ? <div className="empty"><span className="pv-empty-icon"><Icon name="layers" /></span><h2>{t('pv.emptyTitle')}</h2><p>{t('pv.emptyText')}</p>
@@ -244,4 +252,50 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
       <button className="icon-btn" data-move="1" title={t('lo.down')} aria-label={`${t('lo.down')}: ${p.name}`} disabled={i >= count - 1} onClick={() => move(p.id, 1)}><Icon name="chevronDown" /></button>
     </span> : null}
   </div>;
+}
+
+/** Today's runs of a preset: the minutes after midnight its schedule starts it today (one time a day, or a one-off's date). */
+function runToday(p: Preset, day: Date): number | null {
+  const sc = p.schedule;
+  if (!sc?.enabled || !/^\d{1,2}:\d{2}$/.test(sc.time)) return null;
+  const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+  if (sc.date ? sc.date !== iso : !(sc.days || []).includes(day.getDay())) return null;
+  const [h, m] = sc.time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+/** Today on one ruler, midnight to midnight: each preset that runs today as its game's icon at its time (those gone by
+ * faded), and now. A click on one brings its row into sight. Hidden on a day nothing is scheduled. */
+function DayRuler({ presets, pick }: { presets: Preset[]; pick: (id: string) => void }) {
+  const { t, lang, locale } = useHost();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  const runs = presets.map(p => ({ p, at: runToday(p, now) })).filter((r): r is { p: Preset; at: number } => r.at !== null).sort((a, b) => a.at - b.at);
+  if (!runs.length) return null;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const clock = (min: number) => new Date(2000, 0, 1, Math.floor(min / 60), min % 60)
+    .toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric', minute: '2-digit' });
+  const hourMark = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' });
+  // Runs closer than 4 % of the day (about an hour) take turns above and below the line, so their icons don't cover each other.
+  let lastAt = -Infinity, lift = false;
+  const placed = runs.map(r => {
+    lift = r.at - lastAt < 1440 * .04 ? !lift : false;
+    lastAt = r.at;
+    return { ...r, lift };
+  });
+  const pct = (min: number) => `${(min / 1440 * 100).toFixed(2)}%`;
+  return <section className="pv-ruler" aria-label={t('pv.today')}>
+    <h3>{t('pv.today')}</h3>
+    <div className="pvr-track">
+      <span className="pvr-past" style={{ width: pct(minutes) }} />
+      {[0, 6, 12, 18].map(h => <small key={h} className="pvr-hour" style={{ left: pct(h * 60) }}>{hourMark(h)}</small>)}
+      {placed.map(({ p, at, lift }) => <button key={p.id} type="button" className={`pvr-run${at < minutes ? ' gone' : ''}${lift ? ' lift' : ''}`}
+        style={{ left: pct(at) }} title={`${p.name} · ${clock(at)}`} aria-label={`${p.name}, ${clock(at)}`} onClick={() => pick(p.id)}>
+        {p.iconUrl ? <img src={p.iconUrl} alt="" /> : <Icon name="layers" />}</button>)}
+      <span className="pvr-now" style={{ left: pct(minutes) }}><small>{clock(minutes)}</small></span>
+    </div>
+  </section>;
 }

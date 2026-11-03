@@ -75,7 +75,7 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Tài khoản"
-            p [id="acc-sub"] "tài khoản đang chơi online"
+            p [id="acc-sub" title="7 tài khoản·3 đang chơi·4 online · Chọn tất cả"] "tài khoản đang chơi online"
               b "7"
               span.sep "·"
               b "3"
@@ -381,3 +381,4 @@ html [data-theme="dark" lang="vi"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setSettings {"layout":"list"}
+  todayStrips {}

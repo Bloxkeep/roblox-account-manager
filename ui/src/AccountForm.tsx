@@ -174,7 +174,7 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
       {isNew ? null : <div className="totp">
         <span className="totp-label">{t('am.totp')} <span className="muted">{t('am.totpHint')}</span></span>
         <div className="totp-live" id="am-totp-live" ref={live} hidden={!liveShown}>
-          <b className="totp-code" id="am-totp-code">{code || '··· ···'}</b><span className="totp-left" id="am-totp-left">{left}</span>
+          <span className="totp-now"><b className="totp-code" id="am-totp-code">{code || '··· ···'}</b><span className="totp-left" id="am-totp-left">{left}</span></span>
           <button type="button" className="btn sm" data-totp="copy" onClick={() => host.copyField(a.id, 'totp')}><Icon name="copy" />{t('am.totpCopy')}</button>
           <button type="button" className="btn sm ghost" data-totp="remove" onClick={remove}><Icon name="trash" />{t('am.totpRemove')}</button>
         </div>

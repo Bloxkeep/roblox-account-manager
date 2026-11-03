@@ -81,49 +81,113 @@ html [data-theme="dark" lang="vi"]
               span [id="mon-hint"] "Bấm vào hình để đưa cửa sổ đó lên trước, chuột phải để xem thêm."
                 span.sep "·"
         div.mon-area.mon-tiles [id="mon-area"]
-          div.mon-grid [role="list" style="grid-auto-rows:335px;grid-template-columns:repeat(2, minmax(200px, 1fr))"]
-            div.mon-tile [role="listitem" tabindex="0" aria-label="Tài khoản 1, Blox Fruits"]
-              div.mon-cap
-                div.mon-lines
-                  div.mon-line
-                    b.mon-name "Tài khoản 1"
-                    span.mon-tag "1,2 GB"
-                  div.mon-line
-                    span.mon-game "Blox Fruits"
-                    span.mon-tag "PID 14280"
-                button.icon-btn.mon-min [type="button" title="Thu nhỏ" tabindex="-1" aria-label="Thu nhỏ"]
-                  svg.i #10kcby6
-              div.mon-pic
-                img [alt="" src=#mavkgu]
-            div.mon-tile [role="listitem" tabindex="-1" aria-label="Tài khoản 2, Chưa vào game"]
-              div.mon-cap
-                div.mon-lines
-                  div.mon-line
-                    b.mon-name "Tài khoản 2"
-                    span.mon-tag "822 MB"
-                  div.mon-line
-                    span.mon-game "Chưa vào game"
-                    span.mon-tag "PID 14692"
-                button.icon-btn.mon-min [type="button" title="Thu nhỏ" tabindex="-1" aria-label="Thu nhỏ"]
-                  svg.i #10kcby6
-              div.mon-pic
-                img [alt="" src=#3le83e]
-            div.mon-tile [role="listitem" tabindex="-1" aria-label="Roblox, Fisch"]
-              div.mon-cap
-                div.mon-lines
-                  div.mon-line
-                    b.mon-name "Roblox"
-                    span.mon-tag "980 MB"
-                  div.mon-line
-                    span.mon-game "Fisch"
-                    span.mon-tag "PID 15104"
-                button.icon-btn.mon-min [type="button" title="Thu nhỏ" tabindex="-1" aria-label="Thu nhỏ"]
-                  svg.i #10kcby6
-              div.mon-pic
-                img [alt="" src=#1d8ee4m]
+          div.mon-lanes
+            section.mon-lane [aria-label="Blox Fruits"]
+              div.mon-lane-head
+                button.icon-btn.mon-fold [type="button" title="Thu gọn" aria-expanded="true" aria-label="Thu gọn"]
+                  svg.i #u1ag9u
+                img.mon-gicon [alt="" src=#wpz2b3]
+                div.mon-lane-title
+                  b [title="Blox Fruits"] "Blox Fruits"
+                  span.mon-lane-meta "1 cửa sổ · 1,2 GB"
+                div.mon-lane-states
+                  span.mon-st.ok "1 đang chơi"
+                div.mon-lane-acts
+                  button.icon-btn [type="button" title="Thu nhỏ hết" aria-label="Thu nhỏ hết"]
+                    svg.i #10kcby6
+                  button.icon-btn [type="button" title="Chỉ xem game này" aria-label="Chỉ xem game này"]
+                    svg.i #1sf20vx
+                  button.icon-btn.mon-kill [type="button" title="Đóng hết" aria-label="Đóng hết"]
+                    svg.i #16z0s1r
+              div.mon-strip [aria-hidden="true"]
+                i.ok
+              div.in-lane.mon-grid [role="list" aria-label="Blox Fruits" style="grid-auto-rows:240px;grid-template-columns:repeat(1, minmax(200px, 1fr))"]
+                div.mon-tile [role="listitem" tabindex="0" aria-label="Tài khoản 1, Blox Fruits, Đang chơi"]
+                  div.mon-cap
+                    div.mon-lines
+                      div.mon-line
+                        b.mon-name [title="Tài khoản 1"] "Tài khoản 1"
+                        span.mon-tag "1,2 GB"
+                      div.mon-line
+                        span.mon-game [title="Đang chơi"] "Đang chơi"
+                          i.mon-dot.ok
+                        span.mon-tag "PID 14280"
+                    button.icon-btn.mon-min [type="button" title="Thu nhỏ" tabindex="-1" aria-label="Thu nhỏ"]
+                      svg.i #10kcby6
+                  div.mon-pic
+                    img [alt="" src=#mavkgu]
+            section.mon-lane [aria-label="Fisch"]
+              div.mon-lane-head
+                button.icon-btn.mon-fold [type="button" title="Thu gọn" aria-expanded="true" aria-label="Thu gọn"]
+                  svg.i #u1ag9u
+                img.mon-gicon [alt="" src=#183626u]
+                div.mon-lane-title
+                  b [title="Fisch"] "Fisch"
+                  span.mon-lane-meta "1 cửa sổ · 980 MB"
+                div.mon-lane-states
+                  span.mon-st.ok "1 đang chơi"
+                div.mon-lane-acts
+                  button.icon-btn [type="button" title="Thu nhỏ hết" aria-label="Thu nhỏ hết"]
+                    svg.i #10kcby6
+                  button.icon-btn [type="button" title="Chỉ xem game này" aria-label="Chỉ xem game này"]
+                    svg.i #1sf20vx
+                  button.icon-btn.mon-kill [type="button" title="Đóng hết" aria-label="Đóng hết"]
+                    svg.i #16z0s1r
+              div.mon-strip [aria-hidden="true"]
+                i.ok
+              div.in-lane.mon-grid [role="list" aria-label="Fisch" style="grid-auto-rows:240px;grid-template-columns:repeat(1, minmax(200px, 1fr))"]
+                div.mon-tile [role="listitem" tabindex="-1" aria-label="Roblox, Fisch, Đang chơi"]
+                  div.mon-cap
+                    div.mon-lines
+                      div.mon-line
+                        b.mon-name [title="Roblox"] "Roblox"
+                        span.mon-tag "980 MB"
+                      div.mon-line
+                        span.mon-game [title="Đang chơi"] "Đang chơi"
+                          i.mon-dot.ok
+                        span.mon-tag "PID 15104"
+                    button.icon-btn.mon-min [type="button" title="Thu nhỏ" tabindex="-1" aria-label="Thu nhỏ"]
+                      svg.i #10kcby6
+                  div.mon-pic
+                    img [alt="" src=#1d8ee4m]
+            section.mon-lane [aria-label="Chưa vào game"]
+              div.mon-lane-head
+                button.icon-btn.mon-fold [type="button" title="Thu gọn" aria-expanded="true" aria-label="Thu gọn"]
+                  svg.i #u1ag9u
+                span.mon-gicon
+                  svg.i #sy1lqp
+                div.mon-lane-title
+                  b [title="Chưa vào game"] "Chưa vào game"
+                  span.mon-lane-meta "1 cửa sổ · 822 MB"
+                div.mon-lane-states
+                div.mon-lane-acts
+                  button.icon-btn [type="button" title="Thu nhỏ hết" aria-label="Thu nhỏ hết"]
+                    svg.i #10kcby6
+                  button.icon-btn [type="button" title="Chỉ xem game này" aria-label="Chỉ xem game này"]
+                    svg.i #1sf20vx
+                  button.icon-btn.mon-kill [type="button" title="Đóng hết" aria-label="Đóng hết"]
+                    svg.i #16z0s1r
+              div.mon-strip [aria-hidden="true"]
+                i.idle
+              div.in-lane.mon-grid [role="list" aria-label="Chưa vào game" style="grid-auto-rows:240px;grid-template-columns:repeat(1, minmax(200px, 1fr))"]
+                div.mon-tile [role="listitem" tabindex="-1" aria-label="Tài khoản 2, Chưa vào game, Ở sảnh"]
+                  div.mon-cap
+                    div.mon-lines
+                      div.mon-line
+                        b.mon-name [title="Tài khoản 2"] "Tài khoản 2"
+                        span.mon-tag "822 MB"
+                      div.mon-line
+                        span.mon-game [title="Ở sảnh"] "Ở sảnh"
+                          i.idle.mon-dot
+                        span.mon-tag "PID 14692"
+                    button.icon-btn.mon-min [type="button" title="Thu nhỏ" tabindex="-1" aria-label="Thu nhỏ"]
+                      svg.i #10kcby6
+                  div.mon-pic
+                    img [alt="" src=#3le83e]
 #layer
 #toasts
 -- commands
   getState {}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

@@ -5,6 +5,7 @@ import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type Reac
 import { Icon, useAppState, useHost, useMetrics, usePage, type PageState } from './host';
 import { richNodes } from './rich';
 import { Avatar } from './Avatar';
+import { DayStrip } from './DayStrip';
 
 type Account = Record<string, any>;
 
@@ -55,9 +56,12 @@ export function AccountsHead() {
   // Selected accounts the search or filter hides still count (Play, Delete act on them), so it says so.
   const shown = n ? new Set(host.visible().map(a => a.id)) : null;
   const hidden = n ? [...selected].filter(id => !shown!.has(id)).length : 0;
-  return <p id="acc-sub">{richNodes(tn('acc.summary', list.length, { p: list.filter(inGame).length, o: list.filter(isOnline).length }))}
-    {n ? <><span className="sep">·</span>{richNodes(t(hidden ? 'acc.selectedHidden' : 'acc.selected', { n, h: hidden }))}</>
-      : list.length ? <><span className="sep">·</span>{richNodes(t('acc.selectAll'))}</> : null}</p>;
+  const summary = tn('acc.summary', list.length, { p: list.filter(inGame).length, o: list.filter(isOnline).length });
+  const extra = n ? t(hidden ? 'acc.selectedHidden' : 'acc.selected', { n, h: hidden }) : list.length ? t('acc.selectAll') : '';
+  // A narrow window cuts the line with "…": the whole of it on hover.
+  const whole = [summary, extra].filter(Boolean).join(' · ').replace(/<[^>]*>/g, '');
+  return <p id="acc-sub" title={whole}>{richNodes(summary)}
+    {extra ? <><span className="sep">·</span>{richNodes(extra)}</> : null}</p>;
 }
 
 // The bar: status chips (counted within the group; those needing something done right after All), layout, group, sort.
@@ -451,6 +455,7 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
     {local ? <Live a={a} /> : null}
     <div className="meta">{badge}<Meta a={a} />{opened}</div>
     {a.note ? <div className="acc-note" title={a.note}>{a.note}</div> : null}
+    <DayStrip id={a.id} />
     <div className="card-actions">
       {action}
       <button className="icon-btn" data-act="edit" title={t('card.editTip')} aria-label={t('card.editTip')}><Icon name="edit" /></button>

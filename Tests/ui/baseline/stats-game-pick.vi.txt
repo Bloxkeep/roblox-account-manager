@@ -1,0 +1,1094 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav.on [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-stats"]
+        header.top
+          div.top-title
+            h1 "Thống kê"
+            p [id="stats-sub"] "Chỉ tính các game mở bằng Bloxkeep."
+          div.top-tools
+            div.seg [id="stats-tabs" role="tablist" aria-label="Thống kê"]
+              button.on [role="tab" type="button" aria-selected="true"] "Thống kê"
+              button [role="tab" type="button" aria-selected="false"] "Hoạt động"
+            div.chips [id="stats-period" role="group" aria-label="Thống kê"]
+              button.chip [aria-pressed="false"] "Hôm nay"
+              button.chip [aria-pressed="false"] "7 ngày"
+              button.chip.on [aria-pressed="true"] "30 ngày"
+        div.scroll
+          div.stats
+            div.stats-in [id="stats-body"]
+              div.stat-tiles
+                div.stat
+                  small "Giờ chơi"
+                  b [title="62 giờ 53 phút"] "62 giờ 53 phút"
+                  span.good.stat-delta "↑ 20 %"
+                    span "so với 30 ngày trước"
+                div.stat
+                  small "Tài khoản đã chơi"
+                  b [title="0/7"] "0"
+                    span.of "/7"
+                div.stat
+                  small "Lần văng"
+                  b [title="11"] "11"
+                  span.good.stat-delta "↓ 15 %"
+                    span "so với 30 ngày trước"
+                div.stat
+                  small "Lượt dài nhất"
+                  b [title="18 giờ 51 phút"] "18 giờ 51 phút"
+                  span.stat-sub "Tài khoản chính · Blox Fruits"
+              div.stat-card [id="stats-days"]
+                h3 "Giờ chơi mỗi ngày"
+                  span.days-avg "Trung bình 2 giờ 5 phút mỗi ngày"
+                div.days.many
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(95.4% - 17.172px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(64.4% - 11.592px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(57.7% - 10.386px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(75.6% - 13.608px)"]
+                  div.day.lab
+                    span.day-bar
+                      i [style="height:calc(44.5% - 8.01px)"]
+                    small "21/9"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(37.9% - 6.822px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(55.8% - 10.044px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(24.7% - 4.446px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(18.1% - 3.258px)"]
+                  div.day.lab
+                    span.day-bar
+                      i [style="height:calc(36% - 6.48px)"]
+                    small "26/9"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(4.9% - 0.882px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(79.9% - 14.382px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(97.7% - 17.586px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(66.6% - 11.988px)"]
+                  div.day.lab
+                    span.day-bar
+                      i [style="height:calc(60% - 10.8px)"]
+                    small "1/10"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(77.9% - 14.022px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(46.8% - 8.424px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(40.2% - 7.236px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(58.1% - 10.458px)"]
+                  div.day.lab
+                    span.day-bar
+                      i [style="height:calc(27% - 4.86px)"]
+                    small "6/10"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(20.4% - 3.672px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(38.3% - 6.894px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(7.2% - 1.296px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(0.6% - 0.108px)"]
+                  div.day.lab.peak
+                    span.day-bar
+                      b "4h05"
+                      i [style="height:calc(100% - 18px)"]
+                    small "11/10"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(68.9% - 12.402px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(62.3% - 11.214px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(80.2% - 14.436px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(49.1% - 8.838px)"]
+                  div.day.lab.today
+                    span.day-bar
+                      b "1h44"
+                      i [style="height:calc(42.5% - 7.65px)"]
+                    small "Hôm nay"
+              div.stat-card [id="stats-heat"]
+                h3 "Theo giờ"
+                  span.heat-key [aria-hidden="true"] "ÍtNhiều"
+                    i.h0
+                    i.h1
+                    i.h2
+                    i.h3
+                    i.h4
+                div.heat.many [role="img" aria-label="Theo giờ"]
+                  span [style="grid-row-end:auto;grid-row-start:1"]
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:2;grid-row-end:auto;grid-row-start:1"] "00:00"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:5;grid-row-end:auto;grid-row-start:1"] "03:00"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:8;grid-row-end:auto;grid-row-start:1"] "06:00"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:11;grid-row-end:auto;grid-row-start:1"] "09:00"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:14;grid-row-end:auto;grid-row-start:1"] "12:00"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:17;grid-row-end:auto;grid-row-start:1"] "15:00"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:20;grid-row-end:auto;grid-row-start:1"] "18:00"
+                  small.heat-h [style="grid-column-end:span 3;grid-column-start:23;grid-row-end:auto;grid-row-start:1"] "21:00"
+                  small.heat-d
+                  i.h4 [title="17/9, 00:00: trung bình 8,6 cửa sổ"]
+                  i.h4 [title="17/9, 01:00: trung bình 8,4 cửa sổ"]
+                  i.h4 [title="17/9, 02:00: trung bình 8,1 cửa sổ"]
+                  i.h4 [title="17/9, 03:00: trung bình 7,9 cửa sổ"]
+                  i.h4 [title="17/9, 04:00: trung bình 7,6 cửa sổ"]
+                  i.h4 [title="17/9, 05:00: trung bình 7,4 cửa sổ"]
+                  i.h4 [title="17/9, 06:00: trung bình 7,2 cửa sổ"]
+                  i.h4 [title="17/9, 07:00: trung bình 6,9 cửa sổ"]
+                  i.h2 [title="17/9, 08:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="17/9, 09:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="17/9, 10:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="17/9, 11:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="17/9, 12:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="17/9, 13:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="17/9, 14:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="17/9, 15:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="17/9, 16:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="17/9, 17:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="17/9, 18:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="17/9, 19:00: trung bình 3 cửa sổ"]
+                  i.h3 [title="17/9, 20:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="17/9, 21:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="17/9, 22:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="17/9, 23:00: trung bình 4 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="18/9, 00:00: trung bình 8,8 cửa sổ"]
+                  i.h4 [title="18/9, 01:00: trung bình 8,5 cửa sổ"]
+                  i.h4 [title="18/9, 02:00: trung bình 8,3 cửa sổ"]
+                  i.h4 [title="18/9, 03:00: trung bình 8,1 cửa sổ"]
+                  i.h4 [title="18/9, 04:00: trung bình 7,8 cửa sổ"]
+                  i.h4 [title="18/9, 05:00: trung bình 7,6 cửa sổ"]
+                  i.h4 [title="18/9, 06:00: trung bình 7,3 cửa sổ"]
+                  i.h4 [title="18/9, 07:00: trung bình 7,1 cửa sổ"]
+                  i.h2 [title="18/9, 08:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="18/9, 09:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="18/9, 10:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="18/9, 11:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="18/9, 12:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="18/9, 13:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="18/9, 14:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="18/9, 15:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="18/9, 16:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="18/9, 17:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="18/9, 18:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="18/9, 19:00: trung bình 3,2 cửa sổ"]
+                  i.h3 [title="18/9, 20:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="18/9, 21:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="18/9, 22:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="18/9, 23:00: trung bình 4,2 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="19/9, 00:00: trung bình 9 cửa sổ"]
+                  i.h4 [title="19/9, 01:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="19/9, 02:00: trung bình 8,5 cửa sổ"]
+                  i.h4 [title="19/9, 03:00: trung bình 8,2 cửa sổ"]
+                  i.h4 [title="19/9, 04:00: trung bình 8 cửa sổ"]
+                  i.h4 [title="19/9, 05:00: trung bình 7,7 cửa sổ"]
+                  i.h4 [title="19/9, 06:00: trung bình 7,5 cửa sổ"]
+                  i.h4 [title="19/9, 07:00: trung bình 7,3 cửa sổ"]
+                  i.h2 [title="19/9, 08:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="19/9, 09:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="19/9, 10:00: trung bình 2,5 cửa sổ"]
+                  i.h2 [title="19/9, 11:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="19/9, 12:00: trung bình 2 cửa sổ"]
+                  i.h3 [title="19/9, 13:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="19/9, 14:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="19/9, 15:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="19/9, 16:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="19/9, 17:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="19/9, 18:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="19/9, 19:00: trung bình 3,3 cửa sổ"]
+                  i.h3 [title="19/9, 20:00: trung bình 5,1 cửa sổ"]
+                  i.h3 [title="19/9, 21:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="19/9, 22:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="19/9, 23:00: trung bình 4,4 cửa sổ"]
+                  small.heat-d
+                  i.h3 [title="20/9, 00:00: trung bình 6,1 cửa sổ"]
+                  i.h4 [title="20/9, 01:00: trung bình 8,9 cửa sổ"]
+                  i.h4 [title="20/9, 02:00: trung bình 8,6 cửa sổ"]
+                  i.h4 [title="20/9, 03:00: trung bình 8,4 cửa sổ"]
+                  i.h4 [title="20/9, 04:00: trung bình 8,1 cửa sổ"]
+                  i.h4 [title="20/9, 05:00: trung bình 7,9 cửa sổ"]
+                  i.h4 [title="20/9, 06:00: trung bình 7,7 cửa sổ"]
+                  i.h4 [title="20/9, 07:00: trung bình 7,4 cửa sổ"]
+                  i.h2 [title="20/9, 08:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="20/9, 09:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="20/9, 10:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="20/9, 11:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="20/9, 12:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="20/9, 13:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="20/9, 14:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="20/9, 15:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="20/9, 16:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="20/9, 17:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="20/9, 18:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="20/9, 19:00: trung bình 3,5 cửa sổ"]
+                  i.h3 [title="20/9, 20:00: trung bình 5,3 cửa sổ"]
+                  i.h3 [title="20/9, 21:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="20/9, 22:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="20/9, 23:00: trung bình 4,5 cửa sổ"]
+                  small.heat-d "21/9"
+                  i.h3 [title="21/9, 00:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="21/9, 01:00: trung bình 6 cửa sổ"]
+                  i.h4 [title="21/9, 02:00: trung bình 8,8 cửa sổ"]
+                  i.h4 [title="21/9, 03:00: trung bình 8,6 cửa sổ"]
+                  i.h4 [title="21/9, 04:00: trung bình 8,3 cửa sổ"]
+                  i.h4 [title="21/9, 05:00: trung bình 8,1 cửa sổ"]
+                  i.h4 [title="21/9, 06:00: trung bình 7,8 cửa sổ"]
+                  i.h4 [title="21/9, 07:00: trung bình 7,6 cửa sổ"]
+                  i.h2 [title="21/9, 08:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="21/9, 09:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="21/9, 10:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="21/9, 11:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="21/9, 12:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="21/9, 13:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="21/9, 14:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="21/9, 15:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="21/9, 16:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="21/9, 17:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="21/9, 18:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="21/9, 19:00: trung bình 3,7 cửa sổ"]
+                  i.h3 [title="21/9, 20:00: trung bình 5,4 cửa sổ"]
+                  i.h3 [title="21/9, 21:00: trung bình 5,2 cửa sổ"]
+                  i.h3 [title="21/9, 22:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="21/9, 23:00: trung bình 4,7 cửa sổ"]
+                  small.heat-d
+                  i.h3 [title="22/9, 00:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="22/9, 01:00: trung bình 6,2 cửa sổ"]
+                  i.h4 [title="22/9, 02:00: trung bình 9 cửa sổ"]
+                  i.h4 [title="22/9, 03:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="22/9, 04:00: trung bình 8,5 cửa sổ"]
+                  i.h4 [title="22/9, 05:00: trung bình 8,2 cửa sổ"]
+                  i.h4 [title="22/9, 06:00: trung bình 8 cửa sổ"]
+                  i.h4 [title="22/9, 07:00: trung bình 7,8 cửa sổ"]
+                  i.h2 [title="22/9, 08:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="22/9, 09:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="22/9, 10:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="22/9, 11:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="22/9, 12:00: trung bình 2,5 cửa sổ"]
+                  i.h2 [title="22/9, 13:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="22/9, 14:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="22/9, 15:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="22/9, 16:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="22/9, 17:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="22/9, 18:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="22/9, 19:00: trung bình 3,8 cửa sổ"]
+                  i.h3 [title="22/9, 20:00: trung bình 5,6 cửa sổ"]
+                  i.h3 [title="22/9, 21:00: trung bình 5,4 cửa sổ"]
+                  i.h3 [title="22/9, 22:00: trung bình 5,1 cửa sổ"]
+                  i.h3 [title="22/9, 23:00: trung bình 4,9 cửa sổ"]
+                  small.heat-d
+                  i.h3 [title="23/9, 00:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="23/9, 01:00: trung bình 6,4 cửa sổ"]
+                  i.h3 [title="23/9, 02:00: trung bình 6,1 cửa sổ"]
+                  i.h4 [title="23/9, 03:00: trung bình 8,9 cửa sổ"]
+                  i.h4 [title="23/9, 04:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="23/9, 05:00: trung bình 8,4 cửa sổ"]
+                  i.h4 [title="23/9, 06:00: trung bình 8,2 cửa sổ"]
+                  i.h4 [title="23/9, 07:00: trung bình 7,9 cửa sổ"]
+                  i.h2 [title="23/9, 08:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="23/9, 09:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="23/9, 10:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="23/9, 11:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="23/9, 12:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="23/9, 13:00: trung bình 2,5 cửa sổ"]
+                  i.h1 [title="23/9, 14:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="23/9, 15:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="23/9, 16:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="23/9, 17:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="23/9, 18:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="23/9, 19:00: trung bình 4 cửa sổ"]
+                  i.h3 [title="23/9, 20:00: trung bình 5,8 cửa sổ"]
+                  i.h3 [title="23/9, 21:00: trung bình 5,5 cửa sổ"]
+                  i.h3 [title="23/9, 22:00: trung bình 5,3 cửa sổ"]
+                  i.h3 [title="23/9, 23:00: trung bình 5 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="24/9, 00:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="24/9, 01:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="24/9, 02:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="24/9, 03:00: trung bình 6,1 cửa sổ"]
+                  i.h4 [title="24/9, 04:00: trung bình 8,8 cửa sổ"]
+                  i.h4 [title="24/9, 05:00: trung bình 8,6 cửa sổ"]
+                  i.h4 [title="24/9, 06:00: trung bình 8,3 cửa sổ"]
+                  i.h4 [title="24/9, 07:00: trung bình 8,1 cửa sổ"]
+                  i.h2 [title="24/9, 08:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="24/9, 09:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="24/9, 10:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="24/9, 11:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="24/9, 12:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="24/9, 13:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="24/9, 14:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="24/9, 15:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="24/9, 16:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="24/9, 17:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="24/9, 18:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="24/9, 19:00: trung bình 4,2 cửa sổ"]
+                  i.h3 [title="24/9, 20:00: trung bình 5,9 cửa sổ"]
+                  i.h3 [title="24/9, 21:00: trung bình 5,7 cửa sổ"]
+                  i.h3 [title="24/9, 22:00: trung bình 5,4 cửa sổ"]
+                  i.h3 [title="24/9, 23:00: trung bình 5,2 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="25/9, 00:00: trung bình 7 cửa sổ"]
+                  i.h3 [title="25/9, 01:00: trung bình 6,7 cửa sổ"]
+                  i.h3 [title="25/9, 02:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="25/9, 03:00: trung bình 6,2 cửa sổ"]
+                  i.h4 [title="25/9, 04:00: trung bình 9 cửa sổ"]
+                  i.h4 [title="25/9, 05:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="25/9, 06:00: trung bình 8,5 cửa sổ"]
+                  i.h4 [title="25/9, 07:00: trung bình 8,3 cửa sổ"]
+                  i.h2 [title="25/9, 08:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="25/9, 09:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="25/9, 10:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="25/9, 11:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="25/9, 12:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="25/9, 13:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="25/9, 14:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="25/9, 15:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="25/9, 16:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="25/9, 17:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="25/9, 18:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="25/9, 19:00: trung bình 4,3 cửa sổ"]
+                  i.h3 [title="25/9, 20:00: trung bình 6,1 cửa sổ"]
+                  i.h3 [title="25/9, 21:00: trung bình 5,9 cửa sổ"]
+                  i.h3 [title="25/9, 22:00: trung bình 5,6 cửa sổ"]
+                  i.h3 [title="25/9, 23:00: trung bình 5,4 cửa sổ"]
+                  small.heat-d "26/9"
+                  i.h4 [title="26/9, 00:00: trung bình 7,1 cửa sổ"]
+                  i.h4 [title="26/9, 01:00: trung bình 6,9 cửa sổ"]
+                  i.h3 [title="26/9, 02:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="26/9, 03:00: trung bình 6,4 cửa sổ"]
+                  i.h3 [title="26/9, 04:00: trung bình 6,2 cửa sổ"]
+                  i.h4 [title="26/9, 05:00: trung bình 8,9 cửa sổ"]
+                  i.h4 [title="26/9, 06:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="26/9, 07:00: trung bình 8,4 cửa sổ"]
+                  i.h2 [title="26/9, 08:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="26/9, 09:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="26/9, 10:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="26/9, 11:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="26/9, 12:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="26/9, 13:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="26/9, 14:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="26/9, 15:00: trung bình 2,5 cửa sổ"]
+                  i.h1 [title="26/9, 16:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="26/9, 17:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="26/9, 18:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="26/9, 19:00: trung bình 4,5 cửa sổ"]
+                  i.h3 [title="26/9, 20:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="26/9, 21:00: trung bình 6 cửa sổ"]
+                  i.h3 [title="26/9, 22:00: trung bình 5,8 cửa sổ"]
+                  i.h3 [title="26/9, 23:00: trung bình 5,5 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="27/9, 00:00: trung bình 7,3 cửa sổ"]
+                  i.h4 [title="27/9, 01:00: trung bình 7,1 cửa sổ"]
+                  i.h4 [title="27/9, 02:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="27/9, 03:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="27/9, 04:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="27/9, 05:00: trung bình 6,1 cửa sổ"]
+                  i.h4 [title="27/9, 06:00: trung bình 8,8 cửa sổ"]
+                  i.h4 [title="27/9, 07:00: trung bình 8,6 cửa sổ"]
+                  i.h2 [title="27/9, 08:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="27/9, 09:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="27/9, 10:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="27/9, 11:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="27/9, 12:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="27/9, 13:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="27/9, 14:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="27/9, 15:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="27/9, 16:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="27/9, 17:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="27/9, 18:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="27/9, 19:00: trung bình 4,7 cửa sổ"]
+                  i.h3 [title="27/9, 20:00: trung bình 6,4 cửa sổ"]
+                  i.h3 [title="27/9, 21:00: trung bình 6,2 cửa sổ"]
+                  i.h3 [title="27/9, 22:00: trung bình 5,9 cửa sổ"]
+                  i.h3 [title="27/9, 23:00: trung bình 5,7 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="28/9, 00:00: trung bình 7,5 cửa sổ"]
+                  i.h4 [title="28/9, 01:00: trung bình 7,2 cửa sổ"]
+                  i.h4 [title="28/9, 02:00: trung bình 7 cửa sổ"]
+                  i.h3 [title="28/9, 03:00: trung bình 6,7 cửa sổ"]
+                  i.h3 [title="28/9, 04:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="28/9, 05:00: trung bình 6,2 cửa sổ"]
+                  i.h3 [title="28/9, 06:00: trung bình 6 cửa sổ"]
+                  i.h4 [title="28/9, 07:00: trung bình 8,8 cửa sổ"]
+                  i.h3 [title="28/9, 08:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="28/9, 09:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="28/9, 10:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="28/9, 11:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="28/9, 12:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="28/9, 13:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="28/9, 14:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="28/9, 15:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="28/9, 16:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="28/9, 17:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="28/9, 18:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="28/9, 19:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="28/9, 20:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="28/9, 21:00: trung bình 6,4 cửa sổ"]
+                  i.h3 [title="28/9, 22:00: trung bình 6,1 cửa sổ"]
+                  i.h3 [title="28/9, 23:00: trung bình 5,9 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="29/9, 00:00: trung bình 7,6 cửa sổ"]
+                  i.h4 [title="29/9, 01:00: trung bình 7,4 cửa sổ"]
+                  i.h4 [title="29/9, 02:00: trung bình 7,1 cửa sổ"]
+                  i.h4 [title="29/9, 03:00: trung bình 6,9 cửa sổ"]
+                  i.h3 [title="29/9, 04:00: trung bình 6,7 cửa sổ"]
+                  i.h3 [title="29/9, 05:00: trung bình 6,4 cửa sổ"]
+                  i.h3 [title="29/9, 06:00: trung bình 6,2 cửa sổ"]
+                  i.h4 [title="29/9, 07:00: trung bình 8,9 cửa sổ"]
+                  i.h3 [title="29/9, 08:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="29/9, 09:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="29/9, 10:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="29/9, 11:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="29/9, 12:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="29/9, 13:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="29/9, 14:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="29/9, 15:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="29/9, 16:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="29/9, 17:00: trung bình 2,5 cửa sổ"]
+                  i.h2 [title="29/9, 18:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="29/9, 19:00: trung bình 2 cửa sổ"]
+                  i.h4 [title="29/9, 20:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="29/9, 21:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="29/9, 22:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="29/9, 23:00: trung bình 6 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="30/9, 00:00: trung bình 7,8 cửa sổ"]
+                  i.h4 [title="30/9, 01:00: trung bình 7,6 cửa sổ"]
+                  i.h4 [title="30/9, 02:00: trung bình 7,3 cửa sổ"]
+                  i.h4 [title="30/9, 03:00: trung bình 7,1 cửa sổ"]
+                  i.h4 [title="30/9, 04:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="30/9, 05:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="30/9, 06:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="30/9, 07:00: trung bình 6,1 cửa sổ"]
+                  i.h3 [title="30/9, 08:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="30/9, 09:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="30/9, 10:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="30/9, 11:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="30/9, 12:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="30/9, 13:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="30/9, 14:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="30/9, 15:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="30/9, 16:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="30/9, 17:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="30/9, 18:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="30/9, 19:00: trung bình 2,2 cửa sổ"]
+                  i.h4 [title="30/9, 20:00: trung bình 6,9 cửa sổ"]
+                  i.h3 [title="30/9, 21:00: trung bình 6,7 cửa sổ"]
+                  i.h3 [title="30/9, 22:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="30/9, 23:00: trung bình 6,2 cửa sổ"]
+                  small.heat-d "1/10"
+                  i.h4 [title="1/10, 00:00: trung bình 8 cửa sổ"]
+                  i.h4 [title="1/10, 01:00: trung bình 7,7 cửa sổ"]
+                  i.h4 [title="1/10, 02:00: trung bình 7,5 cửa sổ"]
+                  i.h4 [title="1/10, 03:00: trung bình 7,2 cửa sổ"]
+                  i.h4 [title="1/10, 04:00: trung bình 7 cửa sổ"]
+                  i.h4 [title="1/10, 05:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="1/10, 06:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="1/10, 07:00: trung bình 6,3 cửa sổ"]
+                  i.h1 [title="1/10, 08:00: trung bình 2 cửa sổ"]
+                  i.h3 [title="1/10, 09:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="1/10, 10:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="1/10, 11:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="1/10, 12:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="1/10, 13:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="1/10, 14:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="1/10, 15:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="1/10, 16:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="1/10, 17:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="1/10, 18:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="1/10, 19:00: trung bình 2,4 cửa sổ"]
+                  i.h2 [title="1/10, 20:00: trung bình 4,1 cửa sổ"]
+                  i.h4 [title="1/10, 21:00: trung bình 6,9 cửa sổ"]
+                  i.h3 [title="1/10, 22:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="1/10, 23:00: trung bình 6,4 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="2/10, 00:00: trung bình 8,1 cửa sổ"]
+                  i.h4 [title="2/10, 01:00: trung bình 7,9 cửa sổ"]
+                  i.h4 [title="2/10, 02:00: trung bình 7,6 cửa sổ"]
+                  i.h4 [title="2/10, 03:00: trung bình 7,4 cửa sổ"]
+                  i.h4 [title="2/10, 04:00: trung bình 7,2 cửa sổ"]
+                  i.h4 [title="2/10, 05:00: trung bình 6,9 cửa sổ"]
+                  i.h3 [title="2/10, 06:00: trung bình 6,7 cửa sổ"]
+                  i.h3 [title="2/10, 07:00: trung bình 6,4 cửa sổ"]
+                  i.h1 [title="2/10, 08:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="2/10, 09:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="2/10, 10:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="2/10, 11:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="2/10, 12:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="2/10, 13:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="2/10, 14:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="2/10, 15:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="2/10, 16:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="2/10, 17:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="2/10, 18:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="2/10, 19:00: trung bình 2,5 cửa sổ"]
+                  i.h2 [title="2/10, 20:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="2/10, 21:00: trung bình 4 cửa sổ"]
+                  i.h4 [title="2/10, 22:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="2/10, 23:00: trung bình 6,5 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="3/10, 00:00: trung bình 8,3 cửa sổ"]
+                  i.h4 [title="3/10, 01:00: trung bình 8,1 cửa sổ"]
+                  i.h4 [title="3/10, 02:00: trung bình 7,8 cửa sổ"]
+                  i.h4 [title="3/10, 03:00: trung bình 7,6 cửa sổ"]
+                  i.h4 [title="3/10, 04:00: trung bình 7,3 cửa sổ"]
+                  i.h4 [title="3/10, 05:00: trung bình 7,1 cửa sổ"]
+                  i.h4 [title="3/10, 06:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="3/10, 07:00: trung bình 6,6 cửa sổ"]
+                  i.h2 [title="3/10, 08:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="3/10, 09:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="3/10, 10:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="3/10, 11:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="3/10, 12:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="3/10, 13:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="3/10, 14:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="3/10, 15:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="3/10, 16:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="3/10, 17:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="3/10, 18:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="3/10, 19:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="3/10, 20:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="3/10, 21:00: trung bình 4,2 cửa sổ"]
+                  i.h4 [title="3/10, 22:00: trung bình 7 cửa sổ"]
+                  i.h3 [title="3/10, 23:00: trung bình 6,7 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="4/10, 00:00: trung bình 8,5 cửa sổ"]
+                  i.h4 [title="4/10, 01:00: trung bình 8,2 cửa sổ"]
+                  i.h4 [title="4/10, 02:00: trung bình 8 cửa sổ"]
+                  i.h4 [title="4/10, 03:00: trung bình 7,7 cửa sổ"]
+                  i.h4 [title="4/10, 04:00: trung bình 7,5 cửa sổ"]
+                  i.h4 [title="4/10, 05:00: trung bình 7,3 cửa sổ"]
+                  i.h4 [title="4/10, 06:00: trung bình 7 cửa sổ"]
+                  i.h4 [title="4/10, 07:00: trung bình 6,8 cửa sổ"]
+                  i.h2 [title="4/10, 08:00: trung bình 2,5 cửa sổ"]
+                  i.h2 [title="4/10, 09:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="4/10, 10:00: trung bình 2 cửa sổ"]
+                  i.h3 [title="4/10, 11:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="4/10, 12:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="4/10, 13:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="4/10, 14:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="4/10, 15:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="4/10, 16:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="4/10, 17:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="4/10, 18:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="4/10, 19:00: trung bình 2,9 cửa sổ"]
+                  i.h3 [title="4/10, 20:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="4/10, 21:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="4/10, 22:00: trung bình 4,1 cửa sổ"]
+                  i.h4 [title="4/10, 23:00: trung bình 6,9 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="5/10, 00:00: trung bình 8,6 cửa sổ"]
+                  i.h4 [title="5/10, 01:00: trung bình 8,4 cửa sổ"]
+                  i.h4 [title="5/10, 02:00: trung bình 8,2 cửa sổ"]
+                  i.h4 [title="5/10, 03:00: trung bình 7,9 cửa sổ"]
+                  i.h4 [title="5/10, 04:00: trung bình 7,7 cửa sổ"]
+                  i.h4 [title="5/10, 05:00: trung bình 7,4 cửa sổ"]
+                  i.h4 [title="5/10, 06:00: trung bình 7,2 cửa sổ"]
+                  i.h4 [title="5/10, 07:00: trung bình 6,9 cửa sổ"]
+                  i.h2 [title="5/10, 08:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="5/10, 09:00: trung bình 2,5 cửa sổ"]
+                  i.h1 [title="5/10, 10:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="5/10, 11:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="5/10, 12:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="5/10, 13:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="5/10, 14:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="5/10, 15:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="5/10, 16:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="5/10, 17:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="5/10, 18:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="5/10, 19:00: trung bình 3 cửa sổ"]
+                  i.h3 [title="5/10, 20:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="5/10, 21:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="5/10, 22:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="5/10, 23:00: trung bình 4,1 cửa sổ"]
+                  small.heat-d "6/10"
+                  i.h4 [title="6/10, 00:00: trung bình 8,8 cửa sổ"]
+                  i.h4 [title="6/10, 01:00: trung bình 8,6 cửa sổ"]
+                  i.h4 [title="6/10, 02:00: trung bình 8,3 cửa sổ"]
+                  i.h4 [title="6/10, 03:00: trung bình 8,1 cửa sổ"]
+                  i.h4 [title="6/10, 04:00: trung bình 7,8 cửa sổ"]
+                  i.h4 [title="6/10, 05:00: trung bình 7,6 cửa sổ"]
+                  i.h4 [title="6/10, 06:00: trung bình 7,3 cửa sổ"]
+                  i.h4 [title="6/10, 07:00: trung bình 7,1 cửa sổ"]
+                  i.h2 [title="6/10, 08:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="6/10, 09:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="6/10, 10:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="6/10, 11:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="6/10, 12:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="6/10, 13:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="6/10, 14:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="6/10, 15:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="6/10, 16:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="6/10, 17:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="6/10, 18:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="6/10, 19:00: trung bình 3,2 cửa sổ"]
+                  i.h3 [title="6/10, 20:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="6/10, 21:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="6/10, 22:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="6/10, 23:00: trung bình 4,2 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="7/10, 00:00: trung bình 9 cửa sổ"]
+                  i.h4 [title="7/10, 01:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="7/10, 02:00: trung bình 8,5 cửa sổ"]
+                  i.h4 [title="7/10, 03:00: trung bình 8,2 cửa sổ"]
+                  i.h4 [title="7/10, 04:00: trung bình 8 cửa sổ"]
+                  i.h4 [title="7/10, 05:00: trung bình 7,8 cửa sổ"]
+                  i.h4 [title="7/10, 06:00: trung bình 7,5 cửa sổ"]
+                  i.h4 [title="7/10, 07:00: trung bình 7,3 cửa sổ"]
+                  i.h2 [title="7/10, 08:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="7/10, 09:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="7/10, 10:00: trung bình 2,5 cửa sổ"]
+                  i.h2 [title="7/10, 11:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="7/10, 12:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="7/10, 13:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="7/10, 14:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="7/10, 15:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="7/10, 16:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="7/10, 17:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="7/10, 18:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="7/10, 19:00: trung bình 3,4 cửa sổ"]
+                  i.h3 [title="7/10, 20:00: trung bình 5,1 cửa sổ"]
+                  i.h3 [title="7/10, 21:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="7/10, 22:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="7/10, 23:00: trung bình 4,4 cửa sổ"]
+                  small.heat-d
+                  i.h3 [title="8/10, 00:00: trung bình 6,1 cửa sổ"]
+                  i.h4 [title="8/10, 01:00: trung bình 8,9 cửa sổ"]
+                  i.h4 [title="8/10, 02:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="8/10, 03:00: trung bình 8,4 cửa sổ"]
+                  i.h4 [title="8/10, 04:00: trung bình 8,2 cửa sổ"]
+                  i.h4 [title="8/10, 05:00: trung bình 7,9 cửa sổ"]
+                  i.h4 [title="8/10, 06:00: trung bình 7,7 cửa sổ"]
+                  i.h4 [title="8/10, 07:00: trung bình 7,4 cửa sổ"]
+                  i.h2 [title="8/10, 08:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="8/10, 09:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="8/10, 10:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="8/10, 11:00: trung bình 2,5 cửa sổ"]
+                  i.h1 [title="8/10, 12:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="8/10, 13:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="8/10, 14:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="8/10, 15:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="8/10, 16:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="8/10, 17:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="8/10, 18:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="8/10, 19:00: trung bình 3,5 cửa sổ"]
+                  i.h3 [title="8/10, 20:00: trung bình 5,3 cửa sổ"]
+                  i.h3 [title="8/10, 21:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="8/10, 22:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="8/10, 23:00: trung bình 4,6 cửa sổ"]
+                  small.heat-d
+                  i.h3 [title="9/10, 00:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="9/10, 01:00: trung bình 6,1 cửa sổ"]
+                  i.h4 [title="9/10, 02:00: trung bình 8,8 cửa sổ"]
+                  i.h4 [title="9/10, 03:00: trung bình 8,6 cửa sổ"]
+                  i.h4 [title="9/10, 04:00: trung bình 8,3 cửa sổ"]
+                  i.h4 [title="9/10, 05:00: trung bình 8,1 cửa sổ"]
+                  i.h4 [title="9/10, 06:00: trung bình 7,9 cửa sổ"]
+                  i.h4 [title="9/10, 07:00: trung bình 7,6 cửa sổ"]
+                  i.h2 [title="9/10, 08:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="9/10, 09:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="9/10, 10:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="9/10, 11:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="9/10, 12:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="9/10, 13:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="9/10, 14:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="9/10, 15:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="9/10, 16:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="9/10, 17:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="9/10, 18:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="9/10, 19:00: trung bình 3,7 cửa sổ"]
+                  i.h3 [title="9/10, 20:00: trung bình 5,5 cửa sổ"]
+                  i.h3 [title="9/10, 21:00: trung bình 5,2 cửa sổ"]
+                  i.h3 [title="9/10, 22:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="9/10, 23:00: trung bình 4,7 cửa sổ"]
+                  small.heat-d
+                  i.h3 [title="10/10, 00:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="10/10, 01:00: trung bình 6,2 cửa sổ"]
+                  i.h4 [title="10/10, 02:00: trung bình 9 cửa sổ"]
+                  i.h4 [title="10/10, 03:00: trung bình 8,8 cửa sổ"]
+                  i.h4 [title="10/10, 04:00: trung bình 8,5 cửa sổ"]
+                  i.h4 [title="10/10, 05:00: trung bình 8,3 cửa sổ"]
+                  i.h4 [title="10/10, 06:00: trung bình 8 cửa sổ"]
+                  i.h4 [title="10/10, 07:00: trung bình 7,8 cửa sổ"]
+                  i.h2 [title="10/10, 08:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="10/10, 09:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="10/10, 10:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="10/10, 11:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="10/10, 12:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="10/10, 13:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="10/10, 14:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="10/10, 15:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="10/10, 16:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="10/10, 17:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="10/10, 18:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="10/10, 19:00: trung bình 3,9 cửa sổ"]
+                  i.h3 [title="10/10, 20:00: trung bình 5,6 cửa sổ"]
+                  i.h3 [title="10/10, 21:00: trung bình 5,4 cửa sổ"]
+                  i.h3 [title="10/10, 22:00: trung bình 5,1 cửa sổ"]
+                  i.h3 [title="10/10, 23:00: trung bình 4,9 cửa sổ"]
+                  small.heat-d "11/10"
+                  i.h3 [title="11/10, 00:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="11/10, 01:00: trung bình 6,4 cửa sổ"]
+                  i.h3 [title="11/10, 02:00: trung bình 6,2 cửa sổ"]
+                  i.h4 [title="11/10, 03:00: trung bình 8,9 cửa sổ"]
+                  i.h4 [title="11/10, 04:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="11/10, 05:00: trung bình 8,4 cửa sổ"]
+                  i.h4 [title="11/10, 06:00: trung bình 8,2 cửa sổ"]
+                  i.h4 [title="11/10, 07:00: trung bình 7,9 cửa sổ"]
+                  i.h2 [title="11/10, 08:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="11/10, 09:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="11/10, 10:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="11/10, 11:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="11/10, 12:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="11/10, 13:00: trung bình 2,5 cửa sổ"]
+                  i.h1 [title="11/10, 14:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="11/10, 15:00: trung bình 5 cửa sổ"]
+                  i.h3 [title="11/10, 16:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="11/10, 17:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="11/10, 18:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="11/10, 19:00: trung bình 4 cửa sổ"]
+                  i.h3 [title="11/10, 20:00: trung bình 5,8 cửa sổ"]
+                  i.h3 [title="11/10, 21:00: trung bình 5,5 cửa sổ"]
+                  i.h3 [title="11/10, 22:00: trung bình 5,3 cửa sổ"]
+                  i.h3 [title="11/10, 23:00: trung bình 5,1 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="12/10, 00:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="12/10, 01:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="12/10, 02:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="12/10, 03:00: trung bình 6,1 cửa sổ"]
+                  i.h4 [title="12/10, 04:00: trung bình 8,8 cửa sổ"]
+                  i.h4 [title="12/10, 05:00: trung bình 8,6 cửa sổ"]
+                  i.h4 [title="12/10, 06:00: trung bình 8,4 cửa sổ"]
+                  i.h4 [title="12/10, 07:00: trung bình 8,1 cửa sổ"]
+                  i.h2 [title="12/10, 08:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="12/10, 09:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="12/10, 10:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="12/10, 11:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="12/10, 12:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="12/10, 13:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="12/10, 14:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="12/10, 15:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="12/10, 16:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="12/10, 17:00: trung bình 4,7 cửa sổ"]
+                  i.h2 [title="12/10, 18:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="12/10, 19:00: trung bình 4,2 cửa sổ"]
+                  i.h3 [title="12/10, 20:00: trung bình 6 cửa sổ"]
+                  i.h3 [title="12/10, 21:00: trung bình 5,7 cửa sổ"]
+                  i.h3 [title="12/10, 22:00: trung bình 5,5 cửa sổ"]
+                  i.h3 [title="12/10, 23:00: trung bình 5,2 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="13/10, 00:00: trung bình 7 cửa sổ"]
+                  i.h0 [title="13/10, 01:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="13/10, 02:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="13/10, 03:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="13/10, 04:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="13/10, 05:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="13/10, 06:00: trung bình 0 cửa sổ"]
+                  i.h4 [title="13/10, 07:00: trung bình 8,3 cửa sổ"]
+                  i.h2 [title="13/10, 08:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="13/10, 09:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="13/10, 10:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="13/10, 11:00: trung bình 3,3 cửa sổ"]
+                  i.h2 [title="13/10, 12:00: trung bình 3,1 cửa sổ"]
+                  i.h2 [title="13/10, 13:00: trung bình 2,8 cửa sổ"]
+                  i.h2 [title="13/10, 14:00: trung bình 2,6 cửa sổ"]
+                  i.h2 [title="13/10, 15:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="13/10, 16:00: trung bình 2,1 cửa sổ"]
+                  i.h3 [title="13/10, 17:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="13/10, 18:00: trung bình 4,6 cửa sổ"]
+                  i.h2 [title="13/10, 19:00: trung bình 4,4 cửa sổ"]
+                  i.h3 [title="13/10, 20:00: trung bình 6,1 cửa sổ"]
+                  i.h3 [title="13/10, 21:00: trung bình 5,9 cửa sổ"]
+                  i.h3 [title="13/10, 22:00: trung bình 5,6 cửa sổ"]
+                  i.h3 [title="13/10, 23:00: trung bình 5,4 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="14/10, 00:00: trung bình 7,2 cửa sổ"]
+                  i.h4 [title="14/10, 01:00: trung bình 6,9 cửa sổ"]
+                  i.h3 [title="14/10, 02:00: trung bình 6,7 cửa sổ"]
+                  i.h3 [title="14/10, 03:00: trung bình 6,4 cửa sổ"]
+                  i.h3 [title="14/10, 04:00: trung bình 6,2 cửa sổ"]
+                  i.h4 [title="14/10, 05:00: trung bình 8,9 cửa sổ"]
+                  i.h4 [title="14/10, 06:00: trung bình 8,7 cửa sổ"]
+                  i.h4 [title="14/10, 07:00: trung bình 8,5 cửa sổ"]
+                  i.h2 [title="14/10, 08:00: trung bình 4,2 cửa sổ"]
+                  i.h2 [title="14/10, 09:00: trung bình 4 cửa sổ"]
+                  i.h2 [title="14/10, 10:00: trung bình 3,7 cửa sổ"]
+                  i.h2 [title="14/10, 11:00: trung bình 3,5 cửa sổ"]
+                  i.h2 [title="14/10, 12:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="14/10, 13:00: trung bình 3 cửa sổ"]
+                  i.h2 [title="14/10, 14:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="14/10, 15:00: trung bình 2,5 cửa sổ"]
+                  i.h2 [title="14/10, 16:00: trung bình 2,3 cửa sổ"]
+                  i.h1 [title="14/10, 17:00: trung bình 2 cửa sổ"]
+                  i.h3 [title="14/10, 18:00: trung bình 4,8 cửa sổ"]
+                  i.h3 [title="14/10, 19:00: trung bình 4,5 cửa sổ"]
+                  i.h3 [title="14/10, 20:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="14/10, 21:00: trung bình 6 cửa sổ"]
+                  i.h3 [title="14/10, 22:00: trung bình 5,8 cửa sổ"]
+                  i.h3 [title="14/10, 23:00: trung bình 5,6 cửa sổ"]
+                  small.heat-d
+                  i.h4 [title="15/10, 00:00: trung bình 7,3 cửa sổ"]
+                  i.h4 [title="15/10, 01:00: trung bình 7,1 cửa sổ"]
+                  i.h4 [title="15/10, 02:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="15/10, 03:00: trung bình 6,6 cửa sổ"]
+                  i.h3 [title="15/10, 04:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="15/10, 05:00: trung bình 6,1 cửa sổ"]
+                  i.h4 [title="15/10, 06:00: trung bình 8,9 cửa sổ"]
+                  i.h4 [title="15/10, 07:00: trung bình 8,6 cửa sổ"]
+                  i.h2 [title="15/10, 08:00: trung bình 4,4 cửa sổ"]
+                  i.h2 [title="15/10, 09:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="15/10, 10:00: trung bình 3,9 cửa sổ"]
+                  i.h2 [title="15/10, 11:00: trung bình 3,6 cửa sổ"]
+                  i.h2 [title="15/10, 12:00: trung bình 3,4 cửa sổ"]
+                  i.h2 [title="15/10, 13:00: trung bình 3,2 cửa sổ"]
+                  i.h2 [title="15/10, 14:00: trung bình 2,9 cửa sổ"]
+                  i.h2 [title="15/10, 15:00: trung bình 2,7 cửa sổ"]
+                  i.h2 [title="15/10, 16:00: trung bình 2,4 cửa sổ"]
+                  i.h1 [title="15/10, 17:00: trung bình 2,2 cửa sổ"]
+                  i.h3 [title="15/10, 18:00: trung bình 4,9 cửa sổ"]
+                  i.h3 [title="15/10, 19:00: trung bình 4,7 cửa sổ"]
+                  i.h3 [title="15/10, 20:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="15/10, 21:00: trung bình 6,2 cửa sổ"]
+                  i.h3 [title="15/10, 22:00: trung bình 6 cửa sổ"]
+                  i.h3 [title="15/10, 23:00: trung bình 5,7 cửa sổ"]
+                  small.heat-d.today "Hôm nay"
+                  i.h4 [title="Hôm nay, 00:00: trung bình 7,5 cửa sổ"]
+                  i.h4 [title="Hôm nay, 01:00: trung bình 7,2 cửa sổ"]
+                  i.h4 [title="Hôm nay, 02:00: trung bình 7 cửa sổ"]
+                  i.h4 [title="Hôm nay, 03:00: trung bình 6,8 cửa sổ"]
+                  i.h3 [title="Hôm nay, 04:00: trung bình 6,5 cửa sổ"]
+                  i.h3 [title="Hôm nay, 05:00: trung bình 6,3 cửa sổ"]
+                  i.h3 [title="Hôm nay, 06:00: trung bình 6 cửa sổ"]
+                  i.h4 [title="Hôm nay, 07:00: trung bình 8,8 cửa sổ"]
+                  i.h3 [title="Hôm nay, 08:00: trung bình 4,5 cửa sổ"]
+                  i.h2 [title="Hôm nay, 09:00: trung bình 4,3 cửa sổ"]
+                  i.h2 [title="Hôm nay, 10:00: trung bình 4,1 cửa sổ"]
+                  i.h2 [title="Hôm nay, 11:00: trung bình 3,8 cửa sổ"]
+                  i.h2 [title="Hôm nay, 12:00: trung bình 3,6 cửa sổ"]
+                  i.h0 [title="Hôm nay, 13:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 14:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 15:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 16:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 17:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 18:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 19:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 20:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 21:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 22:00: trung bình 0 cửa sổ"]
+                  i.h0 [title="Hôm nay, 23:00: trung bình 0 cửa sổ"]
+              div.stat-card [id="stats-drops"]
+                h3 "Vì sao văng"
+                  span.sd-lost [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 11 giờ 56 phút"
+                div.sd-row
+                  div.sd-text
+                    b "Bị kick vì AFK"
+                    small [title=""] "2 lần ·"
+                  span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 8 giờ 48 phút"
+                  button.btn.sm "Bật Chống AFK"
+                div.sd-row
+                  div.sd-text
+                    b "Rớt mạng"
+                    small [title=""] "1 lần ·"
+                  span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 3 giờ 8 phút"
+              div.stat-card [id="stats-games"]
+                h3 "Game chơi nhiều"
+                  button.chip.gm-chip.on [type="button"] "Chỉ tính [🎃] Adopt Me!"
+                    svg.i #1tyq039
+                div.gm [style="height:236px"]
+                  button.big.gm-box [type="button" title="Blox Fruits · 34 giờ 35 phút · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:478.9px"]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "Blox Fruits"
+                      small "34 giờ 35 phút · 55 %"
+                  button.big.gm-box.on [type="button" title="[🎃] Adopt Me! · 18 giờ 51 phút · 30 %" aria-pressed="true" style="--h:156;height:232px;left:484.9px;top:2px;width:259.4px" FOCUSED]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-fd05afa91e29a7895178342064489a36/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "[🎃] Adopt Me!"
+                      small "18 giờ 51 phút · 30 %"
+                  button.big.gm-box [type="button" title="Brookhaven 🏡RP · 9 giờ 25 phút · 15 %" aria-pressed="false" style="--h:149;height:232px;left:748.3px;top:2px;width:127.7px"]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-01fa54388131d629ec74c042784454c5/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "Brookhaven 🏡RP"
+                      small "9 giờ 25 phút · 15 %"
+              div.stat-card [id="stats-accounts"]
+                h3 "Theo tài khoản"
+                div.sa-grid
+                  button.opens.sa-card [type="button" title="Xem đã chơi gì" aria-expanded="false"]
+                    span.sa-head
+                      span.avatar.gone.sm [aria-hidden="true"]
+                        svg.i #45lggc
+                      b [title="Tài khoản đã xóa"] "Tài khoản đã xóa"
+                    span.sa-time "1 giờ 15 phút"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:44.7%"]
+                      i [style="height:27.5%"]
+                      i [style="height:22.6%"]
+                      i [style="height:81.9%"]
+                      i [style="height:46.4%"]
+                      i [style="height:38.2%"]
+                      i [style="height:53.8%"]
+                      i [style="height:22.8%"]
+                      i [style="height:16.1%"]
+                      i [style="height:30.5%"]
+                      i [style="height:8%"]
+                      i [style="height:61.8%"]
+                      i [style="height:71.7%"]
+                      i [style="height:46.4%"]
+                      i [style="height:39.5%"]
+                      i [style="height:48.1%"]
+                      i [style="height:27%"]
+                      i [style="height:21.8%"]
+                      i [style="height:29%"]
+                      i [style="height:12.4%"]
+                      i [style="height:8.7%"]
+                      i [style="height:14.6%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:100%"]
+                      i [style="height:66.3%"]
+                      i [style="height:57.6%"]
+                      i [style="height:70.7%"]
+                      i [style="height:41.4%"]
+                      i [style="height:34.2%"]
+                    span.sa-foot
+                      span.sa-game [title="[🎃] Adopt Me!" style="--h:156"] "[🎃] Adopt Me!"
+                        i
+              div.one.stat-cols
+                div.stat-side
+                  div.stat-card
+                    h3 "Theo Preset"
+                    div.sgames
+                      div.sgame
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                          small "3 tài khoản · văng 1 lần · 62 %"
+                        span.sg-time "38 giờ 59 phút"
+                      div.sgame
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Adopt Me trade"] "Adopt Me trade"
+                          small "1 tài khoản · 25 %"
+                        span.sg-time "15 giờ 43 phút"
+                      div.sgame
+                        span.gph
+                          svg.i #45lggc
+                        div.gtxt
+                          b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset)."] "Không qua Preset"
+                          small "2 tài khoản · 13 %"
+                        span.sg-time "8 giờ 10 phút"
+#layer
+#toasts
+-- commands
+  activity {"account":null,"group":null,"limit":100}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  playStats {"days":30,"game":"u920587237"}
+  playStats {"days":30,"game":null}
+  playStats {"days":7,"game":null}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

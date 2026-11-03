@@ -75,7 +75,7 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Tài khoản"
-            p [id="acc-sub"] "tài khoản đang chơi onlineĐã chọn ·"
+            p [id="acc-sub" title="7 tài khoản·3 đang chơi·4 online · Đã chọn 7 · Bỏ chọn"] "tài khoản đang chơi onlineĐã chọn ·"
               b "7"
               span.sep "·"
               b "3"
@@ -155,6 +155,10 @@ html [data-theme="dark" lang="vi"]
                   span.robux [title="Số Robux của tài khoản, cập nhật 30 phút một lần"] "80"
                     svg.i #hpg3hu
                   span.tag [title="Farm"] "Farm"
+                div.daystrip [role="img" title="Hôm nay: chơi 9 giờ 30 phút" aria-label="Hôm nay: chơi 9 giờ 30 phút"]
+                  i.ds-play [style="left:2.08%;width:max(2px, 35.42%)"]
+                  i.ds-play [style="left:45.83%;width:max(2px, 4.17%)"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Đóng"
                     svg.i #16z0s1r
@@ -182,6 +186,8 @@ html [data-theme="dark" lang="vi"]
                     svg.i #n87usa
                     span "Mở 9 ngày trước"
                 div.acc-note [title="Hết hạn tuần trước"] "Hết hạn tuần trước"
+                div.daystrip [role="img" title="Hôm nay chưa chơi" aria-label="Hôm nay chưa chơi"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.relogin [title="Tài khoản này đã bị đăng xuất. Đăng nhập lại (bằng điện thoại hoặc trình duyệt) để dùng tiếp." tabindex="-1"] "Đăng nhập"
                     svg.i #kqqqno
@@ -210,6 +216,10 @@ html [data-theme="dark" lang="vi"]
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 5 giờ trước"
+                div.daystrip [role="img" title="Hôm nay: chơi 1 giờ 20 phút · rớt 1 lần" aria-label="Hôm nay: chơi 1 giờ 20 phút · rớt 1 lần"]
+                  i.ds-play [style="left:29.17%;width:max(2px, 5.56%)"]
+                    b.ds-cut
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
@@ -246,6 +256,11 @@ html [data-theme="dark" lang="vi"]
                   span.rejoin [title="Đang bật Tự vào lại"]
                     svg.i #1ap9cll
                 div.acc-note [title="Tài khoản chơi chính, đừng dùng farm"] "Tài khoản chơi chính, đừng dùng farm"
+                div.daystrip [role="img" title="Hôm nay: chơi 11 giờ 45 phút · rớt 1 lần" aria-label="Hôm nay: chơi 11 giờ 45 phút · rớt 1 lần"]
+                  i.ds-play [style="left:0%;width:max(2px, 13.19%)"]
+                    b.ds-cut
+                  i.ds-play [style="left:14.24%;width:max(2px, 35.76%)"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="0"] "Đóng"
                     svg.i #16z0s1r
@@ -272,6 +287,8 @@ html [data-theme="dark" lang="vi"]
                     svg.i #hpg3hu
                   span.ago [title="Lần cuối mở từ Bloxkeep"] "Chưa mở lần nào"
                     svg.i #n87usa
+                div.daystrip [role="img" title="Hôm nay chưa chơi" aria-label="Hôm nay chưa chơi"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
@@ -294,6 +311,8 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Đang mở Roblox…"] "Đang mở Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
+                div.daystrip [role="img" title="Hôm nay chưa chơi" aria-label="Hôm nay chưa chơi"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Đóng"
                     svg.i #16z0s1r
@@ -321,6 +340,8 @@ html [data-theme="dark" lang="vi"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
                 div.acc-note [title="Chỉ dùng trade"] "Chỉ dùng trade"
+                div.daystrip [role="img" title="Hôm nay chưa chơi" aria-label="Hôm nay chưa chơi"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
@@ -389,3 +410,4 @@ html [data-theme="dark" lang="vi"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

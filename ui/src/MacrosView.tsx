@@ -7,7 +7,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from '
 import { Icon, useAppState, useHost, usePage, type Host } from './host';
 import { Pop } from './MacroPop';
 import { richNodes } from './rich';
-import { MAX_MACROS, blankMacro, durText, isLive, recording, type Macro, type MacroRun, type MacroTemplate, type Recording, type Templates } from './macros';
+import { MAX_MACROS, STEP_ICON, blankMacro, durText, isLive, keyName, recording, type Macro, type Step, type MacroRun, type MacroTemplate, type Recording, type Templates } from './macros';
 
 const NONE: Macro[] = [];
 const NO_RUNS: MacroRun[] = [];
@@ -285,6 +285,7 @@ function MacroRow({ m, i, count, runs, byId, shown, selected, canRun, dragging, 
       <span className={`mc-line${failed ? ' bad' : liveRuns.length ? ' on' : ''}`} title={line}>{runs.length
         ? runs.map((r, k) => <span key={r.accountId} className={`mc-acc s-${r.status}`}><i aria-hidden="true" />{said[k]}</span>) : line}</span>
     </div>
+    <Shape steps={m.steps} />
     <button type="button" className={`btn sm mc-panel${shown ? ' on' : ''}`} data-mc="panel" aria-pressed={shown} title={t(shown ? 'macro.panelHide' : 'macro.panelShow')}
       aria-label={`${t('macro.panel')}: ${m.name}`} onClick={e => panel(e.currentTarget)}>{shown ? <i className="mc-panel-dot" aria-hidden="true" /> : <Icon name="screens" />}
       <span>{t('macro.panel')}</span></button>
@@ -299,4 +300,24 @@ function MacroRow({ m, i, count, runs, byId, shown, selected, canRun, dragging, 
     <button type="button" className="icon-btn" data-mc="more" aria-haspopup="menu" title={t('macro.moreActs')} aria-label={`${t('macro.moreActs')}: ${m.name}`}
       onClick={e => menu(e.currentTarget)}><Icon name="more" /></button>
   </div>;
+}
+
+/** The most steps a row's shape shows; more say how many. */
+const SHAPE_MAX = 14;
+
+/** A macro at a glance: its steps in order as small chips, a key's own label (E, Space), a wait's seconds and a loop's
+ * count on theirs, a block's end a short bar; a macro is known by its shape before its text is read. */
+function Shape({ steps }: { steps: Step[] }) {
+  const { t } = useHost();
+  if (!steps.length) return null;
+  const secs = (ms: number) => `${Math.round(ms / 100) / 10}s`;
+  return <span className="mc-shape" aria-hidden="true">{steps.slice(0, SHAPE_MAX).map((s, i) => {
+    if (s.kind === 'endIf' || s.kind === 'endLoop') return <i key={i} className="mc-sh-end" />;
+    const opens = s.kind === 'if' || s.kind === 'loop' || s.kind === 'loopUntil';
+    const label = (s.kind === 'key' || s.kind === 'down' || s.kind === 'up') && typeof s.key === 'string' ? keyName(t, s.key)
+      : s.kind === 'wait' && typeof s.ms === 'number' ? secs(s.ms)
+      : s.kind === 'loop' ? (typeof s.times === 'number' && s.times > 0 ? `×${s.times}` : s.times ? '' : '∞') : '';
+    return <span key={i} className={`mc-sh${opens ? ' opens' : ''}`}>{label && s.kind !== 'loop' ? null : <Icon name={STEP_ICON[s.kind] || 'info'} />}
+      {label ? <b>{label}</b> : null}</span>;
+  })}{steps.length > SHAPE_MAX ? <small>+{steps.length - SHAPE_MAX}</small> : null}</span>;
 }

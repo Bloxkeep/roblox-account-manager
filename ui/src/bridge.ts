@@ -21,7 +21,7 @@ export const COMMANDS = [
   'setDailySignInCheck', 'setDiscord', 'setDiscordPresence', 'setDiscordWebhook', 'setFpsCap', 'setHideNames', 'setHotkeys',
   'setLanguage', 'setLaunchOrder', 'setNotifications', 'setOption', 'setPresetOrder', 'setPresetSchedule', 'setRemote', 'setRendering',
   'setSettings', 'setTheme', 'setUseRobloxConfig', 'showPanel', 'showPath', 'showWindows', 'skipConfirm', 'solveBotCheck', 'stopMacros',
-  'stopRecording', 'switchServer', 'toggleMini', 'totpCheck', 'totpCode', 'unlock', 'updateAccount', 'updateAndReopen', 'updateAtLock',
+  'stopRecording', 'switchServer', 'todayStrips', 'toggleMini', 'totpCheck', 'totpCode', 'unlock', 'updateAccount', 'updateAndReopen', 'updateAtLock',
   'updateRoblox', 'useSavedTheme', 'vaultImportApply', 'vaultImportCancel', 'vaultImportOpen', 'vaultImportPick', 'whatsNew', 'window',
 ] as const;
 

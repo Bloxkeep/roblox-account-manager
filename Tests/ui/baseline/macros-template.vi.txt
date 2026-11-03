@@ -117,6 +117,7 @@ html [data-theme="dark" lang="vi"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}
 == form
 html [data-theme="dark" lang="vi"]
 #app
@@ -515,6 +516,15 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Bấm phím định kỳ"] "Bấm phím định kỳ"
                 span.mc-line [title="Khi bạn bấm Chạy · Tài khoản đang chọn"] "Khi bạn bấm Chạy · Tài khoản đang chọn"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh.opens
+                  svg.i #1ap9cll
+                  b "∞"
+                span.mc-sh
+                  b "$o2"
+                span.mc-sh
+                  svg.i #ktpp14
+                i.mc-sh-end
               button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Bấm phím định kỳ" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Bảng điều khiển"

@@ -75,7 +75,7 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Accounts"
-            p [id="acc-sub"] "accounts playing online"
+            p [id="acc-sub" title="7 accounts·3 playing·4 online · Select all"] "accounts playing online"
               b "7"
               span.sep "·"
               b "3"
@@ -381,3 +381,4 @@ html [data-theme="dark" lang="en"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setSettings {"layout":"list"}
+  todayStrips {}

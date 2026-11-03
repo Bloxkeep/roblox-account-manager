@@ -5,6 +5,7 @@
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Avatar } from './Avatar';
+import { AccountCards, Clock, GameMap } from './StatsViz';
 
 const STATS_PERIODS = [1, 7, 30];
 const AL_GROUPS = ['play', 'drops', 'schedule', 'signin', 'updates'];
@@ -13,13 +14,17 @@ const NO_PRESET = '00000000-0000-0000-0000-000000000000';
 
 type Bucket = { start: string; seconds: number };
 type StatAccount = { id: string; label?: string; username?: string; avatarUrl?: string; seconds: number; sessions: number; kicks: number; deleted?: boolean;
-  topGame?: { key: string; name: string; iconUrl?: string | null } | null };
+  topGame?: { key: string; name: string; iconUrl?: string | null } | null;
+  /** Its play per hour (today) or day; its days in a row played nearly whole (23 hours or more), up to yesterday. */
+  buckets?: number[] | null; streak?: number };
 type StatGame = { key: string; name: string; iconUrl?: string; seconds: number; sessions: number };
 type StatPreset = { id: string; name: string; iconUrl?: string; seconds: number; accounts: number; kicks: number };
 type Segment = { from: string; to: string; game: string; name?: string | null; reason?: string | null };
 type Loss = { kind: string; times: number; seconds: number; accounts: string[] };
 type Stats = {
   sessions: number; recorded: boolean; totalSeconds: number; kicks: number; hourly: boolean; buckets: Bucket[]; since: string; ends: string;
+  /** 7 and 30 days: windows running in each hour of each day (its hours of play), a row a day from the first. */
+  heat?: number[][];
   timeline: { id: string; segments: Segment[] }[]; losses: Loss[];
   accounts: StatAccount[]; games: StatGame[]; presets?: StatPreset[]; longest?: { account: string; label?: string; game?: string; seconds: number } | null;
   /** The period before, as far into it as this one has gone; null when the records don't reach back that far. */
@@ -48,6 +53,8 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
   const [days, setDays] = useState(() => { const d = +store.get('rm.statsDays', '7'); return STATS_PERIODS.includes(d) ? d : 7; });
   const [data, setData] = useState<Stats | null>(null);
   const [failed, setFailed] = useState(false);
+  // One game's figures only (picked on the games' map), or all of them.
+  const [game, setGameState] = useState<string | null>(null);
   const [filter, setFilter] = useState({ account: '', group: '', limit: AL_PAGE });
   const [log, setLog] = useState<Activity | null>(null);
   const [logFailed, setLogFailed] = useState(false);
@@ -56,12 +63,12 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
   // A reply to an older request (or for another period, other filters) is dropped. A failed refresh keeps figures
   // already shown; with none, it says so.
   const seq = useRef(0), logSeq = useRef(0), alive = useRef(true);
-  const now = useRef({ days, filter });
-  now.current = { days, filter };
+  const now = useRef({ days, filter, game });
+  now.current = { days, filter, game };
   useEffect(() => () => { alive.current = false; }, []);
   const loadStats = async () => {
     const mine = ++seq.current;
-    const d = await call('playStats', { days: now.current.days }, { silent: true }) as Stats | undefined;
+    const d = await call('playStats', { days: now.current.days, game: now.current.game }, { silent: true }) as Stats | undefined;
     if (mine !== seq.current || !alive.current) return;
     setFailed(!d);
     if (d) setData(d);
@@ -122,6 +129,11 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
     setFailed(false);
     loadStats();
   };
+  const setGame = (key: string | null) => {
+    setGameState(key);
+    now.current.game = key;
+    loadStats();
+  };
   const setLogFilter = (f: typeof filter) => {
     setFilter(f);
     now.current.filter = f;
@@ -155,7 +167,7 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
     <div className="scroll" ref={scroll}>
       <div className="stats">
         <div className="stats-in" id="stats-body" hidden={!onStats}>
-          <Figures data={data} failed={failed} retry={btn => busy(btn, loadStats)} />
+          <Figures data={data} failed={failed} retry={btn => busy(btn, loadStats)} game={game} setGame={setGame} />
         </div>
         {/* Its name is the tab's already (Statistics | Activity): no heading over the filters. */}
         <section className="stat-card alog" id="alog-sec" aria-label={t('alog.title')} hidden={onStats}>
@@ -186,7 +198,8 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
 
 /** Statistics: tiles (with the change from the period before), today's timeline or the play time per day, why windows
  * dropped, then by account, top games and by preset. */
-function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boolean; retry: (btn: HTMLElement) => void }) {
+function Figures({ data: d, failed, retry, game, setGame }: { data: Stats | null; failed: boolean; retry: (btn: HTMLElement) => void;
+  game: string | null; setGame: (key: string | null) => void }) {
   const host = useHost();
   const { t, tn, fmtNum } = host;
   const app = useAppState();
@@ -194,6 +207,8 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
   const byId =(id: string) => accounts.find(a => a.id === id);
   const hide = !!app.hideNames;
   const [open, setOpen] = useState('');
+  // The map keeps every game of the period while one is picked (the figures then hold that one only), to pick another.
+  const allGames = useRef<{ period: number; games: StatGame[]; total: number } | null>(null);
   /** "2 h", "2 h 5 min", "1,234 h": hours grouped like other numbers, no "0 min". */
   const fmtSecs = (s: number) => {
     const m = Math.floor((s || 0) / 60), h = Math.floor(m / 60);
@@ -207,7 +222,8 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
   }
   if (!d.sessions) {
     return <div className="empty"><span className="pv-empty-icon"><Icon name="clock" /></span>
-      {d.recorded ? <h2>{t('stats.emptyPeriod')}</h2> : <><h2>{t('stats.emptyTitle')}</h2><p>{t('stats.emptyText')}</p></>}</div>;
+      {d.recorded ? <h2>{t('stats.emptyPeriod')}</h2> : <><h2>{t('stats.emptyTitle')}</h2><p>{t('stats.emptyText')}</p></>}
+      {game ? <div className="row"><button className="btn" onClick={() => setGame(null)}>{t('stats.allGames')}</button></div> : null}</div>;
   }
   // A deleted account keeps the name it had when it played; names hidden: the list's "Account N".
   const nameOf = (a: StatAccount) => hide ? byId(a.id)?.label || t('stats.deleted') : a.label || t('stats.deleted');
@@ -215,6 +231,8 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
   // Accounts still here that played (a deleted one isn't among the accounts it is counted against).
   const played = fmtNum(d.accounts.filter(a => a.seconds > 0 && !a.deleted).length), all = fmtNum(accounts.length);
   const period = d.hourly ? 1 : d.days || d.buckets.length;
+  if (!game) allGames.current = { period, games: d.games, total: d.totalSeconds };
+  const mapOf = game && allGames.current?.period === period ? allGames.current : { games: d.games, total: d.totalSeconds };
   // "↑ 20 %" against the period before; more play time is good, more disconnects bad. Nothing when there's no before.
   const change = (now: number, before: number | undefined, moreIsGood: boolean) => {
     if (before === undefined || before <= 0) return null;
@@ -231,42 +249,22 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
   ];
   // A game's or preset's share of the period's play time, on its small line.
   const share = (s: number) => `${fmtNum(Math.round(s / Math.max(1, d.totalSeconds) * 100))} %`;
-  // By preset: what each preset's windows played (laid out like Top games: a list fits a narrow column better).
-  const sessionsText = (n: number) => (n === 1 ? t('stats.session1') : t('stats.sessionsN', { n: fmtNum(n) }));
 
   return <>
     <div className="stat-tiles">{tiles.map(([label, value, sub, plain], i) =>
       <div key={i} className="stat"><small>{label}</small><b title={plain || String(value)}>{value}</b>{sub}</div>)}
     </div>
-    {d.hourly ? <Timeline d={d} nameOf={nameOf} fmtSecs={fmtSecs} /> : <Days d={d} fmtSecs={fmtSecs} />}
+    {d.hourly ? <Clock since={d.since} rows={d.timeline} accounts={d.accounts} icons={d.icons} totalSeconds={d.totalSeconds}
+      nameOf={a => nameOf(a as StatAccount)} avatarOf={a => <AccAvatar a={a as StatAccount} label={nameOf(a as StatAccount)} hide={hide} />} fmtSecs={fmtSecs} />
+      : <Days d={d} fmtSecs={fmtSecs} />}
+    {!d.hourly && d.heat?.length ? <Heat d={d} heat={d.heat} /> : null}
     <Drops d={d} nameOf={nameOf} fmtSecs={fmtSecs} />
-    <div className="stat-cols">
-      <div className="stat-card"><h3>{t('stats.byAccount')}</h3>
-        <table className="stat-table by-account">
-          <colgroup><col className="c-acc" /><col className="c-time" /><col className="c-game" /><col className="c-n" /></colgroup>
-          <thead><tr><th>{t('stats.account')}</th><th>{t('stats.total')}</th><th>{t('stats.topGame')}</th><th className="n" title={t('stats.kicks')}>{t('stats.kicksShort')}</th></tr></thead>
-          <tbody>{d.accounts.map(a => {
-            const label = nameOf(a);
-            // 7 and 30 days: the row opens the account's own timeline (today's is above already).
-            const opens = !d.hourly && d.timeline.some(r => r.id === a.id), isOpen = opens && open === a.id;
-            return <Fragment key={a.id}><tr className={opens ? 'opens' : ''} aria-expanded={opens ? isOpen : undefined}
-              title={opens ? t('stats.showPlayed') : undefined} onClick={opens ? () => setOpen(isOpen ? '' : a.id) : undefined}>
-              <td><div className="sacc">{opens ? <Icon name={isOpen ? 'chevronDown' : 'chevronRight'} className="sacc-open" /> : null}
-                <AccAvatar a={a} label={label} hide={hide} />
-                <b title={label}>{label}{a.deleted && a.label && !hide ? <>{' '}<small className="muted">· {t('stats.deletedTag')}</small></> : null}</b></div></td>
-              <td className="st-time">{fmtSecs(a.seconds)}</td>
-              <td className="st-game">{a.topGame ? <span title={a.topGame.name}>{a.topGame.iconUrl ? <GameImg src={a.topGame.iconUrl} /> : <span className="gph"><Icon name="gamepad" /></span>}<em>{a.topGame.name}</em></span> : '—'}</td>
-              <td className="n">{fmtNum(a.kicks)}</td>
-            </tr>
-            {isOpen ? <tr className="st-open"><td colSpan={4}><Timeline d={d} nameOf={nameOf} fmtSecs={fmtSecs} only={a.id} /></td></tr> : null}</Fragment>;
-          })}</tbody>
-        </table>
-      </div>
+    <GameMap games={mapOf.games} total={mapOf.total} picked={game} pick={setGame} fmtSecs={fmtSecs} />
+    <AccountCards accounts={d.accounts} hourly={d.hourly} open={open} setOpen={setOpen} opens={id => !d.hourly && d.timeline.some(r => r.id === id)}
+      nameOf={a => nameOf(a as StatAccount)} avatarOf={a => <AccAvatar a={a as StatAccount} label={nameOf(a as StatAccount)} hide={hide} />} fmtSecs={fmtSecs}
+      below={open && !d.hourly && d.timeline.some(r => r.id === open) ? <div className="sa-open"><Timeline d={d} nameOf={nameOf} fmtSecs={fmtSecs} only={open} /></div> : null} />
+    <div className="stat-cols one">
       <div className="stat-side">
-        <div className="stat-card"><h3>{t('stats.topGames')}</h3><div className="sgames">{d.games.map((g, i) =>
-          <div key={i} className="sgame"><em>{i + 1}</em>{g.iconUrl ? <GameImg src={g.iconUrl} /> : <span className="gph"><Icon name="gamepad" /></span>}
-            <div className="gtxt"><b title={g.name}>{g.name}</b><small>{sessionsText(g.sessions)} · {share(g.seconds)}</small></div>
-            <span className="sg-time">{fmtSecs(g.seconds)}</span></div>)}</div></div>
         {d.presets?.length ? <div className="stat-card"><h3>{t('stats.byPreset')}</h3><div className="sgames">{d.presets.map(p => {
           const own = p.id !== NO_PRESET, name = own ? p.name : t('stats.noPreset');
           const detail = [tn('stats.accountsN', p.accounts), p.kicks ? tn('stats.kicksN', p.kicks) : '', share(p.seconds)].filter(Boolean).join(' · ');
@@ -312,6 +310,30 @@ function Days({ d, fmtSecs }: { d: Stats; fmtSecs: (s: number) => string }) {
         <small>{label}</small>
       </div>;
     })}</div>
+  </div>;
+}
+
+/** 7 and 30 days by hour: a row a day (today last), a cell an hour, the darker the more windows ran in it. The nights a
+ * PC was off or the hours everything dropped show as gaps; the cell under the pointer says its day, hour and windows. */
+function Heat({ d, heat }: { d: Stats; heat: number[][] }) {
+  const { t, lang, locale, fmtNum } = useHost();
+  const most = Math.max(.01, ...heat.flat());
+  const first = new Date(d.since), last = heat.length - 1, many = heat.length > 10;
+  const dayOf = (i: number) => { const day = new Date(first); day.setDate(first.getDate() + i); return day; };
+  const dayText = (i: number) => i === last ? t('alog.today')
+    : dayOf(i).toLocaleDateString(locale, many ? { day: 'numeric', month: 'numeric' } : { weekday: 'short' });
+  const hourText = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(locale, lang === 'vi' ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { hour: 'numeric' });
+  // Five steps of the accent over the card: an empty hour stays the well colour.
+  const level = (v: number) => v <= 0 ? 0 : Math.min(4, Math.ceil(v / most * 4));
+  return <div className="stat-card" id="stats-heat"><h3>{t('stats.byHour')}<span className="heat-key" aria-hidden="true">{t('stats.heatLess')}
+    {[0, 1, 2, 3, 4].map(l => <i key={l} className={`h${l}`} />)}{t('stats.heatMore')}</span></h3>
+    <div className={`heat${many ? ' many' : ''}`} role="img" aria-label={t('stats.byHour')}>
+      <span style={{ gridRow: 1 }} />{Array.from({ length: 8 }, (_, k) => <small key={k} className="heat-h" style={{ gridRow: 1, gridColumn: `${k * 3 + 2} / span 3` }}>{hourText(k * 3)}</small>)}
+      {heat.map((row, i) => <Fragment key={i}>
+        <small className={`heat-d${i === last ? ' today' : ''}`}>{many && (last - i) % 5 && i !== last ? '' : dayText(i)}</small>
+        {row.map((v, h) => <i key={h} className={`h${level(v)}`} title={t('stats.heatTip', { d: dayText(i), h: hourText(h), n: fmtNum(Math.round(v * 10) / 10) })} />)}
+      </Fragment>)}
+    </div>
   </div>;
 }
 

@@ -82,14 +82,15 @@ html [data-theme="dark" lang="vi"]
                 span.sep "·"
         div.mon-area.mon-tiles [id="mon-area"]
           div.mon-grid [role="list" style="grid-auto-rows:683px;grid-template-columns:repeat(1, minmax(200px, 1fr))"]
-            div.mon-tile [role="listitem" tabindex="0" aria-label="MainAccount, Blox Fruits"]
+            div.mon-tile [role="listitem" tabindex="0" aria-label="MainAccount, Blox Fruits, Đang chơi"]
               div.mon-cap
                 div.mon-lines
                   div.mon-line
-                    b.mon-name "MainAccount"
+                    b.mon-name [title="MainAccount"] "MainAccount"
                     span.mon-tag "1,2 GB"
                   div.mon-line
-                    span.mon-game "Blox Fruits"
+                    span.mon-game [title="Blox Fruits · Đang chơi"] "Blox Fruits"
+                      i.mon-dot.ok
                     span.mon-tag "PID 14280"
                 button.icon-btn.mon-min [type="button" title="Thu nhỏ" tabindex="-1" aria-label="Thu nhỏ"]
                   svg.i #10kcby6
@@ -101,3 +102,4 @@ html [data-theme="dark" lang="vi"]
   getState {}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

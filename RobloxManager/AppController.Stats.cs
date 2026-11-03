@@ -258,7 +258,7 @@ public sealed partial class AppController
 
     /// <summary><see cref="PlayStats"/> for the page. Games in the period that no other view loaded have no icon yet: those
     /// are asked for first, one request per 100 games.</summary>
-    async Task<object?> PlayStatsAsync(int days)
+    async Task<object?> PlayStatsAsync(int days, string? game)
     {
         var vault = RequireVault();
         var now = DateTime.UtcNow;
@@ -270,7 +270,7 @@ public sealed partial class AppController
             .DistinctBy(p => p.PlaceId)
             .ToList();
         if (places.Count == 0)
-            return PlayStats(days);
+            return PlayStats(days, game: game);
         // Places whose game isn't known yet: looked up whole (name and icon).
         await LoadGamesAsync(places.Where(p => p.UniverseId == 0 && _games.GetValueOrDefault(p.PlaceId) is null).Take(40));
         if (_playIconAsked.Count > MaxCachedGames)
@@ -294,7 +294,71 @@ public sealed partial class AppController
                 // The rows keep their placeholder until the next try.
             }
         }
-        return PlayStats(days);
+        return PlayStats(days, game: game);
+    }
+
+    /// <summary>A stay's hours into the hour map: each local hour it covers gets its share (an hour fully played adds 1).</summary>
+    internal static void AddHeat(double[][] heat, DateTime firstDay, DateTime fromUtc, DateTime toUtc)
+    {
+        var at = fromUtc.ToLocalTime();
+        var end = toUtc.ToLocalTime();
+        while (at < end)
+        {
+            var next = at.Date.AddHours(at.Hour + 1);
+            var stop = next < end ? next : end;
+            int day = (at.Date - firstDay).Days;
+            if (day >= 0 && day < heat.Length)
+                heat[day][at.Hour] += (stop - at).TotalSeconds / 3600;
+            at = stop;
+        }
+    }
+
+    /// <summary>Each account's days in a row, up to yesterday, it played nearly all of (23 hours or more), looking back
+    /// at most <see cref="StreakDays"/> days. Today isn't over, so it doesn't count yet.</summary>
+    internal static Dictionary<Guid, int> FullDayStreaks(IEnumerable<PlaySession> sessions, DateTime nowUtc)
+    {
+        var first = nowUtc.ToLocalTime().Date.AddDays(-StreakDays);
+        var played = new Dictionary<Guid, double[][]>();
+        foreach (var s in sessions)
+        {
+            var end = s.EndedAt is { } ended && ended < nowUtc ? ended : nowUtc;
+            if (end.ToLocalTime() <= first)
+                continue;
+            if (!played.TryGetValue(s.AccountId, out var hours))
+                played[s.AccountId] = hours = Enumerable.Range(0, StreakDays).Select(_ => new double[24]).ToArray();
+            AddHeat(hours, first, s.StartedAt, end);
+        }
+        return played.ToDictionary(p => p.Key, p =>
+        {
+            int n = 0;
+            for (int day = StreakDays - 1; day >= 0 && p.Value[day].Sum() >= 23; day--)
+                n++;
+            return n;
+        });
+    }
+
+    const int StreakDays = 60;
+
+    /// <summary>Today's stays of every account, for the strip on its card: seconds from local midnight, and 1 where one
+    /// ended cut off. Asked for by the Accounts tab every minute while it shows.</summary>
+    object TodayStrips()
+    {
+        var vault = RequireVault();
+        var now = DateTime.UtcNow;
+        var since = now.ToLocalTime().Date.ToUniversalTime();
+        var rows = new Dictionary<string, List<int[]>>();
+        foreach (var s in vault.Data.PlaySessions)
+        {
+            var end = s.EndedAt is { } ended && ended < now ? ended : now;
+            var from = s.StartedAt > since ? s.StartedAt : since;
+            if (end <= from)
+                continue;
+            string key = s.AccountId.ToString();
+            if (!rows.TryGetValue(key, out var row))
+                rows[key] = row = [];
+            row.Add([(int)(from - since).TotalSeconds, (int)(end - since).TotalSeconds, s.EndReason == "disconnected" && s.EndedAt is not null ? 1 : 0]);
+        }
+        return new { since, now, rows };
     }
 
     /// <summary>A game's icon from what is known: its place's lookup, or the icon fetched for its universe.</summary>
@@ -307,7 +371,8 @@ public sealed partial class AppController
     /// <param name="only">The accounts to count (a Discord summary for chosen accounts); null for all.</param>
     /// <param name="until">The period ends here (UTC) instead of now: a Discord summary sent late covers its own day.</param>
     /// <param name="last24Hours">One day is the 24 hours before the end rather than the calendar day (a Discord summary).</param>
-    object PlayStats(int days, IReadOnlySet<Guid>? only = null, DateTime? until = null, bool last24Hours = false)
+    /// <param name="game">Only this game's stays (its key, as the page has it: u + universe id, or p + place id).</param>
+    object PlayStats(int days, IReadOnlySet<Guid>? only = null, DateTime? until = null, bool last24Hours = false, string? game = null)
     {
         var vault = RequireVault();
         days = days is 7 or 30 ? days : 1;
@@ -331,6 +396,8 @@ public sealed partial class AppController
         }
         long UniverseOf(PlaySession s) =>
             s.UniverseId > 0 ? s.UniverseId : universeOf.GetValueOrDefault(s.PlaceId) is > 0 and var u ? u : _games.GetValueOrDefault(s.PlaceId)?.UniverseId ?? 0;
+        string KeyOf(PlaySession s) => UniverseOf(s) is > 0 and var u ? $"u{u}" : $"p{s.PlaceId}";
+        bool Counted(PlaySession s) => (only is null || only.Contains(s.AccountId)) && (game is null || KeyOf(s) == game);
         double total = 0;
         int sessions = 0, kicks = 0;
         // By the preset whose window it was (null: opened otherwise, or before 1.0.5 noted it, or a preset deleted since).
@@ -338,11 +405,16 @@ public sealed partial class AppController
         var noPreset = (Seconds: 0.0, Sessions: 0, Kicks: 0, Accounts: new HashSet<Guid>());
         (double Seconds, PlaySession? Stay) longest = (0, null);
         var segments = new Dictionary<Guid, List<object>>();
+        // 7 and 30 days: windows running in each hour of each day (hours of play in it), for the page's hour map.
+        var firstDay = today.AddDays(1 - days);
+        var heat = hourly ? null : Enumerable.Range(0, days).Select(_ => new double[24]).ToArray();
+        // Each account's play per bucket (hour or day), for the line on its card.
+        var accountBuckets = new Dictionary<Guid, double[]>();
         // Each account's time per game, for its most played one.
         var accountGames = new Dictionary<(Guid Account, string Game), double>();
         foreach (var s in vault.Data.PlaySessions)
         {
-            if (only is not null && !only.Contains(s.AccountId))
+            if (!Counted(s))
                 continue;
             // After the period's end (a late summary): not in it.
             if (until is not null && s.StartedAt >= now)
@@ -376,8 +448,8 @@ public sealed partial class AppController
             // Places of one game count together; a name learned later wins over an empty one.
             long universe = UniverseOf(s);
             string key = universe > 0 ? $"u{universe}" : $"p{s.PlaceId}";
-            var game = byGame.GetValueOrDefault(key);
-            byGame[key] = (game.PlaceId == 0 ? s.PlaceId : game.PlaceId, universe, s.GameName.Length > 0 ? s.GameName : game.Name ?? "", game.Seconds + seconds, game.Sessions + 1);
+            var had = byGame.GetValueOrDefault(key);
+            byGame[key] = (had.PlaceId == 0 ? s.PlaceId : had.PlaceId, universe, s.GameName.Length > 0 ? s.GameName : had.Name ?? "", had.Seconds + seconds, had.Sessions + 1);
             accountGames[(s.AccountId, key)] = accountGames.GetValueOrDefault((s.AccountId, key)) + seconds;
             if (seconds > 0)
             {
@@ -392,13 +464,20 @@ public sealed partial class AppController
                     reason = kicked ? PlayLosses.KindOf(s.ReasonCode) : null,
                 });
             }
+            if (heat is not null && seconds > 0)
+                AddHeat(heat, firstDay, from, end);
             for (int i = 0; i < starts.Count && seconds > 0; i++)
             {
                 var bucketEnd = i + 1 < starts.Count ? starts[i + 1] : now;
                 var a = from > starts[i] ? from : starts[i];
                 var b = end < bucketEnd ? end : bucketEnd;
                 if (b > a)
+                {
                     bucketSeconds[i] += (b - a).TotalSeconds;
+                    if (!accountBuckets.TryGetValue(s.AccountId, out var own))
+                        accountBuckets[s.AccountId] = own = new double[starts.Count];
+                    own[i] += (b - a).TotalSeconds;
+                }
             }
         }
 
@@ -416,7 +495,8 @@ public sealed partial class AppController
         var previousSince = since - (hourly ? TimeSpan.FromDays(1) : TimeSpan.FromDays(days));
         var previousEnd = previousSince + (now - since);
         object? previous = null;
-        var counted = vault.Data.PlaySessions.Where(s => only is null || only.Contains(s.AccountId)).ToList();
+        var counted = vault.Data.PlaySessions.Where(Counted).ToList();
+        var streaks = FullDayStreaks(vault.Data.PlaySessions, now);
         if (counted.Count > 0 && counted.Min(s => s.StartedAt) <= previousSince)
         {
             double previousSeconds = 0;
@@ -438,6 +518,7 @@ public sealed partial class AppController
             days,
             hourly,
             since,
+            game = game is null ? null : new { key = game, name = byGame.ContainsKey(game) ? GameNameOf(game) : "" },
             previous,
             icons = byGame.Keys.Select(key => (key, url: GameIconOf(key))).Where(i => i.url is not null).ToDictionary(i => i.key, i => i.url),
             ends = rolling ? now : today.AddDays(1).ToUniversalTime(),
@@ -459,11 +540,13 @@ public sealed partial class AppController
                     a.Value.Sessions,
                     a.Value.Kicks,
                     topGame = TopGameOf(a.Key),
+                    buckets = accountBuckets.TryGetValue(a.Key, out var own) ? own.Select(x => (long)x) : null,
+                    streak = streaks.GetValueOrDefault(a.Key),
                 };
             }),
             timeline = byAccount.OrderByDescending(a => a.Value.Seconds).Where(a => segments.ContainsKey(a.Key)).Take(MaxTimelineAccounts)
                 .Select(a => new { id = a.Key, segments = segments[a.Key] }),
-            losses = PlayLosses.Of(vault.Data.PlaySessions.Where(s => only is null || only.Contains(s.AccountId)).ToList(), since, now),
+            losses = PlayLosses.Of(counted, since, now),
             games = byGame.OrderByDescending(g => g.Value.Seconds).Take(MaxTopGames).Select(g => (g.Key, g.Value.PlaceId, g.Value.UniverseId, g.Value.Name, g.Value.Seconds, g.Value.Sessions)).Select(g => new
             {
                 key = g.Key,
@@ -474,6 +557,7 @@ public sealed partial class AppController
                 g.Sessions,
             }),
             buckets = starts.Select((start, i) => new { start, seconds = (long)bucketSeconds[i] }),
+            heat = heat?.Select(day => day.Select(h => Math.Round(h, 2))),
             presets = byPreset.OrderByDescending(p => p.Value.Seconds).Select(p =>
             {
                 var preset = PresetFor(p.Key)!;

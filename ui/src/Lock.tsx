@@ -170,8 +170,8 @@ export function Lock({ mode, notice, kept, opened }: {
     <div className="lock-lang"><LangSwitch /></div>
     <form className="lock-card" id="lock-form" autoComplete="off" data-mode={mode} ref={form} onSubmit={submit}>
       <img className="logo-img" src={logo} alt="" />
-      {vault ? <div className="lock-vault"><VaultFace vault={vault} className="sm" /><b title={vault.name}>{vault.name}</b>
-        {adding || screenLock ? null : <button type="button" className="link" data-act="vault-pick">{t('vault.switch')}</button>}</div> : null}
+      {vault ? <div className="lock-vault"><VaultFace vault={vault} className="sm" /><span className="lock-vault-name"><b title={vault.name}>{vault.name}</b>
+        {adding || screenLock ? null : <button type="button" className="link" data-act="vault-pick">{t('vault.switch')}</button>}</span></div> : null}
       <h2>{t(adding ? 'vault.newTitle' : create ? 'lock.createTitle' : 'lock.unlockTitle')}</h2>
       <p><Rich k={adding ? 'vault.newText' : create ? 'lock.createText' : 'lock.unlockText'} /></p>
       {notice ? <p className="lock-paused">{notice}</p> : null}

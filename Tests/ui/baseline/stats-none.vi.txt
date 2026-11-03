@@ -96,5 +96,6 @@ html [data-theme="dark" lang="vi"]
   getState {}
   monitorArea {"hidden":true}
   pageShown {}
-  playStats {"days":7}
+  playStats {"days":7,"game":null}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

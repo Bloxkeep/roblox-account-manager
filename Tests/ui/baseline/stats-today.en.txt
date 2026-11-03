@@ -107,61 +107,43 @@ html [data-theme="dark" lang="en"]
                   small "Longest stay"
                   b [title="1 h 47 min"] "1 h 47 min"
                   span.stat-sub "Main · Blox Fruits"
-              div.stat-card [id="stats-timeline"]
+              div.stat-card [id="stats-clock"]
                 h3 "Timeline"
-                div.tl
-                  div.tl-row
-                    div.sacc
-                      span.avatar.sm
-                        img [alt="" style="--h:204" src=#1qk25wb]
-                      b [title="Main"] "Main"
-                    div.tl-track
-                      i.drop.tl-seg [title="Blox Fruits · 12:00 AM – 4:04 AM · 4 h 4 min · Kicked for AFK" style="left:0%;width:34%"]
-                        span "Blox Fruits"
-                      i.tl-seg [title="Blox Fruits · 4:33 AM – 8:38 AM · 4 h 4 min" style="left:38%;width:34%"]
-                        span "Blox Fruits"
-                      i.tl-seg [title="[🎃] Adopt Me! · 9:07 AM – 12:00 PM · 2 h 52 min" style="left:76%;width:24%"]
-                        span "[🎃] Adopt Me!"
-                  div.tl-row
-                    div.sacc
-                      span.avatar.sm
-                        img [alt="" style="--h:243" src=#uinvo6]
-                      b [title="Farm 1"] "Farm 1"
-                    div.tl-track
-                      i.drop.tl-seg [title="Blox Fruits · 12:36 AM – 3:36 AM · 3 h · Lost connection" style="left:5%;width:25%"]
-                        span "Blox Fruits"
-                      i.drop.tl-seg [title="[🎃] Adopt Me! · 5:16 AM – 7:26 AM · 2 h 9 min · Kicked for AFK" style="left:44%;width:18%"]
-                        span "[🎃] Adopt Me!"
-                      i.tl-seg [title="Blox Fruits · 8:09 AM – 11:09 AM · 3 h" style="left:68%;width:25%"]
-                        span "Blox Fruits"
-                  div.tl-row
-                    div.sacc
-                      span.avatar.sm
-                        img [alt="" style="--h:297" src=#1u67et1]
-                      b [title="Night Owl"] "Night Owl"
-                    div.tl-track
-                      i.tl-seg [title="Brookhaven 🏡RP · 2:24 AM – 6:36 AM · 4 h 12 min" style="left:20%;width:35%"]
-                        span "Brookhaven 🏡RP"
-                      i.tl-seg [title="Blox Fruits · 7:12 AM – 9:36 AM · 2 h 24 min" style="left:60%;width:20%"]
-                        span "Blox Fruits"
-                  div.tl-row
-                    div.sacc
-                      span.avatar.gone.sm [aria-hidden="true"]
-                        svg.i #45lggc
-                      b [title="Deleted account"] "Deleted account"
-                    div.tl-track
-                      i.tl-seg [title="[🎃] Adopt Me! · 1:12 AM – 1:33 AM · 21 min" style="left:10%;width:3%"]
-                div.tl-axis [aria-hidden="true"]
-                  span [style="left:0%"] "12 AM"
-                  span [style="left:16.67%"] "2 AM"
-                  span [style="left:33.33%"] "4 AM"
-                  span [style="left:50%"] "6 AM"
-                  span [style="left:66.67%"] "8 AM"
-                  span [style="left:83.33%"] "10 AM"
-                div.tl-keys
-                  span
-                    i.tl-key-drop
-                    em "Drops"
+                div.clk
+                  svg.clk-dial #e31umz
+                  div.clk-side
+                    div.clk-list
+                      div.clk-acc
+                        span.avatar.sm
+                          img [alt="" style="--h:204" src=#1qk25wb]
+                        b [title="Main"] "Main"
+                        span.clk-kicks [title="1 drop"] "1"
+                        span.clk-time "2 h 41 min"
+                      div.clk-acc
+                        span.avatar.sm
+                          img [alt="" style="--h:243" src=#uinvo6]
+                        b [title="Farm 1"] "Farm 1"
+                        span.clk-kicks [title="2 drops"] "2"
+                        span.clk-time "1 h 58 min"
+                      div.clk-acc
+                        span.avatar.sm
+                          img [alt="" style="--h:297" src=#1u67et1]
+                        b [title="Night Owl"] "Night Owl"
+                        span.clk-time "1 h 11 min"
+                      div.clk-acc
+                        span.avatar.gone.sm [aria-hidden="true"]
+                          svg.i #45lggc
+                        b [title="Deleted account"] "Deleted account"
+                        span.clk-time "7 min"
+                    div.clk-games
+                      span [style="--h:261"] "Blox Fruits"
+                        i
+                      span [style="--h:156"] "[🎃] Adopt Me!"
+                        i
+                      span [style="--h:149"] "Brookhaven 🏡RP"
+                        i
+                      span.drop "Drops"
+                        i
               div.stat-card [id="stats-drops"]
                 h3 "Why they dropped"
                   span.sd-lost [title="From each drop to the account’s next session, 12 h at most."] "≈ 1 h 8 min lost"
@@ -176,102 +158,171 @@ html [data-theme="dark" lang="en"]
                     b "Lost connection"
                     small [title="Farm 1"] "Once · Farm 1"
                   span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 17 min lost"
-              div.stat-cols
-                div.stat-card
-                  h3 "By account"
-                  table.by-account.stat-table
-                    colgroup
-                      col.c-acc
-                      col.c-time
-                      col.c-game
-                      col.c-n
-                    thead
-                      tr
-                        th "Account"
-                        th "Play time"
-                        th "Most played"
-                        th.n [title="Drops"] "Drops"
-                    tbody
-                      tr
-                        td
-                          div.sacc
-                            span.avatar.sm
-                              img [alt="" style="--h:204" src=#1qk25wb]
-                            b [title="Main"] "Main"
-                        td.st-time "2 h 41 min"
-                        td.st-game
-                          span [title="Blox Fruits"]
-                            span.gph
-                              svg.i #sy1lqp
-                            em "Blox Fruits"
-                        td.n "1"
-                      tr
-                        td
-                          div.sacc
-                            span.avatar.sm
-                              img [alt="" style="--h:243" src=#uinvo6]
-                            b [title="Farm 1"] "Farm 1"
-                        td.st-time "1 h 58 min"
-                        td.st-game
-                          span [title="Blox Fruits"]
-                            span.gph
-                              svg.i #sy1lqp
-                            em "Blox Fruits"
-                        td.n "2"
-                      tr
-                        td
-                          div.sacc
-                            span.avatar.sm
-                              img [alt="" style="--h:297" src=#1u67et1]
-                            b [title="Night Owl"] "Night Owl"
-                        td.st-time "1 h 11 min"
-                        td.st-game
-                          span [title="Brookhaven 🏡RP"]
-                            span.gph
-                              svg.i #sy1lqp
-                            em "Brookhaven 🏡RP"
-                        td.n "0"
-                      tr
-                        td
-                          div.sacc
-                            span.avatar.gone.sm [aria-hidden="true"]
-                              svg.i #45lggc
-                            b [title="Deleted account"] "Deleted account"
-                        td.st-time "7 min"
-                        td.st-game
-                          span [title="[🎃] Adopt Me!"]
-                            span.gph
-                              svg.i #sy1lqp
-                            em "[🎃] Adopt Me!"
-                        td.n "0"
+              div.stat-card [id="stats-games"]
+                h3 "Top games"
+                div.gm [style="height:236px"]
+                  button.big.gm-box [type="button" title="Blox Fruits · 3 h 16 min · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:478.886px"]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "Blox Fruits"
+                      small "3 h 16 min · 55 %"
+                  button.big.gm-box [type="button" title="[🎃] Adopt Me! · 1 h 47 min · 30 %" aria-pressed="false" style="--h:156;height:232px;left:484.886px;top:2px;width:259.396px"]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-fd05afa91e29a7895178342064489a36/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "[🎃] Adopt Me!"
+                      small "1 h 47 min · 30 %"
+                  button.big.gm-box [type="button" title="Brookhaven 🏡RP · 53 min · 15 %" aria-pressed="false" style="--h:149;height:232px;left:748.282px;top:2px;width:127.718px"]
+                    img [alt="" src="https://tr.rbxcdn.com/180DAY-01fa54388131d629ec74c042784454c5/150/150/Image/Png/noFilter"]
+                    span.gm-txt
+                      b "Brookhaven 🏡RP"
+                      small "53 min · 15 %"
+              div.stat-card [id="stats-accounts"]
+                h3 "By account"
+                div.sa-grid
+                  div.sa-card.today
+                    span.sa-head
+                      span.avatar.sm
+                        img [alt="" style="--h:204" src=#1qk25wb]
+                      b [title="Main"] "Main"
+                    span.sa-time "2 h 41 min"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:100%"]
+                      i [style="height:66.5%"]
+                      i [style="height:55.4%"]
+                      i [style="height:63.6%"]
+                      i [style="height:35.6%"]
+                      i [style="height:26.8%"]
+                      i [style="height:34.4%"]
+                      i [style="height:11.8%"]
+                      i [style="height:8%"]
+                      i [style="height:12.6%"]
+                      i [style="height:53.3%"]
+                      i [style="height:44.4%"]
+                      i [style="height:45.9%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                    span.sa-foot
+                      span.sa-game [title="Blox Fruits" style="--h:261"] "Blox Fruits"
+                        i
+                      span.sa-kicks "1 drop"
+                    span.sa-streak [title="Days played 23 hours or more, up to yesterday"] "6 full days in a row"
+                      svg.i #11ja4j6
+                  div.sa-card.today
+                    span.sa-head
+                      span.avatar.sm
+                        img [alt="" style="--h:243" src=#uinvo6]
+                      b [title="Farm 1"] "Farm 1"
+                    span.sa-time "1 h 58 min"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:68.1%"]
+                      i [style="height:45.2%"]
+                      i [style="height:37.4%"]
+                      i [style="height:42.8%"]
+                      i [style="height:23.8%"]
+                      i [style="height:17.8%"]
+                      i [style="height:22.8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8.1%"]
+                      i [style="height:34%"]
+                      i [style="height:85.5%"]
+                      i [style="height:94.2%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                    span.sa-foot
+                      span.sa-game [title="Blox Fruits" style="--h:261"] "Blox Fruits"
+                        i
+                      span.sa-kicks "2 drops"
+                    span.sa-streak [title="Days played 23 hours or more, up to yesterday"] "2 full days in a row"
+                      svg.i #11ja4j6
+                  div.sa-card.today
+                    span.sa-head
+                      span.avatar.sm
+                        img [alt="" style="--h:297" src=#1u67et1]
+                      b [title="Night Owl"] "Night Owl"
+                    span.sa-time "1 h 11 min"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:35%"]
+                      i [style="height:23%"]
+                      i [style="height:18.9%"]
+                      i [style="height:21.3%"]
+                      i [style="height:11.7%"]
+                      i [style="height:8.6%"]
+                      i [style="height:10.8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:11.9%"]
+                      i [style="height:52.6%"]
+                      i [style="height:46.2%"]
+                      i [style="height:50.6%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                    span.sa-foot
+                      span.sa-game [title="Brookhaven 🏡RP" style="--h:149"] "Brookhaven 🏡RP"
+                        i
+                  div.sa-card.today
+                    span.sa-head
+                      span.avatar.gone.sm [aria-hidden="true"]
+                        svg.i #45lggc
+                      b [title="Deleted account"] "Deleted account"
+                    span.sa-time "7 min"
+                    span.sa-bars [aria-hidden="true"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:8%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                      i [style="height:0%"]
+                    span.sa-foot
+                      span.sa-game [title="[🎃] Adopt Me!" style="--h:156"] "[🎃] Adopt Me!"
+                        i
+              div.one.stat-cols
                 div.stat-side
-                  div.stat-card
-                    h3 "Top games"
-                    div.sgames
-                      div.sgame
-                        em "1"
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Blox Fruits"] "Blox Fruits"
-                          small "6 sessions · 55 %"
-                        span.sg-time "3 h 16 min"
-                      div.sgame
-                        em "2"
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                          small "3 sessions · 30 %"
-                        span.sg-time "1 h 47 min"
-                      div.sgame
-                        em "3"
-                        span.gph
-                          svg.i #sy1lqp
-                        div.gtxt
-                          b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                          small "2 sessions · 15 %"
-                        span.sg-time "53 min"
                   div.stat-card
                     h3 "By preset"
                     div.sgames
@@ -303,6 +354,7 @@ html [data-theme="dark" lang="en"]
   getState {}
   monitorArea {"hidden":true}
   pageShown {}
-  playStats {"days":1}
-  playStats {"days":7}
+  playStats {"days":1,"game":null}
+  playStats {"days":7,"game":null}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

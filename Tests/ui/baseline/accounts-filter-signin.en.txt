@@ -75,7 +75,7 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Accounts"
-            p [id="acc-sub"] "accounts playing online"
+            p [id="acc-sub" title="7 accounts·3 playing·4 online · Select all"] "accounts playing online"
               b "7"
               span.sep "·"
               b "3"
@@ -148,6 +148,8 @@ html [data-theme="dark" lang="en"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
                 div.acc-note [title="Expired last week"] "Expired last week"
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="0"] "Sign in"
                     svg.i #kqqqno
@@ -215,3 +217,4 @@ html [data-theme="dark" lang="en"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

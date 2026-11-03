@@ -82,40 +82,43 @@ html [data-theme="dark" lang="en"]
                 span.sep "·"
         div.mon-area.mon-tiles [id="mon-area"]
           div.mon-grid [role="list" style="grid-auto-rows:335px;grid-template-columns:repeat(2, minmax(200px, 1fr))"]
-            div.mon-tile [role="listitem" tabindex="0" aria-label="MainAccount, Blox Fruits" FOCUSED]
+            div.mon-tile [role="listitem" tabindex="0" aria-label="MainAccount, Blox Fruits, Playing" FOCUSED]
               div.mon-cap
                 div.mon-lines
                   div.mon-line
-                    b.mon-name "MainAccount"
+                    b.mon-name [title="MainAccount"] "MainAccount"
                     span.mon-tag "1.2 GB"
                   div.mon-line
-                    span.mon-game "Blox Fruits"
+                    span.mon-game [title="Blox Fruits · Playing"] "Blox Fruits"
+                      i.mon-dot.ok
                     span.mon-tag "PID 14280"
                 button.icon-btn.mon-min [type="button" title="Minimize" tabindex="-1" aria-label="Minimize"]
                   svg.i #10kcby6
               div.mon-pic
                 img [alt="" src=#mavkgu]
-            div.mon-tile [role="listitem" tabindex="-1" aria-label="FarmAlt02, No game"]
+            div.mon-tile [role="listitem" tabindex="-1" aria-label="FarmAlt02, Blox Fruits, In the menu"]
               div.mon-cap
                 div.mon-lines
                   div.mon-line
-                    b.mon-name "FarmAlt02"
+                    b.mon-name [title="FarmAlt02"] "FarmAlt02"
                     span.mon-tag "822 MB"
                   div.mon-line
-                    span.mon-game "No game"
+                    span.mon-game [title="Blox Fruits · In the menu"] "Blox Fruits"
+                      i.idle.mon-dot
                     span.mon-tag "PID 14692"
                 button.icon-btn.mon-min [type="button" title="Minimize" tabindex="-1" aria-label="Minimize"]
                   svg.i #10kcby6
               div.mon-pic
                 img [alt="" src=#3le83e]
-            div.mon-tile [role="listitem" tabindex="-1" aria-label="Trader, Fisch"]
+            div.mon-tile [role="listitem" tabindex="-1" aria-label="Trader, Blox Fruits, Playing"]
               div.mon-cap
                 div.mon-lines
                   div.mon-line
-                    b.mon-name "Trader"
+                    b.mon-name [title="Trader"] "Trader"
                     span.mon-tag "980 MB"
                   div.mon-line
-                    span.mon-game "Fisch"
+                    span.mon-game [title="Blox Fruits · Playing"] "Blox Fruits"
+                      i.mon-dot.ok
                     span.mon-tag "PID 15104"
                 button.icon-btn.mon-min [type="button" title="Minimize" tabindex="-1" aria-label="Minimize"]
                   svg.i #10kcby6
@@ -141,3 +144,4 @@ html [data-theme="dark" lang="en"]
   getState {}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

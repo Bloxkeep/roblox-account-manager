@@ -117,6 +117,7 @@ html [data-theme="dark" lang="en"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}
 == form
 html [data-theme="dark" lang="en"]
 #app
@@ -515,6 +516,15 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Press a key every few minutes"] "Press a key every few minutes"
                 span.mc-line [title="When you press Run · Selected accounts"] "When you press Run · Selected accounts"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh.opens
+                  svg.i #1ap9cll
+                  b "∞"
+                span.mc-sh
+                  b "$o2"
+                span.mc-sh
+                  svg.i #ktpp14
+                i.mc-sh-end
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Press a key every few minutes" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"

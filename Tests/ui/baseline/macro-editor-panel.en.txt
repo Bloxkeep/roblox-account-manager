@@ -99,6 +99,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Anti-AFK jump"] "Anti-AFK jump"
                 span.mc-line [title="Every 5 min · 2 accounts · Ctrl+Alt+1"] "Every 5 min · 2 accounts · Ctrl+Alt+1"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh
+                  b "Space"
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Anti-AFK jump" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
@@ -115,6 +118,17 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Claim daily chest"] "Claim daily chest"
                 span.mc-line [title="When you press Run · Selected accounts · Ctrl+Alt+2"] "When you press Run · Selected accounts · Ctrl+Alt+2"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh.opens
+                  svg.i #1ap9cll
+                  b "∞"
+                span.mc-sh
+                  svg.i #16jqtkh
+                span.mc-sh
+                  svg.i #16jqtkh
+                span.mc-sh
+                  b "2s"
+                i.mc-sh-end
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Claim daily chest" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
@@ -131,6 +145,22 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm route"] "Farm route"
                 span.mc-line [title="After joining a game · All accounts · automatic runs paused"] "After joining a game · All accounts · automatic runs paused"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh
+                  b "W"
+                span.mc-sh
+                  b "2s"
+                span.mc-sh
+                  b "W"
+                span.mc-sh
+                  svg.i #115g1gb
+                span.mc-sh.opens
+                  svg.i #die7lc
+                span.mc-sh
+                  svg.i #16jqtkh
+                i.mc-sh-end
+                span.mc-sh
+                  svg.i #13a5dgx
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Farm route" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
@@ -147,6 +177,19 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Cast and reel"] "Cast and reel"
                 span.mc-line [title="When you press Run · Selected accounts · Ctrl+Alt+3"] "When you press Run · Selected accounts · Ctrl+Alt+3"
+              span.mc-shape [aria-hidden="true"]
+                span.mc-sh.opens
+                  svg.i #1ap9cll
+                  b "∞"
+                span.mc-sh
+                  svg.i #115g1gb
+                span.mc-sh
+                  svg.i #d2zp05
+                span.mc-sh
+                  svg.i #1l5qw3q
+                span.mc-sh
+                  svg.i #1mp3g6t
+                i.mc-sh-end
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Cast and reel" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
@@ -403,3 +446,4 @@ html [data-theme="dark" lang="en"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

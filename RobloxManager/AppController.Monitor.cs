@@ -8,8 +8,10 @@ public sealed partial class AppController
     /// <summary>The process check's snapshot is used while younger than this (its ticks come every 1.5 s, or 4 s with nothing running).</summary>
     static readonly TimeSpan MonitorSnapshotAge = TimeSpan.FromSeconds(4.5);
 
-    /// <summary>AccountId is null for a window Bloxkeep didn't open.</summary>
-    public sealed record MonitorClient(IntPtr Hwnd, int Pid, Guid? AccountId, string Label, string Game, long RamMb);
+    /// <summary>AccountId is null for a window Bloxkeep didn't open. Status as <see cref="Connection"/> says it ("" when
+    /// nothing is known); JobId the server it is in (the page marks windows sharing one); IconUrl the game's, once fetched.</summary>
+    public sealed record MonitorClient(IntPtr Hwnd, int Pid, Guid? AccountId, string Label, string Game, long RamMb,
+        string Status = "", string? JobId = null, string? IconUrl = null);
 
     /// <summary>One window per client: tracked accounts in launch order, then other clients by pid. The snapshot may be
     /// seconds old: a client gone since has no window, so no tile.</summary>
@@ -31,13 +33,12 @@ public sealed partial class AppController
                 var hwnd = RobloxProcesses.MainWindowOf(handles);
                 if (hwnd == IntPtr.Zero || !taken.Add(run.Pid))
                     continue;
-                string game = Connection(account, run.Pid, run.Launch) switch
-                {
-                    "menu" => L.T("No game"),
-                    "disconnected" => L.T("Disconnected"),
-                    _ => MonitorGameName(_logs.StateOf(run.Pid)?.PlaceId, run.Launch.Target?.PlaceId),
-                };
-                list.Add(new MonitorClient(hwnd, run.Pid, account.Id, NameText(account), game, ram.GetValueOrDefault(run.Pid)));
+                string status = Connection(account, run.Pid, run.Launch);
+                var log = _logs.StateOf(run.Pid);
+                // A window cut off keeps its game: the page groups it with the others there, marked.
+                long? place = status == "menu" ? null : MonitorPlace(log?.PlaceId, run.Launch.Target?.PlaceId);
+                list.Add(new MonitorClient(hwnd, run.Pid, account.Id, NameText(account), MonitorGameName(place), ram.GetValueOrDefault(run.Pid),
+                    status, status == "ingame" ? log?.JobId : null, MonitorIcon(place)));
             }
         }
         foreach (var (pid, handles) in windows.OrderBy(w => w.Key))
@@ -46,21 +47,30 @@ public sealed partial class AppController
             if (hwnd == IntPtr.Zero || !taken.Add(pid))
                 continue;
             // Opened outside Bloxkeep: its log still says where it is (the logs of every client are followed).
-            long? place = _logs.StateOf(pid)?.PlaceId;
-            list.Add(new MonitorClient(hwnd, pid, null, "Roblox", place is null ? "" : MonitorGameName(place, null), ram.GetValueOrDefault(pid)));
+            var log = _logs.StateOf(pid);
+            long? place = log?.PlaceId;
+            string status = log is null ? "" : LogConnection(log.Status);
+            list.Add(new MonitorClient(hwnd, pid, null, "Roblox", place is null ? "" : MonitorGameName(place), ram.GetValueOrDefault(pid),
+                status, status == "ingame" ? log?.JobId : null, MonitorIcon(place)));
         }
         return list;
     }
 
     /// <summary>As the page shows it (<see cref="SessionGameDto"/>): the logged place once named, else the one opened.</summary>
-    string MonitorGameName(long? logged, long? opened)
+    long? MonitorPlace(long? logged, long? opened)
     {
         bool loggedNamed = logged is long l && _games.GetValueOrDefault(l)?.Name is { Length: > 0 };
-        long? placeId = loggedNamed || opened is null ? logged ?? opened : opened;
+        return loggedNamed || opened is null ? logged ?? opened : opened;
+    }
+
+    string MonitorGameName(long? placeId)
+    {
         if (placeId is not long id)
             return L.T("No game");
         return _games.GetValueOrDefault(id)?.Name is { Length: > 0 } name ? name : L.F("Place {0}", id);
     }
+
+    string? MonitorIcon(long? placeId) => placeId is long id ? _games.GetValueOrDefault(id)?.IconUrl : null;
 
     public void CloseMonitorClient(MonitorClient client)
     {
@@ -83,6 +93,7 @@ public sealed partial class AppController
             tiles = clients.Select(c => new
             {
                 id = MonitorId(c.Hwnd), pid = c.Pid, name = c.Label, game = c.Game, ramMb = c.RamMb, ours = c.AccountId is not null, minimized = minimized(c.Hwnd),
+                status = c.Status, jobId = c.JobId, iconUrl = c.IconUrl,
             }),
         });
     }
