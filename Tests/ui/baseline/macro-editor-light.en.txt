@@ -205,8 +205,9 @@ html [data-theme="light" lang="en"]
                     span "Add step"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-step [role="listitem" aria-label="Step 1: Press E" style="--d:0"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "1"
@@ -224,8 +225,9 @@ html [data-theme="light" lang="en"]
                     p.mc-step-note
                       button.link [type="button" title="Edit note"] "Opens the rewards window"
                   div.bad.mc-step [role="listitem" aria-label="Step 2: If “Claim” shows anywhere in the game" style="--d:0"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "2"
@@ -247,8 +249,9 @@ html [data-theme="light" lang="en"]
                         button.btn.sm [type="button"] "Add End if"
                   div.bad.mc-step [role="listitem" aria-label="Step 3: Click the left button at point 3" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "3"
@@ -270,8 +273,9 @@ html [data-theme="light" lang="en"]
                         button.btn.sm [type="button"] "Pick on game"
                   div.mc-step [role="listitem" aria-label="Step 4: Add 1 to counter claims" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "4"

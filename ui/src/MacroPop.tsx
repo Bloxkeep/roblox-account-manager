@@ -9,18 +9,24 @@ export function Pop({ anchor, close, label, className, children, focusFirst = tr
   anchor: HTMLElement; close: () => void; label: string; className?: string; children: ReactNode; focusFirst?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
-  const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
+  const [place, setPlace] = useState<{ left: number; top: number; max?: number } | null>(null);
   // The side it first opened on stays while its size changes (a search narrowing a list): it doesn't jump over its button.
   const side = useRef<'below' | 'above' | null>(null);
   const placeIt = useCallback(() => {
     const p = panel.current;
     if (!p) return;
-    const a = anchor.getBoundingClientRect(), size = p.getBoundingClientRect();
-    const below = a.bottom + 6, above = a.top - 6 - size.height;
-    side.current ||= below + size.height <= innerHeight - 8 || above < 8 ? 'below' : 'above';
-    const top = side.current === 'below' ? Math.min(below, innerHeight - 8 - size.height) : above;
-    const left = Math.max(8, Math.min(a.left, innerWidth - 8 - size.width));
-    setPlace(old => old && old.left === left && old.top === Math.max(8, top) ? old : { left, top: Math.max(8, top) });
+    const a = anchor.getBoundingClientRect();
+    // Its whole height, not what a scroll cap left of it.
+    const height = p.scrollHeight + (p.offsetHeight - p.clientHeight), width = p.offsetWidth;
+    const below = a.bottom + 6, roomBelow = innerHeight - 8 - below, roomAbove = a.top - 6 - 8;
+    // Never over its button: under it when it fits, else over it when that fits, else the roomier side, scrolled.
+    side.current ||= height <= roomBelow ? 'below' : height <= roomAbove ? 'above' : roomBelow >= roomAbove ? 'below' : 'above';
+    const room = Math.max(80, side.current === 'below' ? roomBelow : roomAbove);
+    const tall = Math.min(height, room);
+    const top = side.current === 'below' ? below : a.top - 6 - tall;
+    const left = Math.max(8, Math.min(a.left, innerWidth - 8 - width));
+    const max = height > room ? room : undefined;
+    setPlace(old => old && old.left === left && old.top === top && old.max === max ? old : { left, top, max });
   }, [anchor]);
   useLayoutEffect(() => {
     placeIt();
@@ -57,6 +63,6 @@ export function Pop({ anchor, close, label, className, children, focusFirst = tr
     };
   }, [anchor, close, placeIt]);
   const host = anchor.closest('.overlay') || document.body;
-  return createPortal(<div className={`mc-pop${className ? ' ' + className : ''}`} ref={panel} role="dialog" aria-label={label}
-    style={place ? { left: place.left, top: place.top } : { opacity: 0, left: 0, top: 0 }}>{children}</div>, host);
+  return createPortal(<div className={`mc-pop${className ? ' ' + className : ''}${place?.max ? ' scroll' : ''}`} ref={panel} role="dialog" aria-label={label}
+    style={place ? { left: place.left, top: place.top, maxHeight: place.max } : { opacity: 0, left: 0, top: 0 }}>{children}</div>, host);
 }

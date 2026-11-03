@@ -276,13 +276,14 @@ html [data-theme="dark" lang="en"]
                     span "Add step"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-opener.mc-step [role="listitem" aria-label="Step 1: Repeat until stopped" style="--d:0"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "1"
                     button.icon-btn.mc-fold [type="button" title="Fold" aria-expanded="true" aria-label="Fold: Step 1"]
-                      svg.i #u1ag9u
+                      svg.i #18mpr3r
                     button.k-loop.mc-step-head [type="button" aria-expanded="false"]
                       svg.i #1ap9cll
                       span.mc-say "Repeat until stopped"
@@ -296,8 +297,9 @@ html [data-theme="dark" lang="en"]
                         svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Step 2: Wait until the color shows in Button area" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "2"
@@ -316,8 +318,9 @@ html [data-theme="dark" lang="en"]
                       button.link [type="button" title="Edit note"] "Move the box to where the button appears"
                   div.mc-step [role="listitem" aria-label="Step 3: Click the color in Button area" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "3"
@@ -336,8 +339,9 @@ html [data-theme="dark" lang="en"]
                       button.link [type="button" title="Edit note"] "Pick the button's color on the game"
                   div.mc-step [role="listitem" aria-label="Step 4: Add 1 to counter clicks" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "4"
@@ -356,8 +360,9 @@ html [data-theme="dark" lang="en"]
                       button.link [type="button" title="Edit note"] "Counts the clicks, shown on the panel"
                   div.mc-step [role="listitem" aria-label="Step 5: Wait 0.5 s" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "5"
@@ -373,8 +378,9 @@ html [data-theme="dark" lang="en"]
                       button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 5"]
                         svg.i #1e3omv2
                   div.mc-end.mc-step [role="listitem" aria-label="Step 6: end repeat" style="--d:0"]
-                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
-                      svg.i #u7ty99
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.mc-step-n [aria-hidden="true"] "6"
                     span.mc-step-head
                       svg.i #5fto4c
