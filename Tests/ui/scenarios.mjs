@@ -1592,6 +1592,26 @@ export default [
     await s.click({ css: '[data-x2=done]' });
     await s.wait(400);
   }),
+  // Import: a long list gets a search (All new and None act on what it shows); Cancel after Bloxkeep file in the sign-in
+  // comes back to the sign-in.
+  S('import-vault-many', 'vimport=preview&ivmany=1', async s => {
+    await s.wait(1500);
+    await s.snap('long list');
+    await s.fill({ css: '#iv-search' }, 'alt_account_1');
+    await s.snap('searched');
+    await s.click({ css: '#iv-none' });
+    await s.snap('none of those');
+    await s.click({ css: '#iv-all' });
+  }),
+  S('import-vault-cancel-back', '', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ css: '.overlay [data-x2=vault]' });
+    await s.wait(500);
+    await s.click({ key: 'common.cancel', within: '.overlay' });
+    await s.wait(500);
+  }, { langs: ['en'] }),
+  // A part of the page that fails to draw shows a short note with Try again (the sidebar, here).
+  S('guard-failed', 'guardfail=1', async s => { await s.wait(300); }),
   // ── end P5 ──
 
   // ── P6 settings ──

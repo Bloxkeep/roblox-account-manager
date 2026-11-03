@@ -578,10 +578,10 @@ window.I18N = {
     'pw.vault': 'With a Bloxkeep file', 'start.vault': 'Bloxkeep file', 'start.vaultTip': 'Bring accounts over from Bloxkeep on another PC, or from a backup (a .rmv file)',
     'm.importVault': 'Import from another Bloxkeep file…',
     'iv.title': 'Import from a Bloxkeep file', 'iv.choose': 'Choose file…', 'iv.otherFile': 'Choose another file', 'iv.open': 'Open', 'iv.wait': 'Wait {n} s',
-    'iv.intro': 'Bring accounts from another Bloxkeep file (.rmv), like <b>vault.rmv</b> or a <b>Bloxkeep-backup</b>. You’ll need its master password.',
+    'iv.intro': 'Bring accounts from a Bloxkeep file (.rmv): a backup, or <b>vault.rmv</b> from another PC.',
     'iv.safe': 'The file stays untouched. Accounts you bring over are locked with this Bloxkeep’s master password.',
     'iv.pw': 'Master password of this file', 'iv.needPw': 'Enter the master password of this file.',
-    'iv.count': '{n} of {total} selected', 'iv.all': 'All', 'iv.none': 'None', 'iv.new': 'New', 'iv.exists': 'Already here',
+    'iv.count': '{n} of {total} selected', 'iv.all': 'All new', 'iv.none': 'None', 'iv.new': 'New', 'iv.exists': 'Already here',
     'iv.ckOk': 'signed in', 'iv.ckBad': 'needs sign-in', 'iv.ckUnknown': 'not checked', 'iv.pwSaved': 'password saved',
     'iv.empty': 'There are no accounts in this file.', 'iv.importBtn': 'Import',
     'iv.presets': 'Also import presets ({n})', 'iv.presetsSub': 'Their schedules come over switched off. Accounts that aren’t here are left out of them.',
@@ -809,6 +809,9 @@ window.I18N = {
     'lock.pw6': 'Master password (6+ characters)',
     'lock.forgot': 'Forgot it? Restore a backup or create a new vault below.',
     'lock.closeWin': 'Close window',
+    'iv.step': 'Step {n}/3',
+    'iv.tooMany': 'Too many wrong tries. Try again in {n} seconds.',
+    'err.draw': 'Something didn’t draw.',
     // ── end P5 ──
 
     // ── P6 settings ──
@@ -1387,10 +1390,10 @@ window.I18N = {
     'pw.vault': 'Từ file Bloxkeep', 'start.vault': 'File Bloxkeep', 'start.vaultTip': 'Lấy tài khoản từ Bloxkeep trên máy khác, hoặc từ bản sao lưu (file .rmv)',
     'm.importVault': 'Nhập từ file Bloxkeep khác…',
     'iv.title': 'Nhập từ file Bloxkeep', 'iv.choose': 'Chọn file…', 'iv.otherFile': 'Chọn file khác', 'iv.open': 'Mở', 'iv.wait': 'Chờ {n} giây',
-    'iv.intro': 'Lấy tài khoản từ file Bloxkeep khác (.rmv), như <b>vault.rmv</b> hoặc <b>Bloxkeep-backup</b>. Cần mật khẩu chủ của file đó.',
+    'iv.intro': 'Lấy tài khoản từ file Bloxkeep (.rmv): bản sao lưu, hoặc <b>vault.rmv</b> từ máy khác.',
     'iv.safe': 'File gốc vẫn giữ nguyên. Tài khoản lấy sang sẽ khóa bằng mật khẩu chủ của Bloxkeep trên máy này.',
     'iv.pw': 'Mật khẩu chủ của file này', 'iv.needPw': 'Bạn chưa nhập mật khẩu chủ của file này.',
-    'iv.count': 'Đã chọn {n}/{total}', 'iv.all': 'Chọn hết', 'iv.none': 'Bỏ chọn', 'iv.new': 'Mới', 'iv.exists': 'Đã có',
+    'iv.count': 'Đã chọn {n}/{total}', 'iv.all': 'Chọn mới', 'iv.none': 'Bỏ chọn', 'iv.new': 'Mới', 'iv.exists': 'Đã có',
     'iv.ckOk': 'còn đăng nhập', 'iv.ckBad': 'cần đăng nhập', 'iv.ckUnknown': 'chưa kiểm tra', 'iv.pwSaved': 'đã lưu mật khẩu',
     'iv.empty': 'File này không có tài khoản nào.', 'iv.importBtn': 'Nhập',
     'iv.presets': 'Nhập cả Preset ({n})', 'iv.presetsSub': 'Hẹn giờ của Preset sẽ tắt khi nhập. Tài khoản chưa có ở đây sẽ bị bỏ khỏi Preset.',
@@ -1617,6 +1620,9 @@ window.I18N = {
     'lock.pw6': 'Mật khẩu chủ (ít nhất 6 ký tự)',
     'lock.forgot': 'Quên mật khẩu? Khôi phục bản sao lưu hoặc tạo vault mới.',
     'lock.closeWin': 'Đóng cửa sổ',
+    'iv.step': 'Bước {n}/3',
+    'iv.tooMany': 'Nhập sai nhiều lần. Thử lại sau {n} giây.',
+    'err.draw': 'Có lỗi khi hiển thị.',
     // ── end P5 ──
 
     // ── P6 settings ──

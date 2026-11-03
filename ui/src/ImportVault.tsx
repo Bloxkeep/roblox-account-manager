@@ -24,6 +24,8 @@ export function ImportVault({ api, primary, finished }: {
   const [ticked, setTicked] = useState<Set<number>>(new Set());
   const [presets, setPresets] = useState(false);
   const [shown, setShown] = useState(false);
+  // A long list (more than 20 rows) gets a search box.
+  const [query, setQuery] = useState('');
   // After three wrong passwords the app makes each try wait: Open counts down meanwhile.
   const [waitUntil, setWaitUntil] = useState(0);
   const [, tick] = useState(0);
@@ -36,6 +38,8 @@ export function ImportVault({ api, primary, finished }: {
   }, [waiting]);
 
   const n = preview ? preview.accounts.filter(a => ticked.has(a.key)).length : 0;
+  // While each try waits (after three wrong ones) the page says so itself, counting down, in place of the app's reply.
+  const waitLeft = waiting ? Math.max(1, Math.ceil((waitUntil - Date.now()) / 1000)) : 0;
   useLayoutEffect(() => {
     const btn = primary();
     if (!btn || btn.classList.contains('busy')) return;
@@ -68,6 +72,7 @@ export function ImportVault({ api, primary, finished }: {
     setPreview(null);
     setShown(false);
     setStep('password');
+    setQuery('');
     setWaitUntil(r.wait ? Date.now() + r.wait * 1000 : 0);
   };
   const open = async (btn: HTMLElement) => {
@@ -78,7 +83,7 @@ export function ImportVault({ api, primary, finished }: {
     try { r = await busy(btn, () => ask('vaultImportOpen', { password })) as typeof r; } catch (e) { return setError((e as Error).message); }
     if (!r) return;
     if (r.status !== 'ok') {
-      setError(r.error || '');
+      setError(r.wait ? '' : r.error || '');
       pw.current!.select();
       pw.current!.focus();
       if (r.wait) setWaitUntil(Date.now() + r.wait * 1000);
@@ -103,36 +108,48 @@ export function ImportVault({ api, primary, finished }: {
     next: btn => { const l = latest.current; (l.step === 'pick' ? l.pick : l.step === 'password' ? l.open : l.apply)(btn); },
   }), []);
 
-  const errorLine = <div className="form-error" id="iv-err" role="alert" hidden={!error}>{error}</div>;
+  const shownError = waiting ? t('iv.tooMany', { n: waitLeft }) : error;
+  const errorLine = <div className="form-error" id="iv-err" role="alert" hidden={!shownError}>{shownError}</div>;
+  const stepLine = (at: number) => <p className="iv-step">{t('iv.step', { n: at })}</p>;
   const safe = <p className="fine"><Icon name="shield" /><span>{t('iv.safe')}</span></p>;
   const fileLine = file ? <div className="iv-file"><Icon name="folder" /><b title={file.name}>{file.name}</b>
     <button type="button" className="link" id="iv-other" onClick={e => pick(e.currentTarget)}>{t('iv.otherFile')}</button></div> : null;
 
   if (step === 'pick') return <div id="iv-body" ref={root}>
+    {stepLine(1)}
     <p className="modal-text"><Rich k="iv.intro" /></p>{safe}{errorLine}
   </div>;
   if (step === 'password') return <div id="iv-body" ref={root}>
+    {stepLine(2)}
     {fileLine}
     <div className="form"><label>{t('iv.pw')}
-      <span className="pw"><input className="field" type={shown ? 'text' : 'password'} id="iv-pw" ref={pw} maxLength={256} autoComplete="off" spellCheck={false} />
+      <span className="pw"><input className="field" type={shown ? 'text' : 'password'} id="iv-pw" ref={pw} maxLength={256} autoComplete="off" spellCheck={false}
+        aria-invalid={shownError && !waiting ? true : undefined} onInput={() => { if (error) setError(''); }} />
         <button type="button" className="icon-btn" id="iv-eye" title={t(shown ? 'lock.hidePw' : 'lock.showPw')} aria-label={t(shown ? 'lock.hidePw' : 'lock.showPw')}
           aria-pressed={shown} onClick={() => setShown(!shown)}><Icon name={shown ? 'eyeOff' : 'eye'} /></button></span></label></div>
     {safe}{errorLine}
   </div>;
 
   // The list: names hidden, the file's accounts too, numbered by their place in the file.
-  const list = preview!.accounts;
+  const all = preview!.accounts;
   const hide = !!app.hideNames;
   const signIn = (a: FileAccount) => a.cookieValid === true ? <span className="iv-ck ok">{t('iv.ckOk')}</span>
     : a.cookieValid === false ? <span className="iv-ck bad">{t('iv.ckBad')}</span> : <span className="iv-ck">{t('iv.ckUnknown')}</span>;
+  // The names as they show (hidden names are numbered): what the search looks through, and what All new and None act on.
+  const shownAs = (x: FileAccount) => hide ? { ...x, label: t('hide.account', { n: x.key + 1 }), username: '' } : x;
+  const q = query.trim().toLowerCase();
+  const list = q ? all.filter(x => { const a = shownAs(x); return [a.label, a.username, a.group].some(v => (v || '').toLowerCase().includes(q)); }) : all;
   return <div id="iv-body" ref={root}>
+    {stepLine(3)}
     {fileLine}
-    {list.length ? <>
-      <div className="iv-bar"><span id="iv-count">{t('iv.count', { n, total: list.length })}</span>
-        <button type="button" className="link" id="iv-all" onClick={() => setTicked(new Set(list.map(a => a.key)))}>{t('iv.all')}</button>
-        <button type="button" className="link" id="iv-none" onClick={() => setTicked(new Set())}>{t('iv.none')}</button></div>
+    {all.length ? <>
+      {all.length > 20 ? <input className="field sm iv-search" type="text" id="iv-search" value={query} maxLength={60} autoComplete="off" spellCheck={false}
+        placeholder={t('acc.search')} aria-label={t('acc.search')} onChange={e => setQuery(e.target.value)} /> : null}
+      <div className="iv-bar"><span id="iv-count">{t('iv.count', { n, total: all.length })}</span>
+        <button type="button" className="link" id="iv-all" onClick={() => setTicked(new Set([...ticked, ...list.filter(a => !a.exists).map(a => a.key)]))}>{t('iv.all')}</button>
+        <button type="button" className="link" id="iv-none" onClick={() => setTicked(new Set([...ticked].filter(k => !list.some(a => a.key === k))))}>{t('iv.none')}</button></div>
       <div className="rc-list iv-list">{list.map(x => {
-        const a = hide ? { ...x, label: t('hide.account', { n: x.key + 1 }), username: '' } : x;
+        const a = shownAs(x);
         const parts: ReactNode[] = [a.username ? `@${a.username}` : '', a.group || '', signIn(a), a.hasPassword ? t('iv.pwSaved') : ''].filter(Boolean);
         return <label key={a.key} className="rc-item iv-item">
           <input type="checkbox" value={a.key} checked={ticked.has(a.key)} onChange={e => {
@@ -150,7 +167,7 @@ export function ImportVault({ api, primary, finished }: {
     </> : <p className="modal-text">{t('iv.empty')}</p>}
     {preview!.presets ? <label className="iv-presets"><input type="checkbox" id="iv-presets" checked={presets} onChange={e => setPresets(e.target.checked)} />
       <span><b>{t('iv.presets', { n: preview!.presets })}</b><small>{t('iv.presetsSub')}</small></span></label> : null}
-    {list.some(a => a.exists) ? <p className="fine"><Icon name="info" /><span>{t('iv.existsNote')}</span></p> : null}
+    {all.some(a => a.exists) ? <p className="fine"><Icon name="info" /><span>{t('iv.existsNote')}</span></p> : null}
     {errorLine}
   </div>;
 }

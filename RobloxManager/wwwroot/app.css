@@ -5721,6 +5721,12 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .lock-card p.lock-forgot { margin: 0 0 10px; font-size: var(--fs-3); line-height: 1.45; }
 .lock-multi .lock-close { display: flex; margin: 12px auto 0; }
 .vp-tile.last:hover, .vp-tile.last:focus-visible { border-color: var(--text); }
+/* Import: the step under the title, a search over a long list, a file name in the intro that doesn't break. */
+.iv-step { margin: 0 0 10px; font-size: var(--fs-2); font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.iv-search { width: 100%; margin: 0 0 8px; }
+.modal-text b { white-space: nowrap; }
+/* A part of the page that failed to draw (Guard.tsx): the note and its button, wrapping in a narrow place. */
+.guard-note { flex: none; flex-wrap: wrap; align-items: center; align-content: flex-start; align-self: start; justify-content: space-between; height: fit-content; margin: 8px; }
 /* ───────── end P5 ───────── */
 
 /* ───────── P6 settings ───────── */
