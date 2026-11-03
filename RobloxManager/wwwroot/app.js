@@ -276,7 +276,8 @@
       if (asking || closed || held) return;
       if (askClose?.()) {
         asking = true;
-        const leave = await confirmBox(t('common.discardQ'), { title: t('common.discardTitle'), ok: t('common.discard'), danger: true, remember: 'discard' });
+        // Said in the dialog's own words (the buttons name what they do), and asked every time: it guards what was just typed.
+        const leave = await confirmBox(t('common.discardQ'), { title: t('common.discardTitle'), ok: t('common.discardChanges'), cancel: t('common.keepEditing'), danger: true });
         asking = false;
         if (!leave) return;
       }
@@ -315,7 +316,7 @@
    * @param danger the focus starts on Cancel, so a stray Enter doesn't delete or restore.
    * @param remember offers "Don't ask again" (the app's SkippableConfirms): once ticked with a yes, the yes is assumed.
    */
-  function confirmBox(message, { title = t('common.confirm'), ok = 'OK', danger = false, remember = null } = {}) {
+  function confirmBox(message, { title = t('common.confirm'), ok = 'OK', cancel = t('common.cancel'), danger = false, remember = null } = {}) {
     if (remember && S.app?.skipConfirm?.includes(remember)) return Promise.resolve(true);
     return new Promise(resolve => {
       let answer = false;
@@ -323,7 +324,7 @@
         title,
         body: window.BloxkeepUI.ask(message, !!remember),
         actions: [
-          { text: t('common.cancel'), onClick: ({ close }) => close() },
+          { text: cancel, onClick: ({ close }) => close() },
           { text: ok, kind: danger ? 'danger' : 'primary', onClick: ({ el, close }) => {
             answer = true;
             if (remember && el.querySelector('#dont-ask')?.checked) call('skipConfirm', { key: remember });
@@ -1655,7 +1656,7 @@
     const time = fmtClock(`${d.getHours()}:${d.getMinutes()}`);
     const day = d.toDateString() === now.toDateString() ? t('ps.today')
       : d.toDateString() === new Date(now.getTime() + 864e5).toDateString() ? t('ps.tomorrow')
-      : intl('d', { weekday: 'short', day: 'numeric', month: 'numeric' }).format(d);
+      : `${dayShort(d.getDay())}, ${intl('d', { day: 'numeric', month: 'numeric' }).format(d)}`;
     return t('ps.next', { when: `${day} ${time}` });
   }
 
@@ -1760,7 +1761,8 @@
             const fail = (msg, box) => {
               errBox.textContent = msg;
               errBox.hidden = false;
-              box?.scrollIntoView({ block: 'nearest' });
+              // Its whole label in view (a box's own words under it too), not only the box.
+              (box?.closest('label') || box)?.scrollIntoView({ block: 'nearest' });
               box?.focus();
             };
             const r = ui.form.collect();
@@ -1816,17 +1818,19 @@
      Drawn by React (ui/src/PresetsView.tsx); what it uses of this page comes through uiHost(). */
   const PV = { query: '' }; // the Presets tab's search (PresetsView.tsx), kept with the view
   const MAX_PRESETS = 50; // the app's own limit (MaxPresets); checked here so a full list doesn't open an empty form
-  /** "Mon, Wed, Fri 20:00", "Every day 20:00", or the date of a one-off. */
+  /** A weekday as the Presets tab writes it: the browser's short name, in Vietnamese the short form of the week ("T2" to "T7", "CN"). */
+  const dayShort = d => lang === 'vi' ? (d === 0 ? 'CN' : `T${d + 1}`) : weekdayName(d);
+  /** "Mon, Wed, Fri 20:00" ("T2, T4, T6 20:00"), "Every day 20:00", or the date of a one-off. */
   function scheduleText(sc) {
     const time = fmtClock(sc.time);
     if (sc.date) {
-      const [y, m, d] = sc.date.split('-').map(Number);
-      return `${intl('d', { weekday: 'short', day: 'numeric', month: 'numeric' }).format(new Date(y, m - 1, d))} ${time}`.trim();
+      const [y, m, d] = sc.date.split('-').map(Number), day = new Date(y, m - 1, d);
+      return `${dayShort(day.getDay())}, ${intl('d', { day: 'numeric', month: 'numeric' }).format(day)} ${time}`.trim();
     }
-    // Monday first, as the form shows them; three or more days in a row read as a range ("Mon–Fri").
+    // Monday first, as the form shows them; three or more days in a row read as a range ("Mon–Fri", "T2–T6").
     const order = [1, 2, 3, 4, 5, 6, 0], days = order.filter(d => (sc.days || []).includes(d));
     const inRow = days.length >= 3 && order.indexOf(days.at(-1)) - order.indexOf(days[0]) === days.length - 1;
-    const text = days.length === 7 ? t('pv.everyDay') : inRow ? `${weekdayName(days[0])}–${weekdayName(days.at(-1))}` : days.map(weekdayName).join(', ');
+    const text = days.length === 7 ? t('pv.everyDay') : inRow ? `${dayShort(days[0])}–${dayShort(days.at(-1))}` : days.map(dayShort).join(', ');
     return `${text} ${time}`.trim();
   }
 

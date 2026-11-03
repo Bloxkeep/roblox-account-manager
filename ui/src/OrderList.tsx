@@ -41,8 +41,12 @@ export function OrderList({ accounts, ticked, api, onChange }: {
     const next = [...order];
     [next[i], next[j]] = [next[j], next[i]];
     flushSync(() => setOrder(next));
-    btn.focus();
-    btn.closest('.ord-item')?.scrollIntoView({ block: 'nearest' });
+    // The arrow that reached its end is off now: the focus goes to the row itself, not to the other arrow, where the
+    // next Enter would move it straight back.
+    const row = btn.closest<HTMLElement>('.ord-item');
+    if (!(btn as HTMLButtonElement).disabled) btn.focus();
+    else if (row) { row.tabIndex = -1; row.focus(); }
+    row?.scrollIntoView({ block: 'nearest' });
     onChange?.();
   };
 
@@ -78,8 +82,8 @@ export function OrderList({ accounts, ticked, api, onChange }: {
         <div className="avatar sm"><Avatar a={a} /></div>
         <span className="ord-txt"><b title={a.label}>{a.label}</b><small>{a.username ? `@${a.username}` : ''}</small></span>
         <span className="ord-btns">
-          <button type="button" className="icon-btn" data-move="-1" title={t('lo.up')} aria-label={t('lo.up')} onClick={e => move(id, -1, e.currentTarget)}><Icon name="chevronUp" /></button>
-          <button type="button" className="icon-btn" data-move="1" title={t('lo.down')} aria-label={t('lo.down')} onClick={e => move(id, 1, e.currentTarget)}><Icon name="chevronDown" /></button>
+          <button type="button" className="icon-btn" data-move="-1" title={t('lo.up')} aria-label={t('lo.up')} disabled={i === 0} onClick={e => move(id, -1, e.currentTarget)}><Icon name="chevronUp" /></button>
+          <button type="button" className="icon-btn" data-move="1" title={t('lo.down')} aria-label={t('lo.down')} disabled={i >= order.length - 1} onClick={e => move(id, 1, e.currentTarget)}><Icon name="chevronDown" /></button>
         </span>
       </div>;
     })}
