@@ -97,7 +97,13 @@ public sealed partial class AppController
         string id = Str(a, "id");
         if (MonitorClients().FirstOrDefault(c => MonitorId(c.Hwnd) == id) is not { } client)
             return null; // gone meanwhile: every action survives that
-        switch (Str(a, "what"))
+        return MonitorAct(client, Str(a, "what"));
+    }
+
+    /// <summary>A tile's action on its window.</summary>
+    object? MonitorAct(MonitorClient client, string what)
+    {
+        switch (what)
         {
             case "show":
                 RobloxProcesses.FocusInTurn(client.Pid);
