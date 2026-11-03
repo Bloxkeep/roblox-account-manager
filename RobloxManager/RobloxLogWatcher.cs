@@ -474,10 +474,15 @@ public sealed class RobloxLogWatcher
                 };
         }
         else if (line.Contains(SignedOutMark, StringComparison.Ordinal))
+        {
             tail.State = (tail.State ?? new ClientState("signedout", null, null, null, TimeOf(line))) with
             {
                 Status = "signedout", Reason = null, At = TimeOf(line), TeleportStarted = null,
             };
+            // Whoever signs in next in this window is named by their own join report: kept, the window could be
+            // adopted as the account that left (audit B15).
+            tail.UserId = null;
+        }
         else if (line.Contains(TeleportMark, StringComparison.Ordinal))
         {
             tail.TeleportAt = TimeOf(line);

@@ -462,6 +462,14 @@ public static class RobloxProcesses
     }
 
     static readonly Dictionary<int, Closing> _closing = new();
+
+    /// <summary>Being closed by <see cref="Close"/> (or its sweep for the tray copy it leaves), until the sweep is done with it.</summary>
+    public static bool IsClosing(int pid)
+    {
+        lock (_closing)
+            return _closing.ContainsKey(pid);
+    }
+
     static Task? _sweeper;
     static readonly TimeSpan CloseGrace = TimeSpan.FromSeconds(2), ChildSweep = TimeSpan.FromSeconds(10), SweepTick = TimeSpan.FromMilliseconds(500);
 
@@ -1297,6 +1305,32 @@ public static class RobloxProcesses
             _trackers[(pid, created)] = tracker;
         }
         return tracker;
+    }
+
+    static readonly System.Text.RegularExpressions.Regex LauncherUrlText = new(@"placelauncherurl:([^+\s""]+)|(?<=\s)-j\s+""?([^\s""]+)",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// The PlaceLauncher link a client was started with (which game and what kind of server it asked for), unescaped; ""
+    /// when it had none (Roblox's home screen), null when unreadable. Only the link: the sign-in ticket elsewhere on the
+    /// command line is never returned.
+    /// </summary>
+    public static string? PlaceLauncherUrlOf(int pid, long created) => CommandLineOf(pid, created) is { } line ? PlaceLauncherUrl(line) : null;
+
+    internal static string PlaceLauncherUrl(string commandLine)
+    {
+        var found = LauncherUrlText.Match(commandLine);
+        if (!found.Success)
+            return "";
+        string url = found.Groups[1].Success ? found.Groups[1].Value : found.Groups[2].Value;
+        try
+        {
+            return Uri.UnescapeDataString(url);
+        }
+        catch (UriFormatException)
+        {
+            return "";
+        }
     }
 
     /// <summary>Windows 8.1 and later; null when it can't be read (gone, not ours).</summary>

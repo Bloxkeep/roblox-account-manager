@@ -55,6 +55,10 @@ public sealed partial class AppController
         catch (Exception ex)
         {
             LogTickError(ex);
+            // Only the first half (the process list, clients matched to launches) is left to fail the whole check: the save
+            // still goes, but no rejoin, which would open windows nothing then matches. Already saved: nothing to do.
+            if (_vault is not null)
+                Step(() => PersistIfDue(DateTime.UtcNow));
         }
         finally
         {
@@ -224,56 +228,64 @@ public sealed partial class AppController
         }
 
         _closingForRejoin.RemoveWhere(pid => !pids.Contains(pid));
+        // From here on each job on its own (Step): one that throws (bad data in one session or macro) would otherwise
+        // stop the save, auto-rejoin, schedules and auto-lock for as long as it kept throwing (audit R1).
         // Once a client has started (its window is up), the file goes back to the person's own settings.
         if (_robloxSettingsPending && _launchCts is null && _pending.Count == 0 && !_rejoining
             && now - _robloxSettingsWrittenAt > TimeSpan.FromSeconds(10))
         {
-            bool final = pids.Count == 0;
-            RobloxGameSettings.Restore(final);
-            if (final)
-                _robloxSettingsPending = false;
+            Step(() =>
+            {
+                bool final = pids.Count == 0;
+                RobloxGameSettings.Restore(final);
+                if (final)
+                    _robloxSettingsPending = false;
+            }, "RobloxGameSettings.Restore(final)");
         }
         // Light AFK's flags: read by the windows they were for, so the file is the person's own again.
         if (_robloxFlagsPending && _launchCts is null && _pending.Count == 0 && !_rejoining
             && now - _robloxSettingsWrittenAt > TimeSpan.FromSeconds(10))
         {
-            RobloxFlags.Restore();
-            _robloxFlagsPending = false;
+            Step(() =>
+            {
+                RobloxFlags.Restore();
+                _robloxFlagsPending = false;
+            }, "RobloxFlags.Restore()");
         }
         // Every client's log: the ones Bloxkeep opened for their status, all of them for anti-AFK.
-        part = Stopwatch.GetTimestamp();
-        changed |= _logs.Poll(pids.ToList()) && _running.Count > 0;
-        Took("Roblox logs", part);
+        Step(() => changed |= _logs.Poll(pids.ToList()) && _running.Count > 0, "Roblox logs");
         if (scan)
-            changed |= AdoptWindowsOpenedElsewhere(players);
-        var unnamed = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0)
-            .Where(id => id > 0 && !HasGame(id, false) && !(_gameFetchedAt.TryGetValue(id, out var asked) && now - asked < GameRetry))
-            .Distinct().ToList();
-        if (unnamed.Count > 0)
-            _ = NameLoggedPlacesAsync(unnamed);
-        part = Stopwatch.GetTimestamp();
-        RejoinFromLogs();
-        ForgetLiftedGameBans();
-        ForgetSettledRejoins(now);
-        TrackPlay(now);
-        RunAntiAfk(now, windows);
-        MinimiseAfkWindows(windows);
-        MaximiseNewWindows(now, windows);
-        KeepWindowSizes(now, windows);
-        TickMacros(now);
-        TickPanels();
-        Took("rejoins, play time, anti-AFK and window states", part);
+            Step(() => changed |= AdoptWindowsOpenedElsewhere(players));
+        Step(() =>
+        {
+            var unnamed = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0)
+                .Where(id => id > 0 && !HasGame(id, false) && !(_gameFetchedAt.TryGetValue(id, out var asked) && now - asked < GameRetry))
+                .Distinct().ToList();
+            if (unnamed.Count > 0)
+                _ = NameLoggedPlacesAsync(unnamed);
+        }, "NameLoggedPlacesAsync(unnamed)");
+        Step(RejoinFromLogs);
+        Step(ForgetLiftedGameBans);
+        Step(() => ForgetSettledRejoins(now));
+        Step(() => TrackPlay(now));
+        Step(() => RunAntiAfk(now, windows));
+        Step(() => MinimiseAfkWindows(windows));
+        Step(() => MaximiseNewWindows(now, windows));
+        Step(() => KeepWindowSizes(now, windows));
+        Step(() => TickMacros(now));
+        Step(() => TickPanels());
 
         if (_vault is { Data.Settings.RenameWindows: true })
         {
-            part = Stopwatch.GetTimestamp();
-            foreach (var (id, info) in _running)
+            Step(() =>
             {
-                // With its process id, so a window can be matched to Task Manager and to its Roblox log.
-                if (FindAccount(id) is { } account && windows.TryGetValue(info.Pid, out var list))
-                    RobloxProcesses.SetWindowTitle(list, $"Roblox - {NameText(account)} (PID {info.Pid})");
-            }
-            Took("window titles", part);
+                foreach (var (id, info) in _running)
+                {
+                    // With its process id, so a window can be matched to Task Manager and to its Roblox log.
+                    if (FindAccount(id) is { } account && windows.TryGetValue(info.Pid, out var list))
+                        RobloxProcesses.SetWindowTitle(list, $"Roblox - {NameText(account)} (PID {info.Pid})");
+                }
+            }, "window titles");
         }
         if (scan)
         {
@@ -283,9 +295,12 @@ public sealed partial class AppController
 
         if (_vault is { Data.Settings.MultiInstance: true } && scan && pids.Count == 0)
         {
-            ApplyWatchNames();
-            if (!MultiInstance.Armed || MultiInstance.Stale)
-                MultiInstance.Enable();
+            Step(() =>
+            {
+                ApplyWatchNames();
+                if (!MultiInstance.Armed || MultiInstance.Stale)
+                    MultiInstance.Enable();
+            }, "MultiInstance.Enable()");
         }
         if (MultiInstance.Armed != _lastArmed)
         {
@@ -293,7 +308,7 @@ public sealed partial class AppController
             changed = true;
         }
         if (changed)
-            PushStateIfChanged();
+            Step(PushStateIfChanged);
 
         bool active = pids.Count > 0 || _pending.Count > 0 || _rejoinQueue.Count > 0 || now < _sweepBackgroundUntil;
         int interval = _background ? 5000 : active ? 1500 : 4000;
@@ -869,28 +884,75 @@ public sealed partial class AppController
     /// <summary>
     /// A window opened outside Bloxkeep (from Roblox's own app, a browser's Play) that joined a game signed in as one of the
     /// vault's accounts becomes that account's, as if Bloxkeep had opened it: its card shows it, and macros, Edit on game,
-    /// the panel, closing and auto-rejoin can use it. Not while a launch could still claim it, never a second window for an
-    /// account that has one.
+    /// the panel and closing can use it, and auto-rejoin when its server is known to be public (<see cref="PublicTargetOf"/>).
+    /// Not while a launch could still claim it, nor while windows are being closed (Close all's sweep, the monitor tab's
+    /// Close) or a separate sign-in window opens; never a second window for an account that has one, nor one whose user id
+    /// two accounts share (a Global and a Roblox VNG account: the log can't say which).
     /// </summary>
     bool AdoptWindowsOpenedElsewhere(IReadOnlyList<RobloxProcesses.PlayerProcess> players)
     {
-        if (_vault is null || _launchCts is not null || _pending.Count > 0 || _rejoining)
+        if (_vault is null || _launchCts is not null || _pending.Count > 0 || _rejoining || _openingHome || DateTime.UtcNow < _sweepBackgroundUntil)
             return false;
+        HashSet<int>? separate = null;
         bool adopted = false;
         foreach (var p in players)
         {
-            if (_logs.UserIdOf(p.Pid) is not { } user || _running.Values.Any(r => r.Pid == p.Pid))
+            if (_logs.UserIdOf(p.Pid) is not { } user || _running.Values.Any(r => r.Pid == p.Pid) || RobloxProcesses.IsClosing(p.Pid))
                 continue;
-            var account = _vault.Data.Accounts.FirstOrDefault(a => a.UserId == user);
-            if (account is null || _running.ContainsKey(account.Id))
+            var named = _vault.Data.Accounts.Where(a => a.UserId == user).Take(2).ToList();
+            if (named is not [var account] || _running.ContainsKey(account.Id))
                 continue;
-            var place = _logs.StateOf(p.Pid)?.PlaceId;
+            // A separate sign-in window keeps its own sign-in: auto-rejoin would reopen it as a normal client. Unsure which
+            // windows those are: none is adopted until the next check.
+            if (_homeSession is not null)
+            {
+                if (separate is null)
+                {
+                    var (ours, uncertain) = _homeSession.FindClients(players);
+                    if (uncertain)
+                        break;
+                    separate = ours.ToHashSet();
+                }
+                if (separate.Contains(p.Pid))
+                    continue;
+            }
             var since = p.Created > 0 ? DateTime.FromFileTimeUtc(p.Created) : DateTime.UtcNow;
-            _running[account.Id] = (p.Pid, new PendingLaunch(account.Id, [], since, place is > 0 ? new GameTarget(place.Value) : null));
+            var target = PublicTargetOf(_launchUrlOf(p.Pid, p.Created), _logs.StateOf(p.Pid));
+            _running[account.Id] = (p.Pid, new PendingLaunch(account.Id, [], since, target));
+            // Not one Bloxkeep opened: Settings' Maximise leaves it as the person has it.
+            _maximised[p.Pid] = "ingame";
             adopted = true;
         }
         if (adopted)
-            Persist();
+            PersistSoon(); // as ClaimWindows: not encrypted and written on the window's thread in the check
         return adopted;
+    }
+
+    /// <summary>The PlaceLauncher link a client was started with (<see cref="RobloxProcesses.PlaceLauncherUrlOf"/>); tests give their own.</summary>
+    Func<int, long, string?> _launchUrlOf = RobloxProcesses.PlaceLauncherUrlOf;
+
+    /// <summary>
+    /// The game an adopted window is rejoined into: only when its own start asked for a public server (a browser's Play:
+    /// PlaceLauncher's RequestGame or RequestGameJob, no private server code) of the place its log says it is in, and no
+    /// game was picked in the window since. Roblox's log doesn't say whether a server is private or reserved (none of the
+    /// owner's logs did, checked 2026-11-03), so one started on Roblox's home screen, from a private server, or moved to another place gets
+    /// none: a drop there isn't rejoined, rather than rejoined into a public server of that place.
+    /// </summary>
+    internal static GameTarget? PublicTargetOf(string? launchUrl, RobloxLogWatcher.ClientState? state)
+    {
+        if (string.IsNullOrEmpty(launchUrl) || state is not { PlaceId: long place, ChosenPlace: null, PersonStarted: false })
+            return null;
+        var query = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in launchUrl[(launchUrl.IndexOf('?') + 1)..].Split('&'))
+        {
+            if (pair.Split('=', 2) is [var key, var value])
+                query.TryAdd(key, value);
+        }
+        bool publicServer = query.GetValueOrDefault("request") is "RequestGame" or "RequestGameJob"
+            && !query.ContainsKey("accessCode") && !query.ContainsKey("linkCode") && !query.ContainsKey("privateServerLinkCode");
+        return publicServer && long.TryParse(query.GetValueOrDefault("placeId"), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out long asked) && asked == place
+            ? new GameTarget(place)
+            : null;
     }
 }
