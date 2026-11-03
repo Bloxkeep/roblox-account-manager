@@ -19,11 +19,18 @@ Bloxkeep đưa từng cửa sổ Roblox lên trước trong giây lát, gửi ph
 ## Tạo macro
 
 1. Mở tab **Macro**, bấm **Thêm macro**: **Ghi thao tác**, **Từ mẫu có sẵn**, **Trống** hoặc **Nhập từ file**.
-2. Mỗi bước là một câu. Bấm vào bước để mở và đổi giá trị ngay trong câu. **Thêm bước** hiện các bước hay dùng trước, còn lại ở **Bước khác**.
+2. Mỗi bước là một câu. Bấm vào bước để mở và đổi giá trị ngay trong câu. **Thêm bước** mở danh sách tìm được (gõ "chờ"), các bước **Gần đây** ở trên cùng. Trỏ vào giữa hai bước rồi bấm **+** để thêm bước vào đó.
 3. Bấm **Chạy thử**: macro chạy một lần trên một cửa sổ và cho biết từng bước ra sao.
 4. Bấm **Lưu**, rồi **Chạy** ở dòng của macro. Dòng đó cho biết từng tài khoản đang làm gì.
 
-Mẫu có sẵn có danh sách **Cần làm trước khi chạy**, ví dụ "Đặt Vùng thanh bằng Sửa trên game".
+Mỗi mẫu có sẵn ghi rõ cần gì trên game, và có danh sách **Cần làm trước khi chạy**, ví dụ "Đặt Vùng thanh bằng Sửa trên game". Các bước của mẫu có ghi chú giải thích.
+
+## Đọc các bước
+
+- Các bước trong **Lặp lại** hay **Nếu** nằm trên một đường màu tới chỗ kết thúc. Bấm mũi tên ở bước Lặp lại hay Nếu để thu gọn.
+- Bước nào chưa chạy được sẽ ghi lý do ngay dưới, kèm nút sửa (ví dụ **Thêm Hết lặp** hay **Chọn trên game**). Cuối cửa sổ đếm số lỗi còn lại trước khi **Lưu**.
+- **⋯** ở một bước để thêm ghi chú, vài chữ cho người đọc macro sau.
+- Khi macro chạy, bước đang chạy có dấu **đang chạy**. Lần chạy dừng ở bước nào thì **Sửa lỗi** trong menu **⋯** của dòng sẽ mở macro ngay bước đó và cho biết vì sao dừng.
 
 ## Điểm và vùng
 
@@ -53,7 +60,7 @@ Một bảng bật lên hay một lần cá không cắn có thể làm macro ch
 
 - Mở dòng dưới tên macro. Ở **Nếu chờ mãi không thấy hoặc bị kẹt**, chọn **Làm lại từ đầu**.
 - **Tính là kẹt** là bao lâu không thấy gì (ví dụ 5 phút) thì làm việc đó.
-- Ở **Bước khác**, thêm **Khi bị kẹt…**. Bước này nằm cuối; đặt sau nó các bước gỡ kẹt, như đóng bảng bật lên. Chúng chạy trước khi macro làm lại từ đầu.
+- Ở **Thêm bước**, thêm **Khi bị kẹt…**. Bước này nằm cuối; đặt sau nó các bước gỡ kẹt, như đóng bảng bật lên. Chúng chạy trước khi macro làm lại từ đầu.
 
 Làm lại 5 lần liền mà vẫn không thấy gì thì macro dừng trên cửa sổ đó.
 
