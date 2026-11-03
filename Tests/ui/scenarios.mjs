@@ -1215,6 +1215,7 @@ export default [
   S('preset-editor-new-discord', 'view=presets', async s => {
     await s.click(key('ps.new'));
     await s.wait(300);
+    await s.click({ css: '#ps-dc > summary' }); // Discord is folded until something in it is set
     await s.choose({ css: '#ps-dc-mode' }, 'own');
     await s.snap('asks link');
     await s.click({ css: '.overlay .modal-foot .btn.primary' });
@@ -1564,6 +1565,57 @@ export default [
   // ── end P3 ──
 
   // ── P4 presets ──
+  // The server choices in two groups; "each account in its own server" says so under the row.
+  S('preset-server-groups', 'preset=1', async s => {
+    await s.wait(300);
+    await s.click({ css: '#ps-server' });
+    await s.snap('open');
+    await s.click({ css: '#ps-server' });
+    await s.choose({ css: '#ps-server' }, 'eachMost');
+    await s.snap('each');
+  }),
+  // Without a game the choices that need one are off and the row says why; a player to follow needs none.
+  S('preset-no-game', 'view=presets', async s => {
+    await s.click(key('ps.new'));
+    await s.wait(300);
+    await s.fill({ css: '#ps-place' }, '');
+    await s.snap('empty');
+    await s.click({ css: '#ps-server' });
+    await s.snap('open');
+    await s.click({ css: '#ps-server' });
+    await s.choose({ css: '#ps-server' }, 'follow');
+    await s.snap('follow');
+  }),
+  // The time box is a text box: "9pm" is read as 21:00 and written the way the app writes times; a text that is no time is
+  // said under the box (and again when Save is refused).
+  S('preset-time-typed', 'preset=1', async s => {
+    await s.wait(300);
+    await s.fill({ css: '#ps-sch-time' }, '9pm');
+    await s.key('Tab');
+    await s.snap('9pm');
+    await s.fill({ css: '#ps-sch-time' }, '25:00');
+    await s.key('Tab');
+    await s.snap('bad');
+    await s.click({ css: '.overlay .modal-foot .btn.primary' });
+    await s.snap('refused');
+  }),
+  // The same for the date, in the order the language writes it; a day that doesn't exist is no date.
+  S('preset-date-typed', 'preset=1', async s => {
+    await s.wait(300);
+    await s.choose({ css: '#ps-sch-mode' }, 'once');
+    await s.fill({ css: '#ps-sch-date' }, s.lang === 'vi' ? '20/12/2026' : '12/20/2026');
+    await s.key('Tab');
+    await s.snap('typed');
+    await s.fill({ css: '#ps-sch-date' }, s.lang === 'vi' ? '31/02/2026' : '02/31/2026');
+    await s.key('Tab');
+    await s.snap('bad');
+  }),
+  // A search that finds nothing offers to clear itself.
+  S('presets-search-clear', 'view=presets', async s => {
+    await s.type('zzzz', key('pv.search'));
+    await s.snap('none');
+    await s.click({ css: '[data-pv="clear-search"]' });
+  }),
   // ── end P4 ──
 
   // ── P5 sign-in ──
