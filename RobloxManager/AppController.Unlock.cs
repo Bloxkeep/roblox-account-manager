@@ -138,7 +138,7 @@ public sealed partial class AppController
     {
         if (_vault is not { } vault)
             return false;
-        var ended = _endedHere.Where(e => DateTime.UtcNow - e.Value.At < StalePresence).OrderBy(e => e.Value.At)
+        var ended = _endedHere.Where(e => DateTime.UtcNow - e.Value.At < StalePresence && vault.Data.Accounts.Any(a => a.Id == e.Key)).OrderBy(e => e.Value.At)
             .Select(e => new EndedSession { AccountId = e.Key, JobId = e.Value.JobId, PlaceId = e.Value.PlaceId, At = e.Value.At }).ToList();
         bool endedChanged = !vault.Data.EndedSessions.Select(e => (e.AccountId, e.At)).SequenceEqual(ended.Select(e => (e.AccountId, e.At)));
         if (endedChanged)
@@ -149,7 +149,10 @@ public sealed partial class AppController
             vault.Data.WaitingRejoins = waiting;
             endedChanged = true;
         }
+        // Only this vault's: another vault's windows stay tracked after a switch (they can't be adopted here), but their
+        // account ids, process ids and servers aren't written into this vault (audit R18).
         var sessions = _running
+            .Where(r => vault.Data.Accounts.Any(a => a.Id == r.Key))
             .Select(r => new OpenSession { AccountId = r.Key, Pid = r.Value.Pid, StartedAt = r.Value.Launch.StartedAt, Target = r.Value.Launch.Target, PresetId = r.Value.Launch.PresetId, FpsLimit = r.Value.Launch.FpsLimit })
             .ToList();
         var noted = vault.Data.OpenSessions;

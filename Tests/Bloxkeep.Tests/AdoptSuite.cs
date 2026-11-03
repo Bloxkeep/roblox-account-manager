@@ -146,10 +146,15 @@ static class AdoptSuite
         // Another vault's windows, still open after a switch, aren't written into this vault's open clients (audit R18).
         var stranger = Guid.NewGuid();
         running[stranger] = Activator.CreateInstance(running[main]!.GetType(), 900011, LaunchOf(main));
+        var endedHere = Harness.Get<System.Collections.IDictionary>(app, "_endedHere");
+        endedHere[stranger] = ("job", (long?)Place, DateTime.UtcNow);
+        endedHere[alt] = ("job", (long?)Place, DateTime.UtcNow);
         Harness.Invoke(app, "NoteOpenSessions");
-        var noted = Harness.Get<Vault>(app, "_vault").Data.OpenSessions;
-        c.Check("another vault's open clients aren't noted in this one", noted.Count > 0 && noted.All(s => s.AccountId != stranger),
-            string.Join(",", noted.Select(s => s.AccountId)));
+        var data = Harness.Get<Vault>(app, "_vault").Data;
+        c.Check("another vault's open clients aren't noted in this one", data.OpenSessions.Count > 0 && data.OpenSessions.All(s => s.AccountId != stranger),
+            string.Join(",", data.OpenSessions.Select(s => s.AccountId)));
+        c.Check("…nor its windows that ended here", data.EndedSessions.Any(s => s.AccountId == alt) && data.EndedSessions.All(s => s.AccountId != stranger),
+            string.Join(",", data.EndedSessions.Select(s => s.AccountId)));
         running.Remove(stranger);
     }
 }
