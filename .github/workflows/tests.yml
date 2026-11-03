@@ -1,0 +1,57 @@
+# The checks on every pull request and every push to main, before a tag is pushed to release: until now they ran only inside
+# scripts\build.bat on the release machine (Release workflow), after the tag existed.
+#  - The React parts (ui/): packages from package-lock.json, the type check, the build.
+#  - The report of where the C# commands, the page, the fake host and the two languages disagree (Tests/ui/contract.mjs):
+#    a report, it never fails the run.
+#  - The C# checks (Tests/Bloxkeep.Tests), each suite in a process of its own with throwaway data, as build.bat runs them.
+#    Without --online: the suites that ask Roblox's servers (stats-icons, watch-online) are left out, so nothing here depends
+#    on the internet reaching Roblox, and no Roblox, Bloxkeep data or account is involved. A suite that runs over 8 minutes is
+#    stopped and counts as a failure.
+# Needs no secret and asks for none: a pull request from a fork runs it too. The interface checks (Tests/ui/run.mjs) stay a
+# hand-started run (Interface checks workflow, the owner's call of 2026-10-23).
+name: Tests
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+      - 'services/**'
+      - '**/*.md'
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+      - 'services/**'
+      - '**/*.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: windows-2025
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: React parts (ui/)
+        working-directory: ui
+        run: |
+          npm ci
+          npx --no-install tsc --noEmit
+          node build.mjs
+      - name: Where the pieces disagree (report only)
+        run: node Tests/ui/contract.mjs
+      - name: Bloxkeep's checks
+        run: dotnet run --project Tests/Bloxkeep.Tests -c Release -- --timeout=8

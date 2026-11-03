@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 
 namespace RobloxManager;
@@ -9,16 +10,23 @@ namespace RobloxManager;
 /// </summary>
 static class DurableFile
 {
+    /// <summary>One writer at a time per file: two saves at once (the tick's and a page's) shared the one temp file, and
+    /// the second threw "being used by another process".</summary>
+    static readonly ConcurrentDictionary<string, object> Locks = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Writes a temp file beside it, has it flushed to the disk, then puts it in place of the old one.</summary>
     public static void Write(string path, byte[] bytes)
     {
-        string tmp = path + ".tmp";
-        using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+        lock (Locks.GetOrAdd(Path.GetFullPath(path), _ => new object()))
         {
-            fs.Write(bytes);
-            fs.Flush(flushToDisk: true);
+            string tmp = path + ".tmp";
+            using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                fs.Write(bytes);
+                fs.Flush(flushToDisk: true);
+            }
+            File.Move(tmp, path, overwrite: true);
         }
-        File.Move(tmp, path, overwrite: true);
     }
 
     /// <summary>The same for text, as UTF-8 without a byte order mark (as File.WriteAllText writes it).</summary>

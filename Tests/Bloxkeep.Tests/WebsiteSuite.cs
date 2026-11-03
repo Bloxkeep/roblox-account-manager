@@ -92,6 +92,9 @@ static class WebsiteSuite
         var coreB = webB.CoreWebView2;
         var screen = Screen.FromControl(host).WorkingArea;
         c.Check("the window opens on screen", screen.Contains(window.Bounds), $"{screen} {window.Bounds}");
+        // The names reach the tabs and the window a moment after the browsers start (review, 2026-11-03: read at once, one run in
+        // five saw the page's own title still there). This runs on the window's thread, where they are set.
+        await Until(() => tabA.Title == "webA" && tabB.Title == "webB" && window.Text == "webA — Roblox");
         c.Check("the tabs and the window say which account", tabA.Title == "webA" && tabB.Title == "webB" && window.Text == "webA — Roblox",
             $"{tabA.Title} | {tabB.Title} | {window.Text}");
         c.Check("each tab is InPrivate", coreA.Profile.IsInPrivateModeEnabled && coreB.Profile.IsInPrivateModeEnabled);
@@ -138,7 +141,14 @@ static class WebsiteSuite
 
         // Closing: A after another stopped sign-out (the person chose "Close tab"), B when the vault locks.
         closeOnAsk = true;
-        await coreA.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
+        try
+        {
+            await coreA.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            // The tab closes in answer to this very call, and the browser can be gone before the call reports back (1 run in 20).
+        }
         c.Check("\"Close tab\" closes that tab only", await Until(() => tabA.IsClosed, 10) && !window.IsDisposed && window.Tabs.SequenceEqual([tabB]) && window.SelectedTab == tabB);
         c.Check("the app lets go of a closed tab", !tabs.ContainsKey(a.Id));
         await Harness.Call(app, "lock", new { });
