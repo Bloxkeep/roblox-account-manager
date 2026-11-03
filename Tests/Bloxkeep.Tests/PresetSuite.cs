@@ -16,7 +16,14 @@ static class PresetSuite
         seed.Data.Accounts.AddRange([a1, a2, a3]);
         seed.Save();
         using var form = new Form();
-        using var app = new AppController(form, _ => { });
+        var toasts = new List<string>();
+        using var app = new AppController(form, json =>
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("name", out var name) && name.GetString() == "toast")
+                lock (toasts)
+                    toasts.Add(doc.RootElement.GetProperty("data").GetProperty("text").GetString() ?? "");
+        });
         Task<object?> Call(string cmd, object args) => Harness.Try(app, cmd, args);
         Vault V() => Harness.Get<Vault>(app, "_vault");
         var camel = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -76,6 +83,54 @@ static class PresetSuite
         var copy = V().Data.Settings.Presets.Single(x => x.Id == (Guid)dup!);
         c.Check("duplicate keeps arrange and webhook", copy.Arrange == p.Arrange && copy.DiscordWebhook == V().Data.Settings.Presets.Single(x => x.Id == id).DiscordWebhook);
 
+        // A copy of a preset that follows a player follows them too, so it can run (by hand or on its schedule). Before, the
+        // copy lost the player and every run of it failed with "joins a player who isn't saved with it".
+        var follows = new LaunchPreset
+        {
+            Name = "With Friend", AccountIds = [a3.Id], Server = "follow", FollowPlayer = "Friend", FollowUserId = 77, RestartHours = 4,
+            LastRunAt = DateTime.UtcNow, Extra = new() { ["later"] = JsonSerializer.SerializeToElement(5) },
+            Schedule = new PresetSchedule { Enabled = true, Time = "08:00", Days = [1], LastRun = "2026-11-02 08:00" },
+        };
+        V().Data.Settings.Presets.Add(follows);
+        var followCopyId = (Guid)(await Call("duplicatePreset", new { id = follows.Id }))!;
+        var followCopy = V().Data.Settings.Presets.Single(x => x.Id == followCopyId);
+        c.Check("a copy of a preset that follows a player follows them too", followCopy is { Server: "follow", FollowPlayer: "Friend", FollowUserId: 77, RestartHours: 4 },
+            $"{followCopy.Server} {followCopy.FollowPlayer} {followCopy.FollowUserId} {followCopy.RestartHours}");
+        c.Check("…keeps what a newer Bloxkeep saved with it", followCopy.Extra?.ContainsKey("later") == true);
+        c.Check("…is its own: another id, its schedule off, no run yet", followCopy.Id != follows.Id && followCopy.Schedule is { Enabled: false, LastRun: "", Time: "08:00" }
+            && followCopy.LastRunAt is null && !ReferenceEquals(followCopy.AccountIds, follows.AccountIds));
+        V().Data.Settings.Presets.Remove(followCopy);
+        V().Data.Settings.Presets.Remove(follows);
+
+        // A scheduled run that fails in a way nobody planned for is said, not only written to error.log.
+        lock (toasts)
+            toasts.Clear();
+        var broken = new LaunchPreset { Name = "Broken", AccountIds = null! };
+        await (Task)typeof(AppController).GetMethod("RunScheduledAsync", Harness.F)!.Invoke(app, [new List<LaunchPreset> { broken }])!;
+        string? toldBroken;
+        lock (toasts)
+            toldBroken = toasts.LastOrDefault();
+        c.Check("a scheduled run that failed unexpectedly is said", toldBroken?.Contains("Scheduled preset Broken didn't run", StringComparison.Ordinal) == true, toldBroken);
+
+        // Close, update, reopen while Bloxkeep is opening Roblox: refused, rather than giving up with "Some Roblox windows didn't
+        // close" while the launch keeps opening them. Only checked with no Roblox on this PC: before, it closed every one.
+        if (RobloxProcesses.GetPlayerPids().Length == 0)
+        {
+            using var opening = new CancellationTokenSource();
+            Harness.Set(app, "_launchCts", opening);
+            try
+            {
+                var reopen = await Call("updateAndReopen", new { });
+                c.Check("Close, update, reopen while opening Roblox: refused, and says why", reopen is UserError && Harness.Get<DateTime?>(app, "_updateReopenSince") is null,
+                    (reopen as Exception)?.Message ?? "not refused");
+            }
+            finally
+            {
+                Harness.Set(app, "_launchCts", null);
+                Harness.Set(app, "_updateReopenSince", null);
+            }
+        }
+
         V().Data.Settings.LaunchOrder.AddRange([a1.Id, a2.Id, a3.Id]);
         V().Data.Discord.SummaryAccounts.AddRange([a1.Id, a3.Id]);
         await Call("deleteAccounts", new { ids = new[] { a1.Id, a2.Id } });
@@ -106,8 +161,14 @@ static class PresetSuite
         var theirs = new Account { Username = "main", UserId = 1003 };
         file.Accounts.Add(theirs);
         file.Settings.Presets.Add(new LaunchPreset { Name = "Theirs", AccountIds = [theirs.Id], DiscordWebhook = hook });
+        file.Settings.Presets.Add(new LaunchPreset { Name = "Their friend", AccountIds = [theirs.Id], Server = "follow", FollowPlayer = "Friend", FollowUserId = 77,
+            RestartHours = 4, RejoinWith = "any", Schedule = new PresetSchedule { Enabled = true, Time = "08:00", Days = [1] } });
         typeof(AppController).GetMethod("MergeImport", Harness.F)!.Invoke(null, [V().Data, file, new HashSet<int>(), true]);
         var imported = V().Data.Settings.Presets.SingleOrDefault(x => x.Name == "Theirs");
         c.Check("an imported preset comes without its Discord link", imported is { DiscordWebhook: "" } && imported.AccountIds.SequenceEqual([acc.Id]), imported?.DiscordWebhook);
+        var importedFollow = V().Data.Settings.Presets.SingleOrDefault(x => x.Name == "Their friend");
+        c.Check("an imported preset that follows a player follows them too, restarts kept as saving allows", importedFollow is
+            { Server: "follow", FollowPlayer: "Friend", FollowUserId: 77, RestartHours: 4, Schedule.Enabled: false }, importedFollow is null ? "missing"
+            : $"{importedFollow.FollowUserId} {importedFollow.RestartHours} {importedFollow.Schedule?.Enabled}");
     }
 }

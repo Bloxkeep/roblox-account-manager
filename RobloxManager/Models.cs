@@ -162,6 +162,10 @@ public sealed class LaunchPreset
     public string DiscordWebhook { get; set; } = "";
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
+
+    /// <summary>A copy, through its JSON: every field, a newer Bloxkeep's too, so a copy can't lose one (a followed player's id
+    /// was lost, and the copy could never run). Same id: the caller gives it its own.</summary>
+    public LaunchPreset Clone() => JsonSerializer.Deserialize<LaunchPreset>(JsonSerializer.Serialize(this))!;
 }
 
 /// <summary>When a preset runs on its own (see AppController.Schedule.cs). Times are local wall-clock "HH:mm".</summary>

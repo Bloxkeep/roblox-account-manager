@@ -239,6 +239,47 @@ static class ClaimsSuite
         closeWhen.GetType().GetMethod("Clear")!.Invoke(closeWhen, null);
         Reset();
 
+        // Closed while its window is late (no window within 2 minutes, Roblox updating on a slow link): the window that comes
+        // later is closed as it is claimed, whether the person closed the account, the preset or its scheduled stop did.
+        // Before, only Close all did: the window was the account's again and stayed open past the stop.
+        var closedPids = new List<int>();
+        var realClose = Harness.Get<object>(app, "_closeClient");
+        Harness.Set(app, "_closeClient", (Action<int, bool>)((pid, _) => closedPids.Add(pid)));
+        try
+        {
+            Add(late, Launch(a, 150, First));
+            Harness.Invoke(app, "CloseAccounts", new[] { a.Id }, false);
+            Claim(new() { [1010] = First });
+            c.Check("Close on an account whose window is late: that window is closed once it comes, not kept",
+                Window(a) == 0 && closedPids.Contains(1010), $"{Window(a)} closed {string.Join(",", closedPids)}");
+            Reset();
+            closeWhen.GetType().GetMethod("Clear")!.Invoke(closeWhen, null);
+
+            var presetId = Guid.NewGuid();
+            var latePreset = Activator.CreateInstance(launchType, a.Id, new HashSet<int>(), DateTime.UtcNow.AddSeconds(-150), new GameTarget(1818), false, (Guid?)presetId)!;
+            launchType.GetProperty("Tracker")!.SetValue(latePreset, First);
+            Add(late, latePreset);
+            var presetWindows = (Guid[])Harness.Invoke(app, "PresetWindows", presetId)!;
+            c.Check("…a preset whose window is late counts it as open, so its Close is offered", presetWindows.Contains(a.Id), presetWindows.Length);
+            var runType = t.GetNestedType("ScheduledRun", Harness.F)!;
+            var run = Activator.CreateInstance(runType)!;
+            runType.GetField("PresetId")!.SetValue(run, presetId);
+            runType.GetField("Vault")!.SetValue(run, vault.FilePath);
+            runType.GetField("Name")!.SetValue(run, "Night farm");
+            runType.GetField("Opened")!.SetValue(run, new List<Guid> { a.Id });
+            Harness.Get<System.Collections.IList>(app, "_scheduledRuns").Add(run);
+            Harness.Invoke(app, "StopScheduledRun", run);
+            Claim(new() { [1011] = First });
+            c.Check("…its scheduled stop too: the late window is closed once it comes", Window(a) == 0 && closedPids.Contains(1011),
+                $"{Window(a)} closed {string.Join(",", closedPids)}");
+        }
+        finally
+        {
+            Harness.Set(app, "_closeClient", realClose);
+            closeWhen.GetType().GetMethod("Clear")!.Invoke(closeWhen, null);
+            Reset();
+        }
+
         // A rejoin whose client quit before its window (it crashed as it started, or Roblox's updater swapped its build
         // folder): tried again later, a few times, as a drop in game is. Before, the account was left out for good.
         var mine = vault.Data.Accounts.Single(x => x.UserId == 31);

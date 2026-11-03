@@ -222,7 +222,8 @@ public sealed partial class AppController
             }
             catch (Exception ex)
             {
-                Log.Write(ex);
+                // Said, not only logged (ErrorText logs it): nobody may be at the PC to notice a run that didn't happen.
+                Notify(L.F("Scheduled preset {0} didn't run: {1}", preset.Name, ErrorText(ex)), "warn", "scheduleFail", preset.Id);
             }
         }
     }
@@ -326,8 +327,10 @@ public sealed partial class AppController
             _stoppedWhileLocked.Add(run.PresetId);
         if (NoteScheduledRuns())
             PersistSoon();
-        // A client waiting to rejoin (auto-rejoin's wait can be minutes long) or to restart is called off too.
-        var ids = run.Opened.Where(id => _running.ContainsKey(id) || _pending.Any(p => p.AccountId == id) || _rejoinQueue.Any(r => r.AccountId == id)).ToArray();
+        // A client waiting to rejoin (auto-rejoin's wait can be minutes long) or to restart is called off too, as is one whose
+        // window is late (it would come after the stop and stay) or whose rejoin is under way.
+        var ids = run.Opened.Where(id => _running.ContainsKey(id) || _pending.Concat(_late).Any(p => p.AccountId == id)
+            || _rejoinQueue.Any(r => r.AccountId == id) || _rejoinInFlight?.AccountId == id).ToArray();
         if (ids.Length == 0)
             return; // closed by hand meanwhile
         _stopClosing.UnionWith(ids);

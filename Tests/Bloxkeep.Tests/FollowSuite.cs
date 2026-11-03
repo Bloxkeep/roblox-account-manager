@@ -60,10 +60,16 @@ static class FollowSuite
         var seen = new Dictionary<string, object>();
         var asked = new List<string>();
         bool rateLimited = false;
+        // Set: the presence answer waits for it (a slow Roblox), after telling it was asked.
+        TaskCompletionSource? presenceGate = null;
+        var presenceAsked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         async Task<HttpResponseMessage> Roblox(HttpRequestMessage request)
         {
             string cookie = request.Headers.TryGetValues("Cookie", out var sent) ? sent.First().Replace(".ROBLOSECURITY=", "") : "";
             string body = request.Content is null ? "" : await request.Content.ReadAsStringAsync();
+            // Never a sign-in ticket: nothing here can open Roblox. A 503 is Roblox busy, which a rejoin tries again later.
+            if (request.RequestUri!.AbsolutePath.StartsWith("/v1/authentication-ticket", StringComparison.Ordinal))
+                return Json(HttpStatusCode.ServiceUnavailable, new { });
             if (request.RequestUri!.AbsolutePath != "/v1/presence/users")
                 return Json(HttpStatusCode.NotFound, new { });
             if (!request.Headers.Contains("x-csrf-token"))
@@ -74,6 +80,11 @@ static class FollowSuite
             }
             lock (asked)
                 asked.Add(cookie);
+            if (presenceGate is { } gate)
+            {
+                presenceAsked.TrySetResult();
+                await gate.Task;
+            }
             if (rateLimited)
                 return Json(HttpStatusCode.TooManyRequests, new { });
             var presences = body.Contains(Friend.ToString()) && seen.TryGetValue(cookie, out var p) ? new[] { p } : [];
@@ -256,7 +267,7 @@ static class FollowSuite
             // ── a preset that follows a player ──
             var preset = new LaunchPreset { Name = "With Friend", AccountIds = [account.Id], Server = "follow", FollowPlayer = "Friend", FollowUserId = Friend };
             Task<GameTarget> PresetTarget() => (Task<GameTarget>)t.GetMethod("PresetFollowTargetAsync", Harness.F)!
-                .Invoke(app, [vault, preset, new List<Account> { account }])!;
+                .Invoke(app, [vault, preset, new List<Account> { account }, CancellationToken.None])!;
             seen["cookie-a"] = InServer(Place, Server);
             var presetTarget = await PresetTarget();
             c.Check("a preset that follows a player: opens into their server, its windows following them",
@@ -272,6 +283,80 @@ static class FollowSuite
                 refused = ex;
             }
             c.Check("…the player offline: the preset doesn't run, and says why", refused is UserError && refused.Message.Contains("Friend is offline", StringComparison.Ordinal), refused?.Message);
+
+            // ── Close wins over a rejoin already under way ──
+            // The rejoin has left the queue and waits on Roblox (here its join answer for the player's server) when the person
+            // closes the account, the scheduled stop comes, or its rejoin is called off. Before, the rejoin went on: it waited
+            // again or went back in the queue (Roblox busy), and with a ticket it would have opened the window.
+            vault.Data.Settings.MultiInstance = false;
+            var pending = Harness.Get<System.Collections.IList>(app, "_pending");
+            var rejoinAsync = t.GetMethod("RejoinAsync", Harness.F)!;
+            async Task<string> StoppedUnderWay(RobloxApi.JoinAnswer answer, Action stop)
+            {
+                running.Clear();
+                queue.Clear();
+                followSeen.Clear();
+                seen["cookie-a"] = InServer(Place, Server);
+                var joinGate = new TaskCompletionSource<RobloxApi.JoinAnswer>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var joinAskedNow = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                Harness.Set(app, "_askJoin", (Func<Account, GameTarget, CancellationToken, Task<RobloxApi.JoinAnswer>>)((_, _, _) =>
+                {
+                    joinAskedNow.TrySetResult();
+                    return joinGate.Task;
+                }));
+                var request = Activator.CreateInstance(requestType, account.Id, new GameTarget(Place) { Follow = follow }, DateTime.UtcNow, 0, null, false)!;
+                var rejoin = (Task)rejoinAsync.Invoke(app, [request])!;
+                await joinAskedNow.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                stop();
+                joinGate.SetResult(answer);
+                await rejoin.WaitAsync(TimeSpan.FromSeconds(30));
+                string state = $"queue {queue.Count}, pending {pending.Count}, rejoining {Harness.Get<bool>(app, "_rejoining")}";
+                queue.Clear();
+                pending.Clear();
+                return state;
+            }
+            const string Nothing = "queue 0, pending 0, rejoining False";
+            var full = new RobloxApi.JoinAnswer(200, 6, "The game is full");
+            var letIn = new RobloxApi.JoinAnswer(200, 2, null);
+            string after = await StoppedUnderWay(full, () => Harness.Invoke(app, "CloseAccounts", new[] { account.Id }, false));
+            c.Check("Close while a rejoin looks for its player: the rejoin stops, it doesn't wait to look again", after == Nothing, after);
+            after = await StoppedUnderWay(letIn, () => Harness.Invoke(app, "CloseAccounts", new[] { account.Id }, false));
+            c.Check("…nor goes on to open the window (Roblox busy: it would go back in the queue)", after == Nothing, after);
+            after = await StoppedUnderWay(full, () => Harness.Invoke(app, "CancelRejoin", account.Id));
+            c.Check("…its rejoin called off on the card: stops too", after == Nothing, after);
+            var runType = t.GetNestedType("ScheduledRun", Harness.F)!;
+            var run = Activator.CreateInstance(runType)!;
+            runType.GetField("PresetId")!.SetValue(run, Guid.NewGuid());
+            runType.GetField("Vault")!.SetValue(run, vault.FilePath);
+            runType.GetField("Name")!.SetValue(run, "Night farm");
+            runType.GetField("Opened")!.SetValue(run, new List<Guid> { account.Id });
+            after = await StoppedUnderWay(letIn, () => Harness.Invoke(app, "StopScheduledRun", run));
+            c.Check("…and a scheduled stop that comes meanwhile stops it", after == Nothing, after);
+            Harness.Set(app, "_askJoin", (Func<Account, GameTarget, CancellationToken, Task<RobloxApi.JoinAnswer>>)((_, _, _) => Task.FromResult(joinAnswer)));
+
+            // ── a follow preset holds the launch while it looks for the player ──
+            // Before, the launch was taken only once the player was found: a Play (or a scheduled preset) meanwhile started a
+            // second launch, and Stop or Close all stopped only one of them.
+            vault.Data.Settings.Presets.Add(preset);
+            seen["cookie-a"] = InServer(Place, Server);
+            followSeen.Clear();
+            presenceGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var presetRun = Harness.Try(app, "runPreset", new { id = preset.Id, force = false });
+            await presenceAsked.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            // A banned account, so this Play never gets as far as Roblox whatever happens.
+            other.Banned = true;
+            var second = await Harness.Try(app, "launch", new { ids = new[] { other.Id }, placeInput = Place.ToString(), jobId = "" });
+            c.Check("a follow preset looking for its player: a Play meanwhile is told a launch is under way", second is UserError
+                && ((UserError)second).Message.StartsWith("Already launching", StringComparison.Ordinal), (second as Exception)?.Message ?? second);
+            await Harness.Try(app, "cancelLaunch", new { });
+            presenceGate.SetResult();
+            presenceGate = null;
+            var stopped = await presetRun.WaitAsync(TimeSpan.FromSeconds(30));
+            c.Check("…Stop meanwhile stops the preset before it opens anything", stopped?.GetType().GetProperty("Cancelled")?.GetValue(stopped) is true
+                && pending.Count == 0, (stopped as Exception)?.Message ?? stopped);
+            c.Check("…and the launch is free again", Harness.Get<CancellationTokenSource?>(app, "_launchCts") is null);
+            other.Banned = null;
+            vault.Data.Settings.Presets.Remove(preset);
         }
         finally
         {

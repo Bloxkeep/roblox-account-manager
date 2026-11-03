@@ -50,10 +50,12 @@ public sealed partial class AppController
         running = PresetWindows(p.Id).Length,
     };
 
+    /// <summary>Also a window still to come after its wait (<see cref="_late"/>) and a rejoin under way: Close stops them too.</summary>
     Guid[] PresetWindows(Guid presetId) =>
         _running.Where(r => r.Value.Launch.PresetId == presetId).Select(r => r.Key)
-            .Concat(_pending.Where(l => l.PresetId == presetId).Select(l => l.AccountId))
+            .Concat(_pending.Concat(_late).Where(l => l.PresetId == presetId).Select(l => l.AccountId))
             .Concat(_rejoinQueue.Where(r => r.PresetId == presetId).Select(r => r.AccountId))
+            .Concat(_rejoinInFlight is { } underWay && underWay.PresetId == presetId ? [underWay.AccountId] : [])
             .Distinct().ToArray();
 
     /// <summary>The Presets tab's Close: the windows this preset opened, gracefully and on purpose (no auto-rejoin).</summary>
@@ -222,34 +224,16 @@ public sealed partial class AppController
         int at = index + 1;
         while (at < presets.Count && copyNames.Contains(presets[at].Name))
             at++;
-        var s = source.Schedule;
-        var copy = new LaunchPreset
+        // Everything the original has (a followed player too), as its own preset that hasn't run yet.
+        var copy = source.Clone();
+        copy.Id = Guid.NewGuid();
+        copy.Name = name;
+        copy.LastRunAt = null;
+        if (copy.Schedule is { } s)
         {
-            Name = name,
-            AccountIds = source.AccountIds.ToList(),
-            PlaceInput = source.PlaceInput,
-            GameName = source.GameName,
-            Server = source.Server,
-            JobId = source.JobId,
-            DelaySeconds = source.DelaySeconds,
-            AntiAfk = source.AntiAfk,
-            AutoRejoin = source.AutoRejoin,
-            RejoinWith = source.RejoinWith,
-            Profile = source.Profile,
-            RestartHours = source.RestartHours,
-            Arrange = source.Arrange,
-            DiscordWebhook = source.DiscordWebhook,
-            Schedule = s is null ? null : new PresetSchedule
-            {
-                Enabled = false,
-                Time = s.Time,
-                Days = s.Days.ToList(),
-                Date = s.Date,
-                Stop = s.Stop,
-                StopHours = s.StopHours,
-                StopTime = s.StopTime,
-            },
-        };
+            s.Enabled = false;
+            s.LastRun = "";
+        }
         presets.Insert(at, copy);
         Persist();
         PushState();
@@ -316,42 +300,72 @@ public sealed partial class AppController
         if (accounts.Count == 0)
             throw new UserError(L.T("This preset has no accounts left."));
         CheckCanLaunch(accounts);
-        GameTarget? target = null;
-        if (preset.Server == "follow")
-            target = await PresetFollowTargetAsync(vault, preset, accounts);
-        else if (preset.PlaceInput.Length > 0
-            && !GameTarget.TryParse(preset.PlaceInput, preset.Server == "job" ? preset.JobId : "", out target, out string error))
-            throw new UserError(error);
-
-        // A link that already names a server (or a private one) keeps it.
-        string server = preset.Server;
-        bool pick = target is { JobId: null, LinkCode: null, ShareCode: null, AccessCode: null } && server is "most" or "fewest" or "ping" or "random";
-        string? notice = null;
-        bool apart = target is { JobId: null, LinkCode: null, ShareCode: null, AccessCode: null } && server.StartsWith("each", StringComparison.Ordinal);
-        var result = await LaunchAccountsAsync(vault, accounts, target, force, preset.DelaySeconds ?? vault.Data.Settings.LaunchDelaySeconds,
-            pick
-                ? async (t, party, ct) =>
-                {
-                    var (picked, note) = await PickServerAsync(t, server, party, ct);
-                    notice = note;
-                    return picked;
-                }
-                : null,
-            preset.Id, apart ? ServersApart(server[4..].ToLowerInvariant()) : null);
-        // Shown on the Presets tab; a run that opened nothing (all already open, or all failed) doesn't count.
-        if (result.Launched > 0 && _vault == vault)
+        // A preset that follows a player takes the launch before looking for them (network requests): a Play or a scheduled run
+        // meanwhile is told one is under way, and Stop or Close all stops this one. Taken only once the player was found, two
+        // launches ran side by side and Stop stopped only the newer.
+        CancellationTokenSource? slot = null;
+        try
         {
-            preset.LastRunAt = DateTime.UtcNow;
-            PersistSoon();
-            PushState();
+            GameTarget? target = null;
+            if (preset.Server == "follow")
+            {
+                slot = _launchCts = new CancellationTokenSource();
+                try
+                {
+                    target = await PresetFollowTargetAsync(vault, preset, accounts, slot.Token);
+                    slot.Token.ThrowIfCancellationRequested();
+                }
+                catch (OperationCanceledException) when (slot.IsCancellationRequested)
+                {
+                    Progress(null);
+                    PushState();
+                    return new LaunchResult(Cancelled: true);
+                }
+            }
+            else if (preset.PlaceInput.Length > 0
+                && !GameTarget.TryParse(preset.PlaceInput, preset.Server == "job" ? preset.JobId : "", out target, out string error))
+                throw new UserError(error);
+
+            // A link that already names a server (or a private one) keeps it.
+            string server = preset.Server;
+            bool pick = target is { JobId: null, LinkCode: null, ShareCode: null, AccessCode: null } && server is "most" or "fewest" or "ping" or "random";
+            string? notice = null;
+            bool apart = target is { JobId: null, LinkCode: null, ShareCode: null, AccessCode: null } && server.StartsWith("each", StringComparison.Ordinal);
+            var result = await LaunchAccountsAsync(vault, accounts, target, force, preset.DelaySeconds ?? vault.Data.Settings.LaunchDelaySeconds,
+                pick
+                    ? async (t, party, ct) =>
+                    {
+                        var (picked, note) = await PickServerAsync(t, server, party, ct);
+                        notice = note;
+                        return picked;
+                    }
+                    : null,
+                preset.Id, apart ? ServersApart(server[4..].ToLowerInvariant()) : null, reserved: slot);
+            // Shown on the Presets tab; a run that opened nothing (all already open, or all failed) doesn't count.
+            if (result.Launched > 0 && _vault == vault)
+            {
+                preset.LastRunAt = DateTime.UtcNow;
+                PersistSoon();
+                PushState();
+            }
+            return result with { Notice = notice };
         }
-        return result with { Notice = notice };
+        finally
+        {
+            // The launch has given it back by now, unless it refused before starting (or the player wasn't found).
+            if (slot is not null)
+            {
+                if (_launchCts == slot)
+                    _launchCts = null;
+                slot.Dispose();
+            }
+        }
     }
 
     /// <summary>Where a follow-a-player preset opens: the player's server now, as Roblox shows it to the preset's accounts (failing
     /// them, the other signed-in ones); rejoins follow too. When Roblox won't show one (offline, website, Studio, hidden), the
     /// preset doesn't run and says why.</summary>
-    async Task<GameTarget> PresetFollowTargetAsync(Vault vault, LaunchPreset preset, IReadOnlyList<Account> accounts)
+    async Task<GameTarget> PresetFollowTargetAsync(Vault vault, LaunchPreset preset, IReadOnlyList<Account> accounts, CancellationToken ct)
     {
         if (preset.FollowUserId <= 0)
             throw new UserError(L.T("This preset joins a player who isn't saved with it. Edit the preset and type the player's name again."));
@@ -360,7 +374,7 @@ public sealed partial class AppController
         if (viewers.Count == 0)
             throw new UserError(L.T("None of the selected accounts is signed in, so Bloxkeep can't ask Roblox where this player is. Sign them in again first."));
         Progress(L.F("Looking for {0}…", player));
-        var (seen, failed) = await WherePlayerIsAsync(preset.FollowUserId, viewers, vault);
+        var (seen, failed) = await WherePlayerIsAsync(preset.FollowUserId, viewers, vault, ct);
         if (seen is null && failed is not null)
             throw new UserError(failed is RobloxApiException { CookieInvalid: true }
                 ? L.T("Roblox didn't accept the selected accounts' sign-in. Check their sign-in, then try again.")
