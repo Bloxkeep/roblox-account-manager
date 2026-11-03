@@ -1,0 +1,21 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.dlg.modal [role="alertdialog" aria-describedby="dlg-text" aria-labelledby="dlg-title" aria-modal="true"]
+      div.modal-head
+        h3 [id="dlg-title"] "Đã chặn đăng xuất"
+        button.icon-btn [type="button" title="Đóng" aria-label="Đóng"]
+          svg.i #1tyq039
+      div.modal-body
+        div.dlg-msg
+          span.dlg-mark.k-info
+            svg.i #v9c4u6
+          p.dlg-text.pre [id="dlg-text"] "Đăng xuất ở đây cũng sẽ đăng xuất tài khoản khỏi Bloxkeep và bạn phải thêm lại. Xem xong chỉ cần đóng tab này."
+      div.modal-foot
+        button.btn [type="button"] "Xem tiếp"
+        button.btn.primary [type="button" FOCUSED] "Đóng tab"
+-- commands
+  ready {}
+  size {"h":219,"w":460}
+  size {"h":219,"w":460}

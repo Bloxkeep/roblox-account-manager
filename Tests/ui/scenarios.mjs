@@ -1816,6 +1816,30 @@ export default [
   // ── P7 native ──
   // ── end P7 ──
 
+  // ── P7b browser ──
+  // The app's message box (dialog.html, ui/src/dialog) and the top of Bloxkeep's browser windows (browser.html, ui/src/browser).
+  S('dialog-ask', 'case=ask', null, { page: 'dialog-preview.html', size: [520, 340] }),
+  S('dialog-ask-light', 'case=ask&theme=light', async s => { await s.click({ css: '.dlg-remember input' }); }, { page: 'dialog-preview.html', size: [520, 340] }),
+  S('dialog-ask-retro', 'case=confirm&theme=retro', null, { page: 'dialog-preview.html', size: [520, 300], langs: ['en'] }),
+  S('dialog-choices', 'case=choices', null, { page: 'dialog-preview.html', size: [520, 480] }),
+  S('dialog-choices-light', 'case=choices&theme=light', null, { page: 'dialog-preview.html', size: [520, 480], langs: ['en'] }),
+  S('dialog-signout', 'case=signout', null, { page: 'dialog-preview.html', size: [520, 340] }),
+  S('dialog-error-long', 'case=long', null, { page: 'dialog-preview.html', size: [520, 340] }),
+  S('dialog-picture', 'case=choices&theme=fuji', null, { page: 'dialog-preview.html', size: [520, 480], langs: ['en'] }),
+  S('browser-chrome', '', null, { page: 'browser-preview.html', size: [1100, 260] }),
+  S('browser-chrome-blank', 'blank=1', null, { page: 'browser-preview.html', size: [1100, 260] }),
+  S('browser-chrome-saved', 'blank=1', async s => { await s.click({ css: '.bw-bar .btn.primary' }); }, { page: 'browser-preview.html', size: [1100, 260] }),
+  S('browser-chrome-offline', 'offline=1', null, { page: 'browser-preview.html', size: [1100, 260] }),
+  S('browser-chrome-many-tabs', 'many=1', null, { page: 'browser-preview.html', size: [980, 260] }),
+  S('browser-chrome-many-narrow', 'many=1', null, { page: 'browser-preview.html', size: [640, 260], langs: ['en'] }),
+  S('browser-chrome-close', '', async s => { await s.hover({ css: '.bw-tab:nth-child(2)' }); await s.snap('hover'); await s.click({ css: '.bw-tab:nth-child(2) .bw-x' }); },
+    { page: 'browser-preview.html', size: [1100, 260], langs: ['en'] }),
+  S('browser-chrome-light', 'theme=light&blank=1', null, { page: 'browser-preview.html', size: [1100, 260] }),
+  S('browser-chrome-retro', 'theme=retro', null, { page: 'browser-preview.html', size: [1100, 260], langs: ['en'] }),
+  S('browser-chrome-picture', 'theme=fuji&many=1', null, { page: 'browser-preview.html', size: [980, 260], langs: ['en'] }),
+  S('browser-login', 'login=1', null, { page: 'browser-preview.html', size: [1000, 260] }),
+  // ── end P7b ──
+
   // ── P8 ──
   // ── end P8 ──
 ];

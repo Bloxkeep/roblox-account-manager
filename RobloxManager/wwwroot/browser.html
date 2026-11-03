@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- The top of Bloxkeep's browser windows (Forms/WebsiteForm.cs, BrowserLoginForm.cs): the same rules as the app's page.
+     A WebView2 of the app's own profile, apart from the roblox.com ones: no Roblox page, cookie or typing reaches it. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: https://*.rbxcdn.com; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Bloxkeep</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="tool-page browser-page" data-page="browser">
+<div id="root"></div>
+<script src="shared.js"></script>
+<script src="i18n.js"></script>
+<script src="ui.js"></script>
+<script src="toolpage.js"></script>
+</body>
+</html>

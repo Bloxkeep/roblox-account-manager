@@ -26,6 +26,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("latest", false, LatestSuite.Run),
     ("discord", false, DiscordSuite.Run),
     ("website", false, WebsiteSuite.Run),
+    ("dialog", false, DialogSuite.Run),
     ("tray", false, TraySuite.Run),
     ("autolock", false, AutoLockSuite.Run),
     ("vault-save", false, VaultSaveSuite.Run),

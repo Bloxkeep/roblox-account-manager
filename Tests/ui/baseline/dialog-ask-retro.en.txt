@@ -1,0 +1,22 @@
+== end
+html [data-theme="retro" lang="en"]
+#app
+  div [id="root"]
+    div.dlg.modal [role="alertdialog" aria-describedby="dlg-text" aria-labelledby="dlg-title" aria-modal="true"]
+      div.modal-head
+        h3.dlg-app [id="dlg-title"] "Bloxkeep"
+          img [alt="" src="logo.svg"]
+        button.icon-btn [type="button" title="Close" aria-label="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.dlg-msg
+          span.dlg-mark.k-warning
+            svg.i #42lb9l
+          p.dlg-text.pre.strong [id="dlg-text"] "Couldn't save your changes. Quit anyway and lose them?"
+      div.modal-foot
+        button.btn [type="button" FOCUSED] "Cancel"
+        button.btn.danger [type="button"] "Quit anyway"
+-- commands
+  ready {}
+  size {"h":182,"w":460}
+  size {"h":182,"w":460}

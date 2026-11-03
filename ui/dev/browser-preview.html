@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Design preview only (not shipped): the top of Bloxkeep's browser windows with a fake app (browser-mock.js), above a
+     stand-in for the roblox.com page. Serve the repo root and open /ui/dev/browser-preview.html?many=1 -->
+<base href="/RobloxManager/wwwroot/">
+<title>Bloxkeep — browser preview</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  body.browser-page { overflow: auto; }
+  .site-stand-in { height: 320px; background: #ececef; }
+</style>
+</head>
+<body class="tool-page browser-page" data-page="browser">
+<!-- #app: the interface checks (Tests/ui/page-hooks.js) write down what is inside it. -->
+<div id="app"><div id="root"></div></div>
+<div class="site-stand-in" aria-hidden="true"></div>
+<script src="/ui/dev/browser-mock.js"></script>
+<script src="shared.js"></script>
+<script src="i18n.js"></script>
+<script src="ui.js"></script>
+<script src="toolpage.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.dlg.modal [role="alertdialog" aria-describedby="dlg-text" aria-labelledby="dlg-title" aria-modal="true"]
+      div.modal-head
+        h3.dlg-app [id="dlg-title"] "Bloxkeep"
+          img [alt="" src="logo.svg"]
+        button.icon-btn [type="button" title="Đóng" aria-label="Đóng"]
+          svg.i #1tyq039
+      div.modal-body
+        div.dlg-msg
+          span.dlg-mark.k-error
+            svg.i #1tyq039
+          p.dlg-text.pre.strong [id="dlg-text"] "Không sao lưu được vault vào D:\\Backups\\Bloxkeep\\a-very-long-folder-name-that-goes-on-and-on\\vault-2026-11-03.rmv: Không có quyền ghi vào thư mục này."
+      div.modal-foot
+        button.btn.primary [type="button" FOCUSED] "OK"
+-- commands
+  ready {}
+  size {"h":239,"w":460}
+  size {"h":239,"w":460}

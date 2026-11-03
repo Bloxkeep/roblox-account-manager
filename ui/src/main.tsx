@@ -27,6 +27,8 @@ import { type StatsApi } from './StatsView';
 import { TrayView, type TrayApi, type TrayViewApi } from './Tray';
 import { WhatsNew, type Release } from './WhatsNew';
 import { GamePage, type GameDetails } from './GamePage';
+import { DialogRoot, type DialogOn, type DialogViewApi } from './dialog/DialogView';
+import { BrowserRoot, type BrowserChromeApi, type BrowserOn } from './browser/BrowserChrome';
 
 /** Draws into el now (app.js focuses the first control right after, so it must be there). keep: keepFocus on redraws;
  * a frame drawn once (a dialog's, a menu) needs none. */
@@ -196,6 +198,18 @@ const BloxkeepUI = {
     const list = createRef<PickListApi>();
     const unmount = mount(el, host, <PickList text={text} items={items} api={list} />);
     return { unmount, list: list.current! };
+  },
+  /** The app's message box into its own window's page (toolpage.js, Forms/Dialog.cs): show draws each "dialog" event. */
+  dialog(el: HTMLElement, host: Host, on: DialogOn) {
+    const view = createRef<DialogViewApi>();
+    const unmount = mount(el, host, <DialogRoot on={on} handle={view} />, false);
+    return { unmount, show: view.current!.show };
+  },
+  /** The top of Bloxkeep's browser windows into its own page (toolpage.js, Forms/WebsiteForm.cs, BrowserLoginForm.cs). */
+  browser(el: HTMLElement, host: Host, on: BrowserOn) {
+    const view = createRef<BrowserChromeApi>();
+    const unmount = mount(el, host, <BrowserRoot on={on} handle={view} />, false);
+    return { unmount, show: view.current!.show };
   },
 };
 

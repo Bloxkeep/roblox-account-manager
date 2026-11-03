@@ -1,0 +1,26 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.dlg.listed.modal [role="alertdialog" aria-describedby="dlg-text" aria-labelledby="dlg-title" aria-modal="true"]
+      div.modal-head
+        h3 [id="dlg-title"] "Xóa luôn tài khoản?"
+        button.icon-btn [type="button" title="Đóng" aria-label="Đóng"]
+          svg.i #1tyq039
+      div.modal-body
+        div.dlg-msg
+          span.dlg-mark.k-warning
+            svg.i #42lb9l
+          p.dlg-text.pre [id="dlg-text"] "Đang gỡ Bloxkeep khỏi máy này. Tài khoản và cài đặt vẫn giữ nguyên, trừ khi bạn chọn xóa."
+        div.dlg-choices
+          button.dlg-choice [type="button" FOCUSED]
+            b "Giữ tài khoản và cài đặt"
+            span "Cài lại Bloxkeep là dùng tiếp như cũ."
+          button.danger.dlg-choice [type="button"]
+            b "Xóa tài khoản và cài đặt"
+            span "Xóa vault chứa tài khoản đã lưu, cài đặt và nhật ký trong C:\\Users\\Minh\\AppData\\Local\\Bloxkeep. Không thể hoàn tác."
+        p.dlg-note "Không chọn trong 20 giây thì sẽ giữ lại tất cả."
+-- commands
+  ready {}
+  size {"h":339,"w":460}
+  size {"h":339,"w":460}

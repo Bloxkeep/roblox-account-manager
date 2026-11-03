@@ -24,7 +24,7 @@ public sealed partial class AppController
             ShowWebWindow(window);
             return null;
         }
-        _websites[id] = AddWebsiteTab(id, NameText(account), account.Cookie);
+        _websites[id] = AddWebsiteTab(id, NameText(account), account.Cookie, TabAvatar(account));
         return null;
     }
 
@@ -36,10 +36,10 @@ public sealed partial class AppController
         return null;
     }
 
-    WebsiteTab AddWebsiteTab(Guid? id, string? name, string cookie)
+    WebsiteTab AddWebsiteTab(Guid? id, string? name, string cookie, string? avatar = null)
     {
         WebsiteTab tab = null!;
-        tab = new WebsiteTab(id, name, cookie, WebsiteSessionChangedAsync, (session, user) => SaveWebsiteAccount(tab, session, user));
+        tab = new WebsiteTab(id, name, cookie, WebsiteSessionChangedAsync, (session, user) => SaveWebsiteAccount(tab, session, user)) { Avatar = avatar };
         tab.Closed += () =>
         {
             _webTabs.Remove(tab);
@@ -160,6 +160,13 @@ public sealed partial class AppController
     void RenameWebsites()
     {
         foreach (var tab in _webTabs.Where(t => !t.IsClosed))
-            tab.SetName(tab.AccountId is { } id && FindAccount(id) is { } account ? NameText(account) : null);
+        {
+            var account = tab.AccountId is { } id ? FindAccount(id) : null;
+            tab.SetName(account is not null ? NameText(account) : null);
+            tab.Avatar = account is not null ? TabAvatar(account) : null;
+        }
     }
+
+    /// <summary>The account's avatar on its tab; none while names are hidden (the picture would tell who it is).</summary>
+    string? TabAvatar(Account account) => Prefs.HideNames ? null : _avatarUrls.GetValueOrDefault(account.UserId);
 }

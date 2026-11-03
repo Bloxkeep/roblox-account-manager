@@ -202,9 +202,8 @@ static class WebsiteSuite
             await (Task)Harness.Invoke(other, "SyncSessionAsync")!;
             await Task.Delay(250);
         }
-        var saveW = Harness.Get<Button>(blank, "_saveButton");
-        window2.SelectTab(blank); // a button reads as hidden while its tab is
-        // BLOXKEEP_SNAP_DIR set: a picture of the window (tabs and address bar; the page itself draws as blank).
+        window2.SelectTab(blank);
+        // BLOXKEEP_SNAP_DIR set: a picture of the window (the pages, its top included, draw as blank).
         if (Environment.GetEnvironmentVariable("BLOXKEEP_SNAP_DIR") is { Length: > 0 } snapDir)
         {
             await Task.Delay(300);
@@ -213,7 +212,7 @@ static class WebsiteSuite
             Directory.CreateDirectory(snapDir);
             shot.Save(Path.Combine(snapDir, "website-tabs.png"));
         }
-        c.Check("signing in on the site names the tab and offers Save", blank.Title == "webW" && other.Title == "webO" && saveW.Visible,
+        c.Check("signing in on the site names the tab and offers Save", blank.Title == "webW" && other.Title == "webO" && blank.CanSave,
             blank.Title + " | " + other.Title);
         c.Check("the two blank tabs keep their own sign-in", await SessionIn(coreW) == cookieW && await SessionIn(coreO) == cookieO);
         var saved = Harness.Get<Vault>(app, "_vault").Data.Accounts;
@@ -222,7 +221,7 @@ static class WebsiteSuite
         Harness.Invoke(blank, "SaveAccount");
         var savedW = saved.SingleOrDefault(x => x.UserId == 2004);
         c.Check("Save to Bloxkeep adds the account with that sign-in", savedW is { Username: "webW", Cookie: var k } && k == cookieW && saved.All(x => x.UserId != 2005));
-        c.Check("the tab is then that account's", savedW is not null && blank.AccountId == savedW.Id && tabs.TryGetValue(savedW.Id, out var mine) && mine == blank && !saveW.Visible);
+        c.Check("the tab is then that account's", savedW is not null && blank.AccountId == savedW.Id && tabs.TryGetValue(savedW.Id, out var mine) && mine == blank && !blank.CanSave);
         await coreW.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
         c.Check("once saved, its sign-out is stopped", await Until(() => askedW == 1, 10), askedW);
 
@@ -235,7 +234,7 @@ static class WebsiteSuite
             await Task.Delay(250);
         }
         window2.SelectTab(other);
-        c.Check("signing out on a blank tab: nobody again", other.Title == "Roblox" && !Harness.Get<Button>(other, "_saveButton").Visible, other.Title);
+        c.Check("signing out on a blank tab: nobody again", other.Title == "Roblox" && !other.CanSave, other.Title);
 
         // Roblox not answering who it is (a notice on the account, too many questions): asked again later, not at every
         // read (2026-10-30 review: every 2 s while Roblox said "User is moderated").

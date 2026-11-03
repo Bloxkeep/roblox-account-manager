@@ -28,14 +28,11 @@ public sealed class WebsiteTab : UserControl
     readonly Themes.Theme _theme = Themes.Current;
     readonly Func<Guid, string, Task<bool>> _onSessionChanged;
     readonly Func<string, RobloxUser, (Guid Id, string Name, string Message)> _save;
-    readonly ToolTip _tips = new();
     readonly System.Windows.Forms.Timer _slow = new() { Interval = (int)SlowAfter.TotalMilliseconds };
     // A saved account's tab reads back a cookie Roblox renewed (e.g. after "Log out of all other sessions"); a blank tab's
     // learns who signed in.
     readonly System.Windows.Forms.Timer _sync = new();
     const int SavedSyncMs = 15000, BlankSyncMs = 2000;
-    readonly Label _message;
-    readonly Button _retry, _back, _forward, _saveButton;
     readonly WebView2 _web;
     string _cookie;
     /// <summary>Who is signed in on a blank tab's site, until saved; null when nobody (or not known yet).</summary>
@@ -71,6 +68,39 @@ public sealed class WebsiteTab : UserControl
 
     public bool IsClosed => _tornDown;
 
+    // What the window's top (WebsiteForm's ChromeView) shows for this tab: words and switches only, never the page.
+
+    /// <summary>The account's Roblox avatar for its tab (none while names are hidden); set by the app.</summary>
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public string? Avatar
+    {
+        get => _avatar;
+        set
+        {
+            if (value == _avatar)
+                return;
+            _avatar = value;
+            TitleChanged?.Invoke();
+        }
+    }
+    string? _avatar;
+
+    public bool CanGoBack { get; private set; }
+    public bool CanGoForward { get; private set; }
+    /// <summary>The page's host name (www.roblox.com), shown so it's plain which site this is; null before one loads.</summary>
+    public string? Host { get; private set; }
+    /// <summary>The status line, and its colour: "", "ok" or "bad".</summary>
+    public string Message { get; private set; } = "";
+    public string Tone { get; private set; } = "";
+    public bool ShowRetry { get; private set; }
+    /// <summary>Save to Bloxkeep: a blank tab someone signed in on.</summary>
+    public bool CanSave { get; private set; }
+
+    /// <summary>Something the window's top shows changed (back/forward, the site, the status line, Retry, Save).</summary>
+    public event Action? StateChanged;
+
+    void Changed() => StateChanged?.Invoke();
+
     /// <param name="accountId">The saved account to open signed in; null for a blank tab at the sign-in page.</param>
     /// <param name="onSessionChanged">Gets a renewed cookie of a saved account's site to check and save; false = couldn't
     /// tell yet (no internet), ask again at the next read.</param>
@@ -87,55 +117,8 @@ public sealed class WebsiteTab : UserControl
         BackColor = _theme.Background;
         Dock = DockStyle.Fill;
 
-        _back = NavButton("", L.T("Back"), core => core.GoBack());
-        _forward = NavButton("", L.T("Forward"), core => core.GoForward());
-        var reload = NavButton("", L.T("Reload"), core => core.Reload());
-        _back.Enabled = _forward.Enabled = false;
-        _message = new Label
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = false,
-            TextAlign = ContentAlignment.MiddleLeft,
-            ForeColor = _theme.Text2,
-            Padding = new Padding(LogicalToDeviceUnits(8), 0, 0, 0),
-        };
-        _retry = new Button
-        {
-            Text = L.T("Retry"),
-            Dock = DockStyle.Right,
-            Width = LogicalToDeviceUnits(96),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = _theme.Surface,
-            ForeColor = _theme.Text,
-            Cursor = Cursors.Hand,
-            Visible = false,
-        };
-        _retry.FlatAppearance.BorderColor = _theme.Line;
-        _retry.Click += (_, _) => OpenHome();
-        _saveButton = new Button
-        {
-            Text = L.T("Save to Bloxkeep"),
-            Dock = DockStyle.Right,
-            Width = LogicalToDeviceUnits(140),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = _theme.Text,
-            ForeColor = _theme.Background,
-            Cursor = Cursors.Hand,
-            Visible = false,
-        };
-        _saveButton.FlatAppearance.BorderSize = 0;
-        _tips.SetToolTip(_saveButton, L.T("Opens signed in next time. Without saving, closing this tab signs it out here."));
-        _saveButton.Click += (_, _) => SaveAccount();
-        var bar = new Panel { Dock = DockStyle.Top, Height = LogicalToDeviceUnits(40), Padding = new Padding(6, 4, 8, 4), BackColor = _theme.Surface };
-        bar.Controls.Add(_message);
-        bar.Controls.Add(_retry);
-        bar.Controls.Add(_saveButton);
-        bar.Controls.Add(reload);
-        bar.Controls.Add(_forward);
-        bar.Controls.Add(_back);
         _web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = _theme.Background };
         Controls.Add(_web);
-        Controls.Add(bar);
 
         _slow.Tick += (_, _) =>
         {
@@ -174,30 +157,19 @@ public sealed class WebsiteTab : UserControl
             _web.Focus();
     }
 
-    Button NavButton(string glyph, string tip, Action<CoreWebView2> go)
-    {
-        var button = new Button
-        {
-            Text = glyph,
-            Font = new Font(WebsiteForm.IconFont, 10f),
-            Dock = DockStyle.Left,
-            Width = LogicalToDeviceUnits(36),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = _theme.Surface,
-            ForeColor = _theme.Text,
-            Cursor = Cursors.Hand,
-            TabStop = false,
-        };
-        button.FlatAppearance.BorderSize = 0;
-        _tips.SetToolTip(button, tip);
-        button.AccessibleName = tip;
-        button.Click += (_, _) =>
-        {
-            if (_web.CoreWebView2 is { } core)
-                go(core);
-        };
-        return button;
-    }
+    // The window's top asks for these (WebsiteForm): only to the page this tab already shows.
+
+    public void GoBack() => _web.CoreWebView2?.GoBack();
+
+    public void GoForward() => _web.CoreWebView2?.GoForward();
+
+    public void Reload() => _web.CoreWebView2?.Reload();
+
+    /// <summary>Retry after roblox.com couldn't be reached: its home (or sign-in) page again.</summary>
+    public void Retry() => OpenHome();
+
+    /// <summary>Save to Bloxkeep, on a blank tab someone signed in on.</summary>
+    public void Save() => SaveAccount();
 
     static Task<CoreWebView2Environment> SharedBrowser()
     {
@@ -249,10 +221,20 @@ public sealed class WebsiteTab : UserControl
                 else
                     OpenOutside(e.Uri);
             };
+            // The site's name only (never the address, which can carry a one-time code), so it's plain this is roblox.com.
+            core.SourceChanged += (_, _) =>
+            {
+                string? host = Uri.TryCreate(core.Source, UriKind.Absolute, out var uri) && IsRoblox(core.Source) ? uri.Host : null;
+                if (host == Host)
+                    return;
+                Host = host;
+                Changed();
+            };
             core.HistoryChanged += (_, _) =>
             {
-                _back.Enabled = core.CanGoBack;
-                _forward.Enabled = core.CanGoForward;
+                CanGoBack = core.CanGoBack;
+                CanGoForward = core.CanGoForward;
+                Changed();
             };
             // Only Roblox's own pages here, as in the sign-in window (BrowserLoginForm): this window shows no address, so
             // another site, signed-in looking, would pass for Roblox's (2026-10-30 review: a link or a redirect off the
@@ -277,8 +259,8 @@ public sealed class WebsiteTab : UserControl
                 if (e.IsErrorPage || _closing)
                     return;
                 _slow.Stop();
-                _retry.Visible = false;
-                Say("", _theme.Text2);
+                ShowRetry = false;
+                Say("", "");
             };
             core.NavigationCompleted += (_, e) =>
             {
@@ -390,8 +372,8 @@ public sealed class WebsiteTab : UserControl
     {
         if (_web.CoreWebView2 is not { } core)
             return;
-        _retry.Visible = false;
-        Say(L.T("Opening roblox.com…"), _theme.Text2);
+        ShowRetry = false;
+        Say(L.T("Opening roblox.com…"), "");
         core.Navigate(AccountId is null && _user is null ? LoginUrl : HomeUrl);
     }
 
@@ -399,14 +381,15 @@ public sealed class WebsiteTab : UserControl
     {
         if (_closing)
             return;
-        Say(L.T("Can't reach roblox.com. Check your internet connection, then press Retry."), _theme.Bad);
-        _retry.Visible = true;
+        ShowRetry = true;
+        Say(L.T("Can't reach roblox.com. Check your internet connection, then press Retry."), "bad");
     }
 
-    void Say(string text, Color color)
+    void Say(string text, string tone)
     {
-        _message.Text = text;
-        _message.ForeColor = color;
+        Message = text;
+        Tone = tone;
+        Changed();
     }
 
     /// <summary>Reads the session the site holds; a different one (Roblox renewed it) goes to the app to check and save.</summary>
@@ -466,9 +449,11 @@ public sealed class WebsiteTab : UserControl
         _cookie = now;
         _user = user; // a cookie that doesn't work is nobody
         SetName(null);
-        _saveButton.Visible = user is not null;
+        CanSave = user is not null;
         if (user is not null)
-            Say(Prefs.HideNames ? L.T("Signed in.") : L.F("Signed in as {0}.", user.Name), _theme.Text2);
+            Say(Prefs.HideNames ? L.T("Signed in.") : L.F("Signed in as {0}.", user.Name), "");
+        else
+            Changed();
     }
 
     bool Waiting(string session) => session == _failedSession && DateTime.UtcNow < _askAgainAt;
@@ -492,13 +477,13 @@ public sealed class WebsiteTab : UserControl
             AccountId = id;
             _user = null;
             _sync.Interval = SavedSyncMs;
-            _saveButton.Visible = false;
+            CanSave = false;
             SetName(name);
-            Say(message, _theme.Good);
+            Say(message, "ok");
         }
         catch (UserError ex)
         {
-            Say(ex.Message, _theme.Bad);
+            Say(ex.Message, "bad");
         }
     }
 
@@ -529,7 +514,6 @@ public sealed class WebsiteTab : UserControl
         _tornDown = _closing = true;
         _slow.Dispose();
         _sync.Dispose();
-        _tips.Dispose();
         Controls.Remove(_web);
         _web.Dispose();
         if (_hasBrowser && --_tabs == 0 && _envDir is { } dir)

@@ -1,0 +1,26 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="root"]
+    div.dlg.listed.modal [role="alertdialog" aria-describedby="dlg-text" aria-labelledby="dlg-title" aria-modal="true"]
+      div.modal-head
+        h3 [id="dlg-title"] "Delete your accounts too?"
+        button.icon-btn [type="button" title="Close" aria-label="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.dlg-msg
+          span.dlg-mark.k-warning
+            svg.i #42lb9l
+          p.dlg-text.pre [id="dlg-text"] "Bloxkeep is being removed from this PC. Your accounts and settings stay unless you delete them."
+        div.dlg-choices
+          button.dlg-choice [type="button" FOCUSED]
+            b "Keep my accounts and settings"
+            span "Installing Bloxkeep again picks up where you left off."
+          button.danger.dlg-choice [type="button"]
+            b "Delete my accounts and settings"
+            span "Deletes the vault with your saved accounts, your settings and logs in C:\\Users\\Minh\\AppData\\Local\\Bloxkeep. This can't be undone."
+        p.dlg-note "Kept if you don't choose within 20 seconds."
+-- commands
+  ready {}
+  size {"h":356,"w":460}
+  size {"h":356,"w":460}
