@@ -19,16 +19,25 @@ static class WebView2Setup
         Prefs.SafeRendering ? new CoreWebView2EnvironmentOptions(SafeRenderingArgs) : null;
 
     /// <summary>The main window shows only Bloxkeep's page, so the browser's own background fetching and component updates
-    /// are left out there; the sign-in, captcha and roblox.com windows keep a full browser.</summary>
-    const string MainWindowArgs = "--disable-background-networking --disable-component-update";
+    /// are left out there; the sign-in, captcha and roblox.com windows keep a full browser.
+    /// Its disk cache is capped at 32 MB: the pages come from the app itself, so a bigger one only fills the disk.</summary>
+    const string MainWindowArgs = "--disable-background-networking --disable-component-update --disk-cache-size=33554432";
 
     /// <summary>Even on the GPU, the page is painted by the CPU and only composited on the card: GPU painting held about
     /// 100 MB more for no smoother result (2026-10-18, RTX 4070 laptop, 80 accounts: 360 → 265 MB opened, 398 → 265 MB
     /// after scrolling every tab, 254 → 225 MB minimised).</summary>
     const string GpuArgs = "--disable-gpu-rasterization";
 
-    public static CoreWebView2EnvironmentOptions MainWindowOptions() =>
-        new(Prefs.SafeRendering ? $"{MainWindowArgs} {SafeRenderingArgs}" : $"{MainWindowArgs} {GpuArgs}");
+    /// <summary>For measuring only, off unless set: switches in BLOXKEEP_WEBVIEW_ARGS are added to Bloxkeep's own pages, for
+    /// example "--process-per-site" (one renderer for the main page and every panel). Nothing ships on until measured.</summary>
+    const string ExtraArgsVariable = "BLOXKEEP_WEBVIEW_ARGS";
+
+    public static CoreWebView2EnvironmentOptions MainWindowOptions()
+    {
+        string args = Prefs.SafeRendering ? $"{MainWindowArgs} {SafeRenderingArgs}" : $"{MainWindowArgs} {GpuArgs}";
+        string? extra = Environment.GetEnvironmentVariable(ExtraArgsVariable)?.Trim();
+        return new(string.IsNullOrEmpty(extra) ? args : $"{args} {extra}");
+    }
 
     public static async Task<bool> TryInstallAsync(IWin32Window owner)
     {
