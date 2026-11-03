@@ -48,15 +48,35 @@ public sealed partial class AppController
         {
             _remote = new RemoteLink(secret, RemoteCommandAsync, OnRemoteChanged, RemoteTestUrl);
             _remoteVault = vault;
+            _remoteSaid = null;
         }
         if (_remote is null)
             return;
         bool open = RemoteOpen;
+        // What it would say, hashed: the hello (names cut to fit, then JSON) is made only when that changed, not every tick.
+        var said = new HashCode();
+        said.Add(open);
+        said.Add(L.Language);
+        said.Add(Environment.MachineName);
+        if (open)
+        {
+            foreach (var account in _vault!.Data.Accounts)
+                said.Add(DiscordName(account));
+            said.Add('|');
+            foreach (var preset in _vault.Data.Settings.Presets)
+                said.Add(preset.Name);
+        }
+        if (said.ToHashCode() is var key && key == _remoteSaid)
+            return;
+        _remoteSaid = key;
         _remote.Hello(Environment.MachineName,
             open ? _vault!.Data.Accounts.Select(DiscordName).Distinct(StringComparer.CurrentCultureIgnoreCase) : [],
             open ? _vault!.Data.Settings.Presets.Select(p => p.Name).Where(n => n.Length > 0).Distinct(StringComparer.CurrentCultureIgnoreCase) : [],
             L.Language);
     }
+
+    /// <summary>A hash of what the last hello was made from (<see cref="TickRemote"/>).</summary>
+    int? _remoteSaid;
 
     static readonly TimeSpan RemoteForgetEvery = TimeSpan.FromMinutes(10), RemoteForgetAfterOff = TimeSpan.FromSeconds(30);
     DateTime _nextRemoteForget;

@@ -82,6 +82,7 @@ public sealed class ShellForm : Form
         {
             SetSafeRendering = safe => RestartWebViewAsync(safe, automatic: false),
             AppearanceChanged = ApplyAppearance,
+            SetPageLight = SetPageLight,
             HotkeysChanged = RegisterHotkeys,
             ShowNotification = ShowNotification,
             PageShown = RemoveCover,
@@ -791,6 +792,24 @@ public sealed class ShellForm : Form
         if (core.MemoryUsageTargetLevel != CoreWebView2MemoryUsageTargetLevel.Normal)
             core.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
         _app.PageAsleep = false; // what it missed, and a fresh state
+    }
+
+    /// <summary>Shown but left behind the games for minutes (AppController.PageLightAfter): the page holds less memory until a
+    /// window of Bloxkeep's is in front again. Hidden or minimised, <see cref="ApplyBackgroundToBrowser"/> decides instead.</summary>
+    void SetPageLight(bool light)
+    {
+        if (InBackground || _web?.CoreWebView2 is not { } core)
+            return;
+        var level = light ? CoreWebView2MemoryUsageTargetLevel.Low : CoreWebView2MemoryUsageTargetLevel.Normal;
+        try
+        {
+            if (core.MemoryUsageTargetLevel != level)
+                core.MemoryUsageTargetLevel = level;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
+        {
+            // The browser went meanwhile: nothing to set.
+        }
     }
 
     /// <summary>TrySuspend on the hidden page; nothing is sent to it meanwhile (AppController.PageAsleep), so nothing wakes

@@ -51,11 +51,12 @@ sealed class RobloxInput : IDisposable
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
     [DllImport("user32.dll")] static extern int GetMessage(out MSG message, IntPtr hWnd, uint min, uint max);
     [DllImport("user32.dll")] static extern IntPtr DispatchMessage(ref MSG message);
+    [DllImport("user32.dll", SetLastError = true)] static extern uint GetRegisteredRawInputDevices([Out] RAWINPUTDEVICE[]? devices, ref uint count, uint size);
     [DllImport("user32.dll")] static extern bool PostThreadMessage(uint thread, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
 
     const int WM_INPUT = 0x00FF;
-    const uint WM_QUIT = 0x0012;
+    const uint WM_QUIT = 0x0012, WM_LISTEN = 0x8000 + 1; // WM_APP + 1: wParam 1 listens, 0 stops
     const uint RID_HEADER = 0x10000005, RID_INPUT = 0x10000003, RIM_TYPEMOUSE = 0, RIM_TYPEKEYBOARD = 1;
     const uint RIDEV_INPUTSINK = 0x100, RIDEV_REMOVE = 0x1;
     const ushort GenericDesktop = 1, Mouse = 2, Keyboard = 6;
@@ -101,7 +102,12 @@ sealed class RobloxInput : IDisposable
         if (Working)
         {
             while (GetMessage(out var message, IntPtr.Zero, 0, 0) > 0)
-                DispatchMessage(ref message);
+            {
+                if (message.hwnd == IntPtr.Zero && message.message == WM_LISTEN)
+                    Register(message.wParam != IntPtr.Zero ? window.Handle : IntPtr.Zero);
+                else
+                    DispatchMessage(ref message);
+            }
             Register(IntPtr.Zero);
         }
         if (window.Handle != IntPtr.Zero)
@@ -117,6 +123,28 @@ sealed class RobloxInput : IDisposable
             new RAWINPUTDEVICE { usUsagePage = GenericDesktop, usUsage = Mouse, dwFlags = flags, hwndTarget = target },
             new RAWINPUTDEVICE { usUsagePage = GenericDesktop, usUsage = Keyboard, dwFlags = flags, hwndTarget = target },
         ], 2, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
+    }
+
+    bool _listening = true;
+
+    /// <summary>
+    /// Input is taken only while it is needed (a Roblox window runs, AppController's process check says): with none, every
+    /// move of a 1000–8000 Hz mouse would wake this thread for nothing. Done on this class's own thread; the same twice is nothing.
+    /// </summary>
+    public void Listen(bool on)
+    {
+        if (!Working || on == _listening || _threadId == 0)
+            return;
+        if (PostThreadMessage(_threadId, WM_LISTEN, on ? 1 : 0, IntPtr.Zero))
+            _listening = on;
+    }
+
+    /// <summary>How many kinds of input (mouse, keyboard) this process takes from Windows now: for the checks.</summary>
+    internal static int Registered()
+    {
+        uint count = 0;
+        GetRegisteredRawInputDevices(null, ref count, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
+        return (int)count;
     }
 
     long _personAt;

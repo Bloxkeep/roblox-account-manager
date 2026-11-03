@@ -11,7 +11,7 @@ namespace RobloxManager;
 /// when a window joins, changes server, leaves or is kicked. Each log is tied to its window by Windows' Restart Manager
 /// (who has the file open). The format is not an official API, so Roblox's presence stays as the fallback.
 /// </summary>
-public sealed class RobloxLogWatcher
+public sealed partial class RobloxLogWatcher
 {
     /// <param name="Status">joining, ingame, left (back in the app, by choice), disconnected, or signedout (signed out inside the window).</param>
     /// <param name="Reason">278 = idle for 20 minutes.</param>
@@ -76,13 +76,17 @@ public sealed class RobloxLogWatcher
     // stalls while loading never gets further, so it counts as joining from here.
     const string LaunchMark = "[FLog::SingleSurfaceApp] launchUGCGameInternal";
     // Lines seen in Roblox 0.742 logs.
-    static readonly Regex JoiningLine = new(@"\[FLog::Output\] ! Joining game '([0-9a-fA-F-]+)' place (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    static readonly Regex ReasonLine = new(@"setting replicator disconnect reason to (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    [GeneratedRegex(@"\[FLog::Output\] ! Joining game '([0-9a-fA-F-]+)' place (\d+)", RegexOptions.CultureInvariant)]
+    private static partial Regex JoiningLine();
+    [GeneratedRegex(@"setting replicator disconnect reason to (\d+)", RegexOptions.CultureInvariant)]
+    private static partial Regex ReasonLine();
     // Used only when the replicator line gave none (285: the player left). Not yet seen on a real kick, so it may
     // come before or after the disconnect line.
-    static readonly Regex NotificationReasonLine = new(@"Disconnection Notification\. Reason: (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    [GeneratedRegex(@"Disconnection Notification\. Reason: (\d+)", RegexOptions.CultureInvariant)]
+    private static partial Regex NotificationReasonLine();
     // The server's own code, from the 0.744 client's strings; not seen in a log yet.
-    static readonly Regex ReceivedReasonLine = new(@"\[FLog::Network\] Disconnect reason received: (\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    [GeneratedRegex(@"\[FLog::Network\] Disconnect reason received: (\d+)", RegexOptions.CultureInvariant)]
+    private static partial Regex ReceivedReasonLine();
     /// <summary>
     /// DisconnectClientRequest: the notification line can repeat it after the server's reason, so it never overrides one.
     /// </summary>
@@ -131,7 +135,8 @@ public sealed class RobloxLogWatcher
     // "Server Kick Message: ; Metadata: {"moderatorType":"creator","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-10-21T00:07:04Z"}".
     // A ban met when joining again (Join Error 600) logs nothing (seen the same day): see AppController.CheckJoin.
     const string KickMark = "Server Kick Message:";
-    static readonly Regex KickLine = new(@"Server Kick Message: (.*?); Metadata: ?(.*)$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    [GeneratedRegex(@"Server Kick Message: (.*?); Metadata: ?(.*)$", RegexOptions.CultureInvariant)]
+    private static partial Regex KickLine();
     const string LeavingMark = "[FLog::SingleSurfaceApp] leaveUGCGameInternal";
     // Signing out inside the Roblox window (seen 2026-10-13): the window stays open on the sign-in screen.
     const string SignedOutMark = "logout sync cookie to native";
@@ -167,7 +172,8 @@ public sealed class RobloxLogWatcher
     // join_time:…, universeid:…, referral_page:Home, sid:…, clienttime:…, userid:12345,". A window opened outside Bloxkeep
     // (from Roblox's own app) is matched to its account by it.
     const string JoinReportMark = "game_join_loadtime";
-    static readonly Regex JoinReportUser = new(@"userid:(\d{1,19})", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    [GeneratedRegex(@"userid:(\d{1,19})", RegexOptions.CultureInvariant)]
+    private static partial Regex JoinReportUser();
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
@@ -395,6 +401,10 @@ public sealed class RobloxLogWatcher
     {
         try
         {
+            // Its size first, which opens no handle (so no antivirus scan of the file): a log that didn't grow, as most
+            // don't between two ticks, isn't opened at all (reads of 0.2–1.8 s were seen on the owner's PC).
+            if (new FileInfo(path).Length == offset)
+                return (offset, null);
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             if (stream.Length < offset)
                 offset = 0;
@@ -427,11 +437,11 @@ public sealed class RobloxLogWatcher
 
     static void Apply(Tail tail, string line)
     {
-        if (line.Contains(JoinReportMark, StringComparison.Ordinal) && JoinReportUser.Match(line) is { Success: true } who
+        if (line.Contains(JoinReportMark, StringComparison.Ordinal) && JoinReportUser().Match(line) is { Success: true } who
             && long.TryParse(who.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long user) && user > 0)
             tail.UserId = user;
         // A number too big for its type reads as no place, never as an error that would stop the process check.
-        if (line.Contains("! Joining game", StringComparison.Ordinal) && JoiningLine.Match(line) is { Success: true } join)
+        if (line.Contains("! Joining game", StringComparison.Ordinal) && JoiningLine().Match(line) is { Success: true } join)
         {
             // A teleport stays open: its old server's disconnect line may still come (see TeleportMark).
             tail.Leaving = false;
@@ -490,7 +500,7 @@ public sealed class RobloxLogWatcher
             if (tail.State is { Status: "ingame" or "joining", TeleportStarted: null } moving)
                 tail.State = moving with { TeleportStarted = tail.TeleportAt };
         }
-        else if (line.Contains(KickMark, StringComparison.Ordinal) && KickLine.Match(line) is { Success: true } kick)
+        else if (line.Contains(KickMark, StringComparison.Ordinal) && KickLine().Match(line) is { Success: true } kick)
         {
             string? message = kick.Groups[1].Value.Trim() is { Length: > 0 } words ? words : null;
             bool ban = IsBan(kick.Groups[2].Value);
@@ -503,13 +513,13 @@ public sealed class RobloxLogWatcher
         else if ((line.Contains(ReasonWordsMark, StringComparison.Ordinal) || line.Contains(LostWithReasonMark, StringComparison.Ordinal))
                  && ReasonOfWords(line) is int worded)
             RememberReason(tail, worded, 1);
-        else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine.Match(line) is { Success: true } reason
+        else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine().Match(line) is { Success: true } reason
                  && int.TryParse(reason.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int why))
             RememberReason(tail, why, 3);
-        else if (line.Contains("Disconnect reason received", StringComparison.Ordinal) && ReceivedReasonLine.Match(line) is { Success: true } received
+        else if (line.Contains("Disconnect reason received", StringComparison.Ordinal) && ReceivedReasonLine().Match(line) is { Success: true } received
                  && int.TryParse(received.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int sent))
             RememberReason(tail, sent, 3);
-        else if (line.Contains("Disconnection Notification", StringComparison.Ordinal) && NotificationReasonLine.Match(line) is { Success: true } notified
+        else if (line.Contains("Disconnection Notification", StringComparison.Ordinal) && NotificationReasonLine().Match(line) is { Success: true } notified
                  && int.TryParse(notified.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code))
             RememberReason(tail, code, code == ClientRequest ? 0 : 2);
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.State is { } state)

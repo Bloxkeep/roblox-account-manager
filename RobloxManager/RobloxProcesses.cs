@@ -137,6 +137,43 @@ public static class RobloxProcesses
     const int StatusInfoLengthMismatch = unchecked((int)0xC0000004);
     /// <summary>So the next snapshot usually takes one call.</summary>
     static int _snapshotSize = 512 * 1024;
+    /// <summary>The last snapshot's buffer (of <see cref="_snapshotBufferSize"/> bytes), kept for the next: half a MB or more
+    /// isn't asked of Windows and given back every tick. Taken by one caller at a time; another meanwhile makes its own.</summary>
+    static IntPtr _snapshotBuffer;
+    static int _snapshotBufferSize;
+
+    /// <summary>The kept buffer when it is free and big enough, else a new one.</summary>
+    static IntPtr TakeSnapshotBuffer(int size)
+    {
+        lock (SnapshotBufferLock)
+        {
+            if (_snapshotBuffer != IntPtr.Zero && _snapshotBufferSize >= size)
+            {
+                IntPtr kept = _snapshotBuffer;
+                _snapshotBuffer = IntPtr.Zero;
+                return kept;
+            }
+        }
+        return Marshal.AllocHGlobal(size);
+    }
+
+    /// <summary>Kept for the next snapshot unless one is kept already (then freed); a smaller one kept before is freed.</summary>
+    static void KeepSnapshotBuffer(IntPtr buffer, int size)
+    {
+        lock (SnapshotBufferLock)
+        {
+            if (_snapshotBuffer == IntPtr.Zero || _snapshotBufferSize < size)
+            {
+                if (_snapshotBuffer != IntPtr.Zero)
+                    Marshal.FreeHGlobal(_snapshotBuffer);
+                (_snapshotBuffer, _snapshotBufferSize) = (buffer, size);
+                return;
+            }
+        }
+        Marshal.FreeHGlobal(buffer);
+    }
+
+    static readonly object SnapshotBufferLock = new();
 
     /// <summary>
     /// NtQuerySystemInformation, as Process.GetProcessesByName reads it, but with parents and start times and without
@@ -152,7 +189,7 @@ public static class RobloxProcesses
         for (int attempt = 0; attempt < 4; attempt++)
         {
             int size = Volatile.Read(ref _snapshotSize);
-            IntPtr buffer = Marshal.AllocHGlobal(size);
+            IntPtr buffer = TakeSnapshotBuffer(size);
             try
             {
                 int status = NtQuerySystemInformation(SystemProcessInformation, buffer, size, out int needed);
@@ -183,7 +220,7 @@ public static class RobloxProcesses
             }
             finally
             {
-                Marshal.FreeHGlobal(buffer);
+                KeepSnapshotBuffer(buffer, size);
             }
         }
         return null;

@@ -151,7 +151,22 @@ static class AfkSuite
         c.Check("the mouse reaches it only with the pointer over it", Reached(false, D, D) == D && Reached(false, D, Other) == 0);
         // Windows takes the registration from a window of no one's in the background (as Bloxkeep's is).
         using (var input = (IDisposable)Activator.CreateInstance(inputType, true)!)
+        {
             c.Check("Windows' raw input set up, for the background too", inputType.GetProperty("Working")!.GetValue(input) is true);
+            // Taken only while a Roblox window runs (the process check toggles it): with none, a fast mouse wakes nothing.
+            int Registered() => (int)inputType.GetMethod("Registered", Harness.F)!.Invoke(null, null)!;
+            async Task<bool> Becomes(int count)
+            {
+                for (int i = 0; i < 50 && Registered() != count; i++)
+                    await Task.Delay(20);
+                return Registered() == count;
+            }
+            var listen = inputType.GetMethod("Listen")!;
+            listen.Invoke(input, [false]);
+            c.Check("…and let go with no Roblox window", await Becomes(0), Registered());
+            listen.Invoke(input, [true]);
+            c.Check("…taken again when one opens", await Becomes(2) && inputType.GetProperty("Working")!.GetValue(input) is true, Registered());
+        }
 
         Unseen(c, afk);
 
