@@ -108,9 +108,45 @@ public sealed class TrayWindow : Form
             Log.Write(ex);
             _showing = false;
             ReleaseBrowser();
+            // The page can't start (WebView2 missing or broken): Windows' own small menu, so the app can still be
+            // opened and quit from the tray.
+            FallbackMenu(anchor);
             return;
         }
         Push(); // the page answers with its size, and the window shows then (OnSize)
+    }
+
+    const uint MF_STRING = 0, TPM_RETURNCMD = 0x100, TPM_RIGHTBUTTON = 0x2, TPM_BOTTOMALIGN = 0x20;
+
+    [DllImport("user32.dll")] static extern IntPtr CreatePopupMenu();
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool AppendMenuW(IntPtr menu, uint flags, UIntPtr id, string text);
+    [DllImport("user32.dll")] static extern int TrackPopupMenuEx(IntPtr menu, uint flags, int x, int y, IntPtr owner, IntPtr parameters);
+    [DllImport("user32.dll")] static extern bool DestroyMenu(IntPtr menu);
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    /// <summary>Open and Quit in a menu Windows draws itself, at the pointer (only when the tray's page can't start).</summary>
+    void FallbackMenu(Point at)
+    {
+        IntPtr menu = CreatePopupMenu();
+        if (menu == IntPtr.Zero)
+            return;
+        try
+        {
+            AppendMenuW(menu, MF_STRING, (UIntPtr)1, L.T("Open Bloxkeep"));
+            AppendMenuW(menu, MF_STRING, (UIntPtr)2, L.T("Quit Bloxkeep"));
+            // Windows' rule for tray menus: its owner in front, so a click elsewhere closes it, and a message after it.
+            SetForegroundWindow(Handle);
+            int chosen = TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN, at.X, at.Y, Handle, IntPtr.Zero);
+            PostMessage(Handle, 0, IntPtr.Zero, IntPtr.Zero);
+            if (chosen == 1)
+                OpenClicked?.Invoke();
+            else if (chosen == 2)
+                QuitClicked?.Invoke();
+        }
+        finally
+        {
+            DestroyMenu(menu);
+        }
     }
 
     public void HideTray()
