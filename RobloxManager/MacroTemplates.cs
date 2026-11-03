@@ -5,18 +5,19 @@ namespace RobloxManager;
 /// <summary>
 /// The built-in starting points for a new macro: generic (no game's name), each running as it is once its marked steps
 /// are done on the game (an area moved, a colour picked). Each comes with the settings the player changes on its panel
-/// ("$o1") and its areas ("@a1"). Kept as data: the page lists them and opens a copy in the editor.
+/// ("$o1") and its areas ("@a1"), and a note on its steps saying why each is there (they teach as they're used). Kept as
+/// data: the page lists them and opens a copy in the editor.
 /// </summary>
 static class MacroTemplates
 {
     /// <summary>A template: its macro and what it does.</summary>
-    /// <param name="Icon">A plain word the page draws an icon for: keyboard, pointer, bar, blank.</param>
+    /// <param name="Icon">A plain word the page draws an icon for: keyboard, pointer, bar, rejoin, blank.</param>
     /// <param name="Macro">The macro a new macro starts from (Blank: no steps).</param>
     public sealed record Template(string Id, string Name, string About, string Icon, Macro Macro);
 
     /// <summary>
     /// For the page: { macros: (Macro &amp; {about, icon})[] }, each new (its id ""). A step the person still has to
-    /// finish on the game carries "todo" (its checklist).
+    /// finish on the game carries "todo" (its checklist: the fields to set, "region", "colour", "target", "marker", "x").
     /// </summary>
     public static object All() => new
     {
@@ -30,11 +31,19 @@ static class MacroTemplates
         }).ToList(),
     };
 
-    /// <summary>The person's to-do on a step (the editor's checklist): kept with the step like any field it doesn't know.</summary>
-    static void Todo(MacroStep step, params string[] todo)
+    /// <summary>The person's to-do on a step (the editor's checklist): the fields still to set for their game, kept with
+    /// the step like any field it doesn't know.</summary>
+    static void Todo(MacroStep step, params string[] fields)
     {
         step.Extra ??= new();
-        step.Extra["todo"] = JsonSerializer.SerializeToElement(todo);
+        step.Extra["todo"] = JsonSerializer.SerializeToElement(fields);
+    }
+
+    /// <summary>Why a step is there, shown under it in the editor.</summary>
+    static void Note(MacroStep step, string note)
+    {
+        step.Extra ??= new();
+        step.Extra["note"] = JsonSerializer.SerializeToElement(note);
     }
 
     public static Template? Find(string? id) => Build().FirstOrDefault(t => t.Id == id);
@@ -45,13 +54,14 @@ static class MacroTemplates
         Keys(),
         Click(),
         Cast(),
+        Rejoin(),
         Blank(),
     ];
 
-    static Macro MacroOf(string name, int maxMinutes, string steps, string options, string areas)
+    static Macro MacroOf(string name, int maxMinutes, string steps, string options, string areas, string targets = "selected", string trigger = """{"kind":"manual"}""")
     {
         using var json = JsonDocument.Parse($$"""
-            {"name":{{S(name)}},"targets":"selected","maxMinutes":{{maxMinutes}},"steps":{{steps}},"options":{{options}},"areas":{{areas}},
+            {"name":{{S(name)}},"targets":{{S(targets)}},"trigger":{{trigger}},"maxMinutes":{{maxMinutes}},"steps":{{steps}},"options":{{options}},"areas":{{areas}},
              "panel":{"autoShow":false,"placeId":null} }
             """);
         return MacroRules.Read(json.RootElement);
@@ -61,8 +71,8 @@ static class MacroTemplates
 
     static Template Keys()
     {
-        string name = L.T("Press keys on repeat");
-        var macro = MacroOf(name, 60, """
+        string name = L.T("Press a key every few minutes");
+        var macro = MacroOf(name, 240, """
             [
               {"kind":"loop","times":0},
               {"kind":"key","key":"$o2"},
@@ -71,16 +81,18 @@ static class MacroTemplates
             ]
             """, $$"""
             [
-              {"name":"o1","label":{{S(L.T("Every"))}},"kind":"number","value":1000,"default":1000,"min":100,"max":600000,"unit":"s"},
-              {"name":"o2","label":{{S(L.T("Key"))}},"kind":"key","value":"E","default":"E"}
+              {"name":"o1","label":{{S(L.T("Every"))}},"kind":"number","value":300000,"default":300000,"min":1000,"max":1080000,"unit":"s"},
+              {"name":"o2","label":{{S(L.T("Key"))}},"kind":"key","value":"Space","default":"Space"}
             ]
             """, "[]");
-        return new Template("keys", name, L.T("Presses a key again and again in the game, as often as you set."), "keyboard", macro);
+        Note(macro.Steps[1], L.T("Roblox kicks idle players after 20 minutes; this presses a key before that."));
+        Note(macro.Steps[2], L.T("The player can change how long on the panel"));
+        return new Template("keys", name, L.T("Presses a key now and then, so the game doesn't take you for away."), "keyboard", macro);
     }
 
     static Template Click()
     {
-        string name = L.T("Click a button when it shows up");
+        string name = L.T("Click a button when it shows");
         var macro = MacroOf(name, 120, """
             [
               {"kind":"loop","times":0},
@@ -98,13 +110,16 @@ static class MacroTemplates
             """, $$"""
             [ {"name":"a1","label":{{S(L.T("Button area"))}},"colour":"#22c55e","rect":{"x":0.25,"y":0.25,"w":0.5,"h":0.5} } ]
             """);
-        Todo(macro.Steps[1], L.T("Move the button area on the game"), L.T("Pick the button's colour"));
+        Todo(macro.Steps[1], "region", "colour");
+        Note(macro.Steps[1], L.T("Move the box to where the button appears"));
+        Note(macro.Steps[2], L.T("Pick the button's color on the game"));
+        Note(macro.Steps[3], L.T("Counts the clicks, shown on the panel"));
         return new Template("click", name, L.T("Waits for a button of a colour to show up in an area, clicks it, and waits for the next one."), "pointer", macro);
     }
 
     static Template Cast()
     {
-        string name = L.T("Hold to cast, then keep the bar on the target");
+        string name = L.T("Cast and reel");
         var macro = MacroOf(name, 240, """
             [
               {"kind":"loop","times":0},
@@ -126,9 +141,31 @@ static class MacroTemplates
             """, $$"""
             [ {"name":"a1","label":{{S(L.T("Bar area"))}},"colour":"#3b82f6","rect":{"x":0.3,"y":0.75,"w":0.4,"h":0.06} } ]
             """);
-        Todo(macro.Steps[1], L.T("Drag dot 2 to where you cast"));
-        Todo(macro.Steps[2], L.T("Move the bar area on the game"), L.T("Pick the target's colour"), L.T("Pick the marker's colour"));
+        Todo(macro.Steps[1], "x");
+        Todo(macro.Steps[2], "region", "target", "marker");
+        Note(macro.Steps[1], L.T("Holds to cast: drag dot 2 to where you cast"));
+        Note(macro.Steps[2], L.T("Keeps the marker on the target until the bar goes"));
+        Note(macro.Steps[3], L.T("Counts each catch"));
+        Note(macro.Steps[4], L.T("A short break before the next cast"));
         return new Template("cast", name, L.T("Holds the mouse to cast, waits for the bar, then keeps the marker on the target until the bar goes."), "bar", macro);
+    }
+
+    static Template Rejoin()
+    {
+        string name = L.T("Rejoin and walk back");
+        var macro = MacroOf(name, 10, """
+            [
+              {"kind":"wait","ms":8000},
+              {"kind":"key","key":"W","ms":2000},
+              {"kind":"wait","ms":1000},
+              {"kind":"key","key":"E"}
+            ]
+            """, "[]", "[]", targets: "all", trigger: """{"kind":"rejoin"}""");
+        Note(macro.Steps[0], L.T("Give the game time to load"));
+        Note(macro.Steps[1], L.T("Walks forward for 2 s: change it to your way back"));
+        Note(macro.Steps[2], L.T("Stops for a moment"));
+        Note(macro.Steps[3], L.T("Uses what is there"));
+        return new Template("rejoin", name, L.T("After a rejoin, waits for the game to load, walks back and presses E."), "rejoin", macro);
     }
 
     static Template Blank()

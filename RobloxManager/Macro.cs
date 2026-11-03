@@ -329,7 +329,7 @@ static class MacroRules
                 throw new UserError(L.F("Ctrl+Alt+{0} already runs {1}.", hotkey, holder.Name));
         }
         if (m.JitterMs is < 0 or > 500)
-            throw new UserError(L.T("Random timing is 0 to 500 ms."));
+            throw new UserError(L.T("Random extra wait is 0 to 0.5 s."));
         if (m.JitterPx is < 0 or > 20)
             throw new UserError(L.T("Random click offset is 0 to 20 px."));
         if (m.MaxMinutes is < 1 or > 240)
@@ -355,12 +355,50 @@ static class MacroRules
                 throw new UserError(L.F("Step {0}: {1}", i + 1, e.Message));
             }
             images += (step.Image?.Length ?? 0) + (step.Test?.Image?.Length ?? 0);
+            Note(step);
         }
+        CounterLabels(m);
         if (images > MaxImagesBase64)
             throw new UserError(L.T("The macro's pictures are too big together. Use smaller ones."));
         MacroOptions.Check(m);
         Pairs(m.Steps);
         Jumps(m.Steps);
+    }
+
+    /// <summary>The longest note a step carries (why it is there, shown under it in the editor).</summary>
+    public const int MaxNote = 80;
+
+    /// <summary>A step's note: plain text up to <see cref="MaxNote"/>, kept trimmed; anything else is dropped.</summary>
+    static void Note(MacroStep s)
+    {
+        if (s.Extra is null || !s.Extra.TryGetValue("note", out var note))
+            return;
+        string text = note.ValueKind == JsonValueKind.String ? (note.GetString() ?? "").Trim() : "";
+        text = string.Concat(text.Where(ch => !char.IsControl(ch)));
+        if (text.Length == 0)
+            s.Extra.Remove("note");
+        else
+            s.Extra["note"] = JsonSerializer.SerializeToElement(text.Length > MaxNote ? text[..MaxNote].TrimEnd() : text);
+    }
+
+    /// <summary>What the panel calls each counter ({ name: label }): a counter's name to up to 30 characters of plain
+    /// text; anything else is dropped.</summary>
+    static void CounterLabels(Macro m)
+    {
+        if (m.Panel?.Extra is not { } extra || !extra.TryGetValue("counterLabels", out var labels))
+            return;
+        var kept = new Dictionary<string, string>();
+        if (labels.ValueKind == JsonValueKind.Object)
+            foreach (var p in labels.EnumerateObject())
+            {
+                string text = p.Value.ValueKind == JsonValueKind.String ? string.Concat((p.Value.GetString() ?? "").Where(ch => !char.IsControl(ch))).Trim() : "";
+                if (VarName.IsMatch(p.Name) && text.Length > 0 && kept.Count < 100)
+                    kept[p.Name] = text.Length > 30 ? text[..30].TrimEnd() : text;
+            }
+        if (kept.Count == 0)
+            extra.Remove("counterLabels");
+        else
+            extra["counterLabels"] = JsonSerializer.SerializeToElement(kept);
     }
 
     static void CheckStep(MacroStep s)
@@ -377,7 +415,7 @@ static class MacroRules
         {
             case "key":
                 NeedKey(s.Key, allowAlt: false);
-                s.Ms = s.Ms is null or 0 ? 60 : s.Ms is >= 30 and <= 5000 ? s.Ms : throw new UserError(L.T("Hold a key 30 to 5000 ms."));
+                s.Ms = s.Ms is null or 0 ? 60 : s.Ms is >= 30 and <= 10_000 ? s.Ms : throw new UserError(L.T("Hold a key 0.03 to 10 s."));
                 break;
             case "down" or "up":
                 NeedKey(s.Key, allowAlt: true);
@@ -390,8 +428,9 @@ static class MacroRules
                 // A recorded click's picture of where it clicked: kept when it is a usable one, else dropped quietly.
                 if (s.Image is not null && !ImageOk(s.Image))
                     s.Image = null;
-                if (s.HoldMs is < 0 or > 10_000)
-                    throw new UserError(L.T("Hold the button 0 to 10000 ms."));
+                // A plain click (none, 0), or held long enough to be a hold.
+                if (s.HoldMs is < 0 or (> 0 and < 30) or > 10_000)
+                    throw new UserError(L.T("Hold the button 0.03 to 10 s."));
                 if (s.HoldMs == 0)
                     s.HoldMs = null;
                 break;
@@ -407,7 +446,7 @@ static class MacroRules
             case "camera":
                 if (s.Dx is not (>= -100_000 and <= 100_000) || s.Dy is not (>= -100_000 and <= 100_000))
                     throw new UserError(L.T("Turn the camera by at most 100000 in each direction."));
-                s.Ms = s.Ms is >= 0 and <= 10_000 ? s.Ms : s.Ms is null ? 200 : throw new UserError(L.T("A camera turn takes 0 to 10000 ms."));
+                s.Ms = s.Ms is >= 0 and <= 10_000 ? s.Ms : s.Ms is null ? 200 : throw new UserError(L.T("A camera turn takes 0 to 10 s."));
                 s.Button ??= "right";
                 if (s.Button is not ("right" or "none"))
                     throw new UserError(L.T("Unknown mouse button."));
@@ -421,7 +460,7 @@ static class MacroRules
                 break;
             case "wait":
                 if (s.Ms is not (>= 0 and <= MaxWaitMs))
-                    throw new UserError(L.T("Wait 0 ms to 1 hour."));
+                    throw new UserError(L.T("Wait up to 1 hour."));
                 break;
             case "waitImage":
                 NeedImage(s.Image);
@@ -446,7 +485,7 @@ static class MacroRules
             case "waitStill":
                 NeedRegion(s.Region);
                 if (s.Ms is not (>= 100 and <= 60_000))
-                    throw new UserError(L.T("Still for 100 to 60000 ms."));
+                    throw new UserError(L.T("Still for 0.1 to 60 s."));
                 s.TimeoutMs = Timeout(s.TimeoutMs);
                 break;
             case "if":
@@ -454,13 +493,13 @@ static class MacroRules
                 break;
             case "loop":
                 if (s.Times is not (>= 0 and <= 100_000))
-                    throw new UserError(L.T("Repeat 0 to 100000 times (0: until Break)."));
+                    throw new UserError(L.T("Repeat up to 100000 times."));
                 break;
             case "loopUntil":
                 CheckTest(s.Test);
                 s.Max ??= 0;
                 if (s.Max is < 0 or > 100_000)
-                    throw new UserError(L.T("Repeat 0 to 100000 times (0: until Break)."));
+                    throw new UserError(L.T("Repeat up to 100000 times."));
                 break;
             case "else" or "endIf" or "endLoop" or "break" or "rejoin" or "stop" or "recover":
                 break;
@@ -489,7 +528,7 @@ static class MacroRules
                     throw new UserError(L.T("The smallest patch is 1 to 500 px."));
                 s.TimeoutMs = Timeout(s.TimeoutMs);
                 if (s.RepeatUntilGoneMs is < 0 or > MaxWaitMs)
-                    throw new UserError(L.T("Wait 0 ms to 1 hour."));
+                    throw new UserError(L.T("Wait up to 1 hour."));
                 if (s.RepeatUntilGoneMs == 0)
                     s.RepeatUntilGoneMs = null;
                 if (s.EachAfterMs is < 0 or > 10_000)
@@ -522,10 +561,10 @@ static class MacroRules
                     s.Predict = null;
                 s.Fps ??= 60;
                 if (s.Fps is < 15 or > 240)
-                    throw new UserError(L.T("Look 15 to 240 times a second."));
+                    throw new UserError(L.T("Check 15 to 240 times a second."));
                 s.UntilGoneMs ??= 1000;
                 if (s.UntilGoneMs is < 0 or > 60_000)
-                    throw new UserError(L.T("Gone for 0 to 60000 ms."));
+                    throw new UserError(L.T("Gone for up to 60 s."));
                 s.TimeoutMs = Timeout(s.TimeoutMs);
                 break;
             default:
@@ -634,7 +673,7 @@ static class MacroRules
     static void NeedVar(string? name)
     {
         if (name is null || !VarName.IsMatch(name))
-            throw new UserError(L.T("A variable's name is letters, digits and _ (up to 32), not starting with a digit."));
+            throw new UserError(L.T("A counter's name is letters, digits and _ (up to 32), not starting with a digit."));
     }
 
     static void NeedColour(string? colour)
@@ -677,10 +716,10 @@ static class MacroRules
         threshold is null ? 0.9 : threshold is >= 0.5 and <= 1 ? threshold.Value : throw new UserError(L.T("Match 50 to 100 %."));
 
     static int Timeout(int? timeout) =>
-        timeout is >= 0 and <= MaxWaitMs ? timeout.Value : timeout is null ? 10_000 : throw new UserError(L.T("Wait 0 ms to 1 hour."));
+        timeout is >= 0 and <= MaxWaitMs ? timeout.Value : timeout is null ? 10_000 : throw new UserError(L.T("Wait up to 1 hour."));
 
     static int Tolerance(int? tolerance) =>
-        tolerance is null ? 24 : tolerance is >= 0 and <= 255 ? tolerance.Value : throw new UserError(L.T("Tolerance is 0 to 255."));
+        tolerance is null ? 24 : tolerance is >= 0 and <= 255 ? tolerance.Value : throw new UserError(L.T("Color closeness is 0 to 255."));
 
     /// <summary>Every key held (down) is let go (up) later, and only a held key is let go.</summary>
     static void Pairs(List<MacroStep> steps)
@@ -691,14 +730,14 @@ static class MacroRules
             var s = steps[i];
             // The macro's own steps end where its If stuck part begins.
             if (s.Kind == "recover" && held.Count > 0)
-                throw new UserError(L.F("{0} is held and never released. Add a Release step.", held.First()));
+                throw new UserError(L.F("{0} is held down and never let go. Add a “Let go of a key” step.", held.First()));
             if (s.Kind == "down" && !held.Add(s.Key!))
-                throw new UserError(L.F("Step {0}: {1} is already held.", i + 1, s.Key));
+                throw new UserError(L.F("Step {0}: {1} is already held down.", i + 1, s.Key));
             if (s.Kind == "up" && !held.Remove(s.Key!))
-                throw new UserError(L.F("Step {0}: {1} isn't held, so it can't be released.", i + 1, s.Key));
+                throw new UserError(L.F("Step {0}: lets go of {1}, which isn't held down.", i + 1, s.Key));
         }
         if (held.Count > 0)
-            throw new UserError(L.F("{0} is held and never released. Add a Release step.", held.First()));
+            throw new UserError(L.F("{0} is held down and never let go. Add a “Let go of a key” step.", held.First()));
     }
 
     /// <summary>
@@ -719,13 +758,13 @@ static class MacroRules
                     break;
                 case "else":
                     if (open.Count == 0 || open.Peek().Kind != "if")
-                        throw new UserError(L.F("Step {0}: Else needs an If before it.", i + 1));
+                        throw new UserError(L.F("Step {0}: “Otherwise” needs an “If…” before it.", i + 1));
                     jump[open.Pop().At] = i;
                     open.Push(("else", i));
                     break;
                 case "endIf":
                     if (open.Count == 0 || open.Peek().Kind is not ("if" or "else"))
-                        throw new UserError(L.F("Step {0}: End if needs an If before it.", i + 1));
+                        throw new UserError(L.F("Step {0}: “End if” has no If to end.", i + 1));
                     jump[open.Pop().At] = i;
                     break;
                 case "loop" or "loopUntil":
@@ -734,7 +773,7 @@ static class MacroRules
                     break;
                 case "endLoop":
                     if (open.Count == 0 || open.Peek().Kind != "loop")
-                        throw new UserError(L.F("Step {0}: End loop needs a Loop before it.", i + 1));
+                        throw new UserError(L.F("Step {0}: “End repeat” has no repeat to end.", i + 1));
                     int start = open.Pop().At;
                     jump[start] = i;
                     jump[i] = start;
@@ -744,14 +783,14 @@ static class MacroRules
                 case "recover":
                     // The steps after it run only to get unstuck: it ends the macro's own steps, so it can't be inside one.
                     if (open.Count > 0)
-                        throw new UserError(L.F("Step {0}: If stuck can't be inside a loop or an If.", i + 1));
+                        throw new UserError(L.F("Step {0}: “If stuck…” can't be inside a repeat or an If.", i + 1));
                     if (steps.FindIndex(st => st.Kind == "recover") != i)
                         throw new UserError(L.F("Step {0}: a macro has one If stuck part.", i + 1));
                     break;
                 case "break":
                     var loop = open.FirstOrDefault(o => o.Kind == "loop");
                     if (loop.Kind is null)
-                        throw new UserError(L.F("Step {0}: Break must be inside a loop.", i + 1));
+                        throw new UserError(L.F("Step {0}: “Leave the repeat” only works inside a repeat.", i + 1));
                     breaks[loop.At].Add(i);
                     break;
             }
@@ -761,7 +800,7 @@ static class MacroRules
         if (open.Count > 0)
         {
             var (kind, at) = open.Peek();
-            throw new UserError(kind == "loop" ? L.F("Step {0}: this loop has no End loop.", at + 1) : L.F("Step {0}: this If has no End if.", at + 1));
+            throw new UserError(kind == "loop" ? L.F("Step {0}: this repeat never ends. Add “End repeat”.", at + 1) : L.F("Step {0}: this If never ends. Add “End if”.", at + 1));
         }
         return jump;
     }
