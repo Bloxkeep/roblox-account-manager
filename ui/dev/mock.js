@@ -15,6 +15,8 @@
   };
   // ?long=1: names as long as they get on Roblox (emoji and brackets, no spaces), to check nothing overflows.
   const LONG = params.has('long');
+  // ?noroblox=1: Roblox isn't installed on this PC (no window, no version).
+  const NO_ROBLOX = params.has('noroblox');
   if (LONG) {
     games[2753915549].name = '[🎃 HALLOWEEN PT 1] Grand Piece Online';
     games[920587237].name = '[🎃 UPDATE 5] Some Very Long Game Name Simulator 2 — Ultimate Edition';
@@ -86,6 +88,10 @@
   if (params.has('vng')) accounts.find(a => a.id === id(6)).realm = 'vng';
   // ?fresh=1: accounts Bloxkeep has never opened (just added): none running or opened before, so Getting started shows.
   if (params.has('fresh')) accounts = accounts.map(a => ({ ...a, state: 'idle', session: null, lastUsed: null, presence: a.presence?.type === 'ingame' ? { type: 'offline' } : a.presence }));
+  // ?nowindows=1: no Roblox window open (every account idle), for the macro editor's empty picture. ?noroblox=1: Roblox
+  // isn't installed, so no window can be open either.
+  if (params.has('nowindows') || params.has('noroblox'))
+    accounts = accounts.map(a => a.state === 'running' || (a.state === 'launching' && params.has('noroblox')) ? { ...a, state: 'idle', session: null } : a);
   // ?accounts=300: that many accounts (copies of the ones above), for timing the page with a big list.
   if (params.has('accounts')) {
     const want = Math.min(1000, Number(params.get('accounts')) || 0), base = accounts.slice();
@@ -122,9 +128,12 @@
     ? [{ id: 'a1b2c3d4', name: 'Main', picture: null }, { id: 'b2c3d4e5', name: 'Farm', picture: 'scene-halong.svg' }, { id: 'c3d4e5f6', name: 'Alt', picture: null }]
     : [{ id: 'a1b2c3d4', name: 'Vault 1', picture: null }];
   let vaultCurrent = vaultList[0]?.id || null, vaultPick = params.has('vaultpick'), vaultAdding = null, askVault = params.has('vaultpick'), vaultAddFromPick = false;
+  // ?guardfail=1: the vault list is a number, so the sidebar (which reads it as a list) fails to draw and Guard shows its
+  // note. The failure is the point of the scenario: Guard and React report it with console.error, which Tests/ui counts.
+  if (params.has('guardfail')) console.error = () => {};
   const vaultsState = () => {
     const cur = vaultAdding || vaultList.find(v => v.id === vaultCurrent);
-    return { list: vaultList, current: cur?.id || null, name: cur?.name || null, picture: vaultAdding ? null : cur?.picture || null,
+    return { list: params.has('guardfail') ? 5 : vaultList, current: cur?.id || null, name: cur?.name || null, picture: vaultAdding ? null : cur?.picture || null,
       open: locked ? null : vaultCurrent, pick: vaultPick, adding: !!vaultAdding, ask: askVault };
   };
   // Settings › Appearance › Custom (?theme=custom; ?ctpicture=1 with a picture, a scenery theme's standing in).
@@ -163,7 +172,7 @@
   // ?backup=1 shows a chosen folder with a recent backup; ?bkerr=1 a failed one; ?weak=1 the weak-password line.
   let backup = {
     enabled: true, folder: params.has('backup') ? 'C:\\Users\\Admin\\OneDrive\\Bloxkeep' : null,
-    lastBackup: params.has('backup') ? minsAgo(5) : null, error: params.has('bkerr') ? 'Access to the path is denied.' : null,
+    lastBackup: params.has('backup') ? minsAgo(5) : null, error: params.has('bkerr') ? tx("Can't write to this folder.", 'Không ghi được vào thư mục này.') : null,
     suggested: [{ path: 'G:\\My Drive\\Bloxkeep', name: 'Google Drive' }, ...(params.has('backup') ? [] : [{ path: 'C:\\Users\\Admin\\OneDrive\\Bloxkeep', name: 'OneDrive' }])],
     cloud: params.has('backup'), weakPassword: params.has('weak'),
   };
@@ -243,7 +252,7 @@
     <rect x="24" y="20" width="44" height="44" rx="8" fill="#000" fill-opacity=".5"/><rect x="1120" y="20" width="136" height="40" rx="8" fill="#000" fill-opacity=".45"/>
     <rect x="1000" y="540" width="180" height="64" rx="10" fill="#15803d"/><rect x="1006" y="546" width="168" height="52" rx="8" fill="#22c55e"/>
     <text x="1090" y="582" font-family="Arial" font-size="28" font-weight="700" fill="#fff" text-anchor="middle">CLAIM</text></svg>`);
-  let macroSeq = 4;
+  let macroSeq = params.has('p2broken') ? 5 : 4;
   let macros = params.has('nomacros') ? [] : [
     { id: 'm1', name: tx('Anti-AFK jump', 'Nhảy chống AFK'), targets: 'accounts', accountIds: [id(1), id(2)], trigger: { kind: 'interval', everySeconds: 300 }, enabled: true, hotkey: 1,
       steps: [{ kind: 'key', key: 'Space', ms: 60 }], recordedSize: { w: 1280, h: 720 } },
@@ -263,7 +272,8 @@
     { macroId: 'm1', accountId: id(1), status: 'running', step: 0, loops: 12, startedAt: minsAgo(60) },
     { macroId: 'm1', accountId: id(2), status: 'paused', reason: 'personActive', step: 0, loops: 11, startedAt: minsAgo(55) },
     { macroId: 'm2', accountId: id(1), status: 'paused', reason: 'imeOn', step: 1, startedAt: minsAgo(3) },
-    { macroId: 'm2', accountId: id(2), status: 'failed', reason: 'notFound', step: 1, startedAt: minsAgo(14), endsAt: minsAgo(4) },
+    // An ended run keeps the step it stopped on as lastStep (the app's r.Pc once it finished), for "Fix" and the editor's marker.
+    { macroId: 'm2', accountId: id(2), status: 'failed', reason: 'notFound', lastStep: 1, startedAt: minsAgo(14), endsAt: minsAgo(4) },
     { macroId: 'm3', accountId: id(1), status: 'done', startedAt: minsAgo(30), endsAt: minsAgo(29) },
   ] : [];
   let macroRecording = params.has('macrorec') ? { accountId: id(1), startsAt: minsAgo(0.05), steps: 7 } : null;
@@ -276,7 +286,7 @@
   if (!params.has('nomacros')) macros.push({ id: 'm4', name: tx('Cast and reel', 'Quăng và kéo cần'), targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: 3,
     jitterMs: 40, jitterPx: 3, maxMinutes: 60, onFail: 'stop', recordedSize: { w: 1280, h: 720 },
     options: [{ name: 'o1', label: tx('Hold time', 'Thời gian giữ'), kind: 'number', value: 600, default: 600, min: 0, max: 10000, unit: 's' },
-      { name: 'o2', label: tx('Bar colour', 'Màu thanh'), kind: 'colour', value: '#22c55e', default: '#22c55e' }],
+      { name: 'o2', label: tx('Bar color', 'Màu thanh'), kind: 'colour', value: '#22c55e', default: '#22c55e' }],
     areas: [{ name: 'a1', label: tx('Fish area', 'Vùng cá'), colour: '#22c55e', rect: { x: 0.3, y: 0.74, w: 0.4, h: 0.1 } }],
     panel: { autoShow: true, placeId: 2753915549 },
     steps: [
@@ -285,33 +295,60 @@
       { kind: 'follow', region: '@a1', target: '$o2', marker: { left: '#ffffff', right: '#ffffff' }, tolerance: 24, button: 'left', mode: 'smooth', kp: 1, kd: 0.4,
         predict: true, fps: 60, untilGoneMs: 1500, timeoutMs: 60000 },
       { kind: 'addVar', name: 'fish', value: 1 }, { kind: 'endLoop' }] });
+  // ?p2broken=1: one more macro, with what stops a save on its rows (an If never ended, a click with no point).
+  if (params.has('p2broken')) macros.push({ id: 'm5', name: tx('Daily reward', 'Quà hằng ngày'), targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null,
+    jitterMs: 40, jitterPx: 3, maxMinutes: 10, onFail: 'stop', options: [], areas: [], panel: { autoShow: false, placeId: null },
+    steps: [{ kind: 'key', key: 'E', ms: 60, note: tx('Opens the rewards window', 'Mở cửa sổ phần thưởng') },
+      { kind: 'if', test: { kind: 'text', text: 'Claim' } },
+      { kind: 'click', button: 'left', double: false },
+      { kind: 'addVar', name: 'claims', value: 1 }] });
   setMacros(macros.map(m => ({ options: [], areas: [], panel: { autoShow: false, placeId: null }, ...m })));
   let panelsShown = params.has('macros') && !params.has('nomacros') ? ['m4'] : [];
   const macroVars = params.has('macros') ? { [id(1)]: { fish: 12 }, [id(2)]: { fish: 9 } } : {};
-  // The built-in templates, generic (no game names): their areas and the values the player may change come with them;
-  // what still has to be set for the person's game is marked on its step (todo).
-  const TEMPLATES = {
-    macros: [
-      { id: 'tpl-keys', name: tx('Press keys on repeat', 'Bấm phím lặp lại'), about: tx('Presses a key every few seconds.', 'Bấm một phím sau mỗi vài giây.'), icon: 'keyboard',
-        targets: 'selected', accountIds: [], trigger: { kind: 'interval', everySeconds: 10 }, enabled: true, hotkey: null, jitterMs: 40, jitterPx: 3, maxMinutes: 60, onFail: 'stop',
-        options: [{ name: 'o1', label: tx('Key', 'Phím'), kind: 'key', value: 'E', default: 'E' }], areas: [], panel: { autoShow: false, placeId: null },
-        steps: [{ kind: 'key', key: '$o1', ms: 60 }] },
-      { id: 'tpl-button', name: tx('Click a button when it shows up', 'Bấm nút khi nó hiện'), about: tx('Waits for a button, clicks it, again and again.', 'Chờ nút hiện ra rồi bấm, lặp lại.'),
-        icon: 'image', targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null, jitterMs: 40, jitterPx: 3, maxMinutes: 60, onFail: 'skip',
-        options: [], areas: [], panel: { autoShow: false, placeId: null },
-        steps: [{ kind: 'loop', times: 0 }, { kind: 'waitImage', image: '', threshold: 0.9, timeoutMs: 600000, gone: false, todo: ['image'] },
-          { kind: 'clickImage', image: '', button: 'left', threshold: 0.9, timeoutMs: 5000, todo: ['image'] }, { kind: 'wait', ms: 2000 }, { kind: 'endLoop' }] },
-      { id: 'tpl-bar', name: tx('Hold to cast, then keep the bar on the target', 'Giữ để quăng, rồi giữ thanh trên mục tiêu'),
-        about: tx('For bar minigames: hold, wait for the bar, follow the target.', 'Cho minigame thanh: giữ, chờ thanh, bám mục tiêu.'), icon: 'gauge',
-        targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null, jitterMs: 40, jitterPx: 3, maxMinutes: 60, onFail: 'stop',
-        options: [{ name: 'o1', label: tx('Hold time', 'Thời gian giữ'), kind: 'number', value: 600, default: 600, min: 0, max: 10000, unit: 's' }],
-        areas: [{ name: 'a1', label: tx('Bar area', 'Vùng thanh'), colour: '#22c55e', rect: { x: 0.3, y: 0.75, w: 0.4, h: 0.1 } }],
-        panel: { autoShow: false, placeId: null },
-        steps: [{ kind: 'loop', times: 0 }, { kind: 'click', x: 0.5, y: 0.6, button: 'left', double: false, holdMs: '$o1' },
-          { kind: 'follow', region: '@a1', target: '#22c55e', marker: '#ffffff', tolerance: 24, button: 'left', mode: 'onOff', predict: false, kp: 1, kd: 0.4, fps: 60,
-            untilGoneMs: 1500, timeoutMs: 60000, todo: ['region', 'target', 'marker'] }, { kind: 'endLoop' }] },
-    ],
-  };
+  const TPL_BASE = { targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null, jitterMs: 40, jitterPx: 3, onFail: 'stop',
+    options: [], areas: [], panel: { autoShow: false, placeId: null } };
+  // The five built-in templates, as MacroTemplates.cs builds them (keys, click, cast, rejoin, blank), with their notes and the
+  // fields still to set for the person's game (todo). A new copy each time: the page fills one in.
+  const TEMPLATES = () => ({ macros: [
+    { ...TPL_BASE, id: '', name: tx('Press a key every few minutes', 'Bấm phím định kỳ'), icon: 'keyboard', maxMinutes: 240,
+      about: tx("Presses a key now and then, so the game doesn't take you for away.", 'Thỉnh thoảng bấm một phím để game không coi bạn là vắng mặt.'),
+      options: [{ name: 'o1', label: tx('Every', 'Mỗi'), kind: 'number', value: 300000, default: 300000, min: 1000, max: 1080000, unit: 's' },
+        { name: 'o2', label: tx('Key', 'Phím'), kind: 'key', value: 'Space', default: 'Space' }],
+      steps: [{ kind: 'loop', times: 0 },
+        { kind: 'key', key: '$o2', ms: 60, note: tx('Roblox kicks idle players after 20 minutes; this presses a key before that.', 'Roblox đá người chơi đứng yên sau 20 phút; bước này bấm phím trước lúc đó.') },
+        { kind: 'wait', ms: '$o1', note: tx('The player can change how long on the panel', 'Người chơi đổi thời gian này trên bảng') }, { kind: 'endLoop' }] },
+    { ...TPL_BASE, id: '', name: tx('Click a button when it shows', 'Bấm nút khi nó hiện'), icon: 'pointer', maxMinutes: 120,
+      about: tx('Waits for a button of a color to show up in an area, clicks it, and waits for the next one.', 'Chờ nút có màu đã chọn hiện trong vùng, bấm vào rồi chờ nút tiếp theo.'),
+      options: [{ name: 'o1', label: tx('Button color', 'Màu nút'), kind: 'colour', value: '#22c55e', default: '#22c55e' },
+        { name: 'o2', label: tx('Then wait', 'Rồi chờ'), kind: 'number', value: 500, default: 500, min: 0, max: 60000, unit: 's' }],
+      areas: [{ name: 'a1', label: tx('Button area', 'Vùng nút'), colour: '#22c55e', rect: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 } }],
+      steps: [{ kind: 'loop', times: 0 },
+        { kind: 'waitColour', colour: '$o1', tolerance: 24, region: '@a1', timeoutMs: 600000, todo: ['region', 'colour'], note: tx('Move the box to where the button appears', 'Kéo khung tới chỗ nút hiện ra') },
+        { kind: 'clickColour', colour: '$o1', tolerance: 24, region: '@a1', minSize: 6, button: 'left', timeoutMs: 2000, note: tx("Pick the button's color on the game", 'Chọn màu nút trên game') },
+        { kind: 'addVar', name: 'clicks', value: 1, note: tx('Counts the clicks, shown on the panel', 'Đếm số lần bấm, hiện trên bảng') },
+        { kind: 'wait', ms: '$o2' }, { kind: 'endLoop' }] },
+    { ...TPL_BASE, id: '', name: tx('Cast and reel', 'Thả câu và kéo'), icon: 'bar', maxMinutes: 240,
+      about: tx('Holds the mouse to cast, waits for the bar, then keeps the marker on the target until the bar goes.', 'Giữ chuột để quăng, chờ thanh hiện ra, rồi giữ vạch trên mục tiêu đến khi thanh biến mất.'),
+      options: [{ name: 'o1', label: tx('Hold to cast', 'Giữ để quăng'), kind: 'number', value: 800, default: 800, min: 0, max: 10000, unit: 's' },
+        { name: 'o2', label: tx('Target color', 'Màu mục tiêu'), kind: 'colour', value: '#22c55e', default: '#22c55e' },
+        { name: 'o3', label: tx('Marker color', 'Màu vạch'), kind: 'colour', value: '#ffffff', default: '#ffffff' },
+        { name: 'o4', label: tx('Strength', 'Lực'), kind: 'number', value: 1, default: 1, min: 0, max: 10, unit: '' },
+        { name: 'o5', label: tx('Wait for the bar', 'Chờ thanh'), kind: 'number', value: 60000, default: 60000, min: 1000, max: 600000, unit: 's' }],
+      areas: [{ name: 'a1', label: tx('Bar area', 'Vùng thanh'), colour: '#3b82f6', rect: { x: 0.3, y: 0.75, w: 0.4, h: 0.06 } }],
+      steps: [{ kind: 'loop', times: 0 },
+        { kind: 'click', x: 0.5, y: 0.5, button: 'left', holdMs: '$o1', todo: ['x'], note: tx('Holds to cast: drag dot 2 to where you cast', 'Giữ để quăng: kéo chấm 2 tới chỗ quăng') },
+        { kind: 'follow', region: '@a1', target: '$o2', marker: '$o3', tolerance: 24, button: 'left', mode: 'smooth', kp: '$o4', kd: 0.4, predict: true, fps: 60,
+          untilGoneMs: 1000, timeoutMs: '$o5', todo: ['region', 'target', 'marker'], note: tx('Keeps the marker on the target until the bar goes', 'Giữ vạch trên mục tiêu đến khi thanh biến mất') },
+        { kind: 'addVar', name: 'catches', value: 1, note: tx('Counts each catch', 'Đếm số lần câu được') },
+        { kind: 'wait', ms: 1500, note: tx('A short break before the next cast', 'Nghỉ một chút trước lần quăng sau') }, { kind: 'endLoop' }] },
+    { ...TPL_BASE, id: '', name: tx('Rejoin and walk back', 'Vào lại rồi đi về chỗ cũ'), icon: 'rejoin', maxMinutes: 10, targets: 'all', trigger: { kind: 'rejoin' },
+      about: tx('After a rejoin, waits for the game to load, walks back and presses E.', 'Sau khi vào lại, chờ game tải, đi về chỗ cũ rồi bấm E.'),
+      steps: [{ kind: 'wait', ms: 8000, note: tx('Give the game time to load', 'Chờ game tải xong') },
+        { kind: 'key', key: 'W', ms: 2000, note: tx('Walks forward for 2 s: change it to your way back', 'Đi tới 2 giây: đổi theo đường về của bạn') },
+        { kind: 'wait', ms: 1000, note: tx('Stops for a moment', 'Dừng một chút') },
+        { kind: 'key', key: 'E', ms: 60, note: tx('Uses what is there', 'Dùng thứ ở đó') }] },
+    { ...TPL_BASE, id: '', name: tx('New macro', 'Macro mới'), icon: 'blank', maxMinutes: 10, about: tx('Start from nothing and build your own.', 'Bắt đầu từ đầu và tự làm.'), steps: [] },
+  ] });
   let tryTimer = 0;
   let multi = { enabled: !params.has('multioff'), armed: !params.has('notready') && !params.has('multioff'), windowed: true, tile: false, trayAutostart: true };
   /**
@@ -371,14 +408,15 @@
   const state = () => ({
     multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, savedThemes, closeToTray, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
-    robloxVersion: { installed: '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
-      updater: settings.launchVia === 'store' ? null : 'Bloxstrap', updating: robloxUpdating, oldWindows: params.has('oldwin') ? 1 : 0, reopens: params.has('oldwin') ? 1 : 0 },
+    // ?noroblox=1: no Roblox installed, so no version of it (the app's RobloxVersionDto with no client).
+    robloxVersion: { installed: NO_ROBLOX ? null : '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: NO_ROBLOX ? null : !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
+      updater: settings.launchVia === 'store' || NO_ROBLOX ? null : 'Bloxstrap', updating: robloxUpdating, oldWindows: params.has('oldwin') ? 1 : 0, reopens: params.has('oldwin') ? 1 : 0 },
     // Settings › Roblox updates, newest first: a new build under the same version, an update, the first build seen.
     // ?rbxclosed=1: Roblox closed windows when another one opened (the warning there and on the Multi-Roblox card).
     // ?rw=changed|renamed|gone: what the Roblox watch found in the installed build (default: no change, and the next
     // build checked ahead); ?rw=worked: it changed, but two windows played together on it here since; ?rw=none: not read.
     robloxUpdates: {
-      installed: { version: '0.742.0.7421053', build: 'version-cec3ad5889b447cf', source: 'Bloxstrap' },
+      installed: NO_ROBLOX ? null : { version: '0.742.0.7421053', build: 'version-cec3ad5889b447cf', source: 'Bloxstrap' },
       history: [
         { at: minsAgo(60 * 20), version: '0.742.0.7421053', build: 'version-cec3ad5889b447cf', source: 'Bloxstrap', first: false,
           check: rw === 'worked' ? 'changed' : rw === 'none' ? null : rw, worked: rw === 'worked' },
@@ -401,11 +439,14 @@
     lockUpdate: locked && !screenLock && lockUpdate !== null ? { go: lockUpdateGo } : null,
     countOnline,
     remote,
-    installs: { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
+    installs: NO_ROBLOX ? { handler: null, bloxstrap: false, fishstrap: false, others: [], roblox: false, direct: false, store: false, vng: params.has('vng') }
+      : { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
     monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: LONG ? 'C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep' : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep', paths: { vault: locked ? null : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv', log: 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log', app: 'C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current' },
     hotkeys: { on: !params.has('nohotkeys'), taken: params.has('keystaken') ? ['Ctrl+Alt+H'] : [] },
-    robloxInstalled: !params.has('noroblox'),
+    robloxInstalled: !NO_ROBLOX,
     macroRuns: locked ? [] : macroRuns, macroRecording: locked ? null : macroRecording, macroVars, macroSweep, panelsShown,
+    // Like AppController's MacroCanRunDto: while an account plays, the macros on the selected accounts that have a game set.
+    macroCanRun: !locked && accounts.some(a => a.state === 'running') ? macros.filter(m => m.targets === 'selected' && m.panel?.placeId).map(m => m.id) : [],
     launching: false, checking: false, multi, settings: locked ? null : settings, accounts: locked ? [] : accounts, discord: locked ? null : discord,
   });
   // Roblox windows of accounts deleted while playing: like the app, deleting doesn't close them, and they still count.
@@ -422,6 +463,7 @@
   const push = () => { emit('state', state()); if (!locked) emit('metrics', metrics()); };
   let loginUser = '';
   const srvAsked = []; // when each server list was given, for Roblox's few-a-minute limit
+  let serverTries = 0; // ?srvfail=1: the failed loads so far
   // ?nodelay=1: answers at once, like the app, for timing the page (Tests/perf); otherwise a little later, as over a bridge.
   const wait = ms => new Promise(r => setTimeout(r, params.has('nodelay') ? 0 : ms));
 
@@ -463,7 +505,12 @@
         case 'debugCustomTheme': customTheme = { ...customTheme, ...a }; theme = 'custom'; push(); return null;
         case 'keepView': case 'pageBusy': return null;
         // Like Roblox: three lists a minute, then "wait" with the seconds left (?srvbusy=1: waiting from the start).
+        // ?srvfail=1: the server list fails to load (Roblox down) until Try again is pressed twice.
         case 'servers': {
+          if (params.has('srvfail') && serverTries++ < 2) {
+            await new Promise(r => setTimeout(r, 300));
+            throw new Error(tx("Couldn't reach Roblox.", 'Không kết nối được Roblox.'));
+          }
           await wait(400);
           const now = Date.now();
           while (srvAsked.length && now - srvAsked[0] >= 60000) srvAsked.shift();
@@ -544,7 +591,7 @@
           push();
           return null;
         case 'pickBackupFolder': backup = { ...backup, folder: 'D:\\Backups\\Bloxkeep', cloud: false, lastBackup: new Date().toISOString(), error: null }; push(); return null;
-        case 'backupNow': await wait(300); if (params.has('bkerr')) throw new Error("Couldn't back up: Access to the path is denied."); backup = { ...backup, lastBackup: new Date().toISOString() }; push(); return null;
+        case 'backupNow': await wait(300); if (params.has('bkerr')) throw new Error(tx("Couldn't back up: Can't write to this folder.", 'Không sao lưu được: Không ghi được vào thư mục này.')); backup = { ...backup, lastBackup: new Date().toISOString() }; push(); return null;
         case 'openBackupFolder': return null;
         case 'openReleaseNotes': return null; // the app opens Roblox's page in the default browser
         case 'openRobloxWatch': return null; // likewise, docs/roblox-watch.md on GitHub
@@ -593,7 +640,7 @@
         case 'revealDiscordWebhook': return `https://discord.com/api/webhooks/${DC_ID}/${'demo-token-'.repeat(6)}demo`;
         case 'discordTest': case 'discordSummaryNow':
           await wait(500);
-          if (params.has('dcfail')) throw new Error("Couldn't reach Discord: No such host is known. (discord.com:443)");
+          if (params.has('dcfail')) throw new Error(tx("Couldn't reach Discord: ", 'Không kết nối được với Discord: ') + 'No such host is known. (discord.com:443)');
           discord = { ...discord, lastSent: new Date().toISOString(), error: null };
           push();
           return null;
@@ -616,10 +663,12 @@
         case 'pickVaultPicture': vaultList = vaultList.map(v => v.id === a.id ? { ...v, picture: 'scene-aurora.svg' } : v); push(); return null;
         case 'clearVaultPicture': vaultList = vaultList.map(v => v.id === a.id ? { ...v, picture: null } : v); push(); return null;
         case 'setAskVault': askVault = !!a.enabled; push(); return null;
-        case 'restoreBackup': await wait(500); vaultExists = true; locked = true; push(); emit('toast', { text: 'Backup restored. Unlock it with the master password it was saved with.', kind: 'ok' }); return null;
+        case 'restoreBackup': await wait(500); vaultExists = true; locked = true; push(); emit('toast', { text: tx('Backup restored. Unlock it with the master password it was saved with.', 'Đã khôi phục bản sao lưu. Mở khóa bằng mật khẩu chủ đã dùng khi sao lưu.'), kind: 'ok' }); return null;
+        // Like the app (GameTarget.TryParse): a share link is read when launching; a link with no number is refused.
         case 'resolveGame': {
+          if (/share\?code=/i.test(a.input || '')) return { ok: true, kind: 'share' };
           const m = /(\d{5,})/.exec(a.input);
-          if (!m) return { ok: false, error: 'Không đọc được Place ID từ link này.' };
+          if (!m) return { ok: false, error: tx('This link has no Place ID.', 'Link không có Place ID.') };
           const info = games[m[1]];
           return { ok: true, kind: /privateServerLinkCode|accessCode/.test(a.input) ? 'private' : 'game', placeId: +m[1], ...(info || {}) };
         }
@@ -799,8 +848,13 @@
           push();
           return true;
         }
-        case 'addViaCookie': throw new Error('Cookie không hợp lệ hoặc đã hết hạn.');
-        case 'addViaBrowser': throw new Error('Bản xem thử không mở được trình duyệt đăng nhập.');
+        case 'addViaCookie': throw new Error(tx('The cookie is invalid or has expired.', 'Cookie không hợp lệ hoặc đã hết hạn.'));
+        case 'addViaBrowser': throw new Error(tx("The preview can't open the sign-in browser.", 'Bản xem thử không mở được trình duyệt đăng nhập.'));
+        // Ctrl+Alt+H's windows, or the ones named: hidden or shown again (session.hidden, as the app reports it).
+        case 'hideWindows': case 'showWindows':
+          accounts.forEach(x => { if (x.session && (!a?.ids?.length || a.ids.includes(x.id))) x.session = { ...x.session, hidden: cmd === 'hideWindows' }; });
+          push();
+          return null;
         case 'closeAll': return 2;
         case 'friendServers': await wait(600); if (params.has('friendsfail')) throw new Error('HTTP 500'); return { asked: 2, friends: params.has('nofriends') ? [] : [
           { userId: 5140000101, name: LONG ? 'kiwi_runner_kiwi_runner_kiwi' : 'kiwi_runner', displayName: LONG ? 'Kiwi The Fastest Runner In The World' : 'Kiwi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 1' : LONG ? 'Sunny_The_Builder_Of_Many_Worlds_2010' : tx('Main', 'Tài khoản chính') },
@@ -829,7 +883,11 @@
           ivWrong = 0;
           ivToken = `t${Date.now()}`;
           return { status: 'ok', token: ivToken, name: 'Bloxkeep-backup-3f2a91c0-20261012-221500.rmv', presets: IV_PRESETS.length,
-            accounts: IV_FILE.map((x, key) => ({ key, ...x, exists: !!ivHere(x.username) })) };
+            accounts: [...IV_FILE.map((x, key) => ({ key, ...x, exists: !!ivHere(x.username) })),
+              // ?ivmany=1: 24 more (29 in all), a list long enough for its search box. Only for looking: they can't be imported.
+              ...(params.has('ivmany') ? Array.from({ length: 24 }, (_, i) => ({
+                key: IV_FILE.length + i, label: `Alt ${i + 1}`, username: `alt_account_${i + 1}`, realm: '', group: i % 3 ? '' : 'Farm',
+                hasPassword: i % 2 === 0, cookieValid: i % 4 === 0 ? false : true, avatarUrl: null, exists: false })) : [])] };
         }
         // Like the app: new accounts are added (sign-in checked afterwards); one already here only takes the file's
         // sign-in when its own doesn't work; presets keep their name, or get "(imported)", with schedules off.
@@ -884,11 +942,12 @@
         case 'cancelRejoin': accounts.forEach(x => { if (x.id === a.id) x.rejoin = null; }); push(); return null;
         case 'disableTrayAutostart': multi = { ...multi, trayAutostart: false }; push(); return null;
         // Sign-in: user "2fa" asks for a 2-step code (any 6 digits passes), "sms" a code by text message (email too),
-        // "key" has only a security key, "captcha" hits a captcha, "x" is a wrong password.
+        // "key" has only a security key, "captcha" hits a captcha ("captchaclosed": its window is closed unsolved, so Solve asks again), "x" is a wrong password.
         case 'loginPassword':
+          loginUser = a.username;
           await wait(600);
           if (a.username === 'x') throw new Error('Incorrect username or password. Please try again.');
-          if (a.username === 'captcha' || a.username === 'locked') { loginUser = a.username; return { status: 'captcha' }; }
+          if (['captcha', 'locked', 'captchaclosed'].includes(a.username)) return { status: 'captcha' };
           // "2fa": the key is saved here, so the code is filled in (Verify is still pressed by hand).
           if (a.username === '2fa') return { status: 'twostep', media: 'authenticator', methods: ['authenticator', 'email'], autofill: true };
           if (a.username === 'sms') return { status: 'twostep', media: 'sms', methods: ['sms', 'email'] };
@@ -921,7 +980,7 @@
           return Object.fromEntries(a.universeIds.map((u, i) => [u, Object.values(games)[i % 3].iconUrl]));
         }
         // "locked": Roblox locked the account after the puzzle; the attempt is over (the page goes back to the first step).
-        case 'loginCaptcha': await wait(800); if (loginUser === 'locked') return { status: 'login', error: language === 'vi' ? 'Roblox đã khóa tài khoản này để bảo vệ nó.' : 'Roblox has locked this account to protect it.' }; return { status: 'added', added: { id: id(3), label: 'captcha', merged: false } };
+        case 'loginCaptcha': if (loginUser === 'captchaclosed') return { status: 'captcha', closed: true }; await wait(800); if (loginUser === 'locked') return { status: 'login', error: language === 'vi' ? 'Roblox đã khóa tài khoản này để bảo vệ nó.' : 'Roblox has locked this account to protect it.' }; return { status: 'added', added: { id: id(3), label: 'captcha', merged: false } };
         // Quick Login: ?ql=linked,adding,added,… walks the code through those answers, one a poll, and stays on the last;
         // ?qlfail=1: the first code can't be had.
         case 'quickLoginStart':
@@ -1008,7 +1067,7 @@
             // The period before, as far in: more play, fewer drops. ?noprev=1: the records don't reach back that far.
             previous: params.has('noprev') || !total ? null : { totalSeconds: Math.round(total / 1.2), kicks: Math.round(total / 20000) + 2 },
             icons: Object.fromEntries([2753915549, 920587237, 4924922222].map(p => ['u' + p, cold(games[p].iconUrl)])),
-            accounts: [[1, .45, 1, 2753915549], [2, .33, 2, 2753915549], [4, .2, 0, 4924922222], [9, .02, 0, 920587237]].map(([n, p, k, g]) => { const acc = accounts.find(x => x.id === id(n)); return { id: id(n), label: acc?.label, username: acc?.username, avatarUrl: acc?.avatarUrl, seconds: share(p), sessions: Math.max(1, Math.round(count * p)), kicks: k,
+            accounts: [[1, .45, 1, 2753915549], [2, .33, 2, 2753915549], [4, .2, 0, 4924922222], [9, .02, 0, 920587237]].map(([n, p, k, g]) => { const acc = accounts.find(x => x.id === id(n)); return { id: id(n), label: acc?.label, deleted: acc ? undefined : true, username: acc?.username, avatarUrl: acc?.avatarUrl, seconds: share(p), sessions: Math.max(1, Math.round(count * p)), kicks: k,
               topGame: { key: 'u' + g, name: games[g].name, iconUrl: cold(games[g].iconUrl) } }; }),
             games: [[2753915549, .55], [920587237, .3], [4924922222, .15]].map(([p, s]) => ({ key: 'u' + p, placeId: p, name: games[p].name, iconUrl: cold(games[p].iconUrl), seconds: share(s), sessions: Math.max(1, Math.round(count * s)) })),
             ends: (() => { const e = new Date(start); e.setDate(e.getDate() + days); return e.toISOString(); })(),
@@ -1068,7 +1127,7 @@
           // {id, accountId, trial: true}: only Try it's run on that window (the page asks this; see the report).
           if (a.trial) clearTimeout(tryTimer);
           macroRuns = macroRuns.map(r => (!a.id || r.macroId === a.id) && (!a.accountId || r.accountId === a.accountId) && (!a.trial || r.trial)
-            && ['waiting', 'running', 'paused'].includes(r.status) ? { ...r, status: 'stopped', reason: 'byUser', step: undefined, endsAt: minsAgo(0) } : r);
+            && ['waiting', 'running', 'paused'].includes(r.status) ? { ...r, status: 'stopped', reason: 'byUser', step: undefined, lastStep: r.step, endsAt: minsAgo(0) } : r);
           if (!a.id) macroRecording = null;
           push();
           return null;
@@ -1103,7 +1162,7 @@
               { kind: 'waitColour', x: 0.5, y: 0.4, colour: '#ffffff', tolerance: 24, timeoutMs: 20000, gone: false }, { kind: 'click', x: 0.5, y: 0.6, button: 'left', double: false },
               { kind: 'endLoop' }] };
         case 'exportMacro': await wait(150); return true;
-        case 'macroTemplates': await wait(50); return TEMPLATES;
+        case 'macroTemplates': await wait(50); return TEMPLATES();
         // The panel beside the game, and a value the player changed there.
         case 'showPanel': if (!panelsShown.includes(a.id)) panelsShown = [...panelsShown, a.id]; push(); return null;
         case 'hidePanel': panelsShown = panelsShown.filter(x => x !== a.id); push(); return null;
@@ -1135,14 +1194,14 @@
           const next = i => {
             if (!runOf()) return;
             const st = m.steps[i];
-            if (!st) { set({ status: 'done', step: undefined, endsAt: new Date().toISOString() }); return frame(tx('Tried: it ran to the end.', 'Đã thử: chạy hết.')); }
+            if (!st) { set({ status: 'done', step: undefined, lastStep: i ? i - 1 : undefined, endsAt: new Date().toISOString() }); return frame(tx('Tried: it ran to the end.', 'Đã thử: chạy hết.')); }
             set({ step: i });
             if (Object.values(st).some(empty)) {
-              set({ status: 'failed', reason: 'missingValue', step: undefined, endsAt: new Date().toISOString() });
+              set({ status: 'failed', reason: 'missingValue', step: undefined, lastStep: i, endsAt: new Date().toISOString() });
               return frame(tx('Tried: it stopped (a setting or area is missing).', 'Đã thử: dừng (thiếu cài đặt hoặc vùng).'));
             }
             if (st.kind === 'follow' || st.image === '') {
-              set({ status: 'failed', reason: 'notFound', step: undefined, endsAt: new Date().toISOString() });
+              set({ status: 'failed', reason: 'notFound', step: undefined, lastStep: i, endsAt: new Date().toISOString() });
               return frame(tx('Tried: it stopped (what it looks for wasn\'t there).', 'Đã thử: dừng (không thấy thứ cần tìm).'));
             }
             frame('', ['waitImage', 'clickImage', 'waitColour', 'clickColour', 'waitText', 'if'].includes(st.kind) ? [{ x: 0.781, y: 0.75, w: 0.141, h: 0.089, label: tx('found', 'thấy') }] : []);

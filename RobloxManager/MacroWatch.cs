@@ -132,9 +132,9 @@ static class MacroWatch
     {
         int w = picture.Width, h = picture.Height;
         bool yes = MacroVision.ColourAt(picture, x, y, colour, tolerance);
-        seen.Boxes.Add(new Box("colour", yes ? L.T("Colour matches") : L.T("Colour differs"), yes ? "#22c55e" : "#ef4444",
+        seen.Boxes.Add(new Box("colour", yes ? L.T("Color matches") : L.T("Color differs"), yes ? "#22c55e" : "#ef4444",
             Math.Round(x - 4.0 / w, 4), Math.Round(y - 4.0 / h, 4), Math.Round(8.0 / w, 4), Math.Round(8.0 / h, 4)));
-        seen.Numbers.Add(new Number(tag + ": " + L.T("colour matches"), yes ? 1 : 0));
+        seen.Numbers.Add(new Number(tag + ": " + L.T("color matches"), yes ? 1 : 0));
     }
 
     static void Image(Seen seen, string tag, MacroVision.Gray gray, string image, MacroRect? region, double scale, int w, int h)
@@ -155,7 +155,7 @@ static class MacroWatch
             return null;
         bool looks = macro.Steps.Any(s => s.Kind is "follow" or "clickColour" or "waitColour" or "waitImage" or "clickImage" or "waitText"
             || s.Kind is "if" or "loopUntil" && s.Test?.Kind is "image" or "colour" or "text");
-        return looks ? L.T("Nothing found: check the colours, areas and settings.") : L.T("No step looks at the game: add a colour, picture or text step.");
+        return looks ? L.T("Nothing found: check the colors, areas and settings.") : L.T("No step looks at the game: add a color, picture or text step.");
     }
 
     /// <summary>The words the macro waits for or checks, with their areas.</summary>

@@ -32,7 +32,7 @@ static class MacroFollow
     public static void CheckMarker(JsonElement? marker)
     {
         if (marker is not { } m || m.ValueKind == JsonValueKind.Null)
-            throw new UserError(L.T("Choose the marker's colour."));
+            throw new UserError(L.T("Choose the marker's color."));
         if (m.ValueKind == JsonValueKind.String)
         {
             NeedColourOrName(m.GetString());
@@ -40,7 +40,7 @@ static class MacroFollow
         }
         if (m.ValueKind != JsonValueKind.Object || !m.TryGetProperty("left", out var left) || !m.TryGetProperty("right", out var right)
             || left.ValueKind != JsonValueKind.String || right.ValueKind != JsonValueKind.String)
-            throw new UserError(L.T("Choose the marker's colour."));
+            throw new UserError(L.T("Choose the marker's color."));
         NeedColourOrName(left.GetString());
         NeedColourOrName(right.GetString());
     }
@@ -48,7 +48,7 @@ static class MacroFollow
     static void NeedColourOrName(string? text)
     {
         if (text is ['$', .. var name] ? !MacroValues.Name.IsMatch(name) : !IsColour(text))
-            throw new UserError(L.T("Choose the marker's colour."));
+            throw new UserError(L.T("Choose the marker's color."));
     }
 
     static bool IsColour(string? c) => c is { Length: 7 } && c[0] == '#' && c[1..].All(Uri.IsHexDigit);

@@ -50,7 +50,11 @@ export default [
   S('accounts-challenged', 'phase=challenged', async s => { await s.click({ css: '[data-act="bot-check"]' }); }),
   S('accounts-challenged-list', 'phase=challenged', async s => { await s.click(key('layout.list')); }),
   S('accounts-full-list', 'phase=full&queue=3', async s => { await s.click(key('layout.list')); }),
-  S('accounts-rejoin-wait', 'rejoin=1'),
+  // The card waiting for auto-rejoin's next try is low in the list: brought into view, as a person would scroll to it.
+  S('accounts-rejoin-wait', 'rejoin=1', async s => {
+    await s.eval(`document.querySelector('[data-act="cancel-rejoin"]')?.closest('[data-id]')?.scrollIntoView({ block: 'center' })`);
+    await s.wait(200);
+  }),
   S('accounts-long-names', 'long=1'),
   S('accounts-many', 'accounts=40'),
   // Right after unlocking: each signed-in account's Robux not answered yet, its place kept (cards, then rows).
@@ -80,7 +84,8 @@ export default [
   S('multi-roblox-off', 'multioff=1'),
   S('multi-roblox-dialog', '', async s => { await s.click({ css: '.multi, [data-act=multi]' }); }),
   S('no-roblox', 'noroblox=1'),
-  S('low-ram', 'lowram=1'),
+  // The low-RAM warning comes with a launch: two accounts picked, Play.
+  S('low-ram', 'select=1&lowram=1', async s => { await s.click({ key: 'dock.play', within: '.dock' }); await s.wait(500); }),
   S('lock-ask', '', async s => { await s.click(key('side.lock')); }),
 
   // ── Quick search (Ctrl+K) ──
@@ -136,7 +141,11 @@ export default [
   // aspect note (recorded on 800×600), and "Player sees".
   S('macro-editor', 'macroedit=m3&macropic=1', async s => { await s.wait(700); }),
   S('macro-editor-narrow', 'macroedit=m2&macropic=1', async s => { await s.wait(700); }, { size: [860, 640] }),
-  S('macro-editor-panel', 'macroedit=m4', async s => { await s.wait(500); }),
+  S('macro-editor-panel', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.eval(`document.querySelector('.mc-sees')?.scrollIntoView({ block: 'start' })`);
+    await s.wait(200);
+  }),
   S('macro-add-step', 'macroedit=m1', async s => {
     await s.click({ css: '#mc-add' });
     await s.snap('menu');
@@ -161,6 +170,8 @@ export default [
       await s.click({ css: '#mc-sees-add' });
       await s.click({ key, within: '.menu' });
     }
+    await s.eval(`document.querySelector('.mc-sees')?.scrollIntoView({ block: 'start' })`);
+    await s.wait(200);
   }),
   // A text step reads any word ticked in a list; a colour step clicks each spot once, as it shows.
   S('macro-list-each', 'macroedit=m4', async s => {
@@ -516,14 +527,25 @@ export default [
   }),
 
   // ── An account's menu: each item ──
-  S('menu-copy-user', 'menu=1', async s => { await s.click(key('m.copyUser')); }),
+  // Copy username is in Copy's own menu, offered on one account (not with several selected).
+  S('menu-copy-user', '', async s => {
+    await s.click({ css: '.card[data-id$="4"] [data-act=card-menu]' });
+    await s.click(key('m.copy'));
+    await s.click(key('m.copyUser'));
+  }),
   S('menu-check', 'menu=1', async s => { await s.click(key('m.check')); await s.wait(1000); }),
   S('menu-auto-rejoin', 'menu=1', async s => { await s.click(key('m.autoRejoin')); }),
   S('menu-close', 'menu=1', async s => { await s.click(key('m.close')); }),
   S('menu-delete', 'menu=1', async s => { await s.click({ key: 'm.deleteN', partial: true }); await s.snap('asked'); await s.key('Escape'); }),
-  S('menu-website', 'menu=1', async s => { await s.click(key('m.website')); }),
+  // Website and Join this server are about one account, so not offered with several selected.
+  S('menu-website', '', async s => {
+    await s.click({ css: '.card[data-id$="4"] [data-act=card-menu]' });
+    await s.click(key('m.website'));
+  }),
+  // Join this server: only on an account whose server is known (in game, here from Roblox's presence), which fills the
+  // game box with that server.
   S('menu-follow', '', async s => {
-    await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' });
+    await s.click({ css: '.card[data-id$="4"] [data-act=card-menu]' });
     await s.click(key('m.follow'));
   }),
 

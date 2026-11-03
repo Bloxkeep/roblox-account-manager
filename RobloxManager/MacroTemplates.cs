@@ -104,7 +104,7 @@ static class MacroTemplates
             ]
             """, $$"""
             [
-              {"name":"o1","label":{{S(L.T("Button colour"))}},"kind":"colour","value":"#22c55e","default":"#22c55e"},
+              {"name":"o1","label":{{S(L.T("Button color"))}},"kind":"colour","value":"#22c55e","default":"#22c55e"},
               {"name":"o2","label":{{S(L.T("Then wait"))}},"kind":"number","value":500,"default":500,"min":0,"max":60000,"unit":"s"}
             ]
             """, $$"""
@@ -114,7 +114,7 @@ static class MacroTemplates
         Note(macro.Steps[1], L.T("Move the box to where the button appears"));
         Note(macro.Steps[2], L.T("Pick the button's color on the game"));
         Note(macro.Steps[3], L.T("Counts the clicks, shown on the panel"));
-        return new Template("click", name, L.T("Waits for a button of a colour to show up in an area, clicks it, and waits for the next one."), "pointer", macro);
+        return new Template("click", name, L.T("Waits for a button of a color to show up in an area, clicks it, and waits for the next one."), "pointer", macro);
     }
 
     static Template Cast()
@@ -133,8 +133,8 @@ static class MacroTemplates
             """, $$"""
             [
               {"name":"o1","label":{{S(L.T("Hold to cast"))}},"kind":"number","value":800,"default":800,"min":0,"max":10000,"unit":"s"},
-              {"name":"o2","label":{{S(L.T("Target colour"))}},"kind":"colour","value":"#22c55e","default":"#22c55e"},
-              {"name":"o3","label":{{S(L.T("Marker colour"))}},"kind":"colour","value":"#ffffff","default":"#ffffff"},
+              {"name":"o2","label":{{S(L.T("Target color"))}},"kind":"colour","value":"#22c55e","default":"#22c55e"},
+              {"name":"o3","label":{{S(L.T("Marker color"))}},"kind":"colour","value":"#ffffff","default":"#ffffff"},
               {"name":"o4","label":{{S(L.T("Strength"))}},"kind":"number","value":1,"default":1,"min":0,"max":10,"unit":""},
               {"name":"o5","label":{{S(L.T("Wait for the bar"))}},"kind":"number","value":60000,"default":60000,"min":1000,"max":600000,"unit":"s"}
             ]
