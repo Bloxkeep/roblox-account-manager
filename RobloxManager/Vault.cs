@@ -148,6 +148,26 @@ public sealed class Vault : IDisposable
             }
         }
     }
+
+    /// <summary>Every file Bloxkeep itself makes at the top of the data folder, by exact name (the one the code that
+    /// writes it joins to <see cref="DataDir"/>). Each new one is added here, or "Delete my accounts and settings" leaves it behind and the folder
+    /// stays: DataFolderSuite reads the source for the names and checks every one is covered.</summary>
+    static readonly string[] OwnFiles =
+    [
+        "prefs.json", "error.log", "error.log.1", "roblox-settings.json", "roblox-flags.json", "game-hours.json", "hidden-windows.txt",
+        "window-icons.txt", "starting.flag", "resume.bin",
+    ];
+
+    /// <summary>Whether a file in the data folder (or old-vaults, pictures) is Bloxkeep's to delete. By exact name or pattern: in a
+    /// folder of the person's own, "prefs.json5" or "error.logs" aren't ours.</summary>
+    public static bool IsOwnFile(string name) =>
+        OwnFiles.Any(own => name.Equals(own, StringComparison.OrdinalIgnoreCase) || name.Equals(own + ".tmp", StringComparison.OrdinalIgnoreCase))
+        // Every vault (vault.rmv, vault-<id>.rmv) with its spare, unfinished and damaged copies.
+        || System.Text.RegularExpressions.Regex.IsMatch(name, @"^vault(-[0-9a-f]{8})?\.rmv(\.bak|\.tmp|\.damaged-.*|\.spare-.*)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+        || name.StartsWith("prefs.json.damaged-", StringComparison.OrdinalIgnoreCase)
+        || IsOldVault(name)
+        || Themes.IsPictureName(name); // the custom theme's picture, the vaults' pictures
+
     /// <summary>An uninstall that takes everything: vaults with their spare copies, settings, logs and caches. Only Bloxkeep's
     /// own files (DataDir may be a folder BLOXKEEP_DATA points at), then the folder once empty. Backups stay.</summary>
     public static void DeleteAllData()
@@ -155,17 +175,8 @@ public sealed class Vault : IDisposable
         if (!Directory.Exists(DataDir))
             return;
         DeleteCaches();
-        // By exact name or pattern: in a folder of the person's own, "prefs.json5" or "error.logs" aren't ours.
-        var own = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { "prefs.json", "prefs.json.tmp", "error.log", "roblox-settings.json", "starting.flag", "resume.bin" };
-        bool Own(string name) => own.Contains(name)
-            // Every vault (vault.rmv, vault-<id>.rmv) with its spare, unfinished and damaged copies.
-            || System.Text.RegularExpressions.Regex.IsMatch(name, @"^vault(-[0-9a-f]{8})?\.rmv(\.bak|\.tmp|\.damaged-.*|\.spare-.*)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-            || name.StartsWith("prefs.json.damaged-", StringComparison.OrdinalIgnoreCase)
-            || IsOldVault(name)
-            || Themes.IsPictureName(name); // the custom theme's picture, the vaults' pictures
         var folders = new[] { DataDir, OldVaultsDir, PicturesDir }.Where(Directory.Exists);
-        foreach (string file in folders.SelectMany(Directory.EnumerateFiles).Where(f => Own(Path.GetFileName(f))).ToList())
+        foreach (string file in folders.SelectMany(Directory.EnumerateFiles).Where(f => IsOwnFile(Path.GetFileName(f))).ToList())
         {
             try
             {

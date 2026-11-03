@@ -27,9 +27,44 @@ public sealed partial class AppController
                    return L.F(result.Merged ? "{0} was already here — its sign-in was updated." : "{0} saved.", result.Label);
                }))
         {
-            form.ShowDialog(_owner);
+            ShowSignInWindow(form);
         }
         return new { added };
+    }
+
+    /// <summary>The sign-in (browser) and captcha windows open now. They are modal, so nothing but a close here can take them
+    /// down when the screen locks or the vault closes: they'd stay over the lock screen, and the browser one could still save an
+    /// account into the locked vault.</summary>
+    readonly List<Form> _signInWindows = [];
+
+    /// <summary>A sign-in or captcha window, shown over the app until it is closed (by the person, or by <see cref="CloseSignInWindows"/>).</summary>
+    DialogResult ShowSignInWindow(Form form)
+    {
+        _signInWindows.Add(form);
+        try
+        {
+            return form.ShowDialog(_owner);
+        }
+        finally
+        {
+            _signInWindows.Remove(form);
+        }
+    }
+
+    void CloseSignInWindows()
+    {
+        foreach (var form in _signInWindows.ToList())
+        {
+            try
+            {
+                if (!form.IsDisposed)
+                    form.Close();
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+            {
+                // Closing already; ShowDialog's return takes it off the list.
+            }
+        }
     }
 
     /// <summary>The code on screen in the Quick Login window; one at a time.</summary>
@@ -141,10 +176,12 @@ public sealed partial class AppController
 
     // A two-step prompt or captcha waiting for the user; held only while the sign-in is in progress, never persisted.
     /// <summary>The password sign-in window closed: drop the half-done sign-in, which holds the password. A late reply to
-    /// an earlier sign-in is dropped too (see <see cref="_loginGeneration"/>).</summary>
+    /// an earlier sign-in is dropped too (see <see cref="_loginGeneration"/>). Its puzzle window and the browser sign-in window
+    /// close with it: Lock and the lock screen come through here, and neither may leave them up.</summary>
     object? LoginCancel()
     {
         _loginGeneration++;
+        CloseSignInWindows();
         // A check being answered on its own (proof-of-work) stops where it is: its answer would send the password again.
         _loginCts.Cancel();
         _loginCts = new CancellationTokenSource();
@@ -343,7 +380,7 @@ public sealed partial class AppController
     {
         using (form)
         {
-            form.ShowDialog(_owner);
+            ShowSignInWindow(form);
             return form.Token;
         }
     }
@@ -486,6 +523,9 @@ public sealed partial class AppController
     AddResult AddOrMerge(Account incoming)
     {
         var vault = RequireVault();
+        // A sign-in finishing behind the lock screen (its window was just closed, or a reply came late) saves nothing.
+        if (_screenLocked)
+            throw new UserError(L.T("Bloxkeep is locked."));
         string realm = Realm.Normalize(incoming.Realm);
         var existing = vault.Data.Accounts.FirstOrDefault(a => a.UserId != 0 && a.UserId == incoming.UserId && Realm.Normalize(a.Realm) == realm);
         if (existing is not null)
@@ -652,6 +692,13 @@ public sealed partial class AppController
         {
             if (preset.AccountIds.RemoveAll(set.Contains) > 0 && preset.AccountIds.Count == 0 && preset.Schedule is { Enabled: true } schedule)
                 schedule.Enabled = false;
+        }
+        // …and from macros; one aimed at accounts picked by hand and left with none is turned off (its triggers would fire into
+        // nothing, and saving it again would fail with "Pick at least one account").
+        foreach (var macro in data.Settings.Macros)
+        {
+            if (macro.AccountIds.RemoveAll(set.Contains) > 0 && macro.Targets == "accounts" && macro.AccountIds.Count == 0)
+                macro.Enabled = false;
         }
         data.Settings.LaunchOrder.RemoveAll(set.Contains);
         data.Discord.SummaryAccounts.RemoveAll(set.Contains);

@@ -106,7 +106,9 @@ public sealed partial class AppController
     Prefs.VaultEntry? _vaultBeforeAdd;
 
     /// <param name="entry">The vault just set up: the one being added, or the first one on this PC (vault.rmv, "Vault 1").</param>
-    void JoinVaultList(Prefs.VaultEntry entry, string? name)
+    /// <returns>false when prefs.json couldn't be written: the vault is on the list for this session only, and the notice
+    /// (<see cref="ReportSettingsSaveFailure"/>) says so. Its file is fine and it opens; the list is written by the next save that works.</returns>
+    bool JoinVaultList(Prefs.VaultEntry entry, string? name)
     {
         if (Vaults.CleanName(name) is { } typed)
             entry.Name = typed;
@@ -114,7 +116,7 @@ public sealed partial class AppController
             Prefs.VaultList.Add(entry);
         _newVault = null;
         Prefs.LastVault = entry.Id;
-        Prefs.Save();
+        return Prefs.Save();
     }
 
     object? RenameVault(string id, string name)

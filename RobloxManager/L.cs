@@ -151,6 +151,8 @@ public static class L
         ["Bloxkeep is locked."] = "Bloxkeep đang khóa.",
         ["Account not found."] = "Không tìm thấy tài khoản.",
         ["Couldn't save data: {0}"] = "Không lưu được dữ liệu: {0}",
+        ["Couldn't save your settings. Does another program hold Bloxkeep's data folder?"] = "Không lưu được cài đặt. Có chương trình khác đang giữ thư mục dữ liệu của Bloxkeep không?",
+        ["Bloxkeep is already running as administrator. Close it, then start Bloxkeep again."] = "Bloxkeep đang chạy bằng quyền quản trị. Đóng nó rồi mở lại Bloxkeep.",
         ["Unknown command: {0}"] = "Lệnh không hợp lệ: {0}",
         ["Unknown notification kind."] = "Loại thông báo không hợp lệ.",
         ["Couldn't reach Roblox. Check your internet connection and try again."] = "Không kết nối được Roblox. Kiểm tra mạng rồi thử lại.",

@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using RobloxManager;
 
 namespace Bloxkeep.Tests;
@@ -91,6 +93,168 @@ static class DataFolderSuite
         var left = Directory.EnumerateFileSystemEntries(data, "*", SearchOption.AllDirectories).Select(p => Path.GetRelativePath(data, p)).Order().ToList();
         c.Check("delete everything takes the subfolders' files and the emptied folders, leaving others' files",
             left.SequenceEqual(["notes.txt", "vault-picture-a1b2c3d4-1.png.txt"]), string.Join(", ", left));
+
+        EveryWriterIsCovered(c, data);
+        LogRotates(c, data);
+        PrefsSaveFailure(c, data);
+        UninstallGuards(c);
         return Task.CompletedTask;
+    }
+
+    /// <summary>Another Bloxkeep started as administrator owns the named handles: a normal start and the uninstall step can't open
+    /// them (UnauthorizedAccessException), and go on without instead of ending with an error.</summary>
+    static void UninstallGuards(Checks c)
+    {
+        c.Check("a handle that can be had is returned", RobloxManager.Program.Guarded(() => "mine") == "mine");
+        c.Check("one another user's Bloxkeep owns (no access) is null, not an exception",
+            RobloxManager.Program.Guarded<string>(() => throw new UnauthorizedAccessException()) is null);
+        bool other = false;
+        try
+        {
+            RobloxManager.Program.Guarded<string>(() => throw new InvalidOperationException());
+        }
+        catch (InvalidOperationException)
+        {
+            other = true;
+        }
+        c.Check("any other failure still shows", other);
+
+        bool ended = false;
+        try
+        {
+            RobloxManager.Program.CloseRunningApp(() => throw new UnauthorizedAccessException(), () => throw new UnauthorizedAccessException());
+            ended = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        c.Check("uninstall: a running Bloxkeep it has no access to is skipped, the hook goes on to delete", ended);
+        const string Name = @"Local\Bloxkeep.Tests.Quit";
+        using var quit = new EventWaitHandle(false, EventResetMode.ManualReset, Name);
+        ended = false;
+        try
+        {
+            RobloxManager.Program.CloseRunningApp(() => EventWaitHandle.OpenExisting(Name), () => throw new UnauthorizedAccessException());
+            ended = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        c.Check("…asked to quit when it can be reached, and the hook goes on if the rest can't be", ended && quit.WaitOne(0));
+    }
+
+    /// <summary>The names every writer gives its file in the data folder, read out of the program's own source.</summary>
+    static List<string> WrittenNames([CallerFilePath] string here = "")
+    {
+        string source = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "..", "RobloxManager"));
+        var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string file in Directory.EnumerateFiles(source, "*.cs", SearchOption.AllDirectories).Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")))
+        {
+            foreach (Match m in Regex.Matches(File.ReadAllText(file), @"Path\.Combine\(\s*Vault\.DataDir\s*,\s*""([^""{}\\]+)""\s*\)"))
+                names.Add(m.Groups[1].Value);
+        }
+        return names.ToList();
+    }
+
+    /// <summary>"Delete my accounts and settings" leaves no file of Bloxkeep's, whichever part of the program wrote it (the list
+    /// was kept by hand and fell behind: game-hours.json, roblox-flags.json, hidden-windows.txt and window-icons.txt stayed, and
+    /// with them the folder), and still nothing that isn't Bloxkeep's.</summary>
+    static void EveryWriterIsCovered(Checks c, string data)
+    {
+        if (Directory.Exists(data))
+            Directory.Delete(data, true);
+        Directory.CreateDirectory(data);
+        var written = WrittenNames();
+        c.Check("the source names the files Bloxkeep writes into the data folder (the scan isn't empty)",
+            written.Count >= 8 && written.Contains("game-hours.json") && written.Contains("roblox-flags.json") && written.Contains("hidden-windows.txt")
+            && written.Contains("window-icons.txt"), string.Join(", ", written));
+        var made = new List<string>();
+        foreach (string name in written.Concat(["error.log.1", "prefs.json.damaged-20261101-120000", "vault-a1b2c3d4.rmv", "vault-a1b2c3d4.rmv.bak"]))
+        {
+            File.WriteAllText(Path.Combine(data, name), "x");
+            made.Add(name);
+            // The temp file a write goes through, and one a crash left behind.
+            if (written.Contains(name))
+            {
+                File.WriteAllText(Path.Combine(data, name + ".tmp"), "x");
+                made.Add(name + ".tmp");
+            }
+        }
+        // Not Bloxkeep's, though they look alike (BLOXKEEP_DATA may be a folder of the person's own).
+        string[] others = ["game-hours.json5", "hidden-windows.txt.bak", "my-error.log", "error.log.2", "roblox-flags.json.old", "window-icons.txt.tmp.old"];
+        foreach (string name in others)
+            File.WriteAllText(Path.Combine(data, name), "mine");
+        Vault.DeleteAllData();
+        var remains = Directory.EnumerateFileSystemEntries(data).Select(Path.GetFileName).Order().ToList();
+        c.Check("delete everything takes a file of every writer (and its .tmp, error.log.1, the damaged copies) and no other",
+            remains.SequenceEqual(others.Order()), string.Join(", ", remains));
+        foreach (string name in others)
+            File.Delete(Path.Combine(data, name));
+        foreach (string name in made.Where(n => File.Exists(Path.Combine(data, n))))
+            File.Delete(Path.Combine(data, name));
+        foreach (string name in made.Take(5))
+            File.WriteAllText(Path.Combine(data, name), "x");
+        Vault.DeleteAllData();
+        c.Check("…and with only Bloxkeep's files in it, the folder goes too", !Directory.Exists(data));
+        Directory.CreateDirectory(data);
+    }
+
+    /// <summary>error.log at its limit is kept as error.log.1 (the history a bug report needs), not deleted.</summary>
+    static void LogRotates(Checks c, string data)
+    {
+        string log = Path.Combine(data, "error.log");
+        for (int i = 0; i < 300; i++)
+            Log.Note($"line{i} " + new string('a', 1000));
+        bool kept = File.Exists(log + ".1");
+        c.Check("an error.log over its limit is kept as error.log.1", kept && File.ReadAllText(log + ".1").Contains("line0 "), kept);
+        c.Check("…and the log goes on in a new error.log with the newest lines",
+            File.Exists(log) && File.ReadAllText(log).Contains("line299 ") && !File.ReadAllText(log).Contains("line0 ") && new FileInfo(log).Length < 256 * 1024);
+        for (int i = 300; i < 700; i++)
+            Log.Note($"line{i} " + new string('b', 1000));
+        c.Check("a second time the spare is replaced, not added to", File.Exists(log + ".1") && new FileInfo(log + ".1").Length < 300 * 1024
+            && !File.ReadAllText(log + ".1").Contains("line0 "));
+        File.Delete(log);
+        File.Delete(log + ".1"); // (a missing file is no error to Delete)
+
+        // A session cookie or a webhook link inside a message never reaches the file.
+        Log.Note("request failed for _|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you.|_ABC123 at https://discord.com/api/webhooks/123/abcDEF done");
+        string written = File.ReadAllText(log);
+        c.Check("a cookie or a webhook link in a logged message is taken out", !written.Contains("ABC123") && !written.Contains("abcDEF") && written.Contains("request failed for") && written.Contains("done"), written);
+        File.Delete(log);
+    }
+
+    /// <summary>prefs.json held by another program (an antivirus, a sync client) for a moment: Save tries again, says so once,
+    /// and tells the caller; it keeps trying on the next Save.</summary>
+    static void PrefsSaveFailure(Checks c, string data)
+    {
+        string file = Path.Combine(data, "prefs.json"), log = Path.Combine(data, "error.log");
+        int Lines() => File.Exists(log) ? File.ReadAllLines(log).Count(l => l.Contains("prefs.json couldn't be saved")) : 0;
+        Prefs.TrayHintShown = false;
+        c.Check("a normal Save says it worked", Prefs.Save() && !Prefs.SaveFailed);
+        Prefs.TrayHintShown = true;
+        bool ok;
+        using (new FileStream(file, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            ok = Prefs.Save();
+            c.Check("a prefs.json held for good: Save says it failed", !ok && Prefs.SaveFailed);
+            c.Check("…and writes it in error.log once", Lines() == 1, Lines());
+            Prefs.Save();
+            c.Check("…not again for the next failed Save", Lines() == 1, Lines());
+        }
+        c.Check("let go: the next Save works, with what was changed meanwhile", Prefs.Save() && !Prefs.SaveFailed
+            && File.ReadAllText(file).Contains("\"trayHintShown\":true"));
+        // Let go within a moment: the retries get through, and nothing is reported.
+        int before = Lines();
+        Prefs.TrayHintShown = false;
+        var hold = new FileStream(file, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        var release = Task.Run(async () =>
+        {
+            await Task.Delay(120);
+            hold.Dispose();
+        });
+        ok = Prefs.Save();
+        release.Wait();
+        c.Check("held for a moment only: Save tries again and works", ok && !Prefs.SaveFailed && File.ReadAllText(file).Contains("\"trayHintShown\":false"));
+        c.Check("…and reports nothing", Lines() == before, Lines());
     }
 }

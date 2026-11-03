@@ -62,6 +62,7 @@ var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
     ("macros", false, MacroSuite.Run),
     ("server-pick", false, ServerPickSuite.Run),
     ("adopt", false, AdoptSuite.Run),
+    ("delete-accounts", false, DeleteAccountsSuite.Run),
     ("stats-icons", true, StatsIconSuite.Run),
     ("watch-online", true, WatchSuite.RunOnline),
 };

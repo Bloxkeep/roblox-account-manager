@@ -28,12 +28,26 @@ public sealed partial class AppController
     /// <summary>The periodic check; idle comes from AntiAfk.IdleTime.</summary>
     void CheckAutoLock(TimeSpan idle, DateTime now)
     {
+        ReportSettingsSaveFailure();
         if (_vault is not { } vault || _screenLocked)
             return;
         var sinceActive = now - _activeAt;
         if (AutoLockDue(vault.Data.Settings.AutoLockMinutes, sinceActive < idle ? sinceActive : idle))
             ScreenLock();
     }
+
+    /// <summary>prefs.json couldn't be written (<see cref="Prefs.SaveFailed"/>): said once, as the vault's own failure is, until a
+    /// save works again. Checked with the lock timer, since Prefs.Save is called from everywhere and has no window to speak in.</summary>
+    void ReportSettingsSaveFailure()
+    {
+        if (Prefs.SaveFailed == _settingsFailureTold || _screenLocked) // (a toast behind the lock screen is dropped: told once it's down)
+            return;
+        _settingsFailureTold = Prefs.SaveFailed;
+        if (_settingsFailureTold)
+            Toast(L.T("Couldn't save your settings. Does another program hold Bloxkeep's data folder?"), "error");
+    }
+
+    bool _settingsFailureTold;
 
     void ScreenLock()
     {
