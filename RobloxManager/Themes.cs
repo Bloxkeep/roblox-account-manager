@@ -39,7 +39,8 @@ public static class Themes
         new("meadow", false, Rgb(0x89c9f0), Rgb(0xeaf6fc), Rgb(0x13240f), Rgb(0x344b2e), Rgb(0xbcd8c4)),
         new("lava", true, Rgb(0x140806), Rgb(0x1f0e0a), Rgb(0xfbe9e1), Rgb(0xe0b9a8), Rgb(0x4d2a1f)),
         new("neon", true, Rgb(0x0b0820), Rgb(0x151033), Rgb(0xf3eaff), Rgb(0xc7b8f0), Rgb(0x3a2f6e)),
-        new("gameboy", false, Rgb(0x9bbc0f), Rgb(0x8bac0f), Rgb(0x0f380f), Rgb(0x1d4a1d), Rgb(0x306230)),
+        // Text2 stays a step lighter than app.css's --text-2 (now the same as --text): it draws disabled menu items.
+        new("gameboy", false, Rgb(0x9bbc0f), Rgb(0xa9c934), Rgb(0x0f380f), Rgb(0x1d4a1d), Rgb(0x306230)),
         new("blueprint", true, Rgb(0x0f3a68), Rgb(0x134577), Rgb(0xeef6ff), Rgb(0xc0dbf5), Rgb(0x3b77ad)),
         new("candy", false, Rgb(0xfdf4fb), Rgb(0xfffafe), Rgb(0x3b2340), Rgb(0x6b4a73), Rgb(0xecd3e6)),
         new("matcha", false, Rgb(0xf1f3e6), Rgb(0xfafbf3), Rgb(0x263018), Rgb(0x4b5636), Rgb(0xd6dcbf)),
@@ -70,7 +71,7 @@ public static class Themes
         new("coral", false, Rgb(0xfbefe9), Rgb(0xfff9f5), Rgb(0x2e1a14), Rgb(0x5c3c32), Rgb(0xecd8cd)),
         new("rose", true, Rgb(0x1d1216), Rgb(0x27181e), Rgb(0xf6e7ec), Rgb(0xd6bcc6), Rgb(0x4d3540)),
         new("olive", true, Rgb(0x17180f), Rgb(0x202216), Rgb(0xeeeedd), Rgb(0xc8c9ad), Rgb(0x42452f)),
-        new("solarized", true, Rgb(0x002b36), Rgb(0x073642), Rgb(0xeee8d5), Rgb(0xc3c8bd), Rgb(0x24535f)),
+        new("solarized", true, Rgb(0x002b36), Rgb(0x04313c), Rgb(0xeee8d5), Rgb(0xc3c8bd), Rgb(0x24535f)),
         new("blockworld", false, Rgb(0xa0dcf7), Rgb(0xf4faf6), Rgb(0x13241a), Rgb(0x2f4a36), Rgb(0xd9e0dc)),
         new("peachfall", false, Rgb(0xfdf1f2), Rgb(0xfff8f9), Rgb(0x2e141c), Rgb(0x5a3040), Rgb(0xe6ddde)),
         new("greatwave", false, Rgb(0xd7ccaf), Rgb(0xf8f4ea), Rgb(0x0f2340), Rgb(0x2c4568), Rgb(0xdcdbd6)),
