@@ -84,24 +84,26 @@ public sealed partial class AppController
     DateTime _homeStartedAt;
     static readonly string HomeAliases = Path.Combine(Vault.CacheDir, "roblox-client-paths");
 
+    /// <summary>What the tray menu couldn't do, as a toast and a Windows notification (nothing once closed).</summary>
+    void Warn(string text)
+    {
+        if (_disposed) return;
+        Toast(text, "warn");
+        ShowNotification?.Invoke(text, "warn");
+    }
+
     /// <summary>A new sign-in window without an account or ticket from Bloxkeep: the installed client opened through a
     /// junction, keeping its mods; shared sign-in files stay locked until clients using these aliases close.</summary>
     public async void TrayNewRoblox()
     {
         if (_disposed || _openingHome || _askingHome || _applyingUpdate || _relaunching)
             return;
-        void Tell(string text)
-        {
-            if (_disposed) return;
-            Toast(text, "warn");
-            ShowNotification?.Invoke(text, "warn");
-        }
         if (OpeningRoblox)
         {
-            Tell(L.T("Wait until Bloxkeep finishes opening Roblox."));
+            Warn(L.T("Wait until Bloxkeep finishes opening Roblox."));
             return;
         }
-        if (!HomeLaunchReady(Tell))
+        if (!HomeLaunchReady(Warn))
             return;
         var settings = _vault?.Data.Settings;
         string? client;
@@ -112,17 +114,17 @@ public sealed partial class AppController
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
         {
             Log.Write(ex);
-            Tell(L.T("Couldn't open a separate Roblox sign-in window. Try again, or close Roblox and retry."));
+            Warn(L.T("Couldn't open a separate Roblox sign-in window. Try again, or close Roblox and retry."));
             return;
         }
         if (client is null)
         {
-            Tell(L.T("Roblox isn't installed on this PC."));
+            Warn(L.T("Roblox isn't installed on this PC."));
             return;
         }
         if (RobloxInstalls.IsStoreClient(client))
         {
-            Tell(L.T("Separate sign-in windows currently need Roblox from roblox.com, rather than the Microsoft Store edition."));
+            Warn(L.T("Separate sign-in windows currently need Roblox from roblox.com, rather than the Microsoft Store edition."));
             return;
         }
         // The question holds nothing up: auto-rejoin, schedules and the rest carry on while it waits for an answer
@@ -147,14 +149,14 @@ public sealed partial class AppController
         // Something may have started opening Roblox while the question was open (a rejoin): it goes first.
         if (OpeningRoblox)
         {
-            Tell(L.T("Wait until Bloxkeep finishes opening Roblox."));
+            Warn(L.T("Wait until Bloxkeep finishes opening Roblox."));
             return;
         }
         bool acquired = false, started = false;
         _openingHome = true;
         try
         {
-            if (!HomeLaunchReady(Tell))
+            if (!HomeLaunchReady(Warn))
                 return;
             if (RobloxProcesses.CloseTrayCopies() > 0)
                 await Task.Delay(250);
@@ -166,7 +168,7 @@ public sealed partial class AppController
                 // Roblox can have one of these files open briefly while saving. Each failed attempt releases both.
                 for (int attempt = 0; ; attempt++)
                 {
-                    if (!HomeLaunchReady(Tell))
+                    if (!HomeLaunchReady(Warn))
                         return;
                     try
                     {
@@ -180,7 +182,7 @@ public sealed partial class AppController
                     }
                 }
             }
-            if (!HomeLaunchReady(Tell))
+            if (!HomeLaunchReady(Warn))
             {
                 if (acquired)
                 {
@@ -209,7 +211,7 @@ public sealed partial class AppController
                 _homeSession = null;
             }
             Log.Write(ex);
-            Tell(L.T("Couldn't open a separate Roblox sign-in window. Try again, or close Roblox and retry."));
+            Warn(L.T("Couldn't open a separate Roblox sign-in window. Try again, or close Roblox and retry."));
         }
         finally
         {
@@ -255,11 +257,6 @@ public sealed partial class AppController
     /// launch with something to ask first isn't opened from here; that is said, to be done from Bloxkeep.</summary>
     public async void TrayOpenAccount(Guid id)
     {
-        void Tell(string text)
-        {
-            Toast(text, "warn");
-            ShowNotification?.Invoke(text, "warn");
-        }
         try
         {
             if (_vault is not { } vault || _screenLocked || FindAccount(id) is not { } account)
@@ -270,40 +267,35 @@ public sealed partial class AppController
                 throw new UserError(error);
             CheckCanLaunch([account]);
             if (await LaunchAccountsAsync(vault, [account], target, force: false, s.LaunchDelaySeconds) is { NeedsConfirm: true } result)
-                Tell(L.T("Opening this account asks something first. Open it from Bloxkeep.") + "\n\n" + result.Message);
+                Warn(L.T("Opening this account asks something first. Open it from Bloxkeep.") + "\n\n" + result.Message);
         }
         catch (UserError ex)
         {
-            Tell(ex.Message);
+            Warn(ex.Message);
         }
         catch (Exception ex)
         {
-            Tell(ErrorText(ex));
+            Warn(ErrorText(ex));
         }
     }
 
     /// <summary>A preset from the menu, as the Presets tab's Run; one that would ask first is refused as in <see cref="TrayOpenAccount"/>.</summary>
     public async void TrayRunPreset(Guid id)
     {
-        void Tell(string text)
-        {
-            Toast(text, "warn");
-            ShowNotification?.Invoke(text, "warn");
-        }
         try
         {
             if (_vault is null || _screenLocked)
                 return;
             if (await StartPresetAsync(id, force: false) is { NeedsConfirm: true } result)
-                Tell(L.T("This preset asks something before it opens. Run it from Bloxkeep's Presets tab.") + "\n\n" + result.Message);
+                Warn(L.T("This preset asks something before it opens. Run it from Bloxkeep's Presets tab.") + "\n\n" + result.Message);
         }
         catch (UserError ex)
         {
-            Tell(ex.Message);
+            Warn(ex.Message);
         }
         catch (Exception ex)
         {
-            Tell(ErrorText(ex));
+            Warn(ErrorText(ex));
         }
     }
 

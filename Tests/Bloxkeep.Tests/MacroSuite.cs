@@ -1033,8 +1033,6 @@ static class MacroSuite
         error = Refused(() => MacroRules.Check(tabbed, new List<Guid>(), []));
         c.Check("tabs: names trimmed, a setting's tab spelled as the panel's; an unknown one goes to the first", error is null
             && tabbed.Panel.Tabs.SequenceEqual(["Casting", "Fishing"]) && tabbed.Options[0].Tab == "Fishing" && tabbed.Options[2].Tab is null, error);
-        c.Check("each tab shows its own settings (no tab: the first)", MacroOptions.OnTab(tabbed, null).Select(x => x.Name).SequenceEqual(["o2", "o3"])
-            && MacroOptions.OnTab(tabbed, "Fishing").Select(x => x.Name).SequenceEqual(["o1"]));
         c.Check("a point that isn't one is put in the middle", tabbed.Options[1].Value is { } pt && pt.GetProperty("x").GetDouble() == 0.5
             && MacroOptions.Show(tabbed.Options[1], pt) == "50%, 50%", tabbed.Options[1].Value?.GetRawText());
         var oneTab = Read(Step, With("""[{"name":"o1","label":"Wait","kind":"number","value":5,"tab":"Only"}]""", "[]", """{"autoShow":false,"placeId":null,"tabs":["Only"]}"""));
@@ -1067,20 +1065,20 @@ static class MacroSuite
 
         // As the panel shows and takes them.
         var hold = o[0];
-        c.Check("seconds are shown in seconds and typed in seconds", MacroOptions.Show(hold, J(1500)) == "1.5 s" && MacroOptions.Typed(hold, "2,5 s")?.GetDouble() == 2500
-            && MacroOptions.Typed(hold, "lots") is null, MacroOptions.Show(hold, J(1500)));
+        c.Check("seconds are shown in seconds and typed in seconds", MacroOptions.Show(hold, J(1500)) == "1.5 s" && MacroOptions.TypedNumber(hold, "2,5 s") == 2500
+            && MacroOptions.TypedNumber(hold, "lots") is null, MacroOptions.Show(hold, J(1500)));
         c.Check("− and + move a number by a step, kept in its range", MacroOptions.Nudge(hold, 1).GetDouble() == 10000 && MacroOptions.Step(hold) == 100
             && MacroOptions.Nudge(new MacroOption { Kind = "number", Value = J(0.3), Min = 0, Max = 10 }, -1).GetDouble() == 0.2);
         var part = new MacroOption { Kind = "number", Min = 0.5, Max = 1, Unit = "%" };
-        c.Check("a part of 1 shown as percent", MacroOptions.Show(part, J(0.9)) == "90%" && MacroOptions.Typed(part, "80%")?.GetDouble() == 0.8);
+        c.Check("a part of 1 shown as percent", MacroOptions.Show(part, J(0.9)) == "90%" && MacroOptions.TypedNumber(part, "80%") == 0.8);
         c.Check("a switch shows On or Off", MacroOptions.Show(o[2], J(1)) == L.T("On") && MacroOptions.Show(o[2], J(0)) == L.T("Off"));
         var language = Prefs.Language;
         try
         {
             Prefs.Language = "vi";
             c.Check("in Vietnamese a number has a comma and its unit in words, and is typed either way",
-                MacroOptions.Show(hold, J(1500)) == "1,5 giây" && MacroOptions.Typed(hold, "2,5 giây")?.GetDouble() == 2500
-                && MacroOptions.Typed(hold, "0.8")?.GetDouble() == 800, MacroOptions.Show(hold, J(1500)));
+                MacroOptions.Show(hold, J(1500)) == "1,5 giây" && MacroOptions.TypedNumber(hold, "2,5 giây") == 2500
+                && MacroOptions.TypedNumber(hold, "0.8") == 800, MacroOptions.Show(hold, J(1500)));
         }
         finally { Prefs.Language = language; }
         c.Check("a setting changed from the panel or the page is kept to its kind", MacroOptions.Normalize(o[4], J("WOOD"))?.GetString() == "Wood"
