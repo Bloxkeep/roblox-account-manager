@@ -1,0 +1,15 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="panel"]
+    div.pn.pn-pill
+      i.pn-dot.s-running [aria-hidden="true"]
+      b.pn-name [title="Farm route"] "Farm route"
+      button.btn.danger.sm [type="button"] "Dừng"
+        svg.i #t57b2k
+      button.pn-icon [type="button" title="Mở rộng" aria-label="Mở rộng"]
+        svg.i #u1ag9u
+-- commands
+  ready {}
+  size {"h":42,"pill":true,"w":300}
+  size {"h":42,"pill":true,"w":300}
