@@ -43,7 +43,7 @@ export function Sidebar() {
       <div className="side-foot">
         <div id="update-slot">{u?.status === 'ready' && !u.quiet
           ? <button className="btn primary w update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
-            <Icon name="refresh" /><span><b>{t('upd.restart')}</b><small>{t('upd.versionN', { v: u.version })}</small></span></button> : null}</div>
+            <Icon name="refresh" /><span><b>{t('upd.versionN', { v: u.version })}</b></span></button> : null}</div>
         {/* Switch vault (its face): the open vault locks and the lock screen's picker shows (Vaults.tsx). Bloxkeep's
             Discord server is under Settings › Bloxkeep › Help & feedback. */}
         <div className="side-lock">

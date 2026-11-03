@@ -3,7 +3,7 @@
 import { type Ref } from 'react';
 import { AccountGrid, AccountsBar, AccountsHead, Dock } from './Accounts';
 import { Guarded } from './Guard';
-import { Icon, useHost } from './host';
+import { Icon, useHost, useMetrics } from './host';
 import { MacrosView } from './MacrosView';
 import { PresetsView } from './PresetsView';
 import { MonitorHead, Sidebar } from './Sidebar';
@@ -47,17 +47,28 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
       <section className="view" id="view-stats" hidden><Guarded name="Statistics"><StatsView api={stats} /></Guarded></section>
       <section className="view" id="view-monitor" hidden>
         <header className="top"><div className="top-title"><h1>{t('mon.title')}</h1><Guarded name="the game monitor's heading"><MonitorHead /></Guarded></div></header>
-        {/* In the browser preview there is no app to draw the pictures: it says what goes here. */}
-        <div className={`mon-area ${preview ? 'preview' : ''}`} id="mon-area">{preview ? <p>{t('mon.preview')}</p> : null}</div>
+        <Guarded name="the game monitor"><MonitorArea preview={preview} /></Guarded>
       </section>
       <section className="view" id="view-settings" hidden><Settings pages={pages} page={page} /></section>
     </main>
   </div>;
 }
 
+/** Where the app lays the windows' live pictures. No window: it says how one gets there. In the browser preview there is
+ * no app to draw the pictures: it says what goes here. */
+function MonitorArea({ preview }: { preview: boolean }) {
+  const { t } = useHost();
+  const m = useMetrics();
+  const tiles = m.monitorCount ?? m.robloxCount;
+  return <div className={`mon-area${!tiles ? ' none' : preview ? ' preview' : ''}`} id="mon-area">
+    {!tiles ? <div className="mon-empty"><span className="pv-empty-icon"><Icon name="screens" /></span><p>{t('mon.empty')}</p></div>
+      : preview ? <p>{t('mon.preview')}</p> : null}
+  </div>;
+}
+
 /** Settings: the pages listed on the left (a search over all), the chosen one on the right; app.js opens and searches them. */
 function Settings({ pages, page }: { pages: SettingsPageInfo[]; page: string }) {
-  const { t } = useHost();
+  const { t, logo } = useHost();
   const body = (id: string, title: string) => {
     switch (id) {
       case 'launch': return <LaunchPage title={title} />;
@@ -78,7 +89,7 @@ function Settings({ pages, page }: { pages: SettingsPageInfo[]; page: string }) 
       <nav className="set-nav" aria-label={t('set.title')}>
         <label className="search set-search"><Icon name="search" /><input id="set-q" type="search" placeholder={t('set.search')} maxLength={60} aria-label={t('set.search')} autoComplete="off" spellCheck={false} /></label>
         {pages.map(p => <button key={p.id} type="button" className="set-nav-item" data-set-page={p.id} aria-current={p.id === page ? 'page' : undefined}>
-          <Icon name={p.icon} /><span>{p.title}</span><i className="set-nav-dot" title={t('set.needsLook')} hidden /></button>)}
+          {p.id === 'updates' ? <img className="set-nav-logo" src={logo} alt="" /> : <Icon name={p.icon} />}<span>{p.title}</span><i className="set-nav-dot" title={t('set.needsLook')} hidden /></button>)}
       </nav>
       <div className="scroll set-scroll"><div className="settings">
         {pages.map(p => <section key={p.id} className="set-page" data-page={p.id} id={`set-page-${p.id}`} aria-labelledby={`set-page-${p.id}-h`} hidden={p.id !== page}><Guarded name={`Settings › ${p.title}`}>{body(p.id, p.title)}</Guarded></section>)}

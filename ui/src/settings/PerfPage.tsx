@@ -10,10 +10,10 @@ export function PerfPage({ title }: { title: string }) {
   const st = app.settings || {};
   const accounts: { id: string; autoRejoin?: boolean }[] = app.accounts || [];
 
-  // Auto-rejoin: on for every account, off for every one, or (shown only) some of them.
+  // Auto-rejoin: a switch for every account at once, on while all of them have it; some of them: "1/7 accounts" beside it.
   const on = accounts.filter(a => a.autoRejoin).length;
-  const rejoinNow = !accounts.length ? 'off' : on === accounts.length ? 'on' : on === 0 ? 'off' : 'some';
-  const [rejoin, setRejoin] = useLocal(rejoinNow);
+  const allOn = !!accounts.length && on === accounts.length;
+  const [rejoin, setRejoin] = useLocal(allOn);
   const [antiAfk, setAntiAfk] = useLocal(!!st.antiAfk);
   const [hop, setHop] = useLocal(String(st.hopAbovePlayers || 0));
   const [daily, setDaily] = useLocal(app.dailySignInCheck !== false);
@@ -37,18 +37,14 @@ export function PerfPage({ title }: { title: string }) {
     <RobloxConfig />
     <Group id="perf" title={t('set.g.keep')}>
       <Row title={t('set.rejoin')} desc={t('set.rejoinDesc')}>
-        <select className="select" id="s-rejoin" aria-label={t('set.rejoin')} value={rejoin} disabled={!accounts.length} onChange={async e => {
-          const enable = e.target.value === 'on';
-          setRejoin(e.target.value);
+        {on && !allOn ? <span className="set-count" id="s-rejoin-n">{t('set.rejoinCount', { n: on, total: accounts.length })}</span> : null}
+        <Switch id="s-rejoin" label={t('set.rejoin')} checked={rejoin} disabled={!accounts.length} onChange={async enable => {
+          setRejoin(enable);
           const n = await call('setAutoRejoin', { ids: accounts.map(a => a.id), enabled: enable }) as number | undefined;
           // Refused: back to what the accounts say (no new state will come to do it).
-          if (n === undefined) setRejoin(rejoinNow);
+          if (n === undefined) setRejoin(allOn);
           else toast(tn(enable ? 't.rejoinOn' : 't.rejoinOff', n), 'ok');
-        }}>
-          <option value="on">{t('set.rejoinAll')}</option>
-          <option value="off">{t('set.rejoinNone')}</option>
-          <option value="some" disabled hidden>{t('set.rejoinSome', { n: on, total: accounts.length })}</option>
-        </select>
+        }} />
       </Row>
       <Row title={t('set.antiAfk')} desc={t('set.antiAfkDesc')}><Switch id="s-antiafk" label={t('set.antiAfk')} checked={antiAfk} onChange={setting('antiAfk', setAntiAfk)} /></Row>
       <Row title={t('set.hop')} desc={t('set.hopDesc')}>
@@ -65,7 +61,7 @@ export function PerfPage({ title }: { title: string }) {
       </Row>
     </Group>
     <Group id="memory" title={t('set.g.memory')}>
-      <Row title={t('set.memWarn')}><Switch id="s-memwarn" label={t('set.memWarn')} checked={memWarn} onChange={setting('memoryWarnings', setMemWarn)} /></Row>
+      <Row title={t('set.memWarn')} desc={t('set.memWarnDesc')}><Switch id="s-memwarn" label={t('set.memWarn')} checked={memWarn} onChange={setting('memoryWarnings', setMemWarn)} /></Row>
       <Row title={t('set.trim')} desc={t('set.trimDesc')}><Switch id="s-trim" label={t('set.trim')} checked={trim} onChange={setting('trimBackground', setTrim)} /></Row>
       <Row title={t('set.ramLimit')} desc={t('set.ramLimitDesc')}>
         <select className="select" id="s-ramlimit" aria-label={t('set.ramLimit')} value={ramLimit} onChange={e => {

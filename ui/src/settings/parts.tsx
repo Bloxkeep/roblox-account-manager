@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { Icon, useHost } from '../host';
 import { TimeInput } from '../TimeField';
+import { englishOf } from './index';
 
 /** A value that answers a click at once and follows the app's state when it comes. A new again (a count) puts the saved
  * value back even when it didn't change: after a value the app refused. */
@@ -14,20 +15,25 @@ export function useLocal<T>(value: T, again = 0): [T, (v: T) => void] {
 
 export function Page({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   // While the Settings search box has words in it, a page drawn again (a row added, a class changed) is searched again.
-  const { settingsDrawn } = useHost();
+  const { settingsDrawn, lang } = useHost();
   useLayoutEffect(() => settingsDrawn());
-  return <><h2 className="set-page-title" id={`set-page-${id}-h`}>{title}</h2>{children}</>;
+  return <><h2 className="set-page-title" id={`set-page-${id}-h`} data-en={englishOf(title, lang) || undefined}>{title}</h2>{children}</>;
 }
 
 export function Group({ id, title, children }: { id: string; title?: string; children: ReactNode }) {
-  return <div className="set-grp" data-grp={id} id={`sec-${id}`}>
+  const { lang } = useHost();
+  // Its English title for the search (app.js searchSettings) when the app is in another language.
+  return <div className="set-grp" data-grp={id} id={`sec-${id}`} data-en={englishOf(title, lang) || undefined}>
     {title ? <h3 className="set-grp-title">{title}</h3> : null}
     <div className="set-card">{children}</div>
   </div>;
 }
 
 export function Row({ title, desc, extra, children }: { title: ReactNode; desc?: ReactNode; extra?: ReactNode; children?: ReactNode }) {
-  return <div className="set-row">
+  const { lang } = useHost();
+  // Its English words for the search (app.js searchSettings) when the app is in another language.
+  const en = [englishOf(title, lang), englishOf(desc, lang)].filter(Boolean).join(' ');
+  return <div className="set-row" data-en={en || undefined}>
     <div><div className="t">{title}{extra}</div>{desc ? <div className="d">{desc}</div> : null}</div>
     <div className="ctl">{children}</div>
   </div>;
