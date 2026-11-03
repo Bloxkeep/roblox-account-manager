@@ -10,7 +10,7 @@ html [data-theme="dark" lang="en"]
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       div.lock-vault
-        span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
+        span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
         b [title="Main"] "Main"
       h2 "Welcome back"
       p "Enter your master password to unlock."

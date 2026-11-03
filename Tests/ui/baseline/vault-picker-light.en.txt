@@ -16,7 +16,7 @@ html [data-theme="light" lang="en"]
       ul.vp-tiles
         li.vp-item
           button.last.vp-tile [title="Main"]
-            span.letter.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
+            span.letter.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
           span.vp-name [title="Main"] "Main"
           button.icon-btn.vp-remove [title="Remove from this PC" aria-label="Remove from this PC: Main"]
             svg.i #1tyq039
@@ -29,7 +29,7 @@ html [data-theme="light" lang="en"]
             svg.i #1tyq039
         li.vp-item
           button.vp-tile [title="Alt"]
-            span.letter.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(217, 119, 6);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "A"
+            span.letter.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(180, 83, 9);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "A"
           span.vp-name [title="Alt"] "Alt"
           button.icon-btn.vp-remove [title="Remove from this PC" aria-label="Remove from this PC: Alt"]
             svg.i #1tyq039

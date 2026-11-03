@@ -1494,8 +1494,9 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .btn.ghost { background: transparent; }
 .btn.big { height: 48px; font-size: var(--fs-5); border-radius: var(--r-lg); }
 .btn.sm { height: 30px; padding: 0 10px; font-size: var(--fs-2); border-radius: var(--r-sm); }
-/* A small toggle button that is on: one step up, no ring (the focus ring is the only ring). */
-.btn.sm.on { border-color: var(--line-3); background: var(--surface-3); box-shadow: none; }
+/* A small toggle button that is on: one step up and a --muted edge (3:1, so "on" isn't told by the fill alone), no
+   ring (the focus ring is the only ring) and no green (Play's colour). */
+.btn.sm.on { border-color: var(--muted); background: var(--surface-3); color: var(--text); box-shadow: none; }
 .btn.w { width: 100%; }
 /* "Restart to update" in the sidebar: the version sits under the label. */
 .sys-ver { margin-top: 8px; font-size: var(--fs-2); color: var(--text-2); }
@@ -1724,8 +1725,18 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .nav:hover { background: var(--hover); color: var(--text); }
 .nav.on { background: var(--active); color: var(--text); }
 .nav.on .i { color: var(--text); }
+/* The page you're on is marked by more than its fill (a step most themes barely show): a short bar at its left
+   edge, as Windows 11 marks the current page, in the item's own text colour so it reads on every theme's fill. */
+:is(.nav.on, .set-nav-item[aria-current="page"]) { position: relative; }
+:is(.nav.on, .set-nav-item[aria-current="page"])::before { content: ""; position: absolute; left: 0; top: 50%; width: 3px; height: 16px; translate: 0 -50%; border-radius: 2px; background: currentColor; }
+.set-layout.searching .set-nav-item[aria-current="page"]::before { content: none; }
+[data-theme="ubuntu"] :is(.nav.on, .set-nav-item[aria-current="page"])::before { content: none; } /* its orange edge already marks it */
 .nav span { flex: 1; }
-.nav em { font-style: normal; font-size: var(--fs-2); color: var(--muted); background: var(--hover); padding: 1px 8px; border-radius: var(--r-xl); }
+/* The count in --text-2 like a chip's: --muted on --hover was under 4.5:1 on the blurred macOS sidebars. */
+.nav em { font-style: normal; font-size: var(--fs-2); color: var(--text-2); background: var(--hover); padding: 1px 8px; border-radius: var(--r-xl); }
+/* On the current page's fill the count is the item's own text colour, outlined as on a chosen chip: --muted on --hover
+   vanished on the themes that fill the current page strongly (yellow, navy, black), and a tint lowered it below the label. */
+.nav.on #nav-count { color: inherit; background: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent); }
 
 .side-card { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; padding: 12px 6px; contain: layout paint style; }
 .side-card h4 { margin: 0 0 8px; font-size: var(--fs-2); color: var(--muted); font-weight: 650; }
@@ -1801,7 +1812,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .chip:hover { background: var(--hover); color: var(--text); }
 .chip.on { background: var(--inv); color: var(--inv-ink); border-color: transparent; }
 .chip em { font-style: normal; font-size: var(--fs-2); padding: 0 7px; border-radius: var(--r-md); background: var(--active); }
-.chip.on em { background: color-mix(in srgb, var(--inv-ink) 14%, transparent); }
+/* On the chosen chip the count is outlined, not tinted: a tint of the ink lightened its ground below the label's own
+   contrast (white on white 14 % over a mid blue was 2.2:1), an outline leaves the count exactly as readable as the label. */
+.chip.on em { background: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent); }
 .chip .dot { width: 7px; height: 7px; border-radius: 50%; }
 
 .scroll { flex: 1; overflow-y: auto; min-height: 0; }
@@ -1877,13 +1890,14 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .card.sel { border-color: color-mix(in srgb, var(--inv) 80%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--inv) 45%, transparent); }
 /* Playing on this PC: a 4 px rail on the left (no ring, no tint). */
 .card.local::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 4px; border-radius: 2px; background: var(--ok); }
-/* The tick stands in the corner; the card says the rest in its own lines. */
-.check { position: absolute; top: 12px; right: 12px; z-index: 1; width: 21px; height: 21px; display: grid; place-items: center; border-radius: var(--r-sm); border: 1.5px solid var(--line-3); color: var(--text); opacity: .45; transition: opacity .15s, background .15s; }
+/* The tick stands in the corner; the card says the rest in its own lines. Its box is --muted at rest, not a faded
+   hairline: the box is a control and has to be seen against the card (3:1) before the pointer gets there. */
+.check { position: absolute; top: 12px; right: 12px; z-index: 1; width: 21px; height: 21px; display: grid; place-items: center; border-radius: var(--r-sm); border: 1.5px solid var(--muted); color: var(--text); transition: border-color .15s, background .15s; }
 .tag.old { border: 0; color: var(--warn-ink); background: color-mix(in srgb, var(--warn-ink) 14%, transparent); font: inherit; font-size: var(--fs-2); font-weight: 700; cursor: pointer; }
 .ver { font-size: var(--fs-2); color: var(--muted); font-variant-numeric: tabular-nums; }
 .card.row .check { position: static; flex: none; } /* a list row's comes first: in the corner it covered the row's ⋮ */
 .check .i { width: 13px; height: 13px; stroke-width: 3; opacity: 0; }
-.card:hover .check, .card.sel .check { opacity: 1; }
+.card:hover .check { border-color: var(--text-2); }
 .card.sel .check { background: var(--inv); border-color: var(--inv); color: var(--inv-ink); }
 .card.sel .check .i { opacity: 1; }
 .badge { min-width: 0; overflow: hidden; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: var(--r-xl); font-size: var(--fs-2); font-weight: 700; }
@@ -2504,7 +2518,6 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .mc-thumb { max-width: 72px; max-height: 40px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface-3); object-fit: contain; }
 .mc-thumb.none { display: grid; place-items: center; width: 40px; height: 32px; color: var(--dim); }
 .mc-thumb.none .i { width: 16px; height: 16px; }
-.btn.sm.on { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 2px var(--focus-ring); }
 .mc-f-note { align-self: center; font-size: var(--fs-2); color: var(--muted); }
 .mc-pending { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 10px; border-radius: var(--r-md); background: var(--well); border: 1px solid var(--line); font-size: var(--fs-3); }
 .mc-pending > span { margin-right: auto; font-weight: 600; }
@@ -2563,7 +2576,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* Your themes: one line each, its swatch and name to put it in use, then share and delete. */
 .ct-saved { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; padding: 0 0 14px; }
 .ct-theme { display: flex; align-items: center; gap: 2px; padding: 4px 4px 4px 6px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--card); }
-.ct-theme.on { border-color: var(--accent); }
+.ct-theme.on { border-color: var(--text); } /* the theme in use: a strong neutral edge, green is Play's */
 .ct-use { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 4px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text); text-align: left; }
 .ct-use:hover { background: var(--hover); }
 .ct-dot { position: relative; flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-3); overflow: hidden; }
@@ -2596,7 +2609,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .gp-row:first-child { border-top: 0; }
 .gp-th { color: var(--muted); font-size: var(--fs-2); background: var(--surface-2); }
 .gp-name { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gp-now.ingame { color: var(--ok); }
+.gp-now.ingame { color: var(--ok-ink); } /* words: the ink, the light themes' --ok is a dot colour (under 4.5:1) */
 .gp-now.banned { color: var(--bad-ink); }
 .gp-hours { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; }
 .gp-hours span { height: 26px; border-radius: var(--r-xs); background: var(--accent); }
@@ -2895,9 +2908,9 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 /* An empty account list: the last row clears the game bar at the bottom. */
 .empty:has(.start-opts) { padding: 28px 20px 100px; } /* fits the default window without a scrollbar */
 .empty:has(.start-opts) .art { width: 72px; height: 72px; margin-bottom: 14px; }
-/* The recommended way (the phone): an accent border and tag, nothing more. */
-.start-opt.rec { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.start-opt.rec > .i:first-child { color: var(--accent); }
+/* The recommended way (the phone): a stronger edge and the tag, nothing more; green stays Play's. */
+.start-opt.rec { border-color: var(--muted); }
+.start-opt.rec > .i:first-child { color: var(--text); }
 .start-opt.rec b { flex-wrap: nowrap; }
 .rec-tag { padding: 1px 8px; border-radius: var(--r-xl); background: var(--accent); color: var(--accent-ink); font-size: var(--fs-1); font-weight: 650; line-height: 1.6; font-style: normal; white-space: nowrap; }
 .auth-phone { margin-top: 18px; }
@@ -2967,7 +2980,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .snap-screen { display: block; aspect-ratio: 16 / 10; padding: 3px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); }
 .snap-grid { display: grid; gap: 2px; width: 100%; height: 100%; }
 .snap-grid > span, .snap-own { display: block; border-radius: 2px; background: var(--line-3); }
-.snap-grid > span.on, .snap-own.on { background: var(--accent); }
+.snap-grid > span.on, .snap-own.on { background: var(--text-2); } /* where the windows would go: lit, not green */
 .menu .snap-opt .snap-name, .snap-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .snap-row { padding: 0 0 14px; }
 .snap-size { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: var(--fs-3); color: var(--text-2); }
@@ -5509,7 +5522,7 @@ body.tray-page { background: var(--surface); overflow: hidden; }
 .tray-row-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
 .tray-row-text b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tray-row-text span { font-size: var(--fs-2); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tray-playing { font-size: var(--fs-2); font-weight: 600; color: var(--ok); }
+.tray-playing { font-size: var(--fs-2); font-weight: 600; color: var(--ok-ink); }
 .tray-more { padding: 8px; border-radius: var(--r-sm); text-align: center; font-size: var(--fs-2); color: var(--text-2); }
 .tray-more:hover { background: var(--card-hover); }
 
@@ -5717,7 +5730,7 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mp-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 10px 0; }
 .mp-tab { display: inline-flex; align-items: center; gap: 2px; height: 26px; padding: 0 9px; border: 1px solid #2f3747; border-radius: 6px; background: #181e2a; color: #c7cede; font: 650 var(--fs-2) var(--font); cursor: pointer; }
 .mp-tab:hover { border-color: #4a5468; color: #e7ebf3; }
-.mp-tab.on { padding: 0 2px 0 4px; border-color: var(--accent); background: #1d2433; color: #e7ebf3; cursor: default; }
+.mp-tab.on { padding: 0 2px 0 4px; border-color: #9aa3b5; background: #1d2433; color: #e7ebf3; cursor: default; } /* the panel's own grey, not green */
 .mp-tab.add { width: 26px; padding: 0; justify-content: center; }
 .mp-tab .i { width: 12px; height: 12px; }
 .mp-tab-name { min-width: 0; height: 20px; padding: 0 4px; border: 1px solid transparent; border-radius: var(--r-xs); background: none; color: inherit; font: inherit; }
@@ -6058,8 +6071,6 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 .srv-sort { align-items: center; }
 .srv-sort .srv-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 0 auto; }
 .srv-sort .srv-tools .btn { margin-left: 0; }
-/* "Room for all" on: a step up, no green (Play's colour) and no ring. */
-.srv-sort .srv-tools .btn.sm.on { border-color: var(--line-3); background: var(--surface-3); color: var(--text); box-shadow: none; }
 /* The friends keep most of their three rows in a short window: the server list gives way first. */
 .modal-body.srv-body > .srv-friends { flex-shrink: .15; }
 .srv-friend .ph { display: grid; place-items: center; color: var(--muted); }
@@ -6088,7 +6099,7 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 
 /* Arrange windows: Auto (whatever fits) drawn dashed, not as a grid of its own. */
 .snap-opt[data-layout="fill"] .snap-grid > span { background: transparent; border: 1px dashed var(--line-3); }
-.snap-opt[data-layout="fill"] .snap-grid > span.on { border-color: var(--accent); }
+.snap-opt[data-layout="fill"] .snap-grid > span.on { border-color: var(--text-2); }
 
 /* The sidebar. */
 #side-warn:not(:empty) { margin-top: 12px; }
@@ -6260,8 +6271,9 @@ html:not(.in-window) .pn.mini { height: calc(100vh - 32px); max-height: none; }
 .mon-lane-meta { font-size: var(--fs-2); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mon-lane-states { flex: 0 1 auto; display: flex; gap: 6px; min-width: 0; margin-left: 4px; overflow: hidden; }
 .mon-st { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: var(--r-pill); background: var(--bg-2); font-size: var(--fs-1); font-weight: 600; white-space: nowrap; --cap-nudge: .055em; }
-.mon-st::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; translate: 0 calc(-1 * var(--cap-nudge)); }
-.mon-st.ok { color: var(--ok); } .mon-st.join { color: var(--warn); } .mon-st.bad { color: var(--bad); }
+/* The dot in the status colour, the words in its ink: the light themes' status colours are under 4.5:1 as text. */
+.mon-st::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--st); translate: 0 calc(-1 * var(--cap-nudge)); }
+.mon-st.ok { --st: var(--ok); color: var(--ok-ink); } .mon-st.join { --st: var(--warn); color: var(--warn-ink); } .mon-st.bad { --st: var(--bad); color: var(--bad-ink); }
 .mon-lane-acts { flex: none; display: flex; gap: 2px; margin-left: auto; }
 .mon-lane-acts .icon-btn { width: 30px; height: 30px; }
 .mon-kill.ask { width: auto; padding: 0 10px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); font-size: var(--fs-2); font-weight: 600; }
@@ -6440,10 +6452,14 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 .heat-h { font-size: var(--fs-1); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .heat-d { padding-right: 8px; font-size: var(--fs-1); line-height: 1; color: var(--muted); white-space: nowrap; text-align: right; }
 .heat-d.today { color: var(--text); font-weight: 600; }
-.heat .h1, .heat-key .h1 { background: color-mix(in srgb, var(--accent) 28%, var(--well)); }
-.heat .h2, .heat-key .h2 { background: color-mix(in srgb, var(--accent) 50%, var(--well)); }
-.heat .h3, .heat-key .h3 { background: color-mix(in srgb, var(--accent) 74%, var(--well)); }
-.heat .h4, .heat-key .h4 { background: var(--accent); }
+/* The busiest hour is the accent leaned towards the text colour (the theme's hue, further from the card than the accent
+   alone); the quieter steps fade it into the well, but only so far that an hour played stays 3:1 against an empty one
+   (a 28 % accent vanished into light cards). */
+.heat, .heat-key { --heat: color-mix(in srgb, var(--accent) 60%, var(--text)); }
+.heat .h1, .heat-key .h1 { background: color-mix(in srgb, var(--heat) 70%, var(--well)); }
+.heat .h2, .heat-key .h2 { background: color-mix(in srgb, var(--heat) 80%, var(--well)); }
+.heat .h3, .heat-key .h3 { background: color-mix(in srgb, var(--heat) 90%, var(--well)); }
+.heat .h4, .heat-key .h4 { background: var(--heat); }
 .heat-key { display: flex; align-items: center; gap: 3px; margin-left: auto; font: 500 var(--fs-1) var(--font); color: var(--muted); }
 .heat-key i { width: 10px; height: 10px; border-radius: 2px; background: var(--well); }
 .heat-key i:first-of-type { margin-left: 5px; } .heat-key i:last-of-type { margin-right: 5px; }

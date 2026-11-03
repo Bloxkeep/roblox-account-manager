@@ -6,8 +6,9 @@ import { Icon, useAppState, useHost } from './host';
 /** A vault as the app lists it: its picture is a "user/…" file it serves, or none. */
 export interface VaultInfo { id: string; name: string; picture: string | null }
 
-/** Solid colours for a vault without a picture, one per vault by its id (the same one every time). */
-const FACE_COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#0d9488'];
+/** Solid colours for a vault without a picture, one per vault by its id (the same one every time). Each one dark
+ * enough for the white letter on it (4.5:1): the green, amber, cyan, pink and teal are a shade deeper than their 600s. */
+const FACE_COLORS = ['#2563eb', '#15803d', '#b45309', '#dc2626', '#7c3aed', '#0e7490', '#be185d', '#0f766e'];
 // FNV-1a: ids that differ by a character or two still get different colours.
 const faceColor = (id: string) => {
   let h = [...id].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261);
