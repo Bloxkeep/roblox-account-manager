@@ -1,0 +1,23 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="mini"]
+    div.mini.pn
+      div.pn-title
+        img.mini-logo [alt="" src="logo.svg"]
+        b.pn-name "Bloxkeep"
+        button.pn-icon [type="button" title="Hide" aria-label="Hide"]
+          svg.i #1tyq039
+      div.mini-list [role="list"]
+        div.mini-empty
+          svg.i #1e3syqr
+          p "No Roblox open"
+          span "2 Roblox windows open"
+      div.mini-foot.pn-foot
+        button.btn.danger.ghost.sm [type="button"] "Close all"
+        button.btn.mini-open.sm [type="button"] "Open Bloxkeep"
+      div.mini-grip [title="Drag to resize"]
+        i
+-- commands
+  ready {}
+  size {"h":386,"w":300}

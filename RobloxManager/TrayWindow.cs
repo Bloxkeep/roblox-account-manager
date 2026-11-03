@@ -455,7 +455,7 @@ public sealed class TrayWindow : Form
     void Frame()
     {
         if (IsHandleCreated)
-            ThemedMenu.RoundCorners(Handle, Themes.Current);
+            Ui.RoundCorners(Handle, Themes.Current);
     }
 
     protected override void OnHandleCreated(EventArgs e)

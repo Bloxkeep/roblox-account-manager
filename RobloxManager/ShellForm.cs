@@ -38,7 +38,7 @@ public sealed class ShellForm : Form
     DateTime _balloonUntil;
     WebView2? _web;
     /// <summary>The small always-on-top window, made the first time it is opened and kept (hidden) from then on.</summary>
-    MiniForm? _mini;
+    MiniWindow? _mini;
     readonly MonitorTab _monitor;
     string _themeId;
     int _gpuCrashes, _automaticRestarts;
@@ -222,7 +222,7 @@ public sealed class ShellForm : Form
         {
             if (_mini is null)
             {
-                _mini = new MiniForm(_app, BringToFront);
+                _mini = new MiniWindow(_app, BringToFront);
                 _mini.Dismissed += _app.PushState;
             }
             _mini.Open(activate);

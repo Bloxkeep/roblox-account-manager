@@ -1609,6 +1609,17 @@ export default [
   // ── end P6 ──
 
   // ── P7 native ──
+  // The mini window (mini.html, ui/src/mini): the running accounts, empty, locked, names hidden, long words, Close all asked.
+  S('mini', '', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-empty', 'empty=1&others=2', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-locked', 'locked=1', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-names-hidden', 'hidden=1', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-long', 'long=1&many=1', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-close', '', async s => { await s.click({ css: '.mini-row:first-child .btn.ghost' }); }, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-close-all', '', async s => { await s.click({ css: '.mini-foot .btn.danger' }); await s.snap('asked'); await s.click({ css: '.mini-ask .btn.danger' }); },
+    { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-light', 'theme=light', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-retro', 'theme=retro', async s => { await s.click({ css: '.mini-foot .btn.danger' }); }, { page: 'mini-preview.html', size: [340, 420], langs: ['en'] }),
   // ── end P7 ──
 
   // ── P8 ──

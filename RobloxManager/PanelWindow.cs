@@ -220,16 +220,13 @@ public sealed class PanelWindow : WebToolWindow
             Open(activate: false);
     }
 
-    const int WM_ACTIVATE = 0x0006, WA_INACTIVE = 0, WM_MOUSEACTIVATE = 0x0021, MA_ACTIVATE = 1;
+    const int WM_ACTIVATE = 0x0006, WA_INACTIVE = 0;
 
     protected override void WndProc(ref Message m)
     {
         if (m.Msg == WM_ACTIVATE && ((int)m.WParam & 0xFFFF) != WA_INACTIVE)
             _app.PanelActivated(this, m.LParam);
-        base.WndProc(ref m);
-        // A click on it takes the keyboard (the page needs it for typing, keys and Esc).
-        if (m.Msg == WM_MOUSEACTIVATE)
-            m.Result = MA_ACTIVATE;
+        base.WndProc(ref m); // a click on it takes the keyboard (WebToolWindow)
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)

@@ -1,0 +1,47 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="mini"]
+    div.mini.pn
+      div.pn-title
+        img.mini-logo [alt="" src="logo.svg"]
+        b.pn-name "Bloxkeep"
+        span.mini-count [title="2 Roblox windows"] "2"
+        button.pn-icon [type="button" title="Hide" aria-label="Hide"]
+          svg.i #1tyq039
+      div.mini-list [role="list"]
+        div.mini-row [role="listitem" title="PID 14692"]
+          i.pn-dot.s-idle [aria-label="On Roblox's home screen"]
+          span.mini-text
+            b "FarmAlt02"
+            span
+              span.mini-game "No game"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "822 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Show"
+            button.btn.ghost.sm [type="button"] "Close"
+        div.mini-row [role="listitem" title="PID 15104"]
+          i.pn-dot.s-stopped [aria-label="Dropped"]
+          span.mini-text
+            b "Trader"
+            span
+              span.mini-game "Disconnected"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "980 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Show"
+            button.btn.ghost.sm [type="button"] "Close"
+      div.mini-foot.pn-foot
+        button.btn.danger.ghost.sm [type="button"] "Close all"
+        button.btn.mini-open.sm [type="button"] "Open Bloxkeep"
+      div.mini-grip [title="Drag to resize"]
+        i
+-- commands
+  act {"id":"00000000-0000-4000-8000-000000000001","what":"close"}
+  ready {}
+  size {"h":386,"w":300}
+  size {"h":386,"w":300}
+  size {"h":386,"w":300}
+  size {"h":386,"w":300}
+  size {"h":386,"w":300}

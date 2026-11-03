@@ -12,6 +12,7 @@ import { Boot, Lock, type BootApi, type LockMode } from './Lock';
 import { MultiHelp } from './MultiHelp';
 import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
 import { Palette, type PaletteEntry } from './Palette';
+import { MiniRoot, type MiniOn, type MiniViewApi } from './mini/MiniView';
 import { PanelRoot } from './panel/PanelView';
 import type { PanelOn, PanelViewApi } from './panel/panelHost';
 import { PasswordLogin, type PasswordLoginApi } from './PasswordLogin';
@@ -190,6 +191,12 @@ const BloxkeepUI = {
     const view = createRef<PanelViewApi>();
     const unmount = mount(el, host, <PanelRoot on={on} handle={view} />, false);
     return { unmount, show: view.current!.show, error: view.current!.error };
+  },
+  /** The mini window's list of running accounts into its own window's page (mini.js): show draws each "mini" event. */
+  mini(el: HTMLElement, host: Host, on: MiniOn) {
+    const view = createRef<MiniViewApi>();
+    const unmount = mount(el, host, <MiniRoot on={on} handle={view} />, false);
+    return { unmount, show: view.current!.show };
   },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */
   pickList(el: HTMLElement, host: Host, text: string, items: PickItem[]) {

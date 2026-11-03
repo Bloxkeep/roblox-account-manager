@@ -1,0 +1,119 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="mini"]
+    div.mini.pn
+      div.pn-title
+        img.mini-logo [alt="" src="logo.svg"]
+        b.pn-name "Bloxkeep"
+        span.mini-count [title="9 cửa sổ Roblox"] "9"
+        button.pn-icon [type="button" title="Ẩn" aria-label="Ẩn"]
+          svg.i #1tyq039
+      div.mini-list [role="list"]
+        div.mini-row [role="listitem" title="PID 14280"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "MainAccountWithAVeryLongUsername"
+            span
+              span.mini-game "Blox Fruits [Second Sea] Update 24 with the Dragon rework"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "1,2 GB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 14692"]
+          i.pn-dot.s-idle [aria-label="Ở màn hình chính Roblox"]
+          span.mini-text
+            b "FarmAlt_number_two_2024"
+            span
+              span.mini-game "Chưa vào game"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "822 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 15104"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "Trader"
+            span
+              span.mini-game "Fisch"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "980 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 15516"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "Farm03"
+            span
+              span.mini-game "Blox Fruits [Second Sea] Update 24 with the Dragon rework"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "1,2 GB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 15928"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "Farm04"
+            span
+              span.mini-game "Pet Simulator 99 Trading Plaza"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "852 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 16340"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "Farm05"
+            span
+              span.mini-game "Fisch"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "1010 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 16752"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "Farm06"
+            span
+              span.mini-game "Blox Fruits [Second Sea] Update 24 with the Dragon rework"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "1,3 GB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 17164"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "Farm07"
+            span
+              span.mini-game "Pet Simulator 99 Trading Plaza"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "882 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 17576"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "Farm08"
+            span
+              span.mini-game "Fisch"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "1 GB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+      div.mini-foot.pn-foot
+        button.btn.danger.ghost.sm [type="button"] "Đóng tất cả"
+        button.btn.mini-open.sm [type="button"] "Mở Bloxkeep"
+      div.mini-grip [title="Kéo để đổi cỡ"]
+        i
+-- commands
+  ready {}
+  size {"h":386,"w":300}

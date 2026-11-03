@@ -1,0 +1,53 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="mini"]
+    div.mini.pn
+      div.pn-title
+        img.mini-logo [alt="" src="logo.svg"]
+        b.pn-name "Bloxkeep"
+        span.mini-count [title="3 cửa sổ Roblox"] "3"
+        button.pn-icon [type="button" title="Ẩn" aria-label="Ẩn"]
+          svg.i #1tyq039
+      div.mini-list [role="list"]
+        div.mini-row [role="listitem" title="PID 14280"]
+          i.pn-dot.s-ready [aria-label="Đang trong game"]
+          span.mini-text
+            b "MainAccount"
+            span
+              span.mini-game "Blox Fruits"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "1,2 GB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 14692"]
+          i.pn-dot.s-idle [aria-label="Ở màn hình chính Roblox"]
+          span.mini-text
+            b "FarmAlt02"
+            span
+              span.mini-game "Chưa vào game"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "822 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+        div.mini-row [role="listitem" title="PID 15104"]
+          i.pn-dot.s-stopped [aria-label="Bị văng"]
+          span.mini-text
+            b "Trader"
+            span
+              span.mini-game "Mất kết nối"
+              i.pn-sep [aria-hidden="true"] "·"
+              span.mini-ram "980 MB"
+          span.mini-acts
+            button.btn.sm [type="button"] "Hiện"
+            button.btn.ghost.sm [type="button"] "Đóng"
+      div.mini-foot.pn-foot
+        button.btn.danger.ghost.sm [type="button"] "Đóng tất cả"
+        button.btn.mini-open.sm [type="button"] "Mở Bloxkeep"
+      div.mini-grip [title="Kéo để đổi cỡ"]
+        i
+-- commands
+  ready {}
+  size {"h":386,"w":300}

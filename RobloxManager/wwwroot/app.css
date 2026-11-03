@@ -5833,6 +5833,40 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* ───────── end P6 ───────── */
 
 /* ───────── P7 native ───────── */
+/* The mini window (ui/src/mini/MiniView.tsx, page mini.html, window MiniWindow.cs): a macro panel's card and title row,
+   as tall as the window (the person sizes it by its bottom edge); the running accounts scroll between title and foot. */
+.pn.mini { position: relative; height: 100vh; max-height: none; }
+html:not(.in-window) .pn.mini { height: calc(100vh - 32px); max-height: none; }
+.mini-logo { width: 18px; height: 18px; flex: none; }
+.mini-count { flex: none; min-width: 20px; height: 20px; box-sizing: border-box; padding: 0 6px; display: grid; place-items: center; border-radius: var(--r-pill); background: var(--surface-3); color: var(--text-2); font-size: var(--fs-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.mini-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding: 4px 0; }
+.mini-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 10px 6px 12px; box-sizing: border-box; }
+.mini-row + .mini-row { border-top: 1px solid var(--line); }
+.mini-row .pn-dot { align-self: flex-start; margin-top: 6px; }
+.pn-dot.s-idle { background: var(--online); }
+.mini-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.mini-text b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-text > span { display: flex; min-width: 0; font-size: var(--fs-2); color: var(--text-2); white-space: nowrap; }
+.mini-game { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mini-ram { flex: none; font-variant-numeric: tabular-nums; }
+.mini-text .pn-sep { padding: 0 4px; }
+.mini-acts { display: flex; gap: 4px; flex: none; }
+.pn.mini .mini-acts .btn.sm { height: 26px; padding: 0 8px; }
+.mini-empty { display: grid; justify-items: center; gap: 6px; padding: 32px 20px; text-align: center; color: var(--text-2); }
+.mini-empty .i { width: 22px; height: 22px; color: var(--muted); }
+.mini-empty p { margin: 0; font-size: var(--fs-3); }
+.mini-empty span { font-size: var(--fs-2); color: var(--muted); }
+.mini-foot { justify-content: space-between; padding-bottom: 10px; }
+/* The bottom edge: dragged, the window grows or shrinks (the hairline in its middle shows where to take it). */
+.mini-grip { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; display: grid; place-items: center; cursor: ns-resize; }
+.mini-grip i { width: 28px; height: 2px; border-radius: 1px; background: var(--line-3); }
+.mini-grip:hover i { background: var(--text-2); }
+/* "Close all" asked first: a sheet over the foot, as the main page's question asks it. */
+.mini-ask { position: absolute; left: 8px; right: 8px; bottom: 8px; display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line-2); border-radius: var(--r-lg);
+  background: linear-gradient(var(--raised), var(--raised)), linear-gradient(var(--surface), var(--surface)), Canvas; box-shadow: 0 14px 40px var(--shadow); }
+.mini-ask p { margin: 0; font-size: var(--fs-3); line-height: 1.45; color: var(--text); }
+.mini-remember { display: flex; align-items: center; gap: 8px; font-size: var(--fs-2); color: var(--text-2); cursor: pointer; }
+.mini-ask-btns { display: flex; justify-content: flex-end; gap: 8px; }
 /* ───────── end P7 ───────── */
 
 /* ───────── P8 ───────── */

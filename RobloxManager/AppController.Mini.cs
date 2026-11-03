@@ -1,10 +1,11 @@
 namespace RobloxManager;
 
-/// <summary>What the mini window (<see cref="MiniForm"/>) shows and does: the clients open now, from what the process
+/// <summary>What the mini window (<see cref="MiniWindow"/>) shows and does: the clients open now, from what the process
 /// check already tracks (no snapshot of its own), and the page's close actions.</summary>
 public sealed partial class AppController
 {
-    public sealed record MiniClient(Guid Id, string Label, string Game, int Pid, long RamMb);
+    /// <param name="State">"game" (in a game, or getting in), "menu" (Roblox's home screen) or "disconnected".</param>
+    public sealed record MiniClient(Guid Id, string Label, string Game, int Pid, long RamMb, string State = "game");
 
     /// <summary>RAM per client as of the last process check (every 1.5–5 s).</summary>
     Dictionary<int, long> _clientRam = new();
@@ -28,13 +29,14 @@ public sealed partial class AppController
         {
             if (FindAccount(id) is not { } account)
                 continue;
-            string game = Connection(account, info.Pid, info.Launch) switch
+            string state = Connection(account, info.Pid, info.Launch) switch { "menu" => "menu", "disconnected" => "disconnected", _ => "game" };
+            string game = state switch
             {
                 "menu" => L.T("No game"),
                 "disconnected" => L.T("Disconnected"),
                 _ => SessionGameName(info.Pid, info.Launch),
             };
-            list.Add(new MiniClient(id, NameText(account), game, info.Pid, _clientRam.GetValueOrDefault(info.Pid) / MB));
+            list.Add(new MiniClient(id, NameText(account), game, info.Pid, _clientRam.GetValueOrDefault(info.Pid) / MB, state));
         }
         var rank = EffectiveLaunchOrder(vault).Select((id, i) => (id, i)).ToDictionary(p => p.id, p => p.i);
         return list.OrderBy(c => rank.GetValueOrDefault(c.Id, int.MaxValue)).ToList();
@@ -49,6 +51,26 @@ public sealed partial class AppController
         if (placeId is not long id)
             return L.T("No game");
         return _games.GetValueOrDefault(id)?.Name is { Length: > 0 } name ? name : L.F("Place {0}", id);
+    }
+
+    /// <summary>The mini window's page: the clients (empty while locked), every Roblox on the PC, whether "Close all" asks
+    /// first, the theme and the language.</summary>
+    internal object MiniMessage() => new
+    {
+        unlocked = Unlocked,
+        clients = (Unlocked ? RunningClients() : []).Select(c => new { id = c.Id, name = c.Label, game = c.Game, pid = c.Pid, ramMb = c.RamMb, state = c.State }),
+        robloxCount = Unlocked ? RobloxCount : 0,
+        askCloseAll = !Prefs.SkipConfirm.Contains("closeAll"),
+        theme = Themes.Current.Id,
+        customTheme = CustomThemeDto(),
+        language = L.Language,
+    };
+
+    /// <summary>The mini window's Show: the account's window brought forward in its turn.</summary>
+    public void ShowClient(Guid id)
+    {
+        if (Unlocked && _running.TryGetValue(id, out var info))
+            RobloxProcesses.FocusInTurn(info.Pid);
     }
 
     public void CloseClient(Guid id)
