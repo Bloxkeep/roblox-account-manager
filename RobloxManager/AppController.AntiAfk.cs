@@ -210,4 +210,21 @@ public sealed partial class AppController
             }, "warn", "afk", account.Id);
         }
     }
+
+    /// <summary>Last time each client (by process id) got input: from the person playing it or from anti-AFK.</summary>
+    readonly Dictionary<int, DateTime> _lastInput = new();
+    readonly HashSet<int> _idleKickReported = new();
+    /// <summary>Windows a nudge couldn't reach (focus refused, PC locked): not tried again before this.</summary>
+    readonly Dictionary<int, DateTime> _nudgeRetryAt = new();
+    static readonly TimeSpan NudgeRetry = TimeSpan.FromMinutes(1), MaxNudgeRetry = TimeSpan.FromMinutes(15);
+    /// <summary>Nudges in a row each window missed: the wait before the next one doubles.</summary>
+    readonly Dictionary<int, int> _nudgeMisses = new();
+
+    enum AfkHeld { InUse, FullScreen, Locked, Refused, MacroBusy }
+
+    /// <summary>Anti-AFK has seen the windows that were already open when Bloxkeep started (or was unlocked).</summary>
+    bool _afkAdopted;
+
+    /// <summary>Why anti-AFK last held back from a due window: said if Roblox kicks it for idling anyway.</summary>
+    readonly Dictionary<int, AfkHeld> _afkHeld = new();
 }

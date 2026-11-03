@@ -336,14 +336,17 @@ public sealed partial class AppController
     {
         if (IsAllAccounts(name))
         {
-            int open = _running.Count + _pending.Count;
+            // Also a window still to come (late) and a rejoin under way: Close all stops them too.
+            int open = _running.Count + _pending.Count + _late.Count + (_rejoinInFlight is null ? 0 : 1);
             if (open == 0)
                 return RemoteSay(L.T("No Roblox window is open on this PC."));
             CloseAll(force: false);
             return RemoteSay(L.F("Closing {0} Roblox window(s)…", open));
         }
         var account = FindRemoteAccount(name);
-        if (!_running.ContainsKey(account.Id) && !_pending.Any(p => p.AccountId == account.Id))
+        // As Close on the account: a window still to come (late), a rejoin waiting or under way count too, and are stopped.
+        if (!_running.ContainsKey(account.Id) && !_pending.Concat(_late).Any(p => p.AccountId == account.Id)
+            && !_rejoinQueue.Any(r => r.AccountId == account.Id) && _rejoinInFlight?.AccountId != account.Id)
             return RemoteSay(L.F("{0} has no Roblox window open.", DiscordName(account)));
         CloseAccounts([account.Id], force: false);
         return RemoteSay(L.F("Closing {0}…", DiscordName(account)));
