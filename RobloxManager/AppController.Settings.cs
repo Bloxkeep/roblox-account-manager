@@ -56,6 +56,8 @@ public sealed partial class AppController
         }
         if (OptBool(a, "autoUpdateRoblox") is { } autoUpdate)
             s.AutoUpdateRoblox = autoUpdate;
+        if (OptStr(a, "robloxUpdateWhen") is "idle" or "now")
+            s.RobloxUpdateWhen = OptStr(a, "robloxUpdateWhen")!;
         if (OptBool(a, "fastFlags") is { } fastFlags)
             s.FastFlags = fastFlags;
         if (Has(a, "ramLimitMb", JsonValueKind.Number) && RamLimitChoices.Contains((int)Long(a, "ramLimitMb")))

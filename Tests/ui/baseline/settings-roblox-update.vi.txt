@@ -132,6 +132,13 @@ html [data-theme="dark" lang="vi"]
                           label.switch
                             input [id="s-rbx-auto" type="checkbox" aria-label="Tự cập nhật" checked=true]
                             span
+                      div.set-row
+                        div
+                          div.t "Lúc nào"
+                        div.ctl
+                          select.select [id="s-rbx-when" aria-label="Lúc nào" value="idle"]
+                            option [value="idle"] "Khi tắt hết Roblox"
+                            option [value="now"] "Ngay lập tức"
                     div [id="s-rbxupd"]
                       div.set-row
                         div
@@ -338,6 +345,13 @@ html [data-theme="dark" lang="vi"]
                           label.switch
                             input [id="s-rbx-auto" type="checkbox" aria-label="Tự cập nhật" checked=true]
                             span
+                      div.set-row
+                        div
+                          div.t "Lúc nào"
+                        div.ctl
+                          select.select [id="s-rbx-when" aria-label="Lúc nào" value="idle"]
+                            option [value="idle"] "Khi tắt hết Roblox"
+                            option [value="now"] "Ngay lập tức"
                     div [id="s-rbxupd"]
                       div.set-row
                         div
