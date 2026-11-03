@@ -6,6 +6,7 @@ using Bloxkeep.Tests;
 //   Bloxkeep.Tests                  every suite that needs no internet
 //   Bloxkeep.Tests --online         also the ones that ask Roblox's servers
 //   Bloxkeep.Tests afk restart      only these
+//   Bloxkeep.Tests --timeout=5      kill a suite that runs longer than 5 minutes (10 when not given) and count it as one failure
 // The exit code is the number of failed checks (or 1 when a suite crashed).
 
 var suites = new (string Name, bool Online, Func<Checks, string, Task> Run)[]
@@ -84,6 +85,7 @@ if (args is ["--suite", var only, var dataDir])
 
 bool online = args.Contains("--online");
 var wanted = args.Where(a => !a.StartsWith("--")).ToHashSet();
+var limit = TimeSpan.FromMinutes(args.FirstOrDefault(a => a.StartsWith("--timeout=")) is { } t && double.TryParse(t["--timeout=".Length..], out double minutes) && minutes > 0 ? minutes : 10);
 int failed = 0;
 var clock = Stopwatch.StartNew();
 foreach (var suite in suites)
@@ -93,11 +95,53 @@ foreach (var suite in suites)
     string dir = Path.Combine(Path.GetTempPath(), "bloxkeep-tests", suite.Name);
     var info = new ProcessStartInfo(Environment.ProcessPath!, ["--suite", suite.Name, dir]) { RedirectStandardOutput = true, RedirectStandardError = true };
     using var child = Process.Start(info)!;
-    string output = await child.StandardOutput.ReadToEndAsync() + await child.StandardError.ReadToEndAsync();
-    await child.WaitForExitAsync();
+    // Both pipes are read as the child writes: reading one to its end first stalls a child that fills the other (a pipe
+    // holds only a few KB), and a suite that never ends is stopped after the limit instead of holding the run for ever.
+    var lines = new List<string>();
+    void Collect(string? line)
+    {
+        if (!string.IsNullOrWhiteSpace(line))
+            lock (lines)
+                lines.Add(line.TrimEnd('\r'));
+    }
+    child.OutputDataReceived += (_, e) => Collect(e.Data);
+    child.ErrorDataReceived += (_, e) => Collect(e.Data);
+    child.BeginOutputReadLine();
+    child.BeginErrorReadLine();
+    bool timedOut = false;
+    using (var cut = new CancellationTokenSource(limit))
+    {
+        try
+        {
+            await child.WaitForExitAsync(cut.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            timedOut = true;
+            try
+            {
+                child.Kill(entireProcessTree: true); // its browsers and helpers too
+            }
+            catch (InvalidOperationException)
+            {
+                // it ended just now
+            }
+            await child.WaitForExitAsync();
+        }
+    }
+    child.WaitForExit(); // the last lines of both pipes have arrived once this returns
     Console.WriteLine($"── {suite.Name} ──");
-    foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        Console.WriteLine("  " + line.TrimEnd('\r'));
+    lock (lines)
+    {
+        foreach (var line in lines)
+            Console.WriteLine("  " + line);
+    }
+    if (timedOut)
+    {
+        Console.WriteLine($"  FAIL  the suite ended within {limit.TotalMinutes:0.#} minutes  [stopped]");
+        failed++;
+        continue;
+    }
     // A crash outside the checks (exit code not a count) is one failure.
     failed += child.ExitCode is >= 0 and < 1000 ? child.ExitCode : 1;
 }
