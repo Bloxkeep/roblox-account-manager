@@ -12,7 +12,5 @@ html [data-theme="dark" lang="vi"]
 -- commands
   ready {}
   size {"h":42,"pill":true,"w":300}
-  size {"h":42,"pill":true,"w":300}
-  size {"h":545,"pill":false,"w":300}
   size {"h":545,"pill":false,"w":300}
   size {"h":568,"pill":false,"w":300}

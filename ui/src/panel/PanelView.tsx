@@ -38,7 +38,6 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
   const [hints, setHints] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<{ text: string; kind: 'error' | 'reset' } | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const [clock, setClock] = useState(() => Date.now());
   const tabs = model.tabs.length >= 2 ? model.tabs : [];
   const [tab, setTabNow] = useState(() => { const s = savedTab(model.id); return s && tabs.includes(s) ? s : tabs[0] ?? null; });
   const shownTab = tab && tabs.includes(tab) ? tab : tabs[0] ?? null;
@@ -50,6 +49,8 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
   const holds = useRef(new Set<string>());
   const dirty = useRef(false);
   const away = useRef<number | undefined>(undefined);
+  /** The size last said, and for which "panel" from the app: said again only when it changed, or once per new one. */
+  const sent = useRef<{ now: PanelNow | null; key: string }>({ now: null, key: '' });
 
   const later = (key: string, ms: number, fn: () => void) => {
     clearTimeout(timers.current[key]);
@@ -81,22 +82,18 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
     hasWindow: now.hasWindow,
   }), [on, hint, hints, now.hasWindow]);
 
-  // The clock of a run going on, ticked here (the app sends when it started).
-  const ticking = now.state === 'running' || now.state === 'paused';
-  useEffect(() => {
-    if (!ticking) return;
-    const timer = setInterval(() => setClock(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [ticking]);
-
   // The window takes the page's size: its natural height, the rows not scrolled (the app caps it at the screen).
+  // Said when it changed, and once after each "panel" from the app (the window shows on that answer); not on every drawing.
   useLayoutEffect(() => {
     const el = root.current;
     if (!el) return;
     const report = () => {
       const r = rows.current;
-      const h = el.offsetHeight + (r ? r.scrollHeight - r.clientHeight : 0);
-      on.size(Math.ceil(el.offsetWidth), Math.ceil(h), pill);
+      const w = Math.ceil(el.offsetWidth), h = Math.ceil(el.offsetHeight + (r ? r.scrollHeight - r.clientHeight : 0));
+      const key = `${w}x${h}${pill ? ' pill' : ''}`;
+      if (sent.current.key === key && sent.current.now === now) return;
+      sent.current = { now, key };
+      on.size(w, h, pill);
     };
     report();
     const watch = new ResizeObserver(report);
@@ -199,7 +196,7 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
         </p>
         {counters.length || (running && now.startedAt) ? <p className="pn-chips">
           {counters.map(c => <span key={c.name} className="pn-chip"><span>{c.label}</span><b>{now.counters[c.name]}</b></span>)}
-          {running && now.startedAt ? <span className="pn-chip clock"><Icon name="clock" /><b>{elapsed(now.startedAt, clock)}</b></span> : null}
+          {running && now.startedAt ? <span className="pn-chip clock"><Icon name="clock" /><Elapsed since={now.startedAt} /></span> : null}
         </p> : null}
         {tabs.length ? <Tabs tabs={tabs} tab={shownTab!} setTab={setTab} /> : null}
       </div>
@@ -222,6 +219,16 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
       {menu ? <TitleMenu at={menu} close={() => setMenu(null)} on={on} lastStep={undefined} /> : null}
     </div>
   </Ctx.Provider>;
+}
+
+/** The clock of a run going on, ticked here (the app sends when it started): only this redraws each second. */
+function Elapsed({ since }: { since: string }) {
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return <b>{elapsed(since, clock)}</b>;
 }
 
 /** The status line: what the macro does now. */

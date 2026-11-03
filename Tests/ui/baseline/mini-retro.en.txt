@@ -59,4 +59,3 @@ html [data-theme="retro" lang="en"]
 -- commands
   ready {}
   size {"h":386,"w":300}
-  size {"h":386,"w":300}

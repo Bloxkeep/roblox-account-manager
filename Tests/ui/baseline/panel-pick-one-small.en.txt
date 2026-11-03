@@ -78,7 +78,5 @@ html [data-theme="dark" lang="en"]
 -- commands
   ready {}
   size {"h":329,"pill":false,"w":300}
-  size {"h":329,"pill":false,"w":300}
-  size {"h":365,"pill":false,"w":300}
   size {"h":365,"pill":false,"w":300}
   size {"h":388,"pill":false,"w":300}
