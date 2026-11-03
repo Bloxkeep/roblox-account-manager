@@ -870,4 +870,53 @@ public sealed partial class AppController
                 .Count(w => !afk.Contains(w.Key) && w.Value.Count > 0 && !RobloxProcesses.IsMinimised(RobloxProcesses.MainWindowOf(w.Value))) >= 2)
             await ArrangeWindowsAsync(-1, auto: true);
     }
+
+    /// <summary>Launches whose client quit early, waiting for the client it may have handed over to: the pid that quit
+    /// (its children are the first choice) and what its log said last.</summary>
+    readonly Dictionary<PendingLaunch, (int Pid, RobloxLogWatcher.ClientState? Log)> _handedOver = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Launches whose window didn't come within <see cref="PendingTimeout"/>: one appearing within <see cref="LateTimeout"/>
+    /// more is still claimed for it (see TrackProcesses).</summary>
+    readonly HashSet<PendingLaunch> _late = new(ReferenceEqualityComparer.Instance);
+    static readonly TimeSpan LateTimeout = TimeSpan.FromMinutes(5);
+
+    /// <summary>Stops waiting for a launch; one already running ends its session (auto-rejoin, toast). A rejoin that never got a
+    /// window is said, since its account would otherwise be left with no word and no client.</summary>
+    /// <param name="late">Its window may still come (see <see cref="_late"/>): a scheduled stop keeps the account until then.</param>
+    void DropPending(PendingLaunch launch, bool late = false)
+    {
+        _pending.Remove(launch);
+        bool closed = _closeWhenClaimed.Remove(launch);
+        if (_handedOver.Remove(launch, out var handed) && !closed)
+        {
+            OnSessionEnded(launch.AccountId, launch, handed.Log);
+            return;
+        }
+        if (launch.Rejoin && !closed && FindAccount(launch.AccountId) is { } account)
+        {
+            // Its client quit before a window came (crashed as it started): tried again a few times, as a drop in game
+            // is. Before, the account was left out for good (review, 2026-10-30). Not a late one: its window may still come.
+            if (!late && RetryOpen(account, launch))
+                return;
+            Notify(L.F("{0} didn't rejoin: no Roblox window appeared.", Name(account)), "warn", "rejoinFail", account.Id);
+        }
+        if (!late && !_running.ContainsKey(launch.AccountId))
+            ForgetScheduledOpen(launch.AccountId); // no client came of it: a scheduled stop has nothing of this account's to close
+    }
+
+    /// <summary>
+    /// A rejoin that opened no window goes again later (see <see cref="RejoinRequest.OpenRetries"/>) while auto-rejoin is on
+    /// and nothing else of the account's is open or waiting. False once its tries are used up: then it is said.
+    /// </summary>
+    bool RetryOpen(Account account, PendingLaunch launch)
+    {
+        if (launch.Target is not { } target || launch.OpenRetries >= MaxOpenRetries || !RejoinOn(account, launch.PresetId) || account.Banned == true
+            || target.Follow is null && GameBanOf(account, target.PlaceId) is not null
+            || _running.ContainsKey(account.Id) || _pending.Any(p => p.AccountId == account.Id) || _rejoinQueue.Any(r => r.AccountId == account.Id))
+            return false;
+        var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (launch.OpenRetries + 1), MaxRetryDelay.Ticks));
+        _rejoinQueue.Add(new RejoinRequest(account.Id, target with { JobId = null }, DateTime.UtcNow + delay, PresetId: launch.PresetId)
+            { OpenRetries = launch.OpenRetries + 1 });
+        return true;
+    }
 }
