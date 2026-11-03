@@ -884,28 +884,75 @@ public sealed partial class AppController
     /// <summary>
     /// A window opened outside Bloxkeep (from Roblox's own app, a browser's Play) that joined a game signed in as one of the
     /// vault's accounts becomes that account's, as if Bloxkeep had opened it: its card shows it, and macros, Edit on game,
-    /// the panel, closing and auto-rejoin can use it. Not while a launch could still claim it, never a second window for an
-    /// account that has one.
+    /// the panel and closing can use it, and auto-rejoin when its server is known to be public (<see cref="PublicTargetOf"/>).
+    /// Not while a launch could still claim it, nor while windows are being closed (Close all's sweep, the monitor tab's
+    /// Close) or a separate sign-in window opens; never a second window for an account that has one, nor one whose user id
+    /// two accounts share (a Global and a Roblox VNG account: the log can't say which).
     /// </summary>
     bool AdoptWindowsOpenedElsewhere(IReadOnlyList<RobloxProcesses.PlayerProcess> players)
     {
-        if (_vault is null || _launchCts is not null || _pending.Count > 0 || _rejoining)
+        if (_vault is null || _launchCts is not null || _pending.Count > 0 || _rejoining || _openingHome || DateTime.UtcNow < _sweepBackgroundUntil)
             return false;
+        HashSet<int>? separate = null;
         bool adopted = false;
         foreach (var p in players)
         {
-            if (_logs.UserIdOf(p.Pid) is not { } user || _running.Values.Any(r => r.Pid == p.Pid))
+            if (_logs.UserIdOf(p.Pid) is not { } user || _running.Values.Any(r => r.Pid == p.Pid) || RobloxProcesses.IsClosing(p.Pid))
                 continue;
-            var account = _vault.Data.Accounts.FirstOrDefault(a => a.UserId == user);
-            if (account is null || _running.ContainsKey(account.Id))
+            var named = _vault.Data.Accounts.Where(a => a.UserId == user).Take(2).ToList();
+            if (named is not [var account] || _running.ContainsKey(account.Id))
                 continue;
-            var place = _logs.StateOf(p.Pid)?.PlaceId;
+            // A separate sign-in window keeps its own sign-in: auto-rejoin would reopen it as a normal client. Unsure which
+            // windows those are: none is adopted until the next check.
+            if (_homeSession is not null)
+            {
+                if (separate is null)
+                {
+                    var (ours, uncertain) = _homeSession.FindClients(players);
+                    if (uncertain)
+                        break;
+                    separate = ours.ToHashSet();
+                }
+                if (separate.Contains(p.Pid))
+                    continue;
+            }
             var since = p.Created > 0 ? DateTime.FromFileTimeUtc(p.Created) : DateTime.UtcNow;
-            _running[account.Id] = (p.Pid, new PendingLaunch(account.Id, [], since, place is > 0 ? new GameTarget(place.Value) : null));
+            var target = PublicTargetOf(_launchUrlOf(p.Pid, p.Created), _logs.StateOf(p.Pid));
+            _running[account.Id] = (p.Pid, new PendingLaunch(account.Id, [], since, target));
+            // Not one Bloxkeep opened: Settings' Maximise leaves it as the person has it.
+            _maximised[p.Pid] = "ingame";
             adopted = true;
         }
         if (adopted)
-            Persist();
+            PersistSoon(); // as ClaimWindows: not encrypted and written on the window's thread in the check
         return adopted;
+    }
+
+    /// <summary>The PlaceLauncher link a client was started with (<see cref="RobloxProcesses.PlaceLauncherUrlOf"/>); tests give their own.</summary>
+    Func<int, long, string?> _launchUrlOf = RobloxProcesses.PlaceLauncherUrlOf;
+
+    /// <summary>
+    /// The game an adopted window is rejoined into: only when its own start asked for a public server (a browser's Play:
+    /// PlaceLauncher's RequestGame or RequestGameJob, no private server code) of the place its log says it is in, and no
+    /// game was picked in the window since. Roblox's log doesn't say whether a server is private or reserved (none of the
+    /// owner's logs did, checked 2026-11-03), so one started on Roblox's home screen, from a private server, or moved to another place gets
+    /// none: a drop there isn't rejoined, rather than rejoined into a public server of that place.
+    /// </summary>
+    internal static GameTarget? PublicTargetOf(string? launchUrl, RobloxLogWatcher.ClientState? state)
+    {
+        if (string.IsNullOrEmpty(launchUrl) || state is not { PlaceId: long place, ChosenPlace: null, PersonStarted: false })
+            return null;
+        var query = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in launchUrl[(launchUrl.IndexOf('?') + 1)..].Split('&'))
+        {
+            if (pair.Split('=', 2) is [var key, var value])
+                query.TryAdd(key, value);
+        }
+        bool publicServer = query.GetValueOrDefault("request") is "RequestGame" or "RequestGameJob"
+            && !query.ContainsKey("accessCode") && !query.ContainsKey("linkCode") && !query.ContainsKey("privateServerLinkCode");
+        return publicServer && long.TryParse(query.GetValueOrDefault("placeId"), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out long asked) && asked == place
+            ? new GameTarget(place)
+            : null;
     }
 }

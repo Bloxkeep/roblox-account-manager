@@ -115,8 +115,8 @@ static class AdoptSuite
         static string Launcher(string query) => "roblox-player:1+launchmode:play+gameinfo:abc+launchtime:1+placelauncherurl:"
             + Uri.EscapeDataString("https://www.roblox.com/Game/PlaceLauncher.ashx?" + query) + "+browsertrackerid:7+robloxLocale:en_us";
         string? commandLine = null;
-        if (t.GetField("_commandLineOf", Harness.F) is { } seam)
-            seam.SetValue(app, new Func<int, long, string?>((_, _) => commandLine));
+        // Only the PlaceLauncher link is taken from the command line, never the sign-in ticket on it.
+        Harness.Set(app, "_launchUrlOf", new Func<int, long, string?>((_, _) => commandLine is null ? null : RobloxProcesses.PlaceLauncherUrl(commandLine)));
         void AdoptWith(string? line)
         {
             running.Remove(main);
