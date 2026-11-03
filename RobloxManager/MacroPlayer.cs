@@ -557,6 +557,7 @@ sealed class MacroPlayer(IMacroDesk desk)
                 }
             }
             run.Held.Clear();
+            run.HeldAs.Clear();
         }
 
         public async Task EndAsync()
@@ -577,7 +578,10 @@ sealed class MacroPlayer(IMacroDesk desk)
                         input.Button(MacroRules.MouseKeys.GetValueOrDefault(held, held), up: true);
                 }
                 if (run.Finished)
+                {
                     run.Held.Clear();
+                    run.HeldAs.Clear();
+                }
             }
             finally
             {
@@ -627,16 +631,22 @@ sealed class MacroPlayer(IMacroDesk desk)
                 if (await turn.FrontAsync(ct) is not { } input)
                     return Then.EndTurn;
                 bool up = s.Kind == "up";
-                if (MacroRules.MouseKeys.TryGetValue(s.Key!, out string? mouse))
+                // Release lets go of what its Hold pressed: a setting changed on the panel meanwhile names another key.
+                string named = MacroRules.KeyNamed(run.Macro.Steps[run.Pc]), key = s.Key!;
+                if (up && run.HeldAs.Remove(named, out var pressed))
+                    key = pressed;
+                if (MacroRules.MouseKeys.TryGetValue(key, out string? mouse))
                 {
                     // A mouse button held where the pointer is: it must be the game's window there.
                     if (!up && !input.Clear(input.CursorAt()))
                         throw new MacroCovered();
-                    if (up ? run.Held.Remove(s.Key!) : run.Held.Add(s.Key!))
+                    if (up ? run.Held.Remove(key) : run.Held.Add(key))
                         input.Button(mouse, up);
                 }
-                else if (up ? run.Held.Remove(s.Key!) : run.Held.Add(s.Key!))
-                    input.Key(MacroKeys.All[s.Key!], up);
+                else if (up ? run.Held.Remove(key) : run.Held.Add(key))
+                    input.Key(MacroKeys.All[key], up);
+                if (!up)
+                    run.HeldAs[named] = key;
                 await desk.Delay(frame, ct);
                 break;
             }

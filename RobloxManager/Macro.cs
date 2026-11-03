@@ -721,7 +721,11 @@ static class MacroRules
     static int Tolerance(int? tolerance) =>
         tolerance is null ? 24 : tolerance is >= 0 and <= 255 ? tolerance.Value : throw new UserError(L.T("Color closeness is 0 to 255."));
 
-    /// <summary>Every key held (down) is let go (up) later, and only a held key is let go.</summary>
+    /// <summary>The key a Hold or Release step names as written: the key ("W"), or the setting it reads ("$o1").</summary>
+    internal static string KeyNamed(MacroStep s) => s.Key ?? (MacroValues.RefOf(s.Extra, "key") is { } option ? "$" + option : "");
+
+    /// <summary>Every key held (down) is let go (up) later, and only a held key is let go. A key from a setting pairs with
+    /// the same setting only ("$o1" with "$o1"): two settings may hold different keys.</summary>
     static void Pairs(List<MacroStep> steps)
     {
         var held = new HashSet<string>();
@@ -731,10 +735,10 @@ static class MacroRules
             // The macro's own steps end where its If stuck part begins.
             if (s.Kind == "recover" && held.Count > 0)
                 throw new UserError(L.F("{0} is held down and never let go. Add a “Let go of a key” step.", held.First()));
-            if (s.Kind == "down" && !held.Add(s.Key!))
-                throw new UserError(L.F("Step {0}: {1} is already held down.", i + 1, s.Key));
-            if (s.Kind == "up" && !held.Remove(s.Key!))
-                throw new UserError(L.F("Step {0}: lets go of {1}, which isn't held down.", i + 1, s.Key));
+            if (s.Kind == "down" && !held.Add(KeyNamed(s)))
+                throw new UserError(L.F("Step {0}: {1} is already held down.", i + 1, KeyNamed(s)));
+            if (s.Kind == "up" && !held.Remove(KeyNamed(s)))
+                throw new UserError(L.F("Step {0}: lets go of {1}, which isn't held down.", i + 1, KeyNamed(s)));
         }
         if (held.Count > 0)
             throw new UserError(L.F("{0} is held down and never let go. Add a “Let go of a key” step.", held.First()));
