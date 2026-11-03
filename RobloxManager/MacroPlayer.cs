@@ -248,8 +248,10 @@ sealed class MacroPlayer(IMacroDesk desk)
     /// </summary>
     public void ReleaseAll(string why)
     {
-        _turn?.Abort();
+        var turn = _turn;
+        // Stopped first: the turn, if it goes on a moment, never brings a window forward again.
         Stop(null, why);
+        turn?.Abort();
     }
 
     /// <summary>The vault went: runs stopped, variables forgotten, finished runs too.</summary>
@@ -561,6 +563,7 @@ sealed class MacroPlayer(IMacroDesk desk)
         {
             if (Input is not null)
                 return Input;
+            ct.ThrowIfCancellationRequested(); // stopped (Bloxkeep closing): no window comes forward
             var input = await player.Desk.BeginTurnAsync(window, ct);
             if (input is null)
             {
