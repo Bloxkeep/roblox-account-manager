@@ -371,21 +371,22 @@
   --blur: blur(18px) saturate(130%);
   --bg: rgba(6, 14, 36, .32);
   --bg-2: rgba(6, 14, 36, .56);
-  --surface: rgba(12, 22, 52, .78);
+  --surface: rgba(12, 22, 52, .7);
   --surface-2: rgba(220, 230, 255, .08);
   --surface-3: rgba(220, 230, 255, .15);
   --raised: rgba(12, 22, 52, .95);
   --field: rgba(0, 0, 0, .3);
-  --card: rgba(12, 22, 52, .7);
-  --card-hover: rgba(12, 22, 52, .78);
+  --card: rgba(12, 22, 52, .6);
+  --card-hover: rgba(12, 22, 52, .7);
   --well: rgba(0, 0, 0, .25);
   --tint: 220, 230, 255;
   --line: rgba(var(--tint), .1);
   --line-2: rgba(var(--tint), .16);
   --line-3: rgba(var(--tint), .28);
   --text: #eef2fb;
-  --text-2: #c4cde2;
-  --muted: #b3bdd4;
+  --text-2: #d2d9ea;
+  --muted: #c0c9dc;
+  --online: #7cb6fb; /* the default blue sat under 3:1 on the moonlit picture */
   --dim: #7d88a3;
   --inv: #ffcf5c;
   --inv-hover: #ffda7d;
@@ -405,21 +406,21 @@
   --blur: blur(18px) saturate(130%);
   --bg: rgba(8, 16, 30, .32);
   --bg-2: rgba(8, 16, 30, .78);
-  --surface: rgba(14, 28, 48, .78);
+  --surface: rgba(14, 28, 48, .7);
   --surface-2: rgba(225, 235, 250, .08);
   --surface-3: rgba(225, 235, 250, .15);
   --raised: rgba(14, 28, 48, .95);
   --field: rgba(0, 0, 0, .3);
-  --card: rgba(14, 28, 48, .7);
-  --card-hover: rgba(14, 28, 48, .78);
+  --card: rgba(14, 28, 48, .6);
+  --card-hover: rgba(14, 28, 48, .7);
   --well: rgba(0, 0, 0, .25);
   --tint: 225, 235, 250;
   --line: rgba(var(--tint), .1);
   --line-2: rgba(var(--tint), .16);
   --line-3: rgba(var(--tint), .28);
   --text: #eef4fb;
-  --text-2: #c6d3e2;
-  --muted: #b3c1d2;
+  --text-2: #d3dde9;
+  --muted: #c0ccda;
   --dim: #7c8ba0;
   --inv: #cf3a3f;
   --inv-hover: #d93b40;
@@ -582,19 +583,19 @@
   --blur: blur(18px) saturate(140%);
   --bg: rgba(5, 8, 18, .3);
   --bg-2: rgba(5, 8, 18, .55);
-  --surface: rgba(12, 17, 32, .78);
+  --surface: rgba(12, 17, 32, .68);
   --surface-2: rgba(255, 255, 255, .08);
   --surface-3: rgba(255, 255, 255, .15);
   --raised: rgba(14, 19, 34, .92);
   --field: rgba(0, 0, 0, .3);
-  --card: rgba(9, 13, 26, .7);
-  --card-hover: rgba(13, 18, 34, .78);
+  --card: rgba(9, 13, 26, .58);
+  --card-hover: rgba(13, 18, 34, .68);
   --well: rgba(0, 0, 0, .25);
   --line: rgba(var(--tint), .1);
   --line-2: rgba(var(--tint), .16);
   --line-3: rgba(var(--tint), .28);
   --text: #f1f4fa;
-  --text-2: #c9d0de;
+  --text-2: #d6dce7;
   --muted: #b4bccb;
   --dim: #788092;
   --meter-2: rgba(255, 255, 255, .25);
@@ -627,7 +628,7 @@
   --line-2: rgba(var(--tint), .16);
   --line-3: rgba(var(--tint), .28);
   --text: #f1f4fa;
-  --text-2: #c9d0de;
+  --text-2: #d6dce7;
   --muted: #b4bccb;
   --dim: #788092;
   --meter-2: rgba(255, 255, 255, .25);
@@ -2648,17 +2649,17 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 :is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) #view-settings { background: var(--bg-2); --pic-theme: 1; }
 /* The warning look of the Multi-Roblox card keeps the card's surface under its tint, or its text sat on the picture. */
 :is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .multi.warn { background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
-/* The page's heading and the account filters sit straight on the picture as well: on the picture themes they get the
-   same veil, one band under the whole heading. A page that is only words on the picture (an empty list, the game
-   monitor with no window) gets it over the whole page, like Settings. */
-:is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .view:not(#view-settings, :has(.empty, .mon-area.none)) :is(.top, .bar),
+/* The page's heading, its tools and the account filters sit straight on the picture as well: on the picture themes each
+   gets the veil right behind it (the heading and the tools a tile each, the spread just a margin round them), and the
+   picture shows between. A page that is only words on the picture (an empty list, the game monitor with no window)
+   gets it over the whole page, like Settings. */
+:is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .view:not(#view-settings, :has(.empty, .mon-area.none)) :is(.top-title, .top-tools) { max-width: max-content; border-radius: var(--r-sm); background: var(--bg-2); box-shadow: 0 0 0 6px var(--bg-2); }
+:is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .view:not(#view-settings, :has(.empty, .mon-area.none)) .bar :is(.chip, .sort-btn):not(:hover, .on),
+:is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .view:not(#view-settings, :has(.empty, .mon-area.none)) .bar .seg,
 :is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .view:has(.empty, .mon-area.none) { background: var(--bg-2); }
 /* The warning tint (the Beta tag, warning notes) keeps a panel's colour under it, as the Multi-Roblox card does: over
    the picture alone its words lost their contrast. */
 :is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) { --warn-soft: color-mix(in srgb, var(--warn) 12%, var(--surface)); }
-/* Statistics keeps its heading as wide as the figures under it: the veil carries on to the window's edge (100vmax is
-   just "past any window"). */
-:is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) #view-stats:not(:has(.empty)) .top { box-shadow: 0 0 0 100vmax var(--bg-2); clip-path: inset(0 -100vmax 0 0); }
 /* Game monitor: each game's heading on its own strip of the veil; its windows stay on the picture. */
 :is([data-theme="miaminight"], [data-theme="lanternriver"], [data-theme="deepsea"], [data-theme="snowfall"], [data-theme="nightharbour"], [data-theme="koipond"], [data-theme="fireflies"], [data-theme="rainglass"], [data-theme="starrynight"], [data-theme="cubism"], [data-theme="goldleaf"], [data-theme="blockworld"], [data-theme="peachfall"], [data-theme="greatwave"], [data-theme="waterlilies"], [data-theme="blocksart"], [data-theme="dalat"], [data-theme="savanna"], [data-theme="phongnha"], [data-theme="nightbeach"], [data-theme="aurora"], [data-theme="sunset"], [data-theme="city"], [data-theme="space"], [data-theme="mist"], [data-theme="snow"], [data-theme="desert"], [data-theme="meadow"], [data-theme="halloween"], [data-theme="lunar"], [data-theme="spring"], [data-theme="summer"], [data-theme="autumn"], [data-theme="midautumn"], [data-theme="christmas"], [data-theme="newyear"], [data-theme="valentine"], [data-theme="rainy"], [data-theme="skylanterns"], [data-theme="hoian"], [data-theme="underwater"], [data-theme="jungle"], [data-theme="moon"], [data-theme="winter"], [data-theme="school"], [data-theme="kites"], [data-theme="flametree"], [data-theme="halong"], [data-theme="terraces"], [data-theme="fuji"], [data-theme="skyislands"]) .mon-lane-head { padding: 0 var(--sp-3); border-radius: var(--r-md); background: var(--bg-2); }
 
@@ -3214,20 +3215,20 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: blur(18px) saturate(130%);
   --bg: rgba(38, 14, 44, .32);
   --bg-2: rgba(38, 14, 44, .72);
-  --surface: rgba(52, 18, 58, .78);
+  --surface: rgba(52, 18, 58, .7);
   --surface-2: rgba(255, 220, 232, .08);
   --surface-3: rgba(255, 220, 232, .15);
   --raised: rgba(52, 18, 58, .95);
   --field: rgba(0, 0, 0, .3);
-  --card: rgba(52, 18, 58, .7);
-  --card-hover: rgba(52, 18, 58, .78);
+  --card: rgba(52, 18, 58, .6);
+  --card-hover: rgba(52, 18, 58, .7);
   --well: rgba(0, 0, 0, .25);
   --tint: 255, 220, 232;
   --line: rgba(var(--tint), .1);
   --line-2: rgba(var(--tint), .16);
   --line-3: rgba(var(--tint), .28);
   --text: #fdeef3;
-  --text-2: #ecc6d4;
+  --text-2: #f3d5e0;
   --muted: #d9aabf;
   --dim: #a07a8c;
   --inv: #d13f59;
@@ -4673,7 +4674,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(14, 12, 40, 0.14);
   --bg-2: rgba(14, 12, 40, 0.72);
-  --surface: rgba(20, 16, 52, .95);
+  --surface: rgba(20, 16, 52, 0.88);
   --surface-2: rgba(20, 16, 52, 0.74);
   --surface-3: rgba(232, 226, 250, .15);
   --raised: rgba(20, 16, 52, 0.97);
@@ -4707,7 +4708,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(6, 7, 18, 0.14);
   --bg-2: rgba(6, 7, 18, 0.72);
-  --surface: rgba(14, 15, 34, .95);
+  --surface: rgba(14, 15, 34, 0.88);
   --surface-2: rgba(14, 15, 34, 0.74);
   --surface-3: rgba(232, 228, 240, .15);
   --raised: rgba(14, 15, 34, 0.97);
@@ -4741,7 +4742,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(4, 18, 42, 0.14);
   --bg-2: rgba(4, 18, 42, 0.72);
-  --surface: rgba(6, 28, 58, .95);
+  --surface: rgba(6, 28, 58, 0.88);
   --surface-2: rgba(6, 28, 58, 0.74);
   --surface-3: rgba(205, 232, 250, .15);
   --raised: rgba(6, 28, 58, 0.97);
@@ -4775,7 +4776,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(12, 20, 30, 0.14);
   --bg-2: rgba(12, 20, 30, 0.72);
-  --surface: rgba(18, 28, 40, .95);
+  --surface: rgba(18, 28, 40, 0.88);
   --surface-2: rgba(18, 28, 40, 0.74);
   --surface-3: rgba(222, 234, 246, .15);
   --raised: rgba(18, 28, 40, 0.97);
@@ -4809,13 +4810,13 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(14, 10, 18, 0.14);
   --bg-2: rgba(14, 10, 18, 0.72);
-  --surface: rgba(24, 18, 30, .95);
+  --surface: rgba(24, 18, 30, 0.88);
   --surface-2: rgba(24, 18, 30, 0.74);
   --surface-3: rgba(236, 228, 240, .15);
   --raised: rgba(24, 18, 30, 0.97);
   --field: rgba(0, 0, 0, .3);
-  --card: rgba(24, 18, 30, .9);
-  --card-hover: rgba(24, 18, 30, .94);
+  --card: rgba(24, 18, 30, 0.84);
+  --card-hover: rgba(24, 18, 30, 0.9);
   --well: rgba(0, 0, 0, .25);
   --tint: 236, 228, 240;
   --line: rgba(var(--tint), .1);
@@ -4843,7 +4844,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(6, 30, 32, .14);
   --bg-2: rgba(6, 30, 32, .72);
-  --surface: rgba(10, 40, 42, .95);
+  --surface: rgba(10, 40, 42, .88);
   --surface-2: rgba(10, 40, 42, .74);
   --surface-3: rgba(210, 240, 235, .15);
   --raised: rgba(10, 40, 42, .97);
@@ -4877,7 +4878,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(5, 14, 18, .1);
   --bg-2: rgba(5, 14, 18, .72);
-  --surface: rgba(12, 26, 28, .95);
+  --surface: rgba(12, 26, 28, .88);
   --surface-2: rgba(12, 26, 28, .74);
   --surface-3: rgba(220, 240, 200, .15);
   --raised: rgba(12, 26, 28, .97);
@@ -4911,7 +4912,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(8, 12, 22, .12);
   --bg-2: rgba(8, 12, 22, .72);
-  --surface: rgba(16, 22, 38, .95);
+  --surface: rgba(16, 22, 38, .88);
   --surface-2: rgba(16, 22, 38, .74);
   --surface-3: rgba(220, 230, 250, .15);
   --raised: rgba(16, 22, 38, .97);
@@ -4945,13 +4946,13 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(8, 16, 44, .54);
   --bg-2: rgba(8, 16, 44, .86);
-  --surface: rgba(14, 26, 62, .95);
+  --surface: rgba(14, 26, 62, .88);
   --surface-2: rgba(14, 26, 62, .74);
   --surface-3: rgba(225, 232, 250, .15);
   --raised: rgba(14, 26, 62, .97);
   --field: rgba(0, 0, 0, .3);
-  --card: rgba(14, 26, 62, .9);
-  --card-hover: rgba(14, 26, 62, .94);
+  --card: rgba(14, 26, 62, .84);
+  --card-hover: rgba(14, 26, 62, .9);
   --well: rgba(0, 0, 0, .25);
   --tint: 225, 232, 250;
   --line: rgba(var(--tint), .1);
@@ -4979,7 +4980,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(24, 20, 16, .56);
   --bg-2: rgba(24, 20, 16, .9);
-  --surface: rgba(38, 32, 26, .95);
+  --surface: rgba(38, 32, 26, .88);
   --surface-2: rgba(38, 32, 26, .74);
   --surface-3: rgba(240, 228, 205, .15);
   --raised: rgba(38, 32, 26, .97);
@@ -5013,7 +5014,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   --blur: none;
   --bg: rgba(20, 13, 6, .56);
   --bg-2: rgba(20, 13, 6, .9);
-  --surface: rgba(32, 22, 10, .95);
+  --surface: rgba(32, 22, 10, .88);
   --surface-2: rgba(32, 22, 10, .74);
   --surface-3: rgba(245, 225, 170, .15);
   --raised: rgba(32, 22, 10, .97);
