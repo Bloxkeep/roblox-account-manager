@@ -9,7 +9,7 @@
         "image": "whatsnew/1.0.16-macros.{lang}.webp",
         "en": [
           "Macros (Beta)",
-          "Write steps as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If. Record one or start from a template, try it, then drag its points and areas right on the game.",
+          "Write steps as plain sentences: press keys, click, wait for a picture, a color or text, repeat, If. Record one or start from a template, try it, then drag its points and areas right on the game.",
           "Make a macro"
         ],
         "vi": [
@@ -52,10 +52,10 @@
     "improved": {
       "en": [
         "A macro that finds nothing for a few minutes runs your \"If stuck\" steps, then starts over; you can also have it rejoin or send a Discord alert with a picture of the window.",
-        "A macro can read any word the player ticks in a list (a letter read wrong is forgiven) and click each spot of a colour once, as it shows.",
+        "A macro can read any word the player ticks in a list (a letter read wrong is forgiven) and click each spot of a color once, as it shows.",
         "Ctrl+Alt+1 to 9 run a macro, Ctrl+Alt+0 stops them all. The tray menu and Ctrl+K show and hide the panels.",
-        "Fast Flags (grey sky, no grass, lowest graphics) now have their own switch in Settings › Staying in game, off at first: turn it on to keep Light AFK's grey sky.",
-        "The Game monitor has a minimise button on each window, and its pictures follow a resize at once.",
+        "Fast Flags (gray sky, no grass, lowest graphics) now have their own switch in Settings › Staying in game, off at first: turn it on to keep Light AFK's gray sky.",
+        "The Game monitor has a minimize button on each window, and its pictures follow a resize at once.",
         "Ctrl+Alt+A arranges the windows on the screen your mouse is on."
       ],
       "vi": [
@@ -184,7 +184,7 @@
       "en": [
         "Group and player boxes suggest names in Bloxkeep's own list.",
         "The Allow box for /pc link shows the asker's @username.",
-        "The time, date and colour pickers work from the keyboard.",
+        "The time, date and color pickers work from the keyboard.",
         "The main window fits the screen it opens on, and saved windows come back inside the screen.",
         "The lock screen after the PC sat unused offers only the password."
       ],
@@ -285,7 +285,7 @@
       "en": [
         "Ctrl+Alt+M minimizes or opens every Roblox window, Ctrl+Alt+N goes to the next one and Ctrl+Alt+B opens Bloxkeep.",
         "/pc switch can move all accounts to another server at once.",
-        "Light AFK presets also turn off grass and lighting effects, with a plain grey sky."
+        "Light AFK presets also turn off grass and lighting effects, with a plain gray sky."
       ],
       "vi": [
         "Ctrl+Alt+M thu nhỏ hoặc mở lại mọi cửa sổ Roblox, Ctrl+Alt+N sang cửa sổ kế tiếp, Ctrl+Alt+B mở Bloxkeep.",
@@ -296,7 +296,7 @@
     "improved": {
       "en": [
         "The RAM shown for each account counts only its own memory, like Task Manager.",
-        "Lists, time and date boxes and colour boxes now open in Bloxkeep's own colours.",
+        "Lists, time and date boxes and color boxes now open in Bloxkeep's own colors.",
         "Linking a PC with /pc link waits for you to press Allow in Bloxkeep.",
         "New versions are found within minutes of their release.",
         "Bloxkeep stays responsive with many Roblox windows open.",
@@ -401,7 +401,7 @@
         "Fixed Bloxkeep saying Roblox isn't installed while a Roblox window was open.",
         "Fixed Roblox being shown as out of date when Roblox put the PC on a test version.",
         "Fixed anti-AFK stopping for every window while one waited on Roblox's bot check.",
-        "Fixed a hidden, minimised window coming back on the taskbar after anti-AFK."
+        "Fixed a hidden, minimized window coming back on the taskbar after anti-AFK."
       ],
       "vi": [
         "Sửa lỗi báo chưa cài Roblox trong khi đang có cửa sổ Roblox mở.",
@@ -462,7 +462,7 @@
     },
     "improved": {
       "en": [
-        "Settings are reorganised: a new Bloxkeep page holds updates, the tray, hardware acceleration, help and privacy, and Security is now Vault & security.",
+        "Settings are reorganized: a new Bloxkeep page holds updates, the tray, hardware acceleration, help and privacy, and Security is now Vault & security.",
         "A preset's wait between accounts is now picked from a list (Follow Settings, 0–120 s) instead of typed.",
         "The data folder is tidier: old vault copies, pictures and caches move into folders of their own.",
         "What's new shows a picture of each new feature."
@@ -1078,8 +1078,8 @@
       "If Roblox only renames that lock, Bloxkeep holds the new name by itself, with no need to wait for a Bloxkeep update.",
       "Switching tabs is faster, most of all with many accounts: coming back to Accounts with hundreds of cards no longer lays them all out again (about 3 times quicker), and an update from the app no longer lays the page out several times over.",
       "74 themes, up from 32. Scenery and Seasonal themes now have a drawn scene behind glass panels: Ha Long Bay, rice terraces, Hoi An, Mount Fuji, a jungle, under the sea, sky islands, the Moon; Tết, Valentine, spring, flame trees, summer, kites, the rainy season, back to school, Mid-Autumn, autumn, sky lanterns, Halloween, winter, Christmas and New Year's Eve.",
-      "Styles change the shapes, not only the colours: Windows 98, Classic Mac, macOS light and dark (its red, yellow and green buttons close, minimise and zoom the window), GNOME, Ubuntu, KDE Plasma, Terminal, Game Boy, Arcade, Blueprint, Newspaper, Notebook, Chalkboard, Neo-brutalism and Cyberpunk.",
-      "New plain themes too: Grey, Midnight, High contrast light, Indigo, Crimson, Teal, Amber, Sky, Lavender, Peach and Mint.",
+      "Styles change the shapes, not only the colors: Windows 98, Classic Mac, macOS light and dark (its red, yellow and green buttons close, minimize and zoom the window), GNOME, Ubuntu, KDE Plasma, Terminal, Game Boy, Arcade, Blueprint, Newspaper, Notebook, Chalkboard, Neo-brutalism and Cyberpunk.",
+      "New plain themes too: Gray, Midnight, High contrast light, Indigo, Crimson, Teal, Amber, Sky, Lavender, Peach and Mint.",
       "Bloxkeep-Setup.exe is now a small installer that downloads the newest version as it installs. It stays the same file from release to release, so Windows SmartScreen can get to know it. Bloxkeep-Setup-Offline.exe has everything inside, for installing without internet.",
       "When Bloxkeep restarts (an update, a crash) while Roblox keeps running: anti-AFK looks after a window about to be kicked at once, even while you use the PC; play time is no longer counted twice; an old idle kick isn't announced again (on Discord too); a Roblox window open for many hours is still followed from its log; and a preset's timed restart waits until it knows the window is in its game.",
       "The Halloween theme has its own night scene behind glass panels: a moon with bats, a crooked house, a dead tree and jack-o'-lanterns."
@@ -1105,8 +1105,8 @@
       "Questions you see often (deleting a preset, closing all Roblox, opening anyway, turning on Multi-Roblox, leaving a form you typed in) have a Don't ask again box. Deleting accounts, restoring a backup and removing the Discord link still always ask.",
       "Statistics: games played days ago and the presets' games show their icons again. On a wide window the page uses the room: how many accounts played, the longest stay, and play time by preset.",
       "Updates no longer fail while Roblox is open. Programs Bloxkeep starts (Bloxstrap, Roblox) used to start inside Bloxkeep's own folder, and one still running there (Bloxstrap stays while Roblox does) kept Windows from replacing that folder. If an update can't install anyway, Bloxkeep now says why instead of showing Restart to update again as if nothing happened.",
-      "Discord summaries are redone: a picture of play time by hour (or day) coloured by game, with a row per account and its avatar; the totals against the period before, drops with Roblox's codes, the longest stay, the most windows at once and the top games; and a block per preset with its accounts. Play is now noted with the preset that opened it.",
-      "Settings › Launching › When a Roblox window opens: as Roblox sizes it, maximised, or tiled side by side. A maximised window is still a window, so the windows don't fight over Roblox's one fullscreen setting.",
+      "Discord summaries are redone: a picture of play time by hour (or day) colored by game, with a row per account and its avatar; the totals against the period before, drops with Roblox's codes, the longest stay, the most windows at once and the top games; and a block per preset with its accounts. Play is now noted with the preset that opened it.",
+      "Settings › Launching › When a Roblox window opens: as Roblox sizes it, maximized, or tiled side by side. A maximized window is still a window, so the windows don't fight over Roblox's one fullscreen setting.",
       "Presets can send their messages to a Discord channel of their own: their schedule messages, the summary after a scheduled stop (now counting only that preset's accounts) and the alerts about the windows they opened. Edit a preset › Discord.",
       "The Presets tab shows which presets have windows open, with a Close button for those windows; a preset can also arrange its windows once it has opened them, whatever Settings says.",
       "Settings › Performance › Auto-rejoin turns it on or off for every account at once, and the daily sign-in check says when it last ran. Auto-rejoin that a dead sign-in switched off comes back on by itself once the account is signed in again.",
