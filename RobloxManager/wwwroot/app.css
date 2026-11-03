@@ -5761,7 +5761,7 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 body.panel-page { background: linear-gradient(var(--surface), var(--surface)), linear-gradient(var(--raised), var(--raised)), Canvas; overflow: hidden; }
 .pn {
   --pn-fill: linear-gradient(var(--surface), var(--surface)), linear-gradient(var(--raised), var(--raised)), Canvas;
-  width: 300px; max-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
+  width: 360px; max-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
   background: var(--pn-fill); color: var(--text); font-size: var(--fs-3);
 }
 html:not(.in-window) .pn { border: 1px solid var(--line-2); border-radius: var(--r-lg); box-shadow: 0 14px 40px var(--shadow); max-height: calc(100vh - 32px); }

@@ -11,4 +11,4 @@ html [data-theme="dark" lang="vi"]
         svg.i #u1ag9u
 -- commands
   ready {}
-  size {"h":42,"pill":true,"w":300}
+  size {"h":42,"pill":true,"w":360}

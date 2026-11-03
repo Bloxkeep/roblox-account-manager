@@ -60,6 +60,5 @@ html [data-theme="dark" lang="vi"]
         button.btn.ghost.pn-reset.sm [type="button" title="Chưa đổi gì" aria-disabled="true"] "Đặt lại hết"
 -- commands
   ready {}
-  size {"h":346,"pill":false,"w":300}
-  size {"h":395,"pill":false,"w":300}
-  size {"h":418,"pill":false,"w":300}
+  size {"h":346,"pill":false,"w":360}
+  size {"h":395,"pill":false,"w":360}

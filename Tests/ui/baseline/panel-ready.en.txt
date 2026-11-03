@@ -36,7 +36,7 @@ html [data-theme="dark" lang="en"]
               span.pn-ctl-in
                 kbd.pn-key [aria-live="polite"] "E"
                 button.btn.sm [id="pn-6f1c2e9a-key" type="button" aria-label="Change: Cast key" aria-pressed="false"] "Change"
-          div.k-point.pn-row.stack
+          div.k-point.pn-row
             label.pn-label [title="Cast spot" for="pn-6f1c2e9a-spot"] "Cast spot"
             span.pn-ctl
               span.pn-ctl-in
@@ -98,5 +98,4 @@ html [data-theme="dark" lang="en"]
         button.btn.ghost.pn-reset.sm [type="button" title="Nothing changed" aria-disabled="true"] "Reset all"
 -- commands
   ready {}
-  size {"h":545,"pill":false,"w":300}
-  size {"h":568,"pill":false,"w":300}
+  size {"h":545,"pill":false,"w":360}

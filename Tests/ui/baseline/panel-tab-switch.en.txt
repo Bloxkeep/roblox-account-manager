@@ -60,6 +60,5 @@ html [data-theme="dark" lang="en"]
         button.btn.ghost.pn-reset.sm [type="button" title="Nothing changed" aria-disabled="true"] "Reset all"
 -- commands
   ready {}
-  size {"h":346,"pill":false,"w":300}
-  size {"h":395,"pill":false,"w":300}
-  size {"h":418,"pill":false,"w":300}
+  size {"h":346,"pill":false,"w":360}
+  size {"h":395,"pill":false,"w":360}

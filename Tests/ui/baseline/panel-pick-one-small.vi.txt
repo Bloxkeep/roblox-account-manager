@@ -48,7 +48,7 @@ html [data-theme="dark" lang="vi"]
       div.pn-foot
         button.btn.sm [type="button"] "Chỉnh vùng trên game"
         button.btn.ghost.pn-reset.sm [type="button" title="Chưa đổi gì" aria-disabled="true"] "Đặt lại hết"
-  div.menu.pn-pop [role="listbox" aria-label="Bait" style="left:160px;max-height:156px;max-width:288px;min-width:150px;top:22px"]
+  div.menu.pn-pop [role="listbox" aria-label="Bait" style="left:187.297px;max-height:156px;max-width:348px;min-width:175.703px;top:22px"]
     div.pn-list [tabindex="-1" aria-activedescendant="pn-o-0"]
       button.checked.on [id="pn-o-0" role="option" type="button" tabindex="-1" aria-selected="true"]
         span [title="Worm"] "Worm"
@@ -77,6 +77,5 @@ html [data-theme="dark" lang="vi"]
         span [title="Insect"] "Insect"
 -- commands
   ready {}
-  size {"h":329,"pill":false,"w":300}
-  size {"h":365,"pill":false,"w":300}
-  size {"h":388,"pill":false,"w":300}
+  size {"h":329,"pill":false,"w":360}
+  size {"h":365,"pill":false,"w":360}

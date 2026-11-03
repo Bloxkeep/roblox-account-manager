@@ -1581,41 +1581,41 @@ export default [
 
   // ── P1a panel ──
   // A macro's panel beside the game (panel.html, ui/src/panel): each state, the lists, a key, long words, a light theme.
-  S('panel-ready', '', null, { page: 'panel-preview.html', size: [340, 620] }),
-  S('panel-running', 'state=running&many=1', null, { page: 'panel-preview.html', size: [340, 640] }),
-  S('panel-paused', 'state=paused', null, { page: 'panel-preview.html', size: [340, 640] }),
-  S('panel-stopped', 'state=stopped&changed=1', null, { page: 'panel-preview.html', size: [340, 640] }),
-  S('panel-no-game', 'state=noGame', null, { page: 'panel-preview.html', size: [340, 620] }),
-  S('panel-recording', 'state=recording', async s => { await s.click({ css: '.pn-run' }); }, { page: 'panel-preview.html', size: [340, 620] }),
-  S('panel-editing', 'editing=1', null, { page: 'panel-preview.html', size: [340, 620] }),
-  S('panel-pill', 'pill=1&state=running', null, { page: 'panel-preview.html', size: [340, 120] }),
-  S('panel-fold', '', async s => { await s.click({ css: '.pn-title .pn-icon' }); }, { page: 'panel-preview.html', size: [340, 620] }),
-  S('panel-pick-one', '', async s => { await s.click({ css: '.k-choice .pn-select' }); }, { page: 'panel-preview.html', size: [340, 620] }),
+  S('panel-ready', '', null, { page: 'panel-preview.html', size: [400, 620] }),
+  S('panel-running', 'state=running&many=1', null, { page: 'panel-preview.html', size: [400, 640] }),
+  S('panel-paused', 'state=paused', null, { page: 'panel-preview.html', size: [400, 640] }),
+  S('panel-stopped', 'state=stopped&changed=1', null, { page: 'panel-preview.html', size: [400, 640] }),
+  S('panel-no-game', 'state=noGame', null, { page: 'panel-preview.html', size: [400, 620] }),
+  S('panel-recording', 'state=recording', async s => { await s.click({ css: '.pn-run' }); }, { page: 'panel-preview.html', size: [400, 620] }),
+  S('panel-editing', 'editing=1', null, { page: 'panel-preview.html', size: [400, 620] }),
+  S('panel-pill', 'pill=1&state=running', null, { page: 'panel-preview.html', size: [400, 120] }),
+  S('panel-fold', '', async s => { await s.click({ css: '.pn-title .pn-icon' }); }, { page: 'panel-preview.html', size: [400, 620] }),
+  S('panel-pick-one', '', async s => { await s.click({ css: '.k-choice .pn-select' }); }, { page: 'panel-preview.html', size: [400, 620] }),
   S('panel-pick-one-chosen', '', async s => {
     await s.click({ css: '.k-choice .pn-select' }); await s.key('ArrowDown'); await s.key('ArrowDown'); await s.key('Enter');
-  }, { page: 'panel-preview.html', size: [340, 620] }),
+  }, { page: 'panel-preview.html', size: [400, 620] }),
   S('panel-pick-one-small', 'tabs=1', async s => {
     await s.click({ css: '.pn-tabs button:nth-child(2)' }); await s.click({ css: '.k-choice .pn-select' });
-  }, { page: 'panel-preview.html', size: [340, 620] }),
+  }, { page: 'panel-preview.html', size: [400, 620] }),
   S('panel-pick-several', '', async s => {
     await s.click({ css: '.k-list .pn-select' }); await s.click({ css: '#pn-m-4' }); await s.snap('ticked');
     await s.click({ css: '.k-list .pn-select' });
-  }, { page: 'panel-preview.html', size: [340, 620] }),
+  }, { page: 'panel-preview.html', size: [400, 620] }),
   S('panel-key-capture', '', async s => {
     await s.click({ css: '.k-key .btn' }); await s.snap('waiting'); await s.key('q');
-  }, { page: 'panel-preview.html', size: [340, 620] }),
+  }, { page: 'panel-preview.html', size: [400, 620] }),
   S('panel-number', '', async s => {
     await s.click({ css: '.k-number .pn-step:last-child' }); await s.wait(400);
     await s.fill({ css: '.k-number .pn-num' }, '99'); await s.key('Enter'); await s.wait(200);
-  }, { page: 'panel-preview.html', size: [340, 620] }),
-  S('panel-menu', '', async s => { await s.click({ css: '.pn-name' }, { button: 'right' }); }, { page: 'panel-preview.html', size: [340, 620] }),
-  S('panel-tab-switch', 'tabs=1&state=running', async s => { await s.click({ css: '.pn-tabs button:nth-child(3)' }); }, { page: 'panel-preview.html', size: [340, 620] }),
-  S('panel-long-labels', 'long=1&state=running&many=1', null, { page: 'panel-preview.html', size: [340, 720] }),
-  S('panel-light', 'theme=light&state=running', null, { page: 'panel-preview.html', size: [340, 640] }),
+  }, { page: 'panel-preview.html', size: [400, 620] }),
+  S('panel-menu', '', async s => { await s.click({ css: '.pn-name' }, { button: 'right' }); }, { page: 'panel-preview.html', size: [400, 620] }),
+  S('panel-tab-switch', 'tabs=1&state=running', async s => { await s.click({ css: '.pn-tabs button:nth-child(3)' }); }, { page: 'panel-preview.html', size: [400, 620] }),
+  S('panel-long-labels', 'long=1&state=running&many=1', null, { page: 'panel-preview.html', size: [400, 720] }),
+  S('panel-light', 'theme=light&state=running', null, { page: 'panel-preview.html', size: [400, 640] }),
   S('panel-retro', 'theme=retro&state=stopped&tabs=1', async s => { await s.click({ css: '.pn-tabs button:nth-child(2)' }); await s.click({ css: '.k-choice .pn-select' }); },
-    { page: 'panel-preview.html', size: [340, 620], langs: ['en'] }),
-  S('panel-macos', 'theme=macos&state=running', null, { page: 'panel-preview.html', size: [340, 640], langs: ['en'] }),
-  S('panel-picture', 'theme=fuji&state=paused', async s => { await s.click({ css: '.k-list .pn-select' }); }, { page: 'panel-preview.html', size: [340, 640], langs: ['en'] }),
+    { page: 'panel-preview.html', size: [400, 620], langs: ['en'] }),
+  S('panel-macos', 'theme=macos&state=running', null, { page: 'panel-preview.html', size: [400, 640], langs: ['en'] }),
+  S('panel-picture', 'theme=fuji&state=paused', async s => { await s.click({ css: '.k-list .pn-select' }); }, { page: 'panel-preview.html', size: [400, 640], langs: ['en'] }),
   // ── end P1a ──
 
   // ── P1b panel design ──

@@ -37,7 +37,7 @@ html [data-theme="dark" lang="en"]
               span.pn-ctl-in
                 kbd.pn-key [aria-live="polite"] "E"
                 button.btn.sm [id="pn-6f1c2e9a-key" type="button" aria-label="Change: Cast key" aria-pressed="false"] "Change"
-          div.k-point.pn-row.stack
+          div.k-point.pn-row
             label.pn-label [title="Cast spot" for="pn-6f1c2e9a-spot"] "Cast spot"
             span.pn-ctl
               span.pn-ctl-in
@@ -102,7 +102,6 @@ html [data-theme="dark" lang="en"]
   act {"by":1,"name":"hold","what":"nudge"}
   act {"name":"hold","text":"99","what":"typed"}
   ready {}
-  size {"h":545,"pill":false,"w":300}
-  size {"h":568,"pill":false,"w":300}
-  size {"h":568,"pill":false,"w":300}
-  size {"h":586,"pill":false,"w":300}
+  size {"h":545,"pill":false,"w":360}
+  size {"h":545,"pill":false,"w":360}
+  size {"h":563,"pill":false,"w":360}
