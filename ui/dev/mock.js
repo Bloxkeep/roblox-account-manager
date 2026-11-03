@@ -640,7 +640,7 @@
         case 'revealDiscordWebhook': return `https://discord.com/api/webhooks/${DC_ID}/${'demo-token-'.repeat(6)}demo`;
         case 'discordTest': case 'discordSummaryNow':
           await wait(500);
-          if (params.has('dcfail')) throw new Error("Couldn't reach Discord: No such host is known. (discord.com:443)");
+          if (params.has('dcfail')) throw new Error(tx("Couldn't reach Discord: ", 'Không kết nối được với Discord: ') + 'No such host is known. (discord.com:443)');
           discord = { ...discord, lastSent: new Date().toISOString(), error: null };
           push();
           return null;
