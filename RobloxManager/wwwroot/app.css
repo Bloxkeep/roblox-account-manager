@@ -5706,14 +5706,17 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mc-end .mc-step-head { height: 26px; font-size: var(--fs-2); color: var(--muted); }
 .mc-end .mc-step-head > .i { width: 14px; height: 14px; color: var(--muted); }
 .mc-fold.icon-btn { width: 24px; height: 32px; flex: none; margin-right: -6px; }
-.mc-fold .i { width: 15px; height: 15px; }
+.mc-fold .i { width: 16px; height: 16px; color: var(--muted); transition: transform .12s ease-out; }
+.mc-fold[aria-expanded="true"] .i { transform: rotate(90deg); }
+.mc-fold:hover .i { color: var(--text-2); }
 .mc-say small { font-size: var(--fs-2); color: var(--muted); }
 .mc-bad-count { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill); background: var(--bad); color: #fff; font: 700 var(--fs-1)/18px var(--font); font-style: normal; text-align: center; }
-.mc-ins { position: absolute; z-index: 1; top: -12px; left: 34px; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 1px solid var(--line-3); border-radius: var(--r-pill); background: var(--raised); color: var(--text-2); cursor: pointer; opacity: 0; transition: opacity .1s; }
-.mc-ins .i { width: 12px; height: 12px; }
-.mc-step:hover > .mc-ins, .mc-ins:focus-visible, .mc-ins[aria-expanded="true"] { opacity: 1; }
-.mc-ins:hover { border-color: var(--accent); color: var(--accent); }
-.mc-step:first-child > .mc-ins { top: -10px; }
+.mc-ins { position: absolute; z-index: 1; top: -10px; left: 24px; right: 96px; height: 12px; padding: 0; border: 0; background: none; cursor: pointer; }
+.mc-ins-dot { position: absolute; top: -4px; left: 10px; display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--line-3); border-radius: var(--r-pill); background: var(--raised); color: var(--text-2); opacity: 0; transition: opacity .1s; pointer-events: none; }
+.mc-ins-dot .i { width: 12px; height: 12px; }
+.mc-ins:hover .mc-ins-dot, .mc-ins:focus-visible .mc-ins-dot, .mc-ins[aria-expanded="true"] .mc-ins-dot { opacity: 1; }
+.mc-ins:hover .mc-ins-dot { border-color: var(--accent); color: var(--accent); }
+.mc-step:first-child > .mc-ins { top: -8px; }
 
 /* What a row says under its sentence: its note, where a run stopped, and what stops a save (each with its fix). */
 .mc-step > .mc-step-note, .mc-step > .mc-stop-line { order: 1; flex-basis: 100%; margin: -4px 0 0; padding: 0 8px 2px 60px; font-size: var(--fs-2); }
@@ -5814,6 +5817,8 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mc-icon-bad { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--surface); background: var(--bad); }
 .mc-panel-dot { width: 8px; height: 8px; margin: 0 3px; flex: none; border-radius: 50%; background: var(--ok); }
 .mc-add-q::-webkit-search-cancel-button { display: none; }
+.mc-empty p, .mc-empty h2 { text-wrap: balance; }
+.mc-pop.scroll { overflow-y: auto; overscroll-behavior: contain; }
 /* ───────── end P2 ───────── */
 
 /* ───────── P3 accounts ───────── */

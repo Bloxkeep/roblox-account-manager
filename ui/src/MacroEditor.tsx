@@ -1033,8 +1033,8 @@ function StepRow({ s, i, m, count, shape, problems: probs, fixOf, dragging, ed, 
   // Where the row sits: Otherwise one level out (a divider in its If), the rest at their depth. Each block around it draws its rail.
   const at = s.kind === 'else' && shape.depth ? shape.depth - 1 : shape.depth;
   const rails = shape.rails.map((k, L) => <span key={L} className="mc-rail" aria-hidden="true" style={{ left: `${8 + (L - at) * 22}px`, background: railOf(k) }} />);
-  const ins = <button type="button" className="mc-ins" tabIndex={-1} title={t('macro.insHere')} aria-label={t('macro.insHere')}
-    onClick={e => insert(e.currentTarget, i)}><Icon name="plus" /></button>;
+  const ins = <button type="button" className="mc-ins" tabIndex={-1} aria-haspopup="dialog" title={t('macro.insHere')} aria-label={t('macro.insHere')}
+    onClick={e => insert(e.currentTarget, i)}><span className="mc-ins-dot"><Icon name="plus" /></span></button>;
   const common = { 'data-i': i, style: { '--d': at } as React.CSSProperties };
   const ctrlEnter = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); insert(e.currentTarget.querySelector<HTMLElement>('.mc-step-head') || e.currentTarget, i + 1); }
@@ -1063,7 +1063,7 @@ function StepRow({ s, i, m, count, shape, problems: probs, fixOf, dragging, ed, 
     <span className="ord-grip" title={t('lo.drag')} onPointerDown={() => setArmed(true)}><Icon name="grip" /></span>
     <span className="mc-step-n" aria-hidden="true">{n}</span>
     {opener ? <button type="button" className="icon-btn mc-fold" aria-expanded={!folded} title={t(folded ? 'macro.block.unfold' : 'macro.block.fold')}
-      aria-label={`${t(folded ? 'macro.block.unfold' : 'macro.block.fold')}: ${t('macro.stepN', { n })}`} onClick={fold}><Icon name={folded ? 'chevronRight' : 'chevronDown'} /></button> : null}
+      aria-label={`${t(folded ? 'macro.block.unfold' : 'macro.block.fold')}: ${t('macro.stepN', { n })}`} onClick={fold}><Icon name="caretRight" /></button> : null}
     {plainRow ? <span className={`mc-step-head k-${s.kind}`}><Icon name={STEP_ICON[s.kind] || 'info'} /><span className="mc-say">{say}</span>{chip}</span>
       : <button type="button" className={`mc-step-head k-${s.kind}`} aria-expanded={open} onClick={toggle}>
         <Icon name={STEP_ICON[s.kind] || 'info'} /><span className="mc-say">{say}{folded ? <small> {tn('macro.block.steps', shape.inner)}</small> : null}</span>
